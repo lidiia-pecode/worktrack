@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build
+dist
+.next
+coverage
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Editor
+.vscode
+
+# Docker
+postgres-data
+
+# Turbo
+.turbo
+cheat-sheet.md

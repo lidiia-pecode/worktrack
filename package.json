@@ -1,0 +1,12 @@
+{
+  "name": "worktrack",
+  "private": true,
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend"
+  ],
+  "scripts": {
+    "backend": "cd apps/backend && npm run start:dev",
+    "frontend": "cd apps/frontend && npm run dev"
+  }
+}

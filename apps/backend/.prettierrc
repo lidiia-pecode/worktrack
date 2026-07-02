@@ -1,0 +1,12 @@
+{
+  "singleQuote": true,
+  "trailingComma": "all",
+  "overrides": [
+    {
+      "files": ".dockerignore",
+      "options": {
+        "parser": "ignore"
+      }
+    }
+  ]
+}

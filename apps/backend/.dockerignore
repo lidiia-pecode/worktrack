@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+
+.git
+
+.env
+.env.sample
+
+npm-debug.log
+
+.vscode
+
+.DS_Store
