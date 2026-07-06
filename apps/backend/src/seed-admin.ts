@@ -22,7 +22,7 @@ async function run() {
     return;
   }
 
-  const passwordHash = await hashPassword('yuraloh2002');
+  const passwordHash = await hashPassword('Yuraloh2002');
 
   const superAdmin = userRepo.create({
     email,

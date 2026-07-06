@@ -1,4 +1,4 @@
-import { UserRole } from './enums';
+import { UserRole } from "./enums";
 
 export interface User {
   id: string;
@@ -7,9 +7,9 @@ export interface User {
   lastName: string;
   email: string;
   username: string;
-  updated_at: string;
-  created_at: string;
+  updatedAt: string;
+  createdAt: string;
 }
 
-export type UserPayload = Omit<User, 'id' | 'updated_at' | 'created_at'>;
+export type UserPayload = Omit<User, "id" | "updatedAt" | "createdAt">;
 export type UpdateUserPayload = Partial<UserPayload>;

@@ -1,3 +1,4 @@
+import { PaginatedResponse } from ".";
 import { ProjectStatus } from "./enums";
 import { User } from "./User";
 
@@ -6,29 +7,21 @@ export interface Project {
   name: string;
   description?: string;
   status: ProjectStatus;
-  estimate: number;
   users: User[];
-  updated_at: Date;
-  created_at: Date;
+  updatedAt: string;
+  createdAt: string;
 }
 
 export type ProjectPayload = {
   name: string;
-  status: ProjectStatus;
-  estimate: number;
   description?: string;
   userIds?: string[];
 };
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;
 
-export type ProjectResponse = {
-  count: number;
-  next: number | null;
-  previous: number | null;
-  results: Project[];
+export type ProjectState = Pick<Project, "name"> & {
+  description?: string;
 };
 
-export type ProjectState = Pick<Project, "name" | "status" | "estimate"> & {
-  description: string;
-};
+export type ProjectListResponse = PaginatedResponse<Project>;

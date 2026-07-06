@@ -1,4 +1,5 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { ProjectActivityResponse } from 'src/projects/dtos/ProjectActivityResponse.dto';
 
 export class TimeLogResponse {
   @Expose()
@@ -8,7 +9,8 @@ export class TimeLogResponse {
   userId!: string;
 
   @Expose()
-  projectActivityId!: string;
+  @Type(() => ProjectActivityResponse)
+  projectActivity!: ProjectActivityResponse;
 
   @Expose()
   isBillable!: boolean;

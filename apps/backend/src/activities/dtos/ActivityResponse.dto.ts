@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
+import { Expose, Type } from 'class-transformer';
+import { ActivityCategoryResponse } from 'src/activity-categories/dtos/ActivitiesCategoryResponse.dto';
 
 export class ActivityResponse {
   @Expose()
@@ -9,7 +9,8 @@ export class ActivityResponse {
   name!: string;
 
   @Expose()
-  category!: ActCategory;
+  @Type(() => ActivityCategoryResponse)
+  category!: ActivityCategoryResponse;
 
   @Expose()
   createdAt!: Date;

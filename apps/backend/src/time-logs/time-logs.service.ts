@@ -24,18 +24,13 @@ export class TimeLogsService {
 
     private readonly projectsService: ProjectsService,
   ) {}
-  // -----------------------
-  // SECURITY
-  // -----------------------
+
   private ensureOwnership(log: TimeLog, userId: string) {
     if (log.userId !== userId) {
       throw new ForbiddenException('You cannot access this resource');
     }
   }
 
-  // -----------------------
-  // BUSINESS RULE
-  // -----------------------
   private async checkDailyLimit(
     userId: string,
     date: string,
@@ -64,9 +59,15 @@ export class TimeLogsService {
   async list(query: GetTimelogsQuery, user: User) {
     const qb = this.repo
       .createQueryBuilder('t')
-      .where('t.user_id = :userId', { userId: user.id })
-      .orderBy('t.date', 'DESC')
-      .addOrderBy('t.created_at', 'DESC');
+
+      .leftJoinAndSelect('t.projectActivity', 'projectActivity')
+      .leftJoinAndSelect('projectActivity.project', 'project')
+      .leftJoinAndSelect('projectActivity.activity', 'activity')
+      .leftJoinAndSelect('activity.category', 'category')
+
+      .where('t.user_id = :userId', {
+        userId: user.id,
+      });
 
     if (query.date) {
       qb.andWhere('t.date = :date', { date: query.date });
@@ -80,6 +81,8 @@ export class TimeLogsService {
     }
 
     const [results, count] = await qb
+      .orderBy('t.date', 'DESC')
+      .addOrderBy('t.createdAt', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
@@ -87,11 +90,21 @@ export class TimeLogsService {
     return { results, count };
   }
 
-  // -----------------------
-  // GET ONE
-  // -----------------------
   async getById(id: string, user: User) {
-    const log = await this.repo.findOneBy({ id });
+    const log = await this.repo.findOne({
+      where: {
+        id,
+      },
+
+      relations: {
+        projectActivity: {
+          project: true,
+          activity: {
+            category: true,
+          },
+        },
+      },
+    });
 
     if (!log) {
       throw new NotFoundException('TimeLog not found');
@@ -102,9 +115,6 @@ export class TimeLogsService {
     return log;
   }
 
-  // -----------------------
-  // CREATE
-  // -----------------------
   async create(payload: TimeLogPayload, user: User) {
     await this.projectsService.getProjectActivityForUser(
       payload.projectActivityId,
@@ -115,15 +125,16 @@ export class TimeLogsService {
 
     const entity = this.repo.create({
       ...payload,
-      user: { id: user.id },
+      user: {
+        id: user.id,
+      },
     });
 
-    return this.repo.save(entity);
+    const saved = await this.repo.save(entity);
+
+    return this.getById(saved.id, user);
   }
 
-  // -----------------------
-  // UPDATE
-  // -----------------------
   async update(id: string, payload: UpdateTimelogPayload, user: User) {
     const log = await this.getById(id, user);
 
@@ -138,12 +149,11 @@ export class TimeLogsService {
 
     await this.checkDailyLimit(user.id, updated.date, updated.time, id);
 
-    return this.repo.save(updated);
+    const saved = await this.repo.save(updated);
+
+    return this.getById(saved.id, user);
   }
 
-  // -----------------------
-  // DELETE
-  // -----------------------
   async delete(id: string, user: User) {
     const log = await this.getById(id, user);
 

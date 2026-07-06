@@ -42,7 +42,7 @@ export class Project {
     () => ProjectActivity,
     (projectActivity) => projectActivity.project,
   )
-  activities!: ProjectActivity[];
+  projectActivities!: ProjectActivity[];
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -44,12 +44,16 @@ export class UsersController {
     return this.usersService.createAdmin(createAdminPayloadDto);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get()
   @SerializeList(UserResponse)
   async getAllUsersPaginated(@Query() pagination: PaginationQuery) {
     return this.usersService.list(pagination);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Get(':id')
   @Serialize(UserResponse)
   async getUserById(
@@ -58,12 +62,16 @@ export class UsersController {
     return this.usersService.getUserById(id);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Post()
   @Serialize(UserResponse)
   async createUser(@Body() body: CreateUserPayload): Promise<UserResponse> {
     return this.usersService.createUser(body);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Patch(':id')
   @Serialize(UserResponse)
   async updateUser(
@@ -73,6 +81,8 @@ export class UsersController {
     return this.usersService.updateUser(id, body);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   @Delete(':id')
   async deleteUser(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usersService.deleteUser(id);

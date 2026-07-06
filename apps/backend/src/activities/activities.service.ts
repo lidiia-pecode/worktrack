@@ -2,13 +2,16 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
+import { User } from 'src/users/entities/user.entity';
 import { Activity } from './entities/activity.entity';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ActivityPayload } from './dtos/ActivityPayload.dto';
 import { UsersService } from 'src/users/users.service';
-import { User } from 'src/users/entities/user.entity';
+
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
 
@@ -19,6 +22,9 @@ export class ActivitiesService {
     private readonly repo: Repository<Activity>,
     private readonly usersService: UsersService,
     private readonly actCategoriesService: ActCategoriesService,
+
+    @InjectRepository(ProjectActivity)
+    private readonly projectActivityRepo: Repository<ProjectActivity>,
   ) {}
 
   private assertManager(user: User) {
@@ -30,7 +36,7 @@ export class ActivitiesService {
   private async assertUniqueName(name: string, excludeId?: string) {
     const exists = await this.repo.exists({
       where: {
-        name,
+        name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });
@@ -41,10 +47,16 @@ export class ActivitiesService {
   }
 
   async findRaw(id: string) {
-    return this.repo.findOneOrFail({
+    const entity = await this.repo.findOne({
       where: { id },
       relations: ['category'],
     });
+
+    if (!entity) {
+      throw new NotFoundException('Activity does not exist');
+    }
+
+    return entity;
   }
 
   async list(user: User, pagination: PaginationQuery) {
@@ -106,6 +118,18 @@ export class ActivitiesService {
     this.assertManager(user);
 
     const activity = await this.findRaw(id);
+
+    const inUse = await this.projectActivityRepo.exists({
+      where: {
+        activity: {
+          id,
+        },
+      },
+    });
+
+    if (inUse) {
+      throw new BadRequestException('Activity is used by one or more projects');
+    }
 
     await this.repo.remove(activity);
   }

@@ -1,12 +1,5 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsUUID,
-  MinLength,
-} from 'class-validator';
+import { IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
-import { ProjectStatus } from '../enums/ProjectStatus.enum';
 
 export class ProjectPayload {
   @IsString()
@@ -16,10 +9,6 @@ export class ProjectPayload {
   @IsOptional()
   @IsString()
   description?: string;
-
-  @IsOptional()
-  @IsEnum(ProjectStatus)
-  status?: ProjectStatus;
 
   @IsOptional()
   @IsUUID('all', { each: true })

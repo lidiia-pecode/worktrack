@@ -1,7 +1,6 @@
-'use client';
+"use client";
 
-import { useAuthStore } from '@/stores/authStore';
-import { QueryClient } from '@tanstack/react-query';
+import { useAuthStore } from "@/stores/authStore";
 
 let refreshPromise: Promise<boolean> | null = null;
 
@@ -22,9 +21,9 @@ async function parseJsonSafe<T>(res: Response): Promise<T> {
 
 async function refreshSession(): Promise<boolean> {
   try {
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      credentials: 'include',
+    const res = await fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
     });
     return res.ok;
   } catch {
@@ -56,7 +55,7 @@ export async function runWithRefresh<T>(
 
   if (!refreshed) {
     logoutUser();
-    throw new Error('SESSION_EXPIRED');
+    throw new Error("SESSION_EXPIRED");
   }
 
   const retry = await request();
@@ -67,7 +66,7 @@ export async function runWithRefresh<T>(
 
   if (retry.status === 401) {
     logoutUser();
-    throw new Error('SESSION_EXPIRED');
+    throw new Error("SESSION_EXPIRED");
   }
 
   const errorData = await retry.json().catch(() => ({}));
@@ -95,12 +94,12 @@ export async function runWithRefresh<T>(
 //   window.location.href = '/login?session=expired';
 // }
 export function logoutUser() {
-  if (typeof window === 'undefined') return;
-  if (window.location.pathname === '/') return; // ← вже на home, стопаємось
-  if (sessionStorage.getItem('redirecting')) return;
+  if (typeof window === "undefined") return;
+  if (window.location.pathname === "/") return; // ← вже на home, стопаємось
+  if (sessionStorage.getItem("redirecting")) return;
 
-  sessionStorage.setItem('redirecting', '1');
+  sessionStorage.setItem("redirecting", "1");
   useAuthStore.getState().logout();
 
-  window.location.href = '/'; // ← або '/login' якщо створиш сторінку
+  window.location.href = "/"; // ← або '/login' якщо створиш сторінку
 }

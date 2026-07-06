@@ -1,16 +1,10 @@
 export enum ProjectStatus {
-  ACTIVE = 'active',
-  COMPLETED = 'completed',
-}
-
-export enum TaskStatus {
-  ACTIVE = 'active',
-  IN_PROGRESS = 'in-progress',
-  COMPLETED = 'completed',
+  ACTIVE = "active",
+  ARCHIVED = "archived",
 }
 
 export enum UserRole {
-  ADMIN = 'admin',
-  USER = 'user',
-  SUPER_ADMIN = 'super-admin',
+  ADMIN = "manager",
+  USER = "employee",
+  SUPER_ADMIN = "administrator",
 }

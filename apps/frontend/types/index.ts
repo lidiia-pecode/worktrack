@@ -1,11 +1,13 @@
-export * from './Project';
-export * from './Task';
-export * from './Timelog';
-export * from './User';
+export * from "./Project";
+export * from "./Timelog";
+export * from "./User";
+export * from "./Activities";
+export * from "./ActivityCategory";
+export * from "./ProjectActivities";
 
 export interface PaginationParams {
   page?: number;
-  page_size?: number;
+  pageSize?: number;
 }
 
 export interface PaginatedResponse<T> {

@@ -1,5 +1,4 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { UserRole } from '../enums/UserRole.enum';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class CreateAdminPayloadDto {
   @IsNotEmpty()
@@ -21,8 +20,4 @@ export class CreateAdminPayloadDto {
   @IsNotEmpty()
   @IsString()
   password!: string;
-
-  @IsNotEmpty()
-  @IsEnum(UserRole)
-  role!: UserRole;
 }

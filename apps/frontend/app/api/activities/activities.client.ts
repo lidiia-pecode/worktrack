@@ -1,18 +1,24 @@
-import { TaskPayload, TaskResponse, UpdateTaskPayload } from "@/types";
+"use client";
+
+import {
+  ActivityPayload,
+  ActivityListResponse,
+  UpdateActivityPayload,
+} from "@/types/Activities";
 import { BASE_API_URL } from "../api-consts";
 import { apiClient } from "../apiClient";
 
-export const TasksClientApi = {
-  getAllByProject: (page: number, id: string) =>
-    apiClient<TaskResponse>(() =>
-      fetch(`${BASE_API_URL}/tasks?page=${page}projectId=${id}`, {
+export const ActivitiesClientApi = {
+  getAll: (page = 1) =>
+    apiClient<ActivityListResponse>(() =>
+      fetch(`${BASE_API_URL}/activities?page=${page}`, {
         credentials: "include",
       }),
     ),
 
-  create: (data: TaskPayload) =>
+  create: (data: ActivityPayload) =>
     apiClient(() =>
-      fetch(`${BASE_API_URL}/tasks`, {
+      fetch(`${BASE_API_URL}/activities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -20,9 +26,9 @@ export const TasksClientApi = {
       }),
     ),
 
-  update: (id: string, data: UpdateTaskPayload) =>
+  update: (id: string, data: UpdateActivityPayload) =>
     apiClient(() =>
-      fetch(`${BASE_API_URL}/tasks/${id}`, {
+      fetch(`${BASE_API_URL}/activities/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -32,7 +38,7 @@ export const TasksClientApi = {
 
   delete: (id: string) =>
     apiClient(() =>
-      fetch(`${BASE_API_URL}/tasks/${id}`, {
+      fetch(`${BASE_API_URL}/activities/${id}`, {
         method: "DELETE",
         credentials: "include",
       }),

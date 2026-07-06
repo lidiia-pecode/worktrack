@@ -2,7 +2,7 @@
 
 import {
   ProjectPayload,
-  ProjectResponse,
+  ProjectListResponse,
   UpdateProjectPayload,
 } from "../../../types";
 import { BASE_API_URL } from "../api-consts";
@@ -10,7 +10,7 @@ import { apiClient } from "../apiClient";
 
 export const ProjectsClientApi = {
   getAll: (page = 1) =>
-    apiClient<ProjectResponse>(() =>
+    apiClient<ProjectListResponse>(() =>
       fetch(`${BASE_API_URL}/projects?page=${page}`, {
         credentials: "include",
       }),

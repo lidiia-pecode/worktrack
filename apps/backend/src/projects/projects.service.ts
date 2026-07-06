@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Project } from './entities/project.entity';
-import { Not, Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import {
   ProjectPayload,
   UpdateProjectPayload,
@@ -18,6 +18,7 @@ import { ProjectStatus } from './enums/ProjectStatus.enum';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { ProjectActivityPayload } from './dtos/ProjectActivity.dto';
 import { ProjectActivity } from './entities/project-activity.entity';
+import { UserRole } from 'src/users/enums/UserRole.enum';
 
 @Injectable()
 export class ProjectsService {
@@ -43,7 +44,7 @@ export class ProjectsService {
   private async assertUniqueName(name: string, excludeId?: string) {
     const exists = await this.repo.exists({
       where: {
-        name,
+        name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });
@@ -77,6 +78,12 @@ export class ProjectsService {
     }
     await this.assertUserHasAccess(projectId, user);
     return this.getByIdRaw(projectId);
+  }
+
+  private assertProjectIsActive(project: Project) {
+    if (project.status !== ProjectStatus.ACTIVE) {
+      throw new BadRequestException('Project is archived');
+    }
   }
 
   async getProjectActivityForUser(projectActivityId: string, user: User) {
@@ -127,7 +134,7 @@ export class ProjectsService {
   async getByIdRaw(id: string) {
     const project = await this.repo.findOne({
       where: { id },
-      relations: ['users', 'activities'],
+      relations: ['users', 'projectActivities'],
     });
 
     if (!project) {
@@ -176,7 +183,7 @@ export class ProjectsService {
     const project = this.repo.create({
       name: payload.name,
       description: payload.description,
-      status: payload.status ?? ProjectStatus.ACTIVE,
+      status: ProjectStatus.ACTIVE,
       users: uniqueUsers,
     });
 
@@ -198,10 +205,6 @@ export class ProjectsService {
       project.description = payload.description;
     }
 
-    if (payload.status !== undefined) {
-      project.status = payload.status;
-    }
-
     return this.repo.save(project);
   }
 
@@ -210,6 +213,7 @@ export class ProjectsService {
   // -------------------------
   async archive(id: string, user: User) {
     const project = await this.getById(id, user);
+    this.assertProjectIsActive(project);
 
     project.status = ProjectStatus.ARCHIVED;
 
@@ -224,11 +228,20 @@ export class ProjectsService {
     this.assertManagerAccess(requester);
 
     const project = await this.getByIdRaw(projectId);
+    this.assertProjectIsActive(project);
+
     const alreadyAssigned = project.users.some((u) => u.id === userId);
 
-    if (alreadyAssigned) return project;
+    if (alreadyAssigned) {
+      throw new BadRequestException('User is already assigned to this project');
+    }
 
     const user = await this.usersService.getUserById(userId);
+    if (user.role !== UserRole.USER) {
+      throw new BadRequestException(
+        'Only employees can be assigned to projects',
+      );
+    }
     project.users.push(user);
     return this.repo.save(project);
   }
@@ -241,6 +254,8 @@ export class ProjectsService {
     this.assertManagerAccess(requester);
 
     const project = await this.getByIdRaw(projectId);
+    this.assertProjectIsActive(project);
+
     const originalLength = project.users.length;
 
     project.users = project.users.filter((u) => u.id !== userId);
@@ -254,10 +269,7 @@ export class ProjectsService {
 
   async listActivities(projectId: string, user: User) {
     const project = await this.assertProjectAccess(projectId, user);
-
-    if (project.status !== ProjectStatus.ACTIVE) {
-      throw new BadRequestException('Project is archived');
-    }
+    this.assertProjectIsActive(project);
 
     const qb = this.projectActivityRepo
       .createQueryBuilder('pa')
@@ -269,7 +281,14 @@ export class ProjectsService {
       qb.andWhere('pa.is_active = true');
     }
 
-    return qb.orderBy('activity.name', 'ASC').getMany();
+    const [results, count] = await qb
+      .orderBy('activity.name', 'ASC')
+      .getManyAndCount();
+
+    return {
+      results,
+      count,
+    };
   }
 
   async addActivity(
@@ -280,6 +299,8 @@ export class ProjectsService {
     this.assertManagerAccess(user);
 
     const project = await this.getByIdRaw(projectId);
+    this.assertProjectIsActive(project);
+
     const activity = await this.activitiesService.findRaw(payload.activityId);
 
     const existing = await this.projectActivityRepo.findOne({
@@ -309,12 +330,19 @@ export class ProjectsService {
   ) {
     this.assertManagerAccess(user);
 
+    const project = await this.getByIdRaw(projectId);
+    this.assertProjectIsActive(project);
+
     const entity = await this.projectActivityRepo.findOne({
       where: { id: projectActivityId, project: { id: projectId } },
     });
 
     if (!entity) {
       throw new NotFoundException('Project activity not found');
+    }
+
+    if (!entity.isActive) {
+      throw new BadRequestException('Already archived');
     }
 
     entity.isActive = false;

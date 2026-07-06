@@ -29,4 +29,6 @@ postgres-data
 
 # Turbo
 .turbo
+
 cheat-sheet.md
+types.md

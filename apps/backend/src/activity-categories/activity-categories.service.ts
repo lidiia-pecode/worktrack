@@ -5,10 +5,11 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Repository } from 'typeorm';
+import { ILike, Not, Repository } from 'typeorm';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/users/entities/user.entity';
 import { ActCategory } from './entities/activities-category.entity';
+import { Activity } from 'src/activities/entities/activity.entity';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
 
@@ -18,6 +19,9 @@ export class ActCategoriesService {
     @InjectRepository(ActCategory)
     private readonly repo: Repository<ActCategory>,
     private readonly usersService: UsersService,
+
+    @InjectRepository(Activity)
+    private readonly ActivitiesRepo: Repository<Activity>,
   ) {}
 
   private assertManager(user: User) {
@@ -31,7 +35,7 @@ export class ActCategoriesService {
   private async assertUniqueName(name: string, excludeId?: string) {
     const exists = await this.repo.exists({
       where: {
-        name,
+        name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });
@@ -98,6 +102,18 @@ export class ActCategoriesService {
     this.assertManager(user);
 
     const category = await this.findRaw(id);
+
+    const inUse = await this.ActivitiesRepo.exists({
+      where: {
+        category: {
+          id,
+        },
+      },
+    });
+
+    if (inUse) {
+      throw new BadRequestException('Category is used by activities');
+    }
 
     await this.repo.remove(category);
   }

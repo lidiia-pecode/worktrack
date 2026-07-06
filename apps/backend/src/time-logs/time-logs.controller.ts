@@ -19,10 +19,10 @@ import {
 } from './dtos/TimelogPayload.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
 import { User } from 'src/users/entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
+import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
 
 @Controller('time-logs')
 @UseGuards(AccessGuard)
@@ -32,10 +32,10 @@ export class TimeLogsController {
   @Get()
   @SerializeList(TimeLogResponse)
   async getAllTimeLogs(
-    @Query() pagination: PaginationQuery,
+    @Query() query: GetTimelogsQuery,
     @CurrentUser() user: User,
   ) {
-    return this.timeLogsService.list(pagination, user);
+    return this.timeLogsService.list(query, user);
   }
 
   @Get(':id')
