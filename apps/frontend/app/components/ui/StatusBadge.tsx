@@ -1,7 +1,7 @@
-import { ProjectStatus, TaskStatus } from "@/types/enums";
+import { ProjectStatus } from "@/types/enums";
 
 type StatusBadgeProps = {
-  status: ProjectStatus | TaskStatus;
+  status: ProjectStatus;
   size?: "sm" | "md";
 };
 

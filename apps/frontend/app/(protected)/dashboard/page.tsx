@@ -1,0 +1,12 @@
+import { meServer } from "@/app/api/auth/auth.server";
+import { redirect } from "next/navigation";
+
+export default async function DashboardPage() {
+  const user = await meServer("/dashboard");
+
+  if (!user) {
+    redirect("/");
+  }
+  return "There will be the dashboard page";
+  // return <DashboardView userName={user.firstName} />;
+}

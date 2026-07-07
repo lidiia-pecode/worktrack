@@ -1,4 +1,4 @@
-import { PaginationParams } from ".";
+import { PaginatedResponse, PaginationParams } from ".";
 import { ProjectActivity } from "./ProjectActivities";
 
 export interface Timelog {
@@ -13,17 +13,19 @@ export interface Timelog {
   updatedAt: string;
 }
 
-export interface TimeLogPayload {
+export interface TimelogPayload {
   projectActivityId: string;
   time: number;
   note?: string;
   date: string;
 }
 
-export type UpdateTimeLogPayload = Partial<TimeLogPayload>;
+export type UpdateTimelogPayload = Partial<TimelogPayload>;
 
-export interface GetTimeLogsQuery extends PaginationParams {
+export interface GetTimelogsQuery extends PaginationParams {
   date?: string;
   dateFrom?: string;
   dateTo?: string;
 }
+
+export type TimelogListResponse = PaginatedResponse<Timelog>;

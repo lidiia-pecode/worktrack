@@ -109,7 +109,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               name="status"
               render={({ field }) => (
                 <div className="flex gap-2">
-                  {[ProjectStatus.ACTIVE, ProjectStatus.COMPLETED].map((s) => (
+                  {[ProjectStatus.ACTIVE].map((s) => (
                     <button
                       key={s}
                       type="button"

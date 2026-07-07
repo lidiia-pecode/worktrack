@@ -31,10 +31,12 @@ export const NavMenu = ({ initialUser }: Props) => {
     }
   };
 
-  const navItems = [
-    { label: "Home", href: "/" },
-    { label: "Projects", href: "/projects" },
-  ];
+  const navItems = loggedIn
+    ? [
+        { label: "Dashboard", href: "/dashboard" },
+        { label: "Projects", href: "/projects" },
+      ]
+    : [{ label: "Home", href: "/" }];
 
   if (isLoading) {
     return <div className="h-12 w-20 bg-gray-200 rounded-md" />;
@@ -56,6 +58,7 @@ export const NavMenu = ({ initialUser }: Props) => {
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
               className={`transition-colors py-1.5 ${
                 isActive
                   ? "text-blue-600 border-b-2 "

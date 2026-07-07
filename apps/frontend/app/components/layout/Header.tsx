@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { NavMenu } from "./NavMenu";
+
 import { User } from "../../../types";
+import { NavMenu } from "./NavMenu";
 
 type Props = { initialUser?: User | null };
 

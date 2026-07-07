@@ -4,9 +4,9 @@ import { Project } from "./Project";
 
 export interface ProjectActivity {
   id: string;
+  project: Project;
   activity: Activity;
   isActive: boolean;
-  project: Project;
   createdAt: string;
   updatedAt: string;
 }
