@@ -6,7 +6,7 @@ import { UsersService } from 'src/users/users.service';
 import { cookieExtractor } from '../helpers/cookies-extractor';
 import { AuthContext } from './types';
 
-type RefreshPayload = { sessionId: UUID; userId: string };
+type RefreshPayload = { sessionId: UUID; id: string };
 
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
@@ -21,8 +21,8 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
     });
   }
 
-  async validate({ userId, sessionId }: RefreshPayload): Promise<AuthContext> {
-    const user = await this.usersService.findUserById(userId);
+  async validate({ id, sessionId }: RefreshPayload): Promise<AuthContext> {
+    const user = await this.usersService.findUserById(id);
 
     if (!user) {
       throw new UnauthorizedException();

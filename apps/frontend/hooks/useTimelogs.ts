@@ -3,27 +3,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { TimelogsClientApi } from "@/app/api/time-logs/time-logs.client";
-import { TimelogPayload, UpdateTimelogPayload } from "@/types";
+import {
+  GetTimelogsQuery,
+  TimelogPayload,
+  UpdateTimelogPayload,
+} from "@/types";
+import { getErrorMessage } from "@/utils/apiError";
 
-export function useTimelogs() {
+type DateRange = { dateFrom: string; dateTo: string };
+
+export function useTimelogs(range: DateRange) {
   const queryClient = useQueryClient();
 
-  // The backend currently ignores `date`/`dateFrom`/`dateTo` (whitelist strips
-  // them until the controller is fixed to use GetTimelogsQuery — see chat notes),
-  // so instead of filtering server-side we fetch the most recent entries and
-  // derive "today" / "recent" client-side. This works both before and after
-  // that backend fix.
-  //
-  // `page_size` (snake_case) is what the backend actually reads; the shared
-  // `PaginationParams` type uses `pageSize` (camelCase), so the value gets
-  // silently stripped too. We bypass that here with a direct cast rather than
-  // changing the shared type, which is used by Projects/Users lists as well.
   const query = useQuery({
-    queryKey: ["timelogs", "recent"],
+    queryKey: ["timelogs", range.dateFrom, range.dateTo],
     queryFn: () =>
-      TimelogsClientApi.getAll({ page_size: 25 } as unknown as Parameters<
-        typeof TimelogsClientApi.getAll
-      >[0]),
+      TimelogsClientApi.getAll({
+        dateFrom: range.dateFrom,
+        dateTo: range.dateTo,
+        pageSize: 200,
+      } as unknown as GetTimelogsQuery),
+    enabled: !!range.dateFrom && !!range.dateTo,
   });
 
   const invalidate = () =>
@@ -35,6 +35,7 @@ export function useTimelogs() {
       invalidate();
       toast.success("Time logged");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const updateTimelog = useMutation({
@@ -44,6 +45,7 @@ export function useTimelogs() {
       invalidate();
       toast.success("Entry updated");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   const deleteTimelog = useMutation({
@@ -52,6 +54,7 @@ export function useTimelogs() {
       invalidate();
       toast.success("Entry deleted");
     },
+    onError: (error) => toast.error(getErrorMessage(error)),
   });
 
   return { ...query, createTimelog, updateTimelog, deleteTimelog };

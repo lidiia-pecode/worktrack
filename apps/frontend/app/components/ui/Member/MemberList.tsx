@@ -6,14 +6,14 @@ type MemberListProps = {
   members: User[];
   editable: boolean;
   onRemove: (id: string) => void;
-  onAddClick: () => void;
+  onOpenDrawer: () => void;
 };
 
 export const MemberList = ({
   members,
   editable,
   onRemove,
-  onAddClick,
+  onOpenDrawer,
 }: MemberListProps) => {
   return (
     <section>
@@ -39,7 +39,7 @@ export const MemberList = ({
 
         {editable && (
           <button
-            onClick={onAddClick}
+            onClick={onOpenDrawer}
             className="flex items-center gap-1.5 pl-1.5 pr-3 py-1 rounded-full border border-dashed border-zinc-300 text-zinc-400 text-xs hover:border-blue-400 hover:text-blue-500 hover:bg-blue-50 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           >
             <div className="size-6 rounded-full bg-zinc-100 hover:bg-blue-100 flex items-center justify-center transition-colors">

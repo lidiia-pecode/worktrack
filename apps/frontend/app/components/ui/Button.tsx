@@ -26,8 +26,7 @@ const Button: React.FC<ButtonProps> = ({
     primary: "bg-blue-600 sm:hover:bg-blue-700 text-white shadow-lg",
     secondary:
       "bg-blue-50 text-blue-600 md:hover:bg-blue-100 transition-all duration-200 font-semibold shadow-sm",
-    danger:
-      "bg-fuchsia-50 border border-fuchsia-300 md:hover:bg-fuchsia-100 text-fuchsia-400 shadow-lg",
+    danger: "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100",
     ghost:
       "flex items-center rounded-lg text-zinc-600 md:hover:text-zinc-900 md:hover:bg-zinc-100 active:scale-95 transition-all",
     google:

@@ -205,6 +205,20 @@ export class ProjectsService {
       project.description = payload.description;
     }
 
+    if (payload.userIds?.length) {
+      const users = payload.userIds.length
+        ? await this.usersService.findUsersByIds(payload.userIds)
+        : [];
+
+      if (users.some((u) => u.role !== UserRole.USER)) {
+        throw new BadRequestException(
+          'Only employees can be assigned to projects',
+        );
+      }
+
+      project.users = users;
+    }
+
     return this.repo.save(project);
   }
 
@@ -216,6 +230,22 @@ export class ProjectsService {
     this.assertProjectIsActive(project);
 
     project.status = ProjectStatus.ARCHIVED;
+
+    return this.repo.save(project);
+  }
+
+  // -------------------------
+  // RESTORE (soft delete)
+  // -------------------------
+
+  async unarchive(id: string, user: User) {
+    const project = await this.getById(id, user);
+
+    if (project.status === ProjectStatus.ACTIVE) {
+      throw new BadRequestException('Project is already active');
+    }
+
+    project.status = ProjectStatus.ACTIVE;
 
     return this.repo.save(project);
   }

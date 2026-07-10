@@ -30,6 +30,11 @@ export function CreateProjectModal() {
     setMemberIds([]);
   };
 
+  const handleSetMembers = (id: string) =>
+    setMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
   return (
     <>
       <Button
@@ -44,7 +49,12 @@ export function CreateProjectModal() {
         <span>Create Project</span>
       </Button>
 
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)}>
+      <Modal
+        size="xl"
+        fullHeight
+        isOpen={isOpen}
+        onClose={() => setIsOpen(false)}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
           <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
@@ -79,7 +89,6 @@ export function CreateProjectModal() {
             defaultValues={{
               name: "",
               description: "",
-              estimate: 0,
               status: ProjectStatus.ACTIVE,
             }}
             onSubmit={handleCreate}
@@ -91,7 +100,7 @@ export function CreateProjectModal() {
             onRemove={(id) =>
               setMemberIds((prev) => prev.filter((x) => x !== id))
             }
-            onAddClick={() => setDrawerOpen(true)}
+            onOpenDrawer={() => setDrawerOpen(true)}
           />
         </div>
 
@@ -100,13 +109,7 @@ export function CreateProjectModal() {
             open={drawerOpen}
             users={users}
             memberIds={memberIds}
-            onToggle={(id) =>
-              setMemberIds((prev) =>
-                prev.includes(id)
-                  ? prev.filter((x) => x !== id)
-                  : [...prev, id],
-              )
-            }
+            onToggle={handleSetMembers}
             onClose={() => setDrawerOpen(false)}
             hasNextPage={pagination.hasNextPage}
             isFetchingNextPage={pagination.isFetchingNextPage}

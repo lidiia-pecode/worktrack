@@ -201,14 +201,20 @@ export class AuthService {
     refreshToken: string,
     { user, sessionId }: AuthContext,
   ) {
-    console.log('working');
+    console.log('====================');
+    console.log('REFRESH START');
+    console.log('userId:', user.id);
+    console.log('sessionId:', sessionId);
+
     if (!sessionId) {
+      console.log('FAIL: NO SESSION ID');
       throw new UnauthorizedException();
     }
 
     const decoded = this.jwtService.verifyRefresh(refreshToken);
 
     if (decoded.sessionId !== sessionId) {
+      console.log('FAIL: SESSION MISMATCH');
       throw new UnauthorizedException('Session mismatch');
     }
 
@@ -217,10 +223,12 @@ export class AuthService {
     });
 
     if (!authSession) {
+      console.log('FAIL: SESSION NOT FOUND');
       throw new UnauthorizedException();
     }
 
     if (authSession.userId !== user.id) {
+      console.log('FAIL: WRONG USER');
       throw new UnauthorizedException('Session does not belong to user');
     }
 
@@ -230,6 +238,7 @@ export class AuthService {
     );
 
     if (!isValid) {
+      console.log('FAIL: INVALID HASH');
       await this.Authrepo.delete({ id: sessionId });
       throw new UnauthorizedException();
     }

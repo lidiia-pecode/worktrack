@@ -49,10 +49,18 @@ export const ProjectsClientApi = {
       }),
     ),
 
-  delete: (id: string) =>
+  archive: (id: string) =>
     apiClient(() =>
       fetch(`${BASE_API_URL}/projects/${id}`, {
         method: "DELETE",
+        credentials: "include",
+      }),
+    ),
+
+  unarchive: (id: string) =>
+    apiClient(() =>
+      fetch(`${BASE_API_URL}/projects/${id}/unarchive`, {
+        method: "PATCH",
         credentials: "include",
       }),
     ),

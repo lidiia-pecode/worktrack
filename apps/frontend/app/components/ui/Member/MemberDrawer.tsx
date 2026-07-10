@@ -12,9 +12,12 @@ type MemberDrawerProps = {
   memberIds: string[];
   onToggle: (id: string) => void;
   onClose: () => void;
+
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
+
+  onSave?: () => void;
 };
 
 export const MemberDrawer = ({
@@ -23,9 +26,12 @@ export const MemberDrawer = ({
   memberIds,
   onToggle,
   onClose,
+
   hasNextPage,
   isFetchingNextPage,
   onLoadMore,
+
+  onSave,
 }: MemberDrawerProps) => {
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -35,6 +41,11 @@ export const MemberDrawer = ({
     setSearch("");
     onClose();
   }, [onClose]);
+
+  const handleSave = () => {
+    onSave?.();
+    handleClose();
+  };
 
   const nonAdminUsers = useMemo(
     () => users.filter((u) => !isAdminRole(u.role)),
@@ -141,10 +152,9 @@ export const MemberDrawer = ({
           )}
         </div>
 
-        {/* Footer */}
         <div className="px-4 py-3 border-t border-zinc-100">
           <button
-            onClick={handleClose}
+            onClick={onSave ? handleSave : onClose}
             className="w-full py-2 rounded-xl bg-zinc-900 text-white text-sm font-medium hover:bg-zinc-800 transition-colors"
           >
             Done

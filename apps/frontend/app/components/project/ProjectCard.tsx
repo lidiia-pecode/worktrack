@@ -17,16 +17,13 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { users } = useUsers();
-  const { deleteProject } = useProjects();
+  const { archiveProject } = useProjects();
+
+  console.log(users);
 
   const members = useMemo(
-    () =>
-      users.filter(
-        (u) =>
-          !isAdminRole(u.role) &&
-          (project.users ?? []).some((pu) => pu.id === u.id),
-      ),
-    [users, project.users],
+    () => (project.users ?? []).filter((u) => !isAdminRole(u.role)),
+    [project.users],
   );
 
   const handleDeleteClick = (e: React.MouseEvent) => {
@@ -34,8 +31,8 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
     setShowDeleteConfirm(true);
   };
 
-  const handleConfirmDelete = () => {
-    deleteProject.mutate(project.id);
+  const handleConfirmArchive = () => {
+    archiveProject.mutate(project.id);
     setShowDeleteConfirm(false);
   };
 
@@ -92,7 +89,7 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
       <ConfirmModal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmDelete}
+        onConfirm={handleConfirmArchive}
         title={`Are you sure you want delete the "${project.name}"?`}
       />
     </>

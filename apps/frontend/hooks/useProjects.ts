@@ -30,18 +30,27 @@ export function useProjects(page: number = 1) {
     },
   });
 
-  const deleteProject = useMutation({
-    mutationFn: ProjectsClientApi.delete,
+  const archiveProject = useMutation({
+    mutationFn: ProjectsClientApi.archive,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project deleted successfully");
     },
   });
 
+  const unarchiveProject = useMutation({
+    mutationFn: ProjectsClientApi.unarchive,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project restored successfully");
+    },
+  });
+
   return {
     ...query,
     createProject,
-    deleteProject,
+    archiveProject,
+    unarchiveProject,
     updateProject,
   };
 }
