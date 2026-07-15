@@ -1,5 +1,5 @@
-import { Pencil, Save, Trash2, X } from "lucide-react";
-import Button from "../Button";
+import { Pencil, Save, Trash2 } from "lucide-react";
+import Button, { CloseButton } from "../Button";
 
 type ModalHeaderProps = {
   edit: boolean;
@@ -55,9 +55,8 @@ export const ModalHeader = ({
               <Pencil size={15} />
             </Button>
           ))}
-        <Button onClick={onClose} variant="ghost" size="iconSm">
-          <X size={16} />
-        </Button>
+
+        <CloseButton onClick={onClose} />
       </div>
     </div>
   );

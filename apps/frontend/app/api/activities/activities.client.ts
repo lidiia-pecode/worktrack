@@ -9,9 +9,9 @@ import { BASE_API_URL } from "../api-consts";
 import { apiClient } from "../apiClient";
 
 export const ActivitiesClientApi = {
-  getAll: (page = 1) =>
+  getAllPaginated: (page = 1, limit = 50) =>
     apiClient<ActivityListResponse>(() =>
-      fetch(`${BASE_API_URL}/activities?page=${page}`, {
+      fetch(`${BASE_API_URL}/activities?page=${page}&limit=${limit}`, {
         credentials: "include",
       }),
     ),

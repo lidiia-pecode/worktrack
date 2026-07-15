@@ -16,7 +16,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 import { ProjectStatus } from './enums/ProjectStatus.enum';
 import { ActivitiesService } from 'src/activities/activities.service';
-import { ProjectActivityPayload } from './dtos/ProjectActivity.dto';
+// import { ProjectActivityPayload } from './dtos/ProjectActivity.dto';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { UserRole } from 'src/users/enums/UserRole.enum';
 
@@ -118,7 +118,12 @@ export class ProjectsService {
 
     const [results, count] = await this.repo.findAndCount({
       where,
-      relations: ['users'],
+      relations: [
+        'users',
+        'projectActivities',
+        'projectActivities.activity',
+        'projectActivities.activity.category',
+      ],
       skip: pagination.offset,
       take: pagination.limit,
       order: { createdAt: 'DESC' },
@@ -134,7 +139,12 @@ export class ProjectsService {
   async getByIdRaw(id: string) {
     const project = await this.repo.findOne({
       where: { id },
-      relations: ['users', 'projectActivities'],
+      relations: [
+        'users',
+        'projectActivities',
+        'projectActivities.activity',
+        'projectActivities.activity.category',
+      ],
     });
 
     if (!project) {
@@ -155,7 +165,12 @@ export class ProjectsService {
 
     const project = await this.repo.findOne({
       where,
-      relations: ['users'],
+      relations: [
+        'users',
+        'projectActivities',
+        'projectActivities.activity',
+        'projectActivities.activity.category',
+      ],
     });
 
     if (!project) {
@@ -168,35 +183,65 @@ export class ProjectsService {
   // -------------------------
   // CREATE
   // -------------------------
+
   async create(payload: ProjectPayload, user: User) {
+    this.assertManagerAccess(user);
     await this.assertUniqueName(payload.name);
 
     const creator = await this.usersService.getUserById(user.id);
-    const extraUsers = payload.userIds?.length
+
+    const additionalUsers = payload.userIds?.length
       ? await this.usersService.findUsersByIds(payload.userIds)
       : [];
 
-    const uniqueUsers = [creator, ...extraUsers].filter(
+    const users = [creator, ...additionalUsers].filter(
       (u, index, self) => self.findIndex((item) => item.id === u.id) === index,
     );
 
-    const project = this.repo.create({
-      name: payload.name,
-      description: payload.description,
-      status: ProjectStatus.ACTIVE,
-      users: uniqueUsers,
-    });
+    if (users.some((u) => u.role !== UserRole.USER && u.id !== creator.id)) {
+      throw new BadRequestException(
+        'Only employees can be assigned to projects',
+      );
+    }
 
-    return this.repo.save(project);
+    const project = await this.repo.save(
+      this.repo.create({
+        name: payload.name,
+        description: payload.description,
+        status: ProjectStatus.ACTIVE,
+        users,
+      }),
+    );
+
+    // dedupe activity ids
+    const activityIds = [...new Set(payload.activityIds ?? [])];
+
+    if (activityIds.length) {
+      const activities = await this.activitiesService.findByIds(activityIds);
+
+      const projectActivities = activities.map((activity) =>
+        this.projectActivityRepo.create({
+          project,
+          activity,
+          isActive: true,
+        }),
+      );
+
+      await this.projectActivityRepo.save(projectActivities);
+    }
+
+    return this.getByIdRaw(project.id);
   }
 
   // -------------------------
   // UPDATE
   // -------------------------
   async update(id: string, payload: UpdateProjectPayload, user: User) {
-    const project = await this.getById(id, user);
+    this.assertManagerAccess(user);
 
-    if (payload.name) {
+    const project = await this.getByIdRaw(id);
+
+    if (payload.name !== undefined) {
       await this.assertUniqueName(payload.name, id);
       project.name = payload.name;
     }
@@ -205,7 +250,7 @@ export class ProjectsService {
       project.description = payload.description;
     }
 
-    if (payload.userIds?.length) {
+    if (payload.userIds !== undefined) {
       const users = payload.userIds.length
         ? await this.usersService.findUsersByIds(payload.userIds)
         : [];
@@ -219,7 +264,77 @@ export class ProjectsService {
       project.users = users;
     }
 
-    return this.repo.save(project);
+    await this.repo.save(project);
+
+    if (payload.activityIds !== undefined) {
+      const activityIds = [...new Set(payload.activityIds)];
+
+      const activities = activityIds.length
+        ? await this.activitiesService.findByIds(activityIds)
+        : [];
+
+      const activitiesMap = new Map(
+        activities.map((activity) => [activity.id, activity]),
+      );
+
+      const existingProjectActivities = await this.projectActivityRepo.find({
+        where: {
+          project: {
+            id: project.id,
+          },
+        },
+        relations: ['activity'],
+      });
+
+      const existingMap = new Map(
+        existingProjectActivities.map((pa) => [pa.activity.id, pa]),
+      );
+
+      const entitiesToSave: ProjectActivity[] = [];
+
+      for (const activityId of activityIds) {
+        const existing = existingMap.get(activityId);
+
+        if (existing) {
+          if (!existing.isActive) {
+            existing.isActive = true;
+            entitiesToSave.push(existing);
+          }
+
+          continue;
+        }
+
+        const activity = activitiesMap.get(activityId);
+
+        if (!activity) {
+          continue;
+        }
+
+        entitiesToSave.push(
+          this.projectActivityRepo.create({
+            project,
+            activity,
+            isActive: true,
+          }),
+        );
+      }
+
+      for (const projectActivity of existingProjectActivities) {
+        if (
+          !activityIds.includes(projectActivity.activity.id) &&
+          projectActivity.isActive
+        ) {
+          projectActivity.isActive = false;
+          entitiesToSave.push(projectActivity);
+        }
+      }
+
+      if (entitiesToSave.length) {
+        await this.projectActivityRepo.save(entitiesToSave);
+      }
+    }
+
+    return this.getByIdRaw(project.id);
   }
 
   // -------------------------
@@ -250,132 +365,136 @@ export class ProjectsService {
     return this.repo.save(project);
   }
 
-  async assignUserToProject(
-    projectId: string,
-    userId: string,
-    requester: User,
-  ) {
-    this.assertManagerAccess(requester);
+  // -------------------------------------------------
+  // NOT IN USE YET LEAVE FOR FUTURE ↓
+  // -------------------------------------------------
 
-    const project = await this.getByIdRaw(projectId);
-    this.assertProjectIsActive(project);
+  // async assignUserToProject(
+  //   projectId: string,
+  //   userId: string,
+  //   requester: User,
+  // ) {
+  //   this.assertManagerAccess(requester);
 
-    const alreadyAssigned = project.users.some((u) => u.id === userId);
+  //   const project = await this.getByIdRaw(projectId);
+  //   this.assertProjectIsActive(project);
 
-    if (alreadyAssigned) {
-      throw new BadRequestException('User is already assigned to this project');
-    }
+  //   const alreadyAssigned = project.users.some((u) => u.id === userId);
 
-    const user = await this.usersService.getUserById(userId);
-    if (user.role !== UserRole.USER) {
-      throw new BadRequestException(
-        'Only employees can be assigned to projects',
-      );
-    }
-    project.users.push(user);
-    return this.repo.save(project);
-  }
+  //   if (alreadyAssigned) {
+  //     throw new BadRequestException('User is already assigned to this project');
+  //   }
 
-  async unassignUserFromProject(
-    projectId: string,
-    userId: string,
-    requester: User,
-  ) {
-    this.assertManagerAccess(requester);
+  //   const user = await this.usersService.getUserById(userId);
+  //   if (user.role !== UserRole.USER) {
+  //     throw new BadRequestException(
+  //       'Only employees can be assigned to projects',
+  //     );
+  //   }
+  //   project.users.push(user);
+  //   return this.repo.save(project);
+  // }
 
-    const project = await this.getByIdRaw(projectId);
-    this.assertProjectIsActive(project);
+  // async unassignUserFromProject(
+  //   projectId: string,
+  //   userId: string,
+  //   requester: User,
+  // ) {
+  //   this.assertManagerAccess(requester);
 
-    const originalLength = project.users.length;
+  //   const project = await this.getByIdRaw(projectId);
+  //   this.assertProjectIsActive(project);
 
-    project.users = project.users.filter((u) => u.id !== userId);
+  //   const originalLength = project.users.length;
 
-    if (project.users.length === originalLength) {
-      throw new BadRequestException('User is not assigned to this project');
-    }
+  //   project.users = project.users.filter((u) => u.id !== userId);
 
-    return this.repo.save(project);
-  }
+  //   if (project.users.length === originalLength) {
+  //     throw new BadRequestException('User is not assigned to this project');
+  //   }
 
-  async listActivities(projectId: string, user: User) {
-    const project = await this.assertProjectAccess(projectId, user);
-    this.assertProjectIsActive(project);
+  //   return this.repo.save(project);
+  // }
 
-    const qb = this.projectActivityRepo
-      .createQueryBuilder('pa')
-      .leftJoinAndSelect('pa.activity', 'activity')
-      .leftJoinAndSelect('activity.category', 'category')
-      .where('pa.project_id = :projectId', { projectId });
+  // async listActivities(projectId: string, user: User) {
+  //   const project = await this.assertProjectAccess(projectId, user);
+  //   this.assertProjectIsActive(project);
 
-    if (!this.usersService.hasManagerAccess(user)) {
-      qb.andWhere('pa.is_active = true');
-    }
+  //   const qb = this.projectActivityRepo
+  //     .createQueryBuilder('pa')
+  //     .leftJoinAndSelect('pa.activity', 'activity')
+  //     .leftJoinAndSelect('activity.category', 'category')
+  //     .where('pa.project_id = :projectId', { projectId });
 
-    const [results, count] = await qb
-      .orderBy('activity.name', 'ASC')
-      .getManyAndCount();
+  //   if (!this.usersService.hasManagerAccess(user)) {
+  //     qb.andWhere('pa.is_active = true');
+  //   }
 
-    return {
-      results,
-      count,
-    };
-  }
+  //   const [results, count] = await qb
+  //     .orderBy('activity.name', 'ASC')
+  //     .getManyAndCount();
 
-  async addActivity(
-    projectId: string,
-    payload: ProjectActivityPayload,
-    user: User,
-  ) {
-    this.assertManagerAccess(user);
+  //   return {
+  //     results,
+  //     count,
+  //   };
+  // }
 
-    const project = await this.getByIdRaw(projectId);
-    this.assertProjectIsActive(project);
+  // async addActivity(
+  //   projectId: string,
+  //   payload: ProjectActivityPayload,
+  //   user: User,
+  // ) {
+  //   this.assertManagerAccess(user);
 
-    const activity = await this.activitiesService.findRaw(payload.activityId);
+  //   const project = await this.getByIdRaw(projectId);
+  //   this.assertProjectIsActive(project);
 
-    const existing = await this.projectActivityRepo.findOne({
-      where: {
-        project: { id: project.id },
-        activity: { id: activity.id },
-      },
-    });
+  //   const activity = await this.activitiesService.findRaw(payload.activityId);
 
-    if (existing) {
-      if (existing.isActive) {
-        throw new BadRequestException('Activity already assigned');
-      }
+  //   const existing = await this.projectActivityRepo.findOne({
+  //     where: {
+  //       project: { id: project.id },
+  //       activity: { id: activity.id },
+  //     },
+  //   });
 
-      existing.isActive = true;
-      return this.projectActivityRepo.save(existing);
-    }
+  //   if (existing) {
+  //     if (existing.isActive) {
+  //       throw new BadRequestException('Activity already assigned');
+  //     }
 
-    const entity = this.projectActivityRepo.create({ project, activity });
-    return this.projectActivityRepo.save(entity);
-  }
+  //     existing.isActive = true;
+  //     return this.projectActivityRepo.save(existing);
+  //   }
 
-  async archiveActivity(
-    projectId: string,
-    projectActivityId: string,
-    user: User,
-  ) {
-    this.assertManagerAccess(user);
+  //   const entity = this.projectActivityRepo.create({ project, activity });
+  //   return this.projectActivityRepo.save(entity);
+  // }
 
-    const project = await this.getByIdRaw(projectId);
-    this.assertProjectIsActive(project);
+  // async archiveActivity(
+  //   projectId: string,
+  //   projectActivityId: string,
+  //   user: User,
+  // ) {
+  //   this.assertManagerAccess(user);
 
-    const entity = await this.projectActivityRepo.findOne({
-      where: { id: projectActivityId, project: { id: projectId } },
-    });
+  //   const project = await this.getByIdRaw(projectId);
+  //   this.assertProjectIsActive(project);
 
-    if (!entity) {
-      throw new NotFoundException('Project activity not found');
-    }
+  //   const entity = await this.projectActivityRepo.findOne({
+  //     where: { id: projectActivityId, project: { id: projectId } },
+  //   });
 
-    if (!entity.isActive) {
-      throw new BadRequestException('Already archived');
-    }
+  //   if (!entity) {
+  //     throw new NotFoundException('Project activity not found');
+  //   }
 
-    entity.isActive = false;
-    return this.projectActivityRepo.save(entity);
-  }
+  //   if (!entity.isActive) {
+  //     throw new BadRequestException('Already archived');
+  //   }
+
+  //   entity.isActive = false;
+  //   return this.projectActivityRepo.save(entity);
+  // }
 }

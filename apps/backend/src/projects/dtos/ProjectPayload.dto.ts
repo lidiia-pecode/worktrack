@@ -13,6 +13,10 @@ export class ProjectPayload {
   @IsOptional()
   @IsUUID('all', { each: true })
   userIds?: string[];
+
+  @IsOptional()
+  @IsUUID('all', { each: true })
+  activityIds?: string[];
 }
 
 export class UpdateProjectPayload extends PartialType(ProjectPayload) {}

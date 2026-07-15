@@ -1,4 +1,4 @@
-import { PaginatedResponse } from ".";
+import { PaginatedResponse, ProjectActivity } from ".";
 import { ProjectStatus } from "./enums";
 import { User } from "./User";
 
@@ -8,6 +8,7 @@ export interface Project {
   description?: string;
   status: ProjectStatus;
   users: User[];
+  projectActivities: ProjectActivity[];
   updatedAt: string;
   createdAt: string;
 }
@@ -16,6 +17,7 @@ export type ProjectPayload = {
   name: string;
   description?: string;
   userIds?: string[];
+  activityIds?: string[];
 };
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;

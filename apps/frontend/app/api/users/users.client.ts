@@ -1,22 +1,14 @@
-import { UpdateUserPayload, User, UserPayload } from "@/types";
+import { UpdateUserPayload, UserListResponse, UserPayload } from "@/types";
 import { BASE_API_URL } from "../api-consts";
 import { apiClient } from "../apiClient";
 
-type PaginatedUsers = {
-  count: number;
-  results: User[];
-};
-
 export const UsersClientApi = {
-  getAllPaginated: async (page = 1, limit = 50) => {
-    const res = await apiClient(() =>
+  getAllPaginated: async (page = 1, limit = 50) =>
+    apiClient<UserListResponse>(() =>
       fetch(`${BASE_API_URL}/users?page=${page}&limit=${limit}`, {
         credentials: "include",
       }),
-    );
-
-    return res as PaginatedUsers;
-  },
+    ),
 
   create: (data: UserPayload) =>
     apiClient(() =>

@@ -17,8 +17,7 @@ export const useUsers = () => {
   const usersQuery = useInfiniteQuery({
     queryKey: ["users"],
 
-    queryFn: ({ pageParam = 1 }) =>
-      UsersClientApi.getAllPaginated(pageParam as number),
+    queryFn: ({ pageParam = 1 }) => UsersClientApi.getAllPaginated(pageParam),
 
     initialPageParam: 1,
 

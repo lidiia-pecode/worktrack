@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
 import { ProjectStatus } from "@/types/enums";
 
-import Button from "../ui/Button";
+import Button, { CloseButton } from "../ui/Button";
 import { MemberList } from "../ui/Member/MemberList";
 import { MemberDrawer } from "../ui/Member/MemberDrawer";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { Modal } from "../ui/Modal/Modal";
+import { ActivitiesList } from "../ui/Member/ActivitiesList";
+import { ActivitiesDrawer } from "../ui/Member/ActivitiesDrawer";
 
 export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
+  const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
+
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [projectActIds, setProjectActIds] = useState<string[]>([]);
 
   const { createProject } = useProjects();
   const { users, pagination } = useUsers();
@@ -32,6 +37,11 @@ export function CreateProjectModal() {
 
   const handleSetMembers = (id: string) =>
     setMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+
+  const handleSetActivities = (id: string) =>
+    setProjectActIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
 
@@ -71,13 +81,7 @@ export function CreateProjectModal() {
               {createProject.isPending ? "Creating..." : "Create"}
             </Button>
 
-            <Button
-              onClick={() => setIsOpen(false)}
-              variant="ghost"
-              size="iconSm"
-            >
-              <X size={16} />
-            </Button>
+            <CloseButton onClick={() => setIsOpen(false)} />
           </div>
         </div>
 
@@ -93,24 +97,44 @@ export function CreateProjectModal() {
             }}
             onSubmit={handleCreate}
           />
-
           <MemberList
             members={users.filter((u) => memberIds.includes(u.id))}
             editable={true}
             onRemove={(id) =>
               setMemberIds((prev) => prev.filter((x) => x !== id))
             }
-            onOpenDrawer={() => setDrawerOpen(true)}
+            onOpenDrawer={() => setMemberDrawerOpen(true)}
+          />
+
+          <ActivitiesList
+            activities={[]}
+            editable={true}
+            onRemove={(id) =>
+              setProjectActIds((prev) => prev.filter((x) => x !== id))
+            }
+            onOpenDrawer={() => setActivitiesDrawerOpen(true)}
           />
         </div>
 
-        {drawerOpen && (
+        {memberDrawerOpen && (
           <MemberDrawer
-            open={drawerOpen}
+            open={memberDrawerOpen}
             users={users}
             memberIds={memberIds}
             onToggle={handleSetMembers}
-            onClose={() => setDrawerOpen(false)}
+            onClose={() => setMemberDrawerOpen(false)}
+            hasNextPage={pagination.hasNextPage}
+            isFetchingNextPage={pagination.isFetchingNextPage}
+            onLoadMore={pagination.fetchNextPage}
+          />
+        )}
+
+        {activitiesDrawerOpen && (
+          <ActivitiesDrawer
+            open={activitiesDrawerOpen}
+            activitiesIds={projectActIds}
+            onToggle={handleSetActivities}
+            onClose={() => setActivitiesDrawerOpen(false)}
             hasNextPage={pagination.hasNextPage}
             isFetchingNextPage={pagination.isFetchingNextPage}
             onLoadMore={pagination.fetchNextPage}

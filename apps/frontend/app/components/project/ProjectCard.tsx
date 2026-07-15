@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 import { Trash2, Users } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
@@ -47,9 +48,11 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
             <h3 className="font-semibold text-zinc-900 truncate leading-snug">
               {project.name}
             </h3>
-            <p className="text-sm text-zinc-400 mt-0.5 line-clamp-2 leading-relaxed">
-              {project.description || "No description"}
-            </p>
+            <div className="text-sm text-zinc-400 mt-0.5 line-clamp-3 leading-relaxed">
+              <ReactMarkdown>
+                {project.description || "No description"}
+              </ReactMarkdown>
+            </div>
           </div>
           {isAdmin && (
             <>

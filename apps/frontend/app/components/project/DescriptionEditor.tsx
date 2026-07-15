@@ -52,13 +52,18 @@ export const DescriptionEditor = ({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      Markdown.configure({ html: false, transformCopiedText: true }),
+      Markdown.configure({
+        html: false,
+        transformCopiedText: true,
+        transformPastedText: true,
+      }),
       Placeholder.configure({
         placeholder:
           'Describe the project… Try "- " for bullet list or"# " for title',
       }),
     ],
     content: value,
+
     editorProps: {
       attributes: {
         class:

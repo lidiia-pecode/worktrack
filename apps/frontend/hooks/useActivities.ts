@@ -1,17 +1,42 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  useInfiniteQuery,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { ActivitiesClientApi } from "@/app/api/activities/activities.client";
 import { UpdateActivityPayload } from "@/types/Activities";
+import { useMemo } from "react";
 
 export function useActivities(page: number = 1) {
   const queryClient = useQueryClient();
 
-  const query = useQuery({
+  const activitiesQuery = useQuery({
     queryKey: ["activities", page],
-    queryFn: () => ActivitiesClientApi.getAll(page),
+    queryFn: () => ActivitiesClientApi.getAllPaginated(page),
   });
+
+  const activitiesInfiniteQuery = useInfiniteQuery({
+    queryKey: ["activities"],
+
+    queryFn: ({ pageParam = 1 }) =>
+      ActivitiesClientApi.getAllPaginated(pageParam),
+
+    initialPageParam: 1,
+
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.flatMap((p) => p.results).length;
+      return loaded < lastPage.count ? pages.length + 1 : undefined;
+    },
+  });
+
+  const activities = useMemo(
+    () => activitiesInfiniteQuery.data?.pages.flatMap((p) => p.results) ?? [],
+    [activitiesInfiniteQuery.data],
+  );
 
   const createActivity = useMutation({
     mutationFn: ActivitiesClientApi.create,
@@ -39,9 +64,21 @@ export function useActivities(page: number = 1) {
   });
 
   return {
-    ...query,
-    createActivity,
-    deleteActivity,
-    updateActivity,
+    activities,
+
+    pagination: {
+      fetchNextPage: activitiesInfiniteQuery.fetchNextPage,
+      hasNextPage: activitiesInfiniteQuery.hasNextPage,
+      isFetchingNextPage: activitiesInfiniteQuery.isFetchingNextPage,
+      isLoading: activitiesInfiniteQuery.isLoading,
+      isError: activitiesInfiniteQuery.isError,
+    },
+
+    actions: {
+      createActivity,
+      deleteActivity,
+      updateActivity,
+    },
+    query: activitiesQuery,
   };
 }

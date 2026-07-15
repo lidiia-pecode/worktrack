@@ -18,6 +18,8 @@ import { ModalHeader } from "../ui/Modal/ModalHeader";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ArchiveProjectModal } from "./ArchiveProjectModal";
 import Button from "../ui/Button";
+import { ActivitiesList } from "../ui/Member/ActivitiesList";
+import { ActivitiesDrawer } from "../ui/Member/ActivitiesDrawer";
 
 type UpdateProjectModalProps = {
   project: Project;
@@ -33,10 +35,15 @@ export const UpdateProjectModal = ({
 }: UpdateProjectModalProps) => {
   const [edit, setEdit] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
+
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const [memberIds, setMemberIds] = useState<string[]>(
-    () => (project.users?.map((u) => u.id).filter(Boolean) as string[]) || [],
+    () => project.users?.map((u) => u.id) || [],
+  );
+  const [activityIds, setActivityIds] = useState<string[]>(
+    () => project.projectActivities?.map((a) => a.activity.id) || [],
   );
 
   const { users, pagination } = useUsers();
@@ -49,6 +56,7 @@ export const UpdateProjectModal = ({
       data: {
         ...data,
         userIds: getNonAdminMemberIds(users, memberIds),
+        activityIds,
       },
     });
 
@@ -68,17 +76,33 @@ export const UpdateProjectModal = ({
     onClose();
   };
 
-  const toggleMember = (id: string) => {
+  const handleSetMembers = (id: string) => {
     setMemberIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
   };
+
+  const handleSetActivities = (id: string) =>
+    setActivityIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
 
   const handleSaveMembers = () => {
     updateProject.mutate({
       id: project.id,
       data: {
         userIds: getNonAdminMemberIds(users, memberIds),
+      },
+    });
+
+    setDrawerOpen(false);
+  };
+
+  const handleSaveProjectActivities = () => {
+    updateProject.mutate({
+      id: project.id,
+      data: {
+        activityIds,
       },
     });
 
@@ -119,8 +143,17 @@ export const UpdateProjectModal = ({
         <MemberList
           members={users.filter((u) => memberIds.includes(u.id))}
           editable={edit || isAdmin}
-          onRemove={toggleMember}
+          onRemove={handleSetMembers}
           onOpenDrawer={() => setDrawerOpen(true)}
+        />
+
+        <ActivitiesList
+          activities={project.projectActivities}
+          editable={true}
+          onRemove={(id) =>
+            setActivityIds((prev) => prev.filter((x) => x !== id))
+          }
+          onOpenDrawer={() => setActivitiesDrawerOpen(true)}
         />
       </div>
 
@@ -157,12 +190,25 @@ export const UpdateProjectModal = ({
           open={drawerOpen}
           users={users}
           memberIds={memberIds}
-          onToggle={toggleMember}
+          onToggle={handleSetMembers}
           onClose={() => setDrawerOpen(false)}
           hasNextPage={pagination.hasNextPage}
           isFetchingNextPage={pagination.isFetchingNextPage}
           onLoadMore={pagination.fetchNextPage}
           onSave={handleSaveMembers}
+        />
+      )}
+
+      {activitiesDrawerOpen && (
+        <ActivitiesDrawer
+          open={activitiesDrawerOpen}
+          activitiesIds={activityIds}
+          onToggle={handleSetActivities}
+          onClose={() => setActivitiesDrawerOpen(false)}
+          hasNextPage={pagination.hasNextPage}
+          isFetchingNextPage={pagination.isFetchingNextPage}
+          onLoadMore={pagination.fetchNextPage}
+          onSave={handleSaveProjectActivities}
         />
       )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { X } from "lucide-react";
 import React from "react";
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -28,7 +29,7 @@ const Button: React.FC<ButtonProps> = ({
       "bg-blue-50 text-blue-600 md:hover:bg-blue-100 transition-all duration-200 font-semibold shadow-sm",
     danger: "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100",
     ghost:
-      "flex items-center rounded-lg text-zinc-600 md:hover:text-zinc-900 md:hover:bg-zinc-100 active:scale-95 transition-all",
+      "flex items-center rounded-lg text-zinc-500 md:hover:text-zinc-900 md:hover:bg-zinc-100 active:scale-95 transition-all",
     google:
       "flex items-center justify-center gap-2 bg-slate-600 md:hover:bg-slate-500 text-white ",
     logout:
@@ -79,3 +80,14 @@ const Button: React.FC<ButtonProps> = ({
 };
 
 export default Button;
+
+export const CloseButton = ({ onClick }: { onClick: () => void }) => (
+  <Button
+    variant="ghost"
+    size="iconSm"
+    className="aspect-square max-w-8"
+    onClick={onClick}
+  >
+    <X size={16} />
+  </Button>
+);

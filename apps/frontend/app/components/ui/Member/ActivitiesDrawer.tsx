@@ -1,15 +1,13 @@
+import { X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { User } from "@/types";
 import { SearchInput } from "../SearchInput";
-import { initials, isAdminRole } from "../../helpers";
 import { PickerRow } from "../PickerRow";
-import { CloseButton } from "../Button";
+import { useActivities } from "@/hooks/useActivities";
 
-type MemberDrawerProps = {
+type ActivitiesDrawerProps = {
   open: boolean;
-  users: User[];
-  memberIds: string[];
+  activitiesIds: string[];
   onToggle: (id: string) => void;
   onClose: () => void;
 
@@ -20,10 +18,9 @@ type MemberDrawerProps = {
   onSave?: () => void;
 };
 
-export const MemberDrawer = ({
+export const ActivitiesDrawer = ({
   open,
-  users,
-  memberIds,
+  activitiesIds,
   onToggle,
   onClose,
 
@@ -32,10 +29,9 @@ export const MemberDrawer = ({
   onLoadMore,
 
   onSave,
-}: MemberDrawerProps) => {
+}: ActivitiesDrawerProps) => {
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
-  const fullName = (u: User) => `${u.firstName} ${u.lastName}`;
 
   const handleClose = useCallback(() => {
     setSearch("");
@@ -47,17 +43,18 @@ export const MemberDrawer = ({
     handleClose();
   };
 
-  const nonAdminUsers = useMemo(
-    () => users.filter((u) => !isAdminRole(u.role)),
-    [users],
-  );
+  const { activities } = useActivities();
+  console.log("act", activities);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return q
-      ? nonAdminUsers.filter((u) => fullName(u).toLowerCase().includes(q))
-      : nonAdminUsers;
-  }, [nonAdminUsers, search]);
+    const query = search.trim().toLowerCase();
+
+    if (!query) return activities;
+
+    return activities.filter((activity) =>
+      activity.name.toLowerCase().includes(query),
+    );
+  }, [activities, search]);
 
   // Infinite scroll
   useEffect(() => {
@@ -106,17 +103,23 @@ export const MemberDrawer = ({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
-          <div className="w-full flex-1 relative">
-            <h3 className="text-sm font-semibold text-zinc-900">Add members</h3>
+          <div className="relative">
+            <h3 className="text-sm font-semibold text-zinc-900">
+              Add activities
+            </h3>
 
-            {memberIds.length > 0 && (
-              <p className="text-xs text-zinc-400 absolute top-6">
-                {memberIds.length} selected
+            {activitiesIds.length > 0 && (
+              <p className="text-xs text-zinc-400 absolute top-5">
+                {activitiesIds.length} selected
               </p>
             )}
           </div>
-
-          <CloseButton onClick={handleClose} />
+          <button
+            onClick={handleClose}
+            className="size-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+          >
+            <X size={16} />
+          </button>
         </div>
 
         {/* Search */}
@@ -128,18 +131,18 @@ export const MemberDrawer = ({
         <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2">
           {filtered.length === 0 ? (
             <p className="text-sm text-zinc-400 text-center py-8">
-              No users found
+              No activities found
             </p>
           ) : (
             <div className="space-y-0.5">
-              {filtered.map((user) => (
+              {filtered.map((activity) => (
                 <PickerRow
-                  key={user.id}
-                  label={fullName(user)}
-                  subtitle={user.role}
-                  avatarText={initials(user)}
-                  selected={memberIds.includes(user.id)}
-                  onToggle={() => onToggle(user.id)}
+                  key={activity.id}
+                  label={activity.name}
+                  subtitle={activity.category?.name}
+                  avatarText={activity.name.charAt(0)}
+                  selected={activitiesIds.includes(activity.id)}
+                  onToggle={() => onToggle(activity.id)}
                 />
               ))}
             </div>

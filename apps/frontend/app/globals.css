@@ -1,4 +1,5 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 :root {
   --background: #ffffff;
@@ -26,5 +27,5 @@ body {
 }
 
 .bg-time-management {
-  background-image: url('/images/time-management.webp');
+  background-image: url("/images/time-management.webp");
 }

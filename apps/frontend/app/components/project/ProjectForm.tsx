@@ -62,20 +62,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             )}
           </div>
         ) : (
-          <h1 className="text-2xl font-semibold text-zinc-900">
-            {defaultValues.name}
-          </h1>
-        )}
-      </div>
+          <div className="flex gap-4 justify-between">
+            <h1 className="text-2xl font-semibold text-zinc-900">
+              {defaultValues.name}
+            </h1>
 
-      {/* Status */}
-      <div className="flex gap-10">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-            Status
-          </label>
-          <StatusBadge status={defaultValues.status} size="md" />
-        </div>
+            <StatusBadge status={defaultValues.status} size="md" />
+          </div>
+        )}
       </div>
 
       {/* Description */}

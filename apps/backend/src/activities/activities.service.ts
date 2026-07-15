@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Not, Repository } from 'typeorm';
+import { ILike, In, Not, Repository } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Activity } from './entities/activity.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
@@ -57,6 +57,29 @@ export class ActivitiesService {
     }
 
     return entity;
+  }
+
+  async findByIds(ids: string[]) {
+    const uniqueIds = [...new Set(ids)];
+
+    const activities = await this.repo.find({
+      where: {
+        id: In(uniqueIds),
+      },
+      relations: ['category'],
+    });
+
+    const foundIds = new Set(activities.map((activity) => activity.id));
+
+    const missingIds = uniqueIds.filter((id) => !foundIds.has(id));
+
+    if (missingIds.length) {
+      throw new NotFoundException(
+        `Activities not found: ${missingIds.join(', ')}`,
+      );
+    }
+
+    return activities;
   }
 
   async list(user: User, pagination: PaginationQuery) {

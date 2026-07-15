@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 import Providers from "./providers";
-import Footer from "./components/layout/Footer";
 import { Header } from "./components/layout/Header";
 import { meServerSoft } from "./api/auth/auth.server";
 
@@ -40,7 +39,7 @@ export default async function RootLayout({
         <Providers>
           <Header initialUser={user} />
           <main className="flex grow">{children}</main>
-          <Footer />
+
           <Toaster richColors position="top-right" />
         </Providers>
       </body>
