@@ -32,24 +32,6 @@ export const AuthForm = () => {
     formState: { errors: loginErrors, isSubmitting: isLoggingIn },
   } = useForm<LoginFormInputs>({ resolver: zodResolver(loginSchema) });
 
-  // const onLoginSubmit = async (data: LoginFormInputs) => {
-  //   try {
-  //     const res = await fetch('http://localhost:3001/auth/signin', {
-  //       method: 'POST',
-  //       credentials: 'include',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify(data),
-  //     });
-  //     if (!res.ok) throw new Error('Invalid credentials');
-  //     console.log('Logged in successfully');
-
-  //     router.refresh();
-  //     router.push('/projects');
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
-
   const onLoginSubmit = async (data: LoginFormInputs) => {
     try {
       await AuthClient.login(data);
@@ -65,23 +47,6 @@ export const AuthForm = () => {
     handleSubmit: handleSignUpSubmit,
     formState: { errors: signupErrors, isSubmitting: isSigningUp },
   } = useForm<SignUpFormInputs>({ resolver: zodResolver(signupSchema) });
-
-  // const onSignUpSubmit = async (data: SignUpFormInputs) => {
-  //   try {
-  //     const res = await fetch('http://localhost:3001/auth/signup', {
-  //       method: 'POST',
-  //       credentials: 'include',
-  //       headers: { 'Content-Type': 'application/json' },
-  //       body: JSON.stringify(data),
-  //     });
-  //     if (!res.ok) throw new Error('Failed to sign up');
-  //     console.log('Signed up successfully');
-  //     router.push('/projects');
-  //     router.refresh();
-  //   } catch (err) {
-  //     console.error(err);
-  //   }
-  // };
 
   const onSignUpSubmit = async (data: SignUpFormInputs) => {
     try {

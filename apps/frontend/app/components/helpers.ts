@@ -20,6 +20,5 @@ export function validate(state: ProjectState): FormErrors {
   if (!state.name.trim()) errors.name = "Name is required";
   else if (state.name.trim().length < 3)
     errors.name = "Name must be at least 3 characters";
-  if (state.estimate < 1) errors.estimate = "Estimate must be at least 1h";
   return errors;
 }

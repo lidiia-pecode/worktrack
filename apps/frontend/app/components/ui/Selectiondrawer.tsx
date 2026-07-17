@@ -1,13 +1,14 @@
-import { X } from "lucide-react";
+"use client";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CloseButton } from "./Button";
+import { SearchInput } from "./SearchInput";
+import { PickerRow } from "./PickerRow";
 
-import { SearchInput } from "../SearchInput";
-import { PickerRow } from "../PickerRow";
-import { useActivities } from "@/hooks/useActivities";
-
-type ActivitiesDrawerProps = {
+export type SelectionDrawerProps<T> = {
   open: boolean;
-  activitiesIds: string[];
+  items: T[];
+  selectedIds: string[];
   onToggle: (id: string) => void;
   onClose: () => void;
 
@@ -16,11 +17,23 @@ type ActivitiesDrawerProps = {
   onLoadMore: () => void;
 
   onSave?: () => void;
+
+  title: string;
+  emptyMessage: string;
+
+  getId: (item: T) => string;
+  getLabel: (item: T) => string;
+  getSubtitle?: (item: T) => string | null | undefined;
+  getAvatarText?: (item: T) => string;
+
+  /** Кастомний пошук; за замовчуванням матчить по getLabel() */
+  filterItem?: (item: T, query: string) => boolean;
 };
 
-export const ActivitiesDrawer = ({
+export function SelectionDrawer<T>({
   open,
-  activitiesIds,
+  items,
+  selectedIds,
   onToggle,
   onClose,
 
@@ -29,7 +42,17 @@ export const ActivitiesDrawer = ({
   onLoadMore,
 
   onSave,
-}: ActivitiesDrawerProps) => {
+
+  title,
+  emptyMessage,
+
+  getId,
+  getLabel,
+  getSubtitle,
+  getAvatarText,
+
+  filterItem,
+}: SelectionDrawerProps<T>) {
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -43,18 +66,16 @@ export const ActivitiesDrawer = ({
     handleClose();
   };
 
-  const { activities } = useActivities();
-  console.log("act", activities);
-
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
+    if (!query) return items;
 
-    if (!query) return activities;
-
-    return activities.filter((activity) =>
-      activity.name.toLowerCase().includes(query),
+    return items.filter((item) =>
+      filterItem
+        ? filterItem(item, query)
+        : getLabel(item).toLowerCase().includes(query),
     );
-  }, [activities, search]);
+  }, [items, search, filterItem, getLabel]);
 
   // Infinite scroll
   useEffect(() => {
@@ -97,29 +118,23 @@ export const ActivitiesDrawer = ({
       />
       <div
         role="dialog"
-        aria-label="Add team members"
+        aria-label={title}
         aria-modal="true"
         className={`absolute right-0 top-0 h-full w-80 bg-white shadow-2xl flex flex-col transform transition-transform duration-300 ease-out ${open ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-zinc-100">
           <div className="relative">
-            <h3 className="text-sm font-semibold text-zinc-900">
-              Add activities
-            </h3>
+            <h3 className="text-sm font-semibold text-zinc-900">{title}</h3>
 
-            {activitiesIds.length > 0 && (
+            {selectedIds.length > 0 && (
               <p className="text-xs text-zinc-400 absolute top-5">
-                {activitiesIds.length} selected
+                {selectedIds.length} selected
               </p>
             )}
           </div>
-          <button
-            onClick={handleClose}
-            className="size-8 flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
-          >
-            <X size={16} />
-          </button>
+
+          <CloseButton onClick={handleClose} />
         </div>
 
         {/* Search */}
@@ -131,20 +146,25 @@ export const ActivitiesDrawer = ({
         <div ref={listRef} className="flex-1 overflow-y-auto px-2 py-2">
           {filtered.length === 0 ? (
             <p className="text-sm text-zinc-400 text-center py-8">
-              No activities found
+              {emptyMessage}
             </p>
           ) : (
             <div className="space-y-0.5">
-              {filtered.map((activity) => (
-                <PickerRow
-                  key={activity.id}
-                  label={activity.name}
-                  subtitle={activity.category?.name}
-                  avatarText={activity.name.charAt(0)}
-                  selected={activitiesIds.includes(activity.id)}
-                  onToggle={() => onToggle(activity.id)}
-                />
-              ))}
+              {filtered.map((item) => {
+                const id = getId(item);
+                return (
+                  <PickerRow
+                    key={id}
+                    label={getLabel(item)}
+                    subtitle={getSubtitle?.(item)}
+                    avatarText={
+                      getAvatarText?.(item) ?? getLabel(item).charAt(0)
+                    }
+                    selected={selectedIds.includes(id)}
+                    onToggle={() => onToggle(id)}
+                  />
+                );
+              })}
             </div>
           )}
           {isFetchingNextPage && (
@@ -165,4 +185,4 @@ export const ActivitiesDrawer = ({
       </div>
     </>
   );
-};
+}

@@ -5,8 +5,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 import Providers from "./providers";
-import { Header } from "./components/layout/Header";
-import { meServerSoft } from "./api/auth/auth.server";
+import { AdminSidebar } from "./components/admin/AdminSidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,17 +27,20 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await meServerSoft();
-
   return (
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-screen">
         <Providers>
-          <Header initialUser={user} />
-          <main className="flex grow">{children}</main>
+          <div className="flex h-full flex-col md:flex-row">
+            <AdminSidebar />
+
+            <main className="flex-1 h-full overflow-y-auto bg-gray-50">
+              {children}
+            </main>
+          </div>
 
           <Toaster richColors position="top-right" />
         </Providers>

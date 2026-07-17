@@ -3,23 +3,25 @@
 import { useState } from "react";
 
 import { Project } from "@/types";
-import { ProjectStatus } from "@/types/enums";
+import { UserRole } from "@/types/enums";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
 
-import { getNonAdminMemberIds } from "../helpers";
+import { fullName, getNonAdminMemberIds, initials } from "../helpers";
 
-import { MemberList } from "../ui/Member/MemberList";
-import { MemberDrawer } from "../ui/Member/MemberDrawer";
 import { Modal } from "../ui/Modal/Modal";
 import { ModalHeader } from "../ui/Modal/ModalHeader";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ArchiveProjectModal } from "./ArchiveProjectModal";
-import Button from "../ui/Button";
-import { ActivitiesList } from "../ui/Member/ActivitiesList";
-import { ActivitiesDrawer } from "../ui/Member/ActivitiesDrawer";
+
+import { useActivities } from "@/hooks/useActivities";
+import { AssignmentSection } from "../ui/AsigmentSection";
+import { MemberChip } from "../ui/MemberChip";
+import { ActivityChip } from "../ui/ActivityChip";
+import { toggleSelection } from "@/utils/toggleSelection";
+import { SelectionDrawer } from "../ui/Selectiondrawer";
 
 type UpdateProjectModalProps = {
   project: Project;
@@ -34,7 +36,7 @@ export const UpdateProjectModal = ({
   onClose,
 }: UpdateProjectModalProps) => {
   const [edit, setEdit] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
   const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
 
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -49,6 +51,7 @@ export const UpdateProjectModal = ({
   const { users, pagination } = useUsers();
 
   const { updateProject, archiveProject, unarchiveProject } = useProjects();
+  const { activities } = useActivities();
 
   const handleSave = (data: ProjectFormData) => {
     updateProject.mutate({
@@ -77,15 +80,12 @@ export const UpdateProjectModal = ({
   };
 
   const handleSetMembers = (id: string) => {
-    setMemberIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setMemberIds((prev) => toggleSelection(prev, id));
   };
 
-  const handleSetActivities = (id: string) =>
-    setActivityIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const handleSetActivities = (id: string) => {
+    setActivityIds((prev) => toggleSelection(prev, id));
+  };
 
   const handleSaveMembers = () => {
     updateProject.mutate({
@@ -95,7 +95,7 @@ export const UpdateProjectModal = ({
       },
     });
 
-    setDrawerOpen(false);
+    setMemberDrawerOpen(false);
   };
 
   const handleSaveProjectActivities = () => {
@@ -106,7 +106,7 @@ export const UpdateProjectModal = ({
       },
     });
 
-    setDrawerOpen(false);
+    setActivitiesDrawerOpen(false);
   };
 
   return (
@@ -124,7 +124,6 @@ export const UpdateProjectModal = ({
           )
         }
         onClose={onClose}
-        onDelete={() => {}}
       />
 
       {/* Scrollable content */}
@@ -137,78 +136,86 @@ export const UpdateProjectModal = ({
             description: project.description || "",
             status: project.status,
           }}
+          membersCount={memberIds.length}
+          activitiesCount={activityIds.length}
+          onArchive={() => setArchiveOpen(true)}
+          onRestore={handleRestore}
+          archiveLoading={
+            archiveProject.isPending || unarchiveProject.isPending
+          }
           onSubmit={handleSave}
         />
 
-        <MemberList
-          members={users.filter((u) => memberIds.includes(u.id))}
-          editable={edit || isAdmin}
-          onRemove={handleSetMembers}
-          onOpenDrawer={() => setDrawerOpen(true)}
-        />
+        <AssignmentSection
+          title="Team members"
+          addLabel="Add member"
+          onOpenDrawer={() => setMemberDrawerOpen(true)}
+        >
+          {users
+            .filter((u) => memberIds.includes(u.id) && u.role === UserRole.USER)
+            .map((user) => (
+              <MemberChip
+                key={user.id}
+                label={fullName(user)}
+                avatar={initials(user)}
+                onRemove={() => handleSetMembers(user.id)}
+              />
+            ))}
+        </AssignmentSection>
 
-        <ActivitiesList
-          activities={project.projectActivities}
-          editable={true}
-          onRemove={(id) =>
-            setActivityIds((prev) => prev.filter((x) => x !== id))
-          }
+        <AssignmentSection
+          title="Project activities"
+          addLabel="Add activity"
           onOpenDrawer={() => setActivitiesDrawerOpen(true)}
-        />
+        >
+          {activities
+            .filter((activity) => activityIds.includes(activity.id))
+            .map((activity) => (
+              <ActivityChip
+                key={activity.id}
+                label={activity.name}
+                onRemove={() => handleSetActivities(activity.id)}
+              />
+            ))}
+        </AssignmentSection>
       </div>
 
-      {/* Sticky footer */}
-      <div className="border-t border-zinc-200 px-6 py-4 bg-white">
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-3">
-          Project Status
-        </p>
-
-        {project.status === ProjectStatus.ACTIVE ? (
-          <Button
-            variant="danger"
-            size="sm"
-            className="w-fit"
-            onClick={() => setArchiveOpen(true)}
-          >
-            Archive Project
-          </Button>
-        ) : (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-fit"
-            onClick={handleRestore}
-            isLoading={unarchiveProject.isPending}
-          >
-            Restore Project
-          </Button>
-        )}
-      </div>
-
-      {drawerOpen && (
-        <MemberDrawer
-          open={drawerOpen}
-          users={users}
-          memberIds={memberIds}
+      {memberDrawerOpen && (
+        <SelectionDrawer
+          open={memberDrawerOpen}
+          items={users.filter((u) => u.role === UserRole.USER)}
+          selectedIds={memberIds}
           onToggle={handleSetMembers}
-          onClose={() => setDrawerOpen(false)}
+          onClose={() => setMemberDrawerOpen(false)}
           hasNextPage={pagination.hasNextPage}
           isFetchingNextPage={pagination.isFetchingNextPage}
           onLoadMore={pagination.fetchNextPage}
           onSave={handleSaveMembers}
+          title="Add members"
+          emptyMessage="No users found"
+          getId={(u) => u.id}
+          getLabel={fullName}
+          getSubtitle={(u) => u.role}
+          getAvatarText={initials}
         />
       )}
 
       {activitiesDrawerOpen && (
-        <ActivitiesDrawer
+        <SelectionDrawer
           open={activitiesDrawerOpen}
-          activitiesIds={activityIds}
+          items={activities}
+          selectedIds={activityIds}
           onToggle={handleSetActivities}
           onClose={() => setActivitiesDrawerOpen(false)}
           hasNextPage={pagination.hasNextPage}
           isFetchingNextPage={pagination.isFetchingNextPage}
           onLoadMore={pagination.fetchNextPage}
           onSave={handleSaveProjectActivities}
+          title="Add activities"
+          emptyMessage="No activities found"
+          getId={(a) => a.id}
+          getLabel={(a) => a.name}
+          getSubtitle={(a) => a.category?.name}
         />
       )}
 

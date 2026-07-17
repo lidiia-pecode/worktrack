@@ -1,13 +1,12 @@
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { Trash2, Users } from "lucide-react";
+import { Users } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
 import { Project } from "@/types";
 import { isAdminRole } from "../helpers";
 
-import Button from "../ui/Button";
 import { StatusBadge } from "../ui/StatusBadge";
 import { UpdateProjectModal } from "./UpdateProjectModal";
 import { ConfirmModal } from "../ui/ConfirmModal";
@@ -26,11 +25,6 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
     () => (project.users ?? []).filter((u) => !isAdminRole(u.role)),
     [project.users],
   );
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowDeleteConfirm(true);
-  };
 
   const handleConfirmArchive = () => {
     archiveProject.mutate(project.id);
@@ -54,18 +48,6 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
               </ReactMarkdown>
             </div>
           </div>
-          {isAdmin && (
-            <>
-              <Button
-                onClick={handleDeleteClick}
-                variant="ghost"
-                size="iconSm"
-                className="size-7 text-zinc-300 md:hover:text-red-500 md:hover:bg-red-50 opacity-0 md:group-hover:opacity-100 transition-all"
-              >
-                <Trash2 size={14} />
-              </Button>
-            </>
-          )}
         </div>
 
         <div className="flex items-center justify-between mt-auto">

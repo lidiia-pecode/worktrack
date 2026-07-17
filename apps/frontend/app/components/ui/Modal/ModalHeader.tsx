@@ -1,4 +1,4 @@
-import { Pencil, Save, Trash2 } from "lucide-react";
+import { Pencil, Save } from "lucide-react";
 import Button, { CloseButton } from "../Button";
 
 type ModalHeaderProps = {
@@ -7,7 +7,6 @@ type ModalHeaderProps = {
   onToggleEdit: () => void;
   onSave: () => void;
   onClose: () => void;
-  onDelete: () => void;
 };
 
 export const ModalHeader = ({
@@ -16,7 +15,6 @@ export const ModalHeader = ({
   onToggleEdit,
   onSave,
   onClose,
-  onDelete,
 }: ModalHeaderProps) => {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
@@ -24,16 +22,6 @@ export const ModalHeader = ({
         Project details
       </p>
       <div className="flex items-center gap-2">
-        {isAdmin && !edit && (
-          <Button
-            onClick={onDelete}
-            variant="ghost"
-            size="iconSm"
-            className="md:hover:text-red-500 md:hover:bg-red-50 transition"
-          >
-            <Trash2 size={15} />
-          </Button>
-        )}
         {isAdmin &&
           (edit ? (
             <>

@@ -5,15 +5,18 @@ import { Plus } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-import { ProjectStatus } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import Button, { CloseButton } from "../ui/Button";
-import { MemberList } from "../ui/Member/MemberList";
-import { MemberDrawer } from "../ui/Member/MemberDrawer";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { Modal } from "../ui/Modal/Modal";
-import { ActivitiesList } from "../ui/Member/ActivitiesList";
-import { ActivitiesDrawer } from "../ui/Member/ActivitiesDrawer";
+import { useActivities } from "@/hooks/useActivities";
+import { fullName, initials } from "../helpers";
+import { AssignmentSection } from "../ui/AsigmentSection";
+import { MemberChip } from "../ui/MemberChip";
+import { ActivityChip } from "../ui/ActivityChip";
+import { toggleSelection } from "@/utils/toggleSelection";
+import { SelectionDrawer } from "../ui/Selectiondrawer";
 
 export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -21,10 +24,12 @@ export function CreateProjectModal() {
   const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
 
   const [memberIds, setMemberIds] = useState<string[]>([]);
-  const [projectActIds, setProjectActIds] = useState<string[]>([]);
+  const [activityIds, setActivityIds] = useState<string[]>([]);
 
   const { createProject } = useProjects();
   const { users, pagination } = useUsers();
+
+  const { activities } = useActivities();
 
   const handleCreate = async (data: ProjectFormData) => {
     await createProject.mutateAsync({
@@ -35,15 +40,13 @@ export function CreateProjectModal() {
     setMemberIds([]);
   };
 
-  const handleSetMembers = (id: string) =>
-    setMemberIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const handleSetMembers = (id: string) => {
+    setMemberIds((prev) => toggleSelection(prev, id));
+  };
 
-  const handleSetActivities = (id: string) =>
-    setProjectActIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+  const handleSetActivities = (id: string) => {
+    setActivityIds((prev) => toggleSelection(prev, id));
+  };
 
   return (
     <>
@@ -95,49 +98,83 @@ export function CreateProjectModal() {
               description: "",
               status: ProjectStatus.ACTIVE,
             }}
+            membersCount={memberIds.length}
+            activitiesCount={activityIds.length}
             onSubmit={handleCreate}
           />
-          <MemberList
-            members={users.filter((u) => memberIds.includes(u.id))}
-            editable={true}
-            onRemove={(id) =>
-              setMemberIds((prev) => prev.filter((x) => x !== id))
-            }
-            onOpenDrawer={() => setMemberDrawerOpen(true)}
-          />
 
-          <ActivitiesList
-            activities={[]}
-            editable={true}
-            onRemove={(id) =>
-              setProjectActIds((prev) => prev.filter((x) => x !== id))
-            }
+          <AssignmentSection
+            title="Team members"
+            addLabel="Add member"
+            onOpenDrawer={() => setMemberDrawerOpen(true)}
+          >
+            {users
+              .filter(
+                (u) => memberIds.includes(u.id) && u.role === UserRole.USER,
+              )
+              .map((user) => (
+                <MemberChip
+                  key={user.id}
+                  label={fullName(user)}
+                  avatar={initials(user)}
+                  onRemove={() => handleSetMembers(user.id)}
+                />
+              ))}
+          </AssignmentSection>
+
+          <AssignmentSection
+            title="Project activities"
+            addLabel="Add activity"
             onOpenDrawer={() => setActivitiesDrawerOpen(true)}
-          />
+          >
+            {activities
+              .filter((activity) => activityIds.includes(activity.id))
+              .map((activity) => (
+                <ActivityChip
+                  key={activity.id}
+                  label={activity.name}
+                  onRemove={() => handleSetActivities(activity.id)}
+                />
+              ))}
+          </AssignmentSection>
         </div>
 
         {memberDrawerOpen && (
-          <MemberDrawer
+          <SelectionDrawer
             open={memberDrawerOpen}
-            users={users}
-            memberIds={memberIds}
+            items={users.filter((u) => u.role === UserRole.USER)}
+            selectedIds={memberIds}
             onToggle={handleSetMembers}
             onClose={() => setMemberDrawerOpen(false)}
             hasNextPage={pagination.hasNextPage}
             isFetchingNextPage={pagination.isFetchingNextPage}
             onLoadMore={pagination.fetchNextPage}
+
+            title="Add members"
+            emptyMessage="No users found"
+            getId={(u) => u.id}
+            getLabel={fullName}
+            getSubtitle={(u) => u.role}
+            getAvatarText={initials}
           />
         )}
 
         {activitiesDrawerOpen && (
-          <ActivitiesDrawer
+          <SelectionDrawer
             open={activitiesDrawerOpen}
-            activitiesIds={projectActIds}
+            items={activities}
+            selectedIds={activityIds}
             onToggle={handleSetActivities}
             onClose={() => setActivitiesDrawerOpen(false)}
             hasNextPage={pagination.hasNextPage}
             isFetchingNextPage={pagination.isFetchingNextPage}
             onLoadMore={pagination.fetchNextPage}
+
+            title="Add activities"
+            emptyMessage="No activities found"
+            getId={(a) => a.id}
+            getLabel={(a) => a.name}
+            getSubtitle={(a) => a.category?.name}
           />
         )}
       </Modal>

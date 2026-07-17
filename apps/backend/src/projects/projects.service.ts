@@ -126,7 +126,10 @@ export class ProjectsService {
       ],
       skip: pagination.offset,
       take: pagination.limit,
-      order: { createdAt: 'DESC' },
+      order: {
+        status: 'ASC',
+        createdAt: 'DESC',
+      },
     });
 
     return { results, count };

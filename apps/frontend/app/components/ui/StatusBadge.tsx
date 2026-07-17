@@ -7,20 +7,27 @@ type StatusBadgeProps = {
 
 export const StatusBadge = ({ status, size = "sm" }: StatusBadgeProps) => {
   const isActive = status === ProjectStatus.ACTIVE;
+
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-medium tracking-wide
-        ${size === "sm" ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm"}
+      className={`
+        inline-flex items-center gap-2 rounded-full font-medium
+        ${size === "sm" ? "px-3 py-1 text-xs" : "px-4 py-1.5 text-sm"}
         ${
           isActive
             ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
-            : "bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200"
-        }`}
+            : "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+        }
+      `}
     >
       <span
-        className={`size-1.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-zinc-400"}`}
+        className={`
+          size-2 rounded-full
+          ${isActive ? "bg-emerald-500" : "bg-amber-500"}
+        `}
       />
-      {status}
+
+      {isActive ? "Active" : "Archived"}
     </span>
   );
 };

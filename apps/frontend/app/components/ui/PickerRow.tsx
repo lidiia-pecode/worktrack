@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 type PickerRowProps = {
   selected: boolean;
   label: string;
-  subtitle?: string;
+  subtitle?: string | null;
   avatarText?: string;
   icon?: React.ReactNode;
   onToggle: () => void;

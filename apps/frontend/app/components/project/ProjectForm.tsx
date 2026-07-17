@@ -7,8 +7,9 @@ import ReactMarkdown from "react-markdown";
 import * as z from "zod";
 
 import { ProjectStatus } from "@/types/enums";
-import { StatusBadge } from "../ui/StatusBadge";
 import { DescriptionEditor } from "./DescriptionEditor";
+import { Activity, Users } from "lucide-react";
+import { StatusMenu } from "./StatusMenu";
 
 const projectSchema = z.object({
   name: z
@@ -26,6 +27,11 @@ interface ProjectFormProps {
   onSubmit: (data: ProjectFormData) => void;
   isEditMode: boolean;
   formId: string;
+  membersCount: number;
+  activitiesCount: number;
+  onArchive?: () => void;
+  onRestore?: () => void;
+  archiveLoading?: boolean;
 }
 
 export const ProjectForm: React.FC<ProjectFormProps> = ({
@@ -33,6 +39,11 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   onSubmit,
   isEditMode,
   formId,
+  membersCount,
+  activitiesCount,
+  onArchive,
+  onRestore,
+  archiveLoading,
 }) => {
   const {
     register,
@@ -62,12 +73,35 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex gap-4 justify-between">
-            <h1 className="text-2xl font-semibold text-zinc-900">
-              {defaultValues.name}
-            </h1>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-4 justify-between items-start">
+              <h1 className="text-2xl font-semibold text-zinc-900 break-words">
+                {defaultValues.name}
+              </h1>
 
-            <StatusBadge status={defaultValues.status} size="md" />
+              <StatusMenu
+                status={defaultValues.status}
+                loading={archiveLoading}
+                onArchive={onArchive}
+                onRestore={onRestore}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-3">
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <Users className="size-3 text-zinc-500" />
+                <span className="text-sm font-medium text-zinc-700">
+                  {membersCount} members
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <Activity className="size-3 text-zinc-500" />
+                <span className="text-sm font-medium text-zinc-700">
+                  {activitiesCount} activities
+                </span>
+              </div>
+            </div>
           </div>
         )}
       </div>
