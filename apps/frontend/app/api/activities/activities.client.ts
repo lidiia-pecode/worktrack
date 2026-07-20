@@ -1,46 +1,64 @@
 "use client";
 
 import {
-  ActivityPayload,
+  Activity,
   ActivityListResponse,
+  ActivityPayload,
   UpdateActivityPayload,
-} from "@/types/Activities";
-import { BASE_API_URL } from "../api-consts";
-import { apiClient } from "../apiClient";
+} from "@/types";
+import { createCrudApi } from "../createCrudApi";
 
-export const ActivitiesClientApi = {
-  getAllPaginated: (page = 1, limit = 50) =>
-    apiClient<ActivityListResponse>(() =>
-      fetch(`${BASE_API_URL}/activities?page=${page}&limit=${limit}`, {
-        credentials: "include",
-      }),
-    ),
+export const ActivitiesClientApi = createCrudApi<
+  Activity,
+  ActivityPayload,
+  UpdateActivityPayload,
+  ActivityListResponse
+>({
+  endpoint: "activities",
+});
 
-  create: (data: ActivityPayload) =>
-    apiClient(() =>
-      fetch(`${BASE_API_URL}/activities`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }),
-    ),
+// import {
+//   ActivityPayload,
+//   ActivityListResponse,
+//   UpdateActivityPayload,
+//   Activity,
+// } from "@/types/Activities";
+// import { BASE_API_URL } from "../api-consts";
+// import { apiClient } from "../apiClient";
 
-  update: (id: string, data: UpdateActivityPayload) =>
-    apiClient(() =>
-      fetch(`${BASE_API_URL}/activities/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(data),
-      }),
-    ),
+// export const ActivitiesClientApi = {
+//   getAllPaginated: (page = 1, limit = 50) =>
+//     apiClient<ActivityListResponse>(() =>
+//       fetch(`${BASE_API_URL}/activities?page=${page}&limit=${limit}`, {
+//         credentials: "include",
+//       }),
+//     ),
 
-  delete: (id: string) =>
-    apiClient(() =>
-      fetch(`${BASE_API_URL}/activities/${id}`, {
-        method: "DELETE",
-        credentials: "include",
-      }),
-    ),
-};
+//   create: (data: ActivityPayload) =>
+//     apiClient<Activity>(() =>
+//       fetch(`${BASE_API_URL}/activities`, {
+//         method: "POST",
+//         headers: { "Content-Type": "application/json" },
+//         credentials: "include",
+//         body: JSON.stringify(data),
+//       }),
+//     ),
+
+//   update: (id: string, data: UpdateActivityPayload) =>
+//     apiClient<Activity>(() =>
+//       fetch(`${BASE_API_URL}/activities/${id}`, {
+//         method: "PATCH",
+//         headers: { "Content-Type": "application/json" },
+//         credentials: "include",
+//         body: JSON.stringify(data),
+//       }),
+//     ),
+
+//   delete: (id: string) =>
+//     apiClient<Activity>(() =>
+//       fetch(`${BASE_API_URL}/activities/${id}`, {
+//         method: "DELETE",
+//         credentials: "include",
+//       }),
+//     ),
+// };

@@ -1,56 +1,50 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProjectsClientApi } from "@/app/api/projects/projects.client";
-import { UpdateProjectPayload } from "@/types";
-import { toast } from "sonner";
+import { Project, ProjectPayload, UpdateProjectPayload } from "@/types";
 
-export function useProjects(page: number = 1) {
-  const queryClient = useQueryClient();
+import { createEntityQuery } from "./shared/createEntityQuery";
+import { createEntityMutations } from "./shared/createEntityMutations";
+import { queryKeys } from "./shared/queryKeys";
 
-  const query = useQuery({
-    queryKey: ["projects", page],
-    queryFn: () => ProjectsClientApi.getAll(page),
-  });
+const useProjectsQuery = createEntityQuery<Project>({
+  queryKey: queryKeys.projects,
 
-  const createProject = useMutation({
-    mutationFn: ProjectsClientApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Project created successfully");
-    },
-  });
+  api: {
+    getAll: ProjectsClientApi.getAll,
+  },
+});
 
-  const updateProject = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateProjectPayload }) =>
-      ProjectsClientApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Project updated successfully");
-    },
-  });
+const useProjectsMutations = createEntityMutations<
+  Project,
+  ProjectPayload,
+  UpdateProjectPayload,
+  Project,
+  Project
+>({
+  queryKey: queryKeys.projects.all,
 
-  const archiveProject = useMutation({
-    mutationFn: ProjectsClientApi.archive,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Project deleted successfully");
-    },
-  });
+  api: {
+    create: ProjectsClientApi.create,
+    update: ProjectsClientApi.update,
+    delete: ProjectsClientApi.archive,
+    restore: ProjectsClientApi.unarchive,
+  },
 
-  const unarchiveProject = useMutation({
-    mutationFn: ProjectsClientApi.unarchive,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast.success("Project restored successfully");
-    },
-  });
+  messages: {
+    create: "Project created successfully",
+    update: "Project updated successfully",
+    delete: "Project archived successfully",
+    restore: "Project restored successfully",
+  },
+});
+
+export function useProjects(page = 1) {
+  const query = useProjectsQuery(page);
+  const actions = useProjectsMutations();
 
   return {
     ...query,
-    createProject,
-    archiveProject,
-    unarchiveProject,
-    updateProject,
+    actions,
   };
 }

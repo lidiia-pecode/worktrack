@@ -1,40 +1,38 @@
 "use client";
 
 import { useState } from "react";
-
 import Pagination from "../ui/Pagination";
-
 import Container from "../layout/Container";
-import { useProjects } from "@/hooks/useProjects";
-import { UserRole } from "../../../types/enums";
 import { useMe } from "@/hooks/useMe";
-import { CreateProjectModal } from "./CreateProjectModal";
-import { ProjectCard } from "./ProjectCard";
+import { useActivityCategories } from "@/hooks/useActivityCategories";
+import { ActCategoryCard } from "./ActCategoryCard";
 import { EntityList } from "../ui/EntityList";
+import { UserRole } from "@/types/enums";
 import { LoadingState } from "../ui/LoadingState";
 import { ErrorState } from "../ui/ErrorState";
 import { EmptyState } from "../ui/EmptyState";
+import { CreateActCategoryModal } from "./CreateActivityModal";
 
 const PAGE_SIZE = 6;
 
-export const ProjectList = () => {
+export const ActCategoryList = () => {
   const [page, setPage] = useState(1);
-
   const {
-    items: projects,
+    items: categories,
     count,
     isLoading,
     isError,
     refetch,
-  } = useProjects(page);
-
+  } = useActivityCategories();
+  // const { data, isLoading, error, refetch } = useActivityCategories(page);
   const me = useMe();
   const currentUserRole = me.data?.role;
   const isAdmin =
     currentUserRole === UserRole.ADMIN ||
     currentUserRole === UserRole.SUPER_ADMIN;
 
-  const totalPages = Math.ceil(count / PAGE_SIZE);
+  // const categories: ActivityCategory[] = data?.results ?? [];
+  const totalPages = Math.ceil((count ?? 0) / PAGE_SIZE);
 
   const handlePageChange = (pageNumber: number) => {
     setPage(pageNumber);
@@ -44,34 +42,38 @@ export const ProjectList = () => {
   if (isLoading) {
     return (
       <LoadingState
-        title="Loading projects"
-        description="Fetching your projects..."
+        title="Loading categories"
+        description="Fetching your categories..."
       />
     );
   }
 
   if (isError || !isAdmin) {
-    return <ErrorState title="Couldn't load projects" onRetry={refetch} />;
+    return <ErrorState title="Couldn't load categories" onRetry={refetch} />;
   }
 
-  if (!projects.length) {
+  if (!categories.length) {
     return (
       <EmptyState
-        title="No projects yet"
-        description="Create your first project to start tracking work."
-        action={isAdmin && <CreateProjectModal />}
+        title="No categories yet"
+        description="Create your first category."
+        action={isAdmin && <CreateActCategoryModal />}
       />
     );
   }
 
   return (
     <Container className="flex flex-col grow">
-      {isAdmin && <CreateProjectModal />}
+      {isAdmin && <CreateActCategoryModal />}
 
       <EntityList
-        items={projects}
-        renderItem={(project) => (
-          <ProjectCard key={project.id} project={project} isAdmin={isAdmin} />
+        items={categories}
+        renderItem={(category) => (
+          <ActCategoryCard
+            key={category.id}
+            category={category}
+            isAdmin={isAdmin}
+          />
         )}
       />
 

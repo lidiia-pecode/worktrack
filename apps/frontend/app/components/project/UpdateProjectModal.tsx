@@ -50,11 +50,13 @@ export const UpdateProjectModal = ({
 
   const { users, pagination } = useUsers();
 
-  const { updateProject, archiveProject, unarchiveProject } = useProjects();
-  const { activities } = useActivities();
+  const {
+    actions: { update, delete: archive, restore },
+  } = useProjects();
+  const { items: activities } = useActivities();
 
   const handleSave = (data: ProjectFormData) => {
-    updateProject.mutate({
+    update.mutate({
       id: project.id,
       data: {
         ...data,
@@ -67,14 +69,14 @@ export const UpdateProjectModal = ({
   };
 
   const handleArchive = async () => {
-    await archiveProject.mutateAsync(project.id);
+    await archive.mutateAsync(project.id);
 
     setArchiveOpen(false);
     onClose();
   };
 
   const handleRestore = async () => {
-    await unarchiveProject.mutateAsync(project.id);
+    await restore.mutateAsync(project.id);
 
     onClose();
   };
@@ -88,7 +90,7 @@ export const UpdateProjectModal = ({
   };
 
   const handleSaveMembers = () => {
-    updateProject.mutate({
+    update.mutate({
       id: project.id,
       data: {
         userIds: getNonAdminMemberIds(users, memberIds),
@@ -99,7 +101,7 @@ export const UpdateProjectModal = ({
   };
 
   const handleSaveProjectActivities = () => {
-    updateProject.mutate({
+    update.mutate({
       id: project.id,
       data: {
         activityIds,
@@ -140,9 +142,7 @@ export const UpdateProjectModal = ({
           activitiesCount={activityIds.length}
           onArchive={() => setArchiveOpen(true)}
           onRestore={handleRestore}
-          archiveLoading={
-            archiveProject.isPending || unarchiveProject.isPending
-          }
+          archiveLoading={archive.isPending || restore.isPending}
           onSubmit={handleSave}
         />
 
@@ -222,7 +222,7 @@ export const UpdateProjectModal = ({
       <ArchiveProjectModal
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
-        isLoading={archiveProject.isPending}
+        isLoading={archive.isPending}
         onConfirm={handleArchive}
       />
     </Modal>

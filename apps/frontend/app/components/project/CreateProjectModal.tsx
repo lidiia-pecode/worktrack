@@ -26,13 +26,15 @@ export function CreateProjectModal() {
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [activityIds, setActivityIds] = useState<string[]>([]);
 
-  const { createProject } = useProjects();
+  const {
+    actions: { create },
+  } = useProjects();
   const { users, pagination } = useUsers();
 
-  const { activities } = useActivities();
+  const { items: activities } = useActivities();
 
   const handleCreate = async (data: ProjectFormData) => {
-    await createProject.mutateAsync({
+    await create.mutateAsync({
       ...data,
       userIds: memberIds,
     });
@@ -77,11 +79,11 @@ export function CreateProjectModal() {
             <Button
               form="create-project-form"
               type="submit"
-              disabled={createProject.isPending}
+              disabled={create.isPending}
               size="sm"
               className="flex items-center gap-1.5"
             >
-              {createProject.isPending ? "Creating..." : "Create"}
+              {create.isPending ? "Creating..." : "Create"}
             </Button>
 
             <CloseButton onClick={() => setIsOpen(false)} />

@@ -73,26 +73,6 @@ export async function runWithRefresh<T>(
   throw errorData;
 }
 
-// function logoutUser() {
-//   if (typeof window !== 'undefined') {
-//     window.location.href = '/';
-//   }
-// }
-
-// let isRedirecting = false;
-
-// export function logoutUser() {
-//   if (typeof window === 'undefined' || isRedirecting) return;
-
-//   const queryClient = new QueryClient();
-
-//   isRedirecting = true;
-
-//   useAuthStore.getState().logout();
-//   queryClient.clear();
-
-//   window.location.href = '/login?session=expired';
-// }
 export function logoutUser() {
   if (typeof window === "undefined") return;
   if (window.location.pathname === "/") return; // ← вже на home, стопаємось
