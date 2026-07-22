@@ -1,12 +1,12 @@
-import { ProjectStatus } from "@/types/enums";
+import { Status } from "@/types/enums";
 
 type StatusBadgeProps = {
-  status: ProjectStatus;
+  status: Status;
   size?: "sm" | "md";
 };
 
 export const StatusBadge = ({ status, size = "sm" }: StatusBadgeProps) => {
-  const isActive = status === ProjectStatus.ACTIVE;
+  const isActive = status === Status.ACTIVE;
 
   return (
     <span

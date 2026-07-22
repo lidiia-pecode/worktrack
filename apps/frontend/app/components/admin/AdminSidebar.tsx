@@ -14,7 +14,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { CloseButton } from "../ui/Button";
+import { CloseButton } from "../shared/Button";
 import { AdminUserMenu } from "./AdminUserMenu";
 
 const navigation = [

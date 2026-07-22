@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import Pagination from "../ui/Pagination";
+import Pagination from "../shared/Pagination";
 import Container from "../layout/Container";
 import { useMe } from "@/hooks/useMe";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActCategoryCard } from "./ActCategoryCard";
-import { EntityList } from "../ui/EntityList";
+import { EntityList } from "../shared/EntityList";
 import { UserRole } from "@/types/enums";
-import { LoadingState } from "../ui/LoadingState";
-import { ErrorState } from "../ui/ErrorState";
-import { EmptyState } from "../ui/EmptyState";
+import { LoadingState } from "../shared/LoadingState";
+import { ErrorState } from "../shared/ErrorState";
+import { EmptyState } from "../shared/EmptyState";
 import { CreateActCategoryModal } from "./CreateActivityModal";
 
 const PAGE_SIZE = 6;

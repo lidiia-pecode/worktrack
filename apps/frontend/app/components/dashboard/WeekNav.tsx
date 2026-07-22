@@ -2,8 +2,13 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
-import { addWeeks, formatWeekRangeLabel, getWeekStart, isSameDay } from "@/lib/week";
-import Button from "../ui/Button";
+import {
+  addWeeks,
+  formatWeekRangeLabel,
+  getWeekStart,
+  isSameDay,
+} from "@/lib/week";
+import Button from "../shared/Button";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 
 type Props = {

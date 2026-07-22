@@ -4,12 +4,15 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import { StatusMenu } from "../shared/StatusMenu";
+import { Status } from "@/types/enums";
 
 const actCategorySchema = z.object({
   name: z
     .string()
     .min(3, "Name must be at least 3 characters")
     .nonempty("Name is required"),
+  status: z.enum(Status),
 });
 
 export type ActCategoryFormData = z.infer<typeof actCategorySchema>;
@@ -19,6 +22,9 @@ type ActCategoryFormProps = {
   defaultValues: ActCategoryFormData;
   isEditMode: boolean;
   onSubmit: (data: ActCategoryFormData) => void;
+  onArchive?: () => void;
+  onRestore?: () => void;
+  archiveLoading?: boolean;
 };
 
 export function ActCategoryForm({
@@ -26,6 +32,9 @@ export function ActCategoryForm({
   defaultValues,
   isEditMode,
   onSubmit,
+  onArchive,
+  onRestore,
+  archiveLoading,
 }: ActCategoryFormProps) {
   const {
     register,
@@ -56,9 +65,18 @@ export function ActCategoryForm({
             )}
           </>
         ) : (
-          <h1 className="text-2xl font-semibold text-zinc-900">
-            {defaultValues.name}
-          </h1>
+          <div className="flex gap-4 justify-between items-start">
+            <h1 className="text-2xl font-semibold text-zinc-900 break-words">
+              {defaultValues.name}
+            </h1>
+
+            <StatusMenu
+              status={defaultValues.status}
+              loading={archiveLoading}
+              onArchive={onArchive}
+              onRestore={onRestore}
+            />
+          </div>
         )}
       </section>
     </form>

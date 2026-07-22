@@ -9,11 +9,11 @@ import { Trash2, X } from "lucide-react";
 import { Timelog, TimelogPayload, UpdateTimelogPayload } from "@/types";
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
-import { Modal } from "../ui/Modal/Modal";
-import Button from "../ui/Button";
-import { Input } from "../ui/Input";
-import { Select } from "../ui/Select";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Modal } from "../shared/Modal/Modal";
+import Button from "../shared/Button";
+import { Input } from "../shared/Input";
+import { Select } from "../shared/Select";
+import { ConfirmModal } from "../shared/ConfirmModal";
 
 const FORM_ID = "timelog-form";
 
@@ -118,8 +118,7 @@ export const TimeLogFormModal = ({
   const selectedProjectId = watch("projectId");
 
   const activityOptions = useMemo(
-    () =>
-      pickerItems.filter((item) => item.projectId === selectedProjectId),
+    () => pickerItems.filter((item) => item.projectId === selectedProjectId),
     [pickerItems, selectedProjectId],
   );
 
@@ -261,7 +260,9 @@ export const TimeLogFormModal = ({
                     error={errors.activityId?.message}
                   >
                     <option value="" disabled>
-                      {selectedProjectId ? "Select activity" : "Pick a project first"}
+                      {selectedProjectId
+                        ? "Select activity"
+                        : "Pick a project first"}
                     </option>
                     {activityOptions.map((a) => (
                       <option key={a.activityId} value={a.activityId}>
@@ -302,7 +303,9 @@ export const TimeLogFormModal = ({
               </div>
             </div>
             {errors.hours && (
-              <p className="text-red-500 text-xs mt-1">{errors.hours.message}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {errors.hours.message}
+              </p>
             )}
           </div>
 

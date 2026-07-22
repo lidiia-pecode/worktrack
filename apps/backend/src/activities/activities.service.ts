@@ -14,6 +14,7 @@ import { UsersService } from 'src/users/users.service';
 
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
+import { Status } from 'src/enums/Status.enum';
 
 @Injectable()
 export class ActivitiesService {
@@ -114,6 +115,7 @@ export class ActivitiesService {
 
     const activity = this.repo.create({
       name: payload.name,
+      status: Status.ACTIVE,
       category,
     });
 
@@ -137,23 +139,51 @@ export class ActivitiesService {
     return this.repo.save(activity);
   }
 
-  async delete(id: string, user: User) {
+  // async delete(id: string, user: User) {
+  //   this.assertManager(user);
+
+  //   const activity = await this.findRaw(id);
+
+  //   const inUse = await this.projectActivityRepo.exists({
+  //     where: {
+  //       activity: {
+  //         id,
+  //       },
+  //     },
+  //   });
+
+  //   if (inUse) {
+  //     throw new BadRequestException('Activity is used by one or more projects');
+  //   }
+
+  //   await this.repo.remove(activity);
+  // }
+
+  // -------------------------
+  // Archive (soft delete)
+  // -------------------------
+
+  async archive(id: string, user: User) {
     this.assertManager(user);
 
     const activity = await this.findRaw(id);
 
-    const inUse = await this.projectActivityRepo.exists({
-      where: {
-        activity: {
-          id,
-        },
-      },
-    });
+    activity.status = Status.ARCHIVED;
 
-    if (inUse) {
-      throw new BadRequestException('Activity is used by one or more projects');
-    }
+    return this.repo.save(activity);
+  }
 
-    await this.repo.remove(activity);
+  // -------------------------
+  // RESTORE (soft delete)
+  // -------------------------
+
+  async unarchive(id: string, user: User) {
+    this.assertManager(user);
+
+    const activity = await this.findRaw(id);
+
+    activity.status = Status.ACTIVE;
+
+    return this.repo.save(activity);
   }
 }

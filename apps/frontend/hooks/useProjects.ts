@@ -27,15 +27,15 @@ const useProjectsMutations = createEntityMutations<
   api: {
     create: ProjectsClientApi.create,
     update: ProjectsClientApi.update,
-    delete: ProjectsClientApi.archive,
-    restore: ProjectsClientApi.unarchive,
+    archive: ProjectsClientApi.archive,
+    unarchive: ProjectsClientApi.unarchive,
   },
 
   messages: {
     create: "Project created successfully",
     update: "Project updated successfully",
-    delete: "Project archived successfully",
-    restore: "Project restored successfully",
+    archive: "Project archived successfully",
+    unarchive: "Project restored successfully",
   },
 });
 

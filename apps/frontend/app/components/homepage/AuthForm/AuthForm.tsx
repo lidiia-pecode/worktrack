@@ -11,8 +11,8 @@ import {
   SignUpFormInputs,
   signupSchema,
 } from "./schemas/auth-form.schemas";
-import Input from "../../ui/Input";
-import Button from "../../ui/Button";
+import Input from "../../shared/Input";
+import Button from "../../shared/Button";
 
 import { PasswordInput } from "./components/PasswordInput";
 import { AuthClient } from "@/app/api/auth/auth.client";

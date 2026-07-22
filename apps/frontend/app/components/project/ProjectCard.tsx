@@ -6,10 +6,10 @@ import { useProjects } from "@/hooks/useProjects";
 import { Project } from "@/types";
 import { isAdminRole } from "../helpers";
 
-import { StatusBadge } from "../ui/StatusBadge";
-import { EntityCard } from "../ui/EntityCard";
+import { StatusBadge } from "../shared/StatusBadge";
+import { EntityCard } from "../shared/EntityCard";
 import { UpdateProjectModal } from "./UpdateProjectModal";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { ConfirmModal } from "../shared/ConfirmModal";
 
 type Props = { project: Project; isAdmin: boolean };
 

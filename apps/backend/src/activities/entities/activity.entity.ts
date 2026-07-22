@@ -12,6 +12,7 @@ import {
 
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { Status } from 'src/enums/Status.enum';
 
 @Entity('activities')
 export class Activity {
@@ -40,6 +41,13 @@ export class Activity {
     (projectActivity) => projectActivity.activity,
   )
   projectActivities!: ProjectActivity[];
+
+  @Column({
+    type: 'enum',
+    enum: Status,
+    default: Status.ACTIVE,
+  })
+  status!: Status;
 
   @CreateDateColumn()
   createdAt!: Date;

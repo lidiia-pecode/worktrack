@@ -2,9 +2,10 @@ import { useState } from "react";
 
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActivityCategory } from "@/types";
-import { EntityCard } from "../ui/EntityCard";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { EntityCard } from "../shared/EntityCard";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { UpdateActCategoryModal } from "./UpdateActCategoryModal";
+import { StatusBadge } from "../shared/StatusBadge";
 
 type Props = { category: ActivityCategory; isAdmin: boolean };
 
@@ -12,7 +13,7 @@ export const ActCategoryCard = ({ category, isAdmin }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
-    actions: { delete: archive },
+    actions: { archive },
   } = useActivityCategories();
 
   const handleConfirmArchive = () => {
@@ -27,6 +28,8 @@ export const ActCategoryCard = ({ category, isAdmin }: Props) => {
           <div className="min-w-0">
             <EntityCard.Title>{category.name}</EntityCard.Title>
           </div>
+
+          <StatusBadge status={category.status} />
         </EntityCard.Header>
       </EntityCard>
 

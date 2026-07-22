@@ -2,7 +2,7 @@
 
 import { Check, ChevronDown, Loader2 } from "lucide-react";
 
-import { ProjectStatus } from "@/types/enums";
+import { Status } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
 
@@ -14,19 +14,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 type StatusMenuProps = {
-  status: ProjectStatus;
+  status: Status;
   loading?: boolean;
   onArchive?: () => void;
   onRestore?: () => void;
 };
 
 const STATUS_META = {
-  [ProjectStatus.ACTIVE]: {
+  [Status.ACTIVE]: {
     label: "Active",
     dot: "bg-emerald-500",
     text: "text-emerald-700",
   },
-  [ProjectStatus.ARCHIVED]: {
+  [Status.ARCHIVED]: {
     label: "Archived",
     dot: "bg-amber-500",
     text: "text-amber-700",
@@ -41,11 +41,12 @@ export const StatusMenu = ({
 }: StatusMenuProps) => {
   const current = STATUS_META[status];
 
-  const handleSelect = (target: ProjectStatus) => {
+  const handleSelect = (target: Status) => {
     if (target === status || loading) return;
 
-    if (target === ProjectStatus.ARCHIVED) {
+    if (target === Status.ARCHIVED) {
       onArchive?.();
+      console.log("kfkfkfkk");
       return;
     }
 
@@ -73,7 +74,7 @@ export const StatusMenu = ({
           Change status
         </div>
 
-        {(Object.keys(STATUS_META) as ProjectStatus[]).map((key) => {
+        {(Object.keys(STATUS_META) as Status[]).map((key) => {
           const meta = STATUS_META[key];
           const selected = key === status;
 

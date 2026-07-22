@@ -3,7 +3,7 @@ import {
   Controller,
   Delete,
   Get,
-  HttpCode,
+  // HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -58,10 +58,22 @@ export class ActivitiesController {
     return this.service.update(id, payload, user);
   }
 
-  @Delete(':id')
+  // @Delete(':id')
+  // @UseGuards(RolesGuard)
+  // @HttpCode(204)
+  // remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  //   return this.service.delete(id, user);
+  // }
+
   @UseGuards(RolesGuard)
-  @HttpCode(204)
-  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.delete(id, user);
+  @Delete(':id')
+  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.service.archive(id, user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Patch(':id/unarchive')
+  unarchive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+    return this.service.unarchive(id, user);
   }
 }

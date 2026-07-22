@@ -7,9 +7,9 @@ import { Activity } from "@/types";
 import { useActivities } from "@/hooks/useActivities";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
-import { Modal } from "../ui/Modal/Modal";
-import { ModalHeader } from "../ui/Modal/ModalHeader";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Modal } from "../shared/Modal/Modal";
+import { ModalHeader } from "../shared/Modal/ModalHeader";
+import { ConfirmModal } from "../shared/ConfirmModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 
@@ -26,7 +26,7 @@ export function UpdateActivityModal({ activity, isAdmin, onClose }: Props) {
   const { items: categories } = useActivityCategories();
 
   const {
-    actions: { update, delete: archive },
+    actions: { update, archive, unarchive },
   } = useActivities();
 
   const handleSave = (data: ActivityFormData) => {
@@ -47,6 +47,12 @@ export function UpdateActivityModal({ activity, isAdmin, onClose }: Props) {
     await archive.mutateAsync(activity.id);
 
     setArchiveOpen(false);
+    onClose();
+  };
+
+  const handleRestore = async () => {
+    await unarchive.mutateAsync(activity.id);
+
     onClose();
   };
 
@@ -74,10 +80,14 @@ export function UpdateActivityModal({ activity, isAdmin, onClose }: Props) {
             defaultValues={{
               name: activity.name,
               categoryId: activity.category.id,
+              status: activity.status,
             }}
             categories={categories}
             isEditMode={edit}
             onSubmit={handleSave}
+            onArchive={handleArchive}
+            onRestore={handleRestore}
+            archiveLoading={archive.isPending || unarchive.isPending}
           />
         </div>
       </Modal>

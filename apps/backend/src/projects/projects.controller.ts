@@ -71,6 +71,8 @@ export class ProjectsController {
     return this.service.archive(id, user);
   }
 
+  @UseGuards(RolesGuard)
+  @Role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
   @Patch(':id/unarchive')
   unarchive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.service.unarchive(id, user);

@@ -3,18 +3,18 @@ import { Tag } from "lucide-react";
 
 import { useActivities } from "@/hooks/useActivities";
 import { Activity } from "@/types";
-import { EntityCard } from "../ui/EntityCard";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { EntityCard } from "../shared/EntityCard";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { UpdateActivityModal } from "./UpdateActivityModal";
+import { StatusBadge } from "../shared/StatusBadge";
 
 type Props = { activity: Activity; isAdmin: boolean };
 
 export const ActivityCard = ({ activity, isAdmin }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  // TODO (крок 3): переконатись, що useActivities реально повертає archiveActivity
   const {
-    actions: { delete: archive },
+    actions: { archive },
   } = useActivities();
 
   console.log(activity);
@@ -31,6 +31,8 @@ export const ActivityCard = ({ activity, isAdmin }: Props) => {
           <div className="min-w-0">
             <EntityCard.Title>{activity.name}</EntityCard.Title>
           </div>
+
+          <StatusBadge status={activity.status} />
         </EntityCard.Header>
 
         <EntityCard.Footer>

@@ -12,6 +12,7 @@ import { ActCategory } from './entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
+import { Status } from 'src/enums/Status.enum';
 
 @Injectable()
 export class ActCategoriesService {
@@ -82,7 +83,7 @@ export class ActCategoriesService {
 
     await this.assertUniqueName(payload.name);
 
-    const category = this.repo.create(payload);
+    const category = this.repo.create({ status: Status.ACTIVE, ...payload });
     return this.repo.save(category);
   }
 
@@ -98,23 +99,51 @@ export class ActCategoriesService {
     return this.repo.save(category);
   }
 
-  async delete(id: string, user: User) {
+  // async delete(id: string, user: User) {
+  //   this.assertManager(user);
+
+  //   const category = await this.findRaw(id);
+
+  //   const inUse = await this.ActivitiesRepo.exists({
+  //     where: {
+  //       category: {
+  //         id,
+  //       },
+  //     },
+  //   });
+
+  //   if (inUse) {
+  //     throw new BadRequestException('Category is used by activities');
+  //   }
+
+  //   await this.repo.remove(category);
+  // }
+
+  // -------------------------
+  // Archive (soft delete)
+  // -------------------------
+
+  async archive(id: string, user: User) {
     this.assertManager(user);
 
     const category = await this.findRaw(id);
 
-    const inUse = await this.ActivitiesRepo.exists({
-      where: {
-        category: {
-          id,
-        },
-      },
-    });
+    category.status = Status.ARCHIVED;
 
-    if (inUse) {
-      throw new BadRequestException('Category is used by activities');
-    }
+    return this.repo.save(category);
+  }
 
-    await this.repo.remove(category);
+  // -------------------------
+  // RESTORE (soft delete)
+  // -------------------------
+
+  async unarchive(id: string, user: User) {
+    this.assertManager(user);
+
+    const category = await this.findRaw(id);
+
+    category.status = Status.ACTIVE;
+
+    return this.repo.save(category);
   }
 }

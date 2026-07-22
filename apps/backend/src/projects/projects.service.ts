@@ -14,7 +14,7 @@ import {
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
-import { ProjectStatus } from './enums/ProjectStatus.enum';
+import { Status } from '../enums/Status.enum';
 import { ActivitiesService } from 'src/activities/activities.service';
 // import { ProjectActivityPayload } from './dtos/ProjectActivity.dto';
 import { ProjectActivity } from './entities/project-activity.entity';
@@ -60,7 +60,7 @@ export class ProjectsService {
     const hasAccess = await this.repo.exists({
       where: {
         id: projectId,
-        status: ProjectStatus.ACTIVE,
+        status: Status.ACTIVE,
         users: { id: user.id },
       },
     });
@@ -81,7 +81,7 @@ export class ProjectsService {
   }
 
   private assertProjectIsActive(project: Project) {
-    if (project.status !== ProjectStatus.ACTIVE) {
+    if (project.status !== Status.ACTIVE) {
       throw new BadRequestException('Project is archived');
     }
   }
@@ -112,7 +112,7 @@ export class ProjectsService {
     const where = this.usersService.hasManagerAccess(user)
       ? {}
       : {
-          status: ProjectStatus.ACTIVE,
+          status: Status.ACTIVE,
           users: { id: user.id },
         };
 
@@ -211,7 +211,7 @@ export class ProjectsService {
       this.repo.create({
         name: payload.name,
         description: payload.description,
-        status: ProjectStatus.ACTIVE,
+        status: Status.ACTIVE,
         users,
       }),
     );
@@ -347,7 +347,7 @@ export class ProjectsService {
     const project = await this.getById(id, user);
     this.assertProjectIsActive(project);
 
-    project.status = ProjectStatus.ARCHIVED;
+    project.status = Status.ARCHIVED;
 
     return this.repo.save(project);
   }
@@ -359,11 +359,11 @@ export class ProjectsService {
   async unarchive(id: string, user: User) {
     const project = await this.getById(id, user);
 
-    if (project.status === ProjectStatus.ACTIVE) {
+    if (project.status === Status.ACTIVE) {
       throw new BadRequestException('Project is already active');
     }
 
-    project.status = ProjectStatus.ACTIVE;
+    project.status = Status.ACTIVE;
 
     return this.repo.save(project);
   }

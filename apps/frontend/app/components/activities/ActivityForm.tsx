@@ -6,6 +6,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 import { ActivityCategory } from "@/types";
+import { StatusMenu } from "../shared/StatusMenu";
+import { Status } from "@/types/enums";
 
 const activitySchema = z.object({
   name: z
@@ -14,6 +16,7 @@ const activitySchema = z.object({
     .nonempty("Name is required"),
 
   categoryId: z.string().min(1, "Category is required"),
+  status: z.enum(Status),
 });
 
 export type ActivityFormData = z.infer<typeof activitySchema>;
@@ -24,6 +27,9 @@ type ActivityFormProps = {
   categories: ActivityCategory[];
   isEditMode: boolean;
   onSubmit: (data: ActivityFormData) => void;
+  onArchive?: () => void;
+  onRestore?: () => void;
+  archiveLoading?: boolean;
 };
 
 export function ActivityForm({
@@ -32,6 +38,9 @@ export function ActivityForm({
   categories,
   isEditMode,
   onSubmit,
+  onArchive,
+  onRestore,
+  archiveLoading,
 }: ActivityFormProps) {
   const {
     register,
@@ -45,10 +54,6 @@ export function ActivityForm({
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Activity name
-        </p>
-
         {isEditMode ? (
           <>
             <input
@@ -62,9 +67,18 @@ export function ActivityForm({
             )}
           </>
         ) : (
-          <h1 className="text-2xl font-semibold text-zinc-900">
-            {defaultValues.name}
-          </h1>
+          <div className="flex gap-4 justify-between items-start">
+            <h1 className="text-2xl font-semibold text-zinc-900 break-words">
+              {defaultValues.name}
+            </h1>
+
+            <StatusMenu
+              status={defaultValues.status}
+              loading={archiveLoading}
+              onArchive={onArchive}
+              onRestore={onRestore}
+            />
+          </div>
         )}
       </section>
 

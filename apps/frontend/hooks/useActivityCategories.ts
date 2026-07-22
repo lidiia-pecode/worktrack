@@ -21,6 +21,7 @@ export const useActivityCategoriesMutations = createEntityMutations<
   ActivityCategory,
   ActivityCategoryPayload,
   UpdateActivityCategoryPayload,
+  ActivityCategory,
   ActivityCategory
 >({
   queryKey: queryKeys.activityCategories.all,
@@ -28,13 +29,15 @@ export const useActivityCategoriesMutations = createEntityMutations<
   api: {
     create: ActivityCategoriesClientApi.create,
     update: ActivityCategoriesClientApi.update,
-    delete: ActivityCategoriesClientApi.delete,
+    archive: ActivityCategoriesClientApi.archive,
+    unarchive: ActivityCategoriesClientApi.unarchive,
   },
 
   messages: {
     create: "Activity created successfully",
     update: "Activity updated successfully",
-    delete: "Activity deleted successfully",
+    archive: "Activity archived successfully",
+    unarchive: "Activity restored successfully",
   },
 });
 

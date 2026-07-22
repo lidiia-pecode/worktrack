@@ -1,4 +1,4 @@
-export enum ProjectStatus {
+export enum Status {
   ACTIVE = 'active',
   ARCHIVED = 'archived',
 }

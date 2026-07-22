@@ -5,18 +5,18 @@ import { Plus } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-import { ProjectStatus, UserRole } from "@/types/enums";
+import { Status, UserRole } from "@/types/enums";
 
-import Button, { CloseButton } from "../ui/Button";
+import Button, { CloseButton } from "../shared/Button";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
-import { Modal } from "../ui/Modal/Modal";
+import { Modal } from "../shared/Modal/Modal";
 import { useActivities } from "@/hooks/useActivities";
 import { fullName, initials } from "../helpers";
-import { AssignmentSection } from "../ui/AsigmentSection";
-import { MemberChip } from "../ui/MemberChip";
-import { ActivityChip } from "../ui/ActivityChip";
+import { AssignmentSection } from "../shared/AsigmentSection";
+import { MemberChip } from "../shared/MemberChip";
+import { ActivityChip } from "../shared/ActivityChip";
 import { toggleSelection } from "@/utils/toggleSelection";
-import { SelectionDrawer } from "../ui/Selectiondrawer";
+import { SelectionDrawer } from "../shared/Selectiondrawer";
 
 export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -98,7 +98,7 @@ export function CreateProjectModal() {
             defaultValues={{
               name: "",
               description: "",
-              status: ProjectStatus.ACTIVE,
+              status: Status.ACTIVE,
             }}
             membersCount={memberIds.length}
             activitiesCount={activityIds.length}

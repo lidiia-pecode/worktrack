@@ -17,6 +17,7 @@ const useActivitiesMutations = createEntityMutations<
   Activity,
   ActivityPayload,
   UpdateActivityPayload,
+  Activity,
   Activity
 >({
   queryKey: queryKeys.activities.all,
@@ -24,13 +25,15 @@ const useActivitiesMutations = createEntityMutations<
   api: {
     create: ActivitiesClientApi.create,
     update: ActivitiesClientApi.update,
-    delete: ActivitiesClientApi.delete,
+    archive: ActivitiesClientApi.archive,
+    unarchive: ActivitiesClientApi.unarchive,
   },
 
   messages: {
     create: "Activity created successfully",
     update: "Activity updated successfully",
-    delete: "Activity deleted successfully",
+    archive: "Activity archived successfully",
+    unarchive: "Activity restored successfully",
   },
 });
 

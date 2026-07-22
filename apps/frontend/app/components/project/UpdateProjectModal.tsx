@@ -7,21 +7,18 @@ import { UserRole } from "@/types/enums";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-
 import { fullName, getNonAdminMemberIds, initials } from "../helpers";
 
-import { Modal } from "../ui/Modal/Modal";
-import { ModalHeader } from "../ui/Modal/ModalHeader";
-
+import { Modal } from "../shared/Modal/Modal";
+import { ModalHeader } from "../shared/Modal/ModalHeader";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
-import { ArchiveProjectModal } from "./ArchiveProjectModal";
-
 import { useActivities } from "@/hooks/useActivities";
-import { AssignmentSection } from "../ui/AsigmentSection";
-import { MemberChip } from "../ui/MemberChip";
-import { ActivityChip } from "../ui/ActivityChip";
+import { AssignmentSection } from "../shared/AsigmentSection";
+import { MemberChip } from "../shared/MemberChip";
+import { ActivityChip } from "../shared/ActivityChip";
 import { toggleSelection } from "@/utils/toggleSelection";
-import { SelectionDrawer } from "../ui/Selectiondrawer";
+import { SelectionDrawer } from "../shared/Selectiondrawer";
+import { ConfirmModal } from "../shared/ConfirmModal";
 
 type UpdateProjectModalProps = {
   project: Project;
@@ -51,7 +48,7 @@ export const UpdateProjectModal = ({
   const { users, pagination } = useUsers();
 
   const {
-    actions: { update, delete: archive, restore },
+    actions: { update, archive, unarchive },
   } = useProjects();
   const { items: activities } = useActivities();
 
@@ -76,7 +73,7 @@ export const UpdateProjectModal = ({
   };
 
   const handleRestore = async () => {
-    await restore.mutateAsync(project.id);
+    await unarchive.mutateAsync(project.id);
 
     onClose();
   };
@@ -142,7 +139,7 @@ export const UpdateProjectModal = ({
           activitiesCount={activityIds.length}
           onArchive={() => setArchiveOpen(true)}
           onRestore={handleRestore}
-          archiveLoading={archive.isPending || restore.isPending}
+          archiveLoading={archive.isPending || unarchive.isPending}
           onSubmit={handleSave}
         />
 
@@ -219,11 +216,20 @@ export const UpdateProjectModal = ({
         />
       )}
 
-      <ArchiveProjectModal
+      {/* <ArchiveModal
+        entity="project"
         open={archiveOpen}
         onClose={() => setArchiveOpen(false)}
         isLoading={archive.isPending}
         onConfirm={handleArchive}
+      /> */}
+
+      <ConfirmModal
+        isOpen={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onConfirm={handleArchive}
+        loading={archive.isPending}
+        title={`Are you sure you want to delete "${project.name}"?`}
       />
     </Modal>
   );

@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-import { ProjectStatus } from '../enums/ProjectStatus.enum';
+import { Status } from '../../enums/Status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 
 @Entity('projects')
@@ -25,10 +25,10 @@ export class Project {
 
   @Column({
     type: 'enum',
-    enum: ProjectStatus,
-    default: ProjectStatus.ACTIVE,
+    enum: Status,
+    default: Status.ACTIVE,
   })
-  status!: ProjectStatus;
+  status!: Status;
 
   @ManyToMany(() => User, (user) => user.projects, { cascade: false })
   @JoinTable({

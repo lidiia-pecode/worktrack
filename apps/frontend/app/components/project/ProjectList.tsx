@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import Pagination from "../ui/Pagination";
+import Pagination from "../shared/Pagination";
 
 import Container from "../layout/Container";
 import { useProjects } from "@/hooks/useProjects";
@@ -10,10 +10,10 @@ import { UserRole } from "../../../types/enums";
 import { useMe } from "@/hooks/useMe";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { ProjectCard } from "./ProjectCard";
-import { EntityList } from "../ui/EntityList";
-import { LoadingState } from "../ui/LoadingState";
-import { ErrorState } from "../ui/ErrorState";
-import { EmptyState } from "../ui/EmptyState";
+import { EntityList } from "../shared/EntityList";
+import { LoadingState } from "../shared/LoadingState";
+import { ErrorState } from "../shared/ErrorState";
+import { EmptyState } from "../shared/EmptyState";
 
 const PAGE_SIZE = 6;
 

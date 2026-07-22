@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import Button, { CloseButton } from "../ui/Button";
-import { Modal } from "../ui/Modal/Modal";
+import Button, { CloseButton } from "../shared/Button";
+import { Modal } from "../shared/Modal/Modal";
 
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActCategoryForm, ActCategoryFormData } from "./ActCategoryForm";

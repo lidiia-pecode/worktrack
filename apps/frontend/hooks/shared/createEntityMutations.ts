@@ -11,8 +11,8 @@ import { toast } from "sonner";
 type MutationMessages = {
   create?: string;
   update?: string;
-  delete?: string;
-  restore?: string;
+  archive?: string;
+  unarchive?: string;
 };
 
 type EntityMutationApi<
@@ -26,9 +26,9 @@ type EntityMutationApi<
 
   update: (id: string, payload: TUpdate) => Promise<TEntity>;
 
-  delete: (id: string) => Promise<TDeleteResult>;
+  archive: (id: string) => Promise<TDeleteResult>;
 
-  restore?: (id: string) => Promise<TRestoreResult>;
+  unarchive?: (id: string) => Promise<TRestoreResult>;
 };
 
 type CreateEntityMutationsConfig<
@@ -69,9 +69,9 @@ export type EntityMutations<
     }
   >;
 
-  delete: UseMutationResult<TDeleteResult, Error, string>;
+  archive: UseMutationResult<TDeleteResult, Error, string>;
 
-  restore: UseMutationResult<TRestoreResult, Error, string>;
+  unarchive: UseMutationResult<TRestoreResult, Error, string>;
 
   canRestore: boolean;
 };
@@ -130,21 +130,21 @@ export function createEntityMutations<
       },
     });
 
-    const remove = useMutation({
-      mutationFn: config.api.delete,
+    const archive = useMutation({
+      mutationFn: config.api.archive,
 
       onSuccess: () => {
         invalidate();
 
-        if (config.messages?.delete) {
-          toast.success(config.messages.delete);
+        if (config.messages?.archive) {
+          toast.success(config.messages.archive);
         }
       },
     });
 
-    const restore = useMutation({
+    const unarchive = useMutation({
       mutationFn:
-        config.api.restore ??
+        config.api.unarchive ??
         (() => {
           throw new Error("Restore is not supported.");
         }),
@@ -152,8 +152,8 @@ export function createEntityMutations<
       onSuccess: () => {
         invalidate();
 
-        if (config.messages?.restore) {
-          toast.success(config.messages.restore);
+        if (config.messages?.unarchive) {
+          toast.success(config.messages.unarchive);
         }
       },
     });
@@ -161,9 +161,9 @@ export function createEntityMutations<
     return {
       create,
       update,
-      delete: remove,
-      restore,
-      canRestore: !!config.api.restore,
+      archive,
+      unarchive,
+      canRestore: !!config.api.unarchive,
     };
   };
 }

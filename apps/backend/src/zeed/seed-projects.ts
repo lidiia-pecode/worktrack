@@ -1,7 +1,7 @@
 import { DataSource } from 'typeorm';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
-import { ProjectStatus } from 'src/projects/enums/ProjectStatus.enum';
+import { Status } from 'src/enums/Status.enum';
 
 export async function seedProjects(dataSource: DataSource) {
   const projectRepo = dataSource.getRepository(Project);
@@ -57,12 +57,12 @@ export async function seedProjects(dataSource: DataSource) {
       project = projectRepo.create({
         name: data.name,
         description: data.description,
-        status: ProjectStatus.ACTIVE,
+        status: Status.ACTIVE,
         users: data.users,
       });
     } else {
       project.description = data.description;
-      project.status = ProjectStatus.ACTIVE;
+      project.status = Status.ACTIVE;
       project.users = data.users;
     }
 

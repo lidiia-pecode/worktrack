@@ -1,6 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 import { UserResponse } from 'src/users/dtos/UserResponse.dto';
-import { ProjectStatus } from '../enums/ProjectStatus.enum';
+import { Status } from '../../enums/Status.enum';
 import { ProjectActivityResponse } from './ProjectActivityResponse.dto';
 
 export class ProjectResponse {
@@ -14,7 +14,7 @@ export class ProjectResponse {
   description?: string;
 
   @Expose()
-  status!: ProjectStatus;
+  status!: Status;
 
   @Expose()
   @Type(() => UserResponse)

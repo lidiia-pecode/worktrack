@@ -4,9 +4,9 @@ import { useState } from "react";
 import { ActivityCategory } from "@/types";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
-import { Modal } from "../ui/Modal/Modal";
-import { ModalHeader } from "../ui/Modal/ModalHeader";
-import { ConfirmModal } from "../ui/ConfirmModal";
+import { Modal } from "../shared/Modal/Modal";
+import { ModalHeader } from "../shared/Modal/ModalHeader";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { ActCategoryForm, ActCategoryFormData } from "./ActCategoryForm";
 
 type Props = {
@@ -20,7 +20,7 @@ export function UpdateActCategoryModal({ category, isAdmin, onClose }: Props) {
   const [archiveOpen, setArchiveOpen] = useState(false);
 
   const {
-    actions: { update, delete: archive },
+    actions: { update, archive, unarchive },
   } = useActivityCategories();
 
   const handleSave = (data: ActCategoryFormData) => {
@@ -41,6 +41,12 @@ export function UpdateActCategoryModal({ category, isAdmin, onClose }: Props) {
     await archive.mutateAsync(category.id);
 
     setArchiveOpen(false);
+    onClose();
+  };
+
+  const handleRestore = async () => {
+    await unarchive.mutateAsync(category.id);
+
     onClose();
   };
 
@@ -67,9 +73,13 @@ export function UpdateActCategoryModal({ category, isAdmin, onClose }: Props) {
             formId="act-category-modal-form"
             defaultValues={{
               name: category.name,
+              status: category.status,
             }}
             isEditMode={edit}
             onSubmit={handleSave}
+            onArchive={handleArchive}
+            onRestore={handleRestore}
+            archiveLoading={archive.isPending || unarchive.isPending}
           />
         </div>
       </Modal>

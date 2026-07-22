@@ -4,10 +4,10 @@ import { UserRole } from "../../../types/enums";
 import { useMe } from "@/hooks/useMe";
 import { ActivityCard } from "./ActivityCard";
 import { useActivities } from "@/hooks/useActivities";
-import { EntityList } from "../ui/EntityList";
-import { EmptyState } from "../ui/EmptyState";
-import { LoadingState } from "../ui/LoadingState";
-import { ErrorState } from "../ui/ErrorState";
+import { EntityList } from "../shared/EntityList";
+import { EmptyState } from "../shared/EmptyState";
+import { LoadingState } from "../shared/LoadingState";
+import { ErrorState } from "../shared/ErrorState";
 import { CreateActivityModal } from "./CreateActivityModal";
 
 export const ActivityList = () => {

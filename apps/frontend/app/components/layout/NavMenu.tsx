@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
-import Button from "../ui/Button";
+import Button from "../shared/Button";
 import { useMe } from "@/hooks/useMe";
 import { User } from "../../../types";
 
