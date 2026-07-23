@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { useForm } from "react-hook-form";
+import React, { useMemo } from "react";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
@@ -9,6 +9,8 @@ import { ActivityCategory } from "@/types";
 import { StatusMenu } from "../shared/StatusMenu";
 import { Status } from "@/types/enums";
 import { FormSection } from "../shared/FormSection";
+import { FormSelect } from "../shared/FormSelect";
+import { CategoryBadge } from "../shared/CategoryBadge";
 
 const activitySchema = z.object({
   name: z
@@ -45,12 +47,22 @@ export function ActivityForm({
 }: ActivityFormProps) {
   const {
     register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<ActivityFormData>({
     resolver: zodResolver(activitySchema),
     defaultValues,
   });
+
+  const categoryOptions = useMemo(
+    () =>
+      categories.map((category) => ({
+        value: category.id,
+        label: category.name,
+      })),
+    [categories],
+  );
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
@@ -86,34 +98,27 @@ export function ActivityForm({
 
       <FormSection label="Category">
         {isEditMode ? (
-          <div className="flex flex-col gap-1">
-            <select
-              {...register("categoryId")}
-              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
-                errors.categoryId ? "border-red-400" : "border-zinc-200"
-              }`}
-            >
-              <option value="">Select category</option>
-
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-
-            {errors.categoryId && (
-              <p className="mt-1 text-sm text-red-500">
-                {errors.categoryId.message}
-              </p>
+          <Controller
+            control={control}
+            name="categoryId"
+            render={({ field, fieldState }) => (
+              <FormSelect
+                value={field.value}
+                onValueChange={field.onChange}
+                options={categoryOptions}
+                placeholder="Select category"
+                error={fieldState.error?.message}
+              />
             )}
-          </div>
+          />
         ) : (
-          <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
-            {categories.find(
-              (category) => category.id === defaultValues.categoryId,
-            )?.name ?? "Unknown category"}
-          </div>
+          <CategoryBadge
+            name={
+              categories.find(
+                (category) => category.id === defaultValues.categoryId,
+              )?.name ?? "Unknown category"
+            }
+          />
         )}
       </FormSection>
     </form>

@@ -5,7 +5,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 import Providers from "./providers";
-import { AdminSidebar } from "./components/admin/AdminSidebar";
+import { Sidebar } from "./components/layout/sidebar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +35,7 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <Providers>
           <div className="flex h-full flex-col md:flex-row">
-            <AdminSidebar />
+            <Sidebar />
 
             <main className="flex-1 h-full overflow-y-auto bg-gray-50">
               {children}

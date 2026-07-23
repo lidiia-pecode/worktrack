@@ -1,6 +1,6 @@
 "use client";
 
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { Status } from "@/types/enums";
 import { cn } from "@/lib/utils";
 

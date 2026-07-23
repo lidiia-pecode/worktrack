@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Tag } from "lucide-react";
 
 import { useActivities } from "@/hooks/useActivities";
 import { Activity } from "@/types";
@@ -8,6 +7,7 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { UpdateActivityModal } from "./UpdateActivityModal";
 import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";
+import { CategoryBadge } from "../shared/CategoryBadge";
 
 type Props = { activity: Activity; isAdmin: boolean };
 
@@ -38,7 +38,7 @@ export const ActivityCard = ({ activity, isAdmin }: Props) => {
         </EntityCard.Header>
 
         <EntityCard.Footer>
-          <EntityCard.Meta icon={Tag}>{activity.category.name}</EntityCard.Meta>
+          <CategoryBadge name={activity.category.name} />
         </EntityCard.Footer>
       </EntityCard>
 

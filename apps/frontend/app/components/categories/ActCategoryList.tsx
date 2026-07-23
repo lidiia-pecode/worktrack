@@ -77,16 +77,7 @@ export const ActCategoryList = () => {
 
   return (
     <Container className="flex flex-col grow">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Categories</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {categories.length} categor{categories.length !== 1 ? "ies" : "y"}{" "}
-            total
-          </p>
-        </div>
-        {isAdmin && <CreateActCategoryModal />}
-      </div>
+      {isAdmin && <CreateActCategoryModal />}
 
       <FilterBar
         search={search}

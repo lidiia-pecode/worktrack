@@ -94,15 +94,7 @@ export const ProjectList = () => {
 
   return (
     <Container className="flex flex-col grow">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900">Projects</h1>
-          <p className="text-sm text-zinc-500 mt-0.5">
-            {count} project{count !== 1 ? "s" : ""} total
-          </p>
-        </div>
-        {isAdmin && <CreateProjectModal />}
-      </div>
+      {isAdmin && <CreateProjectModal />}
 
       <FilterBar
         search={search}
