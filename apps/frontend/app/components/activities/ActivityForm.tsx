@@ -8,6 +8,7 @@ import * as z from "zod";
 import { ActivityCategory } from "@/types";
 import { StatusMenu } from "../shared/StatusMenu";
 import { Status } from "@/types/enums";
+import { FormSection } from "../shared/FormSection";
 
 const activitySchema = z.object({
   name: z
@@ -53,19 +54,20 @@ export function ActivityForm({
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <section>
+      <FormSection label="Activity Name">
         {isEditMode ? (
-          <>
+          <div className="flex flex-col gap-1">
             <input
               {...register("name")}
-              placeholder="Activity name"
-              className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none transition focus:border-blue-500"
+              placeholder="Enter activity name"
+              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                errors.name ? "border-red-400" : "border-zinc-200"
+              }`}
             />
-
             {errors.name && (
               <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
             )}
-          </>
+          </div>
         ) : (
           <div className="flex gap-4 justify-between items-start">
             <h1 className="text-2xl font-semibold text-zinc-900 break-words">
@@ -80,18 +82,16 @@ export function ActivityForm({
             />
           </div>
         )}
-      </section>
+      </FormSection>
 
-      <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Category
-        </p>
-
+      <FormSection label="Category">
         {isEditMode ? (
-          <>
+          <div className="flex flex-col gap-1">
             <select
               {...register("categoryId")}
-              className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none transition focus:border-blue-500"
+              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                errors.categoryId ? "border-red-400" : "border-zinc-200"
+              }`}
             >
               <option value="">Select category</option>
 
@@ -107,7 +107,7 @@ export function ActivityForm({
                 {errors.categoryId.message}
               </p>
             )}
-          </>
+          </div>
         ) : (
           <div className="inline-flex rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-medium text-zinc-700">
             {categories.find(
@@ -115,7 +115,7 @@ export function ActivityForm({
             )?.name ?? "Unknown category"}
           </div>
         )}
-      </section>
+      </FormSection>
     </form>
   );
 }

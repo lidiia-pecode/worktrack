@@ -1,5 +1,5 @@
 import { PaginatedResponse, ProjectActivity } from ".";
-import { ProjectStatus } from "./enums";
+import { Status as ProjectStatus } from "./enums";
 import { User } from "./User";
 
 export interface Project {

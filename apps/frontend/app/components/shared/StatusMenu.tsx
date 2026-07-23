@@ -46,7 +46,6 @@ export const StatusMenu = ({
 
     if (target === Status.ARCHIVED) {
       onArchive?.();
-      console.log("kfkfkfkk");
       return;
     }
 

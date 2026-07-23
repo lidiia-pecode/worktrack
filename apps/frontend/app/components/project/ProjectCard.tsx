@@ -6,6 +6,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { Project } from "@/types";
 import { isAdminRole } from "../helpers";
 
+import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";
 import { EntityCard } from "../shared/EntityCard";
 import { UpdateProjectModal } from "./UpdateProjectModal";
@@ -17,7 +18,7 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
-    actions: { delete: archive },
+    actions: { archive },
   } = useProjects();
 
   const members = useMemo(
@@ -32,7 +33,10 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
 
   return (
     <>
-      <EntityCard onClick={() => setOpen(true)}>
+      <EntityCard
+        onClick={() => setOpen(true)}
+        isArchived={project.status === Status.ARCHIVED}
+      >
         <EntityCard.Header>
           <div className="min-w-0">
             <EntityCard.Title>{project.name}</EntityCard.Title>
@@ -67,7 +71,11 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={handleConfirmArchive}
-        title={`Are you sure you want delete the "${project.name}"?`}
+        loading={archive.isPending}
+        title={`Archive "${project.name}"?`}
+        message="Archived projects will be hidden from the active list. You can restore them later."
+        confirmText="Archive"
+        variant="archive"
       />
     </>
   );

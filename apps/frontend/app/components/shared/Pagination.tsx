@@ -1,6 +1,8 @@
-'use client';
+"use client";
 
-import React from 'react';
+import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
   currentPage: number;
@@ -17,58 +19,81 @@ const Pagination: React.FC<PaginationProps> = ({
 }) => {
   if (totalPages <= 1) return null;
 
+  const getPageNumbers = () => {
+    const pages: (number | "ellipsis")[] = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 ||
+        i === totalPages ||
+        (i >= currentPage - 1 && i <= currentPage + 1)
+      ) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== "ellipsis") {
+        pages.push("ellipsis");
+      }
+    }
+    return pages;
+  };
+
+  const btnBase =
+    "inline-flex items-center justify-center w-10 h-10 text-sm font-medium rounded-xl border transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500";
+
   return (
-    <div className='flex items-center justify-center space-x-2'>
+    <nav
+      aria-label="Pagination"
+      className="flex items-center justify-center gap-1.5"
+    >
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage <= 1 || isLoading}
-        className='inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+        className={cn(
+          btnBase,
+          "border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed",
+        )}
+        aria-label="Previous page"
       >
-        Previous
+        <ChevronLeft className="size-4" />
       </button>
 
-      <div className='flex items-center space-x-1'>
-        {[...Array(totalPages)].map((_, i) => {
-          const page = i + 1;
-          // Basic pagination logic to show only few pages around current
-          if (
-            page === 1 ||
-            page === totalPages ||
-            (page >= currentPage - 1 && page <= currentPage + 1)
-          ) {
-            return (
-              <button
-                key={page}
-                onClick={() => onPageChange(page)}
-                disabled={isLoading}
-                className={`w-10 h-10 flex items-center justify-center text-sm font-medium rounded-lg transition-colors ${
-                  currentPage === page
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-700 hover:bg-gray-100 border border-transparent'
-                }`}
-              >
-                {page}
-              </button>
-            );
-          } else if (page === 2 || page === totalPages - 1) {
-            return (
-              <span key={page} className='px-2 text-gray-400'>
-                ...
-              </span>
-            );
-          }
-          return null;
-        })}
-      </div>
+      {getPageNumbers().map((page, idx) =>
+        page === "ellipsis" ? (
+          <span
+            key={`ellipsis-${idx}`}
+            className="px-1 text-zinc-300 select-none"
+          >
+            ...
+          </span>
+        ) : (
+          <button
+            key={page}
+            onClick={() => onPageChange(page)}
+            disabled={isLoading}
+            className={cn(
+              btnBase,
+              page === currentPage
+                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                : "border-zinc-200 text-zinc-600 hover:bg-zinc-50",
+            )}
+            aria-label={`Page ${page}`}
+            aria-current={page === currentPage ? "page" : undefined}
+          >
+            {page}
+          </button>
+        ),
+      )}
 
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage >= totalPages || isLoading}
-        className='inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors'
+        className={cn(
+          btnBase,
+          "border-zinc-200 text-zinc-600 hover:bg-zinc-50 disabled:opacity-40 disabled:cursor-not-allowed",
+        )}
+        aria-label="Next page"
       >
-        Next
+        <ChevronRight className="size-4" />
       </button>
-    </div>
+    </nav>
   );
 };
 

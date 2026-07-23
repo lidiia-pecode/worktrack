@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
+import { Status } from "@/types/enums";
 import Button, { CloseButton } from "../shared/Button";
 import { Modal } from "../shared/Modal/Modal";
 
@@ -46,7 +47,7 @@ export function CreateActCategoryModal() {
 
           <div className="flex items-center gap-2">
             <Button
-              form="create-activity-form"
+              form="create-category-form"
               type="submit"
               size="sm"
               disabled={create.isPending}
@@ -61,9 +62,10 @@ export function CreateActCategoryModal() {
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-6 py-6">
           <ActCategoryForm
-            formId="create-activity-form"
+            formId="create-category-form"
             defaultValues={{
               name: "",
+              status: Status.ACTIVE,
             }}
             isEditMode
             onSubmit={handleCreate}

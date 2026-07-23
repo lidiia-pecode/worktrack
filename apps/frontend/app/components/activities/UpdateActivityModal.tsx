@@ -60,6 +60,7 @@ export function UpdateActivityModal({ activity, isAdmin, onClose }: Props) {
     <>
       <Modal isOpen onClose={onClose} contentClassName="pb-6">
         <ModalHeader
+          title="Activity details"
           edit={edit}
           isAdmin={isAdmin}
           onToggleEdit={() => setEdit((prev) => !prev)}
@@ -97,7 +98,10 @@ export function UpdateActivityModal({ activity, isAdmin, onClose }: Props) {
         onClose={() => setArchiveOpen(false)}
         onConfirm={handleArchive}
         loading={archive.isPending}
-        title={`Are you sure you want to delete "${activity.name}"?`}
+        title={`Archive "${activity.name}"?`}
+        message="Archived activities will be hidden from the active list. You can restore them later."
+        confirmText="Archive"
+        variant="archive"
       />
     </>
   );

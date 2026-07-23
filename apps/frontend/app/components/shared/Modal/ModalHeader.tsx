@@ -7,6 +7,7 @@ type ModalHeaderProps = {
   onToggleEdit: () => void;
   onSave: () => void;
   onClose: () => void;
+  title?: string;
 };
 
 export const ModalHeader = ({
@@ -15,11 +16,12 @@ export const ModalHeader = ({
   onToggleEdit,
   onSave,
   onClose,
+  title = "Details",
 }: ModalHeaderProps) => {
   return (
     <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-        Project details
+        {title}
       </p>
       <div className="flex items-center gap-2">
         {isAdmin &&

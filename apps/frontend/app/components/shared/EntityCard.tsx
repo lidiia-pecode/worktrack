@@ -7,9 +7,10 @@ type RootProps = {
   children: ReactNode;
   onClick?: () => void;
   className?: string;
+  isArchived?: boolean;
 };
 
-const Root = ({ children, onClick, className }: RootProps) => {
+const Root = ({ children, onClick, className, isArchived }: RootProps) => {
   const handleKeyDown = (e: KeyboardEvent) => {
     if (!onClick) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -25,7 +26,10 @@ const Root = ({ children, onClick, className }: RootProps) => {
       role={onClick ? "button" : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={cn(
-        "group relative flex flex-col gap-4 rounded-2xl border border-zinc-200/80 bg-white p-5 shadow-sm transition-all duration-200",
+        "group relative flex flex-col gap-4 rounded-2xl border bg-white p-5 shadow-sm transition-all duration-200",
+        isArchived
+          ? "border-zinc-100/60 opacity-60 hover:opacity-80"
+          : "border-zinc-200/80",
         onClick &&
           "cursor-pointer hover:shadow-md hover:border-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500",
         className,

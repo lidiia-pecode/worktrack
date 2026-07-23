@@ -5,6 +5,7 @@ import { ActivityCategory } from "@/types";
 import { EntityCard } from "../shared/EntityCard";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UpdateActCategoryModal } from "./UpdateActCategoryModal";
+import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";
 
 type Props = { category: ActivityCategory; isAdmin: boolean };
@@ -23,7 +24,10 @@ export const ActCategoryCard = ({ category, isAdmin }: Props) => {
 
   return (
     <>
-      <EntityCard onClick={() => setOpen(true)}>
+      <EntityCard
+        onClick={() => setOpen(true)}
+        isArchived={category.status === Status.ARCHIVED}
+      >
         <EntityCard.Header>
           <div className="min-w-0">
             <EntityCard.Title>{category.name}</EntityCard.Title>
@@ -46,7 +50,11 @@ export const ActCategoryCard = ({ category, isAdmin }: Props) => {
           isOpen={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={handleConfirmArchive}
-          title={`Are you sure you want delete the "${category.name}"?`}
+          loading={archive.isPending}
+          title={`Archive "${category.name}"?`}
+          message="Archived categories will be hidden from the active list. You can restore them later."
+          confirmText="Archive"
+          variant="archive"
         />
       )}
     </>

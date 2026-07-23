@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { StatusMenu } from "../shared/StatusMenu";
 import { Status } from "@/types/enums";
+import { FormSection } from "../shared/FormSection";
 
 const actCategorySchema = z.object({
   name: z
@@ -47,23 +48,20 @@ export function ActCategoryForm({
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      <section>
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
-          Activity Category Name
-        </p>
-
+      <FormSection label="Category Name">
         {isEditMode ? (
-          <>
+          <div className="flex flex-col gap-1">
             <input
               {...register("name")}
-              placeholder="Activity Category Name"
-              className="w-full rounded-xl border border-zinc-200 px-4 py-3 outline-none transition focus:border-blue-500"
+              placeholder="Enter category name"
+              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                errors.name ? "border-red-400" : "border-zinc-200"
+              }`}
             />
-
             {errors.name && (
               <p className="mt-1 text-sm text-red-500">{errors.name.message}</p>
             )}
-          </>
+          </div>
         ) : (
           <div className="flex gap-4 justify-between items-start">
             <h1 className="text-2xl font-semibold text-zinc-900 break-words">
@@ -78,7 +76,7 @@ export function ActCategoryForm({
             />
           </div>
         )}
-      </section>
+      </FormSection>
     </form>
   );
 }

@@ -111,6 +111,7 @@ export const UpdateProjectModal = ({
   return (
     <Modal contentClassName="pb-6" onClose={onClose} isOpen={true}>
       <ModalHeader
+        title="Project details"
         edit={edit}
         isAdmin={isAdmin}
         onToggleEdit={() => setEdit(!edit)}
@@ -216,20 +217,15 @@ export const UpdateProjectModal = ({
         />
       )}
 
-      {/* <ArchiveModal
-        entity="project"
-        open={archiveOpen}
-        onClose={() => setArchiveOpen(false)}
-        isLoading={archive.isPending}
-        onConfirm={handleArchive}
-      /> */}
-
       <ConfirmModal
         isOpen={archiveOpen}
         onClose={() => setArchiveOpen(false)}
         onConfirm={handleArchive}
         loading={archive.isPending}
-        title={`Are you sure you want to delete "${project.name}"?`}
+        title={`Archive "${project.name}"?`}
+        message="Archived projects will be hidden from the active list. You can restore them later."
+        confirmText="Archive"
+        variant="archive"
       />
     </Modal>
   );

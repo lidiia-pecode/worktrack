@@ -10,6 +10,7 @@ import { Status } from "@/types/enums";
 import { DescriptionEditor } from "./DescriptionEditor";
 import { Activity, Users } from "lucide-react";
 import { StatusMenu } from "../shared/StatusMenu";
+import { FormSection } from "../shared/FormSection";
 
 const projectSchema = z.object({
   name: z
@@ -59,21 +60,22 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
       {/* Project Name */}
-      <div>
+      <FormSection label="Project Name">
         {isEditMode ? (
           <div className="flex flex-col gap-1">
             <input
               {...register("name")}
-              placeholder="Project name"
-              className={`text-2xl font-semibold w-full border-b-2 outline-none pb-1 transition-colors
-                ${errors.name ? "border-red-400 placeholder:text-red-300" : "border-zinc-200 focus:border-blue-500"}`}
+              placeholder="Enter project name"
+              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
+                errors.name ? "border-red-400" : "border-zinc-200"
+              }`}
             />
             {errors.name && (
               <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col">
             <div className="flex gap-4 justify-between items-start">
               <h1 className="text-2xl font-semibold text-zinc-900 break-words">
                 {defaultValues.name}
@@ -87,31 +89,28 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
               />
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <Users className="size-3 text-zinc-500" />
+            <div className="flex flex-wrap gap-3 mt-3">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <Users className="size-3.5 text-zinc-500" />
                 <span className="text-sm font-medium text-zinc-700">
-                  {membersCount} members
+                  {membersCount} {membersCount === 1 ? "member" : "members"}
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <Activity className="size-3 text-zinc-500" />
+              <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+                <Activity className="size-3.5 text-zinc-500" />
                 <span className="text-sm font-medium text-zinc-700">
-                  {activitiesCount} activities
+                  {activitiesCount}{" "}
+                  {activitiesCount === 1 ? "activity" : "activities"}
                 </span>
               </div>
             </div>
           </div>
         )}
-      </div>
+      </FormSection>
 
       {/* Description */}
-      <section>
-        <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-2">
-          Description
-        </p>
-
+      <FormSection label="Description">
         {isEditMode ? (
           <Controller
             name="description"
@@ -134,7 +133,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({
             No description provided
           </p>
         )}
-      </section>
+      </FormSection>
     </form>
   );
 };

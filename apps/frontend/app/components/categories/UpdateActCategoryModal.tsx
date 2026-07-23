@@ -54,6 +54,7 @@ export function UpdateActCategoryModal({ category, isAdmin, onClose }: Props) {
     <>
       <Modal isOpen onClose={onClose} contentClassName="pb-6">
         <ModalHeader
+          title="Category details"
           edit={edit}
           isAdmin={isAdmin}
           onToggleEdit={() => setEdit((prev) => !prev)}
@@ -89,7 +90,10 @@ export function UpdateActCategoryModal({ category, isAdmin, onClose }: Props) {
         onClose={() => setArchiveOpen(false)}
         onConfirm={handleArchive}
         loading={archive.isPending}
-        title={`Are you sure you want to delete "${category.name}"?`}
+        title={`Archive "${category.name}"?`}
+        message="Archived categories will be hidden from the active list. You can restore them later."
+        confirmText="Archive"
+        variant="archive"
       />
     </>
   );

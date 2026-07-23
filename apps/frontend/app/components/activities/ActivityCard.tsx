@@ -6,6 +6,7 @@ import { Activity } from "@/types";
 import { EntityCard } from "../shared/EntityCard";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UpdateActivityModal } from "./UpdateActivityModal";
+import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";
 
 type Props = { activity: Activity; isAdmin: boolean };
@@ -17,8 +18,6 @@ export const ActivityCard = ({ activity, isAdmin }: Props) => {
     actions: { archive },
   } = useActivities();
 
-  console.log(activity);
-
   const handleConfirmArchive = async () => {
     await archive.mutateAsync(activity.id);
     setShowDeleteConfirm(false);
@@ -26,7 +25,10 @@ export const ActivityCard = ({ activity, isAdmin }: Props) => {
 
   return (
     <>
-      <EntityCard onClick={() => setOpen(true)}>
+      <EntityCard
+        onClick={() => setOpen(true)}
+        isArchived={activity.status === Status.ARCHIVED}
+      >
         <EntityCard.Header>
           <div className="min-w-0">
             <EntityCard.Title>{activity.name}</EntityCard.Title>
@@ -53,7 +55,11 @@ export const ActivityCard = ({ activity, isAdmin }: Props) => {
           isOpen={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(false)}
           onConfirm={handleConfirmArchive}
-          title={`Are you sure you want delete the "${activity.name}"?`}
+          loading={archive.isPending}
+          title={`Archive "${activity.name}"?`}
+          message="Archived activities will be hidden from the active list. You can restore them later."
+          confirmText="Archive"
+          variant="archive"
         />
       )}
     </>
