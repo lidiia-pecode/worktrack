@@ -5,20 +5,23 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type LogoProps = {
+  isAdmin?: boolean;
   href?: string;
   title?: string;
-  subtitle?: string;
   size?: "sm" | "md";
   className?: string;
 };
 
 export function Logo({
+  isAdmin = false,
   href = "/",
   title = "WorkTrack",
-  subtitle = "Administration",
   size = "md",
   className,
 }: LogoProps) {
+  const subtitle = isAdmin ? "Administration" : "";
+  console.log(isAdmin);
+
   const content = (
     <div className={cn("flex items-center gap-3", className)}>
       <Image

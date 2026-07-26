@@ -53,7 +53,6 @@ export function FormSelect({
       >
         <SelectTrigger
           aria-invalid={!!error}
-          size="default"
           className={cn(
             "h-11 w-full rounded-md border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 shadow-sm",
             "transition-all duration-200",
@@ -83,14 +82,14 @@ export function FormSelect({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="rounded-xl border border-zinc-100 p-1.5 shadow-lg shadow-zinc-950/5"
+          className="rounded-lg border border-zinc-100 shadow-lg shadow-zinc-950/5 py-2"
         >
           {options.map((option) => (
             <SelectItem
               key={option.value}
               value={option.value}
               disabled={option.disabled}
-              className="rounded-lg py-2 pr-8 pl-3 text-sm"
+              className="py-2 pr-10 pl-4 text-sm rounded-none"
             >
               {option.label}
             </SelectItem>

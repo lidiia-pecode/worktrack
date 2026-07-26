@@ -419,29 +419,29 @@ export class ProjectsService {
   //   return this.repo.save(project);
   // }
 
-  // async listActivities(projectId: string, user: User) {
-  //   const project = await this.assertProjectAccess(projectId, user);
-  //   this.assertProjectIsActive(project);
+  async listActivities(projectId: string, user: User) {
+    const project = await this.assertProjectAccess(projectId, user);
+    this.assertProjectIsActive(project);
 
-  //   const qb = this.projectActivityRepo
-  //     .createQueryBuilder('pa')
-  //     .leftJoinAndSelect('pa.activity', 'activity')
-  //     .leftJoinAndSelect('activity.category', 'category')
-  //     .where('pa.project_id = :projectId', { projectId });
+    const qb = this.projectActivityRepo
+      .createQueryBuilder('pa')
+      .leftJoinAndSelect('pa.activity', 'activity')
+      .leftJoinAndSelect('activity.category', 'category')
+      .where('pa.project_id = :projectId', { projectId });
 
-  //   if (!this.usersService.hasManagerAccess(user)) {
-  //     qb.andWhere('pa.is_active = true');
-  //   }
+    if (!this.usersService.hasManagerAccess(user)) {
+      qb.andWhere('pa.is_active = true');
+    }
 
-  //   const [results, count] = await qb
-  //     .orderBy('activity.name', 'ASC')
-  //     .getManyAndCount();
+    const [results, count] = await qb
+      .orderBy('activity.name', 'ASC')
+      .getManyAndCount();
 
-  //   return {
-  //     results,
-  //     count,
-  //   };
-  // }
+    return {
+      results,
+      count,
+    };
+  }
 
   // async addActivity(
   //   projectId: string,

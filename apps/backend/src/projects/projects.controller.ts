@@ -24,7 +24,7 @@ import { Role } from 'src/lib/decorators/user-role.decorator';
 import { UserRole } from 'src/users/enums/UserRole.enum';
 import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
 import { User } from 'src/users/entities/user.entity';
-// import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
+import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
 // import { ProjectActivityPayload } from './dtos/ProjectActivity.dto';
 
 @Controller('projects')
@@ -104,14 +104,14 @@ export class ProjectsController {
   //   return this.service.unassignUserFromProject(projectId, userId, user);
   // }
 
-  // @Get(':id/activities')
-  // @SerializeList(ProjectActivityResponse)
-  // listActivities(
-  //   @Param('id', ParseUUIDPipe) projectId: string,
-  //   @CurrentUser() user: User,
-  // ) {
-  //   return this.service.listActivities(projectId, user);
-  // }
+  @Get(':id/activities')
+  @SerializeList(ProjectActivityResponse)
+  listActivities(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.service.listActivities(projectId, user);
+  }
 
   // @UseGuards(RolesGuard)
   // @Role(UserRole.ADMIN, UserRole.SUPER_ADMIN)

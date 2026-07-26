@@ -37,6 +37,8 @@ export const ActivityList = () => {
     [activities],
   );
 
+  console.log(activities);
+
   if (isLoading) {
     return (
       <Container className="flex flex-col grow">

@@ -40,6 +40,8 @@ export const WeekTimesheet = () => {
 
   const { items: pickerItems } = useMyProjectActivities();
 
+  console.log("pickerItems", pickerItems);
+
   const timelogsByDate = useMemo(() => {
     const map: Record<string, Timelog[]> = {};
 

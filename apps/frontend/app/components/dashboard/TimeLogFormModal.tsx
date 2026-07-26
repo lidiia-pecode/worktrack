@@ -4,16 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Trash2, X } from "lucide-react";
+import { Calendar, Trash2 } from "lucide-react";
+import TextareaAutosize from "react-textarea-autosize";
 
 import { Timelog, TimelogPayload, UpdateTimelogPayload } from "@/types";
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
 import { Modal } from "../shared/Modal/Modal";
 import Button from "../shared/Button";
-import { Input } from "../shared/Input";
-import { Select } from "../shared/Select";
+// import { Input } from "../shared/Input";
+// import { Select } from "../shared/Select";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { FormSelect } from "../shared/FormSelect";
+import { TimePicker } from "../shared/TimePicker";
 
 const FORM_ID = "timelog-form";
 
@@ -42,8 +45,8 @@ const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  date: string; // ISO "YYYY-MM-DD" — fixed for this modal instance
-  timelog?: Timelog; // present when editing an existing entry
+  date: string;
+  timelog?: Timelog;
   pickerItems: PickerProjectActivity[];
   onCreate: (payload: TimelogPayload) => Promise<unknown>;
   onUpdate: (id: string, payload: UpdateTimelogPayload) => Promise<unknown>;
@@ -112,22 +115,30 @@ export const TimeLogFormModal = ({
   const projectOptions = useMemo(() => {
     const seen = new Map<string, string>();
     pickerItems.forEach((item) => seen.set(item.projectId, item.projectName));
-    return Array.from(seen, ([id, name]) => ({ id, name }));
+    return Array.from(seen, ([id, name]) => ({ value: id, label: name }));
   }, [pickerItems]);
 
   const selectedProjectId = watch("projectId");
+  const hours = watch("hours");
+  const minutes = watch("minutes");
 
   const activityOptions = useMemo(
-    () => pickerItems.filter((item) => item.projectId === selectedProjectId),
+    () =>
+      pickerItems
+        .filter((item) => item.projectId === selectedProjectId)
+        .map((i) => ({ value: i.activityId, label: i.activityName })),
     [pickerItems, selectedProjectId],
   );
+
+  console.log("activityOptions", activityOptions);
+  console.log("selectedProjectId", selectedProjectId);
 
   // If the project changes and the currently selected activity no longer
   // belongs to it, clear it so we don't submit a mismatched pair.
   useEffect(() => {
     const activityId = getValues("activityId");
     const stillValid = activityOptions.some(
-      (item) => item.activityId === activityId,
+      (item) => item.value === activityId,
     );
     if (activityId && !stillValid) {
       setValue("activityId", "");
@@ -177,44 +188,31 @@ export const TimeLogFormModal = ({
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
+        <div className="flex items-center justify-between px-6 pb-3 pt-4 border-b border-zinc-100 bg-slate-50 shrink-0">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+            <p className="text-md font-semibold uppercase tracking-widest text-zinc-400 mb-1">
               {isEditMode ? "Edit time entry" : "Log time"}
             </p>
-            <p className="text-sm font-medium text-zinc-700 mt-0.5">
+
+            <p className="flex gap-2 items-baseline text-sm font-medium text-zinc-700 leading-none">
+              <Calendar className="w-4 h-4" />
               {DAY_LABEL.format(new Date(`${date}T00:00:00`))}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {isEditMode && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="iconSm"
-                className="md:hover:text-red-500 md:hover:bg-red-50 transition"
-                onClick={() => setConfirmDeleteOpen(true)}
-              >
-                <Trash2 size={15} />
-              </Button>
+
+          <div className="relative">
+            <TimePicker
+              hours={Number(hours)}
+              minutes={Number(minutes)}
+              onHoursChange={(value) => setValue("hours", value)}
+              onMinutesChange={(value) => setValue("minutes", value)}
+            />
+
+            {errors.hours && (
+              <p className="mt-2 text-xs font-medium text-red-500">
+                {errors.hours.message}
+              </p>
             )}
-            <Button
-              form={FORM_ID}
-              type="submit"
-              disabled={isSaving}
-              size="sm"
-              className="w-auto flex items-center gap-1.5"
-            >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
-            <Button
-              type="button"
-              onClick={onClose}
-              variant="ghost"
-              size="iconSm"
-            >
-              <X size={16} />
-            </Button>
           </div>
         </div>
 
@@ -228,20 +226,18 @@ export const TimeLogFormModal = ({
               <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
                 Project
               </label>
+
               <Controller
                 control={control}
                 name="projectId"
                 render={({ field }) => (
-                  <Select {...field} error={errors.projectId?.message}>
-                    <option value="" disabled>
-                      Select project
-                    </option>
-                    {projectOptions.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <FormSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    options={projectOptions}
+                    placeholder="Select project"
+                    error={errors.projectId?.message}
+                  />
                 )}
               />
             </div>
@@ -250,26 +246,23 @@ export const TimeLogFormModal = ({
               <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
                 Activity
               </label>
+
               <Controller
                 control={control}
                 name="activityId"
                 render={({ field }) => (
-                  <Select
-                    {...field}
-                    disabled={!selectedProjectId}
-                    error={errors.activityId?.message}
-                  >
-                    <option value="" disabled>
-                      {selectedProjectId
+                  <FormSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    options={activityOptions}
+                    placeholder={
+                      selectedProjectId
                         ? "Select activity"
-                        : "Pick a project first"}
-                    </option>
-                    {activityOptions.map((a) => (
-                      <option key={a.activityId} value={a.activityId}>
-                        {a.activityName}
-                      </option>
-                    ))}
-                  </Select>
+                        : "Pick a project first"
+                    }
+                    error={errors.activityId?.message}
+                    disabled={!selectedProjectId}
+                  />
                 )}
               />
             </div>
@@ -277,47 +270,14 @@ export const TimeLogFormModal = ({
 
           <div>
             <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-              Time spent
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  min={0}
-                  max={24}
-                  className="w-20 text-center"
-                  {...register("hours")}
-                />
-                <span className="text-sm text-zinc-500">h</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Input
-                  type="number"
-                  min={0}
-                  max={59}
-                  step={5}
-                  className="w-20 text-center"
-                  {...register("minutes")}
-                />
-                <span className="text-sm text-zinc-500">m</span>
-              </div>
-            </div>
-            {errors.hours && (
-              <p className="text-red-500 text-xs mt-1">
-                {errors.hours.message}
-              </p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
               Note
             </label>
-            <textarea
+            <TextareaAutosize
               {...register("note")}
-              rows={3}
+              minRows={3}
+              maxRows={8}
               placeholder="What did you work on?"
-              className="w-full text-sm text-zinc-700 leading-relaxed resize-none rounded-md p-3 border border-slate-300 outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300 transition"
+              className="w-full resize-none rounded-md border border-slate-300 p-3 text-sm leading-relaxed text-zinc-700 outline-none transition focus:border-blue-300 focus:ring-1 focus:ring-blue-300"
             />
           </div>
 
@@ -330,6 +290,33 @@ export const TimeLogFormModal = ({
             <span className="text-sm text-zinc-700">Billable</span>
           </label>
         </form>
+
+        <div className="flex items-center justify-end gap-2 p-4">
+          <div className="flex items-center justify-end gap-2 p-4">
+            {isEditMode && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="iconSm"
+                className="md:hover:text-red-500 md:hover:bg-red-50 transition"
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 size={15} />
+              </Button>
+            )}
+            <Button form={FORM_ID} type="submit" disabled={isSaving} size="sm">
+              {isSaving ? "Saving..." : "Save"}
+            </Button>
+            <Button
+              type="button"
+              onClick={onClose}
+              variant="secondary"
+              size="sm"
+            >
+              cancel
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <ConfirmModal

@@ -60,5 +60,13 @@ export function useMyProjectActivities() {
 
   const byId = Object.fromEntries(items.map((item) => [item.id, item]));
 
+  // console.log("me", me);
+  // console.log("projects", projectsQuery.data?.results);
+  // console.log("myProjects", myProjects);
+
+  activityQueries.forEach((q) => {
+    console.log(q.error);
+  });
+
   return { items, byId, projects: myProjects, isLoading };
 }

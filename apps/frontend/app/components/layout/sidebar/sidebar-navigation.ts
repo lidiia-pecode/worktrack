@@ -8,17 +8,17 @@ import {
 export const managerNavigation = [
   {
     label: "Projects",
-    href: "/projects",
+    href: "/admin/projects",
     icon: FolderKanban,
   },
   {
     label: "Activities",
-    href: "/activities",
+    href: "/admin/activities",
     icon: Activity,
   },
   {
     label: "Categories",
-    href: "/categories",
+    href: "/admin/categories",
     icon: FolderTree,
   },
 ];

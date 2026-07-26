@@ -20,8 +20,8 @@ export function Sidebar() {
 
   if (!me) return null;
 
-  const navlist =
-    me.role === UserRole.USER ? employeeNavigation : managerNavigation;
+  const isAdmin = me.role !== UserRole.USER;
+  const navlist = isAdmin ? managerNavigation : employeeNavigation;
 
   return (
     <>
@@ -29,7 +29,7 @@ export function Sidebar() {
 
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white md:hidden">
         <div className="flex h-16 items-center justify-between px-4">
-          <Logo size="sm" title="istration" subtitle="Management" />
+          <Logo size="sm" isAdmin={isAdmin} />
 
           <button
             onClick={() => setIsOpen(true)}
@@ -49,7 +49,7 @@ export function Sidebar() {
 
           <aside className="fixed inset-y-0 left-0 z-50 flex w-80 flex-col bg-white shadow-xl md:hidden">
             <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
-              <Logo />
+              <Logo isAdmin={isAdmin} />
 
               <CloseButton onClick={() => setIsOpen(false)} />
             </div>
@@ -73,7 +73,7 @@ export function Sidebar() {
 
       <aside className="hidden h-screen w-72 flex-col border-r border-gray-200 bg-white md:flex">
         <div className="border-b border-gray-100 px-6 py-5">
-          <Logo />
+          <Logo isAdmin={isAdmin} />
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
