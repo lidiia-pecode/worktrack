@@ -11,6 +11,7 @@ type TimePickerProps = {
   onHoursChange: (value: number) => void;
   onMinutesChange: (value: number) => void;
   className?: string;
+  error?: boolean;
 };
 
 export function TimePicker({
@@ -19,9 +20,18 @@ export function TimePicker({
   onHoursChange,
   onMinutesChange,
   className,
+  error,
 }: TimePickerProps) {
   return (
-    <div className={cn("flex items-center justify-between gap-1", className)}>
+    <div
+      className={cn(
+        "flex items-center justify-between gap-1 rounded-lg border p-2 transition-colors",
+        error
+          ? "border-red-300 bg-red-50 ring-1 ring-red-200"
+          : "border-slate-100 bg-slate-50 ring-1 ring-slate-200",
+        className,
+      )}
+    >
       <TimeField
         label="Hours"
         value={hours}

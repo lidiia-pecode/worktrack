@@ -15,6 +15,7 @@ import {
 import { User } from 'src/users/entities/user.entity';
 import { ProjectsService } from 'src/projects/projects.service';
 import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 
 @Injectable()
 export class TimeLogsService {
@@ -123,11 +124,12 @@ export class TimeLogsService {
 
     await this.checkDailyLimit(user.id, payload.date, payload.time);
 
+    const { projectActivityId, ...rest } = payload;
+
     const entity = this.repo.create({
-      ...payload,
-      user: {
-        id: user.id,
-      },
+      ...rest,
+      projectActivity: { id: projectActivityId },
+      user: { id: user.id },
     });
 
     const saved = await this.repo.save(entity);
@@ -138,14 +140,17 @@ export class TimeLogsService {
   async update(id: string, payload: UpdateTimelogPayload, user: User) {
     const log = await this.getById(id, user);
 
-    if (payload.projectActivityId) {
+    const { projectActivityId, ...rest } = payload;
+
+    if (projectActivityId) {
       await this.projectsService.getProjectActivityForUser(
-        payload.projectActivityId,
+        projectActivityId,
         user,
       );
+      log.projectActivity = { id: projectActivityId } as ProjectActivity;
     }
 
-    const updated = Object.assign(log, payload);
+    const updated = Object.assign(log, rest);
 
     await this.checkDailyLimit(user.id, updated.date, updated.time, id);
 

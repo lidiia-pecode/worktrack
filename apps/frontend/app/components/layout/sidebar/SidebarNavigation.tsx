@@ -13,12 +13,14 @@ type NavigationProps = {
   navItems: NavigationItem[];
   pathname: string;
   onNavigate?: () => void;
+  isDesktop?: boolean;
 };
 
 export function SidebarNavigation({
   navItems,
   pathname,
   onNavigate,
+  isDesktop = false,
 }: NavigationProps) {
   return (
     <>
@@ -39,16 +41,21 @@ export function SidebarNavigation({
               href={item.href}
               onClick={onNavigate}
               className={cn(
-                "group flex items-center justify-between rounded-xl px-3 py-3 transition-all duration-200",
+                "group flex items-center justify-between rounded-xl p-3 transition-all duration-200",
+                isDesktop ? "py-2 rounded-lg" : "",
                 isActive
-                  ? "bg-gray-900 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+                  ? "bg-gray-800 text-white shadow-sm"
+                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-800",
               )}
             >
-              <div className="flex items-center gap-3">
+              <div
+                className={`flex items-center ${isDesktop ? "gap-2" : "gap-3"} `}
+              >
                 <Icon size={18} />
 
-                <span className="font-medium">{item.label}</span>
+                <span className={`font-medium ${isDesktop ? "text-sm" : ""} `}>
+                  {item.label}
+                </span>
               </div>
 
               <ChevronRight

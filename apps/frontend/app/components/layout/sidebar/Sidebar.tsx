@@ -71,13 +71,17 @@ export function Sidebar() {
 
       {/* Desktop */}
 
-      <aside className="hidden h-screen w-72 flex-col border-r border-gray-200 bg-white md:flex">
+      <aside className="hidden h-screen w-50 flex-col border-r border-gray-200 bg-white md:flex">
         <div className="border-b border-gray-100 px-6 py-5">
           <Logo isAdmin={isAdmin} />
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">
-          <SidebarNavigation navItems={navlist} pathname={pathname} />
+          <SidebarNavigation
+            navItems={navlist}
+            pathname={pathname}
+            isDesktop={true}
+          />
         </div>
 
         <div className="border-t border-gray-100 p-4">

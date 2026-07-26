@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, Trash2 } from "lucide-react";
+import { Calendar, CircleAlert, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Timelog, TimelogPayload, UpdateTimelogPayload } from "@/types";
@@ -12,8 +12,6 @@ import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
 import { Modal } from "../shared/Modal/Modal";
 import Button from "../shared/Button";
-// import { Input } from "../shared/Input";
-// import { Select } from "../shared/Select";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { FormSelect } from "../shared/FormSelect";
 import { TimePicker } from "../shared/TimePicker";
@@ -31,6 +29,10 @@ const timeLogSchema = z
   })
   .refine((data) => data.hours * 60 + data.minutes > 0, {
     message: "Enter a duration greater than 0",
+    path: ["hours"],
+  })
+  .refine((data) => data.hours * 60 + data.minutes <= 1440, {
+    message: "Duration can't exceed 24 hours",
     path: ["hours"],
   });
 
@@ -130,9 +132,6 @@ export const TimeLogFormModal = ({
     [pickerItems, selectedProjectId],
   );
 
-  console.log("activityOptions", activityOptions);
-  console.log("selectedProjectId", selectedProjectId);
-
   // If the project changes and the currently selected activity no longer
   // belongs to it, clear it so we don't submit a mismatched pair.
   useEffect(() => {
@@ -199,19 +198,20 @@ export const TimeLogFormModal = ({
               {DAY_LABEL.format(new Date(`${date}T00:00:00`))}
             </p>
           </div>
-
-          <div className="relative">
+          <div className="relative inline-flex flex-col items-end">
             <TimePicker
               hours={Number(hours)}
               minutes={Number(minutes)}
               onHoursChange={(value) => setValue("hours", value)}
               onMinutesChange={(value) => setValue("minutes", value)}
+              error={!!errors.hours}
             />
 
             {errors.hours && (
-              <p className="mt-2 text-xs font-medium text-red-500">
-                {errors.hours.message}
-              </p>
+              <div className="absolute right-28 bottom-0 z-10 flex w-max items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600 shadow-sm">
+                <CircleAlert className="size-3.5 shrink-0" />
+                <span>{errors.hours.message}</span>
+              </div>
             )}
           </div>
         </div>
@@ -292,30 +292,23 @@ export const TimeLogFormModal = ({
         </form>
 
         <div className="flex items-center justify-end gap-2 p-4">
-          <div className="flex items-center justify-end gap-2 p-4">
-            {isEditMode && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="iconSm"
-                className="md:hover:text-red-500 md:hover:bg-red-50 transition"
-                onClick={() => setConfirmDeleteOpen(true)}
-              >
-                <Trash2 size={15} />
-              </Button>
-            )}
-            <Button form={FORM_ID} type="submit" disabled={isSaving} size="sm">
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
+          {isEditMode && (
             <Button
               type="button"
-              onClick={onClose}
-              variant="secondary"
-              size="sm"
+              variant="ghost"
+              size="iconSm"
+              className="md:hover:text-red-500 md:hover:bg-red-50 transition"
+              onClick={() => setConfirmDeleteOpen(true)}
             >
-              cancel
+              <Trash2 size={15} />
             </Button>
-          </div>
+          )}
+          <Button form={FORM_ID} type="submit" disabled={isSaving} size="sm">
+            {isSaving ? "Saving..." : "Save"}
+          </Button>
+          <Button type="button" onClick={onClose} variant="secondary" size="sm">
+            Cancel
+          </Button>
         </div>
       </Modal>
 

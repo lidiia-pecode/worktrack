@@ -17,6 +17,7 @@ export interface TimelogPayload {
   projectActivityId: string;
   time: number;
   note?: string;
+  isBillable: boolean;
   date: string;
 }
 

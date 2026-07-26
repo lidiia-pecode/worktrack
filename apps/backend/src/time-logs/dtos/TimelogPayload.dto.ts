@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -25,6 +26,9 @@ export class TimeLogPayload {
   @IsString()
   @MinLength(3)
   note?: string;
+
+  @IsBoolean()
+  isBillable!: boolean;
 
   @IsDateWithoutTimeString()
   date!: string;
