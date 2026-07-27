@@ -51,7 +51,6 @@ export const TimelogSegment = ({
         transition-all
       "
     >
-      {/* hetching (overtime) */}
       {overtimeHeight > 0 && (
         <div
           aria-hidden="true"
@@ -60,7 +59,6 @@ export const TimelogSegment = ({
         />
       )}
 
-      {/* timelog title */}
       <div className="relative z-10 pointer-events-none flex h-full flex-col justify-center overflow-hidden px-2 py-1">
         <span className="truncate text-[11px] font-semibold leading-tight text-zinc-900/80">
           {formatDuration(timelog.time)}

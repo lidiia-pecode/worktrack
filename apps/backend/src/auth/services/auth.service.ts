@@ -37,9 +37,6 @@ export class AuthService {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async createVerificationCode(email: string) {
-    // Тут створюється код верифікації (OTP)
-    // і далі кладеться, наприклад в redis, як key-value пара
-    // email-у та коду із певним expiration time (напр. 5 хвилин)
     return new Promise<number>((resolve) => {
       resolve(123456);
     });
@@ -47,14 +44,11 @@ export class AuthService {
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private async verifyCode(email: string, code: number) {
-    // Перевіряємо чи є в redis-і для юзера з даним email такий код
     return await Promise.resolve(true);
   }
 
   public async sendVerificationCode(email: string) {
     const code = await this.createVerificationCode(email);
-    // Тут за допомогою якогось провайдера по відправці email-ів
-    // відправляється лист з кодом
 
     return code;
   }

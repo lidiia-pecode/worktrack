@@ -26,7 +26,6 @@ export type SelectionDrawerProps<T> = {
   getSubtitle?: (item: T) => string | null | undefined;
   getAvatarText?: (item: T) => string;
 
-  /** Кастомний пошук; за замовчуванням матчить по getLabel() */
   filterItem?: (item: T, query: string) => boolean;
 };
 
@@ -77,7 +76,6 @@ export function SelectionDrawer<T>({
     );
   }, [items, search, filterItem, getLabel]);
 
-  // Infinite scroll
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
@@ -100,7 +98,6 @@ export function SelectionDrawer<T>({
     return () => el.removeEventListener("scroll", handleScroll);
   }, [hasNextPage, isFetchingNextPage, onLoadMore]);
 
-  // ESC close
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && open) handleClose();

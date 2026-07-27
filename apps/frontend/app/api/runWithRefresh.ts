@@ -4,7 +4,6 @@ import { useAuthStore } from "@/stores/authStore";
 
 let refreshPromise: Promise<boolean> | null = null;
 
-// helper
 async function parseJsonSafe<T>(res: Response): Promise<T> {
   if (res.status === 204) return null as T;
 
@@ -75,11 +74,11 @@ export async function runWithRefresh<T>(
 
 export function logoutUser() {
   if (typeof window === "undefined") return;
-  if (window.location.pathname === "/") return; // ← вже на home, стопаємось
+  if (window.location.pathname === "/") return;
   if (sessionStorage.getItem("redirecting")) return;
 
   sessionStorage.setItem("redirecting", "1");
   useAuthStore.getState().logout();
 
-  window.location.href = "/"; // ← або '/login' якщо створиш сторінку
+  window.location.href = "/";
 }

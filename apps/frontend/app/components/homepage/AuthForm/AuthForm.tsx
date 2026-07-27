@@ -36,7 +36,7 @@ export const AuthForm = () => {
     try {
       await AuthClient.login(data);
       router.refresh();
-      router.push("/projects");
+      router.push("/");
     } catch (err) {
       console.error(err);
     }
@@ -52,7 +52,7 @@ export const AuthForm = () => {
     try {
       await AuthClient.signup(data);
       router.refresh();
-      router.push("/projects");
+      router.push("/");
     } catch (err) {
       console.error(err);
     }

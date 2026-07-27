@@ -76,7 +76,7 @@ export class AuthController {
     const tokens = await this.service.initializeUserSession(user);
     this.setCookies(res, tokens);
 
-    return res.redirect(`${process.env.FRONTEND_URL}/projects`);
+    return res.redirect(`${process.env.FRONTEND_URL}/`);
   }
 
   @Post('/signup')

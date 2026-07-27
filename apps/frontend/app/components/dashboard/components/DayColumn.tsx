@@ -70,7 +70,6 @@ export const DayColumn = ({
         </div>
       )}
 
-      {/* dashed (overtime) line*/}
       <div
         className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-300"
         style={{
@@ -80,7 +79,6 @@ export const DayColumn = ({
 
       {isOverTarget && (
         <>
-          {/* overtime stripes pattern */}
           <div
             className={`pointer-events-none absolute left-0 right-0 ${OVERTIME_PATTERN}`}
             style={{

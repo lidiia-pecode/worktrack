@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
@@ -13,6 +13,7 @@ import { WeekNav } from "./components/WeekNav";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { WeekHeaderDay } from "./components/WeekHeaderDay";
+import { WeekProgressBar } from "./components/WeekProgressBar";
 
 type ModalState = {
   date: string;
@@ -70,15 +71,26 @@ export const WeekTimesheet = () => {
     0,
   );
 
+  const { billableMinutes, nonBillableMinutes } = useMemo(() => {
+    let billable = 0;
+    let nonBillable = 0;
+
+    (data?.results ?? []).forEach((log) => {
+      if (log.isBillable) {
+        billable += log.time;
+      } else {
+        nonBillable += log.time;
+      }
+    });
+
+    return { billableMinutes: billable, nonBillableMinutes: nonBillable };
+  }, [data?.results]);
+
   const maxDailyMinutes = Math.max(
     DAILY_TARGET_MINUTES,
     ...Object.values(dailyTotals),
   );
   const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + 100;
-
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [gridHeightPx, weekStart]);
 
   const openCreate = (date: Date) => {
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
@@ -104,19 +116,31 @@ export const WeekTimesheet = () => {
 
   return (
     <Container className="p-0 sm:pr-0 lg:pr-0 flex flex-col">
-      <div className="flex items-center justify-between border-b border-zinc-200 py-3 pr-3">
-        <WeekNav weekStart={weekStart} onWeekChange={setWeekStart} />
+      <div className="border-b border-zinc-200">
+        <div className="flex items-center justify-between py-3 pr-3">
+          <WeekNav weekStart={weekStart} onWeekChange={setWeekStart} />
 
-        <div className="flex items-center gap-2 text-sm">
-          <span className="font-medium text-zinc-900">
-            {formatDuration(totalMinutes)}
-          </span>
+          <div className="flex items-center gap-2 text-sm">
+            <span>Time logged:</span>
 
-          <span className="text-zinc-300">/</span>
+            <span className="font-medium text-zinc-900">
+              {formatDuration(totalMinutes)}
+            </span>
 
-          <span className="text-zinc-500">
-            {formatDuration(WEEKLY_TARGET_MINUTES)}
-          </span>
+            <span className="text-zinc-300">/</span>
+
+            <span className="text-zinc-500">
+              {formatDuration(WEEKLY_TARGET_MINUTES)}
+            </span>
+          </div>
+        </div>
+
+        <div className="px-3 pb-3">
+          <WeekProgressBar
+            billableMinutes={billableMinutes}
+            nonBillableMinutes={nonBillableMinutes}
+            plannedMinutes={WEEKLY_TARGET_MINUTES}
+          />
         </div>
       </div>
 
