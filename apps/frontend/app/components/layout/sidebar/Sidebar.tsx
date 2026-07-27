@@ -85,7 +85,7 @@ export function Sidebar() {
         </div>
 
         <div className="border-t border-gray-100 p-4">
-          <UserMenu />
+          <UserMenu isDesktop={true} />
         </div>
       </aside>
     </>

@@ -9,6 +9,7 @@ import {
   UpdateTimelogPayload,
 } from "@/types";
 import { getErrorMessage } from "@/utils/apiError";
+import { queryKeys } from "./shared/queryKeys";
 
 type DateRange = { dateFrom: string; dateTo: string };
 
@@ -16,7 +17,7 @@ export function useTimelogs(range: DateRange) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["timelogs", range.dateFrom, range.dateTo],
+    queryKey: queryKeys.timelogs.list(range.dateFrom, range.dateTo),
     queryFn: () =>
       TimelogsClientApi.getAll({
         dateFrom: range.dateFrom,
@@ -27,7 +28,7 @@ export function useTimelogs(range: DateRange) {
   });
 
   const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: ["timelogs"] });
+    queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
 
   const createTimelog = useMutation({
     mutationFn: (data: TimelogPayload) => TimelogsClientApi.create(data),

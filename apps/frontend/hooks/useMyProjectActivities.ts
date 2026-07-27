@@ -4,9 +4,9 @@ import { useQueries, useQuery } from "@tanstack/react-query";
 import { ProjectsClientApi } from "@/app/api/projects/projects.client";
 import { ProjectActivitiesClientApi } from "@/app/api/activities/project-activities.client";
 import { useMe } from "./useMe";
+import { queryKeys } from "./shared/queryKeys";
 
 export type PickerProjectActivity = {
-  /** ProjectActivity id — this is what gets sent as TimeLogPayload.projectActivityId */
   id: string;
   projectId: string;
   projectName: string;
@@ -14,17 +14,11 @@ export type PickerProjectActivity = {
   activityName: string;
 };
 
-/**
- * Resolves the projects the current user belongs to, and the activities
- * enabled on each of them. Flattened into a single list for the Quick Log
- * picker, plus an id -> item lookup map used to render project/activity
- * names for existing time logs (which only carry projectActivityId).
- */
 export function useMyProjectActivities() {
   const { data: me } = useMe();
 
   const projectsQuery = useQuery({
-    queryKey: ["projects", "for-picker"],
+    queryKey: queryKeys.projects.picker(),
     queryFn: () => ProjectsClientApi.getAll(1),
     enabled: !!me,
   });
@@ -35,7 +29,7 @@ export function useMyProjectActivities() {
 
   const activityQueries = useQueries({
     queries: myProjects.map((project) => ({
-      queryKey: ["projectActivities", project.id],
+      queryKey: queryKeys.projectActivities.list(project.id),
       queryFn: () => ProjectActivitiesClientApi.getAll(project.id),
       enabled: !!me,
     })),
@@ -59,10 +53,6 @@ export function useMyProjectActivities() {
   });
 
   const byId = Object.fromEntries(items.map((item) => [item.id, item]));
-
-  // console.log("me", me);
-  // console.log("projects", projectsQuery.data?.results);
-  // console.log("myProjects", myProjects);
 
   activityQueries.forEach((q) => {
     console.log(q.error);

@@ -10,11 +10,11 @@ import TextareaAutosize from "react-textarea-autosize";
 import { Timelog, TimelogPayload, UpdateTimelogPayload } from "@/types";
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
-import { Modal } from "../shared/Modal/Modal";
-import Button from "../shared/Button";
-import { ConfirmModal } from "../shared/ConfirmModal";
-import { FormSelect } from "../shared/FormSelect";
-import { TimePicker } from "../shared/TimePicker";
+import { Modal } from "../../shared/Modal/Modal";
+import Button from "../../shared/Button";
+import { ConfirmModal } from "../../shared/ConfirmModal";
+import { FormSelect } from "../../shared/FormSelect";
+import { TimePicker } from "../../shared/TimePicker";
 
 const FORM_ID = "timelog-form";
 
@@ -109,7 +109,6 @@ export const TimeLogFormModal = ({
     defaultValues,
   });
 
-  // Reset the form whenever a different day/entry is opened.
   useEffect(() => {
     reset(defaultValues);
   }, [defaultValues, reset]);
@@ -132,8 +131,6 @@ export const TimeLogFormModal = ({
     [pickerItems, selectedProjectId],
   );
 
-  // If the project changes and the currently selected activity no longer
-  // belongs to it, clear it so we don't submit a mismatched pair.
   useEffect(() => {
     const activityId = getValues("activityId");
     const stillValid = activityOptions.some(
@@ -168,9 +165,7 @@ export const TimeLogFormModal = ({
         await onCreate({ ...shared, date });
       }
       onClose();
-    } catch {
-      // mutation hook already surfaces a toast on error
-    }
+    } catch {}
   };
 
   const handleDelete = async () => {

@@ -6,28 +6,21 @@ import { useTimelogs } from "@/hooks/useTimelogs";
 import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
 import { Timelog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/date";
-import {
-  formatWeekdayLabel,
-  getWeekDates,
-  getWeekStart,
-  isToday,
-} from "@/lib/week";
-import { DAILY_TARGET_MINUTES, WEEKLY_TARGET_MINUTES } from "@/lib/consts";
+import { getWeekDates, getWeekStart } from "@/lib/week";
 
 import Container from "../layout/Container";
-import { WeekNav } from "./WeekNav";
-import { DayColumn } from "./DayColumn";
-import { TimeLogFormModal } from "./TimeLogFormModal";
+import { WeekNav } from "./components/WeekNav";
+import { DayColumn } from "./components/DayColumn";
+import { TimeLogFormModal } from "./components/TimeLogFormModal";
+import { WeekHeaderDay } from "./components/WeekHeaderDay";
 
 type ModalState = {
   date: string;
   timelog?: Timelog;
 };
 
-// How many pixels represent one hour of logged time. Shared by the grid,
-// the 8h target line and every DayColumn so everything stays proportional.
-// TODO: move alongside DAILY_TARGET_MINUTES in @/lib/consts once that file
-// is touched again.
+const DAILY_TARGET_MINUTES = 8 * 60;
+const WEEKLY_TARGET_MINUTES = DAILY_TARGET_MINUTES * 5;
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
 
@@ -77,19 +70,12 @@ export const WeekTimesheet = () => {
     0,
   );
 
-  // The grid is at least as tall as the 8h baseline; a day logging more than
-  // that stretches the whole row so every column stays proportionally
-  // comparable, and the wrapper below scrolls to reveal it.
   const maxDailyMinutes = Math.max(
     DAILY_TARGET_MINUTES,
     ...Object.values(dailyTotals),
   );
-  const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE;
-  const targetLineOffset = DAILY_TARGET_MINUTES * PX_PER_MINUTE;
+  const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + 100;
 
-  // Keep the 8h baseline in view by default — entries stack up from the
-  // bottom, so anchoring scroll to the bottom shows the "normal" range and
-  // lets the person scroll up to see overtime.
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [gridHeightPx, weekStart]);
@@ -117,8 +103,8 @@ export const WeekTimesheet = () => {
   const closeModal = () => setModalState(null);
 
   return (
-    <Container className="h-[calc(100vh-120px)] max-w-1000 p-0 flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
+    <Container className="p-0 sm:pr-0 lg:pr-0 flex flex-col">
+      <div className="flex items-center justify-between border-b border-zinc-200 py-3 pr-3">
         <WeekNav weekStart={weekStart} onWeekChange={setWeekStart} />
 
         <div className="flex items-center gap-2 text-sm">
@@ -135,58 +121,18 @@ export const WeekTimesheet = () => {
       </div>
 
       <div className="grid grid-cols-7 border-b border-zinc-200">
-        {weekDates.map((date) => {
-          const iso = toISODate(date);
-          const today = isToday(date);
-          const weekend = date.getDay() === 0 || date.getDay() === 6;
-          const dayTotal = dailyTotals[iso] ?? 0;
-          const isOverTarget = dayTotal > DAILY_TARGET_MINUTES;
-
-          return (
-            <div
-              key={iso}
-              className={`
-                py-2 text-center border-r border-zinc-100 last:border-r-0
-                ${weekend ? "bg-zinc-50" : ""}
-              `}
-            >
-              <p className="text-[10px] uppercase tracking-wider text-zinc-400">
-                {formatWeekdayLabel(date)}
-              </p>
-
-              <p
-                className={`
-                  text-sm font-semibold mt-0.5
-                  ${today ? "text-blue-600" : "text-zinc-700"}
-                `}
-              >
-                {date.getDate()}
-              </p>
-
-              <p
-                className={`
-                  text-[10px] mt-0.5 font-medium
-                  ${isOverTarget ? "text-amber-600" : "text-zinc-400"}
-                `}
-              >
-                {dayTotal > 0 ? formatDuration(dayTotal) : "—"}
-              </p>
-            </div>
-          );
-        })}
+        {weekDates.map((date) => (
+          <WeekHeaderDay
+            key={toISODate(date)}
+            date={date}
+            totalMinutes={dailyTotals[toISODate(date)] ?? 0}
+            targetMinutes={DAILY_TARGET_MINUTES}
+          />
+        ))}
       </div>
 
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1">
         <div className="relative" style={{ height: gridHeightPx }}>
-          <div
-            className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-zinc-300"
-            style={{ bottom: targetLineOffset }}
-          >
-            <span className="absolute -top-2.5 right-2 rounded bg-white px-1.5 text-[10px] font-medium text-zinc-400">
-              8h target
-            </span>
-          </div>
-
           <div className="grid grid-cols-7 h-full">
             {weekDates.map((date) => {
               const iso = toISODate(date);
@@ -198,6 +144,7 @@ export const WeekTimesheet = () => {
                   timelogs={timelogsByDate[iso] ?? []}
                   totalMinutes={dailyTotals[iso] ?? 0}
                   pixelsPerMinute={PX_PER_MINUTE}
+                  plannedMinutes={DAILY_TARGET_MINUTES}
                   onAddClick={openCreate}
                   onEntryClick={openEdit}
                 />

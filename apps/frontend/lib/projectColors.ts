@@ -1,31 +1,27 @@
-/**
- * Projects don't have a `color` field in the backend, so we derive a stable
- * color client-side from the project id. Same project -> same color, always,
- * without needing to persist anything.
- */
-const PALETTE = [
-  { bg: "#3B82F6", soft: "#EFF6FF" }, // blue
-  { bg: "#10B981", soft: "#ECFDF5" }, // emerald
-  { bg: "#F59E0B", soft: "#FFFBEB" }, // amber
-  { bg: "#EF4444", soft: "#FEF2F2" }, // red
-  { bg: "#8B5CF6", soft: "#F5F3FF" }, // violet
-  { bg: "#EC4899", soft: "#FDF2F8" }, // pink
-  { bg: "#14B8A6", soft: "#F0FDFA" }, // teal
-  { bg: "#F97316", soft: "#FFF7ED" }, // orange
-  { bg: "#6366F1", soft: "#EEF2FF" }, // indigo
-  { bg: "#84CC16", soft: "#F7FEE7" }, // lime
-];
+const PROJECT_COLORS = [
+  "rgba(59, 130, 246, 0.3)",
+  "rgba(16, 185, 129, 0.3)",
+  "rgba(139, 92, 246, 0.3)",
+  "rgba(245, 158, 11, 0.3)",
+  "rgba(239, 68, 68, 0.3)",
+  "rgba(6, 182, 212, 0.3)",
+  "rgba(99, 102, 241, 0.3)",
+  "rgba(20, 184, 166, 0.3)",
+  "rgba(236, 72, 153, 0.3)",
+  "rgba(132, 204, 22, 0.3)",
+] as const;
 
 function hashString(value: string): number {
   let hash = 0;
+
   for (let i = 0; i < value.length; i++) {
     hash = (hash << 5) - hash + value.charCodeAt(i);
-    hash |= 0; // force 32-bit int
+    hash |= 0;
   }
+
   return Math.abs(hash);
 }
 
-export function getProjectColor(projectId: string): { bg: string; soft: string } {
-  const index = hashString(projectId) % PALETTE.length;
-  return PALETTE[index];
+export function getProjectColor(projectId: string): string {
+  return PROJECT_COLORS[hashString(projectId) % PROJECT_COLORS.length];
 }

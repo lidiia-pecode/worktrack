@@ -7,15 +7,13 @@ import {
 } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { queryKeys } from "./shared/queryKeys";
 
 export const useUsers = () => {
   const queryClient = useQueryClient();
 
-  // ─────────────────────────────────────────────
-  // 📦 USERS (INFINITE QUERY)
-  // ─────────────────────────────────────────────
   const usersQuery = useInfiniteQuery({
-    queryKey: ["users"],
+    queryKey: queryKeys.users.infinite(),
 
     queryFn: ({ pageParam = 1 }) => UsersClientApi.getAllPaginated(pageParam),
 
@@ -32,13 +30,10 @@ export const useUsers = () => {
     [usersQuery.data],
   );
 
-  // ─────────────────────────────────────────────
-  // ⚡ MUTATIONS
-  // ─────────────────────────────────────────────
   const createUser = useMutation({
     mutationFn: UsersClientApi.create,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       toast.success("User created successfully");
     },
   });
@@ -48,7 +43,7 @@ export const useUsers = () => {
       UsersClientApi.update(id, data),
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       toast.success("User updated successfully");
     },
   });
@@ -56,14 +51,11 @@ export const useUsers = () => {
   const deleteUser = useMutation({
     mutationFn: UsersClientApi.delete,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
       toast.success("User deleted successfully");
     },
   });
 
-  // ─────────────────────────────────────────────
-  // 🧠 CLEAN PUBLIC API (ОЦЕ ГОЛОВНЕ)
-  // ─────────────────────────────────────────────
   return {
     users,
 
@@ -81,7 +73,6 @@ export const useUsers = () => {
       deleteUser,
     },
 
-    // (optional debug escape hatch)
     query: usersQuery,
   };
 };

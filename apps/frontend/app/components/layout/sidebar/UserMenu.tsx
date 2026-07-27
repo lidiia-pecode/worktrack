@@ -14,7 +14,7 @@ import { useMe } from "@/hooks/useMe";
 import { initials } from "../../helpers";
 import { ROLE_LABELS } from "@/lib/consts";
 
-export function UserMenu() {
+export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
   const { data: user } = useMe();
   const { logout, isPending } = useLogout();
 
@@ -25,14 +25,18 @@ export function UserMenu() {
       <DropdownMenuTrigger
         render={
           <button className="flex w-full items-center gap-3 rounded-xl p-2 transition-colors hover:bg-gray-100">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-900 text-sm font-semibold text-white">
+            <div
+              className={`flex ${isDesktop ? "h-7 w-7" : "h-10 w-10"} items-center justify-center rounded-full bg-gray-900 text-sm font-semibold text-white`}
+            >
               {userInitials}
             </div>
 
             <div className="flex-1 text-left">
-              <p className="text-sm font-medium text-gray-900">
-                {user?.username}
-              </p>
+              {!isDesktop && (
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.username}
+                </p>
+              )}
 
               <p className="text-xs text-gray-500">
                 {user ? ROLE_LABELS[user.role] : ""}

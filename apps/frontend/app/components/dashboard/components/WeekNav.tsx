@@ -8,7 +8,7 @@ import {
   getWeekStart,
   isSameDay,
 } from "@/lib/week";
-import Button from "../shared/Button";
+import Button from "../../shared/Button";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 
 type Props = {

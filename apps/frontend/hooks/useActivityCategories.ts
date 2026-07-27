@@ -10,7 +10,7 @@ import { queryKeys } from "./shared/queryKeys";
 import { ActivityCategoriesClientApi } from "@/app/api/activity-categories/activity-categories-client";
 import { createEntityMutations } from "./shared/createEntityMutations";
 
-export const useActCategoriesQuery = createEntityQuery<ActivityCategory>({
+export const useActivityCategoriesQuery = createEntityQuery<ActivityCategory>({
   queryKey: queryKeys.activityCategories,
   api: {
     getAll: ActivityCategoriesClientApi.getAll,
@@ -42,7 +42,7 @@ export const useActivityCategoriesMutations = createEntityMutations<
 });
 
 export function useActivityCategories(page = 1) {
-  const query = useActCategoriesQuery(page);
+  const query = useActivityCategoriesQuery(page);
   const actions = useActivityCategoriesMutations();
 
   return {

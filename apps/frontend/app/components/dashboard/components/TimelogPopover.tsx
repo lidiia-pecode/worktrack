@@ -59,9 +59,9 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
       <div className="mb-2 flex items-center gap-2">
         <span
           className="size-2.5 shrink-0 rounded-full"
-          style={{ backgroundColor: color.bg }}
+          style={{ backgroundColor: color }}
         />
-        <p className="truncate text-sm font-semibold text-zinc-900">
+        <p className={`truncate text-sm font-semibold text-zinc-900`}>
           {timelog.projectActivity.project.name}
         </p>
       </div>
