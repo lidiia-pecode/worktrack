@@ -80,7 +80,7 @@ export class ProjectsService {
     return this.getByIdRaw(projectId);
   }
 
-  private assertProjectIsActive(project: Project) {
+  assertProjectIsActive(project: Project) {
     if (project.status !== Status.ACTIVE) {
       throw new BadRequestException('Project is archived');
     }

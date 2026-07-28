@@ -1,13 +1,13 @@
 "use client";
 
+import { useUsers } from "@/hooks/useUsers";
 import UserCard from "./UsersCard";
-import { User } from "../../../types";
+import Container from "../layout/Container";
 
-interface UserListProps {
-  users: User[];
-}
+export default function UsersList() {
+  const { users } = useUsers();
+  console.log(users);
 
-export default function UsersList({ users }: UserListProps) {
   if (!users.length) {
     return (
       <div className="flex flex-col items-center justify-center p-16 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100 text-center">
@@ -21,10 +21,10 @@ export default function UsersList({ users }: UserListProps) {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+    <Container className="flex flex-col grow">
       {users.map((user) => (
         <UserCard key={user.id} user={user} />
       ))}
-    </div>
+    </Container>
   );
 }

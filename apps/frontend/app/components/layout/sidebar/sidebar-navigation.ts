@@ -3,6 +3,7 @@ import {
   FolderKanban,
   FolderTree,
   LayoutDashboard,
+  Users,
 } from "lucide-react";
 
 export const managerNavigation = [
@@ -20,6 +21,12 @@ export const managerNavigation = [
     label: "Categories",
     href: "/admin/categories",
     icon: FolderTree,
+  },
+
+  {
+    label: "Users",
+    href: "/admin/users",
+    icon: Users,
   },
 ];
 

@@ -9,6 +9,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ActivitiesModule } from './activities/activities.module';
 import { ActCategoriesModule } from './activity-categories/activity-categories.module';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
+import { PlanningModule } from './planning/planning.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
     AuthModule,
     ActivitiesModule,
     ActCategoriesModule,
+    PlanningModule,
   ],
 
   providers: [
