@@ -13,6 +13,7 @@ import {
 import { UsersService } from './users.service';
 import { UserResponse } from './dtos/UserResponse.dto';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
+import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
@@ -32,6 +33,15 @@ export class UsersController {
   @Get('/me')
   getCurrentUser(@CurrentUser() user: User) {
     return user;
+  }
+
+  @Serialize(UserResponse)
+  @Patch('/me/profile')
+  async updateMyProfile(
+    @CurrentUser() user: User,
+    @Body() body: UpdateProfilePayload,
+  ): Promise<User> {
+    return this.usersService.updateProfile(user.id, body);
   }
 
   @UseGuards(RolesGuard)

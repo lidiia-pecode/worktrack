@@ -4,21 +4,21 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
-import { useMe } from "@/hooks/useMe";
 import { UserMenu } from "./UserMenu";
 import { CloseButton } from "../../shared/Button";
 import { Logo } from "../../shared/Logo";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { UserRole } from "@/types/enums";
 import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
+import { User } from "@/types";
 
-export function Sidebar() {
-  const { data: me } = useMe();
+interface SidebarProps {
+  me: User;
+}
 
+export function Sidebar({ me }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-
-  if (!me) return null;
 
   const isAdmin = me.role !== UserRole.USER;
   const navlist = isAdmin ? managerNavigation : employeeNavigation;

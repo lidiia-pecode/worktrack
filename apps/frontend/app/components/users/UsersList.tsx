@@ -1,12 +1,20 @@
 "use client";
 
 import { useUsers } from "@/hooks/useUsers";
-import UserCard from "./UsersCard";
+
 import Container from "../layout/Container";
+import { UserCard } from "./UserCard";
+import { useMe } from "@/hooks/useMe";
+import { UserRole } from "@/types/enums";
 
 export default function UsersList() {
   const { users } = useUsers();
-  console.log(users);
+
+  const me = useMe();
+  const currentUserRole = me.data?.role;
+  const isAdmin =
+    currentUserRole === UserRole.ADMIN ||
+    currentUserRole === UserRole.SUPER_ADMIN;
 
   if (!users.length) {
     return (
@@ -23,7 +31,7 @@ export default function UsersList() {
   return (
     <Container className="flex flex-col grow">
       {users.map((user) => (
-        <UserCard key={user.id} user={user} />
+        <UserCard key={user.id} user={user} isAdmin={isAdmin} />
       ))}
     </Container>
   );

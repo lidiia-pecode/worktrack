@@ -6,6 +6,7 @@ import "./globals.css";
 
 import Providers from "./providers";
 import { Sidebar } from "./components/layout/sidebar";
+import { meServerSoft } from "./api/auth/auth.server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +28,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const me = await meServerSoft();
+
   return (
     <html
       lang="en"
@@ -35,7 +38,7 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <Providers>
           <div className="flex h-full flex-col md:flex-row">
-            <Sidebar />
+            {me && <Sidebar me={me} />}
 
             <main className="flex-1 h-full overflow-y-auto bg-gray-50">
               {children}

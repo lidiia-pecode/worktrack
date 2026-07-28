@@ -8,6 +8,7 @@ import {
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { queryKeys } from "./shared/queryKeys";
+import { UserRole } from "@/types/enums";
 
 export const useUsers = () => {
   const queryClient = useQueryClient();
@@ -26,7 +27,10 @@ export const useUsers = () => {
   });
 
   const users = useMemo(
-    () => usersQuery.data?.pages.flatMap((p) => p.results) ?? [],
+    () =>
+      usersQuery.data?.pages
+        .flatMap((p) => p.results)
+        .filter((u) => u.role === UserRole.USER) ?? [],
     [usersQuery.data],
   );
 

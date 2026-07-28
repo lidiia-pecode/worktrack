@@ -1,22 +1,23 @@
-import { cookies } from 'next/headers';
-import { BACKEND_URL } from '../api-consts';
-import { redirect } from 'next/navigation';
+import { cookies } from "next/headers";
+import { BACKEND_URL } from "../api-consts";
+import { redirect } from "next/navigation";
+import { User } from "@/types";
 
 async function fetchMe(cookieHeader: string) {
   return fetch(`${BACKEND_URL}/users/me`, {
-    cache: 'no-store',
+    cache: "no-store",
     headers: { Cookie: cookieHeader },
   });
 }
 
-export async function meServer(currentPath = '/projects') {
+export async function meServer(currentPath = "/projects") {
   const cookieStore = await cookies();
 
   const getCookieHeader = () =>
     cookieStore
       .getAll()
-      .map(c => `${c.name}=${c.value}`)
-      .join('; ');
+      .map((c) => `${c.name}=${c.value}`)
+      .join("; ");
 
   const res = await fetchMe(getCookieHeader());
 
@@ -33,14 +34,15 @@ export async function meServerSoft() {
   const cookieStore = await cookies();
   const cookieHeader = cookieStore
     .getAll()
-    .map(c => `${c.name}=${c.value}`)
-    .join('; ');
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
 
   const res = await fetch(`${BACKEND_URL}/users/me`, {
-    cache: 'no-store',
+    cache: "no-store",
     headers: { Cookie: cookieHeader },
   });
 
   if (!res.ok) return null;
-  return res.json();
+
+  return (await res.json()) as User;
 }

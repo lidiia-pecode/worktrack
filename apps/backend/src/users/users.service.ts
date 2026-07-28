@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
-
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { CreateAdminPayloadDto } from './dtos/CreateAdminPayload.dto';
+import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { UserRole } from './enums/UserRole.enum';
@@ -25,29 +25,26 @@ export class UsersService {
   }
 
   private async validateUser(
-    payload: CreateUserPayload | UpdateUserPayload,
+    payload: { username?: string; email?: string },
     id?: string,
   ): Promise<void> {
     if (payload.username) {
       const duplicateName = await this.repo.exists({
         where: { username: payload.username, ...(id ? { id: Not(id) } : {}) },
       });
-
       if (duplicateName) {
         throw new ConflictException(
           `User with username ${payload.username} already exists`,
         );
       }
     }
-
-    if ('email' in payload && payload.email) {
+    if (payload.email) {
       const duplicateEmail = await this.repo.exists({
         where: {
           email: payload.email,
           ...(id ? { id: Not(id) } : {}),
         },
       });
-
       if (duplicateEmail) {
         throw new ConflictException(
           `User with email ${payload.email} already exists`,
@@ -61,7 +58,6 @@ export class UsersService {
       skip: pagination.offset,
       take: pagination.limit,
     });
-
     return { results, count };
   }
 
@@ -71,7 +67,6 @@ export class UsersService {
 
   async getUserById(id: string): Promise<User> {
     const user = await this.findUserById(id);
-
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
@@ -80,58 +75,67 @@ export class UsersService {
 
   async findUsersByIds(ids: string[]): Promise<User[]> {
     const users = await this.repo.findBy({ id: In(ids) });
-
     if (users.length !== ids.length) {
       throw new NotFoundException('One or more users not found');
     }
-
     return users;
   }
 
   async createUser(payload: CreateUserPayload): Promise<User> {
     await this.validateUser(payload);
     const password = await hashPassword(payload.password);
-
     const newUser = this.repo.create({
       ...payload,
       role: UserRole.USER,
       password,
     });
-
     return this.repo.save(newUser);
   }
 
   async createAdmin(dto: CreateAdminPayloadDto): Promise<User> {
     await this.validateUser(dto);
-
     const password = await hashPassword(dto.password);
-
     const newUser = this.repo.create({
       ...dto,
       role: UserRole.ADMIN,
       password,
     });
-
     return this.repo.save(newUser);
   }
 
+  // Admin update: role and position ONLY
   async updateUser(id: string, payload: UpdateUserPayload): Promise<User> {
-    await this.validateUser(payload, id);
-
     const user = await this.getUserById(id);
 
-    const updatedPayload = { ...payload };
-
-    if (updatedPayload.password) {
-      updatedPayload.password = await hashPassword(updatedPayload.password);
+    if (payload.role !== undefined) {
+      user.role = payload.role;
+    }
+    if (payload.position !== undefined) {
+      user.position = payload.position;
     }
 
-    return this.repo.save({ ...user, ...updatedPayload });
+    return this.repo.save(user);
+  }
+
+  // Self update: avatar and password ONLY
+  async updateProfile(
+    id: string,
+    payload: UpdateProfilePayload,
+  ): Promise<User> {
+    const user = await this.getUserById(id);
+
+    if (payload.avatarUrl !== undefined) {
+      user.avatarUrl = payload.avatarUrl;
+    }
+    if (payload.password) {
+      user.password = await hashPassword(payload.password);
+    }
+
+    return this.repo.save(user);
   }
 
   async deleteUser(id: string): Promise<void> {
     const result = await this.repo.delete(id);
-
     if (result.affected === 0) {
       throw new NotFoundException(`Unable deleting user with id ${id}`);
     }

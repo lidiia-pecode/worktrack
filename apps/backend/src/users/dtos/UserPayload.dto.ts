@@ -1,12 +1,14 @@
-import { OmitType, PartialType } from '@nestjs/swagger';
 import {
   IsEmail,
+  IsEnum,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { UserRole } from '../enums/UserRole.enum';
 
 export class CreateUserPayload {
   @IsNotEmpty()
@@ -42,6 +44,13 @@ export class CreateUserPayload {
   password!: string;
 }
 
-export class UpdateUserPayload extends PartialType(
-  OmitType(CreateUserPayload, ['email'] as const),
-) {}
+export class UpdateUserPayload {
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  position?: string;
+}

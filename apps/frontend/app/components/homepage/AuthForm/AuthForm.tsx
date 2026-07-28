@@ -35,8 +35,8 @@ export const AuthForm = () => {
   const onLoginSubmit = async (data: LoginFormInputs) => {
     try {
       await AuthClient.login(data);
-      router.refresh();
       router.push("/");
+      router.refresh();
     } catch (err) {
       console.error(err);
     }
@@ -51,8 +51,8 @@ export const AuthForm = () => {
   const onSignUpSubmit = async (data: SignUpFormInputs) => {
     try {
       await AuthClient.signup(data);
-      router.refresh();
       router.push("/");
+      router.refresh();
     } catch (err) {
       console.error(err);
     }

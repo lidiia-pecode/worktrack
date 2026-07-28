@@ -22,6 +22,12 @@ export class User {
   })
   role!: UserRole;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  position?: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  avatarUrl?: string;
+
   @Column({ type: 'varchar', length: 255, nullable: false })
   firstName!: string;
 

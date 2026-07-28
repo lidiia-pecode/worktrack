@@ -9,6 +9,12 @@ export class UserResponse {
   role!: UserRole;
 
   @Expose()
+  position?: string;
+
+  @Expose()
+  avatarUrl?: string;
+
+  @Expose()
   firstName!: string;
 
   @Expose()

@@ -17,6 +17,7 @@ export async function seedUsers(dataSource: DataSource) {
         email: 'john@example.com',
         password,
         role: UserRole.USER,
+        position: 'Frontend Developer',
       },
       {
         firstName: 'Alice',
@@ -25,6 +26,7 @@ export async function seedUsers(dataSource: DataSource) {
         email: 'alice@example.com',
         password,
         role: UserRole.USER,
+        position: 'Backend Developer',
       },
       {
         firstName: 'Bob',
@@ -41,6 +43,7 @@ export async function seedUsers(dataSource: DataSource) {
         email: 'emma@example.com',
         password,
         role: UserRole.USER,
+        position: 'UI/UX Designer',
       },
       {
         firstName: 'Michael',

@@ -1,17 +1,25 @@
-import { PaginatedResponse } from ".";
+import { PaginatedResponse, Project } from ".";
 import { UserRole } from "./enums";
 
 export interface User {
   id: string;
-  role: UserRole;
   firstName: string;
   lastName: string;
-  email: string;
   username: string;
+  email: string;
+  role: UserRole;
+  position?: string;
+  avatarUrl?: string;
+
+  projects: Project[];
+
   updatedAt: string;
   createdAt: string;
 }
 
 export type UserPayload = Omit<User, "id" | "updatedAt" | "createdAt">;
-export type UpdateUserPayload = Partial<UserPayload>;
+export type UpdateUserPayload = {
+  role?: UserRole;
+  position?: string;
+};
 export type UserListResponse = PaginatedResponse<User>;
