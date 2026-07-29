@@ -4,7 +4,7 @@ import { Users } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { Project } from "@/types";
-import { isAdminRole } from "../helpers";
+import { isAdminRole } from "../../../lib/utils/user";
 
 import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";

@@ -24,7 +24,7 @@ export class UserResponse {
   email!: string;
 
   @Expose()
-  username!: string;
+  username?: string;
 
   @Expose()
   updatedAt!: Date;

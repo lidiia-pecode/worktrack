@@ -1,8 +1,7 @@
 "use client";
 
-import { ProjectsClientApi } from "@/app/api/projects/projects.client";
 import { Project, ProjectPayload, UpdateProjectPayload } from "@/types";
-
+import { ProjectsClientApi } from "@/lib/api/resources";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { queryKeys } from "./shared/queryKeys";

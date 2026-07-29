@@ -15,7 +15,7 @@ import { AccessGuard } from 'src/auth/guards';
 import { ActCategoriesService } from './activity-categories.service';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
+import { CurrentUser } from 'src/lib/decorators';
 import { User } from 'src/users/entities/user.entity';
 import { ActivityCategoryResponse } from './dtos/ActivitiesCategoryResponse.dto';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';

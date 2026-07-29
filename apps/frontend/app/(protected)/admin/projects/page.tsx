@@ -1,10 +1,11 @@
-import { meServer } from "@/app/api/auth/auth.server";
-import { ProjectList } from "@/app/components/project/ProjectList";
 import { redirect } from "next/navigation";
 
-export default async function ProjectsPage() {
-  const loggegIn = await meServer("/projects");
-  if (!loggegIn) {
+import { getCurrentUser } from "@/lib/api/server/auth";
+import { ProjectList } from "@/app/components/project/ProjectList";
+
+export default async function ProjectsAdminPage() {
+  const user = await getCurrentUser("/admin/projects/");
+  if (!user) {
     redirect("/");
   }
 

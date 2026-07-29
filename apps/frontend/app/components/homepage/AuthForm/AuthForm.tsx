@@ -4,18 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 
 import {
   LoginFormInputs,
   loginSchema,
   SignUpFormInputs,
   signupSchema,
-} from "./schemas/auth-form.schemas";
+} from "@/lib/forms/schemas/auth.schema";
+import { AuthClient } from "@/lib/api/resources";
+import { applyServerErrors } from "@/lib/forms/utils";
+import { isApiValidationError } from "@/lib/api/errors";
+
 import Input from "../../shared/Input";
 import Button from "../../shared/Button";
-
 import { PasswordInput } from "./components/PasswordInput";
-import { AuthClient } from "@/app/api/auth/auth.client";
 
 export const AuthForm = () => {
   const [isExisting, setIsExisting] = useState(true);
@@ -29,32 +32,53 @@ export const AuthForm = () => {
   const {
     register: loginRegister,
     handleSubmit: handleLoginSubmit,
+    setError: setLoginError,
     formState: { errors: loginErrors, isSubmitting: isLoggingIn },
   } = useForm<LoginFormInputs>({ resolver: zodResolver(loginSchema) });
 
+  console.log("loginErrors", loginErrors);
   const onLoginSubmit = async (data: LoginFormInputs) => {
     try {
       await AuthClient.login(data);
       router.push("/");
       router.refresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      if (!isApiValidationError(err)) return;
+
+      applyServerErrors(err, setLoginError);
+      toast.error(
+        Object.values(err.errors ?? {})
+          .flat()
+          .join("\n"),
+      );
     }
   };
 
   const {
     register: signupRegister,
     handleSubmit: handleSignUpSubmit,
+    setError: setSignupError,
     formState: { errors: signupErrors, isSubmitting: isSigningUp },
-  } = useForm<SignUpFormInputs>({ resolver: zodResolver(signupSchema) });
+  } = useForm<SignUpFormInputs>({
+    resolver: zodResolver(signupSchema),
+  });
+
+  console.log(signupErrors);
 
   const onSignUpSubmit = async (data: SignUpFormInputs) => {
     try {
       await AuthClient.signup(data);
       router.push("/");
       router.refresh();
-    } catch (err) {
-      console.error(err);
+    } catch (err: unknown) {
+      if (!isApiValidationError(err)) return;
+
+      applyServerErrors(err, setSignupError);
+      toast.error(
+        Object.values(err.errors ?? {})
+          .flat()
+          .join("\n"),
+      );
     }
   };
 

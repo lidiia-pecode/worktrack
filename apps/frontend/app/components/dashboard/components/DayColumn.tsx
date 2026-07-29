@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Timelog } from "@/types";
-import { formatDuration } from "@/lib/date";
+import { formatDuration } from "@/lib/utils/date";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
 import { TimelogSegment } from "./TimelogSegment";

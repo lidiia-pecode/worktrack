@@ -1,7 +1,7 @@
-import { formatDuration } from "@/lib/date";
+import { formatDuration } from "@/lib/utils/date";
 import { Segment } from "../types";
 import { Timelog } from "@/types";
-import { getProjectColor } from "@/lib/projectColors";
+import { getProjectColor } from "@/lib/utils/project-colors";
 import { OVERTIME_SEGMENT_PATTERN } from "../consts";
 
 type TimelogSegmentProps = {

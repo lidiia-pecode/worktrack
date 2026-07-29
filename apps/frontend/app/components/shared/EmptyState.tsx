@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { Inbox } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 type EmptyStateProps = {
   title: string;

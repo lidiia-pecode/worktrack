@@ -5,9 +5,9 @@ import {
   ActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types";
-import { createEntityQuery } from "./shared/createEntityQuery";
+import { ActivityCategoriesClientApi } from "@/lib/api/resources";
 import { queryKeys } from "./shared/queryKeys";
-import { ActivityCategoriesClientApi } from "@/app/api/activity-categories/activity-categories-client";
+import { createEntityQuery } from "./shared/createEntityQuery";
 import { createEntityMutations } from "./shared/createEntityMutations";
 
 export const useActivityCategoriesQuery = createEntityQuery<ActivityCategory>({

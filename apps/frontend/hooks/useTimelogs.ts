@@ -2,13 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { TimelogsClientApi } from "@/app/api/time-logs/time-logs.client";
 import {
   GetTimelogsQuery,
   TimelogPayload,
   UpdateTimelogPayload,
 } from "@/types";
-import { getErrorMessage } from "@/utils/apiError";
+import { TimelogsClientApi } from "@/lib/api/resources";
+import { getErrorMessage } from "@/lib/api";
 import { queryKeys } from "./shared/queryKeys";
 
 type DateRange = { dateFrom: string; dateTo: string };

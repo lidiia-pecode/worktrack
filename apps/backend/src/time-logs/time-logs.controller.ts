@@ -19,7 +19,7 @@ import {
 } from './dtos/TimelogPayload.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
+import { CurrentUser } from 'src/lib/decorators';
 import { User } from 'src/users/entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';

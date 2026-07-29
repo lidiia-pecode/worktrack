@@ -8,7 +8,7 @@ import {
   getWeekStart,
   isSameDay,
   isToday,
-} from "@/lib/week";
+} from "@/lib/utils/date";
 
 type Props = {
   weekStart: Date;

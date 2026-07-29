@@ -1,7 +1,11 @@
 import * as dotenv from 'dotenv';
 dotenv.config();
 
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  ClassSerializerInterceptor,
+  ValidationPipe,
+} from '@nestjs/common';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
@@ -14,6 +18,20 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
+      exceptionFactory: (errors) => {
+        const formattedErrors: Record<string, string[]> = {};
+
+        for (const error of errors) {
+          if (error.constraints) {
+            formattedErrors[error.property] = Object.values(error.constraints);
+          }
+        }
+
+        return new BadRequestException({
+          statusCode: 400,
+          errors: formattedErrors,
+        });
+      },
     }),
   );
 

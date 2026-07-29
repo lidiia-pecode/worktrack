@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { formatDuration } from "@/lib/date";
+import { formatDuration } from "@/lib/utils/date";
 import { OVERTIME_PATTERN } from "../consts";
 
 type Props = {

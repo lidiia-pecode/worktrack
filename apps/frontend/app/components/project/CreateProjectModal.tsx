@@ -11,11 +11,11 @@ import Button, { CloseButton } from "../shared/Button";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { Modal } from "../shared/Modal/Modal";
 import { useActivities } from "@/hooks/useActivities";
-import { fullName, initials } from "../helpers";
+import { fullName, initials } from "../../../lib/utils/user";
 import { AssignmentSection } from "../shared/AsigmentSection";
 import { MemberChip } from "../shared/MemberChip";
 import { ActivityChip } from "../shared/ActivityChip";
-import { toggleSelection } from "@/utils/toggleSelection";
+import { toggleSelection } from "@/lib/utils/toggle-selection";
 import { SelectionDrawer } from "../shared/Selectiondrawer";
 
 export function CreateProjectModal() {

@@ -1,10 +1,11 @@
-import { meServer } from "@/app/api/auth/auth.server";
-import { ActivityList } from "@/app/components/activities/ActivitiesList";
 import { redirect } from "next/navigation";
 
-export default async function ProjectsPage() {
-  const loggegIn = await meServer("/projects");
-  if (!loggegIn) {
+import { getCurrentUser } from "@/lib/api/server/auth";
+import { ActivityList } from "@/app/components/activities/ActivitiesList";
+
+export default async function ActivitiesAdminPage() {
+  const user = await getCurrentUser("/admin/activities");
+  if (!user) {
     redirect("/");
   }
 

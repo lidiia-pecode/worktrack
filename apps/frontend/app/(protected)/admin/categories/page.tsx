@@ -1,10 +1,11 @@
-import { meServer } from "@/app/api/auth/auth.server";
-import { ActCategoryList } from "@/app/components/categories/ActCategoryList";
 import { redirect } from "next/navigation";
 
-export default async function ProjectsPage() {
-  const loggegIn = await meServer("/projects");
-  if (!loggegIn) {
+import { getCurrentUser } from "@/lib/api/server/auth";
+import { ActCategoryList } from "@/app/components/categories/ActCategoryList";
+
+export default async function ActivityCategoriesAdminPage() {
+  const user = await getCurrentUser("/admin/categories");
+  if (!user) {
     redirect("/");
   }
 

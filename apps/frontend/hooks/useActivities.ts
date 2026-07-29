@@ -1,10 +1,10 @@
 "use client";
 
 import { Activity, ActivityPayload, UpdateActivityPayload } from "@/types";
+import { ActivitiesClientApi } from "@/lib/api/resources";
+import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { queryKeys } from "./shared/queryKeys";
-import { ActivitiesClientApi } from "@/app/api/activities/activities.client";
-import { createEntityMutations } from "./shared/createEntityMutations";
 
 const useActivitiesQuery = createEntityQuery<Activity>({
   queryKey: queryKeys.activities,

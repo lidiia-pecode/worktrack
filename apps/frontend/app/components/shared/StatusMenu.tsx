@@ -55,17 +55,20 @@ export const StatusMenu = ({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
-        <Button variant="outline" disabled={loading} className="rounded-full">
-          {loading ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <span className={`size-2 rounded-full ${current.dot}`} />
-          )}
+        render=
+        {
+          <Button variant="outline" disabled={loading} className="rounded-full">
+            {loading ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <span className={`size-2 rounded-full ${current.dot}`} />
+            )}
 
-          <span className={current.text}>{current.label}</span>
+            <span className={current.text}>{current.label}</span>
 
-          <ChevronDown className="size-3.5 text-muted-foreground" />
-        </Button>
+            <ChevronDown className="size-3.5 text-muted-foreground" />
+          </Button>
+        }
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56">

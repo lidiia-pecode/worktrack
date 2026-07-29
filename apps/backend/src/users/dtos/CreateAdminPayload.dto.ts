@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
+import { NormalizeString } from 'src/lib/decorators';
 
 export class CreateAdminPayloadDto {
   @IsNotEmpty()
@@ -9,15 +18,26 @@ export class CreateAdminPayloadDto {
   @IsString()
   lastName!: string;
 
-  @IsNotEmpty()
+  @NormalizeString()
+  @IsOptional()
   @IsString()
-  username!: string;
+  @MinLength(3)
+  @MaxLength(20)
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Username can contain only letters, numbers, and underscores',
+  })
+  username?: string;
 
-  @IsNotEmpty()
-  @IsString()
+  @NormalizeString()
+  @IsEmail()
+  @MaxLength(100)
   email!: string;
 
   @IsNotEmpty()
-  @IsString()
+  @MinLength(8)
+  @MaxLength(100)
+  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/, {
+    message: 'Password need to contain at least 1 Cap letter and 1 number',
+  })
   password!: string;
 }

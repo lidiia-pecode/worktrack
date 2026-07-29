@@ -2,12 +2,13 @@ import {
   IsEmail,
   // IsInt,
   IsNotEmpty,
+  IsOptional,
   IsString,
   Matches,
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { NormalizeString } from 'src/lib/decorators';
 
 export class SignUpPayload {
   @IsNotEmpty()
@@ -22,16 +23,17 @@ export class SignUpPayload {
   @MaxLength(20)
   lastName!: string;
 
-  @IsNotEmpty()
-  @Matches(/^[a-zA-Z0-9_]+$/)
+  @NormalizeString()
+  @IsOptional()
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Username can contain only letters, numbers, and underscores',
+  })
   @IsString()
   @MinLength(3)
   @MaxLength(20)
-  username!: string;
+  username?: string;
 
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : null,
-  )
+  @NormalizeString()
   @IsEmail()
   email!: string;
 
@@ -48,9 +50,7 @@ export class SignUpPayload {
 }
 
 export class SignInPayload {
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : null,
-  )
+  @NormalizeString()
   @IsEmail()
   email!: string;
 
@@ -64,9 +64,7 @@ export class SignInPayload {
 }
 
 export class VerificationCodeRequestPayload {
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : null,
-  )
+  @NormalizeString()
   @IsEmail()
   email!: string;
 }
@@ -78,9 +76,7 @@ export class GoogleUserPayload {
   @IsString()
   lastName!: string;
 
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toLowerCase() : null,
-  )
+  @NormalizeString()
   @IsEmail()
   email!: string;
 

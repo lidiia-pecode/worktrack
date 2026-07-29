@@ -65,19 +65,27 @@ This command will:
 - build Docker images;
 - start PostgreSQL;
 - start the backend;
-- start the frontend;
-- run database migrations;
-- seed the default administrator account.
+- start the frontend.
+
+For the first project setup (or after resetting the database), initialize the database:
+
+```bash
+make setup
+```
+
+This command runs all database migrations and seeds the default administrator account.
 
 ## Available Commands
 
 ```bash
-make up          # Start development containers
-make down        # Stop and remove containers
-make migrate     # Run database migrations
-make seed        # Seed the administrator account
-make init        # Run migrations and seed data
-make dev         # Full development setup
+make up         # Start development containers
+make down       # Stop containers
+make down-hard  # Stop containers and remove database volumes
+make migrate    # Run database migrations
+make seed       # Seed the administrator account
+make init       # Run migrations and seed data
+make setup      # First-time project setup (up + init)
+make dev        # Start development environment
 ```
 
 ## Environment Variables

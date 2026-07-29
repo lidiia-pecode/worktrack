@@ -10,8 +10,8 @@ import {
 import type { Response } from 'express';
 import { RefreshToken } from './decorators';
 import { User } from 'src/users/entities/user.entity';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
-import { SessionId } from 'src/lib/decorators/session-id.decorator';
+import { CurrentUser } from 'src/lib/decorators';
+import { SessionId } from 'src/lib/decorators';
 import { GoogleGuard, LocalAuthGuard, RefreshGuard } from './guards';
 import type { UUID } from 'crypto';
 import { ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE } from 'src/lib/consts';

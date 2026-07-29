@@ -7,7 +7,7 @@ import {
   formatWeekRangeLabel,
   getWeekStart,
   isSameDay,
-} from "@/lib/week";
+} from "@/lib/utils/date";
 import Button from "../../shared/Button";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 

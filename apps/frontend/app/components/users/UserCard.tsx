@@ -5,7 +5,7 @@ import { useState } from "react";
 import { User } from "@/types";
 import { EntityCard } from "../shared/EntityCard";
 
-import { initials } from "../helpers";
+import { initials } from "../../../lib/utils/user";
 import { UserEditDialog } from "./UserEditDialog";
 
 type Props = { user: User; isAdmin: boolean };

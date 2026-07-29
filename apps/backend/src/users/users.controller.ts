@@ -16,13 +16,13 @@ import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
+import { CurrentUser } from 'src/lib/decorators';
 import { User } from './entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { UserRole } from './enums/UserRole.enum';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { CreateAdminPayloadDto } from './dtos/CreateAdminPayload.dto';
-import { Role } from 'src/lib/decorators/user-role.decorator';
+import { Role } from 'src/lib/decorators';
 
 @Controller('users')
 @UseGuards(AccessGuard)

@@ -5,8 +5,8 @@ import { createPortal } from "react-dom";
 import { CalendarDays, Clock, StickyNote, Tag } from "lucide-react";
 
 import { Timelog } from "@/types";
-import { formatDuration } from "@/lib/date";
-import { getProjectColor } from "@/lib/projectColors";
+import { formatDuration } from "@/lib/utils/date";
+import { getProjectColor } from "@/lib/utils/project-colors";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   weekday: "short",

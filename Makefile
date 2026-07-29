@@ -1,7 +1,12 @@
 up:
 	docker-compose -f docker-compose.dev.yml up --build -d
 
+# Stop containers, keep database
 down:
+	docker-compose -f docker-compose.dev.yml down
+
+# Stop containers and remove volumes (reset database)
+down-hard:
 	docker-compose -f docker-compose.dev.yml down -v
 
 migrate:
@@ -12,5 +17,9 @@ seed:
 
 init: migrate seed
 
-dev: up init
+# First project setup / reset database
+setup: up init
+
+# Start project with existing data
+dev: up
 

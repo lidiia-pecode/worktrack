@@ -11,7 +11,7 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { FormSection } from "../shared/FormSection";
 import { FormSelect } from "../shared/FormSelect";
 import { UserRole } from "@/types/enums";
-import { ROLE_LABELS } from "@/lib/consts";
+import { ROLE_LABELS } from "@/lib/constants";
 
 const roleOptions = [
   {

@@ -9,6 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../enums/UserRole.enum';
+import { NormalizeString } from 'src/lib/decorators';
 
 export class CreateUserPayload {
   @IsNotEmpty()
@@ -23,13 +24,17 @@ export class CreateUserPayload {
   @MaxLength(20)
   lastName!: string;
 
-  @IsNotEmpty()
-  @Matches(/^[a-zA-Z0-9_]+$/)
+  @NormalizeString()
+  @IsOptional()
   @IsString()
   @MinLength(3)
   @MaxLength(20)
-  username!: string;
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Username can contain only letters, numbers, and underscores',
+  })
+  username?: string;
 
+  @NormalizeString()
   @IsNotEmpty()
   @IsEmail()
   @MaxLength(100)

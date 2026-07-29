@@ -7,7 +7,11 @@ import { UserRole } from "@/types/enums";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-import { fullName, getNonAdminMemberIds, initials } from "../helpers";
+import {
+  fullName,
+  getNonAdminMemberIds,
+  initials,
+} from "../../../lib/utils/user";
 
 import { Modal } from "../shared/Modal/Modal";
 import { ModalHeader } from "../shared/Modal/ModalHeader";
@@ -16,7 +20,7 @@ import { useActivities } from "@/hooks/useActivities";
 import { AssignmentSection } from "../shared/AsigmentSection";
 import { MemberChip } from "../shared/MemberChip";
 import { ActivityChip } from "../shared/ActivityChip";
-import { toggleSelection } from "@/utils/toggleSelection";
+import { toggleSelection } from "@/lib/utils/toggle-selection";
 import { SelectionDrawer } from "../shared/Selectiondrawer";
 import { ConfirmModal } from "../shared/ConfirmModal";
 

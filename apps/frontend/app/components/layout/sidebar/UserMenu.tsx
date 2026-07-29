@@ -11,8 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useLogout } from "@/hooks/useLogout";
 import { useMe } from "@/hooks/useMe";
-import { initials } from "../../helpers";
-import { ROLE_LABELS } from "@/lib/consts";
+import { initials } from "../../../../lib/utils/user";
+import { ROLE_LABELS } from "@/lib/constants";
 
 export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
   const { data: user } = useMe();

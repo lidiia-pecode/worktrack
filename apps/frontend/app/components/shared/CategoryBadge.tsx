@@ -1,7 +1,7 @@
 "use client";
 
 import { Tag } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 type CategoryBadgeProps = {
   name: string;

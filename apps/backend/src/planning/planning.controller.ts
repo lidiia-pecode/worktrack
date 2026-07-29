@@ -20,11 +20,11 @@ import {
 import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
+import { CurrentUser } from 'src/lib/decorators';
 import { User } from 'src/users/entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { Role } from 'src/lib/decorators/user-role.decorator';
+import { Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/UserRole.enum';
 
 @Controller('planning')

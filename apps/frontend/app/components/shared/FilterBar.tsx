@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { Status } from "@/types/enums";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 type StatusFilter = "all" | Status;
 

@@ -5,11 +5,22 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { NormalizeString } from 'src/lib/decorators';
 
 export class UpdateProfilePayload {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
+
+  @NormalizeString()
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(20)
+  @Matches(/^[a-zA-Z0-9_]+$/, {
+    message: 'Username can contain only letters, numbers, and underscores',
+  })
+  username?: string;
 
   @IsOptional()
   @MinLength(8)

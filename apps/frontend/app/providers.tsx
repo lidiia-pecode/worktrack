@@ -1,9 +1,10 @@
-'use client';
+"use client";
 
-import { getErrorMessage } from '@/utils/apiError';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-import { toast } from 'sonner';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { getErrorMessage } from "@/lib/api";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(
@@ -14,7 +15,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             retry: (failureCount, error) => {
               if (
                 error instanceof Error &&
-                error.message === 'SESSION_EXPIRED'
+                error.message === "SESSION_EXPIRED"
               ) {
                 return false;
               }
@@ -22,10 +23,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             },
           },
           mutations: {
-            onError: error => {
+            onError: (error) => {
               const message = getErrorMessage(error);
 
-              if (message === 'Session expired. Please log in again.') {
+              if (message === "Session expired. Please log in again.") {
                 toast.error(message);
                 return;
               }

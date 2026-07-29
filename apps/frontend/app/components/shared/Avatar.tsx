@@ -1,5 +1,5 @@
 import { User } from "@/types";
-import { fullName, initials } from "../helpers";
+import { fullName, initials } from "../../../lib/utils/user";
 
 type AvatarProps = { user: User; size?: "sm" | "md" };
 

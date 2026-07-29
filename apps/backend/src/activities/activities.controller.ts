@@ -13,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { CurrentUser } from 'src/lib/decorators/current-user.decorator';
+import { CurrentUser } from 'src/lib/decorators';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { User } from 'src/users/entities/user.entity';

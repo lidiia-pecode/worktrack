@@ -1,13 +1,13 @@
-import { meServerSoft } from "@/app/api/auth/auth.server";
+import { getCurrentUserOrNull } from "@/lib/api/server/auth";
 import { Overview } from "../components/homepage/Overview";
 import { AuthForm } from "../components/homepage/AuthForm";
 
 export default async function Home() {
-  const loggedIn = await meServerSoft();
+  const user = await getCurrentUserOrNull();
 
   return (
     <>
-      {loggedIn ? (
+      {user ? (
         <Overview />
       ) : (
         <div className="flex h-full grow max-w-360 mx-auto bg-blue-100">

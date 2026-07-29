@@ -1,10 +1,13 @@
 "use client";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { ProjectsClientApi } from "@/app/api/projects/projects.client";
-import { ProjectActivitiesClientApi } from "@/app/api/activities/project-activities.client";
-import { useMe } from "./useMe";
+
+import {
+  ProjectsClientApi,
+  ProjectActivitiesClientApi,
+} from "@/lib/api/resources";
 import { queryKeys } from "./shared/queryKeys";
+import { useMe } from "./useMe";
 
 export type PickerProjectActivity = {
   id: string;

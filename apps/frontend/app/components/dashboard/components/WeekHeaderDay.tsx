@@ -1,5 +1,5 @@
-import { formatDuration } from "@/lib/date";
-import { formatWeekdayLabel, isToday } from "@/lib/week";
+import { formatDuration } from "@/lib/utils/date";
+import { formatWeekdayLabel, isToday } from "@/lib/utils/date";
 
 type WeekHeaderDayProps = {
   date: Date;

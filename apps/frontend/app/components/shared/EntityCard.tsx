@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, KeyboardEvent } from "react";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils/cn";
 
 type RootProps = {
   children: ReactNode;

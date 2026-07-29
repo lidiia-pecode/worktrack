@@ -69,8 +69,8 @@ export class AuthService {
   }
 
   generateUniqueUsername(base: string): string {
-    const normalizedBase = base.toLowerCase().replace(/\s+/g, '');
-    return `${normalizedBase}-${randomUUID().slice(0, 8)}`;
+    const normalized = base.toLowerCase().replace(/\s+/g, '').slice(0, 11);
+    return `${normalized}_${randomUUID().slice(0, 8)}`;
   }
 
   async validateGoogleUser(details: GoogleUserPayload): Promise<User> {

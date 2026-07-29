@@ -122,11 +122,18 @@ export class UsersService {
     id: string,
     payload: UpdateProfilePayload,
   ): Promise<User> {
+    await this.validateUser(payload, id);
+
     const user = await this.getUserById(id);
 
     if (payload.avatarUrl !== undefined) {
       user.avatarUrl = payload.avatarUrl;
     }
+
+    if (payload.username !== undefined) {
+      user.username = payload.username;
+    }
+
     if (payload.password) {
       user.password = await hashPassword(payload.password);
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { AuthClient } from "@/app/api/auth/auth.client";
+import { AuthClient } from "@/lib/api/resources";
 
 export function useLogout() {
   const mutation = useMutation({

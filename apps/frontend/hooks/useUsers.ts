@@ -1,14 +1,15 @@
-import { UsersClientApi } from "@/app/api/users/users.client";
-import { UpdateUserPayload } from "@/types";
+import { useMemo } from "react";
+import { toast } from "sonner";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
-import { toast } from "sonner";
-import { queryKeys } from "./shared/queryKeys";
+
+import { UpdateUserPayload } from "@/types";
 import { UserRole } from "@/types/enums";
+import { UsersClientApi } from "@/lib/api/resources";
+import { queryKeys } from "./shared/queryKeys";
 
 export const useUsers = () => {
   const queryClient = useQueryClient();

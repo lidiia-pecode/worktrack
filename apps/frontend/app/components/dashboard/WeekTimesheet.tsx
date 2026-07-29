@@ -5,8 +5,12 @@ import { useMemo, useRef, useState } from "react";
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
 import { Timelog } from "@/types";
-import { formatDuration, toISODate } from "@/lib/date";
-import { getWeekDates, getWeekStart } from "@/lib/week";
+import {
+  formatDuration,
+  getWeekDates,
+  getWeekStart,
+  toISODate,
+} from "@/lib/utils/date";
 
 import Container from "../layout/Container";
 import { WeekNav } from "./components/WeekNav";
