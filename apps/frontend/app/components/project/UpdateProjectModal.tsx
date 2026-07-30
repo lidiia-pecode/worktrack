@@ -49,7 +49,7 @@ export const UpdateProjectModal = ({
     () => project.projectActivities?.map((a) => a.activity.id) || [],
   );
 
-  const { users, pagination } = useUsers();
+  const { items: users, pagination } = useUsers();
 
   const {
     actions: { update, archive, unarchive },

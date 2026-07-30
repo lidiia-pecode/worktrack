@@ -3,15 +3,25 @@
 import { useState } from "react";
 
 import { User } from "@/types";
+import { useUsers } from "@/hooks/useUsers";
 import { EntityCard } from "../shared/EntityCard";
-
-import { initials } from "../../../lib/utils/user";
-import { UserEditDialog } from "./UserEditDialog";
+import { ConfirmModal } from "../shared/ConfirmModal";
+import { initials } from "@/lib/utils/user";
+import { UpdateUserModal } from "./UpdateUserModal";
 
 type Props = { user: User; isAdmin: boolean };
 
 export const UserCard = ({ user, isAdmin }: Props) => {
   const [open, setOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const {
+    actions: { archive },
+  } = useUsers();
+
+  const handleConfirmDelete = async () => {
+    await archive.mutateAsync(user.id);
+    setShowDeleteConfirm(false);
+  };
 
   return (
     <>
@@ -44,15 +54,28 @@ export const UserCard = ({ user, isAdmin }: Props) => {
           <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 text-violet-700 ring-1 ring-violet-200 px-3 py-1 text-xs font-medium">
             {user.role}
           </span>
-          <EntityCard.Meta>@{user.username}</EntityCard.Meta>
+          <EntityCard.Meta>{user.username}</EntityCard.Meta>
         </EntityCard.Footer>
       </EntityCard>
 
       {open && (
-        <UserEditDialog
+        <UpdateUserModal
           user={user}
           isAdmin={isAdmin}
           onClose={() => setOpen(false)}
+        />
+      )}
+
+      {isAdmin && (
+        <ConfirmModal
+          isOpen={showDeleteConfirm}
+          onClose={() => setShowDeleteConfirm(false)}
+          onConfirm={handleConfirmDelete}
+          loading={archive.isPending}
+          title={`Delete "${user.firstName} ${user.lastName}"?`}
+          message="This user will be permanently removed. This action cannot be undone."
+          confirmText="Delete"
+          variant="danger"
         />
       )}
     </>

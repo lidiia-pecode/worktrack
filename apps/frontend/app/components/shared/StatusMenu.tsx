@@ -54,9 +54,8 @@ export const StatusMenu = ({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        render=
-        {
+      <DropdownMenuTrigger
+        render={
           <Button variant="outline" disabled={loading} className="rounded-full">
             {loading ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -69,7 +68,7 @@ export const StatusMenu = ({
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </Button>
         }
-      </DropdownMenuTrigger>
+      />
 
       <DropdownMenuContent align="end" className="w-56">
         <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">

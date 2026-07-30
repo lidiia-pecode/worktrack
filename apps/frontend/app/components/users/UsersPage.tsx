@@ -14,7 +14,7 @@ import { UserCard } from "./UserCard";
 import { Search, UsersRound } from "lucide-react";
 
 export const UsersPage = () => {
-  const { users, pagination, query, actions } = useUsers();
+  const { items: users, isLoading, isError, refetch, pagination } = useUsers();
   const me = useMe();
   const currentUserRole = me.data?.role;
   const isAdmin =
@@ -35,9 +35,7 @@ export const UsersPage = () => {
     });
   }, [users, search]);
 
-  const { isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    pagination;
-  const refetch = query.refetch;
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = pagination;
 
   if (isLoading) {
     return (
@@ -78,7 +76,7 @@ export const UsersPage = () => {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by name, email, or username\u2026"
+          placeholder="Search by name, email, or username"
           className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-zinc-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition placeholder:text-zinc-400"
         />
       </div>

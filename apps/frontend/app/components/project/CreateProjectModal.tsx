@@ -29,7 +29,7 @@ export function CreateProjectModal() {
   const {
     actions: { create },
   } = useProjects();
-  const { users, pagination } = useUsers();
+  const { items: users, pagination } = useUsers();
 
   const { items: activities } = useActivities();
 

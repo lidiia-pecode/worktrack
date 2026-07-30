@@ -1,19 +1,30 @@
-import { useMemo } from "react";
-import { toast } from "sonner";
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+"use client";
 
-import { UpdateUserPayload } from "@/types";
+import { useMemo } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+
 import { UserRole } from "@/types/enums";
 import { UsersClientApi } from "@/lib/api/resources";
 import { queryKeys } from "./shared/queryKeys";
+import { createEntityMutations } from "./shared/createEntityMutations";
+
+const useUsersMutations = createEntityMutations({
+  queryKey: queryKeys.users.all,
+
+  api: {
+    create: UsersClientApi.create,
+    update: UsersClientApi.update,
+    archive: UsersClientApi.archive,
+  },
+
+  messages: {
+    create: "User created successfully",
+    update: "User updated successfully",
+    archive: "User deleted successfully",
+  },
+});
 
 export const useUsers = () => {
-  const queryClient = useQueryClient();
-
   const usersQuery = useInfiniteQuery({
     queryKey: queryKeys.users.infinite(),
 
@@ -35,49 +46,21 @@ export const useUsers = () => {
     [usersQuery.data],
   );
 
-  const createUser = useMutation({
-    mutationFn: UsersClientApi.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
-      toast.success("User created successfully");
-    },
-  });
-
-  const updateUser = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateUserPayload }) =>
-      UsersClientApi.update(id, data),
-
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
-      toast.success("User updated successfully");
-    },
-  });
-
-  const deleteUser = useMutation({
-    mutationFn: UsersClientApi.delete,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
-      toast.success("User deleted successfully");
-    },
-  });
+  const actions = useUsersMutations();
 
   return {
-    users,
+    items: users,
+    count: usersQuery.data?.pages[0]?.count ?? 0,
+    isLoading: usersQuery.isLoading,
+    isError: usersQuery.isError,
+    refetch: usersQuery.refetch,
+    actions,
 
+    // Keep pagination for drawer usage in project modals
     pagination: {
       fetchNextPage: usersQuery.fetchNextPage,
       hasNextPage: usersQuery.hasNextPage,
       isFetchingNextPage: usersQuery.isFetchingNextPage,
-      isLoading: usersQuery.isLoading,
-      isError: usersQuery.isError,
     },
-
-    actions: {
-      createUser,
-      updateUser,
-      deleteUser,
-    },
-
-    query: usersQuery,
   };
 };
