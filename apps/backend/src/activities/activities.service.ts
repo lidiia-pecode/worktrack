@@ -1,17 +1,12 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
 import { Activity } from './entities/activity.entity';
-import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ActivityPayload } from './dtos/ActivityPayload.dto';
-import { UsersService } from 'src/users/users.service';
-
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
 import { Status } from 'src/enums/Status.enum';
@@ -21,18 +16,8 @@ export class ActivitiesService {
   constructor(
     @InjectRepository(Activity)
     private readonly repo: Repository<Activity>,
-    private readonly usersService: UsersService,
     private readonly actCategoriesService: ActCategoriesService,
-
-    @InjectRepository(ProjectActivity)
-    private readonly projectActivityRepo: Repository<ProjectActivity>,
   ) {}
-
-  private assertManager(user: User) {
-    if (!this.usersService.hasManagerAccess(user)) {
-      throw new ForbiddenException('Only managers can manage activities');
-    }
-  }
 
   private async assertUniqueName(name: string, excludeId?: string) {
     const exists = await this.repo.exists({
@@ -60,14 +45,13 @@ export class ActivitiesService {
     return entity;
   }
 
-  async findByIds(ids: string[]) {
+  async findActiveOrRestoreMany(ids: string[]) {
     const uniqueIds = [...new Set(ids)];
 
     const activities = await this.repo.find({
       where: {
         id: In(uniqueIds),
       },
-      relations: ['category'],
     });
 
     const foundIds = new Set(activities.map((activity) => activity.id));
@@ -80,12 +64,22 @@ export class ActivitiesService {
       );
     }
 
+    const archivedActivities = activities.filter(
+      (activity) => activity.status === Status.ARCHIVED,
+    );
+
+    if (archivedActivities.length) {
+      archivedActivities.forEach((activity) => {
+        activity.status = Status.ACTIVE;
+      });
+
+      await this.repo.save(archivedActivities);
+    }
+
     return activities;
   }
 
-  async list(user: User, pagination: PaginationQuery) {
-    this.assertManager(user);
-
+  async list(pagination: PaginationQuery) {
     const [results, count] = await this.repo.findAndCount({
       relations: ['category'],
       skip: pagination.offset,
@@ -98,18 +92,14 @@ export class ActivitiesService {
     return { results, count };
   }
 
-  async getById(id: string, user: User) {
-    this.assertManager(user);
-
+  async getById(id: string) {
     return this.findRaw(id);
   }
 
-  async create(payload: ActivityPayload, user: User) {
-    this.assertManager(user);
-
+  async create(payload: ActivityPayload) {
     await this.assertUniqueName(payload.name);
 
-    const category = await this.actCategoriesService.findRaw(
+    const category = await this.actCategoriesService.findActiveOrRestore(
       payload.categoryId,
     );
 
@@ -122,14 +112,12 @@ export class ActivitiesService {
     return this.repo.save(activity);
   }
 
-  async update(id: string, payload: ActivityPayload, user: User) {
-    this.assertManager(user);
-
+  async update(id: string, payload: ActivityPayload) {
     const activity = await this.findRaw(id);
 
     await this.assertUniqueName(payload.name, id);
 
-    const category = await this.actCategoriesService.findRaw(
+    const category = await this.actCategoriesService.findActiveOrRestore(
       payload.categoryId,
     );
 
@@ -139,33 +127,7 @@ export class ActivitiesService {
     return this.repo.save(activity);
   }
 
-  // async delete(id: string, user: User) {
-  //   this.assertManager(user);
-
-  //   const activity = await this.findRaw(id);
-
-  //   const inUse = await this.projectActivityRepo.exists({
-  //     where: {
-  //       activity: {
-  //         id,
-  //       },
-  //     },
-  //   });
-
-  //   if (inUse) {
-  //     throw new BadRequestException('Activity is used by one or more projects');
-  //   }
-
-  //   await this.repo.remove(activity);
-  // }
-
-  // -------------------------
-  // Archive (soft delete)
-  // -------------------------
-
-  async archive(id: string, user: User) {
-    this.assertManager(user);
-
+  async archive(id: string) {
     const activity = await this.findRaw(id);
 
     activity.status = Status.ARCHIVED;
@@ -177,9 +139,7 @@ export class ActivitiesService {
   // RESTORE (soft delete)
   // -------------------------
 
-  async unarchive(id: string, user: User) {
-    this.assertManager(user);
-
+  async unarchive(id: string) {
     const activity = await this.findRaw(id);
 
     activity.status = Status.ACTIVE;

@@ -21,7 +21,6 @@ import { User } from './entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { UserRole } from './enums/UserRole.enum';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { CreateAdminPayloadDto } from './dtos/CreateAdminPayload.dto';
 import { Role } from 'src/lib/decorators';
 
 @Controller('users')
@@ -45,17 +44,7 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN)
-  @Post('/admin')
-  @Serialize(UserResponse)
-  async createAdmin(
-    @Body() createAdminPayloadDto: CreateAdminPayloadDto,
-  ): Promise<User> {
-    return this.usersService.createAdmin(createAdminPayloadDto);
-  }
-
-  @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Get()
   @SerializeList(UserResponse)
   async getAllUsersPaginated(@Query() pagination: PaginationQuery) {
@@ -63,7 +52,7 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Get(':id')
   @Serialize(UserResponse)
   async getUserById(
@@ -73,7 +62,7 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Post()
   @Serialize(UserResponse)
   async createUser(@Body() body: CreateUserPayload): Promise<UserResponse> {
@@ -81,7 +70,7 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Patch(':id')
   @Serialize(UserResponse)
   async updateUser(
@@ -92,7 +81,7 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Delete(':id')
   async deleteUser(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.usersService.deleteUser(id);

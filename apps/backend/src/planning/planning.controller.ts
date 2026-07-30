@@ -45,7 +45,7 @@ export class PlanningController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
   @Post()
   @Serialize(PlanningEntryResponse)
   create(@Body() payload: CreatePlanningEntryDto, @CurrentUser() user: User) {
@@ -53,7 +53,7 @@ export class PlanningController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
   @Patch(':id')
   @Serialize(PlanningEntryResponse)
   update(
@@ -65,7 +65,7 @@ export class PlanningController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.ADMIN, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
   @Delete(':id')
   delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.service.delete(id, user);

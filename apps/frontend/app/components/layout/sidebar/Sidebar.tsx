@@ -20,7 +20,7 @@ export function Sidebar({ me }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
 
-  const isAdmin = me.role !== UserRole.USER;
+  const isAdmin = me.role !== UserRole.MEMBER;
   const navlist = isAdmin ? managerNavigation : employeeNavigation;
 
   return (

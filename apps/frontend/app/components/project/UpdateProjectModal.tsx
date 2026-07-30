@@ -154,7 +154,9 @@ export const UpdateProjectModal = ({
           onOpenDrawer={() => setMemberDrawerOpen(true)}
         >
           {users
-            .filter((u) => memberIds.includes(u.id) && u.role === UserRole.USER)
+            .filter(
+              (u) => memberIds.includes(u.id) && u.role === UserRole.MEMBER,
+            )
             .map((user) => (
               <MemberChip
                 key={user.id}
@@ -185,7 +187,7 @@ export const UpdateProjectModal = ({
       {memberDrawerOpen && (
         <SelectionDrawer
           open={memberDrawerOpen}
-          items={users.filter((u) => u.role === UserRole.USER)}
+          items={users.filter((u) => u.role === UserRole.MEMBER)}
           selectedIds={memberIds}
           onToggle={handleSetMembers}
           onClose={() => setMemberDrawerOpen(false)}

@@ -16,7 +16,7 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'john',
         email: 'john@example.com',
         password,
-        role: UserRole.USER,
+        role: UserRole.MEMBER,
         position: 'Frontend Developer',
       },
       {
@@ -25,7 +25,7 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'alice',
         email: 'alice@example.com',
         password,
-        role: UserRole.USER,
+        role: UserRole.MEMBER,
         position: 'Backend Developer',
       },
       {
@@ -34,7 +34,7 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'bob',
         email: 'bob@example.com',
         password,
-        role: UserRole.USER,
+        role: UserRole.MEMBER,
       },
       {
         firstName: 'Emma',
@@ -42,7 +42,7 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'emma',
         email: 'emma@example.com',
         password,
-        role: UserRole.USER,
+        role: UserRole.MEMBER,
         position: 'UI/UX Designer',
       },
       {
@@ -51,7 +51,7 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'michael',
         email: 'michael@example.com',
         password,
-        role: UserRole.USER,
+        role: UserRole.MEMBER,
       },
     ],
     {

@@ -42,7 +42,7 @@ export const useUsers = () => {
     () =>
       usersQuery.data?.pages
         .flatMap((p) => p.results)
-        .filter((u) => u.role === UserRole.USER) ?? [],
+        .filter((u) => u.role === UserRole.MEMBER) ?? [],
     [usersQuery.data],
   );
 

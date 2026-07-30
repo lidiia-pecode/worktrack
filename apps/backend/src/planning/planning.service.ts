@@ -17,7 +17,6 @@ import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 import { ProjectsService } from 'src/projects/projects.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
-import { UserRole } from 'src/users/enums/UserRole.enum';
 
 @Injectable()
 export class PlanningService {
@@ -136,9 +135,9 @@ export class PlanningService {
     this.assertManagerAccess(manager);
 
     const employee = await this.usersService.getUserById(payload.employeeId);
-    if (employee.role !== UserRole.USER) {
+    if (!this.usersService.canBeProjectMember(employee)) {
       throw new BadRequestException(
-        'Planning can only be created for employees',
+        'Planning can only be created for project contributors',
       );
     }
 

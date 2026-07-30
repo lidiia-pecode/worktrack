@@ -6,7 +6,6 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
-import { CreateAdminPayloadDto } from './dtos/CreateAdminPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
@@ -21,7 +20,11 @@ export class UsersService {
   ) {}
 
   hasManagerAccess(user: User): boolean {
-    return user.role === UserRole.ADMIN || user.role === UserRole.SUPER_ADMIN;
+    return user.role === UserRole.MANAGER || user.role === UserRole.SUPER_ADMIN;
+  }
+
+  canBeProjectMember(user: User): boolean {
+    return [UserRole.MEMBER, UserRole.MANAGER].includes(user.role);
   }
 
   private async validateUser(
@@ -86,18 +89,7 @@ export class UsersService {
     const password = await hashPassword(payload.password);
     const newUser = this.repo.create({
       ...payload,
-      role: UserRole.USER,
-      password,
-    });
-    return this.repo.save(newUser);
-  }
-
-  async createAdmin(dto: CreateAdminPayloadDto): Promise<User> {
-    await this.validateUser(dto);
-    const password = await hashPassword(dto.password);
-    const newUser = this.repo.create({
-      ...dto,
-      role: UserRole.ADMIN,
+      role: UserRole.MEMBER,
       password,
     });
     return this.repo.save(newUser);

@@ -222,7 +222,7 @@ export class AuthService {
     }
 
     if (authSession.userId !== user.id) {
-      console.log('FAIL: WRONG USER');
+      console.log('FAIL: WRONG MEMBER');
       throw new UnauthorizedException('Session does not belong to user');
     }
 

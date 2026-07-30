@@ -11,13 +11,13 @@ export class PaginationQuery {
   @IsOptional()
   @IsInt()
   @Type(() => Number)
-  page_size: number = DEFAULT_PAGINATION_PAGE_SIZE;
+  pageSize: number = DEFAULT_PAGINATION_PAGE_SIZE;
 
   get offset() {
-    return (this.page - 1) * this.page_size;
+    return (this.page - 1) * this.pageSize;
   }
 
   get limit() {
-    return this.page_size;
+    return this.pageSize;
   }
 }

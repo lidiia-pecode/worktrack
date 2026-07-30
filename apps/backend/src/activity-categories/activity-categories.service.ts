@@ -58,6 +58,17 @@ export class ActCategoriesService {
     return category;
   }
 
+  async findActiveOrRestore(id: string) {
+    const category = await this.findRaw(id);
+
+    if (category.status === Status.ARCHIVED) {
+      category.status = Status.ACTIVE;
+      await this.repo.save(category);
+    }
+
+    return category;
+  }
+
   async getById(id: string, user: User) {
     this.assertManager(user);
 
@@ -98,31 +109,6 @@ export class ActCategoriesService {
 
     return this.repo.save(category);
   }
-
-  // async delete(id: string, user: User) {
-  //   this.assertManager(user);
-
-  //   const category = await this.findRaw(id);
-
-  //   const inUse = await this.ActivitiesRepo.exists({
-  //     where: {
-  //       category: {
-  //         id,
-  //       },
-  //     },
-  //   });
-
-  //   if (inUse) {
-  //     throw new BadRequestException('Category is used by activities');
-  //   }
-
-  //   await this.repo.remove(category);
-  // }
-
-  // -------------------------
-  // Archive (soft delete)
-  // -------------------------
-
   async archive(id: string, user: User) {
     this.assertManager(user);
 

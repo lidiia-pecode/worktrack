@@ -9,7 +9,7 @@ export const initials = (u: User | undefined) => {
 export const fullName = (u: User) => `${u.firstName} ${u.lastName}`;
 
 export const isAdminRole = (role?: string) =>
-  role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+  role === UserRole.MANAGER || role === UserRole.SUPER_ADMIN;
 
 export function getNonAdminMemberIds(users: User[], ids: string[]) {
   return ids.filter((id) => !isAdminRole(users.find((u) => u.id === id)?.role));

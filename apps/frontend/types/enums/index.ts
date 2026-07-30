@@ -4,7 +4,7 @@ export enum Status {
 }
 
 export enum UserRole {
-  ADMIN = "manager",
-  USER = "employee",
+  MANAGER = "manager",
+  MEMBER = "employee",
   SUPER_ADMIN = "administrator",
 }

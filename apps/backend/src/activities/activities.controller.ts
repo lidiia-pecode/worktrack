@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  // HttpCode,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -13,67 +12,54 @@ import {
 } from '@nestjs/common';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { CurrentUser } from 'src/lib/decorators';
+import { Role } from 'src/lib/decorators';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { User } from 'src/users/entities/user.entity';
 import { ActivitiesService } from './activities.service';
 import { ActivityPayload } from './dtos/ActivityPayload.dto';
 import { ActivityResponse } from './dtos/ActivityResponse.dto';
+import { UserRole } from 'src/users/enums/UserRole.enum';
 
 @Controller('activities')
-@UseGuards(AccessGuard)
+@UseGuards(AccessGuard, RolesGuard)
+@Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
 export class ActivitiesController {
   constructor(private readonly service: ActivitiesService) {}
 
   @Get()
-  @UseGuards(RolesGuard)
   @SerializeList(ActivityResponse)
-  list(@Query() pagination: PaginationQuery, @CurrentUser() user: User) {
-    return this.service.list(user, pagination);
+  list(@Query() pagination: PaginationQuery) {
+    return this.service.list(pagination);
   }
 
   @Get(':id')
-  @UseGuards(RolesGuard)
   @Serialize(ActivityResponse)
-  getById(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.getById(id, user);
+  getById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getById(id);
   }
 
   @Post()
-  @UseGuards(RolesGuard)
   @Serialize(ActivityResponse)
-  create(@Body() payload: ActivityPayload, @CurrentUser() user: User) {
-    return this.service.create(payload, user);
+  create(@Body() payload: ActivityPayload) {
+    return this.service.create(payload);
   }
 
   @Patch(':id')
-  @UseGuards(RolesGuard)
   @Serialize(ActivityResponse)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() payload: ActivityPayload,
-    @CurrentUser() user: User,
   ) {
-    return this.service.update(id, payload, user);
+    return this.service.update(id, payload);
   }
 
-  // @Delete(':id')
-  // @UseGuards(RolesGuard)
-  // @HttpCode(204)
-  // remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-  //   return this.service.delete(id, user);
-  // }
-
-  @UseGuards(RolesGuard)
   @Delete(':id')
-  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.archive(id, user);
+  archive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.archive(id);
   }
 
-  @UseGuards(RolesGuard)
   @Patch(':id/unarchive')
-  unarchive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.unarchive(id, user);
+  unarchive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.unarchive(id);
   }
 }

@@ -24,8 +24,8 @@ type UserFormProps = {
 };
 
 const roleOptions = [
-  { value: UserRole.USER, label: ROLE_LABELS[UserRole.USER] },
-  { value: UserRole.ADMIN, label: ROLE_LABELS[UserRole.ADMIN] },
+  { value: UserRole.MEMBER, label: ROLE_LABELS[UserRole.MEMBER] },
+  { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
 ];
 
 export function UserForm({

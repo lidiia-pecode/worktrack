@@ -112,7 +112,7 @@ export function CreateProjectModal() {
           >
             {users
               .filter(
-                (u) => memberIds.includes(u.id) && u.role === UserRole.USER,
+                (u) => memberIds.includes(u.id) && u.role === UserRole.MEMBER,
               )
               .map((user) => (
                 <MemberChip
@@ -144,7 +144,7 @@ export function CreateProjectModal() {
         {memberDrawerOpen && (
           <SelectionDrawer
             open={memberDrawerOpen}
-            items={users.filter((u) => u.role === UserRole.USER)}
+            items={users.filter((u) => u.role === UserRole.MEMBER)}
             selectedIds={memberIds}
             onToggle={handleSetMembers}
             onClose={() => setMemberDrawerOpen(false)}

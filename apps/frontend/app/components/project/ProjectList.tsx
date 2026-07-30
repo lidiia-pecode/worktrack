@@ -37,7 +37,7 @@ export const ProjectList = () => {
   const me = useMe();
   const currentUserRole = me.data?.role;
   const isAdmin =
-    currentUserRole === UserRole.ADMIN ||
+    currentUserRole === UserRole.MANAGER ||
     currentUserRole === UserRole.SUPER_ADMIN;
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
