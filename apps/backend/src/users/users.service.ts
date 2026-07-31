@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -7,10 +8,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, Not, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { UserRole } from './enums/UserRole.enum';
 import { User } from './entities/user.entity';
+import { Status } from 'src/enums/Status.enum';
+import { UsersQuery } from './dtos/UsersQuery.dto';
 
 @Injectable()
 export class UsersService {
@@ -23,8 +25,11 @@ export class UsersService {
     return user.role === UserRole.MANAGER || user.role === UserRole.SUPER_ADMIN;
   }
 
-  canBeProjectMember(user: User): boolean {
-    return [UserRole.MEMBER, UserRole.MANAGER].includes(user.role);
+  canBeProjectMember(user: User) {
+    return (
+      user.status === Status.ACTIVE &&
+      [UserRole.MEMBER, UserRole.MANAGER].includes(user.role)
+    );
   }
 
   private async validateUser(
@@ -56,11 +61,15 @@ export class UsersService {
     }
   }
 
-  async list(pagination: PaginationQuery) {
+  async list(query: UsersQuery) {
+    const where = query.status ? { status: query.status } : {};
+
     const [results, count] = await this.repo.findAndCount({
-      skip: pagination.offset,
-      take: pagination.limit,
+      where,
+      skip: query.offset,
+      take: query.limit,
     });
+
     return { results, count };
   }
 
@@ -76,8 +85,15 @@ export class UsersService {
     return user;
   }
 
+  // used in project service
   async findUsersByIds(ids: string[]): Promise<User[]> {
-    const users = await this.repo.findBy({ id: In(ids) });
+    const users = await this.repo.find({
+      where: {
+        id: In(ids),
+        status: Status.ACTIVE,
+      },
+    });
+
     if (users.length !== ids.length) {
       throw new NotFoundException('One or more users not found');
     }
@@ -89,7 +105,6 @@ export class UsersService {
     const password = await hashPassword(payload.password);
     const newUser = this.repo.create({
       ...payload,
-      role: UserRole.MEMBER,
       password,
     });
     return this.repo.save(newUser);
@@ -133,10 +148,21 @@ export class UsersService {
     return this.repo.save(user);
   }
 
-  async deleteUser(id: string): Promise<void> {
-    const result = await this.repo.delete(id);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Unable deleting user with id ${id}`);
+  async archive(id: string) {
+    const user = await this.getUserById(id);
+    if (user.status !== Status.ACTIVE) {
+      throw new BadRequestException('User is already archived');
     }
+    user.status = Status.ARCHIVED;
+    return this.repo.save(user);
+  }
+
+  async unarchive(id: string) {
+    const user = await this.getUserById(id);
+    if (user.status === Status.ACTIVE) {
+      throw new BadRequestException('User is already active');
+    }
+    user.status = Status.ACTIVE;
+    return this.repo.save(user);
   }
 }

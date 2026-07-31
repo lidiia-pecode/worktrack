@@ -25,7 +25,7 @@ const client = createClient({
 export const ActivityCategoriesClientApi = {
   ...crud,
 
-  archive: (id: string) => client.delete<ActivityCategory>(`/${id}`),
+  archive: (id: string) => client.delete<ActivityCategory>(`/${id}/archive`),
 
   unarchive: (id: string) => client.patch<ActivityCategory>(`/${id}/unarchive`),
 };

@@ -66,7 +66,7 @@ const client = createClient({
 export const ProjectsClientApi = {
   ...crud,
 
-  archive: (id: string) => client.delete<Project>(`/${id}`),
+  archive: (id: string) => client.delete<Project>(`/${id}/archive`),
 
   unarchive: (id: string) => client.patch<Project>(`/${id}/unarchive`),
 };

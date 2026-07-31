@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -55,7 +54,7 @@ export class ActCategoriesController {
     return this.service.update(id, payload, user);
   }
 
-  @Delete(':id')
+  @Patch(':id/archive')
   archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.service.archive(id, user);
   }

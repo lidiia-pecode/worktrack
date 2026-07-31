@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { UserRole } from '../enums/UserRole.enum';
 import { Project } from 'src/projects/entities/project.entity';
+import { Status } from 'src/enums/Status.enum';
 
 @Entity('users')
 export class User {
@@ -21,6 +22,13 @@ export class User {
     default: UserRole.MEMBER,
   })
   role!: UserRole;
+
+  @Column({
+    type: 'enum',
+    enum: Status,
+    default: Status.ACTIVE,
+  })
+  status!: Status;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   position?: string;

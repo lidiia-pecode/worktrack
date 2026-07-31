@@ -13,6 +13,7 @@ import { JwtService } from './jwt.service';
 import { AuthContext } from '../auth-strategies/types';
 import { AuthSession } from '../entities/AuthSession.entity';
 import { User } from 'src/users/entities/user.entity';
+import { Status } from 'src/enums/Status.enum';
 
 @Injectable()
 export class AuthService {
@@ -68,9 +69,15 @@ export class AuthService {
     return a.length === b.length && timingSafeEqual(a, b);
   }
 
-  generateUniqueUsername(base: string): string {
+  private generateUniqueUsername(base: string): string {
     const normalized = base.toLowerCase().replace(/\s+/g, '').slice(0, 11);
     return `${normalized}_${randomUUID().slice(0, 8)}`;
+  }
+
+  private assertUserIsActive(user: User): void {
+    if (user.status === Status.ARCHIVED) {
+      throw new UnauthorizedException('User is archived');
+    }
   }
 
   async validateGoogleUser(details: GoogleUserPayload): Promise<User> {
@@ -80,7 +87,11 @@ export class AuthService {
       where: { googleId },
     });
 
-    if (user) return user;
+    if (user) {
+      this.assertUserIsActive(user);
+
+      return user;
+    }
 
     user = await this.userRepo.findOne({
       where: { email },
@@ -101,6 +112,8 @@ export class AuthService {
 
       return user;
     }
+
+    this.assertUserIsActive(user);
 
     user.googleId = googleId;
     await this.userRepo.save(user);
@@ -153,6 +166,8 @@ export class AuthService {
       }
     }
 
+    this.assertUserIsActive(user);
+
     return user;
   }
 
@@ -204,6 +219,8 @@ export class AuthService {
       console.log('FAIL: NO SESSION ID');
       throw new UnauthorizedException();
     }
+
+    this.assertUserIsActive(user);
 
     const decoded = this.jwtService.verifyRefresh(refreshToken);
 

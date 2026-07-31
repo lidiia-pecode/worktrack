@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -13,12 +12,12 @@ import {
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { ActivitiesService } from './activities.service';
 import { ActivityPayload } from './dtos/ActivityPayload.dto';
 import { ActivityResponse } from './dtos/ActivityResponse.dto';
 import { UserRole } from 'src/users/enums/UserRole.enum';
+import { ActivitiesQuery } from './dtos/ActivitiesQuery.dto';
 
 @Controller('activities')
 @UseGuards(AccessGuard, RolesGuard)
@@ -28,8 +27,8 @@ export class ActivitiesController {
 
   @Get()
   @SerializeList(ActivityResponse)
-  list(@Query() pagination: PaginationQuery) {
-    return this.service.list(pagination);
+  list(@Query() query: ActivitiesQuery) {
+    return this.service.list(query);
   }
 
   @Get(':id')
@@ -53,7 +52,7 @@ export class ActivitiesController {
     return this.service.update(id, payload);
   }
 
-  @Delete(':id')
+  @Patch(':id/archive')
   archive(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.archive(id);
   }

@@ -1,9 +1,13 @@
 import { Expose } from 'class-transformer';
 import { UserRole } from '../enums/UserRole.enum';
+import { Status } from 'src/enums/Status.enum';
 
 export class UserResponse {
   @Expose()
   id!: string;
+
+  @Expose()
+  status!: Status;
 
   @Expose()
   role!: UserRole;

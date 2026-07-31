@@ -7,9 +7,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, In, Not, Repository } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityPayload } from './dtos/ActivityPayload.dto';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
 import { Status } from 'src/enums/Status.enum';
+import { ActivitiesQuery } from './dtos/ActivitiesQuery.dto';
 
 @Injectable()
 export class ActivitiesService {
@@ -79,11 +79,14 @@ export class ActivitiesService {
     return activities;
   }
 
-  async list(pagination: PaginationQuery) {
+  async list(query: ActivitiesQuery) {
+    const where = query.status ? { status: query.status } : {};
+
     const [results, count] = await this.repo.findAndCount({
+      where,
       relations: ['category'],
-      skip: pagination.offset,
-      take: pagination.limit,
+      skip: query.offset,
+      take: query.limit,
       order: {
         name: 'ASC',
       },
@@ -105,7 +108,6 @@ export class ActivitiesService {
 
     const activity = this.repo.create({
       name: payload.name,
-      status: Status.ACTIVE,
       category,
     });
 
@@ -130,8 +132,11 @@ export class ActivitiesService {
   async archive(id: string) {
     const activity = await this.findRaw(id);
 
-    activity.status = Status.ARCHIVED;
+    if (activity.status === Status.ARCHIVED) {
+      throw new BadRequestException('Activity is already archived');
+    }
 
+    activity.status = Status.ARCHIVED;
     return this.repo.save(activity);
   }
 
@@ -142,6 +147,9 @@ export class ActivitiesService {
   async unarchive(id: string) {
     const activity = await this.findRaw(id);
 
+    if (activity.status === Status.ACTIVE) {
+      throw new BadRequestException('Activity is already active');
+    }
     activity.status = Status.ACTIVE;
 
     return this.repo.save(activity);

@@ -9,10 +9,9 @@ import { ILike, Not, Repository } from 'typeorm';
 import { UsersService } from 'src/users/users.service';
 import { User } from 'src/users/entities/user.entity';
 import { ActCategory } from './entities/activities-category.entity';
-import { Activity } from 'src/activities/entities/activity.entity';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
 import { Status } from 'src/enums/Status.enum';
+import { ActivityCategoriesQuery } from './dtos/ActivitiesCategoriesQuery.dto';
 
 @Injectable()
 export class ActCategoriesService {
@@ -20,9 +19,6 @@ export class ActCategoriesService {
     @InjectRepository(ActCategory)
     private readonly repo: Repository<ActCategory>,
     private readonly usersService: UsersService,
-
-    @InjectRepository(Activity)
-    private readonly ActivitiesRepo: Repository<Activity>,
   ) {}
 
   private assertManager(user: User) {
@@ -75,12 +71,15 @@ export class ActCategoriesService {
     return this.findRaw(id);
   }
 
-  async list(user: User, pagination: PaginationQuery) {
+  async list(user: User, query: ActivityCategoriesQuery) {
     this.assertManager(user);
 
+    const where = query.status ? { status: query.status } : {};
+
     const [results, count] = await this.repo.findAndCount({
-      skip: pagination.offset,
-      take: pagination.limit,
+      where,
+      skip: query.offset,
+      take: query.limit,
       order: {
         name: 'ASC',
       },
@@ -94,7 +93,7 @@ export class ActCategoriesService {
 
     await this.assertUniqueName(payload.name);
 
-    const category = this.repo.create({ status: Status.ACTIVE, ...payload });
+    const category = this.repo.create(payload);
     return this.repo.save(category);
   }
 
@@ -111,11 +110,13 @@ export class ActCategoriesService {
   }
   async archive(id: string, user: User) {
     this.assertManager(user);
-
     const category = await this.findRaw(id);
 
-    category.status = Status.ARCHIVED;
+    if (category.status === Status.ARCHIVED) {
+      throw new BadRequestException('Category is already archived');
+    }
 
+    category.status = Status.ARCHIVED;
     return this.repo.save(category);
   }
 
@@ -125,8 +126,11 @@ export class ActCategoriesService {
 
   async unarchive(id: string, user: User) {
     this.assertManager(user);
-
     const category = await this.findRaw(id);
+
+    if (category.status === Status.ACTIVE) {
+      throw new BadRequestException('Category is already active');
+    }
 
     category.status = Status.ACTIVE;
 

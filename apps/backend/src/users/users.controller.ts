@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -15,13 +14,13 @@ import { UserResponse } from './dtos/UserResponse.dto';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { CurrentUser } from 'src/lib/decorators';
 import { User } from './entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { UserRole } from './enums/UserRole.enum';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
+import { UsersQuery } from './dtos/UsersQuery.dto';
 
 @Controller('users')
 @UseGuards(AccessGuard)
@@ -47,8 +46,8 @@ export class UsersController {
   @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
   @Get()
   @SerializeList(UserResponse)
-  async getAllUsersPaginated(@Query() pagination: PaginationQuery) {
-    return this.usersService.list(pagination);
+  async getAllUsersPaginated(@Query() query: UsersQuery) {
+    return this.usersService.list(query);
   }
 
   @UseGuards(RolesGuard)
@@ -81,9 +80,16 @@ export class UsersController {
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
-  @Delete(':id')
-  async deleteUser(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.usersService.deleteUser(id);
+  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Patch(':id/archive')
+  archive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.archive(id);
+  }
+
+  @UseGuards(RolesGuard)
+  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Patch(':id/unarchive')
+  unarchive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.unarchive(id);
   }
 }

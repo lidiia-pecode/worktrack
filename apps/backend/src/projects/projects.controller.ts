@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -17,7 +16,6 @@ import {
 } from './dtos/ProjectPayload.dto';
 import { ProjectResponse } from './dtos/ProjectResponse.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
@@ -25,6 +23,7 @@ import { UserRole } from 'src/users/enums/UserRole.enum';
 import { CurrentUser } from 'src/lib/decorators';
 import { User } from 'src/users/entities/user.entity';
 import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
+import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
 
 @Controller('projects')
 @UseGuards(AccessGuard)
@@ -33,8 +32,8 @@ export class ProjectsController {
 
   @Get()
   @SerializeList(ProjectResponse)
-  getAll(@Query() pagination: PaginationQuery, @CurrentUser() user: User) {
-    return this.service.list(pagination, user);
+  getAll(@Query() query: ProjectsQuery, @CurrentUser() user: User) {
+    return this.service.list(query, user);
   }
 
   @Get(':id')
@@ -65,7 +64,7 @@ export class ProjectsController {
 
   @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
-  @Delete(':id')
+  @Patch(':id/archive')
   archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
     return this.service.archive(id, user);
   }

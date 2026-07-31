@@ -10,16 +10,16 @@ const client = createClient({
 
 export const UsersClientApi = {
   getAllPaginated: (page = 1, limit = 50) =>
-    client.get<UserListResponse>(`?page=${page}&limit=${limit}`),
+    client.get<UserListResponse>(`?page=${page}&pageSize=${limit}`),
 
   getAll: (page = 1, limit = 50) =>
-    client.get<UserListResponse>(`?page=${page}&limit=${limit}`),
+    client.get<UserListResponse>(`?page=${page}&pageSize=${limit}`),
 
   create: (data: UserPayload) => client.post("", data),
 
   update: (id: string, data: UpdateUserPayload) => client.patch(`/${id}`, data),
 
-  archive: (id: string) => client.delete(`/${id}`),
+  archive: (id: string) => client.delete(`/${id}/archive`),
 
-  delete: (id: string) => client.delete(`/${id}`),
+  unarchive: (id: string) => client.patch(`/${id}/unarchive`),
 };

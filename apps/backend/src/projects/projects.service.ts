@@ -11,12 +11,12 @@ import {
   ProjectPayload,
   UpdateProjectPayload,
 } from './dtos/ProjectPayload.dto';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 import { Status } from '../enums/Status.enum';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { ProjectActivity } from './entities/project-activity.entity';
+import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
 
 @Injectable()
 export class ProjectsService {
@@ -106,9 +106,13 @@ export class ProjectsService {
   // -------------------------
   // LIST
   // -------------------------
-  async list(pagination: PaginationQuery, user: User) {
-    const where = this.usersService.hasManagerAccess(user)
-      ? {}
+  async list(query: ProjectsQuery, user: User) {
+    const isManager = this.usersService.hasManagerAccess(user);
+
+    const where = isManager
+      ? query.status !== undefined
+        ? { status: query.status }
+        : {}
       : {
           status: Status.ACTIVE,
           users: { id: user.id },
@@ -122,8 +126,8 @@ export class ProjectsService {
         'projectActivities.activity',
         'projectActivities.activity.category',
       ],
-      skip: pagination.offset,
-      take: pagination.limit,
+      skip: query.offset,
+      take: query.limit,
       order: {
         status: 'ASC',
         createdAt: 'DESC',
@@ -162,7 +166,7 @@ export class ProjectsService {
   async getById(id: string, user: User) {
     const where = this.usersService.hasManagerAccess(user)
       ? { id }
-      : { id, users: { id: user.id } };
+      : { id, users: { id: user.id }, status: Status.ACTIVE };
 
     const project = await this.repo.findOne({
       where,
@@ -207,7 +211,6 @@ export class ProjectsService {
       this.repo.create({
         name: payload.name,
         description: payload.description,
-        status: Status.ACTIVE,
         users,
       }),
     );

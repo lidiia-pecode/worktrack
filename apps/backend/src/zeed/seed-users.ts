@@ -1,6 +1,5 @@
 import { DataSource } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/UserRole.enum';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 
 export async function seedUsers(dataSource: DataSource) {
@@ -16,7 +15,6 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'john',
         email: 'john@example.com',
         password,
-        role: UserRole.MEMBER,
         position: 'Frontend Developer',
       },
       {
@@ -25,7 +23,6 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'alice',
         email: 'alice@example.com',
         password,
-        role: UserRole.MEMBER,
         position: 'Backend Developer',
       },
       {
@@ -34,7 +31,6 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'bob',
         email: 'bob@example.com',
         password,
-        role: UserRole.MEMBER,
       },
       {
         firstName: 'Emma',
@@ -42,7 +38,6 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'emma',
         email: 'emma@example.com',
         password,
-        role: UserRole.MEMBER,
         position: 'UI/UX Designer',
       },
       {
@@ -51,7 +46,6 @@ export async function seedUsers(dataSource: DataSource) {
         username: 'michael',
         email: 'michael@example.com',
         password,
-        role: UserRole.MEMBER,
       },
     ],
     {
