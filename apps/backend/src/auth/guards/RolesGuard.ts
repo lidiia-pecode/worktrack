@@ -6,14 +6,17 @@ import { AuthContext } from '../auth-strategies/types';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
+  constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const requiredRoles = this.reflector.get<UserRole[]>(
+    const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(
       ROLES_KEY,
-      context.getHandler(),
+      [context.getHandler(), context.getClass()],
     );
-    if (!requiredRoles) return true;
+
+    if (!requiredRoles) {
+      return true;
+    }
 
     const request = context.switchToHttp().getRequest<{ user?: AuthContext }>();
 
@@ -21,6 +24,8 @@ export class RolesGuard implements CanActivate {
       return false;
     }
 
-    return requiredRoles.includes(request.user.user.role);
+    const auth = request.user;
+
+    return auth ? requiredRoles.includes(auth.user.role) : false;
   }
 }

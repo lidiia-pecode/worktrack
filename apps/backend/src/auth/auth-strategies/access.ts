@@ -7,6 +7,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UUID } from 'crypto';
 import { UsersService } from 'src/users/users.service';
 import { cookieExtractor } from '../helpers/cookies-extractor';
+import { Status } from 'src/enums/Status.enum';
 
 type AccessPayload = Pick<User, 'id' | 'email'> & { sessionId: UUID };
 
@@ -32,6 +33,10 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
 
     if (!user || user.email !== email) {
       throw new UnauthorizedException();
+    }
+
+    if (user.status === Status.ARCHIVED) {
+      throw new UnauthorizedException('User is archived');
     }
 
     return { user, sessionId };

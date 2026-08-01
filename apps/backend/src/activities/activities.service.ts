@@ -19,8 +19,12 @@ export class ActivitiesService {
     private readonly actCategoriesService: ActCategoriesService,
   ) {}
 
-  private async assertUniqueName(name: string, excludeId?: string) {
-    const exists = await this.repo.exists({
+  private async assertUniqueName(
+    name: string,
+    excludeId?: string,
+    repo: Repository<Activity> = this.repo,
+  ) {
+    const exists = await repo.exists({
       where: {
         name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
@@ -31,9 +35,8 @@ export class ActivitiesService {
       throw new BadRequestException(`Activity "${name}" already exists`);
     }
   }
-
-  async findRaw(id: string) {
-    const entity = await this.repo.findOne({
+  async findRaw(id: string, repo: Repository<Activity> = this.repo) {
+    const entity = await repo.findOne({
       where: { id },
       relations: ['category'],
     });
@@ -45,10 +48,13 @@ export class ActivitiesService {
     return entity;
   }
 
-  async findActiveOrRestoreMany(ids: string[]) {
+  async findActiveOrRestoreMany(
+    ids: string[],
+    repo: Repository<Activity> = this.repo,
+  ) {
     const uniqueIds = [...new Set(ids)];
 
-    const activities = await this.repo.find({
+    const activities = await repo.find({
       where: {
         id: In(uniqueIds),
       },
@@ -73,7 +79,7 @@ export class ActivitiesService {
         activity.status = Status.ACTIVE;
       });
 
-      await this.repo.save(archivedActivities);
+      await repo.save(archivedActivities);
     }
 
     return activities;
@@ -95,8 +101,8 @@ export class ActivitiesService {
     return { results, count };
   }
 
-  async getById(id: string) {
-    return this.findRaw(id);
+  async getById(id: string, repo: Repository<Activity> = this.repo) {
+    return this.findRaw(id, repo);
   }
 
   async create(payload: ActivityPayload) {
@@ -129,29 +135,31 @@ export class ActivitiesService {
     return this.repo.save(activity);
   }
 
-  async archive(id: string) {
-    const activity = await this.findRaw(id);
+  async archive(id: string, repo: Repository<Activity> = this.repo) {
+    const activity = await this.findRaw(id, repo);
 
     if (activity.status === Status.ARCHIVED) {
       throw new BadRequestException('Activity is already archived');
     }
 
     activity.status = Status.ARCHIVED;
-    return this.repo.save(activity);
+
+    return repo.save(activity);
   }
 
   // -------------------------
   // RESTORE (soft delete)
   // -------------------------
 
-  async unarchive(id: string) {
-    const activity = await this.findRaw(id);
+  async unarchive(id: string, repo: Repository<Activity> = this.repo) {
+    const activity = await this.findRaw(id, repo);
 
     if (activity.status === Status.ACTIVE) {
       throw new BadRequestException('Activity is already active');
     }
+
     activity.status = Status.ACTIVE;
 
-    return this.repo.save(activity);
+    return repo.save(activity);
   }
 }

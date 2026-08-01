@@ -1,14 +1,14 @@
 import { Expose, Type } from 'class-transformer';
 import { ActivityResponse } from 'src/activities/dtos/ActivityResponse.dto';
-import { ProjectResponse } from './ProjectResponse.dto';
+import { ProjectSummaryResponse } from './ProjectSummaryResponse.dto';
 
 export class ProjectActivityResponse {
   @Expose()
   id!: string;
 
   @Expose()
-  @Type(() => ProjectResponse)
-  project!: ProjectResponse;
+  @Type(() => ProjectSummaryResponse)
+  project!: ProjectSummaryResponse;
 
   @Expose()
   @Type(() => ActivityResponse)

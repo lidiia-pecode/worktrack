@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Project } from './entities/project.entity';
-import { ILike, Not, Repository } from 'typeorm';
+import { DataSource, ILike, Not, Repository } from 'typeorm';
 import {
   ProjectPayload,
   UpdateProjectPayload,
@@ -17,6 +17,7 @@ import { Status } from '../enums/Status.enum';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
+import { Activity } from 'src/activities/entities/activity.entity';
 
 @Injectable()
 export class ProjectsService {
@@ -29,6 +30,8 @@ export class ProjectsService {
 
     private readonly usersService: UsersService,
     private readonly activitiesService: ActivitiesService,
+
+    private readonly dataSource: DataSource,
   ) {}
 
   private assertManagerAccess(user: User) {
@@ -39,8 +42,12 @@ export class ProjectsService {
     }
   }
 
-  private async assertUniqueName(name: string, excludeId?: string) {
-    const exists = await this.repo.exists({
+  private async assertUniqueName(
+    name: string,
+    excludeId?: string,
+    repo: Repository<Project> = this.repo,
+  ) {
+    const exists = await repo.exists({
       where: {
         name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
@@ -103,6 +110,82 @@ export class ProjectsService {
     return projectActivity;
   }
 
+  private async syncProjectActivities(
+    project: Project,
+    activityIds: string[],
+    activityRepo: Repository<Activity>,
+    projectActivityRepo: Repository<ProjectActivity>,
+  ) {
+    const activities = activityIds.length
+      ? await this.activitiesService.findActiveOrRestoreMany(
+          activityIds,
+          activityRepo,
+        )
+      : [];
+
+    const activitiesMap = new Map(
+      activities.map((activity) => [activity.id, activity]),
+    );
+
+    const existingProjectActivities = await projectActivityRepo.find({
+      where: {
+        project: {
+          id: project.id,
+        },
+      },
+      relations: ['activity'],
+    });
+
+    const existingMap = new Map(
+      existingProjectActivities.map((pa) => [pa.activity.id, pa]),
+    );
+
+    const entitiesToSave: ProjectActivity[] = [];
+
+    for (const activityId of activityIds) {
+      const existing = existingMap.get(activityId);
+
+      if (existing) {
+        if (!existing.isActive) {
+          existing.isActive = true;
+          entitiesToSave.push(existing);
+        }
+
+        continue;
+      }
+
+      const activity = activitiesMap.get(activityId);
+
+      if (!activity) {
+        continue;
+      }
+
+      entitiesToSave.push(
+        projectActivityRepo.create({
+          project,
+          activity,
+          isActive: true,
+        }),
+      );
+    }
+
+    const activityIdsSet = new Set(activityIds);
+
+    for (const projectActivity of existingProjectActivities) {
+      if (
+        !activityIdsSet.has(projectActivity.activity.id) &&
+        projectActivity.isActive
+      ) {
+        projectActivity.isActive = false;
+        entitiesToSave.push(projectActivity);
+      }
+    }
+
+    if (entitiesToSave.length) {
+      await projectActivityRepo.save(entitiesToSave);
+    }
+  }
+
   // -------------------------
   // LIST
   // -------------------------
@@ -141,8 +224,8 @@ export class ProjectsService {
   // GET ONE RAW
   // -------------------------
 
-  async getByIdRaw(id: string) {
-    const project = await this.repo.findOne({
+  async getByIdRaw(id: string, repo: Repository<Project> = this.repo) {
+    const project = await repo.findOne({
       where: { id },
       relations: [
         'users',
@@ -190,153 +273,103 @@ export class ProjectsService {
   // -------------------------
 
   async create(payload: ProjectPayload, user: User) {
-    this.assertManagerAccess(user);
-    await this.assertUniqueName(payload.name);
+    return this.dataSource.transaction(async (manager) => {
+      const projectRepo = manager.getRepository(Project);
+      const projectActivityRepo = manager.getRepository(ProjectActivity);
+      const userRepo = manager.getRepository(User);
+      const activityRepo = manager.getRepository(Activity);
 
-    const creator = await this.usersService.getUserById(user.id);
+      this.assertManagerAccess(user);
 
-    const additionalUsers = payload.userIds?.length
-      ? await this.usersService.findUsersByIds(payload.userIds)
-      : [];
+      await this.assertUniqueName(payload.name, undefined, projectRepo);
 
-    const users = [creator, ...additionalUsers].filter(
-      (u, index, self) => self.findIndex((item) => item.id === u.id) === index,
-    );
+      const creator = await this.usersService.getUserById(user.id, userRepo);
 
-    if (users.some((u) => !this.usersService.canBeProjectMember(u))) {
-      throw new BadRequestException('User cannot be assigned to projects');
-    }
-
-    const project = await this.repo.save(
-      this.repo.create({
-        name: payload.name,
-        description: payload.description,
-        users,
-      }),
-    );
-
-    const activityIds = payload.activityIds;
-
-    if (activityIds?.length) {
-      const activities =
-        await this.activitiesService.findActiveOrRestoreMany(activityIds);
-
-      const projectActivities = activities.map((activity) =>
-        this.projectActivityRepo.create({
-          project,
-          activity,
-          isActive: true,
-        }),
-      );
-
-      await this.projectActivityRepo.save(projectActivities);
-    }
-
-    return this.getByIdRaw(project.id);
-  }
-
-  // -------------------------
-  // UPDATE
-  // -------------------------
-  async update(id: string, payload: UpdateProjectPayload, user: User) {
-    this.assertManagerAccess(user);
-
-    const project = await this.getByIdRaw(id);
-
-    if (payload.name !== undefined) {
-      await this.assertUniqueName(payload.name, id);
-      project.name = payload.name;
-    }
-
-    if (payload.description !== undefined) {
-      project.description = payload.description;
-    }
-
-    if (payload.userIds !== undefined) {
-      const users = payload.userIds.length
-        ? await this.usersService.findUsersByIds(payload.userIds)
+      const additionalUsers = payload.userIds?.length
+        ? await this.usersService.findUsersByIds(payload.userIds, userRepo)
         : [];
+
+      const users = [
+        ...new Map(
+          [...additionalUsers, creator].map((u) => [u.id, u]),
+        ).values(),
+      ];
 
       if (users.some((u) => !this.usersService.canBeProjectMember(u))) {
         throw new BadRequestException('User cannot be assigned to projects');
       }
 
-      project.users = users;
-    }
-
-    await this.repo.save(project);
-
-    if (payload.activityIds !== undefined) {
-      const activityIds = payload.activityIds;
-
-      const activities = payload.activityIds.length
-        ? await this.activitiesService.findActiveOrRestoreMany(
-            payload.activityIds,
-          )
-        : [];
-
-      const activitiesMap = new Map(
-        activities.map((activity) => [activity.id, activity]),
+      const project = await projectRepo.save(
+        projectRepo.create({
+          name: payload.name,
+          description: payload.description,
+          users,
+        }),
       );
 
-      const existingProjectActivities = await this.projectActivityRepo.find({
-        where: {
-          project: {
-            id: project.id,
-          },
-        },
-        relations: ['activity'],
-      });
-
-      const existingMap = new Map(
-        existingProjectActivities.map((pa) => [pa.activity.id, pa]),
+      await this.syncProjectActivities(
+        project,
+        payload.activityIds ?? [],
+        activityRepo,
+        projectActivityRepo,
       );
 
-      const entitiesToSave: ProjectActivity[] = [];
+      return this.getByIdRaw(project.id, projectRepo);
+    });
+  }
+  // -------------------------
+  // UPDATE
+  // -------------------------
+  async update(id: string, payload: UpdateProjectPayload, user: User) {
+    return this.dataSource.transaction(async (manager) => {
+      const projectRepo = manager.getRepository(Project);
+      const projectActivityRepo = manager.getRepository(ProjectActivity);
+      const userRepo = manager.getRepository(User);
+      const activityRepo = manager.getRepository(Activity);
 
-      for (const activityId of activityIds) {
-        const existing = existingMap.get(activityId);
+      this.assertManagerAccess(user);
 
-        if (existing) {
-          if (!existing.isActive) {
-            existing.isActive = true;
-            entitiesToSave.push(existing);
-          }
+      const project = await this.getByIdRaw(id, projectRepo);
 
-          continue;
+      if (payload.name !== undefined) {
+        await this.assertUniqueName(payload.name, id, projectRepo);
+        project.name = payload.name;
+      }
+
+      if (payload.description !== undefined) {
+        project.description = payload.description;
+      }
+
+      if (payload.userIds !== undefined) {
+        if (payload.userIds.length === 0) {
+          throw new BadRequestException('Project must have at least one user');
         }
 
-        const activity = activitiesMap.get(activityId);
+        const users = await this.usersService.findUsersByIds(
+          payload.userIds,
+          userRepo,
+        );
 
-        if (!activity) {
-          continue;
+        if (users.some((u) => !this.usersService.canBeProjectMember(u))) {
+          throw new BadRequestException('User cannot be assigned to projects');
         }
 
-        entitiesToSave.push(
-          this.projectActivityRepo.create({
-            project,
-            activity,
-            isActive: true,
-          }),
+        project.users = users;
+      }
+
+      await projectRepo.save(project);
+
+      if (payload.activityIds !== undefined) {
+        await this.syncProjectActivities(
+          project,
+          payload.activityIds,
+          activityRepo,
+          projectActivityRepo,
         );
       }
 
-      for (const projectActivity of existingProjectActivities) {
-        if (
-          !activityIds.includes(projectActivity.activity.id) &&
-          projectActivity.isActive
-        ) {
-          projectActivity.isActive = false;
-          entitiesToSave.push(projectActivity);
-        }
-      }
-
-      if (entitiesToSave.length) {
-        await this.projectActivityRepo.save(entitiesToSave);
-      }
-    }
-
-    return this.getByIdRaw(project.id);
+      return this.getByIdRaw(project.id, projectRepo);
+    });
   }
 
   // -------------------------

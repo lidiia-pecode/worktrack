@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 
 import { TimeLog } from './entities/time-log.entity';
 import {
@@ -24,6 +24,7 @@ export class TimeLogsService {
     private readonly repo: Repository<TimeLog>,
 
     private readonly projectsService: ProjectsService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private ensureOwnership(log: TimeLog, userId: string) {
@@ -32,14 +33,27 @@ export class TimeLogsService {
     }
   }
 
-  private async checkDailyLimit(
+  private async checkDailyLimitWithLock(
+    manager: EntityManager,
     userId: string,
     date: string,
     time: number,
     excludeId?: string,
   ) {
-    const qb = this.repo
-      .createQueryBuilder('t')
+    // Lock user row to prevent concurrent create/update
+    // operations from exceeding daily time limit.
+    const user = await manager
+      .createQueryBuilder(User, 'u')
+      .setLock('pessimistic_write')
+      .where('u.id = :userId', { userId })
+      .getOne();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const qb = manager
+      .createQueryBuilder(TimeLog, 't')
       .select('SUM(t.time)', 'total')
       .where('t.user_id = :userId', { userId })
       .andWhere('t.date = :date', { date });
@@ -122,24 +136,29 @@ export class TimeLogsService {
       user,
     );
 
-    await this.checkDailyLimit(user.id, payload.date, payload.time);
-
     const { projectActivityId, ...rest } = payload;
 
-    const entity = this.repo.create({
-      ...rest,
-      projectActivity: { id: projectActivityId },
-      user: { id: user.id },
-    });
+    const saved = await this.dataSource.transaction(async (manager) => {
+      await this.checkDailyLimitWithLock(
+        manager,
+        user.id,
+        payload.date,
+        payload.time,
+      );
 
-    const saved = await this.repo.save(entity);
+      const entity = manager.create(TimeLog, {
+        ...rest,
+        projectActivity: { id: projectActivityId },
+        user: { id: user.id },
+      });
+
+      return manager.save(entity);
+    });
 
     return this.getById(saved.id, user);
   }
 
   async update(id: string, payload: UpdateTimelogPayload, user: User) {
-    const log = await this.getById(id, user);
-
     const { projectActivityId, ...rest } = payload;
 
     if (projectActivityId) {
@@ -147,14 +166,38 @@ export class TimeLogsService {
         projectActivityId,
         user,
       );
-      log.projectActivity = { id: projectActivityId } as ProjectActivity;
     }
 
-    const updated = Object.assign(log, rest);
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const timelog = await manager.findOne(TimeLog, {
+        where: {
+          id,
+          userId: user.id,
+        },
+      });
 
-    await this.checkDailyLimit(user.id, updated.date, updated.time, id);
+      if (!timelog) {
+        throw new NotFoundException('TimeLog not found');
+      }
 
-    const saved = await this.repo.save(updated);
+      if (projectActivityId) {
+        timelog.projectActivity = {
+          id: projectActivityId,
+        } as ProjectActivity;
+      }
+
+      Object.assign(timelog, rest);
+
+      await this.checkDailyLimitWithLock(
+        manager,
+        user.id,
+        timelog.date,
+        timelog.time,
+        id,
+      );
+
+      return manager.save(TimeLog, timelog);
+    });
 
     return this.getById(saved.id, user);
   }

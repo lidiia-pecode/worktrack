@@ -10,9 +10,11 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { DatabaseExceptionFilter } from './filters/database-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.useGlobalFilters(new DatabaseExceptionFilter());
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({

@@ -35,24 +35,31 @@ export class UsersService {
   private async validateUser(
     payload: { username?: string; email?: string },
     id?: string,
+    repo: Repository<User> = this.repo,
   ): Promise<void> {
     if (payload.username) {
-      const duplicateName = await this.repo.exists({
-        where: { username: payload.username, ...(id ? { id: Not(id) } : {}) },
+      const duplicateName = await repo.exists({
+        where: {
+          username: payload.username,
+          ...(id ? { id: Not(id) } : {}),
+        },
       });
+
       if (duplicateName) {
         throw new ConflictException(
           `User with username ${payload.username} already exists`,
         );
       }
     }
+
     if (payload.email) {
-      const duplicateEmail = await this.repo.exists({
+      const duplicateEmail = await repo.exists({
         where: {
           email: payload.email,
           ...(id ? { id: Not(id) } : {}),
         },
       });
+
       if (duplicateEmail) {
         throw new ConflictException(
           `User with email ${payload.email} already exists`,
@@ -73,21 +80,32 @@ export class UsersService {
     return { results, count };
   }
 
-  async findUserById(id: string): Promise<User | null> {
-    return this.repo.findOneBy({ id });
+  async findUserById(
+    id: string,
+    repo: Repository<User> = this.repo,
+  ): Promise<User | null> {
+    return repo.findOneBy({ id });
   }
 
-  async getUserById(id: string): Promise<User> {
-    const user = await this.findUserById(id);
+  async getUserById(
+    id: string,
+    repo: Repository<User> = this.repo,
+  ): Promise<User> {
+    const user = await this.findUserById(id, repo);
+
     if (!user) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
+
     return user;
   }
 
   // used in project service
-  async findUsersByIds(ids: string[]): Promise<User[]> {
-    const users = await this.repo.find({
+  async findUsersByIds(
+    ids: string[],
+    repo: Repository<User> = this.repo,
+  ): Promise<User[]> {
+    const users = await repo.find({
       where: {
         id: In(ids),
         status: Status.ACTIVE,
@@ -97,41 +115,54 @@ export class UsersService {
     if (users.length !== ids.length) {
       throw new NotFoundException('One or more users not found');
     }
+
     return users;
   }
 
-  async createUser(payload: CreateUserPayload): Promise<User> {
-    await this.validateUser(payload);
+  async createUser(
+    payload: CreateUserPayload,
+    repo: Repository<User> = this.repo,
+  ): Promise<User> {
+    await this.validateUser(payload, undefined, repo);
+
     const password = await hashPassword(payload.password);
-    const newUser = this.repo.create({
+
+    const newUser = repo.create({
       ...payload,
       password,
     });
-    return this.repo.save(newUser);
+
+    return repo.save(newUser);
   }
 
   // Admin update: role and position ONLY
-  async updateUser(id: string, payload: UpdateUserPayload): Promise<User> {
-    const user = await this.getUserById(id);
+  async updateUser(
+    id: string,
+    payload: UpdateUserPayload,
+    repo: Repository<User> = this.repo,
+  ): Promise<User> {
+    const user = await this.getUserById(id, repo);
 
     if (payload.role !== undefined) {
       user.role = payload.role;
     }
+
     if (payload.position !== undefined) {
       user.position = payload.position;
     }
 
-    return this.repo.save(user);
+    return repo.save(user);
   }
 
   // Self update: avatar and password ONLY
   async updateProfile(
     id: string,
     payload: UpdateProfilePayload,
+    repo: Repository<User> = this.repo,
   ): Promise<User> {
-    await this.validateUser(payload, id);
+    await this.validateUser(payload, id, repo);
 
-    const user = await this.getUserById(id);
+    const user = await this.getUserById(id, repo);
 
     if (payload.avatarUrl !== undefined) {
       user.avatarUrl = payload.avatarUrl;
@@ -145,24 +176,30 @@ export class UsersService {
       user.password = await hashPassword(payload.password);
     }
 
-    return this.repo.save(user);
+    return repo.save(user);
   }
 
-  async archive(id: string) {
-    const user = await this.getUserById(id);
+  async archive(id: string, repo: Repository<User> = this.repo) {
+    const user = await this.getUserById(id, repo);
+
     if (user.status !== Status.ACTIVE) {
       throw new BadRequestException('User is already archived');
     }
+
     user.status = Status.ARCHIVED;
-    return this.repo.save(user);
+
+    return repo.save(user);
   }
 
-  async unarchive(id: string) {
-    const user = await this.getUserById(id);
+  async unarchive(id: string, repo: Repository<User> = this.repo) {
+    const user = await this.getUserById(id, repo);
+
     if (user.status === Status.ACTIVE) {
       throw new BadRequestException('User is already active');
     }
+
     user.status = Status.ACTIVE;
-    return this.repo.save(user);
+
+    return repo.save(user);
   }
 }

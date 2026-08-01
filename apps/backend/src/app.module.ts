@@ -10,9 +10,16 @@ import { ActivitiesModule } from './activities/activities.module';
 import { ActCategoriesModule } from './activity-categories/activity-categories.module';
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { PlanningModule } from './planning/planning.module';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { envValidationSchema } from './config/env.validation';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
+
     ThrottlerModule.forRoot([
       {
         ttl: 60,
@@ -20,16 +27,19 @@ import { PlanningModule } from './planning/planning.module';
       },
     ]),
 
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: parseInt(process.env.DB_PORT || '5432'),
-      username: process.env.DB_USERNAME,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      autoLoadEntities: true,
-      synchronize: false,
-      namingStrategy: new SnakeNamingStrategy(),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.getOrThrow<string>('DB_HOST'),
+        port: config.get<number>('DB_PORT'),
+        username: config.getOrThrow<string>('DB_USERNAME'),
+        password: config.getOrThrow<string>('DB_PASSWORD'),
+        database: config.getOrThrow<string>('DB_NAME'),
+        autoLoadEntities: true,
+        synchronize: false,
+        namingStrategy: new SnakeNamingStrategy(),
+      }),
     }),
     UsersModule,
     ProjectsModule,

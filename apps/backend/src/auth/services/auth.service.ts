@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual, UUID } from 'node:crypto';
@@ -22,6 +23,8 @@ export class AuthService {
     @InjectRepository(AuthSession) private Authrepo: Repository<AuthSession>,
     private jwtService: JwtService,
   ) {}
+
+  private readonly logger = new Logger(AuthService.name);
 
   private async verifyPassword(password: string, hashed: string) {
     const [hashBase64, saltBase64] = hashed.split('$');
@@ -149,24 +152,29 @@ export class AuthService {
   }
 
   public async validateLocalUser(data: SignInPayload) {
-    const user = await this.userRepo.findOneBy({ email: data.email });
+    const user = await this.userRepo.findOneBy({
+      email: data.email,
+    });
 
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    if (data.password && user.password) {
-      const isEqualPasswords = await this.verifyPassword(
-        data.password,
-        user.password,
-      );
+    this.assertUserIsActive(user);
 
-      if (!isEqualPasswords) {
-        throw new UnauthorizedException('Invalid credentials');
-      }
+    // Google-only account
+    if (!user.password) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    this.assertUserIsActive(user);
+    const isEqualPasswords = await this.verifyPassword(
+      data.password,
+      user.password,
+    );
+
+    if (!isEqualPasswords) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
     return user;
   }
@@ -210,14 +218,9 @@ export class AuthService {
     refreshToken: string,
     { user, sessionId }: AuthContext,
   ) {
-    console.log('====================');
-    console.log('REFRESH START');
-    console.log('userId:', user.id);
-    console.log('sessionId:', sessionId);
-
     if (!sessionId) {
-      console.log('FAIL: NO SESSION ID');
-      throw new UnauthorizedException();
+      this.logger.warn('Refresh token missing session id');
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     this.assertUserIsActive(user);
@@ -225,8 +228,8 @@ export class AuthService {
     const decoded = this.jwtService.verifyRefresh(refreshToken);
 
     if (decoded.sessionId !== sessionId) {
-      console.log('FAIL: SESSION MISMATCH');
-      throw new UnauthorizedException('Session mismatch');
+      this.logger.warn('Refresh token session mismatch');
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     const authSession = await this.Authrepo.findOneBy({
@@ -234,13 +237,13 @@ export class AuthService {
     });
 
     if (!authSession) {
-      console.log('FAIL: SESSION NOT FOUND');
-      throw new UnauthorizedException();
+      this.logger.warn('Refresh session not found');
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     if (authSession.userId !== user.id) {
-      console.log('FAIL: WRONG MEMBER');
-      throw new UnauthorizedException('Session does not belong to user');
+      this.logger.warn('Refresh session user mismatch');
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     const isValid = this.verifyRefreshTokenHash(
@@ -249,9 +252,9 @@ export class AuthService {
     );
 
     if (!isValid) {
-      console.log('FAIL: INVALID HASH');
+      this.logger.warn('Refresh token hash mismatch');
       await this.Authrepo.delete({ id: sessionId });
-      throw new UnauthorizedException();
+      throw new UnauthorizedException('Invalid refresh token');
     }
 
     const newRefreshToken = this.jwtService.signRefresh({

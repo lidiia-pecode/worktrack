@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { UserResponse } from 'src/users/dtos/UserResponse.dto';
 import { Status } from '../../enums/Status.enum';
@@ -20,6 +21,7 @@ export class ProjectResponse {
   @Type(() => UserResponse)
   users!: UserResponse[];
 
+  @ApiProperty({ type: () => [ProjectActivityResponse] })
   @Expose()
   @Type(() => ProjectActivityResponse)
   projectActivities!: ProjectActivityResponse[];

@@ -73,9 +73,9 @@ export class SerializeListInterceptor<T> implements NestInterceptor {
     page: number;
     pageSize: number;
   } {
-    const pageRaw = query?.page ?? query?.page_number ?? 1;
-    const sizeRaw =
-      query?.page_size ?? query?.pageSize ?? DEFAULT_PAGINATION_PAGE_SIZE;
+    const pageRaw = query?.page ?? 1;
+
+    const sizeRaw = query?.pageSize ?? DEFAULT_PAGINATION_PAGE_SIZE;
 
     const page = this.toInt(pageRaw, 1);
     const pageSize = this.toInt(sizeRaw, DEFAULT_PAGINATION_PAGE_SIZE);
@@ -112,7 +112,7 @@ export class SerializeListInterceptor<T> implements NestInterceptor {
     }
 
     url.searchParams.set('page', String(page));
-    url.searchParams.set('page_size', String(pageSize));
+    url.searchParams.set('pageSize', String(pageSize));
 
     return url.toString();
   }
