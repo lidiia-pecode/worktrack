@@ -27,6 +27,10 @@ export class ProjectResponse {
   projectActivities!: ProjectActivityResponse[];
 
   @Expose()
+  @Type(() => UserResponse)
+  owner!: UserResponse;
+
+  @Expose()
   createdAt!: Date;
 
   @Expose()

@@ -1,12 +1,10 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Not, Repository } from 'typeorm';
-import { UsersService } from 'src/users/users.service';
 import { User } from 'src/users/entities/user.entity';
 import { ActCategory } from './entities/activities-category.entity';
 import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
@@ -18,16 +16,7 @@ export class ActCategoriesService {
   constructor(
     @InjectRepository(ActCategory)
     private readonly repo: Repository<ActCategory>,
-    private readonly usersService: UsersService,
   ) {}
-
-  private assertManager(user: User) {
-    if (!this.usersService.hasManagerAccess(user)) {
-      throw new ForbiddenException(
-        'Only managers can manage activity categories',
-      );
-    }
-  }
 
   private async assertUniqueName(name: string, excludeId?: string) {
     const exists = await this.repo.exists({
@@ -65,15 +54,11 @@ export class ActCategoriesService {
     return category;
   }
 
-  async getById(id: string, user: User) {
-    this.assertManager(user);
-
+  async getById(id: string) {
     return this.findRaw(id);
   }
 
   async list(user: User, query: ActivityCategoriesQuery) {
-    this.assertManager(user);
-
     const where = query.status ? { status: query.status } : {};
 
     const [results, count] = await this.repo.findAndCount({
@@ -88,18 +73,14 @@ export class ActCategoriesService {
     return { results, count };
   }
 
-  async create(payload: ActivityCategoryPayload, user: User) {
-    this.assertManager(user);
-
+  async create(payload: ActivityCategoryPayload) {
     await this.assertUniqueName(payload.name);
 
     const category = this.repo.create(payload);
     return this.repo.save(category);
   }
 
-  async update(id: string, payload: ActivityCategoryPayload, user: User) {
-    this.assertManager(user);
-
+  async update(id: string, payload: ActivityCategoryPayload) {
     const category = await this.findRaw(id);
 
     await this.assertUniqueName(payload.name, id);
@@ -108,8 +89,7 @@ export class ActCategoriesService {
 
     return this.repo.save(category);
   }
-  async archive(id: string, user: User) {
-    this.assertManager(user);
+  async archive(id: string) {
     const category = await this.findRaw(id);
 
     if (category.status === Status.ARCHIVED) {
@@ -124,8 +104,7 @@ export class ActCategoriesService {
   // RESTORE (soft delete)
   // -------------------------
 
-  async unarchive(id: string, user: User) {
-    this.assertManager(user);
+  async unarchive(id: string) {
     const category = await this.findRaw(id);
 
     if (category.status === Status.ACTIVE) {

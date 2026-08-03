@@ -1,11 +1,15 @@
 import {
   BadRequestException,
-  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 import { TimeLog } from './entities/time-log.entity';
 import {
@@ -16,22 +20,17 @@ import { User } from 'src/users/entities/user.entity';
 import { ProjectsService } from 'src/projects/projects.service';
 import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { AccessControlService } from 'src/auth/services/access-control.service';
 
 @Injectable()
 export class TimeLogsService {
   constructor(
     @InjectRepository(TimeLog)
     private readonly repo: Repository<TimeLog>,
-
     private readonly projectsService: ProjectsService,
+    private readonly accessControl: AccessControlService,
     private readonly dataSource: DataSource,
   ) {}
-
-  private ensureOwnership(log: TimeLog, userId: string) {
-    if (log.userId !== userId) {
-      throw new ForbiddenException('You cannot access this resource');
-    }
-  }
 
   private async checkDailyLimitWithLock(
     manager: EntityManager,
@@ -71,6 +70,24 @@ export class TimeLogsService {
     }
   }
 
+  private applyVisibilityFilter(qb: SelectQueryBuilder<TimeLog>, user: User) {
+    if (this.accessControl.isSuperAdmin(user)) {
+      return;
+    }
+
+    if (this.accessControl.isManager(user)) {
+      qb.where('project.owner_id = :managerId', {
+        managerId: user.id,
+      });
+
+      return;
+    }
+
+    qb.where('t.user_id = :userId', {
+      userId: user.id,
+    });
+  }
+
   async list(query: GetTimelogsQuery, user: User) {
     const qb = this.repo
       .createQueryBuilder('t')
@@ -78,11 +95,9 @@ export class TimeLogsService {
       .leftJoinAndSelect('t.projectActivity', 'projectActivity')
       .leftJoinAndSelect('projectActivity.project', 'project')
       .leftJoinAndSelect('projectActivity.activity', 'activity')
-      .leftJoinAndSelect('activity.category', 'category')
+      .leftJoinAndSelect('activity.category', 'category');
 
-      .where('t.user_id = :userId', {
-        userId: user.id,
-      });
+    this.applyVisibilityFilter(qb, user);
 
     if (query.date) {
       qb.andWhere('t.date = :date', { date: query.date });
@@ -113,7 +128,9 @@ export class TimeLogsService {
 
       relations: {
         projectActivity: {
-          project: true,
+          project: {
+            owner: true,
+          },
           activity: {
             category: true,
           },
@@ -125,13 +142,13 @@ export class TimeLogsService {
       throw new NotFoundException('TimeLog not found');
     }
 
-    this.ensureOwnership(log, user.id);
+    this.accessControl.assertCanViewTimeLog(user, log);
 
     return log;
   }
 
   async create(payload: TimeLogPayload, user: User) {
-    await this.projectsService.getProjectActivityForUser(
+    await this.projectsService.getAccessibleProjectActivity(
       payload.projectActivityId,
       user,
     );
@@ -162,7 +179,7 @@ export class TimeLogsService {
     const { projectActivityId, ...rest } = payload;
 
     if (projectActivityId) {
-      await this.projectsService.getProjectActivityForUser(
+      await this.projectsService.getAccessibleProjectActivity(
         projectActivityId,
         user,
       );
@@ -170,15 +187,21 @@ export class TimeLogsService {
 
     const saved = await this.dataSource.transaction(async (manager) => {
       const timelog = await manager.findOne(TimeLog, {
-        where: {
-          id,
-          userId: user.id,
+        where: { id },
+        relations: {
+          projectActivity: {
+            project: {
+              owner: true,
+            },
+          },
         },
       });
 
       if (!timelog) {
         throw new NotFoundException('TimeLog not found');
       }
+
+      this.accessControl.assertCanModifyTimeLog(user, timelog);
 
       if (projectActivityId) {
         timelog.projectActivity = {
@@ -190,7 +213,7 @@ export class TimeLogsService {
 
       await this.checkDailyLimitWithLock(
         manager,
-        user.id,
+        timelog.userId,
         timelog.date,
         timelog.time,
         id,
@@ -204,6 +227,8 @@ export class TimeLogsService {
 
   async delete(id: string, user: User) {
     const log = await this.getById(id, user);
+
+    this.accessControl.assertCanDeleteTimeLog(user, log);
 
     await this.repo.remove(log);
 

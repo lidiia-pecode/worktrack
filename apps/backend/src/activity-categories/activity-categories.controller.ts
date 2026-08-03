@@ -34,14 +34,14 @@ export class ActCategoriesController {
 
   @Get(':id')
   @Serialize(ActivityCategoryResponse)
-  getById(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.getById(id, user);
+  getById(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getById(id);
   }
 
   @Post()
   @Serialize(ActivityCategoryResponse)
-  create(@Body() payload: ActivityCategoryPayload, @CurrentUser() user: User) {
-    return this.service.create(payload, user);
+  create(@Body() payload: ActivityCategoryPayload) {
+    return this.service.create(payload);
   }
 
   @Patch(':id')
@@ -49,18 +49,17 @@ export class ActCategoriesController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() payload: ActivityCategoryPayload,
-    @CurrentUser() user: User,
   ) {
-    return this.service.update(id, payload, user);
+    return this.service.update(id, payload);
   }
 
   @Patch(':id/archive')
-  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.archive(id, user);
+  archive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.archive(id);
   }
 
   @Patch(':id/unarchive')
-  unarchive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
-    return this.service.unarchive(id, user);
+  unarchive(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.unarchive(id);
   }
 }

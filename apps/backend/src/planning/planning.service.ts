@@ -16,32 +16,21 @@ import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
 import { User } from 'src/users/entities/user.entity';
 import { UsersService } from 'src/users/users.service';
 import { ProjectsService } from 'src/projects/projects.service';
-import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { AccessControlService } from 'src/auth/services/access-control.service';
 
 @Injectable()
 export class PlanningService {
   constructor(
     @InjectRepository(PlanningEntry)
     private readonly repo: Repository<PlanningEntry>,
-
-    @InjectRepository(TimeLog)
-    private readonly timeLogRepo: Repository<TimeLog>,
-
     private readonly usersService: UsersService,
     private readonly projectsService: ProjectsService,
+    private readonly accessControl: AccessControlService,
   ) {}
-
-  private assertManagerAccess(user: User) {
-    if (!this.usersService.hasManagerAccess(user)) {
-      throw new ForbiddenException(
-        'Only managers are allowed to perform this action',
-      );
-    }
-  }
 
   private ensureOwnership(entry: PlanningEntry, user: User) {
     if (
-      !this.usersService.hasManagerAccess(user) &&
+      !this.accessControl.hasManagerPermissions(user) &&
       entry.employeeId !== user.id
     ) {
       throw new ForbiddenException('You cannot access this resource');
@@ -74,7 +63,7 @@ export class PlanningService {
   }
 
   async list(query: PlanningQueryDto, user: User) {
-    const isManager = this.usersService.hasManagerAccess(user);
+    const isManager = this.accessControl.hasManagerPermissions(user);
 
     const employeeId = isManager ? query.employeeId : user.id;
 
@@ -132,16 +121,19 @@ export class PlanningService {
   // CREATE
   // -------------------------
   async create(payload: CreatePlanningEntryDto, manager: User) {
-    this.assertManagerAccess(manager);
+    this.accessControl.assertHasManagerPermissions(manager);
 
     const employee = await this.usersService.getUserById(payload.employeeId);
-    if (!this.usersService.canBeProjectMember(employee)) {
+    if (!this.accessControl.canBeProjectMember(employee)) {
       throw new BadRequestException(
         'Planning can only be created for project contributors',
       );
     }
 
-    const project = await this.projectsService.getByIdRaw(payload.projectId);
+    const project = await this.projectsService.getById(
+      payload.projectId,
+      manager,
+    );
     this.projectsService.assertProjectIsActive(project);
 
     await this.assertNoDuplicate(
@@ -168,7 +160,7 @@ export class PlanningService {
   // UPDATE
   // -------------------------
   async update(id: string, payload: UpdatePlanningEntryDto, manager: User) {
-    this.assertManagerAccess(manager);
+    this.accessControl.assertHasManagerPermissions(manager);
 
     const entry = await this.repo.findOne({
       where: { id },
@@ -179,7 +171,10 @@ export class PlanningService {
     }
 
     if (payload.projectId !== undefined) {
-      const project = await this.projectsService.getByIdRaw(payload.projectId);
+      const project = await this.projectsService.getById(
+        payload.projectId,
+        manager,
+      );
 
       this.projectsService.assertProjectIsActive(project);
 
@@ -215,7 +210,7 @@ export class PlanningService {
   // DELETE
   // -------------------------
   async delete(id: string, manager: User) {
-    this.assertManagerAccess(manager);
+    this.accessControl.assertHasManagerPermissions(manager);
 
     const entry = await this.repo.findOneBy({ id });
 

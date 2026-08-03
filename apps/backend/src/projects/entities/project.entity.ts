@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
@@ -43,6 +46,16 @@ export class Project {
     (projectActivity) => projectActivity.project,
   )
   projectActivities!: ProjectActivity[];
+
+  @ManyToOne(() => User, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'owner_id' })
+  owner!: User;
+
+  @RelationId((project: Project) => project.owner)
+  ownerId!: string;
 
   @CreateDateColumn()
   createdAt!: Date;

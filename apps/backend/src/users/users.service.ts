@@ -9,7 +9,6 @@ import { In, Not, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
-import { UserRole } from './enums/UserRole.enum';
 import { User } from './entities/user.entity';
 import { Status } from 'src/enums/Status.enum';
 import { UsersQuery } from './dtos/UsersQuery.dto';
@@ -20,17 +19,6 @@ export class UsersService {
     @InjectRepository(User)
     private readonly repo: Repository<User>,
   ) {}
-
-  hasManagerAccess(user: User): boolean {
-    return user.role === UserRole.MANAGER || user.role === UserRole.SUPER_ADMIN;
-  }
-
-  canBeProjectMember(user: User) {
-    return (
-      user.status === Status.ACTIVE &&
-      [UserRole.MEMBER, UserRole.MANAGER].includes(user.role)
-    );
-  }
 
   private async validateUser(
     payload: { username?: string; email?: string },
