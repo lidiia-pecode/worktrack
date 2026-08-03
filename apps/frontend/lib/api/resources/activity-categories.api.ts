@@ -9,23 +9,38 @@ import {
 
 import { createClient, createCrudClient } from "../core";
 
+// const crud = createCrudClient<
+//   ActivityCategory,
+//   ActivityCategoryPayload,
+//   UpdateActivityCategoryPayload,
+//   ActivityCategoryListResponse
+// >({
+//   endpoint: "activity-categories",
+// });
+
+// const client = createClient({
+//   endpoint: "activity-categories",
+// });
+
+// export const ActivityCategoriesClientApi = {
+//   ...crud,
+
+//   archive: (id: string) => client.archive<ActivityCategory>(`/${id}/archive`),
+
+//   unarchive: (id: string) => client.patch<ActivityCategory>(`/${id}/unarchive`),
+// };
+
 const crud = createCrudClient<
   ActivityCategory,
   ActivityCategoryPayload,
   UpdateActivityCategoryPayload,
   ActivityCategoryListResponse
->({
-  endpoint: "activity-categories",
-});
+>({ endpoint: "activity-categories" });
 
-const client = createClient({
-  endpoint: "activity-categories",
-});
+const client = createClient({ endpoint: "activity-categories" });
 
 export const ActivityCategoriesClientApi = {
   ...crud,
-
-  archive: (id: string) => client.delete<ActivityCategory>(`/${id}/archive`),
-
+  archive: (id: string) => client.archive<ActivityCategory>(`/${id}/archive`),
   unarchive: (id: string) => client.patch<ActivityCategory>(`/${id}/unarchive`),
 };

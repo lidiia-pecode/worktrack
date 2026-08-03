@@ -1,27 +1,26 @@
 "use client";
 
 import {
-  GetTimelogsQuery,
   Timelog,
   TimelogListResponse,
   TimelogPayload,
   UpdateTimelogPayload,
 } from "@/types";
 
-import { createCrudClient } from "../core";
+import { createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   Timelog,
   TimelogPayload,
   UpdateTimelogPayload,
-  TimelogListResponse,
-  GetTimelogsQuery
+  TimelogListResponse
 >({
   endpoint: "time-logs",
 });
 
+const client = createClient({ endpoint: "time-logs" });
+
 export const TimelogsClientApi = {
   ...crud,
-
-  getAll: (query?: GetTimelogsQuery) => crud.getAll({ query }),
+  delete: (id: string) => client.delete(`/${id}`),
 };

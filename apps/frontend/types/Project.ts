@@ -1,5 +1,5 @@
-import { PaginatedResponse, ProjectActivity } from ".";
-import { Status as ProjectStatus } from "./enums";
+import { PaginatedResponse, PaginationParams, ProjectActivity } from ".";
+import { Status as ProjectStatus, Status } from "./enums";
 import { User } from "./User";
 
 export interface Project {
@@ -25,5 +25,9 @@ export type UpdateProjectPayload = Partial<ProjectPayload>;
 export type ProjectState = Pick<Project, "name"> & {
   description?: string;
 };
+
+export interface ProjectQuery extends PaginationParams {
+  status?: Status;
+}
 
 export type ProjectListResponse = PaginatedResponse<Project>;

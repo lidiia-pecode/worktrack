@@ -2,11 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  GetTimelogsQuery,
-  TimelogPayload,
-  UpdateTimelogPayload,
-} from "@/types";
+import { TimelogsQuery, TimelogPayload, UpdateTimelogPayload } from "@/types";
 import { TimelogsClientApi } from "@/lib/api/resources";
 import { getErrorMessage } from "@/lib/api";
 import { queryKeys } from "./shared/queryKeys";
@@ -23,7 +19,7 @@ export function useTimelogs(range: DateRange) {
         dateFrom: range.dateFrom,
         dateTo: range.dateTo,
         pageSize: 200,
-      } as unknown as GetTimelogsQuery),
+      } as TimelogsQuery),
     enabled: !!range.dateFrom && !!range.dateTo,
   });
 

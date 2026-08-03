@@ -6,6 +6,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -25,6 +26,7 @@ export class TimeLogPayload {
   @IsOptional()
   @IsString()
   @MinLength(3)
+  @MaxLength(1000)
   note?: string;
 
   @IsBoolean()

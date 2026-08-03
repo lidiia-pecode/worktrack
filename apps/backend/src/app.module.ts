@@ -38,6 +38,7 @@ import { envValidationSchema } from './config/env.validation';
         database: config.getOrThrow<string>('DB_NAME'),
         autoLoadEntities: true,
         synchronize: false,
+        logging: config.getOrThrow<string>('NODE_ENV') !== 'production',
         namingStrategy: new SnakeNamingStrategy(),
       }),
     }),

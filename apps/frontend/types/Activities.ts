@@ -1,4 +1,4 @@
-import { PaginatedResponse } from ".";
+import { PaginatedResponse, PaginationParams } from ".";
 import { ActivityCategory } from "./ActivityCategory";
 import { Status } from "./enums";
 
@@ -14,6 +14,9 @@ export interface Activity {
 export interface ActivityPayload {
   name: string;
   categoryId: string;
+}
+export interface ActivityQuery extends PaginationParams {
+  status?: Status;
 }
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;

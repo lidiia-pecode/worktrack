@@ -1,5 +1,5 @@
-import { PaginatedResponse, Project } from ".";
-import { UserRole } from "./enums";
+import { PaginatedResponse, PaginationParams, Project } from ".";
+import { Status, UserRole } from "./enums";
 
 export interface User {
   id: string;
@@ -15,6 +15,10 @@ export interface User {
 
   updatedAt: string;
   createdAt: string;
+}
+
+export interface UserQuery extends PaginationParams {
+  status?: Status;
 }
 
 export type UserPayload = Omit<User, "id" | "updatedAt" | "createdAt">;

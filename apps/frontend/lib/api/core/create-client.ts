@@ -47,7 +47,7 @@ export function createClient({
         }),
       ),
 
-    delete: <T>(path = "") =>
+    archive: <T>(path = "") =>
       client<T>(() =>
         fetch(`${baseUrl}${path}`, {
           method: "PATCH",
@@ -55,6 +55,14 @@ export function createClient({
           headers: {
             "Content-Type": "application/json",
           },
+        }),
+      ),
+
+    delete: <T>(path = "") =>
+      client<T>(() =>
+        fetch(`${baseUrl}${path}`, {
+          method: "DELETE",
+          credentials: "include",
         }),
       ),
   };

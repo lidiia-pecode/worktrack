@@ -1,4 +1,5 @@
 import { PaginatedResponse, PaginationParams } from ".";
+import { Status } from "./enums";
 import { ProjectActivity } from "./ProjectActivities";
 
 export interface Timelog {
@@ -23,10 +24,11 @@ export interface TimelogPayload {
 
 export type UpdateTimelogPayload = Partial<TimelogPayload>;
 
-export interface GetTimelogsQuery extends PaginationParams {
+export interface TimelogsQuery extends PaginationParams {
   date?: string;
   dateFrom?: string;
   dateTo?: string;
+  status?: Status;
 }
 
 export type TimelogListResponse = PaginatedResponse<Timelog>;

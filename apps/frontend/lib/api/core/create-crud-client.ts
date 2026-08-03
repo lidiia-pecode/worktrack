@@ -1,64 +1,3 @@
-// "use client";
-
-// import { API_PROXY_URL } from "@/lib/constants";
-// import { apiClient } from "@/lib/api";
-
-// type CrudApiConfig = {
-//   endpoint: string;
-// };
-
-// export function createCrudClient<TEntity, TCreate, TUpdate, TList>({
-//   endpoint,
-// }: CrudApiConfig) {
-//   return {
-//     getAll: (page = 1) =>
-//       apiClient<TList>(() =>
-//         fetch(`${API_PROXY_URL}/${endpoint}?page=${page}`, {
-//           credentials: "include",
-//         }),
-//       ),
-
-//     getById: (id: string) =>
-//       apiClient<TEntity>(() =>
-//         fetch(`${API_PROXY_URL}/${endpoint}/${id}`, {
-//           credentials: "include",
-//         }),
-//       ),
-
-//     create: (data: TCreate) =>
-//       apiClient<TEntity>(() =>
-//         fetch(`${API_PROXY_URL}/${endpoint}`, {
-//           method: "POST",
-//           credentials: "include",
-//           headers: {
-//             "Content-Type": "application/json",
-//           },
-//           body: JSON.stringify(data),
-//         }),
-//       ),
-
-//     update: (id: string, data: TUpdate) =>
-//       apiClient<TEntity>(() =>
-//         fetch(`${API_PROXY_URL}/${endpoint}/${id}`, {
-//           method: "PATCH",
-//           credentials: "include",
-//           headers: {
-//             "Content-Type": "application/json",
-//           },
-//           body: JSON.stringify(data),
-//         }),
-//       ),
-
-//     delete: (id: string) =>
-//       apiClient<TEntity>(() =>
-//         fetch(`${API_PROXY_URL}/${endpoint}/${id}`, {
-//           method: "DELETE",
-//           credentials: "include",
-//         }),
-//       ),
-//   };
-// }
-
 "use client";
 
 import { createClient } from "./create-client";
@@ -117,7 +56,5 @@ export function createCrudClient<
 
     update: (id: string, data: TUpdate) =>
       client.patch<TEntity>(`/${id}`, data),
-
-    delete: (id: string) => client.delete<TEntity>(`/${id}`),
   };
 }

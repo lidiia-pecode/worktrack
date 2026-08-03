@@ -5,6 +5,7 @@ import {
   IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
@@ -30,6 +31,7 @@ export class CreatePlanningEntryDto {
   @IsOptional()
   @IsString()
   @MinLength(3)
+  @MaxLength(1000)
   note?: string;
 }
 

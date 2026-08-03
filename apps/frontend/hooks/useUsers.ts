@@ -15,12 +15,14 @@ const useUsersMutations = createEntityMutations({
     create: UsersClientApi.create,
     update: UsersClientApi.update,
     archive: UsersClientApi.archive,
+    unarchive: UsersClientApi.unarchive,
   },
 
   messages: {
     create: "User created successfully",
     update: "User updated successfully",
     archive: "User deleted successfully",
+    unarchive: "User restored successfully",
   },
 });
 
@@ -28,7 +30,7 @@ export const useUsers = () => {
   const usersQuery = useInfiniteQuery({
     queryKey: queryKeys.users.infinite(),
 
-    queryFn: ({ pageParam = 1 }) => UsersClientApi.getAllPaginated(pageParam),
+    queryFn: ({ pageParam }) => UsersClientApi.getAll({ page: pageParam }),
 
     initialPageParam: 1,
 
