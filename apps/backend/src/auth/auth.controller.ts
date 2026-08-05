@@ -1,67 +1,38 @@
 import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
+import { plainToInstance } from 'class-transformer';
+import type { AuthContext, AuthUser } from './auth-strategies/types';
+import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
 import { AuthService } from './services/auth.service';
-import {
-  SignInPayload,
-  SignUpPayload,
-  VerificationCodeRequestPayload,
-} from './auth.dto';
+import { CookieService } from './services/cookie.service';
+import { CurrentUser, SessionId } from 'src/lib/decorators';
 
-import type { Response } from 'express';
-import { RefreshToken } from './decorators';
-import { User } from 'src/users/entities/user.entity';
-import { CurrentUser } from 'src/lib/decorators';
-import { SessionId } from 'src/lib/decorators';
-import { GoogleGuard, LocalAuthGuard, RefreshGuard } from './guards';
-import type { UUID } from 'crypto';
-import { ACCESS_TOKEN_MAX_AGE, REFRESH_TOKEN_MAX_AGE } from 'src/lib/consts';
+import {
+  AccessGuard,
+  GoogleGuard,
+  LocalAuthGuard,
+  RefreshGuard,
+} from './guards';
+import { CurrentAuth } from 'src/lib/decorators/current-auth.decorator';
+import { RefreshToken } from 'src/lib/decorators/refresh-token.decorator';
+import { LinkGoogleDto } from './dtos/link-google.dto';
+import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
+import { Throttle } from '@nestjs/throttler';
+import {
+  AuthUserResponse,
+  LinkGoogleResponse,
+  SuccessResponse,
+  TokenResponse,
+} from './dtos/auth-responses.dto';
+import { VerificationCodeRequestPayload } from './dtos/auth.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly service: AuthService) {}
-
-  private setCookies(
-    res: Response,
-    {
-      access_token,
-      refresh_token,
-    }: {
-      access_token: string;
-      refresh_token: string;
-    },
-  ) {
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    res.cookie('access_token', access_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: ACCESS_TOKEN_MAX_AGE,
-    });
-
-    res.cookie('refresh_token', refresh_token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: REFRESH_TOKEN_MAX_AGE,
-    });
-  }
-
-  private clearCookies(res: Response) {
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    const cookieOptions = {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'lax' as const,
-      path: '/',
-    };
-
-    res.clearCookie('refresh_token', cookieOptions);
-    res.clearCookie('access_token', cookieOptions);
-  }
+  constructor(
+    private readonly authService: AuthService,
+    private readonly cookieService: CookieService,
+  ) {}
 
   @Get('/google')
   @UseGuards(GoogleGuard)
@@ -70,82 +41,123 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleGuard)
   async googleAuthRedirect(
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
+    @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const tokens = await this.service.initializeUserSession(user);
-    this.setCookies(res, tokens);
+    const tokens = await this.authService.createSession(user, metadata);
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
 
     return res.redirect(`${process.env.FRONTEND_URL}/`);
   }
 
-  @Post('/signup')
-  async signup(
-    @Body() payload: SignUpPayload,
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('login')
+  @UseGuards(LocalAuthGuard)
+  async login(
+    @CurrentUser() user: AuthUser,
+    @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.service.signup(payload);
-    this.setCookies(res, tokens);
+  ): Promise<TokenResponse> {
+    const tokens = await this.authService.createSession(user, metadata);
 
-    return { success: true };
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
+    return plainToInstance(TokenResponse, {
+      access_token: tokens.access_token,
+    });
   }
 
-  @UseGuards(LocalAuthGuard)
-  @Post('/signin')
-  async signin(
-    @Body() payload: SignInPayload,
-    @CurrentUser() user: User,
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('refresh')
+  @UseGuards(RefreshGuard)
+  async refresh(
+    @CurrentAuth() auth: AuthContext,
+    @RefreshToken() refreshToken: string,
+    @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.service.initializeUserSession(user);
-    this.setCookies(res, tokens);
+  ): Promise<TokenResponse> {
+    const tokens = await this.authService.refreshAccessToken(
+      refreshToken,
+      auth,
+      metadata,
+    );
 
-    return { success: true };
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
+    return plainToInstance(TokenResponse, {
+      access_token: tokens.access_token,
+    });
+  }
+
+  @Post('logout')
+  @UseGuards(AccessGuard)
+  async logout(
+    @SessionId() sessionId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SuccessResponse> {
+    await this.authService.logout(sessionId);
+    this.cookieService.clearAuthCookies(res);
+
+    return plainToInstance(SuccessResponse, {
+      success: true,
+    });
+  }
+
+  @Post('logout-all')
+  @UseGuards(AccessGuard)
+  async logoutAll(
+    @CurrentUser() authUser: AuthUser,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SuccessResponse> {
+    await this.authService.logoutAll(authUser.id);
+    this.cookieService.clearAuthCookies(res);
+
+    return plainToInstance(SuccessResponse, {
+      success: true,
+    });
+  }
+
+  @Get('me')
+  @UseGuards(AccessGuard)
+  me(@CurrentUser() authUser: AuthUser): AuthUserResponse {
+    return plainToInstance(AuthUserResponse, authUser);
+  }
+
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('google/link')
+  @UseGuards(AccessGuard)
+  async linkGoogle(
+    @CurrentUser() authUser: AuthUser,
+    @Body() dto: LinkGoogleDto,
+  ): Promise<LinkGoogleResponse> {
+    await this.authService.linkGoogleAccount(authUser.id, dto.googleId);
+
+    return plainToInstance(LinkGoogleResponse, {
+      success: true,
+      message: 'Google account successfully linked',
+    });
   }
 
   @Post('/verification-code')
   async sendVerificationCode(
     @Body() { email }: VerificationCodeRequestPayload,
   ) {
-    await this.service.sendVerificationCode(email);
-    return { success: true };
-  }
-
-  @UseGuards(RefreshGuard)
-  @Post('/refresh')
-  async refresh(
-    @CurrentUser() user: User,
-    @SessionId() sessionId: UUID,
-    @RefreshToken() refreshToken: string,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.service.refreshAccessToken(refreshToken, {
-      user,
-      sessionId,
+    await this.authService.sendVerificationCode(email);
+    return plainToInstance(SuccessResponse, {
+      success: true,
     });
-
-    this.setCookies(res, tokens);
-
-    return { success: true };
-  }
-
-  @UseGuards(RefreshGuard)
-  @Post('/logout')
-  async logout(
-    @SessionId() sessionId: UUID,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    this.clearCookies(res);
-    return this.service.logout(sessionId);
-  }
-
-  @UseGuards(RefreshGuard)
-  @Post('/logout-all')
-  async logoutAll(
-    @CurrentUser() user: User,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    this.clearCookies(res);
-    return await this.service.logoutAll(user);
   }
 }

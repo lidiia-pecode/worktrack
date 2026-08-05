@@ -1,7 +1,29 @@
-import { UUID } from 'crypto';
-import { User } from 'src/users/entities/user.entity';
+// apps/backend/src/auth/auth-strategies/types.ts
+
+import { UserRole } from 'src/users/enums/UserRole.enum';
+
+export interface JwtAccessPayload {
+  id: string;
+  email: string;
+  companyId: string;
+  role: string;
+  sessionId: string;
+}
+
+export interface JwtRefreshPayload {
+  id: string;
+  companyId: string;
+  sessionId: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  companyId: string;
+  role: UserRole;
+}
 
 export interface AuthContext {
-  user: User;
-  sessionId?: UUID;
+  user: AuthUser;
+  sessionId: string;
 }

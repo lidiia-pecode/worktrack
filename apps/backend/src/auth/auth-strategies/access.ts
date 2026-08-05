@@ -1,44 +1,62 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { AuthContext } from './types';
-import { User } from 'src/users/entities/user.entity';
-import { UUID } from 'crypto';
-import { UsersService } from 'src/users/users.service';
 import { cookieExtractor } from '../helpers/cookies-extractor';
-import { Status } from 'src/enums/Status.enum';
-
-type AccessPayload = Pick<User, 'id' | 'email'> & { sessionId: UUID };
+import { AuthContext, JwtAccessPayload } from './types';
+import { UsersService } from 'src/users/users.service';
+import { UserStatus } from 'src/users/entities/user.entity';
+import { SessionService } from '../services';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
-  constructor(private usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly sessionService: SessionService,
+    configService: ConfigService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         cookieExtractor('access_token'),
       ]),
-      secretOrKey: process.env.ACCESS_TOKEN_SECRET!,
+      secretOrKey: configService.getOrThrow('ACCESS_TOKEN_SECRET'),
       ignoreExpiration: false,
-      passReqToCallback: false,
     });
   }
 
-  async validate({
-    id,
-    email,
-    sessionId,
-  }: AccessPayload): Promise<AuthContext> {
-    const user = await this.usersService.findUserById(id);
+  async validate(payload: JwtAccessPayload): Promise<AuthContext> {
+    if (!payload.sessionId) {
+      throw new UnauthorizedException('Invalid token payload');
+    }
 
-    if (!user || user.email !== email) {
+    const sessionExists = await this.sessionService.exists(payload.sessionId);
+    if (!sessionExists) {
+      throw new UnauthorizedException('Session has been revoked or expired');
+    }
+
+    const user = await this.usersService.findUserById(payload.id);
+
+    if (!user) {
       throw new UnauthorizedException();
     }
 
-    if (user.status === Status.ARCHIVED) {
-      throw new UnauthorizedException('User is archived');
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
     }
 
-    return { user, sessionId };
+    if (user.companyId !== payload.companyId) {
+      throw new UnauthorizedException();
+    }
+
+    return {
+      user: {
+        id: user.id,
+        email: user.email,
+        companyId: user.companyId,
+        role: user.role,
+      },
+      sessionId: payload.sessionId,
+    };
   }
 }

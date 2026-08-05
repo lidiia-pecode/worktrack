@@ -1,42 +1,228 @@
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
-import { createHmac, randomUUID, timingSafeEqual, UUID } from 'node:crypto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { hashPassword, scryptAsync } from 'src/lib/utils/hash-password.util';
-import { GoogleUserPayload, SignInPayload, SignUpPayload } from '../auth.dto';
-import { JwtService } from './jwt.service';
-import { AuthContext } from '../auth-strategies/types';
-import { AuthSession } from '../entities/AuthSession.entity';
-import { User } from 'src/users/entities/user.entity';
-import { Status } from 'src/enums/Status.enum';
+import { User, UserStatus } from 'src/users/entities/user.entity';
+
+import { GoogleUserPayload, SignInPayload } from '../dtos/auth.dto';
+
+import { PasswordService } from './password.service';
+import { TokenService } from './token.service';
+import { SessionService } from './session.service';
+import { UsersService } from 'src/users/users.service';
+import { AuthContext, AuthUser } from '../auth-strategies/types';
+import { ConfigService } from '@nestjs/config';
+import { SessionMetadata } from 'src/lib/types/session-metadata';
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectRepository(User) private userRepo: Repository<User>,
-    @InjectRepository(AuthSession) private Authrepo: Repository<AuthSession>,
-    private jwtService: JwtService,
+    private readonly configService: ConfigService,
+    private readonly passwordService: PasswordService,
+    private readonly tokenService: TokenService,
+    private readonly sessionService: SessionService,
+    private readonly usersService: UsersService,
   ) {}
 
-  private readonly logger = new Logger(AuthService.name);
+  private getSessionExpirationDate(): Date {
+    const days = this.configService.getOrThrow<number>(
+      'REFRESH_TOKEN_EXPIRES_IN_DAYS',
+    );
 
-  private async verifyPassword(password: string, hashed: string) {
-    const [hashBase64, saltBase64] = hashed.split('$');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + days);
+    return expiresAt;
+  }
 
-    if (!saltBase64 || !hashBase64) return false;
+  async validateLocalUser(payload: SignInPayload): Promise<User> {
+    const user = await this.usersService.findByEmail(
+      payload.email.toLowerCase().trim(),
+    );
 
-    const salt = Buffer.from(saltBase64, 'base64');
-    const expected = Buffer.from(hashBase64, 'base64');
+    if (!user) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
 
-    const provided = await scryptAsync(password, salt, expected.length);
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('User account is inactive');
+    }
 
-    return timingSafeEqual(provided, expected);
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const isValid = await this.passwordService.verify(
+      payload.password,
+      user.passwordHash,
+    );
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    return user;
+  }
+
+  async validateGoogleUser(payload: GoogleUserPayload): Promise<User> {
+    const { googleId } = payload;
+
+    const user = await this.usersService.findByGoogleId(googleId);
+
+    if (!user) {
+      throw new UnauthorizedException(
+        'Google account is not linked to any user.',
+      );
+    }
+
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException('User account is inactive');
+    }
+
+    return user;
+  }
+
+  async createSession(user: AuthUser, metadata?: SessionMetadata) {
+    const expiresAt = this.getSessionExpirationDate();
+    const sessionId = crypto.randomUUID();
+
+    const refreshToken = this.tokenService.createRefreshToken({
+      id: user.id,
+      companyId: user.companyId,
+      sessionId,
+    });
+
+    const refreshHash = this.tokenService.hashRefreshToken(
+      refreshToken,
+      sessionId,
+    );
+
+    await this.sessionService.create({
+      id: sessionId,
+      userId: user.id,
+      companyId: user.companyId,
+      refreshHash,
+      expiresAt,
+      ip: metadata?.ip,
+      userAgent: metadata?.userAgent,
+    });
+
+    const accessToken = this.tokenService.createAccessToken({
+      id: user.id,
+      email: user.email,
+      companyId: user.companyId,
+      role: user.role,
+      sessionId,
+    });
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    };
+  }
+
+  async refreshAccessToken(
+    refreshToken: string,
+    auth: AuthContext,
+    metadata?: SessionMetadata,
+  ) {
+    const session = await this.sessionService.findById(auth.sessionId);
+
+    if (!session) {
+      throw new UnauthorizedException('Session not found');
+    }
+
+    if (new Date() > session.expiresAt) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException('Session has expired');
+    }
+
+    if (session.userId !== auth.user.id) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException('Session does not belong to the user');
+    }
+
+    if (session.companyId !== auth.user.companyId) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException('Session company mismatch');
+    }
+
+    const user = await this.usersService.findUserById(auth.user.id);
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
+    }
+
+    if (user.companyId !== session.companyId) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException('User company has changed');
+    }
+
+    // 1. hash the token that came from the client
+    const incomingRefreshHash = this.tokenService.hashRefreshToken(
+      refreshToken,
+      session.id,
+    );
+
+    // 2. new refresh token and its hash
+    const newRefreshToken = this.tokenService.createRefreshToken({
+      id: user.id,
+      companyId: user.companyId,
+      sessionId: session.id,
+    });
+
+    const newRefreshHash = this.tokenService.hashRefreshToken(
+      newRefreshToken,
+      session.id,
+    );
+
+    const newExpiresAt = this.getSessionExpirationDate();
+
+    // 3. ATOMIC UPDATE:
+    const isUpdated = await this.sessionService.rotateRefreshHash(
+      session.id,
+      incomingRefreshHash,
+      newRefreshHash,
+      newExpiresAt,
+      metadata,
+    );
+
+    // 4. If 0 records were updated — this token HAS ALREADY BEEN used
+    if (!isUpdated) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException(
+        'Invalid or previously used refresh token',
+      );
+    }
+
+    // 5. return new Access Token
+    const accessToken = this.tokenService.createAccessToken({
+      id: user.id,
+      email: user.email,
+      companyId: user.companyId,
+      role: user.role,
+      sessionId: session.id,
+    });
+
+    return {
+      access_token: accessToken,
+      refresh_token: newRefreshToken,
+    };
+  }
+
+  async logout(sessionId: string): Promise<void> {
+    await this.sessionService.delete(sessionId);
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.sessionService.deleteAllForUser(userId);
+  }
+
+  async linkGoogleAccount(userId: string, googleId: string): Promise<void> {
+    const user = await this.usersService.findUserById(userId);
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
+    }
+
+    await this.usersService.linkGoogleAccount(userId, googleId);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -55,233 +241,5 @@ export class AuthService {
     const code = await this.createVerificationCode(email);
 
     return code;
-  }
-
-  private hashRefreshToken(token: string) {
-    return createHmac('sha256', process.env.REFRESH_TOKEN_HASH_SECRET!)
-      .update(token)
-      .digest('base64url');
-  }
-
-  private verifyRefreshTokenHash(token: string, tokenHash: string) {
-    const computed = this.hashRefreshToken(token);
-
-    const a = Buffer.from(computed);
-    const b = Buffer.from(tokenHash);
-
-    return a.length === b.length && timingSafeEqual(a, b);
-  }
-
-  private generateUniqueUsername(base: string): string {
-    const normalized = base.toLowerCase().replace(/\s+/g, '').slice(0, 11);
-    return `${normalized}_${randomUUID().slice(0, 8)}`;
-  }
-
-  private assertUserIsActive(user: User): void {
-    if (user.status === Status.ARCHIVED) {
-      throw new UnauthorizedException('User is archived');
-    }
-  }
-
-  async validateGoogleUser(details: GoogleUserPayload): Promise<User> {
-    const { googleId, email, firstName, lastName } = details;
-
-    let user = await this.userRepo.findOne({
-      where: { googleId },
-    });
-
-    if (user) {
-      this.assertUserIsActive(user);
-
-      return user;
-    }
-
-    user = await this.userRepo.findOne({
-      where: { email },
-    });
-
-    if (!user) {
-      const baseUsername = `${firstName}_${lastName}`;
-      const username = this.generateUniqueUsername(baseUsername);
-
-      user = this.userRepo.create({
-        email,
-        firstName,
-        lastName,
-        username,
-        googleId,
-      });
-      await this.userRepo.save(user);
-
-      return user;
-    }
-
-    this.assertUserIsActive(user);
-
-    user.googleId = googleId;
-    await this.userRepo.save(user);
-    return user;
-  }
-
-  public async initializeUserSession(user: User) {
-    const sessionId = randomUUID();
-
-    const refreshToken = this.jwtService.signRefresh({
-      sessionId: sessionId,
-      email: user.email,
-      id: user.id,
-    });
-
-    const refreshHash = this.hashRefreshToken(refreshToken);
-
-    const authSession = this.Authrepo.create({
-      id: sessionId,
-      userId: user.id,
-      refreshHash: refreshHash,
-    });
-
-    await this.Authrepo.save(authSession);
-
-    const accessToken = this.jwtService.signAccess({
-      id: user.id,
-      email: user.email,
-      sessionId: sessionId,
-    });
-
-    return { access_token: accessToken, refresh_token: refreshToken };
-  }
-
-  public async validateLocalUser(data: SignInPayload) {
-    const user = await this.userRepo.findOneBy({
-      email: data.email,
-    });
-
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    this.assertUserIsActive(user);
-
-    // Google-only account
-    if (!user.password) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    const isEqualPasswords = await this.verifyPassword(
-      data.password,
-      user.password,
-    );
-
-    if (!isEqualPasswords) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    return user;
-  }
-
-  public async signup(data: SignUpPayload) {
-    // const isValidCode = await this.verifyCode(data.email, data.code);
-
-    // if (!isValidCode) {
-    //   throw new UnauthorizedException('Invalid verification code');
-    // }
-
-    const isDuplicate = await this.userRepo.existsBy({ email: data.email });
-    const isDuplicateUserName = await this.userRepo.existsBy({
-      username: data.username,
-    });
-
-    if (isDuplicate) {
-      throw new BadRequestException('User with this email already exists');
-    }
-
-    if (isDuplicateUserName) {
-      throw new BadRequestException('User with this username already exists');
-    }
-
-    const hashedPassword = await hashPassword(data.password);
-
-    const _user = this.userRepo.create({
-      firstName: data.firstName,
-      lastName: data.lastName,
-      username: data.username,
-      email: data.email,
-      password: hashedPassword,
-    });
-
-    const user = await this.userRepo.save(_user);
-
-    return this.initializeUserSession(user);
-  }
-
-  public async refreshAccessToken(
-    refreshToken: string,
-    { user, sessionId }: AuthContext,
-  ) {
-    if (!sessionId) {
-      this.logger.warn('Refresh token missing session id');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    this.assertUserIsActive(user);
-
-    const decoded = this.jwtService.verifyRefresh(refreshToken);
-
-    if (decoded.sessionId !== sessionId) {
-      this.logger.warn('Refresh token session mismatch');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const authSession = await this.Authrepo.findOneBy({
-      id: sessionId,
-    });
-
-    if (!authSession) {
-      this.logger.warn('Refresh session not found');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    if (authSession.userId !== user.id) {
-      this.logger.warn('Refresh session user mismatch');
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const isValid = this.verifyRefreshTokenHash(
-      refreshToken,
-      authSession.refreshHash,
-    );
-
-    if (!isValid) {
-      this.logger.warn('Refresh token hash mismatch');
-      await this.Authrepo.delete({ id: sessionId });
-      throw new UnauthorizedException('Invalid refresh token');
-    }
-
-    const newRefreshToken = this.jwtService.signRefresh({
-      sessionId,
-      email: user.email,
-      id: user.id,
-    });
-    const newRefreshHash = this.hashRefreshToken(newRefreshToken);
-
-    await this.Authrepo.update(sessionId, { refreshHash: newRefreshHash });
-
-    const accessToken = this.jwtService.signAccess({
-      id: user.id,
-      email: user.email,
-      sessionId,
-    });
-
-    return { access_token: accessToken, refresh_token: newRefreshToken };
-  }
-
-  public async logout(sessionId: UUID) {
-    await this.Authrepo.delete({ id: sessionId });
-    return { success: true };
-  }
-
-  public async logoutAll(user: User): Promise<{ success: true }> {
-    await this.Authrepo.delete({ userId: user.id });
-    return { success: true };
   }
 }

@@ -1,0 +1,26 @@
+import { Expose } from 'class-transformer';
+
+export class TokenResponse {
+  @Expose()
+  access_token!: string;
+}
+
+export class SuccessResponse {
+  @Expose()
+  success!: boolean;
+}
+
+export class LinkGoogleResponse {
+  @Expose()
+  success!: boolean;
+
+  @Expose()
+  message!: string;
+}
+
+export class AuthUserResponse {
+  @Expose() id!: string;
+  @Expose() email!: string;
+  @Expose() companyId!: string;
+  @Expose() role!: string;
+}
