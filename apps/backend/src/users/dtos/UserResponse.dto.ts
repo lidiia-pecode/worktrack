@@ -1,13 +1,17 @@
-import { Expose } from 'class-transformer';
-import { UserRole } from '../enums/UserRole.enum';
-import { Status } from 'src/enums/Status.enum';
+// src/users/dtos/UserResponse.dto.ts
+import { Exclude, Expose } from 'class-transformer';
+import { UserRole, UserStatus } from '../enums/UserRole.enum';
 
+@Exclude()
 export class UserResponse {
   @Expose()
   id!: string;
 
   @Expose()
-  status!: Status;
+  companyId!: string;
+
+  @Expose()
+  status!: UserStatus;
 
   @Expose()
   role!: UserRole;
@@ -29,6 +33,9 @@ export class UserResponse {
 
   @Expose()
   username?: string;
+
+  @Expose()
+  capacityHoursPerWeek!: number;
 
   @Expose()
   updatedAt!: Date;

@@ -1,5 +1,18 @@
+/**
+ * User Global System Role
+ */
 export enum UserRole {
-  MEMBER = 'employee',
-  MANAGER = 'manager',
-  SUPER_ADMIN = 'administrator',
+  EMPLOYEE = 'EMPLOYEE',
+  MANAGER = 'MANAGER',
+  ADMIN = 'ADMIN',
+  OWNER = 'OWNER',
+}
+
+/**
+ * User Lifecycle Status
+ */
+export enum UserStatus {
+  INVITED = 'INVITED',
+  ACTIVE = 'ACTIVE',
+  DEACTIVATED = 'DEACTIVATED',
 }

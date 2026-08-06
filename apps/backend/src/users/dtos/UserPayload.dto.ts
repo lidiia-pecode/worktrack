@@ -2,10 +2,13 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   Matches,
+  Max,
   MaxLength,
+  Min,
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../enums/UserRole.enum';
@@ -14,14 +17,14 @@ import { NormalizeString } from 'src/lib/decorators';
 export class CreateUserPayload {
   @IsNotEmpty()
   @IsString()
-  @MinLength(3)
-  @MaxLength(20)
+  @MinLength(2)
+  @MaxLength(50)
   firstName!: string;
 
   @IsNotEmpty()
   @IsString()
-  @MinLength(3)
-  @MaxLength(20)
+  @MinLength(2)
+  @MaxLength(50)
   lastName!: string;
 
   @NormalizeString()
@@ -47,9 +50,31 @@ export class CreateUserPayload {
     message: 'Password need to contain at least 1 Cap letter and 1 number',
   })
   password!: string;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(168)
+  capacityHoursPerWeek?: number;
 }
 
 export class UpdateUserPayload {
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  lastName?: string;
+
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
@@ -58,4 +83,10 @@ export class UpdateUserPayload {
   @IsString()
   @MaxLength(255)
   position?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(168)
+  capacityHoursPerWeek?: number;
 }

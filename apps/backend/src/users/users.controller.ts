@@ -14,82 +14,98 @@ import { UserResponse } from './dtos/UserResponse.dto';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { CurrentUser } from 'src/lib/decorators';
+import { CurrentUser, Role } from 'src/lib/decorators';
 import { User } from './entities/user.entity';
-import { AccessGuard } from 'src/auth/guards';
-import { UserRole } from './enums/UserRole.enum';
-import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { Role } from 'src/lib/decorators';
+import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UsersQuery } from './dtos/UsersQuery.dto';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { UserRole } from './enums/UserRole.enum';
 
 @Controller('users')
-@UseGuards(AccessGuard)
+@UseGuards(AccessGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Serialize(UserResponse)
   @Get('/me')
-  getCurrentUser(@CurrentUser() user: User) {
-    return user;
+  async getCurrentUser(@CurrentUser() authUser: AuthUser): Promise<User> {
+    return this.usersService.getUserById(authUser.id, authUser.companyId);
   }
 
   @Serialize(UserResponse)
   @Patch('/me/profile')
   async updateMyProfile(
-    @CurrentUser() user: User,
+    @CurrentUser() authUser: AuthUser,
     @Body() body: UpdateProfilePayload,
   ): Promise<User> {
-    return this.usersService.updateProfile(user.id, body);
+    return this.usersService.updateProfile(
+      authUser.id,
+      authUser.companyId,
+      body,
+    );
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @Get()
   @SerializeList(UserResponse)
-  async getAllUsersPaginated(@Query() query: UsersQuery) {
-    return this.usersService.list(query);
+  async getAllUsersPaginated(
+    @CurrentUser() authUser: AuthUser,
+    @Query() query: UsersQuery,
+  ) {
+    return this.usersService.list(authUser.companyId, query);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
   @Get(':id')
   @Serialize(UserResponse)
   async getUserById(
+    @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<UserResponse> {
-    return this.usersService.getUserById(id);
+  ): Promise<User> {
+    return this.usersService.getUserById(id, authUser.companyId);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @Role(UserRole.ADMIN, UserRole.OWNER)
   @Post()
   @Serialize(UserResponse)
-  async createUser(@Body() body: CreateUserPayload): Promise<UserResponse> {
-    return this.usersService.createUser(body);
+  async createUser(
+    @CurrentUser() authUser: AuthUser,
+    @Body() body: CreateUserPayload,
+  ): Promise<User> {
+    return this.usersService.createUser(authUser.companyId, body);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.SUPER_ADMIN, UserRole.MANAGER)
+  @Role(UserRole.ADMIN, UserRole.OWNER)
   @Patch(':id')
   @Serialize(UserResponse)
   async updateUser(
+    @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateUserPayload,
-  ): Promise<UserResponse> {
-    return this.usersService.updateUser(id, body);
+  ): Promise<User> {
+    return this.usersService.updateUser(
+      id,
+      authUser.companyId,
+      body,
+      authUser.role,
+    );
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.ADMIN, UserRole.OWNER)
   @Patch(':id/archive')
-  archive(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.archive(id);
+  async archive(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<User> {
+    return this.usersService.archive(id, authUser.id, authUser.companyId);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.ADMIN, UserRole.OWNER)
   @Patch(':id/unarchive')
-  unarchive(@Param('id', ParseUUIDPipe) id: string) {
-    return this.usersService.unarchive(id);
+  async unarchive(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<User> {
+    return this.usersService.unarchive(id, authUser.companyId);
   }
 }
