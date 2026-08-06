@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
-import { User, UserStatus } from 'src/users/entities/user.entity';
+import { User } from 'src/users/entities/user.entity';
 
 import { GoogleUserPayload, SignInPayload } from '../dtos/auth.dto';
 
@@ -11,6 +11,8 @@ import { UsersService } from 'src/users/users.service';
 import { AuthContext, AuthUser } from '../auth-strategies/types';
 import { ConfigService } from '@nestjs/config';
 import { SessionMetadata } from 'src/lib/types/session-metadata';
+import { CompanyStatus } from 'src/companies/entities/company.entity';
+import { UserStatus } from 'src/users/enums/UserRole.enum';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +35,7 @@ export class AuthService {
   }
 
   async validateLocalUser(payload: SignInPayload): Promise<User> {
-    const user = await this.usersService.findByEmail(
+    const user = await this.usersService.findByEmailWithCompany(
       payload.email.toLowerCase().trim(),
     );
 
@@ -43,6 +45,12 @@ export class AuthService {
 
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('User account is inactive');
+    }
+
+    if (user.company?.status === CompanyStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'Company account is suspended. Please contact billing.',
+      );
     }
 
     if (!user.passwordHash) {
@@ -64,7 +72,7 @@ export class AuthService {
   async validateGoogleUser(payload: GoogleUserPayload): Promise<User> {
     const { googleId } = payload;
 
-    const user = await this.usersService.findByGoogleId(googleId);
+    const user = await this.usersService.findByGoogleIdWithCompany(googleId);
 
     if (!user) {
       throw new UnauthorizedException(
@@ -74,6 +82,12 @@ export class AuthService {
 
     if (user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException('User account is inactive');
+    }
+
+    if (user.company?.status === CompanyStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'Company account is suspended. Please contact billing.',
+      );
     }
 
     return user;
@@ -144,10 +158,15 @@ export class AuthService {
       throw new UnauthorizedException('Session company mismatch');
     }
 
-    const user = await this.usersService.findUserById(auth.user.id);
+    const user = await this.usersService.findUserByIdWithCompany(auth.user.id);
 
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException();
+    }
+
+    if (user.company?.status === CompanyStatus.SUSPENDED) {
+      await this.sessionService.delete(session.id);
+      throw new UnauthorizedException('Company account is suspended.');
     }
 
     if (user.companyId !== session.companyId) {
@@ -216,7 +235,7 @@ export class AuthService {
   }
 
   async linkGoogleAccount(userId: string, googleId: string): Promise<void> {
-    const user = await this.usersService.findUserById(userId);
+    const user = await this.usersService.findUserByIdWithCompany(userId);
 
     if (!user || user.status !== UserStatus.ACTIVE) {
       throw new UnauthorizedException();

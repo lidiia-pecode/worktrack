@@ -69,7 +69,6 @@ export class CookieStateStore implements StateStore {
           'Invalid or missing OAuth state parameter (CSRF protection)',
         );
       } else {
-        // 🔑 Передаємо всі 3 аргументи, як вимагає StateStoreVerifyCallback
         callback(null, true, providedState);
       }
     }
