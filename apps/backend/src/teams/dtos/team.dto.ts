@@ -7,11 +7,12 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { NormalizeString } from 'src/lib/decorators';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
-import { TeamStatus } from '../entities/team.entity';
-import { TeamRole } from '../entities/team-membership.entity';
+import { TeamStatus } from '../enums/team-status.enum';
+import { TeamRole } from '../enums/team-role.enum';
 
 export class CreateTeamDto {
   @NormalizeString()
@@ -29,10 +30,6 @@ export class UpdateTeamDto {
   @MinLength(2)
   @MaxLength(255)
   name?: string;
-
-  @IsOptional()
-  @IsEnum(TeamStatus)
-  status?: TeamStatus;
 }
 
 export class TeamsQuery extends PaginationQuery {
@@ -69,6 +66,7 @@ export class UpdateTeamMemberDto {
   joinedAt?: string;
 
   @IsOptional()
+  @ValidateIf((_, value) => value !== null)
   @IsDateString()
   leftAt?: string | null;
 }

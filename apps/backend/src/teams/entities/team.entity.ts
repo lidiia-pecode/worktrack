@@ -11,16 +11,7 @@ import {
   Index,
 } from 'typeorm';
 import { TeamMembership } from './team-membership.entity';
-
-/**
- * Team Status Enum
- * ACTIVE: Normal team operations.
- * ARCHIVED: Historical preservation of memberships and time allocations.
- */
-export enum TeamStatus {
-  ACTIVE = 'ACTIVE',
-  ARCHIVED = 'ARCHIVED',
-}
+import { TeamStatus } from '../enums/team-status.enum';
 
 @Entity({ name: 'teams' })
 @Index('UQ_teams_company_name', ['companyId', 'name'], { unique: true })

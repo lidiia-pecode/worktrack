@@ -49,7 +49,7 @@ export class TeamsController {
     return this.teamsService.getTeamById(id, authUser.companyId);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Post()
   @Serialize(TeamResponse)
   async createTeam(
@@ -59,7 +59,7 @@ export class TeamsController {
     return this.teamsService.createTeam(authUser.companyId, dto);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id')
   @Serialize(TeamResponse)
   async updateTeam(
@@ -70,7 +70,7 @@ export class TeamsController {
     return this.teamsService.updateTeam(id, authUser.companyId, dto);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id/archive')
   @Serialize(TeamResponse)
   async archiveTeam(
@@ -80,7 +80,7 @@ export class TeamsController {
     return this.teamsService.archiveTeam(id, authUser.companyId);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id/unarchive')
   @Serialize(TeamResponse)
   async unarchiveTeam(
@@ -91,10 +91,10 @@ export class TeamsController {
   }
 
   // ==========================================
-  // MEMBERSHIPS ENDPOINTS
+  // MEMBERSHIPS ENDPOINTS (UNIFIED REST)
   // ==========================================
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Post(':id/members')
   @Serialize(TeamMembershipResponse)
   async addMember(
@@ -105,11 +105,12 @@ export class TeamsController {
     return this.teamsService.addMember(teamId, authUser.companyId, dto);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
-  @Patch('memberships/:membershipId')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Patch(':id/members/:membershipId')
   @Serialize(TeamMembershipResponse)
   async updateMember(
     @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) teamId: string,
     @Param('membershipId', ParseUUIDPipe) membershipId: string,
     @Body() dto: UpdateTeamMemberDto,
   ): Promise<TeamMembership> {
@@ -117,16 +118,22 @@ export class TeamsController {
       membershipId,
       authUser.companyId,
       dto,
+      teamId,
     );
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
-  @Delete('memberships/:membershipId')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Delete(':id/members/:membershipId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async removeMember(
     @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) teamId: string,
     @Param('membershipId', ParseUUIDPipe) membershipId: string,
   ): Promise<void> {
-    await this.teamsService.removeMember(membershipId, authUser.companyId);
+    await this.teamsService.removeMember(
+      membershipId,
+      authUser.companyId,
+      teamId,
+    );
   }
 }

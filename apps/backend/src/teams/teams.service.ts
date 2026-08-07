@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Not, Raw, Repository } from 'typeorm';
-import { Team, TeamStatus } from './entities/team.entity';
+import { Not, Raw, Repository } from 'typeorm';
+import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
 import {
@@ -16,6 +16,8 @@ import {
   UpdateTeamDto,
   UpdateTeamMemberDto,
 } from './dtos/team.dto';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { TeamStatus } from './enums/team-status.enum';
 
 @Injectable()
 export class TeamsService {
@@ -29,6 +31,13 @@ export class TeamsService {
   ) {}
 
   // ==========================================
+  // HELPER: БЕЗПЕЧНЕ ПОРІВНЯННЯ ДАТ
+  // ==========================================
+  private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
+    return new Date(leftAt).getTime() < new Date(joinedAt).getTime();
+  }
+
+  // ==========================================
   // TEAMS CRUD
   // ==========================================
 
@@ -38,7 +47,7 @@ export class TeamsService {
       ...(query.status ? { status: query.status } : {}),
     };
 
-    const [results, count] = await this.teamRepo.findAndCount({
+    const [teams, count] = await this.teamRepo.findAndCount({
       where,
       relations: ['memberships', 'memberships.user'],
       skip: query.offset,
@@ -46,17 +55,21 @@ export class TeamsService {
       order: { name: 'ASC' },
     });
 
-    // only active members
-    results.forEach((team) => {
-      if (team.memberships) {
-        team.memberships = team.memberships.filter((m) => m.leftAt === null);
-      }
-    });
+    const results = teams.map((team) => ({
+      ...team,
+      memberships: team.memberships
+        ? team.memberships.filter((m) => m.leftAt === null)
+        : [],
+    }));
 
     return { results, count };
   }
 
-  async getTeamById(id: string, companyId: string): Promise<Team> {
+  async getTeamById(
+    id: string,
+    companyId: string,
+    includeHistory = false,
+  ): Promise<Team> {
     const team = await this.teamRepo.findOne({
       where: { id, companyId },
       relations: ['memberships', 'memberships.user'],
@@ -66,6 +79,13 @@ export class TeamsService {
       throw new NotFoundException(
         `Team with id ${id} not found in this company`,
       );
+    }
+
+    if (!includeHistory && team.memberships) {
+      return {
+        ...team,
+        memberships: team.memberships.filter((m) => m.leftAt === null),
+      };
     }
 
     return team;
@@ -88,7 +108,16 @@ export class TeamsService {
       status: TeamStatus.ACTIVE,
     });
 
-    return this.teamRepo.save(team);
+    try {
+      return await this.teamRepo.save(team);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          `Team with name "${dto.name}" already exists`,
+        );
+      }
+      throw error;
+    }
   }
 
   async updateTeam(
@@ -96,7 +125,7 @@ export class TeamsService {
     companyId: string,
     dto: UpdateTeamDto,
   ): Promise<Team> {
-    const team = await this.getTeamById(id, companyId);
+    const team = await this.getTeamById(id, companyId, true);
 
     if (dto.name && dto.name !== team.name) {
       const duplicate = await this.teamRepo.findOne({
@@ -111,15 +140,20 @@ export class TeamsService {
       team.name = dto.name;
     }
 
-    if (dto.status !== undefined) {
-      team.status = dto.status;
+    try {
+      return await this.teamRepo.save(team);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          `Team with name "${dto.name}" already exists`,
+        );
+      }
+      throw error;
     }
-
-    return this.teamRepo.save(team);
   }
 
   async archiveTeam(id: string, companyId: string): Promise<Team> {
-    const team = await this.getTeamById(id, companyId);
+    const team = await this.getTeamById(id, companyId, true);
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('Team is already archived');
@@ -130,7 +164,7 @@ export class TeamsService {
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {
-    const team = await this.getTeamById(id, companyId);
+    const team = await this.getTeamById(id, companyId, true);
 
     if (team.status === TeamStatus.ACTIVE) {
       throw new BadRequestException('Team is already active');
@@ -149,10 +183,21 @@ export class TeamsService {
     companyId: string,
     dto: AddTeamMemberDto,
   ): Promise<TeamMembership> {
-    // 1. Перевіряємо існування команди у тенанті
-    await this.getTeamById(teamId, companyId);
+    const team = await this.teamRepo.findOne({
+      where: { id: teamId, companyId },
+      select: ['id', 'status'],
+    });
 
-    // 2. Перевіряємо існування юзера у ТОМУ Ж ТЕНАНТІ
+    if (!team) {
+      throw new NotFoundException(
+        `Team with id ${teamId} not found in this company`,
+      );
+    }
+
+    if (team.status === TeamStatus.ARCHIVED) {
+      throw new BadRequestException('Cannot add members to an archived team');
+    }
+
     const user = await this.userRepo.findOne({
       where: { id: dto.userId, companyId },
     });
@@ -163,33 +208,28 @@ export class TeamsService {
       );
     }
 
-    // 3. Валідація дат (leftAt >= joinedAt)
-    if (dto.leftAt && dto.leftAt < dto.joinedAt) {
+    if (dto.leftAt && this.isInvalidDateRange(dto.joinedAt, dto.leftAt)) {
       throw new BadRequestException('leftAt cannot be earlier than joinedAt');
     }
 
-    // 4. Перевірка активного членства (запобігання дублікатам без leftAt)
-    const activeMembership = await this.membershipRepo.findOne({
-      where: [
-        { teamId, userId: dto.userId, leftAt: IsNull() },
-        ...(dto.leftAt
-          ? [
-              {
-                teamId,
-                userId: dto.userId,
-                joinedAt: Raw((alias) => `${alias} <= :leftAt`, {
-                  leftAt: dto.leftAt,
-                }),
-                leftAt: Raw((alias) => `${alias} >= :joinedAt`, {
-                  joinedAt: dto.joinedAt,
-                }),
-              },
-            ]
-          : []),
-      ],
+    const newLeftAt = dto.leftAt ?? null;
+
+    const overlappingMembership = await this.membershipRepo.findOne({
+      where: {
+        teamId,
+        userId: dto.userId,
+        joinedAt: Raw(
+          (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
+          { newLeftAt },
+        ),
+        leftAt: Raw(
+          (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
+          { newJoinedAt: dto.joinedAt },
+        ),
+      },
     });
 
-    if (activeMembership) {
+    if (overlappingMembership) {
       throw new ConflictException(
         'User already has an active or overlapping membership in this team',
       );
@@ -201,66 +241,69 @@ export class TeamsService {
       userId: dto.userId,
       roleInTeam: dto.roleInTeam,
       joinedAt: dto.joinedAt,
-      leftAt: dto.leftAt ?? null,
+      leftAt: newLeftAt,
     });
 
-    const saved = await this.membershipRepo.save(membership);
+    try {
+      const saved = await this.membershipRepo.save(membership);
 
-    return this.membershipRepo.findOneOrFail({
-      where: { id: saved.id },
-      relations: ['user'],
-    });
+      return await this.membershipRepo.findOneOrFail({
+        where: { id: saved.id },
+        relations: ['user'],
+      });
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          'User already has an active or overlapping membership in this team',
+        );
+      }
+      throw error;
+    }
   }
 
   async updateMember(
     membershipId: string,
     companyId: string,
     dto: UpdateTeamMemberDto,
+    teamId: string,
   ): Promise<TeamMembership> {
     const membership = await this.membershipRepo.findOne({
-      where: { id: membershipId, companyId },
+      where: {
+        id: membershipId,
+        companyId,
+        ...(teamId ? { teamId } : {}),
+      },
       relations: ['user'],
     });
 
     if (!membership) {
       throw new NotFoundException(
-        `Team membership with id ${membershipId} not found`,
+        `Team membership with id ${membershipId} not found in this team`,
       );
     }
 
     const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
     const newLeftAt = dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
 
-    if (newLeftAt && newLeftAt < newJoinedAt) {
+    if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
       throw new BadRequestException('leftAt cannot be earlier than joinedAt');
     }
 
-    // Перевірка перетину дат з ІНШИМИ членствами цього ж користувача
     if (dto.joinedAt !== undefined || dto.leftAt !== undefined) {
       const overlapping = await this.membershipRepo.findOne({
-        where: [
-          {
-            teamId: membership.teamId,
-            userId: membership.userId,
-            id: Not(membershipId),
-            leftAt: IsNull(),
-          },
-          ...(newLeftAt
-            ? [
-                {
-                  teamId: membership.teamId,
-                  userId: membership.userId,
-                  id: Not(membershipId),
-                  joinedAt: Raw((alias) => `${alias} <= :leftAt`, {
-                    leftAt: newLeftAt,
-                  }),
-                  leftAt: Raw((alias) => `${alias} >= :joinedAt`, {
-                    joinedAt: newJoinedAt,
-                  }),
-                },
-              ]
-            : []),
-        ],
+        where: {
+          teamId: membership.teamId,
+          userId: membership.userId,
+          id: Not(membershipId),
+          joinedAt: Raw(
+            (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
+            { newLeftAt },
+          ),
+          leftAt: Raw(
+            (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
+            { newJoinedAt },
+          ),
+        },
       });
 
       if (overlapping) {
@@ -274,22 +317,39 @@ export class TeamsService {
     if (dto.joinedAt !== undefined) membership.joinedAt = dto.joinedAt;
     if (dto.leftAt !== undefined) membership.leftAt = dto.leftAt;
 
-    await this.membershipRepo.save(membership);
+    try {
+      await this.membershipRepo.save(membership);
 
-    return this.membershipRepo.findOneOrFail({
-      where: { id: membershipId },
-      relations: ['user'],
-    });
+      return await this.membershipRepo.findOneOrFail({
+        where: { id: membershipId },
+        relations: ['user'],
+      });
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          'Updated dates overlap with another existing membership interval',
+        );
+      }
+      throw error;
+    }
   }
 
-  async removeMember(membershipId: string, companyId: string): Promise<void> {
+  async removeMember(
+    membershipId: string,
+    companyId: string,
+    teamId: string,
+  ): Promise<void> {
     const membership = await this.membershipRepo.findOne({
-      where: { id: membershipId, companyId },
+      where: {
+        id: membershipId,
+        companyId,
+        ...(teamId ? { teamId } : {}),
+      },
     });
 
     if (!membership) {
       throw new NotFoundException(
-        `Team membership with id ${membershipId} not found`,
+        `Team membership with id ${membershipId} not found in this team`,
       );
     }
 

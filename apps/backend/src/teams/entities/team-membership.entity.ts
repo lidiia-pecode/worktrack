@@ -12,22 +12,17 @@ import {
 } from 'typeorm';
 import { Team } from './team.entity';
 import { User } from 'src/users/entities/user.entity';
-
-/**
- * Role within a specific team.
- * MEMBER: Standard team contributor.
- * MANAGER: Manages the team and creates/edits allocations.
- */
-export enum TeamRole {
-  MEMBER = 'MEMBER',
-  MANAGER = 'MANAGER',
-}
+import { TeamRole } from '../enums/team-role.enum';
 
 @Entity({ name: 'team_memberships' })
 @Check(`"left_at" IS NULL OR "left_at" >= "joined_at"`)
 @Index('IDX_team_memberships_company_id', ['companyId'])
 @Index('IDX_team_memberships_user_lookup', ['userId', 'joinedAt', 'leftAt'])
 @Index('IDX_team_memberships_team_lookup', ['teamId', 'joinedAt', 'leftAt'])
+@Index('UQ_team_memberships_active_user', ['teamId', 'userId'], {
+  unique: true,
+  where: '"left_at" IS NULL',
+})
 export class TeamMembership {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

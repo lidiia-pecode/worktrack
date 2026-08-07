@@ -1,6 +1,6 @@
 import { Exclude, Expose, Type } from 'class-transformer';
-import { TeamStatus } from '../entities/team.entity';
-import { TeamRole } from '../entities/team-membership.entity';
+import { TeamStatus } from '../enums/team-status.enum';
+import { TeamRole } from '../enums/team-role.enum';
 
 @Exclude()
 export class TeamUserResponse {
