@@ -1,9 +1,9 @@
 import { IsEnum, IsOptional } from 'class-validator';
-import { Status } from 'src/enums/Status.enum';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
+import { ActCategoryStatus } from '../enums/category-status';
 
 export class ActivityCategoriesQuery extends PaginationQuery {
   @IsOptional()
-  @IsEnum(Status)
-  status?: Status;
+  @IsEnum(ActCategoryStatus)
+  status?: ActCategoryStatus;
 }

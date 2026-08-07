@@ -1,15 +1,17 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ILike, Not, Repository } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
+import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ActCategory } from './entities/activities-category.entity';
 import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
-import { Status } from 'src/enums/Status.enum';
 import { ActivityCategoriesQuery } from './dtos/ActivitiesCategoriesQuery.dto';
+import { ActCategoryStatus } from './enums/category-status';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 @Injectable()
 export class ActCategoriesService {
@@ -18,22 +20,29 @@ export class ActCategoriesService {
     private readonly repo: Repository<ActCategory>,
   ) {}
 
-  private async assertUniqueName(name: string, excludeId?: string) {
+  private async assertUniqueName(
+    companyId: string,
+    name: string,
+    excludeId?: string,
+  ): Promise<void> {
     const exists = await this.repo.exists({
       where: {
+        companyId,
         name: ILike(name.trim()),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });
 
     if (exists) {
-      throw new BadRequestException(`Category "${name}" already exists`);
+      throw new ConflictException(
+        `Category "${name}" already exists in this company`,
+      );
     }
   }
 
-  async findRaw(id: string) {
+  async findRaw(id: string, companyId: string): Promise<ActCategory> {
     const category = await this.repo.findOne({
-      where: { id },
+      where: { id, companyId },
     });
 
     if (!category) {
@@ -43,23 +52,31 @@ export class ActCategoriesService {
     return category;
   }
 
-  async findActiveOrRestore(id: string) {
-    const category = await this.findRaw(id);
+  /**
+   * Отримує категорію та переконується, що вона активна.
+   * Без авто-розархівації заархівованих категорій.
+   */
+  async findActiveOnly(id: string, companyId: string): Promise<ActCategory> {
+    const category = await this.findRaw(id, companyId);
 
-    if (category.status === Status.ARCHIVED) {
-      category.status = Status.ACTIVE;
-      await this.repo.save(category);
+    if (category.status === ActCategoryStatus.ARCHIVED) {
+      throw new BadRequestException(
+        `Category "${category.name}" is archived and cannot be assigned`,
+      );
     }
 
     return category;
   }
 
-  async getById(id: string) {
-    return this.findRaw(id);
+  async getById(id: string, companyId: string): Promise<ActCategory> {
+    return this.findRaw(id, companyId);
   }
 
-  async list(user: User, query: ActivityCategoriesQuery) {
-    const where = query.status ? { status: query.status } : {};
+  async list(user: AuthUser, query: ActivityCategoriesQuery) {
+    const where: FindOptionsWhere<ActCategory> = {
+      companyId: user.companyId,
+      ...(query.status ? { status: query.status } : {}),
+    };
 
     const [results, count] = await this.repo.findAndCount({
       where,
@@ -73,46 +90,73 @@ export class ActCategoriesService {
     return { results, count };
   }
 
-  async create(payload: ActivityCategoryPayload) {
-    await this.assertUniqueName(payload.name);
+  async create(
+    payload: ActivityCategoryPayload,
+    companyId: string,
+  ): Promise<ActCategory> {
+    await this.assertUniqueName(companyId, payload.name);
 
-    const category = this.repo.create(payload);
-    return this.repo.save(category);
+    const category = this.repo.create({
+      companyId,
+      name: payload.name,
+      status: ActCategoryStatus.ACTIVE,
+    });
+
+    try {
+      return await this.repo.save(category);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          `Category "${payload.name}" already exists in this company`,
+        );
+      }
+      throw error;
+    }
   }
 
-  async update(id: string, payload: ActivityCategoryPayload) {
-    const category = await this.findRaw(id);
+  async update(
+    id: string,
+    payload: ActivityCategoryPayload,
+    companyId: string,
+  ): Promise<ActCategory> {
+    const category = await this.findRaw(id, companyId);
 
-    await this.assertUniqueName(payload.name, id);
+    if (payload.name !== category.name) {
+      await this.assertUniqueName(companyId, payload.name, id);
+      category.name = payload.name;
+    }
 
-    category.name = payload.name;
-
-    return this.repo.save(category);
+    try {
+      return await this.repo.save(category);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          `Category "${payload.name}" already exists in this company`,
+        );
+      }
+      throw error;
+    }
   }
-  async archive(id: string) {
-    const category = await this.findRaw(id);
 
-    if (category.status === Status.ARCHIVED) {
+  async archive(id: string, companyId: string): Promise<ActCategory> {
+    const category = await this.findRaw(id, companyId);
+
+    if (category.status === ActCategoryStatus.ARCHIVED) {
       throw new BadRequestException('Category is already archived');
     }
 
-    category.status = Status.ARCHIVED;
+    category.status = ActCategoryStatus.ARCHIVED;
     return this.repo.save(category);
   }
 
-  // -------------------------
-  // RESTORE (soft delete)
-  // -------------------------
+  async unarchive(id: string, companyId: string): Promise<ActCategory> {
+    const category = await this.findRaw(id, companyId);
 
-  async unarchive(id: string) {
-    const category = await this.findRaw(id);
-
-    if (category.status === Status.ACTIVE) {
+    if (category.status === ActCategoryStatus.ACTIVE) {
       throw new BadRequestException('Category is already active');
     }
 
-    category.status = Status.ACTIVE;
-
+    category.status = ActCategoryStatus.ACTIVE;
     return this.repo.save(category);
   }
 }

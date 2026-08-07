@@ -1,15 +1,19 @@
-import { Expose } from 'class-transformer';
-import { Status } from 'src/enums/Status.enum';
+import { Exclude, Expose } from 'class-transformer';
+import { ActCategoryStatus } from '../enums/category-status';
 
+@Exclude()
 export class ActivityCategoryResponse {
   @Expose()
   id!: string;
 
   @Expose()
+  companyId!: string;
+
+  @Expose()
   name!: string;
 
   @Expose()
-  status!: Status;
+  status!: ActCategoryStatus;
 
   @Expose()
   createdAt!: Date;

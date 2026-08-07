@@ -3,10 +3,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ActCategory } from './entities/activities-category.entity';
 import { ActCategoriesService } from './activity-categories.service';
 import { ActCategoriesController } from './activity-categories.controller';
-import { Activity } from 'src/activities/entities/activity.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ActCategory, Activity])],
+  imports: [TypeOrmModule.forFeature([ActCategory])],
   controllers: [ActCategoriesController],
   providers: [ActCategoriesService],
   exports: [ActCategoriesService],

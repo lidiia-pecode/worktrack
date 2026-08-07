@@ -1,9 +1,9 @@
 import { IsEnum, IsOptional } from 'class-validator';
-import { Status } from 'src/enums/Status.enum';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
+import { ProjectStatus } from '../enums/project-status.enum';
 
 export class ProjectsQuery extends PaginationQuery {
   @IsOptional()
-  @IsEnum(Status)
-  status?: Status;
+  @IsEnum(ProjectStatus)
+  status?: ProjectStatus;
 }

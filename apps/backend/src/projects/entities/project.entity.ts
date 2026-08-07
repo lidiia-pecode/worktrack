@@ -3,63 +3,61 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
-import { Status } from '../../enums/Status.enum';
-import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+
+import { Company } from 'src/companies/entities/company.entity';
+import { ProjectActivity } from './project-activity.entity';
+import { ProjectStatus } from '../enums/project-status.enum';
 
 @Entity('projects')
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
+  @Column({ type: 'uuid', name: 'company_id', nullable: false })
+  companyId!: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: false })
   name!: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'client_name',
+    default: null,
+  })
+  clientName?: string | null;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
 
   @Column({
     type: 'enum',
-    enum: Status,
-    default: Status.ACTIVE,
+    enum: ProjectStatus,
+    enumName: 'project_status_enum',
+    default: ProjectStatus.ACTIVE,
   })
-  status!: Status;
+  status!: ProjectStatus;
 
-  @ManyToMany(() => User, (user) => user.projects, { cascade: false })
-  @JoinTable({
-    name: 'project_users',
-    joinColumn: { name: 'project_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
-  })
-  users!: User[];
-
-  @OneToMany(
-    () => ProjectActivity,
-    (projectActivity) => projectActivity.project,
-  )
-  projectActivities!: ProjectActivity[];
-
-  @ManyToOne(() => User, {
-    nullable: false,
-    onDelete: 'RESTRICT',
-  })
-  @JoinColumn({ name: 'owner_id' })
-  owner!: User;
-
-  @RelationId((project: Project) => project.owner)
-  ownerId!: string;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp with time zone', name: 'updated_at' })
   updatedAt!: Date;
+
+  // ==========================================
+  // RELATIONS
+  // ==========================================
+
+  @ManyToOne(() => Company, { onDelete: 'CASCADE', nullable: false })
+  @JoinColumn({ name: 'company_id' })
+  company!: Company;
+
+  @OneToMany(() => ProjectActivity, (pa) => pa.project, { cascade: false })
+  projectActivities!: ProjectActivity[];
 }

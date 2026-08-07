@@ -1,6 +1,17 @@
 import { Expose, Type } from 'class-transformer';
 import { ActivityResponse } from 'src/activities/dtos/ActivityResponse.dto';
-import { ProjectSummaryResponse } from './ProjectSummaryResponse.dto';
+import { ProjectStatus } from '../enums/project-status.enum';
+
+class ProjectSummaryResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+
+  @Expose()
+  status!: ProjectStatus;
+}
 
 export class ProjectActivityResponse {
   @Expose()

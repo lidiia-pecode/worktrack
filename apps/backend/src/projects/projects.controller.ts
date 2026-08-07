@@ -16,63 +16,68 @@ import {
 } from './dtos/ProjectPayload.dto';
 import { ProjectResponse } from './dtos/ProjectResponse.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { AccessGuard } from 'src/auth/guards';
-import { RolesGuard } from 'src/auth/guards/RolesGuard';
-import { Role } from 'src/lib/decorators';
+import { AccessGuard, RolesGuard } from 'src/auth/guards';
+import { CurrentUser, Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/UserRole.enum';
-import { CurrentUser } from 'src/lib/decorators';
-import { User } from 'src/users/entities/user.entity';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
 import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
 
 @Controller('projects')
-@UseGuards(AccessGuard)
+@UseGuards(AccessGuard, RolesGuard)
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
   @Get()
   @SerializeList(ProjectResponse)
-  getAll(@Query() query: ProjectsQuery, @CurrentUser() user: User) {
+  getAll(@Query() query: ProjectsQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(query, user);
   }
 
   @Get(':id')
   @Serialize(ProjectResponse)
-  getById(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.getById(id, user);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Post()
   @Serialize(ProjectResponse)
-  create(@Body() payload: ProjectPayload, @CurrentUser() user: User) {
+  create(@Body() payload: ProjectPayload, @CurrentUser() user: AuthUser) {
     return this.service.create(payload, user);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id')
   @Serialize(ProjectResponse)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() payload: UpdateProjectPayload,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.service.update(id, payload, user);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id/archive')
-  archive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  @Serialize(ProjectResponse)
+  archive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.archive(id, user);
   }
 
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id/unarchive')
-  unarchive(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  @Serialize(ProjectResponse)
+  unarchive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.unarchive(id, user);
   }
 
@@ -80,7 +85,7 @@ export class ProjectsController {
   @SerializeList(ProjectActivityResponse)
   listActivities(
     @Param('id', ParseUUIDPipe) projectId: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.service.listActivities(projectId, user);
   }

@@ -1,13 +1,17 @@
-import { Activity } from 'src/activities/entities/activity.entity';
-import { Status } from 'src/enums/Status.enum';
 import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+
+import { Company } from 'src/companies/entities/company.entity';
+import { Activity } from 'src/activities/entities/activity.entity';
+import { ActCategoryStatus } from '../enums/category-status';
 
 @Entity('act_categories')
 export class ActCategory {
@@ -15,25 +19,46 @@ export class ActCategory {
   id!: string;
 
   @Column({
+    type: 'uuid',
+    name: 'company_id',
+    nullable: false,
+  })
+  companyId!: string;
+
+  @Column({
     type: 'varchar',
     length: 100,
-    unique: true,
+    nullable: false,
   })
   name!: string;
 
-  @OneToMany(() => Activity, (activity) => activity.category)
-  activities!: Activity[];
-
   @Column({
     type: 'enum',
-    enum: Status,
-    default: Status.ACTIVE,
+    enum: ActCategoryStatus,
+    enumName: 'act_category_status_enum',
+    default: ActCategoryStatus.ACTIVE,
   })
-  status!: Status;
+  status!: ActCategoryStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamp with time zone', name: 'updated_at' })
   updatedAt!: Date;
+
+  // ==========================================
+  // RELATIONS
+  // ==========================================
+
+  @ManyToOne(() => Company, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
+  @JoinColumn({ name: 'company_id' })
+  company!: Company;
+
+  @OneToMany(() => Activity, (activity) => activity.category, {
+    cascade: false,
+  })
+  activities!: Activity[];
 }

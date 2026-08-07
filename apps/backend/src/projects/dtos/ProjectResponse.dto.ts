@@ -1,34 +1,30 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { Expose, Type } from 'class-transformer';
-import { UserResponse } from 'src/users/dtos/UserResponse.dto';
-import { Status } from '../../enums/Status.enum';
+import { Exclude, Expose, Type } from 'class-transformer';
 import { ProjectActivityResponse } from './ProjectActivityResponse.dto';
+import { ProjectStatus } from '../enums/project-status.enum';
 
+@Exclude()
 export class ProjectResponse {
   @Expose()
   id!: string;
 
   @Expose()
+  companyId!: string;
+
+  @Expose()
   name!: string;
 
   @Expose()
-  description?: string;
+  clientName?: string | null;
 
   @Expose()
-  status!: Status;
+  description?: string | null;
 
   @Expose()
-  @Type(() => UserResponse)
-  users!: UserResponse[];
+  status!: ProjectStatus;
 
-  @ApiProperty({ type: () => [ProjectActivityResponse] })
   @Expose()
   @Type(() => ProjectActivityResponse)
   projectActivities!: ProjectActivityResponse[];
-
-  @Expose()
-  @Type(() => UserResponse)
-  owner!: UserResponse;
 
   @Expose()
   createdAt!: Date;
