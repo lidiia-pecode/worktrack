@@ -29,7 +29,6 @@ export class ProjectPayload {
 
   @NormalizeString()
   @IsOptional()
-  @ValidateIf((_, value) => value !== null)
   @IsString()
   @MaxLength(1000)
   description?: string;
@@ -39,6 +38,12 @@ export class ProjectPayload {
   @ArrayUnique()
   @IsUUID('all', { each: true })
   activityIds?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  userIds?: string[];
 }
 
 export class UpdateProjectPayload extends PartialType(ProjectPayload) {}

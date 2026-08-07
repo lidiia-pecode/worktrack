@@ -3,6 +3,8 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -12,6 +14,7 @@ import {
 import { Company } from 'src/companies/entities/company.entity';
 import { ProjectActivity } from './project-activity.entity';
 import { ProjectStatus } from '../enums/project-status.enum';
+import { User } from 'src/users/entities/user.entity';
 
 @Entity('projects')
 export class Project {
@@ -60,4 +63,12 @@ export class Project {
 
   @OneToMany(() => ProjectActivity, (pa) => pa.project, { cascade: false })
   projectActivities!: ProjectActivity[];
+
+  @ManyToMany(() => User, (user) => user.projects)
+  @JoinTable({
+    name: 'project_users',
+    joinColumn: { name: 'project_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
+  })
+  users!: User[];
 }

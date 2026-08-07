@@ -26,7 +26,6 @@ export class UsersService {
     id?: string,
     repo: Repository<User> = this.repo,
   ): Promise<void> {
-    // 1. Глобальна перевірка username на всю БД
     if (payload.username) {
       const duplicateName = await repo.exists({
         where: {
@@ -42,7 +41,6 @@ export class UsersService {
       }
     }
 
-    // 2. Глобальна перевірка email на всю БД
     if (payload.email) {
       const duplicateEmail = await repo.exists({
         where: {
@@ -149,21 +147,34 @@ export class UsersService {
     companyId: string,
     repo: Repository<User> = this.repo,
   ): Promise<User[]> {
+    const uniqueIds = Array.from(new Set(ids));
+    if (!uniqueIds.length) return [];
+
     const users = await repo.find({
       where: {
-        id: In(ids),
+        id: In(uniqueIds),
         companyId,
         status: UserStatus.ACTIVE,
       },
     });
 
-    if (users.length !== ids.length) {
+    if (users.length !== uniqueIds.length) {
+      const foundIds = new Set(users.map((u) => u.id));
+      const missingIds = uniqueIds.filter((id) => !foundIds.has(id));
       throw new NotFoundException(
-        'One or more active users not found in this company',
+        `Users not found, inactive, or belong to another company: ${missingIds.join(', ')}`,
       );
     }
 
     return users;
+  }
+
+  async findActiveOnlyMany(
+    ids: string[],
+    companyId: string,
+    repo: Repository<User> = this.repo,
+  ): Promise<User[]> {
+    return this.findUsersByIds(ids, companyId, repo);
   }
 
   async createUser(

@@ -16,12 +16,15 @@ import {
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
+import { User } from 'src/users/entities/user.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
+import { UsersService } from 'src/users/users.service';
 import {
   ProjectPayload,
   UpdateProjectPayload,
 } from './dtos/ProjectPayload.dto';
 import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
+import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
@@ -34,6 +37,7 @@ export class ProjectsService {
     @InjectRepository(ProjectActivity)
     private readonly projectActivityRepo: Repository<ProjectActivity>,
     private readonly activitiesService: ActivitiesService,
+    private readonly usersService: UsersService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -65,7 +69,6 @@ export class ProjectsService {
     manager: EntityManager,
   ): Promise<void> {
     const targetActivityIds = Array.from(new Set(rawActivityIds));
-
     const activityRepo = manager.getRepository(Activity);
     const projectActivityRepo = manager.getRepository(ProjectActivity);
 
@@ -127,6 +130,27 @@ export class ProjectsService {
     }
   }
 
+  private async syncProjectUsers(
+    project: Project,
+    rawUserIds: string[],
+    manager: EntityManager,
+  ): Promise<void> {
+    const targetUserIds = Array.from(new Set(rawUserIds));
+    const userRepo = manager.getRepository(User);
+    const projectRepo = manager.getRepository(Project);
+
+    const users = targetUserIds.length
+      ? await this.usersService.findActiveOnlyMany(
+          targetUserIds,
+          project.companyId,
+          userRepo,
+        )
+      : [];
+
+    project.users = users;
+    await projectRepo.save(project);
+  }
+
   private async getByIdWithManager(
     id: string,
     companyId: string,
@@ -136,6 +160,7 @@ export class ProjectsService {
     const project = await projectRepo.findOne({
       where: { id, companyId },
       relations: [
+        'users',
         'projectActivities',
         'projectActivities.activity',
         'projectActivities.activity.category',
@@ -161,7 +186,7 @@ export class ProjectsService {
 
     const [results, count] = await this.repo.findAndCount({
       where,
-      relations: ['projectActivities', 'projectActivities.activity'],
+      relations: ['users', 'projectActivities', 'projectActivities.activity'],
       skip: query.offset,
       take: query.limit,
       order: { createdAt: 'DESC' },
@@ -174,6 +199,7 @@ export class ProjectsService {
     const project = await this.repo.findOne({
       where: { id, companyId: user.companyId },
       relations: [
+        'users',
         'projectActivities',
         'projectActivities.activity',
         'projectActivities.activity.category',
@@ -226,6 +252,10 @@ export class ProjectsService {
         );
       }
 
+      if (payload.userIds?.length) {
+        await this.syncProjectUsers(savedProject, payload.userIds, manager);
+      }
+
       return this.getByIdWithManager(savedProject.id, user.companyId, manager);
     });
   }
@@ -271,6 +301,10 @@ export class ProjectsService {
         await this.syncProjectActivities(project, payload.activityIds, manager);
       }
 
+      if (payload.userIds !== undefined) {
+        await this.syncProjectUsers(project, payload.userIds, manager);
+      }
+
       return this.getByIdWithManager(project.id, user.companyId, manager);
     });
   }
@@ -295,7 +329,11 @@ export class ProjectsService {
     return this.repo.save(project);
   }
 
-  async listActivities(projectId: string, user: AuthUser) {
+  async listActivities(
+    projectId: string,
+    query: PaginationQuery,
+    user: AuthUser,
+  ) {
     await this.getById(projectId, user);
 
     const [results, count] = await this.projectActivityRepo.findAndCount({
@@ -304,9 +342,29 @@ export class ProjectsService {
         isActive: true,
       },
       relations: ['activity', 'activity.category'],
+      skip: query.offset,
+      take: query.limit,
       order: { createdAt: 'ASC' },
     });
 
     return { results, count };
+  }
+
+  async listUsers(projectId: string, query: PaginationQuery, user: AuthUser) {
+    const project = await this.repo.findOne({
+      where: { id: projectId, companyId: user.companyId },
+      relations: ['users'],
+    });
+
+    if (!project) {
+      throw new NotFoundException('Project not found');
+    }
+
+    const allUsers = project.users ?? [];
+    const offset = query.offset ?? 0;
+    const limit = query.limit ?? 10;
+    const paginatedUsers = allUsers.slice(offset, offset + limit);
+
+    return { results: paginatedUsers, count: allUsers.length };
   }
 }

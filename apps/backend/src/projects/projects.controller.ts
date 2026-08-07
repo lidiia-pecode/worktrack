@@ -22,6 +22,8 @@ import { UserRole } from 'src/users/enums/UserRole.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
 import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
+import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
+import { UserResponse } from 'src/users/dtos/UserResponse.dto';
 
 @Controller('projects')
 @UseGuards(AccessGuard, RolesGuard)
@@ -85,8 +87,19 @@ export class ProjectsController {
   @SerializeList(ProjectActivityResponse)
   listActivities(
     @Param('id', ParseUUIDPipe) projectId: string,
+    @Query() query: PaginationQuery,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.listActivities(projectId, user);
+    return this.service.listActivities(projectId, query, user);
+  }
+
+  @Get(':id/users')
+  @SerializeList(UserResponse)
+  listUsers(
+    @Param('id', ParseUUIDPipe) projectId: string,
+    @Query() query: PaginationQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.listUsers(projectId, query, user);
   }
 }

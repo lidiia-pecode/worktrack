@@ -45,7 +45,7 @@ export class UsersController {
     );
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get()
   @SerializeList(UserResponse)
   async getAllUsersPaginated(
@@ -55,7 +55,7 @@ export class UsersController {
     return this.usersService.list(authUser.companyId, query);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id')
   @Serialize(UserResponse)
   async getUserById(
@@ -65,7 +65,7 @@ export class UsersController {
     return this.usersService.getUserById(id, authUser.companyId);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER)
+  @Role(UserRole.OWNER)
   @Post()
   @Serialize(UserResponse)
   async createUser(
@@ -75,7 +75,7 @@ export class UsersController {
     return this.usersService.createUser(authUser.companyId, body);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER)
+  @Role(UserRole.OWNER)
   @Patch(':id')
   @Serialize(UserResponse)
   async updateUser(
@@ -91,7 +91,7 @@ export class UsersController {
     );
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER)
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   async archive(
     @CurrentUser() authUser: AuthUser,
@@ -100,7 +100,7 @@ export class UsersController {
     return this.usersService.archive(id, authUser.id, authUser.companyId);
   }
 
-  @Role(UserRole.ADMIN, UserRole.OWNER)
+  @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
   async unarchive(
     @CurrentUser() authUser: AuthUser,
