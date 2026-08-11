@@ -3,10 +3,10 @@ import { TimeLogsController } from './time-logs.controller';
 import { TimeLogsService } from './time-logs.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TimeLog } from './entities/time-log.entity';
-import { ProjectsModule } from 'src/projects/projects.module';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TimeLog]), ProjectsModule],
+  imports: [TypeOrmModule.forFeature([TimeLog, ProjectActivity])],
   controllers: [TimeLogsController],
   providers: [TimeLogsService],
 })

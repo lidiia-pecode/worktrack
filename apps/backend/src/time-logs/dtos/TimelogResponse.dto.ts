@@ -16,7 +16,7 @@ export class TimeLogResponse {
   isBillable!: boolean;
 
   @Expose()
-  time!: number;
+  minutes!: number;
 
   @Expose()
   note?: string;

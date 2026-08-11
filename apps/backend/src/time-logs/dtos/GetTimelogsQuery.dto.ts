@@ -1,4 +1,4 @@
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsUUID } from 'class-validator';
 import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 
@@ -14,4 +14,12 @@ export class GetTimelogsQuery extends PaginationQuery {
   @IsOptional()
   @IsDateWithoutTimeString()
   date?: string;
+
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
 }

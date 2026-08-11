@@ -20,9 +20,9 @@ import {
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
-import { User } from 'src/users/entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('time-logs')
 @UseGuards(AccessGuard)
@@ -33,7 +33,7 @@ export class TimeLogsController {
   @SerializeList(TimeLogResponse)
   async getAllTimeLogs(
     @Query() query: GetTimelogsQuery,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.list(query, user);
   }
@@ -42,7 +42,7 @@ export class TimeLogsController {
   @Serialize(TimeLogResponse)
   async getTimeLogById(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.getById(id, user);
   }
@@ -51,7 +51,7 @@ export class TimeLogsController {
   @Serialize(TimeLogResponse)
   async createTimeLog(
     @Body() payload: TimeLogPayload,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.create(payload, user);
   }
@@ -61,7 +61,7 @@ export class TimeLogsController {
   async updateTimeLog(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() payload: UpdateTimelogPayload,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.update(id, payload, user);
   }
@@ -69,7 +69,7 @@ export class TimeLogsController {
   @Delete(':id')
   async deleteTimeLog(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.delete(id, user);
   }
