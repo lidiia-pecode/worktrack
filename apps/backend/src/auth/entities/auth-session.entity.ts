@@ -36,7 +36,6 @@ export class AuthSession {
   @Column({ type: 'varchar', length: 64 })
   refreshHash!: string;
 
-  // 🔑 Метадані пристрою та сесії
   @Column({ type: 'varchar', length: 45, nullable: true })
   ip?: string;
 

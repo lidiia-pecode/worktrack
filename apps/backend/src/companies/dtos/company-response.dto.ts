@@ -1,6 +1,7 @@
 // src/companies/dtos/company-response.dto.ts
 import { Expose } from 'class-transformer';
-import { CompanyStatus, WeekDay } from '../entities/company.entity';
+import { CompanyStatus } from '../enum/company-status.enum';
+import { WeekDay } from '../enum/week-day.enum';
 
 export class CompanyResponseDto {
   @Expose()

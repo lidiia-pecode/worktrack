@@ -26,12 +26,14 @@ import {
   TokenResponse,
 } from './dtos/auth-responses.dto';
 import { VerificationCodeRequestPayload } from './dtos/auth.dto';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Get('/google')
@@ -51,8 +53,8 @@ export class AuthController {
       tokens.access_token,
       tokens.refresh_token,
     );
-
-    return res.redirect(`${process.env.FRONTEND_URL}/`);
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    return res.redirect(`${frontendUrl}/`);
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -76,7 +78,7 @@ export class AuthController {
     });
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('refresh')
   @UseGuards(RefreshGuard)
   async refresh(

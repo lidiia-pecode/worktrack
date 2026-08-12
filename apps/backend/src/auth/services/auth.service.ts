@@ -11,8 +11,8 @@ import { UsersService } from 'src/users/users.service';
 import { AuthContext, AuthUser } from '../auth-strategies/types';
 import { ConfigService } from '@nestjs/config';
 import { SessionMetadata } from 'src/lib/types/session-metadata';
-import { CompanyStatus } from 'src/companies/entities/company.entity';
 import { UserStatus } from 'src/users/enums/UserRole.enum';
+import { CompanyStatus } from 'src/companies/enum/company-status.enum';
 
 @Injectable()
 export class AuthService {
@@ -97,6 +97,14 @@ export class AuthService {
     const expiresAt = this.getSessionExpirationDate();
     const sessionId = crypto.randomUUID();
 
+    const accessToken = this.tokenService.createAccessToken({
+      id: user.id,
+      email: user.email,
+      companyId: user.companyId,
+      role: user.role,
+      sessionId,
+    });
+
     const refreshToken = this.tokenService.createRefreshToken({
       id: user.id,
       companyId: user.companyId,
@@ -114,16 +122,8 @@ export class AuthService {
       companyId: user.companyId,
       refreshHash,
       expiresAt,
-      ip: metadata?.ip,
-      userAgent: metadata?.userAgent,
-    });
-
-    const accessToken = this.tokenService.createAccessToken({
-      id: user.id,
-      email: user.email,
-      companyId: user.companyId,
-      role: user.role,
-      sessionId,
+      ip: metadata?.ip ?? '0.0.0.0',
+      userAgent: metadata?.userAgent ?? 'unknown',
     });
 
     return {

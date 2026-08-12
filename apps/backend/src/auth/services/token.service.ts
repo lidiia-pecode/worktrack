@@ -17,7 +17,8 @@ export class TokenService {
       secret: this.configService.getOrThrow('ACCESS_TOKEN_SECRET'),
       expiresIn: this.configService.get<JwtSignOptions['expiresIn']>(
         'ACCESS_TOKEN_EXPIRES_IN',
-        '15m',
+        // '15m',
+        '1m',
       ),
     });
   }

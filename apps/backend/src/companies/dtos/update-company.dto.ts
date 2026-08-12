@@ -10,8 +10,8 @@ import {
   Matches,
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
-import { WeekDay } from '../entities/company.entity';
 import { NormalizeString } from 'src/lib/decorators';
+import { WeekDay } from '../enum/week-day.enum';
 
 export class UpdateCompanyDto {
   @IsOptional()

@@ -12,7 +12,8 @@ export const envValidationSchema = Joi.object({
   ACCESS_TOKEN_SECRET: Joi.string().min(32).required(),
   ACCESS_TOKEN_EXPIRES_IN: Joi.string()
     .pattern(/^(\d+[smhdy]|\d+)$/)
-    .default('15m'),
+    .default('1m'),
+  // .default('15m'),
 
   REFRESH_TOKEN_SECRET: Joi.string().min(32).required(),
   REFRESH_TOKEN_EXPIRES_IN: Joi.string()

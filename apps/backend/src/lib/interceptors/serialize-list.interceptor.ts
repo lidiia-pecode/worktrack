@@ -92,7 +92,11 @@ export class SerializeListInterceptor<T> implements NestInterceptor {
   }
 
   private buildPageUrl(req: any, page: number, pageSize: number): string {
-    const protocol = req?.protocol ?? 'http';
+    const xForwardedProto = req?.headers?.['x-forwarded-proto'];
+    const protocol =
+      (typeof xForwardedProto === 'string'
+        ? xForwardedProto.split(',')[0]
+        : req?.protocol) || 'https';
 
     const host =
       (typeof req?.get === 'function' && req.get('host')) ||
@@ -100,7 +104,6 @@ export class SerializeListInterceptor<T> implements NestInterceptor {
       'localhost';
 
     const path = req?.path ?? req?.url?.split('?')[0] ?? '/';
-
     const originalQuery = req?.query ?? {};
 
     const url = new URL(`${protocol}://${host}${path}`);
