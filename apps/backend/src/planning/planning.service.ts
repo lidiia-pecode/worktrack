@@ -56,9 +56,6 @@ export class PlanningService {
       .leftJoinAndSelect('activity.category', 'category');
   }
 
-  /**
-   * Tenant isolation: every query is scoped to the caller's company.
-   */
   private applyTenantFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     companyId: string,
@@ -66,12 +63,6 @@ export class PlanningService {
     qb.andWhere('p.company_id = :companyId', { companyId });
   }
 
-  /**
-   * Resource-scoped visibility per the authorization model:
-   * - OWNER   -> company-wide
-   * - MANAGER -> users on teams the manager actively manages
-   * - EMPLOYEE -> own entries only
-   */
   private applyVisibilityFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     user: AuthUser,
@@ -223,6 +214,14 @@ export class PlanningService {
     return this.dataSource.transaction(async (manager) => {
       const entry = await this.getEntryForUpdate(id, user, manager);
 
+      // 🔒 ПЕРЕВІРКА ПРАВ: чи має менеджер право керувати цільовим юзером цього запису
+      const targetUser = await this.getActiveUser(
+        entry.userId,
+        user.companyId,
+        manager,
+      );
+      await this.assertCanPlanForUser(targetUser, user);
+
       await this.lockUser(manager, entry.userId, user.companyId);
 
       if (payload.projectActivityId !== undefined) {
@@ -264,6 +263,15 @@ export class PlanningService {
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
     await this.dataSource.transaction(async (manager) => {
       const entry = await this.getEntryForUpdate(id, user, manager);
+
+      // 🔒 ПЕРЕВІРКА ПРАВ на видалення
+      const targetUser = await this.getActiveUser(
+        entry.userId,
+        user.companyId,
+        manager,
+      );
+      await this.assertCanPlanForUser(targetUser, user);
+
       await manager.remove(PlanningEntry, entry);
     });
 
@@ -274,11 +282,6 @@ export class PlanningService {
   // AUTHORIZATION HELPERS
   // ==========================================
 
-  /**
-   * Write access is stricter than read visibility:
-   * - OWNER can plan for any active user in the company.
-   * - MANAGER can plan for themselves or for users in teams they actively manage.
-   */
   private async assertCanPlanForUser(
     targetUser: User,
     user: AuthUser,
@@ -316,9 +319,6 @@ export class PlanningService {
     }
   }
 
-  /**
-   * Verifies the caller is allowed to filter by a specific user id.
-   */
   private async assertUserVisible(
     userId: string,
     user: AuthUser,
@@ -340,7 +340,6 @@ export class PlanningService {
       return;
     }
 
-    // OWNER: the target user must belong to the same company.
     const exists = await this.userRepo.exists({
       where: { id: userId, companyId: user.companyId },
     });
@@ -376,10 +375,6 @@ export class PlanningService {
   // VALIDATION / INTEGRITY HELPERS
   // ==========================================
 
-  /**
-   * Loads a planning entry by id + company and locks it for update.
-   * Used by update/delete so entries can never cross company boundaries.
-   */
   private async getEntryForUpdate(
     id: string,
     user: AuthUser,
@@ -394,10 +389,6 @@ export class PlanningService {
     return entry;
   }
 
-  /**
-   * Validates that a ProjectActivity exists, belongs to the caller's company,
-   * and is currently available for planning.
-   */
   private async resolveProjectActivity(
     projectActivityId: string,
     companyId: string,
@@ -429,9 +420,6 @@ export class PlanningService {
     return pa;
   }
 
-  /**
-   * Loads an active user within the company.
-   */
   private async getActiveUser(
     userId: string,
     companyId: string,
@@ -451,10 +439,6 @@ export class PlanningService {
     return user;
   }
 
-  /**
-   * Serializes writes per user by locking the user row, so concurrent
-   * create/update operations cannot race the daily-total computation.
-   */
   private async lockUser(
     manager: EntityManager,
     userId: string,
@@ -470,9 +454,6 @@ export class PlanningService {
     if (!user) throw new NotFoundException('User not found');
   }
 
-  /**
-   * Total planned minutes for a user on a given date must not exceed 24 hours.
-   */
   private async assertDailyLimit(
     manager: EntityManager,
     userId: string,

@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
+import { DataSource, In, Not, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { User } from './entities/user.entity';
@@ -19,6 +19,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly repo: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
   private async validateUser(
@@ -113,12 +114,8 @@ export class UsersService {
     return { results, count };
   }
 
-  async findUserById(
-    id: string,
-    companyId?: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<User | null> {
-    return repo.findOne({
+  async findUserById(id: string, companyId?: string): Promise<User | null> {
+    return this.repo.findOne({
       where: {
         id,
         ...(companyId ? { companyId } : {}),
@@ -126,12 +123,8 @@ export class UsersService {
     });
   }
 
-  async getUserById(
-    id: string,
-    companyId: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<User> {
-    const user = await this.findUserById(id, companyId, repo);
+  async getUserById(id: string, companyId: string): Promise<User> {
+    const user = await this.findUserById(id, companyId);
 
     if (!user) {
       throw new NotFoundException(
@@ -142,15 +135,11 @@ export class UsersService {
     return user;
   }
 
-  async findUsersByIds(
-    ids: string[],
-    companyId: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<User[]> {
+  async findUsersByIds(ids: string[], companyId: string): Promise<User[]> {
     const uniqueIds = Array.from(new Set(ids));
     if (!uniqueIds.length) return [];
 
-    const users = await repo.find({
+    const users = await this.repo.find({
       where: {
         id: In(uniqueIds),
         companyId,
@@ -169,31 +158,30 @@ export class UsersService {
     return users;
   }
 
-  async findActiveOnlyMany(
-    ids: string[],
-    companyId: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<User[]> {
-    return this.findUsersByIds(ids, companyId, repo);
+  async findActiveOnlyMany(ids: string[], companyId: string): Promise<User[]> {
+    return this.findUsersByIds(ids, companyId);
   }
 
   async createUser(
     companyId: string,
     payload: CreateUserPayload,
-    repo: Repository<User> = this.repo,
   ): Promise<User> {
-    await this.validateUser(payload, undefined, repo);
+    return this.dataSource.transaction(async (manager) => {
+      const transactionRepo = manager.getRepository(User);
 
-    const passwordHash = await hashPassword(payload.password);
+      await this.validateUser(payload, undefined, transactionRepo);
 
-    const newUser = repo.create({
-      ...payload,
-      companyId,
-      passwordHash,
-      status: UserStatus.ACTIVE,
+      const passwordHash = await hashPassword(payload.password);
+
+      const newUser = transactionRepo.create({
+        ...payload,
+        companyId,
+        passwordHash,
+        status: UserStatus.ACTIVE,
+      });
+
+      return transactionRepo.save(newUser);
     });
-
-    return repo.save(newUser);
   }
 
   async updateUser(
@@ -201,64 +189,68 @@ export class UsersService {
     companyId: string,
     payload: UpdateUserPayload,
     currentRole: UserRole,
-    repo: Repository<User> = this.repo,
   ): Promise<User> {
-    const user = await this.getUserById(id, companyId, repo);
+    return this.dataSource.transaction(async (manager) => {
+      const transactionRepo = manager.getRepository(User);
+      const user = await this.getUserById(id, companyId);
 
-    if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
-      throw new ForbiddenException(
-        'Only Company OWNER can modify another OWNER',
-      );
-    }
-
-    if (payload.firstName !== undefined) user.firstName = payload.firstName;
-    if (payload.lastName !== undefined) user.lastName = payload.lastName;
-    if (payload.role !== undefined) {
-      if (payload.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+      if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
         throw new ForbiddenException(
-          'Only Company OWNER can assign the OWNER role',
+          'Only Company OWNER can modify another OWNER',
         );
       }
-      user.role = payload.role;
-    }
-    if (payload.position !== undefined) user.position = payload.position;
-    if (payload.capacityHoursPerWeek !== undefined) {
-      user.capacityHoursPerWeek = payload.capacityHoursPerWeek;
-    }
 
-    return repo.save(user);
+      if (payload.firstName !== undefined) user.firstName = payload.firstName;
+      if (payload.lastName !== undefined) user.lastName = payload.lastName;
+      if (payload.role !== undefined) {
+        if (payload.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+          throw new ForbiddenException(
+            'Only Company OWNER can assign the OWNER role',
+          );
+        }
+        user.role = payload.role;
+      }
+      if (payload.position !== undefined) user.position = payload.position;
+      if (payload.capacityHoursPerWeek !== undefined) {
+        user.capacityHoursPerWeek = payload.capacityHoursPerWeek;
+      }
+
+      return transactionRepo.save(user);
+    });
   }
 
   async updateProfile(
     id: string,
     companyId: string,
     payload: UpdateProfilePayload,
-    repo: Repository<User> = this.repo,
   ): Promise<User> {
-    await this.validateUser(payload, id, repo);
+    return this.dataSource.transaction(async (manager) => {
+      const transactionRepo = manager.getRepository(User);
 
-    const user = await this.getUserById(id, companyId, repo);
+      await this.validateUser(payload, id, transactionRepo);
 
-    if (payload.avatarUrl !== undefined) user.avatarUrl = payload.avatarUrl;
-    if (payload.username !== undefined) user.username = payload.username;
-    if (payload.password) {
-      user.passwordHash = await hashPassword(payload.password);
-    }
+      const user = await this.getUserById(id, companyId);
 
-    return repo.save(user);
+      if (payload.avatarUrl !== undefined) user.avatarUrl = payload.avatarUrl;
+      if (payload.username !== undefined) user.username = payload.username;
+      if (payload.password) {
+        user.passwordHash = await hashPassword(payload.password);
+      }
+
+      return transactionRepo.save(user);
+    });
   }
 
   async archive(
     id: string,
     currentUserId: string,
     companyId: string,
-    repo: Repository<User> = this.repo,
   ): Promise<User> {
     if (id === currentUserId) {
       throw new BadRequestException('You cannot archive your own account');
     }
 
-    const user = await this.getUserById(id, companyId, repo);
+    const user = await this.getUserById(id, companyId);
 
     if (user.role === UserRole.OWNER) {
       throw new ForbiddenException('Company OWNER account cannot be archived');
@@ -269,21 +261,17 @@ export class UsersService {
     }
 
     user.status = UserStatus.DEACTIVATED;
-    return repo.save(user);
+    return this.repo.save(user);
   }
 
-  async unarchive(
-    id: string,
-    companyId: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<User> {
-    const user = await this.getUserById(id, companyId, repo);
+  async unarchive(id: string, companyId: string): Promise<User> {
+    const user = await this.getUserById(id, companyId);
 
     if (user.status === UserStatus.ACTIVE) {
       throw new BadRequestException('User is already active');
     }
 
     user.status = UserStatus.ACTIVE;
-    return repo.save(user);
+    return this.repo.save(user);
   }
 }

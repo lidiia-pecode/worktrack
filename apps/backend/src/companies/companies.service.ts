@@ -4,11 +4,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Company, CompanyStatus } from './entities/company.entity';
+import { Company } from './entities/company.entity';
 import { Repository } from 'typeorm';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
 import { CompanyResponseDto } from './dtos/company-response.dto';
 import { plainToInstance } from 'class-transformer';
+import { CompanyStatus } from './enum/company-status.enum';
 
 @Injectable()
 export class CompaniesService {
@@ -60,7 +61,6 @@ export class CompaniesService {
   async update(companyId: string, dto: UpdateCompanyDto): Promise<Company> {
     const company = await this.findById(companyId);
 
-    // Перевіряємо заблокований статус компанії перед оновленням
     if (company.status === CompanyStatus.SUSPENDED) {
       throw new ForbiddenException('Cannot update suspended company.');
     }

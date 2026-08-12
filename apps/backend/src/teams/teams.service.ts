@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Not, Raw, Repository } from 'typeorm';
+import { DataSource, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -28,6 +28,7 @@ export class TeamsService {
     private readonly membershipRepo: Repository<TeamMembership>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
   // ==========================================
@@ -92,16 +93,6 @@ export class TeamsService {
   }
 
   async createTeam(companyId: string, dto: CreateTeamDto): Promise<Team> {
-    const existing = await this.teamRepo.findOne({
-      where: { companyId, name: dto.name },
-    });
-
-    if (existing) {
-      throw new ConflictException(
-        `Team with name "${dto.name}" already exists`,
-      );
-    }
-
     const team = this.teamRepo.create({
       companyId,
       name: dto.name,
@@ -128,15 +119,6 @@ export class TeamsService {
     const team = await this.getTeamById(id, companyId, true);
 
     if (dto.name && dto.name !== team.name) {
-      const duplicate = await this.teamRepo.findOne({
-        where: { companyId, name: dto.name },
-      });
-
-      if (duplicate) {
-        throw new ConflictException(
-          `Team with name "${dto.name}" already exists`,
-        );
-      }
       team.name = dto.name;
     }
 
@@ -208,57 +190,61 @@ export class TeamsService {
       );
     }
 
-    if (dto.leftAt && this.isInvalidDateRange(dto.joinedAt, dto.leftAt)) {
+    const newLeftAt = dto.leftAt ?? null;
+    if (newLeftAt && this.isInvalidDateRange(dto.joinedAt, newLeftAt)) {
       throw new BadRequestException('leftAt cannot be earlier than joinedAt');
     }
 
-    const newLeftAt = dto.leftAt ?? null;
+    return this.dataSource.transaction(async (manager) => {
+      const trxMembershipRepo = manager.getRepository(TeamMembership);
 
-    const overlappingMembership = await this.membershipRepo.findOne({
-      where: {
-        teamId,
-        userId: dto.userId,
-        joinedAt: Raw(
-          (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-          { newLeftAt },
-        ),
-        leftAt: Raw(
-          (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-          { newJoinedAt: dto.joinedAt },
-        ),
-      },
-    });
-
-    if (overlappingMembership) {
-      throw new ConflictException(
-        'User already has an active or overlapping membership in this team',
-      );
-    }
-
-    const membership = this.membershipRepo.create({
-      companyId,
-      teamId,
-      userId: dto.userId,
-      roleInTeam: dto.roleInTeam,
-      joinedAt: dto.joinedAt,
-      leftAt: newLeftAt,
-    });
-
-    try {
-      const saved = await this.membershipRepo.save(membership);
-
-      return await this.membershipRepo.findOneOrFail({
-        where: { id: saved.id },
-        relations: ['user'],
+      // Виправлений симетричний перетин інтервалів для нових записів
+      const overlappingMembership = await trxMembershipRepo.findOne({
+        where: {
+          teamId,
+          userId: dto.userId,
+          joinedAt: Raw(
+            (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
+            { newLeftAt },
+          ),
+          leftAt: Raw(
+            (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
+            { newJoinedAt: dto.joinedAt },
+          ),
+        },
       });
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
+
+      if (overlappingMembership) {
         throw new ConflictException(
           'User already has an active or overlapping membership in this team',
         );
       }
-      throw error;
-    }
+
+      const membership = trxMembershipRepo.create({
+        companyId,
+        teamId,
+        userId: dto.userId,
+        roleInTeam: dto.roleInTeam,
+        joinedAt: dto.joinedAt,
+        leftAt: newLeftAt,
+      });
+
+      try {
+        const saved = await trxMembershipRepo.save(membership);
+
+        return await trxMembershipRepo.findOneOrFail({
+          where: { id: saved.id },
+          relations: ['user'],
+        });
+      } catch (error: unknown) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(
+            'User already has an active or overlapping membership in this team',
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   async updateMember(
@@ -267,71 +253,76 @@ export class TeamsService {
     dto: UpdateTeamMemberDto,
     teamId: string,
   ): Promise<TeamMembership> {
-    const membership = await this.membershipRepo.findOne({
-      where: {
-        id: membershipId,
-        companyId,
-        ...(teamId ? { teamId } : {}),
-      },
-      relations: ['user'],
-    });
+    return this.dataSource.transaction(async (manager) => {
+      const trxMembershipRepo = manager.getRepository(TeamMembership);
 
-    if (!membership) {
-      throw new NotFoundException(
-        `Team membership with id ${membershipId} not found in this team`,
-      );
-    }
-
-    const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
-    const newLeftAt = dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
-
-    if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
-      throw new BadRequestException('leftAt cannot be earlier than joinedAt');
-    }
-
-    if (dto.joinedAt !== undefined || dto.leftAt !== undefined) {
-      const overlapping = await this.membershipRepo.findOne({
+      const membership = await trxMembershipRepo.findOne({
         where: {
-          teamId: membership.teamId,
-          userId: membership.userId,
-          id: Not(membershipId),
-          joinedAt: Raw(
-            (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-            { newLeftAt },
-          ),
-          leftAt: Raw(
-            (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-            { newJoinedAt },
-          ),
+          id: membershipId,
+          companyId,
+          ...(teamId ? { teamId } : {}),
         },
-      });
-
-      if (overlapping) {
-        throw new ConflictException(
-          'Updated dates overlap with another existing membership interval',
-        );
-      }
-    }
-
-    if (dto.roleInTeam !== undefined) membership.roleInTeam = dto.roleInTeam;
-    if (dto.joinedAt !== undefined) membership.joinedAt = dto.joinedAt;
-    if (dto.leftAt !== undefined) membership.leftAt = dto.leftAt;
-
-    try {
-      await this.membershipRepo.save(membership);
-
-      return await this.membershipRepo.findOneOrFail({
-        where: { id: membershipId },
         relations: ['user'],
       });
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        throw new ConflictException(
-          'Updated dates overlap with another existing membership interval',
+
+      if (!membership) {
+        throw new NotFoundException(
+          `Team membership with id ${membershipId} not found in this team`,
         );
       }
-      throw error;
-    }
+
+      const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
+      const newLeftAt =
+        dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
+
+      if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
+        throw new BadRequestException('leftAt cannot be earlier than joinedAt');
+      }
+
+      if (dto.joinedAt !== undefined || dto.leftAt !== undefined) {
+        const overlapping = await trxMembershipRepo.findOne({
+          where: {
+            teamId: membership.teamId,
+            userId: membership.userId,
+            id: Not(membershipId),
+            joinedAt: Raw(
+              (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
+              { newLeftAt },
+            ),
+            leftAt: Raw(
+              (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
+              { newJoinedAt },
+            ),
+          },
+        });
+
+        if (overlapping) {
+          throw new ConflictException(
+            'Updated dates overlap with another existing membership interval',
+          );
+        }
+      }
+
+      if (dto.roleInTeam !== undefined) membership.roleInTeam = dto.roleInTeam;
+      if (dto.joinedAt !== undefined) membership.joinedAt = dto.joinedAt;
+      if (dto.leftAt !== undefined) membership.leftAt = dto.leftAt;
+
+      try {
+        await trxMembershipRepo.save(membership);
+
+        return await trxMembershipRepo.findOneOrFail({
+          where: { id: membershipId },
+          relations: ['user'],
+        });
+      } catch (error: unknown) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(
+            'Updated dates overlap with another existing membership interval',
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   async removeMember(

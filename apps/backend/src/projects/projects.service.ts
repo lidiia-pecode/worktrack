@@ -16,7 +16,6 @@ import {
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
-import { User } from 'src/users/entities/user.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -137,14 +136,12 @@ export class ProjectsService {
     manager: EntityManager,
   ): Promise<void> {
     const targetUserIds = Array.from(new Set(rawUserIds));
-    const userRepo = manager.getRepository(User);
     const projectRepo = manager.getRepository(Project);
 
     const users = targetUserIds.length
       ? await this.usersService.findActiveOnlyMany(
           targetUserIds,
           project.companyId,
-          userRepo,
         )
       : [];
 
