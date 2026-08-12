@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -14,6 +15,10 @@ import { Activity } from 'src/activities/entities/activity.entity';
 import { ActCategoryStatus } from '../enums/category-status';
 
 @Entity('act_categories')
+@Index('IDX_act_categories_company_id', ['companyId'])
+@Index('UQ_act_categories_company_name_lower', ['companyId', 'name'], {
+  unique: true,
+})
 export class ActCategory {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

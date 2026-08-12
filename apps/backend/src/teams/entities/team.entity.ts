@@ -36,6 +36,7 @@ export class Team {
   @Column({
     type: 'enum',
     enum: TeamStatus,
+    enumName: 'team_status_enum',
     default: TeamStatus.ACTIVE,
     nullable: false,
   })

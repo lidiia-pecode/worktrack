@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   JoinTable,
   ManyToMany,
@@ -17,6 +18,10 @@ import { ProjectStatus } from '../enums/project-status.enum';
 import { User } from 'src/users/entities/user.entity';
 
 @Entity('projects')
+@Index('IDX_projects_company_id', ['companyId'])
+@Index('UQ_projects_company_name_lower', ['companyId', 'name'], {
+  unique: true,
+})
 export class Project {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

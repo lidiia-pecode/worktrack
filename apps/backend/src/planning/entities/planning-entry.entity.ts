@@ -7,56 +7,72 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
-  Unique,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from 'src/users/entities/user.entity';
-import { Project } from 'src/projects/entities/project.entity';
 
-@Unique('UQ_planning_employee_project_date', ['employee', 'project', 'date'])
-@Index('IDX_planning_employee_date', ['employee', 'date'])
-@Index('IDX_planning_project_date', ['project', 'date'])
+import { Company } from 'src/companies/entities/company.entity';
+import { User } from 'src/users/entities/user.entity';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+
 @Entity('planning_entries')
-@Check(`"time" > 0 AND "time" <= 1440`)
+@Check(`"planned_minutes" > 0 AND "planned_minutes" <= 1440`)
+@Index(
+  'UQ_planning_company_user_activity_date',
+  ['companyId', 'userId', 'projectActivityId', 'date'],
+  {
+    unique: true,
+  },
+)
+@Index('IDX_planning_company_user_date', ['companyId', 'userId', 'date'])
+@Index('IDX_planning_company_activity_date', [
+  'companyId',
+  'projectActivityId',
+  'date',
+])
 export class PlanningEntry {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => User, {
+  @Column({
+    type: 'uuid',
+    name: 'company_id',
     nullable: false,
-    onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'employee_id' })
-  employee!: User;
+  companyId!: string;
 
-  @RelationId((planning: PlanningEntry) => planning.employee)
-  employeeId!: string;
+  @Column({
+    type: 'uuid',
+    name: 'user_id',
+    nullable: false,
+  })
+  userId!: string;
 
-  @ManyToOne(() => User, {
+  @Column({
+    type: 'uuid',
+    name: 'project_activity_id',
+    nullable: false,
+  })
+  projectActivityId!: string;
+
+  @Column({
+    type: 'uuid',
+    name: 'created_by_id',
     nullable: true,
-    onDelete: 'SET NULL',
   })
-  @JoinColumn({ name: 'created_by' })
-  createdBy?: User;
-
-  @RelationId((planning: PlanningEntry) => planning.createdBy)
   createdById?: string;
 
-  @ManyToOne(() => Project, {
+  @Column({
+    type: 'date',
     nullable: false,
-    onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'project_id' })
-  project!: Project;
-
-  @RelationId((planning: PlanningEntry) => planning.project)
-  projectId!: string;
+  date!: string;
 
   @Column({
     type: 'int',
+    name: 'planned_minutes',
+    nullable: false,
   })
-  time!: number;
+  plannedMinutes!: number;
 
   @Column({
     type: 'text',
@@ -64,18 +80,47 @@ export class PlanningEntry {
   })
   note?: string;
 
-  @Column({
-    type: 'date',
-  })
-  date!: string;
-
   @CreateDateColumn({
+    type: 'timestamp with time zone',
     name: 'created_at',
   })
   createdAt!: Date;
 
   @UpdateDateColumn({
+    type: 'timestamp with time zone',
     name: 'updated_at',
   })
   updatedAt!: Date;
+
+  // ==========================================
+  // RELATIONS
+  // ==========================================
+
+  @ManyToOne(() => Company, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'company_id' })
+  company!: Company;
+
+  @ManyToOne(() => User, (user) => user.planningEntries, {
+    nullable: false,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'user_id' })
+  user!: User;
+
+  @ManyToOne(() => ProjectActivity, {
+    nullable: false,
+    onDelete: 'RESTRICT',
+  })
+  @JoinColumn({ name: 'project_activity_id' })
+  projectActivity!: ProjectActivity;
+
+  @ManyToOne(() => User, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'created_by_id' })
+  createdBy?: User;
 }

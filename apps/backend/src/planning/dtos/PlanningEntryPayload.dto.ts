@@ -12,12 +12,16 @@ import {
 import { OmitType, PartialType } from '@nestjs/swagger';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 
+/**
+ * Creates a planning entry for a target user on a specific project activity.
+ * The authenticated user (OWNER/MANAGER) is recorded as `createdById`.
+ */
 export class CreatePlanningEntryDto {
   @IsUUID()
-  employeeId!: string;
+  userId!: string;
 
   @IsUUID()
-  projectId!: string;
+  projectActivityId!: string;
 
   @IsDateWithoutTimeString()
   date!: string;
@@ -26,7 +30,7 @@ export class CreatePlanningEntryDto {
   @IsInt()
   @Min(1)
   @Max(1440)
-  time!: number;
+  plannedMinutes!: number;
 
   @IsOptional()
   @IsString()
@@ -35,6 +39,10 @@ export class CreatePlanningEntryDto {
   note?: string;
 }
 
+/**
+ * Update may change the activity, date, planned minutes or note.
+ * The target `userId` and `createdById` are immutable.
+ */
 export class UpdatePlanningEntryDto extends PartialType(
-  OmitType(CreatePlanningEntryDto, ['employeeId'] as const),
+  OmitType(CreatePlanningEntryDto, ['userId'] as const),
 ) {}

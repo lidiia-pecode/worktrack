@@ -52,10 +52,6 @@ export class ActCategoriesService {
     return category;
   }
 
-  /**
-   * Отримує категорію та переконується, що вона активна.
-   * Без авто-розархівації заархівованих категорій.
-   */
   async findActiveOnly(id: string, companyId: string): Promise<ActCategory> {
     const category = await this.findRaw(id, companyId);
 

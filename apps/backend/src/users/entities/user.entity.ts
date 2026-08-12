@@ -18,6 +18,7 @@ import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserRole, UserStatus } from '../enums/UserRole.enum';
 
 @Entity('users')
+@Index('IDX_users_company_id', ['companyId'])
 @Index('UQ_users_username', ['username'], {
   unique: true,
   where: 'username IS NOT NULL',

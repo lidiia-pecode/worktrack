@@ -9,6 +9,7 @@ export interface Project {
   status: ProjectStatus;
   users: User[];
   projectActivities: ProjectActivity[];
+  owner: User;
   updatedAt: string;
   createdAt: string;
 }

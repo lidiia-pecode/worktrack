@@ -14,21 +14,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
-export enum WeekDay {
-  MONDAY = 'MONDAY',
-  SUNDAY = 'SUNDAY',
-}
-
-/**
- * Company Status Enum
- * ACTIVE: Normal tenant operations.
- * SUSPENDED: Reserved for future billing-driven account locks.
- */
-export enum CompanyStatus {
-  ACTIVE = 'ACTIVE',
-  SUSPENDED = 'SUSPENDED',
-}
+import { WeekDay } from '../enum/week-day.enum';
+import { CompanyStatus } from '../enum/company-status.enum';
 
 @Entity({ name: 'companies' })
 export class Company {
@@ -46,19 +33,41 @@ export class Company {
   @Column({ type: 'varchar', length: 100, nullable: false })
   slug!: string;
 
-  @Column({ type: 'enum', enum: CompanyStatus, default: CompanyStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: CompanyStatus,
+    enumName: 'company_status_enum',
+    default: CompanyStatus.ACTIVE,
+    nullable: false,
+  })
   status!: CompanyStatus;
 
-  @Column({ type: 'varchar', length: 50, default: 'UTC' })
+  @Column({ type: 'varchar', length: 50, default: 'UTC', nullable: false })
   timezone!: string;
 
-  @Column({ type: 'varchar', length: 3, default: 'USD' })
+  @Column({ type: 'varchar', length: 3, default: 'USD', nullable: false })
   currency!: string;
 
-  @Column({ type: 'enum', enum: WeekDay, default: WeekDay.MONDAY })
+  @Column({
+    type: 'enum',
+    enum: WeekDay,
+    enumName: 'week_day_enum',
+    default: WeekDay.MONDAY,
+    nullable: false,
+  })
   weekStartDay!: WeekDay;
 
-  @Column({ type: 'decimal', precision: 4, scale: 2, default: 8.0 })
+  @Column({
+    type: 'decimal',
+    precision: 4,
+    scale: 2,
+    default: 8.0,
+    nullable: false,
+    transformer: {
+      to: (value: number) => value,
+      from: (value: string) => parseFloat(value),
+    },
+  })
   standardWorkHoursPerDay!: number;
 
   @CreateDateColumn({
@@ -109,12 +118,8 @@ export class Company {
   })
   actCategories!: ActCategory[];
 
-  @OneToMany(
-    () => ReportingPeriod,
-    (reportingPeriod) => reportingPeriod.company,
-    {
-      cascade: false,
-    },
-  )
+  @OneToMany(() => ReportingPeriod, (period) => period.company, {
+    cascade: false,
+  })
   reportingPeriods!: ReportingPeriod[];
 }

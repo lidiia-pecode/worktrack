@@ -22,7 +22,7 @@ export function scryptAsync(
       },
       (err, derivedKey) => {
         if (err) reject(err);
-        else resolve(derivedKey as Buffer);
+        else resolve(derivedKey);
       },
     );
   });

@@ -31,7 +31,7 @@ export class TeamsService {
   ) {}
 
   // ==========================================
-  // HELPER: БЕЗПЕЧНЕ ПОРІВНЯННЯ ДАТ
+  // HELPER: safe dates compare
   // ==========================================
   private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
     return new Date(leftAt).getTime() < new Date(joinedAt).getTime();

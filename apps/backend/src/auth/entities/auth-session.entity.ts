@@ -13,6 +13,8 @@ import {
 } from 'typeorm';
 
 @Entity({ name: 'auth_sessions' })
+@Index('IDX_auth_sessions_user_id', ['userId'])
+@Index('IDX_auth_sessions_company_id', ['companyId'])
 export class AuthSession {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

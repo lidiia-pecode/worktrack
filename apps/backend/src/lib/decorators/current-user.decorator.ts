@@ -1,21 +1,14 @@
+// src/lib/decorators/current-user.decorator.ts
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { AuthContext } from 'src/auth/auth-strategies/types';
-import { User } from 'src/users/entities/user.entity';
+import { AuthContext, AuthUser } from 'src/auth/auth-strategies/types';
+
+type RequestUser = AuthContext | AuthUser | undefined;
+const isAuthContext = (u: RequestUser): u is AuthContext => !!u && 'user' in u;
 
 export const CurrentUser = createParamDecorator(
-  (_: never, context: ExecutionContext): AuthContext['user'] | undefined => {
-    const request = context.switchToHttp().getRequest<{
-      user?: AuthContext | User;
-    }>();
-
-    const payload = request.user;
-
-    if (!payload) return undefined;
-
-    if ('user' in payload) {
-      return payload.user;
-    }
-
-    return payload;
+  (_: never, context: ExecutionContext): AuthUser | undefined => {
+    const request = context.switchToHttp().getRequest<{ user?: RequestUser }>();
+    const raw = request.user;
+    return isAuthContext(raw) ? raw.user : raw;
   },
 );

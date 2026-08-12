@@ -24,7 +24,7 @@ export class CompaniesController {
   }
 
   @Patch()
-  @Role(UserRole.ADMIN, UserRole.OWNER)
+  @Role(UserRole.OWNER)
   async update(
     @CurrentUser() user: AuthUser,
     @Body() dto: UpdateCompanyDto,

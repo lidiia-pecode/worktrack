@@ -109,6 +109,7 @@ export class ProjectsService {
         if (activity) {
           entitiesToSave.push(
             projectActivityRepo.create({
+              companyId: project.companyId,
               project,
               activity,
               isActive: true,

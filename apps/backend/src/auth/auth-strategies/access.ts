@@ -6,8 +6,8 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { cookieExtractor } from '../helpers/cookies-extractor';
 import { AuthContext, JwtAccessPayload } from './types';
 import { UsersService } from 'src/users/users.service';
-import { UserStatus } from 'src/users/entities/user.entity';
 import { SessionService } from '../services';
+import { UserStatus } from 'src/users/enums/UserRole.enum';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {

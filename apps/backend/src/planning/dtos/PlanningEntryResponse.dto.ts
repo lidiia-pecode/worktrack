@@ -1,20 +1,22 @@
-import { Expose } from 'class-transformer';
+import { Expose, Type } from 'class-transformer';
+import { ProjectActivityResponse } from 'src/projects/dtos/ProjectActivityResponse.dto';
 
 export class PlanningEntryResponse {
   @Expose()
   id!: string;
 
   @Expose()
-  employeeId!: string;
+  userId!: string;
 
   @Expose()
   createdById?: string;
 
   @Expose()
-  projectId!: string;
+  @Type(() => ProjectActivityResponse)
+  projectActivity!: ProjectActivityResponse;
 
   @Expose()
-  time!: number;
+  plannedMinutes!: number;
 
   @Expose()
   note?: string;

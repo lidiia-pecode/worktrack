@@ -20,6 +20,7 @@ import { UserRole } from 'src/users/enums/UserRole.enum';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
+import { ReportingService } from 'src/reporting/reporting.service';
 import {
   TimeLogPayload,
   UpdateTimelogPayload,
@@ -34,6 +35,7 @@ export class TimeLogsService {
     private readonly repo: Repository<TimeLog>,
     @InjectRepository(ProjectActivity)
     private readonly projectActivityRepo: Repository<ProjectActivity>,
+    private readonly reportingService: ReportingService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -59,7 +61,7 @@ export class TimeLogsService {
   /**
    * Resource-scoped visibility per the authorization model:
    * - OWNER  -> company-wide
-   * - MANAGER -> users on teams the manager actively manages
+   * - MANAGER -> users on teams the manager actively manages (TeamRole.LEAD)
    * - EMPLOYEE -> own logs only
    */
   private applyVisibilityFilter(
@@ -154,6 +156,9 @@ export class TimeLogsService {
   // ==========================================
 
   async create(payload: TimeLogPayload, user: AuthUser): Promise<TimeLog> {
+    // 1. Reporting Period Check
+    await this.assertDateNotLocked(user.companyId, payload.date);
+
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, user.id, user.companyId);
 
@@ -171,11 +176,14 @@ export class TimeLogsService {
         payload.minutes,
       );
 
+      const finalIsBillable =
+        payload.isBillable ?? projectActivity.activity.defaultBillable;
+
       const entity = manager.create(TimeLog, {
         companyId: user.companyId,
         userId: user.id,
         projectActivity,
-        isBillable: payload.isBillable,
+        isBillable: finalIsBillable,
         minutes: payload.minutes,
         note: payload.note,
         date: payload.date,
@@ -194,6 +202,12 @@ export class TimeLogsService {
       await this.lockUser(manager, user.id, user.companyId);
 
       const log = await this.getOwnedLogForUpdate(id, user, manager);
+
+      // 1. Reporting Period Check for existing and new target dates
+      await this.assertDateNotLocked(user.companyId, log.date);
+      if (payload.date && payload.date !== log.date) {
+        await this.assertDateNotLocked(user.companyId, payload.date);
+      }
 
       if (payload.projectActivityId !== undefined) {
         log.projectActivity = await this.resolveProjectActivity(
@@ -225,10 +239,33 @@ export class TimeLogsService {
     await this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, user.id, user.companyId);
       const log = await this.getOwnedLogForUpdate(id, user, manager);
+
+      // Reporting Period Check
+      await this.assertDateNotLocked(user.companyId, log.date);
+
       await manager.remove(TimeLog, log);
     });
 
     return { success: true };
+  }
+
+  // ==========================================
+  // HELPER METHODS
+  // ==========================================
+
+  /**
+   * Verifies that the date is not part of a LOCKED reporting period.
+   */
+  private async assertDateNotLocked(
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    const isLocked = await this.reportingService.isDateLocked(companyId, date);
+    if (isLocked) {
+      throw new ForbiddenException(
+        `Cannot modify time logs for date ${date} because it belongs to a LOCKED reporting period.`,
+      );
+    }
   }
 
   private async getOwnedLogForUpdate(
@@ -263,7 +300,7 @@ export class TimeLogsService {
       relations: ['project', 'activity'],
     });
 
-    if (!pa || pa.project.companyId !== companyId) {
+    if (!pa || pa.companyId !== companyId) {
       throw new NotFoundException('Project activity not found');
     }
 
@@ -377,7 +414,9 @@ export class TimeLogsService {
       .andWhere('tm_mgr.left_at IS NULL')
       .andWhere('tm_member.user_id = :userId', { userId })
       .andWhere('tm_member.left_at IS NULL')
-      .andWhere('tm_member.company_id = :companyId')
+      .andWhere('tm_member.company_id = :companyId', {
+        companyId: user.companyId,
+      })
       .andWhere('tm_mgr.company_id = :companyId', {
         companyId: user.companyId,
       })

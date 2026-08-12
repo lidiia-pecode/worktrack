@@ -1,70 +1,53 @@
 import { DataSource } from 'typeorm';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
-export async function seedProjects(dataSource: DataSource) {
+export async function seedProjects(dataSource: DataSource, companyId: string) {
   const projectRepo = dataSource.getRepository(Project);
   const userRepo = dataSource.getRepository(User);
 
-  const users = await userRepo.find();
-
-  const getUser = (username: string) => {
-    const user = users.find((u) => u.username === username);
-
-    if (!user) {
-      throw new Error(`User "${username}" not found`);
-    }
-
-    return user;
-  };
-
-  const projects = [
+  const projectsData = [
     {
       name: 'WorkTrack',
-      description: 'Time tracking platform',
-      users: [getUser('john'), getUser('alice'), getUser('bob')],
+      clientName: 'Internal Product',
+      description: 'Internal time tracking app',
+      status: ProjectStatus.ACTIVE,
     },
     {
       name: 'CRM System',
-      description: 'Internal CRM',
-      users: [getUser('alice'), getUser('emma')],
+      clientName: 'Fintech Group',
+      description: 'Customer relationship management',
+      status: ProjectStatus.ACTIVE,
     },
     {
       name: 'Mobile App',
-      description: 'iOS & Android application',
-      users: [getUser('john'), getUser('michael')],
-    },
-    {
-      name: 'Landing Page',
-      description: 'Marketing website',
-      users: [getUser('emma')],
-    },
-    {
-      name: 'Internal Tools',
-      description: 'Company internal tools',
-      users: [getUser('bob'), getUser('michael')],
+      clientName: 'Retail Corp',
+      description: 'E-commerce mobile app',
+      status: ProjectStatus.ACTIVE,
     },
   ];
 
-  for (const data of projects) {
+  const users = await userRepo.findBy({ companyId });
+
+  for (const data of projectsData) {
     let project = await projectRepo.findOne({
-      where: { name: data.name },
+      where: { companyId, name: data.name },
       relations: ['users'],
     });
 
     if (!project) {
       project = projectRepo.create({
-        name: data.name,
-        description: data.description,
-        users: data.users,
+        ...data,
+        companyId,
+        users,
       });
-    } else {
-      project.description = data.description;
-      project.users = data.users;
+      await projectRepo.save(project);
+    } else if (!project.users || project.users.length === 0) {
+      project.users = users;
+      await projectRepo.save(project);
     }
-
-    await projectRepo.save(project);
   }
 
-  console.log('✅ Projects seeded');
+  console.log('✅ Projects seeded via Repository');
 }

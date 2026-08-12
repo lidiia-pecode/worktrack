@@ -29,8 +29,9 @@ export class TimeLogPayload {
   @MaxLength(1000)
   note?: string;
 
+  @IsOptional()
   @IsBoolean()
-  isBillable!: boolean;
+  isBillable?: boolean;
 
   @IsDateWithoutTimeString()
   date!: string;

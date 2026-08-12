@@ -21,11 +21,11 @@ import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
-import { User } from 'src/users/entities/user.entity';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/UserRole.enum';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('planning')
 @UseGuards(AccessGuard)
@@ -34,40 +34,49 @@ export class PlanningController {
 
   @Get()
   @SerializeList(PlanningEntryResponse)
-  list(@Query() query: PlanningQueryDto, @CurrentUser() user: User) {
+  list(@Query() query: PlanningQueryDto, @CurrentUser() user: AuthUser) {
     return this.service.list(query, user);
   }
 
   @Get(':id')
   @Serialize(PlanningEntryResponse)
-  getById(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  getById(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.getById(id, user);
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
   @Post()
   @Serialize(PlanningEntryResponse)
-  create(@Body() payload: CreatePlanningEntryDto, @CurrentUser() user: User) {
+  create(
+    @Body() payload: CreatePlanningEntryDto,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.create(payload, user);
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
   @Patch(':id')
   @Serialize(PlanningEntryResponse)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() payload: UpdatePlanningEntryDto,
-    @CurrentUser() user: User,
+    @CurrentUser() user: AuthUser,
   ) {
     return this.service.update(id, payload, user);
   }
 
   @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.SUPER_ADMIN)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
   @Delete(':id')
-  delete(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: User) {
+  delete(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
     return this.service.delete(id, user);
   }
 }

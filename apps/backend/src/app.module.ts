@@ -12,12 +12,19 @@ import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { PlanningModule } from './planning/planning.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { envValidationSchema } from './config/env.validation';
+import { ScheduleModule } from '@nestjs/schedule';
+import { CompaniesModule } from './companies/companies.module';
+import { TeamsModule } from './teams/teams.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: envValidationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
     }),
 
     ThrottlerModule.forRoot([
@@ -26,6 +33,8 @@ import { envValidationSchema } from './config/env.validation';
         limit: 100,
       },
     ]),
+
+    ScheduleModule.forRoot(),
 
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
@@ -49,6 +58,8 @@ import { envValidationSchema } from './config/env.validation';
     ActivitiesModule,
     ActCategoriesModule,
     PlanningModule,
+    CompaniesModule,
+    TeamsModule,
   ],
 
   providers: [

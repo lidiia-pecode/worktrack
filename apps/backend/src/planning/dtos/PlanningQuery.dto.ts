@@ -5,7 +5,7 @@ import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeStr
 export class PlanningQueryDto extends PaginationQuery {
   @IsOptional()
   @IsUUID()
-  employeeId?: string;
+  userId?: string;
 
   @IsOptional()
   @IsUUID()

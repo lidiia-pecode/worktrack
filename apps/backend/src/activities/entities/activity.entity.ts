@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   OneToMany,
@@ -15,6 +16,13 @@ import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ActivityStatus } from '../enums/activity-status.enum';
 
 @Entity('activities')
+@Index('IDX_activities_company_id', ['companyId'])
+@Index('IDX_activities_category_id', ['categoryId'])
+@Index(
+  'UQ_activities_company_category_name_lower',
+  ['companyId', 'categoryId', 'name'],
+  { unique: true },
+)
 export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
