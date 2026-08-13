@@ -11,15 +11,21 @@ import { TokenService } from './services/token.service';
 import { CookieService } from './services/cookie.service';
 import { AuthSession } from './entities/auth-session.entity';
 import { LocalStrategy } from './auth-strategies/local';
-import { GoogleStrategy } from './auth-strategies/google';
 import { AccessStrategy } from './auth-strategies/access';
 import { RefreshStrategy } from './auth-strategies/refresh';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SessionCleanupService } from './services/session-cleanup.service';
+import { CompaniesModule } from 'src/companies/companies.module';
+import {
+  GoogleLinkStrategy,
+  GoogleLoginStrategy,
+  GoogleSignupStrategy,
+} from './auth-strategies/google';
+import { GoogleSignupToken } from './entities/google-signup-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AuthSession]),
+    TypeOrmModule.forFeature([AuthSession, GoogleSignupToken]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -27,6 +33,7 @@ import { SessionCleanupService } from './services/session-cleanup.service';
       useFactory: () => ({}),
     }),
     UsersModule,
+    CompaniesModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -39,7 +46,9 @@ import { SessionCleanupService } from './services/session-cleanup.service';
     LocalStrategy,
     AccessStrategy,
     RefreshStrategy,
-    GoogleStrategy,
+    GoogleSignupStrategy,
+    GoogleLoginStrategy,
+    GoogleLinkStrategy,
   ],
   exports: [
     AuthService,

@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { NormalizeString } from 'src/lib/decorators';
+import { AuthContext } from '../auth-strategies/types';
 
 export class SignUpPayload {
   @IsNotEmpty()
@@ -28,12 +29,12 @@ export class SignUpPayload {
   @NormalizeString()
   @IsOptional()
   @Matches(/^[a-zA-Z0-9_]+$/, {
-    message: 'Username can contain only letters, numbers, and underscores',
+    message: 'CompanyName can contain only letters, numbers, and underscores',
   })
   @IsString()
   @MinLength(3)
   @MaxLength(20)
-  username?: string;
+  companyName!: string;
 
   @NormalizeString()
   @IsEmail()
@@ -85,3 +86,20 @@ export class GoogleUserPayload {
   @IsString()
   googleId!: string;
 }
+
+export class CompleteGoogleSignupDto {
+  @IsNotEmpty()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(100)
+  companyName!: string;
+
+  @IsNotEmpty()
+  @IsString()
+  token!: string;
+}
+
+export type GoogleLinkRequest = Request & {
+  user: GoogleUserPayload;
+  authContext: AuthContext;
+};

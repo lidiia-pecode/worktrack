@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Post, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { plainToInstance } from 'class-transformer';
 import type { AuthContext, AuthUser } from './auth-strategies/types';
@@ -10,22 +18,29 @@ import { CurrentUser, SessionId } from 'src/lib/decorators';
 
 import {
   AccessGuard,
-  GoogleGuard,
+  GoogleLinkGuard,
+  GoogleLoginGuard,
+  GoogleSignupGuard,
   LocalAuthGuard,
   RefreshGuard,
 } from './guards';
 import { CurrentAuth } from 'src/lib/decorators/current-auth.decorator';
 import { RefreshToken } from 'src/lib/decorators/refresh-token.decorator';
-import { LinkGoogleDto } from './dtos/link-google.dto';
 import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
 import { Throttle } from '@nestjs/throttler';
 import {
   AuthUserResponse,
-  LinkGoogleResponse,
   SuccessResponse,
   TokenResponse,
 } from './dtos/auth-responses.dto';
-import { VerificationCodeRequestPayload } from './dtos/auth.dto';
+import {
+  CompleteGoogleSignupDto,
+  GoogleUserPayload,
+  SignUpPayload,
+  VerificationCodeRequestPayload,
+} from './dtos/auth.dto';
+
+import type { GoogleLinkRequest } from './dtos/auth.dto';
 import { ConfigService } from '@nestjs/config';
 
 @Controller('auth')
@@ -36,29 +51,115 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  @Get('/google')
-  @UseGuards(GoogleGuard)
-  googleAuth() {}
+  @Get('/google/signup')
+  @UseGuards(GoogleSignupGuard)
+  googleSignup() {}
 
-  @Get('google/callback')
-  @UseGuards(GoogleGuard)
-  async googleAuthRedirect(
-    @CurrentUser() user: AuthUser,
+  @Get('google/signup/callback')
+  @UseGuards(GoogleSignupGuard)
+  async googleSignupCallback(
+    @CurrentUser() googleUser: GoogleUserPayload,
+    @Res() res: Response,
+  ) {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+
+    const token = await this.authService.createGoogleSignupToken(googleUser);
+
+    return res.redirect(`${frontendUrl}/register/google?token=${token}`);
+  }
+
+  @Post('google/signup/complete')
+  async completeGoogleSignup(
+    @Body() dto: CompleteGoogleSignupDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
-    const tokens = await this.authService.createSession(user, metadata);
+  ): Promise<TokenResponse> {
+    const tokens = await this.authService.completeGoogleSignup(
+      dto.token,
+      dto.companyName,
+      metadata,
+    );
+
     this.cookieService.setAuthCookies(
       res,
       tokens.access_token,
       tokens.refresh_token,
     );
+
+    return plainToInstance(TokenResponse, {
+      access_token: tokens.access_token,
+    });
+  }
+
+  @Get('/google')
+  @UseGuards(GoogleLoginGuard)
+  googleLogin() {}
+
+  @Get('google/callback')
+  @UseGuards(GoogleLoginGuard)
+  async googleLoginCallback(
+    @CurrentUser() user: AuthUser,
+    @ReqMetadata() metadata: SessionMetadata,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.createSession(user, metadata);
+
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+
     return res.redirect(`${frontendUrl}/`);
   }
 
+  @Get('google/link')
+  @UseGuards(AccessGuard, GoogleLinkGuard)
+  googleLink() {}
+
+  @Get('google/link/callback')
+  @UseGuards(AccessGuard, GoogleLinkGuard)
+  async googleLinkCallback(@Req() req: GoogleLinkRequest) {
+    const authContext = req.authContext;
+    const googleUser = req.user;
+
+    await this.authService.completeGoogleLink(
+      authContext.user.id,
+      googleUser.googleId,
+    );
+
+    return {
+      success: true,
+      message: 'Google account successfully linked',
+    };
+  }
+
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  @Post('login')
+  @Post('signup')
+  async signup(
+    @Body() payload: SignUpPayload,
+    @ReqMetadata() metadata: SessionMetadata,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<TokenResponse> {
+    const user = await this.authService.signup(payload);
+
+    const tokens = await this.authService.createSession(user, metadata);
+
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
+    return plainToInstance(TokenResponse, {
+      access_token: tokens.access_token,
+    });
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('signin')
   @UseGuards(LocalAuthGuard)
   async login(
     @CurrentUser() user: AuthUser,
@@ -136,21 +237,6 @@ export class AuthController {
   @UseGuards(AccessGuard)
   me(@CurrentUser() authUser: AuthUser): AuthUserResponse {
     return plainToInstance(AuthUserResponse, authUser);
-  }
-
-  @Throttle({ default: { limit: 3, ttl: 60000 } })
-  @Post('google/link')
-  @UseGuards(AccessGuard)
-  async linkGoogle(
-    @CurrentUser() authUser: AuthUser,
-    @Body() dto: LinkGoogleDto,
-  ): Promise<LinkGoogleResponse> {
-    await this.authService.linkGoogleAccount(authUser.id, dto.googleId);
-
-    return plainToInstance(LinkGoogleResponse, {
-      success: true,
-      message: 'Google account successfully linked',
-    });
   }
 
   @Post('/verification-code')
