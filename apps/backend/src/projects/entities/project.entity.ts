@@ -19,8 +19,8 @@ import { User } from 'src/users/entities/user.entity';
 
 @Entity('projects')
 @Index('IDX_projects_company_id', ['companyId'])
-@Index('UQ_projects_company_name_lower', ['companyId', 'name'], {
-  unique: true,
+@Index('UQ_projects_company_name_lower', {
+  synchronize: false,
 })
 export class Project {
   @PrimaryGeneratedColumn('uuid')

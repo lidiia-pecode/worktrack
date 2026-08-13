@@ -125,10 +125,7 @@ export class AuthController {
     const authContext = req.authContext;
     const googleUser = req.user;
 
-    await this.authService.completeGoogleLink(
-      authContext.user.id,
-      googleUser.googleId,
-    );
+    await this.authService.completeGoogleLink(authContext.user.id, googleUser);
 
     return {
       success: true,

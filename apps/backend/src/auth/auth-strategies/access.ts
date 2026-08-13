@@ -8,6 +8,7 @@ import { AuthContext, JwtAccessPayload } from './types';
 import { UsersService } from 'src/users/users.service';
 import { SessionService } from '../services';
 import { UserStatus } from 'src/users/enums/UserRole.enum';
+import { CompanyStatus } from 'src/companies/enum/company-status.enum';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
@@ -35,7 +36,7 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
       throw new UnauthorizedException('Session has been revoked or expired');
     }
 
-    const user = await this.usersService.findUserById(payload.id);
+    const user = await this.usersService.findUserByIdWithCompany(payload.id);
 
     if (!user) {
       throw new UnauthorizedException();
@@ -47,6 +48,12 @@ export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {
 
     if (user.companyId !== payload.companyId) {
       throw new UnauthorizedException();
+    }
+
+    if (user.company?.status === CompanyStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'Company account is suspended. Please contact billing.',
+      );
     }
 
     return {

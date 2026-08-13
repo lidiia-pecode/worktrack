@@ -13,6 +13,7 @@ import { User } from './entities/user.entity';
 import { UsersQuery } from './dtos/UsersQuery.dto';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { UserRole, UserStatus } from './enums/UserRole.enum';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 @Injectable()
 export class UsersService {
@@ -81,7 +82,9 @@ export class UsersService {
   }
 
   async linkGoogleAccount(userId: string, googleId: string): Promise<void> {
-    const existingUser = await this.repo.findOne({ where: { googleId } });
+    const existingUser = await this.repo.findOne({
+      where: { googleId },
+    });
 
     if (existingUser && existingUser.id !== userId) {
       throw new ConflictException(
@@ -89,13 +92,18 @@ export class UsersService {
       );
     }
 
-    await this.repo.update(userId, { googleId });
-  }
+    try {
+      await this.repo.update({ id: userId }, { googleId });
+    } catch (error) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          'This Google account is already linked to another user',
+        );
+      }
 
-  async save(user: User): Promise<User> {
-    return this.repo.save(user);
+      throw error;
+    }
   }
-
   // Multi-Tenant Business API
 
   async list(companyId: string, query: UsersQuery) {

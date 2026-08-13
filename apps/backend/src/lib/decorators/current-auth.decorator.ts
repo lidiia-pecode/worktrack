@@ -8,8 +8,13 @@ import { AuthContext } from 'src/auth/auth-strategies/types';
 
 export const CurrentAuth = createParamDecorator(
   (_: never, context: ExecutionContext): AuthContext => {
-    const request = context.switchToHttp().getRequest<{ user?: AuthContext }>();
-    if (!request.user) throw new UnauthorizedException();
-    return request.user;
+    const request = context
+      .switchToHttp()
+      .getRequest<{ authContext?: AuthContext }>();
+
+    if (!request.authContext) {
+      throw new UnauthorizedException();
+    }
+    return request.authContext;
   },
 );

@@ -16,8 +16,8 @@ import { ActCategoryStatus } from '../enums/category-status';
 
 @Entity('act_categories')
 @Index('IDX_act_categories_company_id', ['companyId'])
-@Index('UQ_act_categories_company_name_lower', ['companyId', 'name'], {
-  unique: true,
+@Index('UQ_act_categories_company_name_lower', {
+  synchronize: false,
 })
 export class ActCategory {
   @PrimaryGeneratedColumn('uuid')

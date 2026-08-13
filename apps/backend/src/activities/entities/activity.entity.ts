@@ -18,11 +18,9 @@ import { ActivityStatus } from '../enums/activity-status.enum';
 @Entity('activities')
 @Index('IDX_activities_company_id', ['companyId'])
 @Index('IDX_activities_category_id', ['categoryId'])
-@Index(
-  'UQ_activities_company_category_name_lower',
-  ['companyId', 'categoryId', 'name'],
-  { unique: true },
-)
+@Index('UQ_activities_company_category_name_lower', {
+  synchronize: false,
+})
 export class Activity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

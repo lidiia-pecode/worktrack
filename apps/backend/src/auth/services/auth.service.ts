@@ -90,6 +90,9 @@ export class AuthService {
     return user;
   }
 
+  // #region
+  // GOOGLE AUTH
+
   private async consumeGoogleSignupToken(
     rawToken: string,
     manager: EntityManager,
@@ -236,6 +239,35 @@ export class AuthService {
 
     return this.createSession(user, metadata);
   }
+
+  async completeGoogleLink(
+    userId: string,
+    googleUser: GoogleUserPayload,
+  ): Promise<void> {
+    const user = await this.usersService.findUserByIdWithCompany(userId);
+
+    if (!user || user.status !== UserStatus.ACTIVE) {
+      throw new UnauthorizedException();
+    }
+
+    if (user.company?.status === CompanyStatus.SUSPENDED) {
+      throw new UnauthorizedException(
+        'Company account is suspended. Please contact billing.',
+      );
+    }
+
+    if (
+      user.email.toLowerCase().trim() !== googleUser.email.toLowerCase().trim()
+    ) {
+      throw new ConflictException(
+        'Google account email must match your account email',
+      );
+    }
+
+    await this.usersService.linkGoogleAccount(userId, googleUser.googleId);
+  }
+
+  // #endregion
 
   async createSession(user: AuthUser, metadata?: SessionMetadata) {
     const expiresAt = this.getSessionExpirationDate();
@@ -414,16 +446,6 @@ export class AuthService {
 
   async logoutAll(userId: string): Promise<void> {
     await this.sessionService.deleteAllForUser(userId);
-  }
-
-  async completeGoogleLink(userId: string, googleId: string): Promise<void> {
-    const user = await this.usersService.findUserByIdWithCompany(userId);
-
-    if (!user || user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException();
-    }
-
-    await this.usersService.linkGoogleAccount(userId, googleId);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
