@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import Input from "../../../shared/Input";
+import Input from "@/app/components/shared/Input";
 
 type Props = React.InputHTMLAttributes<HTMLInputElement> & {
   error?: string;

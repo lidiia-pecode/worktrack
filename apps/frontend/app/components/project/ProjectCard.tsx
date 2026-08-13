@@ -4,17 +4,16 @@ import { Users } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { Project } from "@/types";
-import { isAdminRole } from "../../../lib/utils/user";
 
-import { Status } from "@/types/enums";
 import { StatusBadge } from "../shared/StatusBadge";
 import { EntityCard } from "../shared/EntityCard";
 import { UpdateProjectModal } from "./UpdateProjectModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { ProjectStatus } from "@/types/enums";
 
-type Props = { project: Project; isAdmin: boolean };
+type Props = { project: Project; canManage: boolean };
 
-export const ProjectCard = ({ project, isAdmin }: Props) => {
+export const ProjectCard = ({ project, canManage }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -35,7 +34,7 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
     <>
       <EntityCard
         onClick={() => setOpen(true)}
-        isArchived={project.status === Status.ARCHIVED}
+        isArchived={project.status === ProjectStatus.ARCHIVED}
       >
         <EntityCard.Header>
           <div className="min-w-0">
@@ -61,7 +60,7 @@ export const ProjectCard = ({ project, isAdmin }: Props) => {
       {open && (
         <UpdateProjectModal
           project={project}
-          isAdmin={isAdmin}
+          canManage={canManage}
           onClose={() => setOpen(false)}
           onDelete={() => setShowDeleteConfirm(true)}
         />

@@ -1,4 +1,9 @@
 export const queryKeys = {
+  companies: {
+    all: ["company"] as const,
+    current: () => [...queryKeys.companies.all, "current"] as const,
+  },
+
   projects: {
     all: ["projects"] as const,
 

@@ -1,12 +1,18 @@
-import { PaginatedResponse, PaginationParams } from ".";
-import { ActivityCategory } from "./ActivityCategory";
-import { Status } from "./enums";
+import {
+  ActivityCategoryResponse,
+  PaginatedResponse,
+  PaginationParams,
+} from ".";
+import { ActivityStatus } from "./enums";
 
 export interface Activity {
   id: string;
+  companyId: string;
   name: string;
-  category: ActivityCategory;
-  status: Status;
+  isAbsence: boolean;
+  defaultBillable: boolean;
+  status: ActivityStatus;
+  category: ActivityCategoryResponse;
   createdAt: string;
   updatedAt: string;
 }
@@ -14,9 +20,12 @@ export interface Activity {
 export interface ActivityPayload {
   name: string;
   categoryId: string;
+  isAbsence?: boolean;
+  defaultBillable?: boolean;
 }
+
 export interface ActivityQuery extends PaginationParams {
-  status?: Status;
+  status?: ActivityStatus;
 }
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;

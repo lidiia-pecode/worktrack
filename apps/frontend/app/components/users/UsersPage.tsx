@@ -4,22 +4,20 @@ import { useState, useMemo } from "react";
 
 import Container from "../layout/Container";
 import { useUsers } from "@/hooks/useUsers";
-import { useMe } from "@/hooks/useMe";
-import { UserRole } from "@/types/enums";
+import { useAuth } from "@/hooks/useAuth";
+
 import { EntityList } from "../shared/EntityList";
 import { LoadingState } from "../shared/LoadingState";
 import { ErrorState } from "../shared/ErrorState";
 import { EmptyState } from "../shared/EmptyState";
 import { UserCard } from "./UserCard";
 import { Search, UsersRound } from "lucide-react";
+import { hasManagerAccess } from "@/lib/utils/user";
 
 export const UsersPage = () => {
   const { items: users, isLoading, isError, refetch, pagination } = useUsers();
-  const me = useMe();
-  const currentUserRole = me.data?.role;
-  const isAdmin =
-    currentUserRole === UserRole.MANAGER ||
-    currentUserRole === UserRole.SUPER_ADMIN;
+  const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const [search, setSearch] = useState("");
 
@@ -50,7 +48,7 @@ export const UsersPage = () => {
     );
   }
 
-  if (isError || !isAdmin) {
+  if (isError || !canManage) {
     return (
       <Container className="flex flex-col grow">
         <ErrorState title="Couldn't load users" onRetry={refetch} />
@@ -98,7 +96,7 @@ export const UsersPage = () => {
           <EntityList
             items={filtered}
             renderItem={(user) => (
-              <UserCard key={user.id} user={user} isAdmin={isAdmin} />
+              <UserCard key={user.id} user={user} canManage={canManage} />
             )}
           />
 

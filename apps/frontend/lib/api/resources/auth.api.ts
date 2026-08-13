@@ -2,19 +2,7 @@
 
 import { User } from "@/types";
 import { createClient, apiClient, basicClient } from "../core/";
-
-type SignUpDto = {
-  firstName: string;
-  lastName: string;
-  username: string;
-  email: string;
-  password: string;
-};
-
-type LoginDto = {
-  email: string;
-  password: string;
-};
+import { SignInPayload, SignUpPayload } from "@/types/AuthSession";
 
 const auth = createClient({
   endpoint: "auth",
@@ -27,8 +15,10 @@ const users = createClient({
 });
 
 export const AuthClient = {
-  signup: (data: SignUpDto) => auth.post("/signup", data),
-  login: (data: LoginDto) => auth.post("/signin", data),
+  completeGoogleSignup: (data: { token: string; companyName: string }) =>
+    auth.post("/google/signup/complete", data),
+  signup: (data: SignUpPayload) => auth.post("/signup", data),
+  login: (data: SignInPayload) => auth.post("/signin", data),
   logout: () => auth.post("/logout"),
   me: () => users.get<User>("/me"),
 };

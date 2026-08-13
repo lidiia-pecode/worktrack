@@ -2,17 +2,18 @@
 
 import { useState, useMemo } from "react";
 import Container from "../layout/Container";
-import { useMe } from "@/hooks/useMe";
+import { useAuth } from "@/hooks/useAuth";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActCategoryCard } from "./ActCategoryCard";
 import { EntityList } from "../shared/EntityList";
-import { UserRole, Status } from "@/types/enums";
+import { ActCategoryStatus } from "@/types/enums";
 import { LoadingState } from "../shared/LoadingState";
 import { ErrorState } from "../shared/ErrorState";
 import { EmptyState } from "../shared/EmptyState";
 import { CreateActCategoryModal } from "./CreateActivityModal";
 import { FilterBar } from "../shared/FilterBar";
 import { Tags, Tag } from "lucide-react";
+import { hasManagerAccess } from "@/lib/utils/user";
 
 export const ActCategoryList = () => {
   const {
@@ -21,14 +22,14 @@ export const ActCategoryList = () => {
     isError,
     refetch,
   } = useActivityCategories();
-  const me = useMe();
-  const currentUserRole = me.data?.role;
-  const isAdmin =
-    currentUserRole === UserRole.MANAGER ||
-    currentUserRole === UserRole.SUPER_ADMIN;
+
+  const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | ActCategoryStatus>(
+    "all",
+  );
 
   const filtered = useMemo(() => {
     return categories.filter((c) => {
@@ -39,7 +40,8 @@ export const ActCategoryList = () => {
   }, [categories, search, statusFilter]);
 
   const archivedCount = useMemo(
-    () => categories.filter((c) => c.status === Status.ARCHIVED).length,
+    () =>
+      categories.filter((c) => c.status === ActCategoryStatus.ARCHIVED).length,
     [categories],
   );
 
@@ -54,7 +56,7 @@ export const ActCategoryList = () => {
     );
   }
 
-  if (isError || !isAdmin) {
+  if (isError || !canManage) {
     return (
       <Container className="flex flex-col grow">
         <ErrorState title="Couldn't load categories" onRetry={refetch} />
@@ -69,7 +71,7 @@ export const ActCategoryList = () => {
           title="No categories yet"
           description="Create your first category."
           icon={<Tags className="h-8 w-8 text-muted-foreground" />}
-          action={isAdmin && <CreateActCategoryModal />}
+          action={canManage && <CreateActCategoryModal />}
         />
       </Container>
     );
@@ -77,7 +79,7 @@ export const ActCategoryList = () => {
 
   return (
     <Container className="flex flex-col grow">
-      {isAdmin && <CreateActCategoryModal />}
+      {canManage && <CreateActCategoryModal />}
 
       <FilterBar
         search={search}
@@ -106,7 +108,7 @@ export const ActCategoryList = () => {
             <ActCategoryCard
               key={category.id}
               category={category}
-              isAdmin={isAdmin}
+              isAdmin={canManage}
             />
           )}
         />

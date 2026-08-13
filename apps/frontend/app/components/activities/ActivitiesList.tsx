@@ -1,8 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import Container from "../layout/Container";
-import { UserRole, Status } from "../../../types/enums";
-import { useMe } from "@/hooks/useMe";
+import { ActivityStatus } from "@/types/enums";
 import { ActivityCard } from "./ActivityCard";
 import { useActivities } from "@/hooks/useActivities";
 import { EntityList } from "../shared/EntityList";
@@ -12,17 +11,18 @@ import { ErrorState } from "../shared/ErrorState";
 import { CreateActivityModal } from "./CreateActivityModal";
 import { FilterBar } from "../shared/FilterBar";
 import { ClipboardList, ListChecks } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { hasManagerAccess } from "@/lib/utils/user";
 
 export const ActivityList = () => {
   const { items: activities, isLoading, isError, refetch } = useActivities();
-  const me = useMe();
-  const currentUserRole = me.data?.role;
-  const isAdmin =
-    currentUserRole === UserRole.MANAGER ||
-    currentUserRole === UserRole.SUPER_ADMIN;
+  const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | Status>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | ActivityStatus>(
+    "all",
+  );
 
   const filtered = useMemo(() => {
     return activities.filter((a) => {
@@ -33,7 +33,7 @@ export const ActivityList = () => {
   }, [activities, search, statusFilter]);
 
   const archivedCount = useMemo(
-    () => activities.filter((a) => a.status === Status.ARCHIVED).length,
+    () => activities.filter((a) => a.status === ActivityStatus.ARCHIVED).length,
     [activities],
   );
 
@@ -50,7 +50,7 @@ export const ActivityList = () => {
     );
   }
 
-  if (isError || !isAdmin) {
+  if (isError || !canManage) {
     return (
       <Container className="flex flex-col grow">
         <ErrorState title="Couldn't load activities" onRetry={refetch} />
@@ -65,7 +65,7 @@ export const ActivityList = () => {
           title="No activities yet"
           description="Create an activity to assign it to your projects."
           icon={<ClipboardList className="h-8 w-8 text-muted-foreground" />}
-          action={isAdmin && <CreateActivityModal />}
+          action={canManage && <CreateActivityModal />}
         />
       </Container>
     );
@@ -73,7 +73,7 @@ export const ActivityList = () => {
 
   return (
     <Container className="flex flex-col grow">
-      {isAdmin && <CreateActivityModal />}
+      {canManage && <CreateActivityModal />}
 
       <FilterBar
         search={search}
@@ -102,7 +102,7 @@ export const ActivityList = () => {
             <ActivityCard
               key={activity.id}
               activity={activity}
-              isAdmin={isAdmin}
+              isAdmin={canManage}
             />
           )}
         />

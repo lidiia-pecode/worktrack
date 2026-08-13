@@ -1,14 +1,25 @@
 import { PaginatedResponse } from ".";
 import { Activity } from "./Activities";
-import { Project } from "./Project";
+import { Company } from "./Company";
+
+// simplified back responce ProjectActivityResponse
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  status: string;
+}
 
 export interface ProjectActivity {
   id: string;
-  project: Project;
-  activity: Activity;
+  companyId: string;
+  projectId: string;
+  activityId: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  company?: Company;
+  project?: ProjectSummary;
+  activity?: Activity;
 }
 
 export interface ProjectActivityPayload {

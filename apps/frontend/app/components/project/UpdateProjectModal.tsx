@@ -26,14 +26,14 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 
 type UpdateProjectModalProps = {
   project: Project;
-  isAdmin: boolean;
+  canManage: boolean;
   onClose: () => void;
   onDelete: () => void;
 };
 
 export const UpdateProjectModal = ({
   project,
-  isAdmin,
+  canManage,
   onClose,
 }: UpdateProjectModalProps) => {
   const [edit, setEdit] = useState(false);
@@ -117,7 +117,7 @@ export const UpdateProjectModal = ({
       <ModalHeader
         title="Project details"
         edit={edit}
-        isAdmin={isAdmin}
+        isAdmin={canManage}
         onToggleEdit={() => setEdit(!edit)}
         onSave={() =>
           document.getElementById("project-modal-form")?.dispatchEvent(

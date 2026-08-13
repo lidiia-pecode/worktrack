@@ -7,7 +7,7 @@ import {
   ProjectActivitiesClientApi,
 } from "@/lib/api/resources";
 import { queryKeys } from "./shared/queryKeys";
-import { useMe } from "./useMe";
+import { useAuth } from "./useAuth";
 
 export type PickerProjectActivity = {
   id: string;
@@ -18,28 +18,28 @@ export type PickerProjectActivity = {
 };
 
 export function useMyProjectActivities() {
-  const { data: me } = useMe();
+  const { user } = useAuth();
 
   const projectsQuery = useQuery({
     queryKey: queryKeys.projects.picker(),
     queryFn: () => ProjectsClientApi.getAll(1),
-    enabled: !!me,
+    enabled: !!user,
   });
 
   const myProjects = (projectsQuery.data?.results ?? []).filter((project) =>
-    project.users?.some((u) => u.id === me?.id),
+    project.users?.some((u) => u.id === user?.id),
   );
 
   const activityQueries = useQueries({
     queries: myProjects.map((project) => ({
       queryKey: queryKeys.projectActivities.list(project.id),
       queryFn: () => ProjectActivitiesClientApi.getAll(project.id),
-      enabled: !!me,
+      enabled: !!user,
     })),
   });
 
   const isLoading =
-    !!me &&
+    !!user &&
     (projectsQuery.isLoading || activityQueries.some((q) => q.isLoading));
 
   const items: PickerProjectActivity[] = myProjects.flatMap((project, idx) => {

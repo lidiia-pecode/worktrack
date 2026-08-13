@@ -9,16 +9,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLogout } from "@/hooks/useLogout";
-import { useMe } from "@/hooks/useMe";
-import { initials } from "../../../../lib/utils/user";
+
 import { ROLE_LABELS } from "@/lib/constants";
+import { useAuth } from "@/hooks/useAuth";
+import { initials } from "@/lib/utils/user";
+import { useRouter } from "next/navigation";
 
 export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
-  const { data: user } = useMe();
-  const { logout, isPending } = useLogout();
+  const router = useRouter();
+  const { user, actions } = useAuth();
 
   const userInitials = initials(user);
+
+  const handleLogout = () => {
+    actions.logout.mutate(undefined, {
+      onSuccess: () => {
+        router.push("/");
+        router.refresh();
+      },
+    });
+  };
 
   return (
     <DropdownMenu>
@@ -68,8 +78,8 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
 
         <DropdownMenuItem
           variant="destructive"
-          onClick={() => logout()}
-          disabled={isPending}
+          onClick={handleLogout}
+          disabled={actions.logout.isPending}
         >
           <LogOut />
           Sign Out

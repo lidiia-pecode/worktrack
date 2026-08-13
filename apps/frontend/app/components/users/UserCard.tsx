@@ -9,9 +9,9 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { initials } from "@/lib/utils/user";
 import { UpdateUserModal } from "./UpdateUserModal";
 
-type Props = { user: User; isAdmin: boolean };
+type Props = { user: User; canManage: boolean };
 
-export const UserCard = ({ user, isAdmin }: Props) => {
+export const UserCard = ({ user, canManage }: Props) => {
   const [open, setOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const {
@@ -61,12 +61,12 @@ export const UserCard = ({ user, isAdmin }: Props) => {
       {open && (
         <UpdateUserModal
           user={user}
-          isAdmin={isAdmin}
+          isAdmin={canManage}
           onClose={() => setOpen(false)}
         />
       )}
 
-      {isAdmin && (
+      {canManage && (
         <ConfirmModal
           isOpen={showDeleteConfirm}
           onClose={() => setShowDeleteConfirm(false)}

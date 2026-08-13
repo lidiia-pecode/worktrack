@@ -1,34 +1,35 @@
 import { PaginatedResponse, PaginationParams, ProjectActivity } from ".";
-import { Status as ProjectStatus, Status } from "./enums";
+import { Company } from "./Company";
+import { ProjectStatus } from "./enums";
 import { User } from "./User";
 
 export interface Project {
   id: string;
+  companyId: string;
   name: string;
-  description?: string;
+  clientName?: string | null;
+  description?: string | null;
   status: ProjectStatus;
-  users: User[];
-  projectActivities: ProjectActivity[];
-  owner: User;
-  updatedAt: string;
   createdAt: string;
+  updatedAt: string;
+  company?: Company;
+  projectActivities?: ProjectActivity[];
+  users?: User[];
 }
 
-export type ProjectPayload = {
+// ProjectPayload = back
+export interface ProjectPayload {
   name: string;
+  clientName?: string | null;
   description?: string;
-  userIds?: string[];
   activityIds?: string[];
-};
+  userIds?: string[];
+}
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;
 
-export type ProjectState = Pick<Project, "name"> & {
-  description?: string;
-};
-
 export interface ProjectQuery extends PaginationParams {
-  status?: Status;
+  status?: ProjectStatus;
 }
 
 export type ProjectListResponse = PaginatedResponse<Project>;

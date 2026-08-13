@@ -1,12 +1,24 @@
-import { PaginatedResponse, PaginationParams } from ".";
-import { Status } from "./enums";
+import { Activity, PaginatedResponse, PaginationParams } from ".";
+import { Company } from "./Company";
+import { ActCategoryStatus } from "./enums";
+
+export interface ActivityCategoryResponse {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface ActivityCategory {
   id: string;
+  companyId: string;
   name: string;
-  status: Status;
+  status: ActCategoryStatus;
   createdAt: string;
   updatedAt: string;
+  company?: Company;
+  activities?: Activity[];
 }
 
 export interface ActivityCategoryPayload {
@@ -14,7 +26,7 @@ export interface ActivityCategoryPayload {
 }
 
 export interface ActivityCategoryQuery extends PaginationParams {
-  status?: Status;
+  status?: ActCategoryStatus;
 }
 
 export type UpdateActivityCategoryPayload = Partial<ActivityCategoryPayload>;

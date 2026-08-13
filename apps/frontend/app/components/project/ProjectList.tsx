@@ -6,8 +6,7 @@ import Pagination from "../shared/Pagination";
 
 import Container from "../layout/Container";
 import { useProjects } from "@/hooks/useProjects";
-import { UserRole, Status } from "../../../types/enums";
-import { useMe } from "@/hooks/useMe";
+import { ProjectStatus } from "../../../types/enums";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { ProjectCard } from "./ProjectCard";
 import { EntityList } from "../shared/EntityList";
@@ -16,10 +15,12 @@ import { ErrorState } from "../shared/ErrorState";
 import { EmptyState } from "../shared/EmptyState";
 import { FilterBar } from "../shared/FilterBar";
 import { FolderKanban, FolderClosed } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { hasManagerAccess } from "@/lib/utils/user";
 
 const PAGE_SIZE = 6;
 
-type StatusFilter = "all" | Status;
+type StatusFilter = "all" | ProjectStatus;
 
 export const ProjectList = () => {
   const [page, setPage] = useState(1);
@@ -34,11 +35,8 @@ export const ProjectList = () => {
     refetch,
   } = useProjects(page);
 
-  const me = useMe();
-  const currentUserRole = me.data?.role;
-  const isAdmin =
-    currentUserRole === UserRole.MANAGER ||
-    currentUserRole === UserRole.SUPER_ADMIN;
+  const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const totalPages = Math.ceil(count / PAGE_SIZE);
 
@@ -51,7 +49,7 @@ export const ProjectList = () => {
   }, [projects, search, statusFilter]);
 
   const archivedCount = useMemo(
-    () => projects.filter((p) => p.status === Status.ARCHIVED).length,
+    () => projects.filter((p) => p.status === ProjectStatus.ARCHIVED).length,
     [projects],
   );
 
@@ -71,7 +69,7 @@ export const ProjectList = () => {
     );
   }
 
-  if (isError || !isAdmin) {
+  if (isError || !canManage) {
     return (
       <Container className="flex flex-col grow">
         <ErrorState title="Couldn't load projects" onRetry={refetch} />
@@ -86,7 +84,7 @@ export const ProjectList = () => {
           title="No projects yet"
           description="Create your first project to start tracking work."
           icon={<FolderKanban className="h-8 w-8 text-muted-foreground" />}
-          action={isAdmin && <CreateProjectModal />}
+          action={canManage && <CreateProjectModal />}
         />
       </Container>
     );
@@ -94,7 +92,7 @@ export const ProjectList = () => {
 
   return (
     <Container className="flex flex-col grow">
-      {isAdmin && <CreateProjectModal />}
+      {canManage && <CreateProjectModal />}
 
       <FilterBar
         search={search}
@@ -127,7 +125,7 @@ export const ProjectList = () => {
               <ProjectCard
                 key={project.id}
                 project={project}
-                isAdmin={isAdmin}
+                canManage={canManage}
               />
             )}
           />

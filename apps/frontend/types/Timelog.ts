@@ -1,34 +1,39 @@
-import { PaginatedResponse, PaginationParams } from ".";
-import { Status } from "./enums";
+import { PaginatedResponse, PaginationParams, User } from ".";
+import { Company } from "./Company";
 import { ProjectActivity } from "./ProjectActivities";
 
-export interface Timelog {
+export interface TimeLog {
   id: string;
+  companyId: string;
   userId: string;
-  projectActivity: ProjectActivity;
+  projectActivityId: string;
   isBillable: boolean;
-  time: number;
-  note?: string;
+  minutes: number;
+  note?: string | null;
   date: string;
   createdAt: string;
   updatedAt: string;
+  company?: Company;
+  user?: User;
+  projectActivity?: ProjectActivity;
 }
 
-export interface TimelogPayload {
+export interface TimeLogPayload {
   projectActivityId: string;
-  time: number;
+  minutes: number;
   note?: string;
-  isBillable: boolean;
+  isBillable?: boolean;
   date: string;
 }
 
-export type UpdateTimelogPayload = Partial<TimelogPayload>;
+export type UpdateTimeLogPayload = Partial<TimeLogPayload>;
 
 export interface TimelogsQuery extends PaginationParams {
   date?: string;
   dateFrom?: string;
   dateTo?: string;
-  status?: Status;
+  userId?: string;
+  projectId?: string;
 }
 
-export type TimelogListResponse = PaginatedResponse<Timelog>;
+export type TimeLogListResponse = PaginatedResponse<TimeLog>;

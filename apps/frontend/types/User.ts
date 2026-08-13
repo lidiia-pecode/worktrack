@@ -1,29 +1,51 @@
-import { PaginatedResponse, PaginationParams, Project } from ".";
-import { Status, UserRole } from "./enums";
+import { PaginatedResponse, PaginationParams } from ".";
+import { Company } from "./Company";
+import { UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
+  companyId: string;
+  role: UserRole;
+  status: UserStatus;
+  position?: string | null;
+  avatarUrl?: string | null;
   firstName: string;
   lastName: string;
-  username: string;
+  username?: string | null;
   email: string;
-  role: UserRole;
-  position?: string;
-  avatarUrl?: string;
-
-  projects: Project[];
-
-  updatedAt: string;
+  googleId?: string | null;
+  capacityHoursPerWeek: number;
   createdAt: string;
+  updatedAt: string;
+  company?: Company;
 }
 
 export interface UserQuery extends PaginationParams {
-  status?: Status;
+  status?: UserStatus;
 }
 
-export type UserPayload = Omit<User, "id" | "updatedAt" | "createdAt">;
-export type UpdateUserPayload = {
+export interface CreateUserPayload {
+  firstName: string;
+  lastName: string;
+  username?: string;
+  email: string;
+  password: string;
+  role?: UserRole;
+  capacityHoursPerWeek?: number;
+}
+
+export interface UpdateUserPayload {
+  firstName?: string;
+  lastName?: string;
   role?: UserRole;
   position?: string;
-};
+  capacityHoursPerWeek?: number;
+}
+
+export interface UpdateProfilePayload {
+  avatarUrl?: string;
+  username?: string;
+  password?: string;
+}
+
 export type UserListResponse = PaginatedResponse<User>;
