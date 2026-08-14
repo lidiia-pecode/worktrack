@@ -36,7 +36,7 @@ export class CookieService {
 
     res.cookie('refresh_token', refreshToken, {
       ...options,
-      path: '/auth/refresh',
+      path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000,
     });
   }
@@ -47,7 +47,7 @@ export class CookieService {
     res.clearCookie('access_token', options);
     res.clearCookie('refresh_token', {
       ...options,
-      path: '/auth/refresh',
+      path: '/',
     });
   }
 }

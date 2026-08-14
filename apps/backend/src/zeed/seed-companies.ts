@@ -12,7 +12,7 @@ export async function seedCompanies(dataSource: DataSource): Promise<string> {
 
   if (!company) {
     company = companyRepo.create({
-      name: 'TechCorp Solutions',
+      companyName: 'TechCorp Solutions',
       slug,
       status: CompanyStatus.ACTIVE,
       timezone: 'UTC',

@@ -8,7 +8,7 @@ export class CompanyResponseDto {
   id!: string;
 
   @Expose()
-  name!: string;
+  companyName!: string;
 
   @Expose()
   slug!: string;

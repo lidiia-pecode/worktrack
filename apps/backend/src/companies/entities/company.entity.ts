@@ -26,8 +26,9 @@ export class Company {
     type: 'varchar',
     length: 255,
     nullable: false,
+    name: 'company_name',
   })
-  name!: string;
+  companyName!: string;
 
   @Index('UQ_companies_slug', { unique: true })
   @Column({ type: 'varchar', length: 100, nullable: false })

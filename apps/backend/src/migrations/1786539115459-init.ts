@@ -121,7 +121,7 @@ export class Init1786539115459 implements MigrationInterface {
       `CREATE TYPE "public"."week_day_enum" AS ENUM('MONDAY', 'SUNDAY')`,
     );
     await queryRunner.query(
-      `CREATE TABLE "companies" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "name" character varying(255) NOT NULL, "slug" character varying(100) NOT NULL, "status" "public"."company_status_enum" NOT NULL DEFAULT 'ACTIVE', "timezone" character varying(50) NOT NULL DEFAULT 'UTC', "currency" character varying(3) NOT NULL DEFAULT 'USD', "week_start_day" "public"."week_day_enum" NOT NULL DEFAULT 'MONDAY', "standard_work_hours_per_day" numeric(4,2) NOT NULL DEFAULT '8', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_d4bc3e82a314fa9e29f652c2c22" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "companies" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "company_name" character varying(255) NOT NULL, "slug" character varying(100) NOT NULL, "status" "public"."company_status_enum" NOT NULL DEFAULT 'ACTIVE', "timezone" character varying(50) NOT NULL DEFAULT 'UTC', "currency" character varying(3) NOT NULL DEFAULT 'USD', "week_start_day" "public"."week_day_enum" NOT NULL DEFAULT 'MONDAY', "standard_work_hours_per_day" numeric(4,2) NOT NULL DEFAULT '8', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP WITH TIME ZONE, CONSTRAINT "PK_d4bc3e82a314fa9e29f652c2c22" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE UNIQUE INDEX "UQ_companies_slug" ON "companies" ("slug") `,

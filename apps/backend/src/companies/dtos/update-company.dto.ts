@@ -21,7 +21,7 @@ export class UpdateCompanyDto {
     typeof value === 'string' ? value.trim() : value,
   )
   @Length(2, 255)
-  name?: string;
+  companyName?: string;
 
   @IsOptional()
   @IsString()

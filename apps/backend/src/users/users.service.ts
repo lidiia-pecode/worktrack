@@ -239,8 +239,22 @@ export class UsersService {
 
       const user = await this.getUserById(id, companyId);
 
-      if (payload.avatarUrl !== undefined) user.avatarUrl = payload.avatarUrl;
-      if (payload.username !== undefined) user.username = payload.username;
+      if (payload.firstName !== undefined) {
+        user.firstName = payload.firstName;
+      }
+
+      if (payload.lastName !== undefined) {
+        user.lastName = payload.lastName;
+      }
+
+      if (payload.avatarUrl !== undefined) {
+        user.avatarUrl = payload.avatarUrl;
+      }
+
+      if (payload.username !== undefined) {
+        user.username = payload.username;
+      }
+
       if (payload.password) {
         user.passwordHash = await hashPassword(payload.password);
       }

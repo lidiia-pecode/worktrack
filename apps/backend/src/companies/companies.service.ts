@@ -94,7 +94,7 @@ export class CompaniesService {
       const slug = this.buildSlugCandidate(baseSlug, attempt);
 
       const company = repository.create({
-        name: companyName,
+        companyName,
         slug,
         status: CompanyStatus.ACTIVE,
         timezone: 'UTC',
@@ -152,9 +152,9 @@ export class CompaniesService {
       throw new ForbiddenException('Cannot update suspended company.');
     }
 
-    const trimmedName = dto.name?.trim();
+    const trimmedName = dto.companyName?.trim();
 
-    if (trimmedName === undefined || trimmedName === company.name) {
+    if (trimmedName === undefined || trimmedName === company.companyName) {
       Object.assign(company, dto);
       return this.companiesRepository.save(company);
     }
@@ -170,7 +170,7 @@ export class CompaniesService {
       attempt < CompaniesService.MAX_SLUG_ATTEMPTS;
       attempt++
     ) {
-      company.name = trimmedName;
+      company.companyName = trimmedName;
       company.slug = this.buildSlugCandidate(baseSlug, attempt);
 
       try {
