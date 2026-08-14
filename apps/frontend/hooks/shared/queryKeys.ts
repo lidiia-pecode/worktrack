@@ -4,6 +4,11 @@ export const queryKeys = {
     current: () => [...queryKeys.companies.all, "current"] as const,
   },
 
+  teams: {
+    all: ["teams"] as const,
+    lists: () => [...queryKeys.teams.all, "list"] as const,
+  },
+
   projects: {
     all: ["projects"] as const,
 

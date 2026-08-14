@@ -1,16 +1,11 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { BACKEND_URL } from "@/lib/constants";
 import { User } from "@/types";
+import { getCookieHeader } from "./cookie-helper";
 
 async function fetchCurrentUser() {
-  const cookieStore = await cookies();
-
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
+  const cookieHeader = await getCookieHeader();
 
   return fetch(`${BACKEND_URL}/users/me`, {
     cache: "no-store",

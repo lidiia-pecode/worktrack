@@ -28,7 +28,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const me = await getCurrentUserOrNull();
+  const user = await getCurrentUserOrNull();
 
   return (
     <html
@@ -38,7 +38,7 @@ export default async function RootLayout({
       <body className="min-h-screen">
         <Providers>
           <div className="flex h-full flex-col md:flex-row">
-            {me && <Sidebar me={me} />}
+            {user && <Sidebar user={user} />}
 
             <main className="flex-1 h-full overflow-y-auto bg-gray-50">
               {children}

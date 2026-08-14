@@ -1,14 +1,8 @@
-
-import { cookies } from "next/headers";
 import { BACKEND_URL } from "@/lib/constants";
+import { getCookieHeader } from "./cookie-helper";
 
 export async function refreshSession() {
-  const cookieStore = await cookies();
-
-  const cookieHeader = cookieStore
-    .getAll()
-    .map((c) => `${c.name}=${c.value}`)
-    .join("; ");
+  const cookieHeader = await getCookieHeader();
 
   return fetch(`${BACKEND_URL}/auth/refresh`, {
     method: "POST",

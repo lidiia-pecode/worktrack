@@ -8,20 +8,19 @@ import { UserMenu } from "./UserMenu";
 import { CloseButton } from "../../shared/Button";
 import { Logo } from "../../shared/Logo";
 import { SidebarNavigation } from "./SidebarNavigation";
-import { UserRole } from "@/types/enums";
 import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
 import { User } from "@/types";
+import { hasManagerAccess } from "@/lib/utils/user";
 
 interface SidebarProps {
-  me: User;
+  user: User;
 }
 
-export function Sidebar({ me }: SidebarProps) {
+export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-
-  const isAdmin = me.role !== UserRole.MEMBER;
-  const navlist = isAdmin ? managerNavigation : employeeNavigation;
+  const canManage = hasManagerAccess(user?.role);
+  const navlist = canManage ? managerNavigation : employeeNavigation;
 
   return (
     <>
@@ -29,7 +28,7 @@ export function Sidebar({ me }: SidebarProps) {
 
       <header className="sticky top-0 z-40 border-b border-gray-100 bg-white md:hidden">
         <div className="flex h-16 items-center justify-between px-4">
-          <Logo size="sm" isAdmin={isAdmin} />
+          <Logo />
 
           <button
             onClick={() => setIsOpen(true)}
@@ -49,7 +48,7 @@ export function Sidebar({ me }: SidebarProps) {
 
           <aside className="fixed inset-y-0 left-0 z-50 flex w-80 flex-col bg-white shadow-xl md:hidden">
             <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
-              <Logo isAdmin={isAdmin} />
+              <Logo />
 
               <CloseButton onClick={() => setIsOpen(false)} />
             </div>
@@ -73,7 +72,7 @@ export function Sidebar({ me }: SidebarProps) {
 
       <aside className="hidden h-screen w-50 flex-col border-r border-gray-200 bg-white md:flex">
         <div className="border-b border-gray-100 px-6 py-5">
-          <Logo isAdmin={isAdmin} />
+          <Logo />
         </div>
 
         <div className="flex-1 overflow-y-auto p-4">

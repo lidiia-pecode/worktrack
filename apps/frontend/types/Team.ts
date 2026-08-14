@@ -1,3 +1,4 @@
+import { PaginatedResponse } from ".";
 import { Company } from "./Company";
 import { TeamRole, TeamStatus } from "./enums";
 
@@ -59,3 +60,5 @@ export interface UpdateTeamMemberPayload {
   joinedAt?: string;
   leftAt?: string | null;
 }
+
+export type TeamListResponse = PaginatedResponse<Team>;
