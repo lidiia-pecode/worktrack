@@ -1,5 +1,3 @@
-import { redirect } from "next/navigation";
-
 import { BACKEND_URL } from "@/lib/constants";
 import { User } from "@/types";
 import { getCookieHeader } from "./cookie-helper";
@@ -15,23 +13,7 @@ async function fetchCurrentUser() {
   });
 }
 
-export async function getCurrentUser(returnTo: string) {
-  const res = await fetchCurrentUser();
-
-  if (res.ok) {
-    return (await res.json()) as User;
-  }
-
-  if (res.status === 401) {
-    redirect(
-      `/api/auth/refresh-redirect?returnTo=${encodeURIComponent(returnTo)}`,
-    );
-  }
-
-  return null;
-}
-
-export async function getCurrentUserOrNull() {
+export async function getCurrentUser(): Promise<User | null> {
   const res = await fetchCurrentUser();
 
   if (!res.ok) {

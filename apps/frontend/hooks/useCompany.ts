@@ -12,6 +12,7 @@ export function useCompany() {
   const query = useQuery({
     queryKey: queryKeys.companies.current(),
     queryFn: CompaniesClientApi.get,
+    staleTime: 1000 * 60 * 5,
   });
 
   const update = useMutation({

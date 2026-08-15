@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import Button, { CloseButton } from "../shared/Button";
 import { Modal } from "../shared/Modal/Modal";
 
 import { useActivities } from "@/hooks/useActivities";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
-import { Status } from "@/types/enums";
+import { Button } from "@/components/ui/button";
+import { CloseButton } from "../shared/CloseButton";
+import { ActivityStatus } from "@/types/enums";
 
 export function CreateActivityModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -70,7 +71,7 @@ export function CreateActivityModal() {
             defaultValues={{
               name: "",
               categoryId: "",
-              status: Status.ACTIVE,
+              status: ActivityStatus.ACTIVE,
             }}
             categories={categories}
             isEditMode

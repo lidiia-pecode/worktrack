@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
 import { UserMenu } from "./UserMenu";
-import { CloseButton } from "../../shared/Button";
 import { Logo } from "../../shared/Logo";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
 import { User } from "@/types";
 import { hasManagerAccess } from "@/lib/utils/user";
+import { CloseButton } from "../../shared/CloseButton";
 
 interface SidebarProps {
   user: User;

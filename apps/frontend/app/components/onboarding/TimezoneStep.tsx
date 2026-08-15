@@ -3,11 +3,12 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCompany } from "@/hooks/useCompany";
+
+import { StepActions } from "./StepActions";
 import {
-  updateCompanySchema,
-  UpdateCompanyInputs,
-} from "@/lib/forms/schemas/workspace.schema";
-import Button from "@/app/components/shared/Button";
+  CompanyFormValues,
+  companySchema,
+} from "@/lib/forms/schemas/company.schema";
 
 const TIMEZONES = [
   { label: "UTC", value: "UTC" },
@@ -19,9 +20,10 @@ const TIMEZONES = [
 interface StepProps {
   onContinue: () => void;
   onBack: () => void;
+  onSkip: () => void;
 }
 
-export function TimezoneStep({ onContinue, onBack }: StepProps) {
+export function TimezoneStep({ onContinue, onBack, onSkip }: StepProps) {
   const { company, actions } = useCompany();
   const isPending = actions.update.isPending;
 
@@ -29,12 +31,12 @@ export function TimezoneStep({ onContinue, onBack }: StepProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<Pick<UpdateCompanyInputs, "timezone">>({
-    resolver: zodResolver(updateCompanySchema.pick({ timezone: true })),
+  } = useForm<Pick<CompanyFormValues, "timezone">>({
+    resolver: zodResolver(companySchema.pick({ timezone: true })),
     defaultValues: { timezone: company?.timezone || "UTC" },
   });
 
-  const onSubmit = async (data: Pick<UpdateCompanyInputs, "timezone">) => {
+  const onSubmit = async (data: Pick<CompanyFormValues, "timezone">) => {
     await actions.update.mutateAsync(data);
     onContinue();
   };
@@ -73,25 +75,7 @@ export function TimezoneStep({ onContinue, onBack }: StepProps) {
           )}
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onBack}
-            disabled={isPending}
-            className="w-1/3"
-          >
-            Back
-          </Button>
-          <Button
-            type="submit"
-            disabled={isPending}
-            isLoading={isPending}
-            className="w-2/3"
-          >
-            Continue
-          </Button>
-        </div>
+        <StepActions onBack={onBack} onSkip={onSkip} isPending={isPending} />
       </form>
     </div>
   );

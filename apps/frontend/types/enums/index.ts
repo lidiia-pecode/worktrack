@@ -15,6 +15,13 @@ export enum CompanyStatus {
   SUSPENDED = "SUSPENDED",
 }
 
+export enum CompanyCurrency {
+  USD = "USD",
+  EUR = "EUR",
+  UAH = "UAH",
+  GBP = "GBP",
+}
+
 export enum WeekDay {
   MONDAY = "MONDAY",
   SUNDAY = "SUNDAY",

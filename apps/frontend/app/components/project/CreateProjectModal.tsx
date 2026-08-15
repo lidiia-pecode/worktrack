@@ -5,9 +5,8 @@ import { Plus } from "lucide-react";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-import { Status, UserRole } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
-import Button, { CloseButton } from "../shared/Button";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { Modal } from "../shared/Modal/Modal";
 import { useActivities } from "@/hooks/useActivities";
@@ -17,6 +16,8 @@ import { MemberChip } from "../shared/MemberChip";
 import { ActivityChip } from "../shared/ActivityChip";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 import { SelectionDrawer } from "../shared/Selectiondrawer";
+import { Button } from "@/components/ui/button";
+import { CloseButton } from "../shared/CloseButton";
 
 export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -98,7 +99,7 @@ export function CreateProjectModal() {
             defaultValues={{
               name: "",
               description: "",
-              status: Status.ACTIVE,
+              status: ProjectStatus.ACTIVE,
             }}
             membersCount={memberIds.length}
             activitiesCount={activityIds.length}
@@ -112,7 +113,7 @@ export function CreateProjectModal() {
           >
             {users
               .filter(
-                (u) => memberIds.includes(u.id) && u.role === UserRole.MEMBER,
+                (u) => memberIds.includes(u.id) && u.role === UserRole.EMPLOYEE,
               )
               .map((user) => (
                 <MemberChip
@@ -144,7 +145,7 @@ export function CreateProjectModal() {
         {memberDrawerOpen && (
           <SelectionDrawer
             open={memberDrawerOpen}
-            items={users.filter((u) => u.role === UserRole.MEMBER)}
+            items={users.filter((u) => u.role === UserRole.EMPLOYEE)}
             selectedIds={memberIds}
             onToggle={handleSetMembers}
             onClose={() => setMemberDrawerOpen(false)}

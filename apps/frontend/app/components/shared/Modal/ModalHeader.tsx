@@ -1,5 +1,6 @@
+import { Button } from "@/components/ui/button";
 import { Pencil, Save } from "lucide-react";
-import Button, { CloseButton } from "../Button";
+import { CloseButton } from "../CloseButton";
 
 type ModalHeaderProps = {
   edit: boolean;

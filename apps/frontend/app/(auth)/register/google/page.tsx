@@ -4,10 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import Button from "@/app/components/shared/Button";
 import Input from "@/app/components/shared/Input";
-import { useAuth } from "@/hooks/useAuth";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
+import { useAuthActions } from "@/hooks/useAuthActions";
+import { Button } from "@/components/ui/button";
 
 interface GoogleSignupForm {
   companyName: string;
@@ -19,7 +19,7 @@ export default function GoogleSignupPage() {
 
   const token = searchParams.get("token");
 
-  const { actions } = useAuth();
+  const actions = useAuthActions();
 
   const {
     register,
@@ -37,18 +37,13 @@ export default function GoogleSignupPage() {
       return;
     }
 
-    try {
-      await actions.completeGoogleSignup.mutateAsync({
-        token,
-        companyName: data.companyName.trim(),
-      });
+    await actions.completeGoogleSignup.mutateAsync({
+      token,
+      companyName: data.companyName.trim(),
+    });
 
-      router.push("/onboarding");
-      router.refresh();
-    } catch (error) {
-      console.error(error);
-      toast.error("Unable to complete Google signup");
-    }
+    router.push("/onboarding");
+    router.refresh();
   };
 
   return (

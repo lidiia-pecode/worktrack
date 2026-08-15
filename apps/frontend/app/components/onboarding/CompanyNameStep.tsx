@@ -3,37 +3,54 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCompany } from "@/hooks/useCompany";
-import {
-  updateCompanySchema,
-  UpdateCompanyInputs,
-} from "@/lib/forms/schemas/workspace.schema";
+
 import Input from "@/app/components/shared/Input";
-import Button from "@/app/components/shared/Button";
+import { StepActions } from "./StepActions";
+import {
+  CompanyFormValues,
+  companySchema,
+} from "@/lib/forms/schemas/company.schema";
+import { useEffect } from "react";
 
 interface StepProps {
   onContinue: () => void;
   onBack: () => void;
+  onSkip: () => void;
   showBack?: boolean;
 }
 
-export function CompanyNameStep({
+export const CompanyNameStep = ({
   onContinue,
   onBack,
+  onSkip,
   showBack = false,
-}: StepProps) {
+}: StepProps) => {
   const { company, actions } = useCompany();
   const isPending = actions.update.isPending;
 
+  console.log(company?.companyName);
+
   const {
     register,
+    reset,
     handleSubmit,
     formState: { errors },
-  } = useForm<Pick<UpdateCompanyInputs, "name">>({
-    resolver: zodResolver(updateCompanySchema.pick({ name: true })),
-    defaultValues: { name: company?.name || "" },
+  } = useForm<Pick<CompanyFormValues, "companyName">>({
+    resolver: zodResolver(companySchema.pick({ companyName: true })),
+    defaultValues: {
+      companyName: "",
+    },
   });
 
-  const onSubmit = async (data: Pick<UpdateCompanyInputs, "name">) => {
+  useEffect(() => {
+    if (!company) return;
+
+    reset({
+      companyName: company.companyName ?? "",
+    });
+  }, [company, reset]);
+
+  const onSubmit = async (data: Pick<CompanyFormValues, "companyName">) => {
     await actions.update.mutateAsync(data);
     onContinue();
   };
@@ -52,35 +69,20 @@ export function CompanyNameStep({
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
           label="Company Name"
-          placeholder="Acme Inc."
-          {...register("name")}
-          error={errors.name?.message}
+          placeholder={company?.companyName}
+          {...register("companyName")}
+          error={errors.companyName?.message}
           disabled={isPending}
           autoFocus
         />
 
-        <div className="flex gap-3 pt-2">
-          {showBack && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={onBack}
-              disabled={isPending}
-              className="w-1/3"
-            >
-              Back
-            </Button>
-          )}
-          <Button
-            type="submit"
-            disabled={isPending}
-            isLoading={isPending}
-            className={showBack ? "w-2/3" : "w-full"}
-          >
-            Continue
-          </Button>
-        </div>
+        <StepActions
+          onBack={onBack}
+          onSkip={onSkip}
+          showBack={showBack}
+          isPending={isPending}
+        />
       </form>
     </div>
   );
-}
+};

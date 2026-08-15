@@ -3,12 +3,13 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import { Status } from "@/types/enums";
-import Button, { CloseButton } from "../shared/Button";
 import { Modal } from "../shared/Modal/Modal";
 
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActCategoryForm, ActCategoryFormData } from "./ActCategoryForm";
+import { Button } from "@/components/ui/button";
+import { CloseButton } from "../shared/CloseButton";
+import { ActivityStatus } from "@/types/enums";
 
 export function CreateActCategoryModal() {
   const [isOpen, setIsOpen] = useState(false);
@@ -65,7 +66,7 @@ export function CreateActCategoryModal() {
             formId="create-category-form"
             defaultValues={{
               name: "",
-              status: Status.ACTIVE,
+              status: ActivityStatus.ACTIVE,
             }}
             isEditMode
             onSubmit={handleCreate}

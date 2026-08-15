@@ -26,11 +26,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             onError: (error) => {
               const message = getErrorMessage(error);
 
-              if (message === "Session expired. Please log in again.") {
-                toast.error(message);
-                return;
-              }
-
               toast.error(message);
             },
           },

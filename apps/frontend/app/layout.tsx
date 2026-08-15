@@ -6,7 +6,7 @@ import "./globals.css";
 
 import Providers from "./providers";
 import { Sidebar } from "./components/layout/sidebar";
-import { getCurrentUserOrNull } from "../lib/api/server/auth";
+import { getCurrentUser } from "../lib/api/server/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +28,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const user = await getCurrentUserOrNull();
+  const user = await getCurrentUser();
 
   return (
     <html

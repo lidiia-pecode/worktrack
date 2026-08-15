@@ -3,19 +3,21 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCompany } from "@/hooks/useCompany";
-import {
-  updateCompanySchema,
-  UpdateCompanyInputs,
-} from "@/lib/forms/schemas/workspace.schema";
+
 import Input from "@/app/components/shared/Input";
-import Button from "@/app/components/shared/Button";
+import { StepActions } from "./StepActions";
+import {
+  CompanyFormValues,
+  companySchema,
+} from "@/lib/forms/schemas/company.schema";
 
 interface StepProps {
   onContinue: () => void;
   onBack: () => void;
+  onSkip: () => void;
 }
 
-export function WorkHoursStep({ onContinue, onBack }: StepProps) {
+export function WorkHoursStep({ onContinue, onBack, onSkip }: StepProps) {
   const { company, actions } = useCompany();
   const isPending = actions.update.isPending;
 
@@ -23,9 +25,9 @@ export function WorkHoursStep({ onContinue, onBack }: StepProps) {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<Pick<UpdateCompanyInputs, "standardWorkHoursPerDay">>({
+  } = useForm<Pick<CompanyFormValues, "standardWorkHoursPerDay">>({
     resolver: zodResolver(
-      updateCompanySchema.pick({ standardWorkHoursPerDay: true }),
+      companySchema.pick({ standardWorkHoursPerDay: true }),
     ),
     defaultValues: {
       standardWorkHoursPerDay: company?.standardWorkHoursPerDay || 8,
@@ -33,7 +35,7 @@ export function WorkHoursStep({ onContinue, onBack }: StepProps) {
   });
 
   const onSubmit = async (
-    data: Pick<UpdateCompanyInputs, "standardWorkHoursPerDay">,
+    data: Pick<CompanyFormValues, "standardWorkHoursPerDay">,
   ) => {
     await actions.update.mutateAsync(data);
     onContinue();
@@ -62,25 +64,7 @@ export function WorkHoursStep({ onContinue, onBack }: StepProps) {
           disabled={isPending}
         />
 
-        <div className="flex gap-3 pt-2">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={onBack}
-            disabled={isPending}
-            className="w-1/3"
-          >
-            Back
-          </Button>
-          <Button
-            type="submit"
-            disabled={isPending}
-            isLoading={isPending}
-            className="w-2/3"
-          >
-            Complete Setup
-          </Button>
-        </div>
+        <StepActions onBack={onBack} onSkip={onSkip} isPending={isPending} />
       </form>
     </div>
   );

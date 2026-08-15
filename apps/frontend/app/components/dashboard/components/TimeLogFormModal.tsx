@@ -7,14 +7,14 @@ import * as z from "zod";
 import { Calendar, CircleAlert, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { Timelog, TimelogPayload, UpdateTimelogPayload } from "@/types";
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
 import { Modal } from "../../shared/Modal/Modal";
-import Button from "../../shared/Button";
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
+import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
+import { Button } from "@/components/ui/button";
 
 const FORM_ID = "timelog-form";
 
@@ -48,10 +48,10 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
   date: string;
-  timelog?: Timelog;
+  timelog?: TimeLog;
   pickerItems: PickerProjectActivity[];
-  onCreate: (payload: TimelogPayload) => Promise<unknown>;
-  onUpdate: (id: string, payload: UpdateTimelogPayload) => Promise<unknown>;
+  onCreate: (payload: TimeLogPayload) => Promise<unknown>;
+  onUpdate: (id: string, payload: UpdateTimeLogPayload) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
   isSaving: boolean;
   isDeleting: boolean;

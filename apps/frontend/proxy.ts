@@ -6,34 +6,43 @@ export async function proxy(req: NextRequest) {
   const accessToken = req.cookies.get("access_token")?.value;
   const refreshToken = req.cookies.get("refresh_token")?.value;
 
-  let isAuthenticated = !!accessToken;
+  const accessTokenExpired = accessToken ? isTokenExpired(accessToken) : true;
 
-  if (!accessToken && refreshToken) {
+  let isAuthenticated = !!accessToken && !accessTokenExpired;
+
+  if (accessTokenExpired && refreshToken) {
     const refreshRes = await fetch(`${BACKEND_URL}/auth/refresh`, {
       method: "POST",
-      headers: { Cookie: `refresh_token=${refreshToken}` },
+      headers: {
+        Cookie: `refresh_token=${refreshToken}`,
+      },
       cache: "no-store",
     });
 
     if (!refreshRes.ok) {
       const response = NextResponse.next();
+
       response.cookies.delete("refresh_token");
       response.cookies.delete("access_token");
+
       return handleRouteGuards(pathname, false, req, response);
     }
 
     isAuthenticated = true;
     const setCookieHeader = refreshRes.headers.getSetCookie();
 
-    const newAccessToken = setCookieHeader
-      .map((c) => c.split(";")[0])
-      .find((c) => c.startsWith("access_token="));
-
     const requestHeaders = new Headers(req.headers);
-    if (newAccessToken) {
+
+    const newCookies = setCookieHeader
+      .map((cookie) => cookie.split(";")[0])
+      .filter(Boolean);
+
+    if (newCookies.length > 0) {
+      const existingCookies = requestHeaders.get("Cookie");
+
       requestHeaders.set(
         "Cookie",
-        `${requestHeaders.get("Cookie") ?? ""}; ${newAccessToken}`,
+        [existingCookies, ...newCookies].filter(Boolean).join("; "),
       );
     }
 
@@ -55,6 +64,10 @@ export async function proxy(req: NextRequest) {
       );
     });
 
+    console.log("[AUTH] access token exists:", !!accessToken);
+    console.log("[AUTH] access token expired:", accessTokenExpired);
+    console.log("[AUTH] refresh token exists:", !!refreshToken);
+
     return handleRouteGuards(pathname, true, req, response);
   }
 
@@ -72,7 +85,9 @@ function handleRouteGuards(
 
   // todo: add protected routes
   const isProtectedRoute =
-    pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding");
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/onboarding");
 
   if (isAuthenticated && isAuthRoute) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
@@ -85,6 +100,18 @@ function handleRouteGuards(
   }
 
   return response;
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString(),
+    );
+
+    return !payload.exp || payload.exp * 1000 <= Date.now();
+  } catch {
+    return true;
+  }
 }
 
 export const config = {

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
 import Link from "next/link";
 
 import {
@@ -17,17 +16,18 @@ import { applyServerErrors } from "@/lib/forms/utils";
 import { isApiValidationError } from "@/lib/api/errors";
 
 import Input from "../shared/Input";
-import Button from "../shared/Button";
+
 import { PasswordInput } from "./components/PasswordInput";
 import { GOOGLE_LOGIN_URL, GOOGLE_SIGNUP_URL } from "@/lib/constants";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuthActions } from "@/hooks/useAuthActions";
+import { Button } from "@/components/ui/button";
 
 interface AuthFormProps {
   mode: "login" | "signup";
 }
 
 export const AuthForm = ({ mode }: AuthFormProps) => {
-  const { actions } = useAuth();
+  const actions = useAuthActions();
 
   const isExisting = mode === "login";
   const router = useRouter();
@@ -71,12 +71,6 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       if (!isApiValidationError(err)) return;
 
       applyServerErrors(err, setLoginError);
-
-      toast.error(
-        Object.values(err.errors ?? {})
-          .flat()
-          .join("\n"),
-      );
     }
   };
 
@@ -90,12 +84,6 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
       if (!isApiValidationError(err)) return;
 
       applyServerErrors(err, setSignupError);
-
-      toast.error(
-        Object.values(err.errors ?? {})
-          .flat()
-          .join("\n"),
-      );
     }
   };
 

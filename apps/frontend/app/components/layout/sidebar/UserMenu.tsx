@@ -14,10 +14,12 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/utils/user";
 import { useRouter } from "next/navigation";
+import { useAuthActions } from "@/hooks/useAuthActions";
 
 export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
   const router = useRouter();
-  const { user, actions } = useAuth();
+  const { user } = useAuth();
+  const actions = useAuthActions();
 
   const userInitials = initials(user);
 
@@ -64,9 +66,9 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
         sideOffset={8}
         className="w-56 p-0"
       >
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push("/settings")}>
           <User />
-          Profile Settings
+          Settings
         </DropdownMenuItem>
 
         <DropdownMenuItem>

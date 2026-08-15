@@ -137,10 +137,75 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ambient glow animations                                                    */
+/* -------------------------------------------------------------------------- */
+
+@keyframes glow-slow {
+  0%,
+  100% {
+    opacity: 0.7;
+    scale: 1;
+  }
+
+  50% {
+    opacity: 1;
+    scale: 1.08;
+  }
+}
+
+@keyframes glow-slow-reverse {
+  0%,
+  100% {
+    opacity: 0.6;
+    scale: 1;
+  }
+
+  50% {
+    opacity: 0.9;
+    scale: 1.1;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    scale: 1;
+  }
+
+  50% {
+    opacity: 0.85;
+    scale: 1.08;
+  }
+}
+
+.animate-glow-slow {
+  animation: glow-slow 12s ease-in-out infinite;
+}
+
+.animate-glow-slow-reverse {
+  animation: glow-slow-reverse 15s ease-in-out infinite;
+}
+
+.animate-glow-pulse {
+  animation: glow-pulse 10s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-glow-slow,
+  .animate-glow-slow-reverse,
+  .animate-glow-pulse {
+    animation: none;
   }
 }

@@ -6,12 +6,11 @@ import { CheckCircle2, ArrowRight } from "lucide-react";
 
 import { useCompany } from "@/hooks/useCompany";
 
-import Button from "@/app/components/shared/Button";
-
-import { CompanyNameStep } from "@/app/components/onboarding/CompanyNameStep";
 import { TimezoneStep } from "@/app/components/onboarding/TimezoneStep";
 import { CurrencyStep } from "@/app/components/onboarding/CurrencyStep";
 import { WorkHoursStep } from "@/app/components/onboarding/WorkHoursStep";
+import { Button } from "@/components/ui/button";
+import { CompanyNameStep } from "@/app/components/onboarding/CompanyNameStep";
 
 const STEPS = ["Company", "Timezone", "Currency", "Hours"] as const;
 
@@ -53,7 +52,7 @@ export default function OnboardingPage() {
   return (
     <main className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-12 flex flex-col justify-between transition-colors">
       <div className="max-w-xl mx-auto w-full">
-        {/* Header / Brand & Skip option */}
+        {/* Header / Brand & Global Skip option */}
         <div className="flex items-center justify-between mb-10">
           <div className="w-16" />
           <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-500 to-indigo-600 bg-clip-text text-transparent">
@@ -129,17 +128,30 @@ export default function OnboardingPage() {
                 <CompanyNameStep
                   onContinue={handleNext}
                   onBack={handleBack}
+                  onSkip={handleNext}
                   showBack={false}
                 />
               )}
               {currentStep === 1 && (
-                <TimezoneStep onContinue={handleNext} onBack={handleBack} />
+                <TimezoneStep
+                  onContinue={handleNext}
+                  onBack={handleBack}
+                  onSkip={handleNext}
+                />
               )}
               {currentStep === 2 && (
-                <CurrencyStep onContinue={handleNext} onBack={handleBack} />
+                <CurrencyStep
+                  onContinue={handleNext}
+                  onBack={handleBack}
+                  onSkip={handleNext}
+                />
               )}
               {currentStep === 3 && (
-                <WorkHoursStep onContinue={handleNext} onBack={handleBack} />
+                <WorkHoursStep
+                  onContinue={handleNext}
+                  onBack={handleBack}
+                  onSkip={handleNext}
+                />
               )}
             </div>
           </>
