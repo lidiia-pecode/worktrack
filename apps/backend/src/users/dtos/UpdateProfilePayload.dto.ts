@@ -32,9 +32,9 @@ export class UpdateProfilePayload {
   @IsString()
   avatarUrl?: string;
 
-  @IsOptional()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/)
-  password?: string;
+  // @IsOptional()
+  // @MinLength(8)
+  // @MaxLength(100)
+  // @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/)
+  // password?: string;
 }

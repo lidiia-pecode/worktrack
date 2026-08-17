@@ -255,12 +255,20 @@ export class UsersService {
         user.username = payload.username;
       }
 
-      if (payload.password) {
-        user.passwordHash = await hashPassword(payload.password);
-      }
-
       return transactionRepo.save(user);
     });
+  }
+
+  async updatePassword(
+    id: string,
+    companyId: string,
+    passwordHash: string,
+  ): Promise<void> {
+    const user = await this.getUserById(id, companyId);
+
+    user.passwordHash = passwordHash;
+
+    await this.repo.save(user);
   }
 
   async archive(

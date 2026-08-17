@@ -11,21 +11,29 @@ import {
 } from "@/lib/forms/schemas/security.schema";
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
-import Input from "../../shared/Input";
 import { SettingsActions } from "../components/SettingsActions";
 import {
   settingsInputClassName,
   settingsLabelClassName,
 } from "../styles/settings-styles";
+import { PasswordInput } from "../../auth/components/PasswordInput";
+import { useSecurity } from "@/hooks/useSecurity";
+import { useAuth } from "@/hooks/useAuth";
 
 export const SecuritySettings = () => {
+  const { user } = useAuth();
+  const { actions } = useSecurity();
+
+  const hasPassword = user?.hasPassword ?? false;
+
   const {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isDirty, isSubmitting },
+    formState: { errors, isValid, isSubmitting },
   } = useForm<SecurityFormValues>({
     resolver: zodResolver(securitySchema),
+    mode: "onChange",
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -34,7 +42,12 @@ export const SecuritySettings = () => {
   });
 
   const onSubmit = async (data: SecurityFormValues) => {
-    console.log(data);
+    await actions.changePassword.mutateAsync({
+      ...(hasPassword && {
+        currentPassword: data.currentPassword,
+      }),
+      newPassword: data.newPassword,
+    });
 
     reset();
   };
@@ -45,22 +58,28 @@ export const SecuritySettings = () => {
         <SettingsSectionHeader
           icon={KeyRound}
           title="Password"
-          description="Update your password to keep your account secure."
+          description={
+            hasPassword
+              ? "Update your password to keep your account secure."
+              : "You currently sign in with Google. Set a password to also sign in with your email and password."
+          }
         />
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-6">
-          <Input
-            label="Current password"
-            type="password"
-            placeholder="Enter your current password"
-            {...register("currentPassword")}
-            error={errors.currentPassword?.message}
-            className={settingsInputClassName}
-            labelClassname={settingsLabelClassName}
-          />
+          {hasPassword && (
+            <PasswordInput
+              label="Current password"
+              type="password"
+              placeholder="Enter your current password"
+              {...register("currentPassword")}
+              error={errors.currentPassword?.message}
+              className={settingsInputClassName}
+              labelClassname={settingsLabelClassName}
+            />
+          )}
 
-          <Input
-            label="New password"
+          <PasswordInput
+            label={hasPassword ? "New password" : "Set password"}
             type="password"
             placeholder="Enter a new password"
             {...register("newPassword")}
@@ -69,8 +88,8 @@ export const SecuritySettings = () => {
             labelClassname={settingsLabelClassName}
           />
 
-          <Input
-            label="Confirm new password"
+          <PasswordInput
+            label={hasPassword ? "Confirm new password" : "Confirm password"}
             type="password"
             placeholder="Repeat your new password"
             {...register("confirmPassword")}
@@ -78,26 +97,20 @@ export const SecuritySettings = () => {
             className={settingsInputClassName}
             labelClassname={settingsLabelClassName}
           />
-          <div className="rounded-lg border border-blue-300/40 bg-blue-600/60 p-4">
-            <p className="text-xs font-medium text-blue-100">
-              Password requirements
-            </p>
 
-            <ul className="mt-2 space-y-1 text-xs text-blue-200">
-              <li>• At least 8 characters</li>
-              <li>• At least one uppercase letter</li>
-              <li>• At least one lowercase letter</li>
-              <li>• At least one number</li>
-            </ul>
-          </div>
+          {/* requirements */}
 
           <SettingsActions>
             <Button
               type="submit"
               variant="primary"
-              disabled={!isDirty || isSubmitting}
+              disabled={!isValid || isSubmitting}
             >
-              {isSubmitting ? "Changing..." : "Change password"}
+              {isSubmitting
+                ? "Saving..."
+                : hasPassword
+                  ? "Change password"
+                  : "Set password"}
             </Button>
           </SettingsActions>
         </form>

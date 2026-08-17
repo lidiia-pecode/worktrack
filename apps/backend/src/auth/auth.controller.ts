@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Patch,
   Post,
   Req,
   Res,
@@ -42,6 +43,7 @@ import {
 
 import type { GoogleLinkRequest } from './dtos/auth.dto';
 import { ConfigService } from '@nestjs/config';
+import { ChangePasswordPayload } from './dtos/change-password-payload.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -241,6 +243,25 @@ export class AuthController {
     @Body() { email }: VerificationCodeRequestPayload,
   ) {
     await this.authService.sendVerificationCode(email);
+    return plainToInstance(SuccessResponse, {
+      success: true,
+    });
+  }
+
+  @Patch('password')
+  @UseGuards(AccessGuard)
+  async changePassword(
+    @CurrentUser() authUser: AuthUser,
+    @SessionId() sessionId: string,
+    @Body() body: ChangePasswordPayload,
+  ): Promise<SuccessResponse> {
+    await this.authService.changePassword(
+      authUser.id,
+      authUser.companyId,
+      sessionId,
+      body,
+    );
+
     return plainToInstance(SuccessResponse, {
       success: true,
     });

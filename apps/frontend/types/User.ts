@@ -14,6 +14,7 @@ export interface User {
   username?: string | null;
   email: string;
   googleId?: string | null;
+  hasPassword: boolean;
   capacityHoursPerWeek: number;
   createdAt: string;
   updatedAt: string;
@@ -43,9 +44,10 @@ export interface UpdateUserPayload {
 }
 
 export interface UpdateProfilePayload {
-  avatarUrl?: string;
+  firstName?: string;
+  lastName?: string;
   username?: string;
-  password?: string;
+  avatarUrl?: string;
 }
 
 export type UserListResponse = PaginatedResponse<User>;

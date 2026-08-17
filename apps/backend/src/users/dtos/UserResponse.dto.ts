@@ -38,6 +38,9 @@ export class UserResponse {
   capacityHoursPerWeek!: number;
 
   @Expose()
+  hasPassword!: boolean;
+
+  @Expose()
   updatedAt!: Date;
 
   @Expose()

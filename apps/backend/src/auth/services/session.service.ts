@@ -36,6 +36,19 @@ export class SessionService {
     await this.repo.delete({ userId });
   }
 
+  async deleteAllForUserExcept(
+    userId: string,
+    sessionId: string,
+  ): Promise<void> {
+    await this.repo
+      .createQueryBuilder()
+      .delete()
+      .from(AuthSession)
+      .where('"user_id" = :userId', { userId })
+      .andWhere('"id" != :sessionId', { sessionId })
+      .execute();
+  }
+
   /**
    * Atomic rotation: update the hash ONLY if the expectedOldHash is in the database.
    */

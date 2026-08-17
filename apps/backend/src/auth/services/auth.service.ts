@@ -29,6 +29,7 @@ import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { InjectRepository } from '@nestjs/typeorm';
 import { GoogleSignupToken } from '../entities/google-signup-token.entity';
 import { createHash, randomBytes } from 'crypto';
+import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';
 
 @Injectable()
 export class AuthService {
@@ -446,6 +447,64 @@ export class AuthService {
 
   async logoutAll(userId: string): Promise<void> {
     await this.sessionService.deleteAllForUser(userId);
+  }
+  async changePassword(
+    userId: string,
+    companyId: string,
+    sessionId: string,
+    payload: ChangePasswordPayload,
+  ): Promise<void> {
+    const user = await this.usersService.getUserById(userId, companyId);
+
+    // Google-only user → set password
+    if (!user.passwordHash) {
+      const passwordHash = await hashPassword(payload.newPassword);
+
+      await this.usersService.updatePassword(
+        user.id,
+        user.companyId,
+        passwordHash,
+      );
+
+      await this.sessionService.deleteAllForUserExcept(user.id, sessionId);
+
+      return;
+    }
+
+    // Local user → change password
+    if (!payload.currentPassword) {
+      throw new BadRequestException('Current password is required');
+    }
+
+    const isCurrentPasswordValid = await this.passwordService.verify(
+      payload.currentPassword,
+      user.passwordHash,
+    );
+
+    if (!isCurrentPasswordValid) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const isSamePassword = await this.passwordService.verify(
+      payload.newPassword,
+      user.passwordHash,
+    );
+
+    if (isSamePassword) {
+      throw new BadRequestException(
+        'New password must be different from the current password',
+      );
+    }
+
+    const passwordHash = await hashPassword(payload.newPassword);
+
+    await this.usersService.updatePassword(
+      user.id,
+      user.companyId,
+      passwordHash,
+    );
+
+    await this.sessionService.deleteAllForUserExcept(user.id, sessionId);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

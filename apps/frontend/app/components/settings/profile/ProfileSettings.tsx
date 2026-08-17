@@ -35,6 +35,8 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
   } = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       username: "",
     },
   });
@@ -43,12 +45,16 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     if (!user) return;
 
     reset({
+      firstName: user.firstName ?? "",
+      lastName: user.lastName ?? "",
       username: user.username ?? "",
     });
   }, [user, reset]);
 
   const onSubmit = (data: ProfileFormValues) => {
     actions.update.mutate({
+      firstName: data.firstName,
+      lastName: data.lastName,
       username: data.username,
     });
   };
@@ -65,16 +71,16 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           <div className="grid gap-6 sm:grid-cols-2">
             <Input
               label="First name"
-              value={user?.firstName ?? ""}
-              disabled
+              {...register("firstName")}
+              error={errors.firstName?.message}
               className={settingsInputClassName}
               labelClassname={settingsLabelClassName}
             />
 
             <Input
               label="Last name"
-              value={user?.lastName ?? ""}
-              disabled
+              {...register("lastName")}
+              error={errors.lastName?.message}
               className={settingsInputClassName}
               labelClassname={settingsLabelClassName}
             />
