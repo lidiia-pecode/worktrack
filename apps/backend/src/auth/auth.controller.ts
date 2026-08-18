@@ -28,11 +28,7 @@ import { CurrentAuth } from 'src/lib/decorators/current-auth.decorator';
 import { RefreshToken } from 'src/lib/decorators/refresh-token.decorator';
 import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
 import { Throttle } from '@nestjs/throttler';
-import {
-  AuthUserResponse,
-  SuccessResponse,
-  TokenResponse,
-} from './dtos/auth-responses.dto';
+import { SuccessResponse, TokenResponse } from './dtos/auth-responses.dto';
 import {
   CompleteGoogleSignupDto,
   GoogleUserPayload,
@@ -156,19 +152,32 @@ export class AuthController {
 
   @Get('google/link/callback')
   @UseGuards(AccessGuard, GoogleLinkGuard)
-  async googleLinkCallback(@Req() req: GoogleLinkRequest) {
-    const authContext = req.authContext;
-    const googleUser = req.user;
+  async googleLinkCallback(
+    @Req() req: GoogleLinkRequest,
+    @Res() res: Response,
+  ) {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
 
-    await this.googleAuthService.completeGoogleLink(
-      authContext.user.id,
-      googleUser,
-    );
+    try {
+      const authContext = req.authContext;
+      const googleUser = req.user;
 
-    return {
-      success: true,
-      message: 'Google account successfully linked',
-    };
+      await this.googleAuthService.completeGoogleLink(
+        authContext.user.id,
+        googleUser,
+      );
+
+      return res.redirect(`${frontendUrl}/settings?google=linked`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to link Google account';
+
+      return res.redirect(
+        `${frontendUrl}/settings?google=error&message=${encodeURIComponent(message)}`,
+      );
+    }
   }
 
   @Post('google/link/complete')
@@ -295,13 +304,6 @@ export class AuthController {
     return {
       success: true,
     };
-  }
-
-  @Get('me')
-  @Serialize(AuthUserResponse)
-  @UseGuards(AccessGuard)
-  me(@CurrentUser() user: AuthUser): AuthUserResponse {
-    return user;
   }
 
   @Post('/verification-code')

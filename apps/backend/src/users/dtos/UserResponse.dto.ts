@@ -37,6 +37,9 @@ export class UserResponse {
   capacityHoursPerWeek!: number;
 
   @Expose()
+  googleLinked!: boolean;
+
+  @Expose()
   hasPassword!: boolean;
 
   @Expose()

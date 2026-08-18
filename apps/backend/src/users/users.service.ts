@@ -15,6 +15,15 @@ import { UserRole, UserStatus } from './enums/UserRole.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 
+export interface CurrentUser {
+  id: string;
+  email: string;
+  companyId: string;
+  role: UserRole;
+  googleId: string | null;
+  hasPassword: boolean;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -106,6 +115,26 @@ export class UsersService {
   }
   // Multi-Tenant Business API
 
+  // async getCurrentUser(userId: string): Promise<CurrentUser> {
+  //   const user = await this.findUserByIdWithCompany(userId);
+
+  //   if (!user) {
+  //     throw new UnauthorizedException();
+  //   }
+  //   const currentUser = {
+  //     id: user.id,
+  //     email: user.email,
+  //     companyId: user.companyId,
+  //     role: user.role,
+  //     googleId: user.googleId ?? null,
+  //     hasPassword: Boolean(user.passwordHash),
+  //   };
+
+  //   console.log('CURRENT USER FROM DB', user);
+
+  //   return currentUser;
+  // }
+
   async list(companyId: string, query: UsersQuery) {
     const where = {
       companyId,
@@ -134,7 +163,7 @@ export class UsersService {
   async getUserById(
     id: string,
     companyId: string,
-  ): Promise<User & { hasPassword: boolean }> {
+  ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
     const user = await this.findUserById(id, companyId);
 
     if (!user) {
@@ -143,9 +172,12 @@ export class UsersService {
       );
     }
 
+    console.log('CURRENT USER FROM DB', user);
+
     return {
       ...user,
       hasPassword: Boolean(user.passwordHash),
+      googleLinked: Boolean(user.googleId),
     };
   }
 

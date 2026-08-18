@@ -17,10 +17,3 @@ export class LinkGoogleResponse {
   @Expose()
   message!: string;
 }
-
-export class AuthUserResponse {
-  @Expose() id!: string;
-  @Expose() email!: string;
-  @Expose() companyId!: string;
-  @Expose() role!: string;
-}

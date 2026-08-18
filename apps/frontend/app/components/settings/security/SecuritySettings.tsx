@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, ShieldCheck } from "lucide-react";
+import { KeyRound, Link2, ShieldCheck } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -19,14 +19,18 @@ import {
 import { PasswordInput } from "../../auth/components/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/useAuth";
+import { PUBLIC_BACKEND_URL } from "@/lib/constants";
 
 export const SecuritySettings = () => {
   const { user } = useAuth();
   const { actions } = useSecurity();
 
-  const hasPassword = user?.hasPassword ?? false;
+  const hasPassword = user?.hasPassword;
+  const isGoogleLinked = user?.googleLinked;
 
-  console.log("hasPassword", user?.hasPassword);
+  const handleGoogleLink = () => {
+    window.location.href = `${PUBLIC_BACKEND_URL}/auth/google/link`;
+  };
 
   const {
     register,
@@ -56,6 +60,40 @@ export const SecuritySettings = () => {
 
   return (
     <div className="space-y-6">
+      {!isGoogleLinked && (
+        <SettingsSection>
+          <SettingsSectionHeader
+            icon={Link2}
+            title="Connected accounts"
+            description="Manage the accounts you can use to sign in."
+          />
+
+          <div className="p-6">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-blue-400/20 bg-blue-500/5 p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-slate-100">
+                    Google
+                  </h3>
+
+                  <p className="mt-1 text-sm text-slate-400">
+                    Use your Google account to sign in.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleGoogleLink}
+              >
+                Link Google
+              </Button>
+            </div>
+          </div>
+        </SettingsSection>
+      )}
+
       <SettingsSection>
         <SettingsSectionHeader
           icon={KeyRound}

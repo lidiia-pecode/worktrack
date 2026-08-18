@@ -1,5 +1,4 @@
 import { PaginatedResponse, PaginationParams } from ".";
-import { Company } from "./Company";
 import { UserRole, UserStatus } from "./enums";
 
 export interface User {
@@ -13,12 +12,11 @@ export interface User {
   lastName: string;
   username?: string | null;
   email: string;
-  googleId?: string | null;
+  googleLinked: boolean;
   hasPassword: boolean;
   capacityHoursPerWeek: number;
   createdAt: string;
   updatedAt: string;
-  company?: Company;
 }
 
 export interface UserQuery extends PaginationParams {

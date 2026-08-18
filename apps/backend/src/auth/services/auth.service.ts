@@ -35,6 +35,7 @@ export class AuthService {
     private readonly dataSource: DataSource,
   ) {}
 
+  // used in local strategy
   async validateLocalUser(payload: SignInPayload): Promise<User> {
     const normalizedEmail = this.authPolicyService.normalizeEmail(
       payload.email,
