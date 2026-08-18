@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Not, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { User } from './entities/user.entity';
@@ -14,15 +14,6 @@ import { UsersQuery } from './dtos/UsersQuery.dto';
 import { UserRole, UserStatus } from './enums/UserRole.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
-
-export interface CurrentUser {
-  id: string;
-  email: string;
-  companyId: string;
-  role: UserRole;
-  googleId: string | null;
-  hasPassword: boolean;
-}
 
 @Injectable()
 export class UsersService {
@@ -32,66 +23,83 @@ export class UsersService {
     private readonly dataSource: DataSource,
   ) {}
 
-  private async validateUser(
-    payload: { username?: string; email?: string },
-    id?: string,
-    repo: Repository<User> = this.repo,
-  ): Promise<void> {
-    if (payload.username) {
-      const duplicateName = await repo.exists({
-        where: {
-          username: payload.username,
-          ...(id ? { id: Not(id) } : {}),
-        },
-      });
+  private getRepository(manager?: EntityManager): Repository<User> {
+    return manager ? manager.getRepository(User) : this.repo;
+  }
 
-      if (duplicateName) {
+  private async safeSave(
+    repo: Repository<User>,
+    user: User,
+    email?: string,
+    username?: string,
+  ): Promise<User> {
+    try {
+      return await repo.save(user);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        const constraint = error.driverError.constraint;
+
+        if (
+          constraint?.includes('email') ||
+          error.driverError.detail?.includes('email')
+        ) {
+          throw new ConflictException(
+            `User with email ${email || user.email} already exists`,
+          );
+        }
+        if (
+          constraint?.includes('username') ||
+          error.driverError.detail?.includes('username')
+        ) {
+          throw new ConflictException(
+            `User with username ${username || user.username} already exists`,
+          );
+        }
         throw new ConflictException(
-          `User with username ${payload.username} already exists`,
+          'A user with these unique credentials already exists',
         );
       }
-    }
-
-    if (payload.email) {
-      const duplicateEmail = await repo.exists({
-        where: {
-          email: payload.email.toLowerCase().trim(),
-          ...(id ? { id: Not(id) } : {}),
-        },
-      });
-
-      if (duplicateEmail) {
-        throw new ConflictException(
-          `User with email ${payload.email} already exists`,
-        );
-      }
+      throw error;
     }
   }
 
-  // Auth methods
-  async findByEmailWithCompany(email: string): Promise<User | null> {
-    return this.repo.findOne({
+  async findByEmailWithCompany(
+    email: string,
+    manager?: EntityManager,
+  ): Promise<User | null> {
+    return this.getRepository(manager).findOne({
       where: { email: email.toLowerCase().trim() },
       relations: ['company'],
     });
   }
 
-  async findByGoogleIdWithCompany(googleId: string): Promise<User | null> {
-    return this.repo.findOne({
+  async findByGoogleIdWithCompany(
+    googleId: string,
+    manager?: EntityManager,
+  ): Promise<User | null> {
+    return this.getRepository(manager).findOne({
       where: { googleId },
       relations: ['company'],
     });
   }
 
-  async findUserByIdWithCompany(id: string): Promise<User | null> {
-    return this.repo.findOne({
+  async findUserByIdWithCompany(
+    id: string,
+    manager?: EntityManager,
+  ): Promise<User | null> {
+    return this.getRepository(manager).findOne({
       where: { id },
       relations: ['company'],
     });
   }
 
-  async linkGoogleAccount(userId: string, googleId: string): Promise<void> {
-    const existingUser = await this.repo.findOne({
+  async linkGoogleAccount(
+    userId: string,
+    googleId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const repo = this.getRepository(manager);
+    const existingUser = await repo.findOne({
       where: { googleId },
     });
 
@@ -102,46 +110,26 @@ export class UsersService {
     }
 
     try {
-      await this.repo.update({ id: userId }, { googleId });
-    } catch (error) {
+      await repo.update({ id: userId }, { googleId });
+    } catch (error: unknown) {
       if (isDatabaseConflictError(error)) {
         throw new ConflictException(
           'This Google account is already linked to another user',
         );
       }
-
       throw error;
     }
   }
+
   // Multi-Tenant Business API
 
-  // async getCurrentUser(userId: string): Promise<CurrentUser> {
-  //   const user = await this.findUserByIdWithCompany(userId);
-
-  //   if (!user) {
-  //     throw new UnauthorizedException();
-  //   }
-  //   const currentUser = {
-  //     id: user.id,
-  //     email: user.email,
-  //     companyId: user.companyId,
-  //     role: user.role,
-  //     googleId: user.googleId ?? null,
-  //     hasPassword: Boolean(user.passwordHash),
-  //   };
-
-  //   console.log('CURRENT USER FROM DB', user);
-
-  //   return currentUser;
-  // }
-
-  async list(companyId: string, query: UsersQuery) {
+  async list(companyId: string, query: UsersQuery, manager?: EntityManager) {
     const where = {
       companyId,
       ...(query.status ? { status: query.status } : {}),
     };
 
-    const [results, count] = await this.repo.findAndCount({
+    const [results, count] = await this.getRepository(manager).findAndCount({
       where,
       skip: query.offset,
       take: query.limit,
@@ -151,8 +139,12 @@ export class UsersService {
     return { results, count };
   }
 
-  async findUserById(id: string, companyId?: string): Promise<User | null> {
-    return this.repo.findOne({
+  async findUserById(
+    id: string,
+    companyId?: string,
+    manager?: EntityManager,
+  ): Promise<User | null> {
+    return this.getRepository(manager).findOne({
       where: {
         id,
         ...(companyId ? { companyId } : {}),
@@ -163,17 +155,14 @@ export class UsersService {
   async getUserById(
     id: string,
     companyId: string,
+    manager?: EntityManager,
   ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
-    const user = await this.findUserById(id, companyId);
-
+    const user = await this.findUserById(id, companyId, manager);
     if (!user) {
       throw new NotFoundException(
         `User with id ${id} not found in this company`,
       );
     }
-
-    console.log('CURRENT USER FROM DB', user);
-
     return {
       ...user,
       hasPassword: Boolean(user.passwordHash),
@@ -181,11 +170,15 @@ export class UsersService {
     };
   }
 
-  async findUsersByIds(ids: string[], companyId: string): Promise<User[]> {
+  async findUsersByIds(
+    ids: string[],
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<User[]> {
     const uniqueIds = Array.from(new Set(ids));
     if (!uniqueIds.length) return [];
 
-    const users = await this.repo.find({
+    const users = await this.getRepository(manager).find({
       where: {
         id: In(uniqueIds),
         companyId,
@@ -204,30 +197,35 @@ export class UsersService {
     return users;
   }
 
-  async findActiveOnlyMany(ids: string[], companyId: string): Promise<User[]> {
-    return this.findUsersByIds(ids, companyId);
+  async findActiveOnlyMany(
+    ids: string[],
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<User[]> {
+    return this.findUsersByIds(ids, companyId, manager);
   }
 
   async createUser(
     companyId: string,
     payload: CreateUserPayload,
+    manager?: EntityManager,
   ): Promise<User> {
-    return this.dataSource.transaction(async (manager) => {
-      const transactionRepo = manager.getRepository(User);
-
-      await this.validateUser(payload, undefined, transactionRepo);
-
+    const execute = async (man: EntityManager): Promise<User> => {
+      const repo = this.getRepository(man);
       const passwordHash = await hashPassword(payload.password);
 
-      const newUser = transactionRepo.create({
+      const user = repo.create({
         ...payload,
+        email: payload.email?.toLowerCase().trim(),
         companyId,
         passwordHash,
         status: UserStatus.ACTIVE,
       });
 
-      return transactionRepo.save(newUser);
-    });
+      return this.safeSave(repo, user, payload.email, payload.username);
+    };
+
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
   async updateUser(
@@ -235,10 +233,11 @@ export class UsersService {
     companyId: string,
     payload: UpdateUserPayload,
     currentRole: UserRole,
+    manager?: EntityManager,
   ): Promise<User> {
-    return this.dataSource.transaction(async (manager) => {
-      const transactionRepo = manager.getRepository(User);
-      const user = await this.getUserById(id, companyId);
+    const execute = async (man: EntityManager): Promise<User> => {
+      const repo = this.getRepository(man);
+      const user = await this.getUserById(id, companyId, man);
 
       if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
         throw new ForbiddenException(
@@ -261,85 +260,101 @@ export class UsersService {
         user.capacityHoursPerWeek = payload.capacityHoursPerWeek;
       }
 
-      return transactionRepo.save(user);
-    });
+      return this.safeSave(repo, user);
+    };
+
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
   async updateProfile(
     id: string,
     companyId: string,
     payload: UpdateProfilePayload,
+    manager?: EntityManager,
   ): Promise<User> {
-    return this.dataSource.transaction(async (manager) => {
-      const transactionRepo = manager.getRepository(User);
+    const execute = async (man: EntityManager): Promise<User> => {
+      const repo = this.getRepository(man);
+      const user = await this.getUserById(id, companyId, man);
 
-      await this.validateUser(payload, id, transactionRepo);
+      if (payload.firstName !== undefined) user.firstName = payload.firstName;
+      if (payload.lastName !== undefined) user.lastName = payload.lastName;
+      if (payload.avatarUrl !== undefined) user.avatarUrl = payload.avatarUrl;
+      if (payload.username !== undefined) user.username = payload.username;
 
-      const user = await this.getUserById(id, companyId);
+      return this.safeSave(repo, user, undefined, payload.username);
+    };
 
-      if (payload.firstName !== undefined) {
-        user.firstName = payload.firstName;
-      }
-
-      if (payload.lastName !== undefined) {
-        user.lastName = payload.lastName;
-      }
-
-      if (payload.avatarUrl !== undefined) {
-        user.avatarUrl = payload.avatarUrl;
-      }
-
-      if (payload.username !== undefined) {
-        user.username = payload.username;
-      }
-
-      return transactionRepo.save(user);
-    });
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
   async updatePassword(
     id: string,
     companyId: string,
     passwordHash: string,
+    manager?: EntityManager,
   ): Promise<void> {
-    const user = await this.getUserById(id, companyId);
+    const execute = async (man: EntityManager): Promise<void> => {
+      const repo = this.getRepository(man);
+      const user = await this.getUserById(id, companyId, man);
+      user.passwordHash = passwordHash;
+      await repo.save(user);
+    };
 
-    user.passwordHash = passwordHash;
-
-    await this.repo.save(user);
+    if (manager) {
+      await execute(manager);
+    } else {
+      await this.dataSource.transaction(execute);
+    }
   }
 
   async archive(
     id: string,
     currentUserId: string,
     companyId: string,
+    manager?: EntityManager,
   ): Promise<User> {
-    if (id === currentUserId) {
-      throw new BadRequestException('You cannot archive your own account');
-    }
+    const execute = async (man: EntityManager): Promise<User> => {
+      if (id === currentUserId) {
+        throw new BadRequestException('You cannot archive your own account');
+      }
 
-    const user = await this.getUserById(id, companyId);
+      const repo = this.getRepository(man);
+      const user = await this.getUserById(id, companyId, man);
 
-    if (user.role === UserRole.OWNER) {
-      throw new ForbiddenException('Company OWNER account cannot be archived');
-    }
+      if (user.role === UserRole.OWNER) {
+        throw new ForbiddenException(
+          'Company OWNER account cannot be archived',
+        );
+      }
 
-    if (user.status === UserStatus.DEACTIVATED) {
-      throw new BadRequestException('User is already archived');
-    }
+      if (user.status === UserStatus.DEACTIVATED) {
+        throw new BadRequestException('User is already archived');
+      }
 
-    user.status = UserStatus.DEACTIVATED;
-    return this.repo.save(user);
+      user.status = UserStatus.DEACTIVATED;
+      return repo.save(user);
+    };
+
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
-  async unarchive(id: string, companyId: string): Promise<User> {
-    const user = await this.getUserById(id, companyId);
+  async unarchive(
+    id: string,
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<User> {
+    const execute = async (man: EntityManager): Promise<User> => {
+      const repo = this.getRepository(man);
+      const user = await this.getUserById(id, companyId, man);
 
-    if (user.status === UserStatus.ACTIVE) {
-      throw new BadRequestException('User is already active');
-    }
+      if (user.status === UserStatus.ACTIVE) {
+        throw new BadRequestException('User is already active');
+      }
 
-    user.status = UserStatus.ACTIVE;
-    return this.repo.save(user);
+      user.status = UserStatus.ACTIVE;
+      return repo.save(user);
+    };
+
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 }

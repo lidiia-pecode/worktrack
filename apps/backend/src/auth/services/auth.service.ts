@@ -10,6 +10,7 @@ import { DataSource } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';
 import { SignInPayload, SignUpPayload } from '../dtos/auth.dto';
@@ -134,9 +135,14 @@ export class AuthService {
       metadata,
     );
 
-    // 4. If 0 records were updated — this token HAS ALREADY BEEN used
+    // 4. Handle failed update (Token Reuse or concurrent retry)
     if (!isUpdated) {
-      await this.sessionService.delete(session.id);
+      const currentSession = await this.sessionService.findById(session.id);
+
+      if (!currentSession) {
+        throw new UnauthorizedException('Session has been terminated');
+      }
+
       throw new UnauthorizedException(
         'Invalid or previously used refresh token',
       );
@@ -160,39 +166,38 @@ export class AuthService {
   async signup(payload: SignUpPayload): Promise<User> {
     const email = this.authPolicyService.normalizeEmail(payload.email);
 
-    return this.dataSource.transaction(async (manager) => {
-      const userRepository = manager.getRepository(User);
-      const companyRepository = manager.getRepository(Company);
+    try {
+      return await this.dataSource.transaction(async (manager) => {
+        const userRepository = manager.getRepository(User);
+        const companyRepository = manager.getRepository(Company);
 
-      const existingUser = await userRepository.findOne({
-        where: { email },
+        const company = await this.companiesService.create(
+          payload.companyName,
+          companyRepository,
+        );
+
+        const passwordHash = await this.passwordService.hash(payload.password);
+
+        const user = userRepository.create({
+          companyId: company.id,
+          firstName: payload.firstName.trim(),
+          lastName: payload.lastName.trim(),
+          email,
+          passwordHash,
+          role: UserRole.OWNER,
+          status: UserStatus.ACTIVE,
+        });
+
+        return await userRepository.save(user);
       });
-
-      if (existingUser) {
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
         throw new ConflictException(
           'An account with this email already exists',
         );
       }
-
-      const company = await this.companiesService.create(
-        payload.companyName,
-        companyRepository,
-      );
-
-      const passwordHash = await this.passwordService.hash(payload.password);
-
-      const user = userRepository.create({
-        companyId: company.id,
-        firstName: payload.firstName.trim(),
-        lastName: payload.lastName.trim(),
-        email,
-        passwordHash,
-        role: UserRole.OWNER,
-        status: UserStatus.ACTIVE,
-      });
-
-      return userRepository.save(user);
-    });
+      throw error;
+    }
   }
 
   async logout(sessionId: string): Promise<void> {
@@ -202,6 +207,7 @@ export class AuthService {
   async logoutAll(userId: string): Promise<void> {
     await this.sessionService.deleteAllForUser(userId);
   }
+
   async changePassword(
     userId: string,
     companyId: string,
@@ -210,55 +216,48 @@ export class AuthService {
   ): Promise<void> {
     const user = await this.usersService.getUserById(userId, companyId);
 
-    // Google-only user → set password
-    if (!user.passwordHash) {
-      const passwordHash = await this.passwordService.hash(payload.newPassword);
+    if (user.passwordHash) {
+      if (!payload.currentPassword) {
+        throw new BadRequestException('Current password is required');
+      }
 
-      await this.usersService.updatePassword(
-        user.id,
-        user.companyId,
-        passwordHash,
+      const isCurrentPasswordValid = await this.passwordService.verify(
+        payload.currentPassword,
+        user.passwordHash,
       );
 
-      await this.sessionService.deleteAllForUserExcept(user.id, sessionId);
+      if (!isCurrentPasswordValid) {
+        throw new BadRequestException('Current password is incorrect');
+      }
 
-      return;
-    }
-
-    // Local user → change password
-    if (!payload.currentPassword) {
-      throw new BadRequestException('Current password is required');
-    }
-
-    const isCurrentPasswordValid = await this.passwordService.verify(
-      payload.currentPassword,
-      user.passwordHash,
-    );
-
-    if (!isCurrentPasswordValid) {
-      throw new BadRequestException('Current password is incorrect');
-    }
-
-    const isSamePassword = await this.passwordService.verify(
-      payload.newPassword,
-      user.passwordHash,
-    );
-
-    if (isSamePassword) {
-      throw new BadRequestException(
-        'New password must be different from the current password',
+      const isSamePassword = await this.passwordService.verify(
+        payload.newPassword,
+        user.passwordHash,
       );
+
+      if (isSamePassword) {
+        throw new BadRequestException(
+          'New password must be different from the current password',
+        );
+      }
     }
 
     const passwordHash = await this.passwordService.hash(payload.newPassword);
 
-    await this.usersService.updatePassword(
-      user.id,
-      user.companyId,
-      passwordHash,
-    );
+    await this.dataSource.transaction(async (manager) => {
+      await this.usersService.updatePassword(
+        user.id,
+        user.companyId,
+        passwordHash,
+        manager,
+      );
 
-    await this.sessionService.deleteAllForUserExcept(user.id, sessionId);
+      await this.sessionService.deleteAllForUserExcept(
+        user.id,
+        sessionId,
+        manager,
+      );
+    });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

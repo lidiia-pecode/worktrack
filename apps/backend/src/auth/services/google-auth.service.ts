@@ -24,6 +24,7 @@ import { AuthPolicyService } from './auth-policy.service';
 import { PasswordService } from './password.service';
 import { UsersService } from 'src/users/users.service';
 import { SessionService } from './session.service';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 @Injectable()
 export class GoogleAuthService {
@@ -103,7 +104,15 @@ export class GoogleAuthService {
       usedAt: null,
     });
 
-    await this.googleSignupTokenRepository.save(token);
+    try {
+      await this.googleSignupTokenRepository.save(token);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        return this.createGoogleSignupToken(payload);
+      }
+      throw error;
+    }
+
     return rawToken;
   }
 
@@ -163,7 +172,15 @@ export class GoogleAuthService {
       usedAt: null,
     });
 
-    await this.googleLinkTokenRepository.save(tokenRecord);
+    try {
+      await this.googleLinkTokenRepository.save(tokenRecord);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        return this.createGoogleLinkToken(userId, googleId);
+      }
+      throw error;
+    }
+
     return rawToken;
   }
 
@@ -205,42 +222,51 @@ export class GoogleAuthService {
     password: string,
     metadata?: SessionMetadata,
   ) {
-    const user = await this.dataSource.transaction(async (manager) => {
-      const { userId, googleId } = await this.consumeGoogleLinkToken(
-        rawToken,
-        manager,
-      );
-      const userRepository = manager.getRepository(User);
+    try {
+      const user = await this.dataSource.transaction(async (manager) => {
+        const { userId, googleId } = await this.consumeGoogleLinkToken(
+          rawToken,
+          manager,
+        );
+        const userRepository = manager.getRepository(User);
 
-      const userEntity = await userRepository.findOne({
-        where: { id: userId },
+        const userEntity = await userRepository.findOne({
+          where: { id: userId },
+        });
+        if (!userEntity || !userEntity.passwordHash) {
+          throw new UnauthorizedException('Invalid user account');
+        }
+
+        const isPasswordValid = await this.passwordService.verify(
+          password,
+          userEntity.passwordHash,
+        );
+        if (!isPasswordValid) {
+          throw new BadRequestException('Incorrect password');
+        }
+
+        const existingGoogleUser = await userRepository.findOne({
+          where: { googleId },
+        });
+        if (existingGoogleUser && existingGoogleUser.id !== userId) {
+          throw new ConflictException(
+            'This Google account is already linked to another user.',
+          );
+        }
+
+        userEntity.googleId = googleId;
+        return userRepository.save(userEntity);
       });
-      if (!userEntity || !userEntity.passwordHash) {
-        throw new UnauthorizedException('Invalid user account');
-      }
 
-      const isPasswordValid = await this.passwordService.verify(
-        password,
-        userEntity.passwordHash,
-      );
-      if (!isPasswordValid) {
-        throw new BadRequestException('Incorrect password');
-      }
-
-      const existingGoogleUser = await userRepository.findOne({
-        where: { googleId },
-      });
-      if (existingGoogleUser && existingGoogleUser.id !== userId) {
+      return this.sessionService.createSession(user, metadata);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
         throw new ConflictException(
           'This Google account is already linked to another user.',
         );
       }
-
-      userEntity.googleId = googleId;
-      return userRepository.save(userEntity);
-    });
-
-    return this.sessionService.createSession(user, metadata);
+      throw error;
+    }
   }
 
   async completeGoogleSignup(
@@ -248,55 +274,42 @@ export class GoogleAuthService {
     companyName: string,
     metadata?: SessionMetadata,
   ) {
-    const user = await this.dataSource.transaction(async (manager) => {
-      const userRepository = manager.getRepository(User);
-      const companyRepository = manager.getRepository(Company);
+    try {
+      const user = await this.dataSource.transaction(async (manager) => {
+        const userRepository = manager.getRepository(User);
+        const companyRepository = manager.getRepository(Company);
 
-      const payload = await this.consumeGoogleSignupToken(rawToken, manager);
+        const payload = await this.consumeGoogleSignupToken(rawToken, manager);
 
-      const email = this.authPolicyService.normalizeEmail(payload.email);
+        const email = this.authPolicyService.normalizeEmail(payload.email);
 
-      const existingUser = await userRepository.findOne({
-        where: { email },
-      });
-
-      if (existingUser) {
-        throw new ConflictException(
-          'An account with this email already exists.',
+        const company = await this.companiesService.create(
+          companyName,
+          companyRepository,
         );
-      }
 
-      const existingGoogleUser = await userRepository.findOne({
-        where: {
+        const newUser = userRepository.create({
+          companyId: company.id,
+          firstName: payload.firstName.trim(),
+          lastName: payload.lastName.trim(),
+          email,
           googleId: payload.googleId,
-        },
+          role: UserRole.OWNER,
+          status: UserStatus.ACTIVE,
+        });
+
+        return userRepository.save(newUser);
       });
 
-      if (existingGoogleUser) {
+      return this.sessionService.createSession(user, metadata);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
         throw new ConflictException(
-          'This Google account is already linked to a user.',
+          'An account with this email or Google profile already exists.',
         );
       }
-
-      const company = await this.companiesService.create(
-        companyName,
-        companyRepository,
-      );
-
-      const newUser = userRepository.create({
-        companyId: company.id,
-        firstName: payload.firstName.trim(),
-        lastName: payload.lastName.trim(),
-        email,
-        googleId: payload.googleId,
-        role: UserRole.OWNER,
-        status: UserStatus.ACTIVE,
-      });
-
-      return userRepository.save(newUser);
-    });
-
-    return this.sessionService.createSession(user, metadata);
+      throw error;
+    }
   }
 
   async completeGoogleLink(
@@ -320,6 +333,15 @@ export class GoogleAuthService {
       );
     }
 
-    await this.usersService.linkGoogleAccount(userId, googleUser.googleId);
+    try {
+      await this.usersService.linkGoogleAccount(userId, googleUser.googleId);
+    } catch (error: unknown) {
+      if (isDatabaseConflictError(error)) {
+        throw new ConflictException(
+          'This Google account is already linked to another user.',
+        );
+      }
+      throw error;
+    }
   }
 }

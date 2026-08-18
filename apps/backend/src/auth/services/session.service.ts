@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThan, Repository } from 'typeorm';
+import { EntityManager, LessThan, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 
 import { AuthSession } from '../entities/auth-session.entity';
@@ -57,11 +57,13 @@ export class SessionService {
   async deleteAllForUserExcept(
     userId: string,
     sessionId: string,
+    manager?: EntityManager,
   ): Promise<void> {
-    await this.repo
-      .createQueryBuilder()
+    const activeManager = manager || this.repo.manager;
+
+    await activeManager
+      .createQueryBuilder(AuthSession, 'session')
       .delete()
-      .from(AuthSession)
       .where('"user_id" = :userId', { userId })
       .andWhere('"id" != :sessionId', { sessionId })
       .execute();

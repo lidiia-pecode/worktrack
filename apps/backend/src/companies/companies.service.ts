@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { EntityManager, QueryFailedError, Repository } from 'typeorm';
 
 import { Company } from './entities/company.entity';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
@@ -23,6 +23,10 @@ export class CompaniesService {
     @InjectRepository(Company)
     private readonly companiesRepository: Repository<Company>,
   ) {}
+
+  private getRepository(manager?: EntityManager): Repository<Company> {
+    return manager ? manager.getRepository(Company) : this.companiesRepository;
+  }
 
   private slugify(text: string): string {
     return text
@@ -56,7 +60,7 @@ export class CompaniesService {
 
   private async findAvailableSlug(
     baseSlug: string,
-    repository: Repository<Company>,
+    repo: Repository<Company>,
   ): Promise<string> {
     for (
       let attempt = 0;
@@ -65,7 +69,7 @@ export class CompaniesService {
     ) {
       const slug = this.buildSlugCandidate(baseSlug, attempt);
 
-      const existingCompany = await repository.findOne({
+      const existingCompany = await repo.findOne({
         where: { slug },
         select: { id: true },
       });
@@ -98,7 +102,7 @@ export class CompaniesService {
 
   async create(
     name: string,
-    repository: Repository<Company> = this.companiesRepository,
+    managerOrRepo?: EntityManager | Repository<Company>,
   ): Promise<Company> {
     const companyName = name.trim();
 
@@ -106,11 +110,19 @@ export class CompaniesService {
       throw new BadRequestException('Company name is required.');
     }
 
+    let repo: Repository<Company>;
+    if (managerOrRepo instanceof EntityManager) {
+      repo = managerOrRepo.getRepository(Company);
+    } else if (managerOrRepo instanceof Repository) {
+      repo = managerOrRepo;
+    } else {
+      repo = this.companiesRepository;
+    }
+
     const baseSlug = this.buildBaseSlug(companyName);
+    const slug = await this.findAvailableSlug(baseSlug, repo);
 
-    const slug = await this.findAvailableSlug(baseSlug, repository);
-
-    const company = repository.create({
+    const company = repo.create({
       companyName,
       slug,
       status: CompanyStatus.ACTIVE,
@@ -118,15 +130,18 @@ export class CompaniesService {
       currency: 'USD',
     });
 
-    return repository.save(company);
+    return repo.save(company);
   }
 
-  async findCurrentCompany(companyId: string): Promise<Company> {
-    return this.findById(companyId);
+  async findCurrentCompany(
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<Company> {
+    return this.findById(companyId, manager);
   }
 
-  async findById(id: string): Promise<Company> {
-    const company = await this.companiesRepository.findOne({
+  async findById(id: string, manager?: EntityManager): Promise<Company> {
+    const company = await this.getRepository(manager).findOne({
       where: { id },
     });
 
@@ -137,8 +152,11 @@ export class CompaniesService {
     return company;
   }
 
-  async ensureCompanyIsActive(companyId: string): Promise<Company> {
-    const company = await this.findById(companyId);
+  async ensureCompanyIsActive(
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<Company> {
+    const company = await this.findById(companyId, manager);
 
     if (company.status === CompanyStatus.SUSPENDED) {
       throw new ForbiddenException('Company account is suspended.');
@@ -147,14 +165,22 @@ export class CompaniesService {
     return company;
   }
 
-  async findBySlug(slug: string): Promise<Company | null> {
-    return this.companiesRepository.findOne({
+  async findBySlug(
+    slug: string,
+    manager?: EntityManager,
+  ): Promise<Company | null> {
+    return this.getRepository(manager).findOne({
       where: { slug },
     });
   }
 
-  async update(companyId: string, dto: UpdateCompanyDto): Promise<Company> {
-    const company = await this.findById(companyId);
+  async update(
+    companyId: string,
+    dto: UpdateCompanyDto,
+    manager?: EntityManager,
+  ): Promise<Company> {
+    const repo = this.getRepository(manager);
+    const company = await this.findById(companyId, manager);
 
     if (company.status === CompanyStatus.SUSPENDED) {
       throw new ForbiddenException('Cannot update suspended company.');
@@ -164,7 +190,7 @@ export class CompaniesService {
 
     if (trimmedName === undefined || trimmedName === company.companyName) {
       Object.assign(company, dto);
-      return this.companiesRepository.save(company);
+      return repo.save(company);
     }
 
     if (!trimmedName) {
@@ -182,7 +208,7 @@ export class CompaniesService {
       company.slug = this.buildSlugCandidate(baseSlug, attempt);
 
       try {
-        return await this.companiesRepository.save(company);
+        return await repo.save(company);
       } catch (error) {
         if (!this.isUniqueSlugViolation(error)) {
           throw error;
