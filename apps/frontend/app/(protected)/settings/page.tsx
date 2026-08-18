@@ -10,11 +10,14 @@ import { ProfileSettings } from "@/app/components/settings/profile/ProfileSettin
 import { SecuritySettings } from "@/app/components/settings/security/SecuritySettings";
 import { CompanySettings } from "@/app/components/settings/company/CompanySettings";
 import { GlowBackground } from "@/components/ui/glow-background";
+import { useGoogleLinkResult } from "@/hooks/useGoogleLinkResult";
 
 type SettingsTab = "profile" | "security" | "company";
 
 export default function SettingsPage() {
   const { user } = useAuth();
+
+  useGoogleLinkResult();
 
   const isOwner = user?.role === UserRole.OWNER;
 
