@@ -131,7 +131,10 @@ export class UsersService {
     });
   }
 
-  async getUserById(id: string, companyId: string): Promise<User> {
+  async getUserById(
+    id: string,
+    companyId: string,
+  ): Promise<User & { hasPassword: boolean }> {
     const user = await this.findUserById(id, companyId);
 
     if (!user) {
@@ -140,7 +143,10 @@ export class UsersService {
       );
     }
 
-    return user;
+    return {
+      ...user,
+      hasPassword: Boolean(user.passwordHash),
+    };
   }
 
   async findUsersByIds(ids: string[], companyId: string): Promise<User[]> {

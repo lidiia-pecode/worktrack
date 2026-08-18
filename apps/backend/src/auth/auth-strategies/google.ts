@@ -4,8 +4,6 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
-import { AuthService } from '../services';
-import { AuthUser } from './types';
 import { CookieStateStore } from './cookie-state-store';
 
 function getGoogleStrategyOptions(
@@ -36,10 +34,7 @@ export class GoogleLoginStrategy extends PassportStrategy(
   Strategy,
   'google-login',
 ) {
-  constructor(
-    configService: ConfigService,
-    private readonly authService: AuthService,
-  ) {
+  constructor(configService: ConfigService) {
     super(
       getGoogleStrategyOptions(
         configService,
@@ -48,25 +43,14 @@ export class GoogleLoginStrategy extends PassportStrategy(
     );
   }
 
-  async validate(
+  validate(
     _accessToken: string,
     _refreshToken: string,
     profile: Profile,
     done: VerifyCallback,
   ) {
     try {
-      const payload = getGooglePayload(profile);
-
-      const user = await this.authService.validateGoogleLogin(payload.googleId);
-
-      const authUser: AuthUser = {
-        id: user.id,
-        email: user.email,
-        companyId: user.companyId,
-        role: user.role,
-      };
-
-      done(null, authUser);
+      done(null, getGooglePayload(profile));
     } catch (error) {
       done(error, false);
     }

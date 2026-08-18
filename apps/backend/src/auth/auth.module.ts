@@ -22,10 +22,11 @@ import {
   GoogleSignupStrategy,
 } from './auth-strategies/google';
 import { GoogleSignupToken } from './entities/google-signup-token.entity';
+import { GoogleLinkToken } from './entities/google-link-token.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AuthSession, GoogleSignupToken]),
+    TypeOrmModule.forFeature([AuthSession, GoogleSignupToken, GoogleLinkToken]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

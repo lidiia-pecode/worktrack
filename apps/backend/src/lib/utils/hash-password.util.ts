@@ -1,9 +1,10 @@
 import { randomBytes, scrypt } from 'node:crypto';
 
 const SCRYPT_KEYLEN = 32;
-const SCRYPT_COST = 16384;
+const SCRYPT_COST = 131072;
 const SCRYPT_BLOCK_SIZE = 8;
 const SCRYPT_PARALLEL = 1;
+const SCRYPT_MAX_MEMORY = 256 * 1024 * 1024;
 
 export function scryptAsync(
   password: string,
@@ -19,6 +20,7 @@ export function scryptAsync(
         N: SCRYPT_COST,
         r: SCRYPT_BLOCK_SIZE,
         p: SCRYPT_PARALLEL,
+        maxmem: SCRYPT_MAX_MEMORY,
       },
       (err, derivedKey) => {
         if (err) reject(err);

@@ -1,6 +1,8 @@
 // apps/backend/src/auth/auth-strategies/types.ts
 
+import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/UserRole.enum';
+import { GoogleUserPayload } from '../dtos/auth.dto';
 
 export interface JwtAccessPayload {
   id: string;
@@ -27,3 +29,18 @@ export interface AuthContext {
   user: AuthUser;
   sessionId: string;
 }
+
+export type GoogleLoginResult =
+  | {
+      type: 'login';
+      user: User;
+    }
+  | {
+      type: 'link';
+      userId: string;
+      googleId: string;
+    }
+  | {
+      type: 'signup';
+      googleUser: GoogleUserPayload;
+    };

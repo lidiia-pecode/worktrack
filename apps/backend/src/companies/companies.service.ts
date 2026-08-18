@@ -84,6 +84,14 @@ export class CompaniesService {
       throw new BadRequestException('Company name is required.');
     }
 
+    const existingCompany = await repository.findOne({
+      where: { companyName },
+    });
+
+    if (existingCompany) {
+      throw new ConflictException('A company with this name already exists.');
+    }
+
     const baseSlug = this.buildBaseSlug(companyName);
 
     for (

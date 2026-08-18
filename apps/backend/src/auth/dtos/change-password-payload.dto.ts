@@ -10,6 +10,7 @@ export class ChangePasswordPayload {
   @IsOptional()
   @IsString()
   @MinLength(1)
+  @MaxLength(100)
   currentPassword?: string;
 
   @IsString()

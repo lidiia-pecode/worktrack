@@ -37,6 +37,16 @@ export function useAuthActions() {
     },
   });
 
+  const completeGoogleLink = useMutation({
+    mutationFn: AuthClient.completeGoogleLink,
+
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.auth.me(),
+      });
+    },
+  });
+
   const logout = useMutation({
     mutationFn: AuthClient.logout,
 
@@ -51,6 +61,7 @@ export function useAuthActions() {
     login,
     signup,
     completeGoogleSignup,
+    completeGoogleLink,
     logout,
   };
 }

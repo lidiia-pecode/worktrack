@@ -26,6 +26,8 @@ export const SecuritySettings = () => {
 
   const hasPassword = user?.hasPassword ?? false;
 
+  console.log("hasPassword", user?.hasPassword);
+
   const {
     register,
     handleSubmit,

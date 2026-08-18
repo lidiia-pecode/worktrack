@@ -23,6 +23,9 @@ export const AuthClient = {
   completeGoogleSignup: (data: { token: string; companyName: string }) =>
     auth.post("/google/signup/complete", data),
 
+  completeGoogleLink: (data: { token: string; password: string }) =>
+    auth.post("/google/link/complete", data),
+
   signup: (data: SignUpPayload) => auth.post("/signup", data),
 
   login: (data: SignInPayload) => auth.post("/signin", data),

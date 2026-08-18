@@ -17,7 +17,11 @@ import { PasswordService } from './password.service';
 import { TokenService } from './token.service';
 import { SessionService } from './session.service';
 import { UsersService } from 'src/users/users.service';
-import { AuthContext, AuthUser } from '../auth-strategies/types';
+import {
+  AuthContext,
+  AuthUser,
+  GoogleLoginResult,
+} from '../auth-strategies/types';
 import { ConfigService } from '@nestjs/config';
 import { SessionMetadata } from 'src/lib/types/session-metadata';
 import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
@@ -30,6 +34,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { GoogleSignupToken } from '../entities/google-signup-token.entity';
 import { createHash, randomBytes } from 'crypto';
 import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';
+import { GoogleLinkToken } from '../entities/google-link-token.entity';
 
 @Injectable()
 export class AuthService {
@@ -44,7 +49,14 @@ export class AuthService {
 
     @InjectRepository(GoogleSignupToken)
     private readonly googleSignupTokenRepository: Repository<GoogleSignupToken>,
+
+    @InjectRepository(GoogleLinkToken)
+    private readonly googleLinkTokenRepository: Repository<GoogleLinkToken>,
   ) {}
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
 
   private getSessionExpirationDate(): Date {
     const days = this.configService.getOrThrow<number>(
@@ -102,17 +114,14 @@ export class AuthService {
       throw new BadRequestException('Google signup token is required.');
     }
 
-    const tokenHash = this.hashGoogleSignupToken(rawToken);
+    const tokenHash = this.hashToken(rawToken);
     const now = new Date();
-
     const tokenRepository = manager.getRepository(GoogleSignupToken);
 
     const result = await tokenRepository
       .createQueryBuilder()
       .update(GoogleSignupToken)
-      .set({
-        usedAt: now,
-      })
+      .set({ usedAt: now })
       .where('token_hash = :tokenHash', { tokenHash })
       .andWhere('used_at IS NULL')
       .andWhere('expires_at > :now', { now })
@@ -122,10 +131,7 @@ export class AuthService {
       throw new BadRequestException('Invalid or expired Google signup token.');
     }
 
-    const token = await tokenRepository.findOne({
-      where: { tokenHash },
-    });
-
+    const token = await tokenRepository.findOne({ where: { tokenHash } });
     if (!token) {
       throw new BadRequestException('Google signup token could not be loaded.');
     }
@@ -138,14 +144,9 @@ export class AuthService {
     };
   }
 
-  private hashGoogleSignupToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
-
   async createGoogleSignupToken(payload: GoogleUserPayload): Promise<string> {
     const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = this.hashGoogleSignupToken(rawToken);
-
+    const tokenHash = this.hashToken(rawToken);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     const token = this.googleSignupTokenRepository.create({
@@ -159,17 +160,34 @@ export class AuthService {
     });
 
     await this.googleSignupTokenRepository.save(token);
-
     return rawToken;
   }
 
-  async validateGoogleLogin(googleId: string): Promise<User> {
+  async validateGoogleLogin(
+    googleUser: GoogleUserPayload,
+  ): Promise<GoogleLoginResult> {
+    const { googleId, email } = googleUser;
+
     const user = await this.usersService.findByGoogleIdWithCompany(googleId);
 
     if (!user) {
-      throw new UnauthorizedException(
-        'Google account is not linked to any user.',
-      );
+      const normalizedEmail = email.toLowerCase().trim();
+
+      const existingUser =
+        await this.usersService.findByEmailWithCompany(normalizedEmail);
+
+      if (existingUser && existingUser.passwordHash) {
+        return {
+          type: 'link',
+          userId: existingUser.id,
+          googleId,
+        };
+      }
+
+      return {
+        type: 'signup',
+        googleUser,
+      };
     }
 
     if (user.status !== UserStatus.ACTIVE) {
@@ -182,7 +200,108 @@ export class AuthService {
       );
     }
 
-    return user;
+    return {
+      type: 'login',
+      user,
+    };
+  }
+
+  // --- GOOGLE LINKING ---
+
+  async createGoogleLinkToken(
+    userId: string,
+    googleId: string,
+  ): Promise<string> {
+    const rawToken = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 1 * 60 * 1000);
+
+    const tokenRecord = this.googleLinkTokenRepository.create({
+      tokenHash,
+      userId,
+      googleId,
+      expiresAt,
+      usedAt: null,
+    });
+
+    await this.googleLinkTokenRepository.save(tokenRecord);
+    return rawToken;
+  }
+
+  private async consumeGoogleLinkToken(
+    rawToken: string,
+    manager: EntityManager,
+  ): Promise<{ userId: string; googleId: string }> {
+    if (!rawToken) {
+      throw new BadRequestException('Google link token is required.');
+    }
+
+    const tokenHash = this.hashToken(rawToken);
+    const now = new Date();
+    const tokenRepository = manager.getRepository(GoogleLinkToken);
+
+    const result = await tokenRepository
+      .createQueryBuilder()
+      .update(GoogleLinkToken)
+      .set({ usedAt: now })
+      .where('token_hash = :tokenHash', { tokenHash })
+      .andWhere('used_at IS NULL')
+      .andWhere('expires_at > :now', { now })
+      .execute();
+
+    if (result.affected !== 1) {
+      throw new BadRequestException('Invalid or expired Google link token.');
+    }
+
+    const token = await tokenRepository.findOne({ where: { tokenHash } });
+    if (!token) {
+      throw new BadRequestException('Google link token could not be loaded.');
+    }
+
+    return { userId: token.userId, googleId: token.googleId };
+  }
+
+  async completeGoogleLinkWithPassword(
+    rawToken: string,
+    password: string,
+    metadata?: SessionMetadata,
+  ) {
+    const user = await this.dataSource.transaction(async (manager) => {
+      const { userId, googleId } = await this.consumeGoogleLinkToken(
+        rawToken,
+        manager,
+      );
+      const userRepository = manager.getRepository(User);
+
+      const userEntity = await userRepository.findOne({
+        where: { id: userId },
+      });
+      if (!userEntity || !userEntity.passwordHash) {
+        throw new UnauthorizedException('Invalid user account');
+      }
+
+      const isPasswordValid = await this.passwordService.verify(
+        password,
+        userEntity.passwordHash,
+      );
+      if (!isPasswordValid) {
+        throw new BadRequestException('Incorrect password');
+      }
+
+      const existingGoogleUser = await userRepository.findOne({
+        where: { googleId },
+      });
+      if (existingGoogleUser && existingGoogleUser.id !== userId) {
+        throw new ConflictException(
+          'This Google account is already linked to another user.',
+        );
+      }
+
+      userEntity.googleId = googleId;
+      return userRepository.save(userEntity);
+    });
+
+    return this.createSession(user, metadata);
   }
 
   async completeGoogleSignup(

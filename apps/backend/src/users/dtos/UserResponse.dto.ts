@@ -1,4 +1,3 @@
-// src/users/dtos/UserResponse.dto.ts
 import { Exclude, Expose } from 'class-transformer';
 import { UserRole, UserStatus } from '../enums/UserRole.enum';
 

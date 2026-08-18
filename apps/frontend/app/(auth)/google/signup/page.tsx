@@ -8,6 +8,7 @@ import Input from "@/app/components/shared/Input";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { Button } from "@/components/ui/button";
+import { isApiMessageError } from "@/lib/api";
 
 interface GoogleSignupForm {
   companyName: string;
@@ -37,13 +38,22 @@ export default function GoogleSignupPage() {
       return;
     }
 
-    await actions.completeGoogleSignup.mutateAsync({
-      token,
-      companyName: data.companyName.trim(),
-    });
+    try {
+      await actions.completeGoogleSignup.mutateAsync({
+        token,
+        companyName: data.companyName.trim(),
+      });
 
-    router.push("/onboarding");
-    router.refresh();
+      router.push("/onboarding");
+      router.refresh();
+    } catch (err: unknown) {
+      if (isApiMessageError(err) && typeof err.message === "string") {
+        toast.error(err.message);
+        return;
+      }
+
+      toast.error("Failed to complete Google signup. Please try again.");
+    }
   };
 
   return (

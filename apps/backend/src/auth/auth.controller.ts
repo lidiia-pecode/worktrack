@@ -44,6 +44,7 @@ import {
 import type { GoogleLinkRequest } from './dtos/auth.dto';
 import { ConfigService } from '@nestjs/config';
 import { ChangePasswordPayload } from './dtos/change-password-payload.dto';
+import { CompleteGoogleLinkDto } from './dtos/complete-google-link.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -61,13 +62,42 @@ export class AuthController {
   @UseGuards(GoogleSignupGuard)
   async googleSignupCallback(
     @CurrentUser() googleUser: GoogleUserPayload,
+    @ReqMetadata() metadata: SessionMetadata,
     @Res() res: Response,
   ) {
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
 
-    const token = await this.authService.createGoogleSignupToken(googleUser);
+    const result = await this.authService.validateGoogleLogin(googleUser);
 
-    return res.redirect(`${frontendUrl}/register/google?token=${token}`);
+    if (result.type === 'login') {
+      const tokens = await this.authService.createSession(
+        result.user,
+        metadata,
+      );
+
+      this.cookieService.setAuthCookies(
+        res,
+        tokens.access_token,
+        tokens.refresh_token,
+      );
+
+      return res.redirect(`${frontendUrl}/`);
+    }
+
+    if (result.type === 'link') {
+      const linkToken = await this.authService.createGoogleLinkToken(
+        result.userId,
+        result.googleId,
+      );
+
+      return res.redirect(`${frontendUrl}/google/link?token=${linkToken}`);
+    }
+
+    const signupToken = await this.authService.createGoogleSignupToken(
+      result.googleUser,
+    );
+
+    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
   }
 
   @Post('google/signup/complete')
@@ -100,21 +130,43 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(GoogleLoginGuard)
   async googleLoginCallback(
-    @CurrentUser() user: AuthUser,
+    @CurrentUser() googleUser: GoogleUserPayload,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const tokens = await this.authService.createSession(user, metadata);
-
-    this.cookieService.setAuthCookies(
-      res,
-      tokens.access_token,
-      tokens.refresh_token,
-    );
-
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
 
-    return res.redirect(`${frontendUrl}/`);
+    const result = await this.authService.validateGoogleLogin(googleUser);
+
+    if (result.type === 'login') {
+      const tokens = await this.authService.createSession(
+        result.user,
+        metadata,
+      );
+
+      this.cookieService.setAuthCookies(
+        res,
+        tokens.access_token,
+        tokens.refresh_token,
+      );
+
+      return res.redirect(`${frontendUrl}/`);
+    }
+
+    if (result.type === 'link') {
+      const linkToken = await this.authService.createGoogleLinkToken(
+        result.userId,
+        result.googleId,
+      );
+
+      return res.redirect(`${frontendUrl}/google/link?token=${linkToken}`);
+    }
+
+    const signupToken = await this.authService.createGoogleSignupToken(
+      result.googleUser,
+    );
+
+    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
   }
 
   @Get('google/link')
@@ -133,6 +185,29 @@ export class AuthController {
       success: true,
       message: 'Google account successfully linked',
     };
+  }
+
+  @Post('google/link/complete')
+  async completeGoogleLinkWithPassword(
+    @Body() dto: CompleteGoogleLinkDto,
+    @ReqMetadata() metadata: SessionMetadata,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<TokenResponse> {
+    const tokens = await this.authService.completeGoogleLinkWithPassword(
+      dto.token,
+      dto.password,
+      metadata,
+    );
+
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
+    return plainToInstance(TokenResponse, {
+      access_token: tokens.access_token,
+    });
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -248,6 +323,7 @@ export class AuthController {
     });
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Patch('password')
   @UseGuards(AccessGuard)
   async changePassword(
