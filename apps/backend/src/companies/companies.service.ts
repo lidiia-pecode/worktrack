@@ -10,8 +10,6 @@ import { QueryFailedError, Repository } from 'typeorm';
 
 import { Company } from './entities/company.entity';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
-import { CompanyResponseDto } from './dtos/company-response.dto';
-import { plainToInstance } from 'class-transformer';
 import { CompanyStatus } from './enum/company-status.enum';
 
 @Injectable()
@@ -56,6 +54,30 @@ export class CompaniesService {
     return `${baseSlug.slice(0, maxBaseLength)}${suffix}`;
   }
 
+  private async findAvailableSlug(
+    baseSlug: string,
+    repository: Repository<Company>,
+  ): Promise<string> {
+    for (
+      let attempt = 0;
+      attempt < CompaniesService.MAX_SLUG_ATTEMPTS;
+      attempt++
+    ) {
+      const slug = this.buildSlugCandidate(baseSlug, attempt);
+
+      const existingCompany = await repository.findOne({
+        where: { slug },
+        select: { id: true },
+      });
+
+      if (!existingCompany) {
+        return slug;
+      }
+    }
+
+    throw new ConflictException('Unable to generate a unique company slug.');
+  }
+
   private isUniqueSlugViolation(error: unknown): boolean {
     if (!(error instanceof QueryFailedError)) {
       return false;
@@ -84,41 +106,19 @@ export class CompaniesService {
       throw new BadRequestException('Company name is required.');
     }
 
-    const existingCompany = await repository.findOne({
-      where: { companyName },
-    });
-
-    if (existingCompany) {
-      throw new ConflictException('A company with this name already exists.');
-    }
-
     const baseSlug = this.buildBaseSlug(companyName);
 
-    for (
-      let attempt = 0;
-      attempt < CompaniesService.MAX_SLUG_ATTEMPTS;
-      attempt++
-    ) {
-      const slug = this.buildSlugCandidate(baseSlug, attempt);
+    const slug = await this.findAvailableSlug(baseSlug, repository);
 
-      const company = repository.create({
-        companyName,
-        slug,
-        status: CompanyStatus.ACTIVE,
-        timezone: 'UTC',
-        currency: 'USD',
-      });
+    const company = repository.create({
+      companyName,
+      slug,
+      status: CompanyStatus.ACTIVE,
+      timezone: 'UTC',
+      currency: 'USD',
+    });
 
-      try {
-        return await repository.save(company);
-      } catch (error) {
-        if (!this.isUniqueSlugViolation(error)) {
-          throw error;
-        }
-      }
-    }
-
-    throw new ConflictException('Unable to generate a unique company slug.');
+    return repository.save(company);
   }
 
   async findCurrentCompany(companyId: string): Promise<Company> {
@@ -191,11 +191,5 @@ export class CompaniesService {
     }
 
     throw new ConflictException('Unable to generate a unique company slug.');
-  }
-
-  toResponseDto(company: Company): CompanyResponseDto {
-    return plainToInstance(CompanyResponseDto, company, {
-      excludeExtraneousValues: true,
-    });
   }
 }

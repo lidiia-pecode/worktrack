@@ -1,15 +1,33 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
-import { CreateSessionDto } from '../dtos/create-session.dto';
+import { randomUUID } from 'crypto';
+
 import { AuthSession } from '../entities/auth-session.entity';
+import { CreateSessionDto } from '../dtos/create-session.dto';
+import { SessionMetadata } from 'src/lib/types/session-metadata';
+import { AuthUser } from '../auth-strategies/types';
+
+import { TokenService } from './token.service';
 
 @Injectable()
 export class SessionService {
   constructor(
+    private readonly configService: ConfigService,
+    private readonly tokenService: TokenService,
+
     @InjectRepository(AuthSession)
     private readonly repo: Repository<AuthSession>,
   ) {}
+
+  public getSessionExpirationDate(): Date {
+    const maxAgeMs = this.configService.getOrThrow<number>(
+      'auth.refreshToken.cookieMaxAgeMs',
+    );
+
+    return new Date(Date.now() + maxAgeMs);
+  }
 
   async create(payload: CreateSessionDto): Promise<AuthSession> {
     const session = this.repo.create(payload);
@@ -85,5 +103,44 @@ export class SessionService {
     });
 
     return result.affected ?? 0;
+  }
+
+  async createSession(user: AuthUser, metadata?: SessionMetadata) {
+    const expiresAt = this.getSessionExpirationDate();
+    const sessionId = randomUUID();
+
+    const accessToken = this.tokenService.createAccessToken({
+      id: user.id,
+      email: user.email,
+      companyId: user.companyId,
+      role: user.role,
+      sessionId,
+    });
+
+    const refreshToken = this.tokenService.createRefreshToken({
+      id: user.id,
+      companyId: user.companyId,
+      sessionId,
+    });
+
+    const refreshHash = this.tokenService.hashRefreshToken(
+      refreshToken,
+      sessionId,
+    );
+
+    await this.create({
+      id: sessionId,
+      userId: user.id,
+      companyId: user.companyId,
+      refreshHash,
+      expiresAt,
+      ip: metadata?.ip ?? '0.0.0.0',
+      userAgent: metadata?.userAgent ?? 'unknown',
+    });
+
+    return {
+      access_token: accessToken,
+      refresh_token: refreshToken,
+    };
   }
 }

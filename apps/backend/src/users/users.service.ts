@@ -11,9 +11,9 @@ import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { User } from './entities/user.entity';
 import { UsersQuery } from './dtos/UsersQuery.dto';
-import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { UserRole, UserStatus } from './enums/UserRole.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { hashPassword } from 'src/lib/utils/hash-password.util';
 
 @Injectable()
 export class UsersService {

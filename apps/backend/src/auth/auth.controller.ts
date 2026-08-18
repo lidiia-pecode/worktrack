@@ -9,7 +9,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { plainToInstance } from 'class-transformer';
 import type { AuthContext, AuthUser } from './auth-strategies/types';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
@@ -45,14 +44,59 @@ import type { GoogleLinkRequest } from './dtos/auth.dto';
 import { ConfigService } from '@nestjs/config';
 import { ChangePasswordPayload } from './dtos/change-password-payload.dto';
 import { CompleteGoogleLinkDto } from './dtos/complete-google-link.dto';
+import { SessionService } from './services';
+import { GoogleAuthService } from './services/google-auth.service';
+import { Serialize } from 'src/lib/interceptors';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
+    private readonly sessionService: SessionService,
+    private readonly googleAuthService: GoogleAuthService,
     private readonly cookieService: CookieService,
     private readonly configService: ConfigService,
   ) {}
+
+  private async handleGoogleCallback(
+    googleUser: GoogleUserPayload,
+    metadata: SessionMetadata,
+    res: Response,
+  ) {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+
+    const result = await this.googleAuthService.validateGoogleLogin(googleUser);
+
+    if (result.type === 'login') {
+      const tokens = await this.sessionService.createSession(
+        result.user,
+        metadata,
+      );
+
+      this.cookieService.setAuthCookies(
+        res,
+        tokens.access_token,
+        tokens.refresh_token,
+      );
+
+      return res.redirect(`${frontendUrl}/`);
+    }
+
+    if (result.type === 'link') {
+      const linkToken = await this.googleAuthService.createGoogleLinkToken(
+        result.userId,
+        result.googleId,
+      );
+
+      return res.redirect(`${frontendUrl}/google/link?token=${linkToken}`);
+    }
+
+    const signupToken = await this.googleAuthService.createGoogleSignupToken(
+      result.googleUser,
+    );
+
+    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
+  }
 
   @Get('/google/signup')
   @UseGuards(GoogleSignupGuard)
@@ -65,48 +109,17 @@ export class AuthController {
     @ReqMetadata() metadata: SessionMetadata,
     @Res() res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-
-    const result = await this.authService.validateGoogleLogin(googleUser);
-
-    if (result.type === 'login') {
-      const tokens = await this.authService.createSession(
-        result.user,
-        metadata,
-      );
-
-      this.cookieService.setAuthCookies(
-        res,
-        tokens.access_token,
-        tokens.refresh_token,
-      );
-
-      return res.redirect(`${frontendUrl}/`);
-    }
-
-    if (result.type === 'link') {
-      const linkToken = await this.authService.createGoogleLinkToken(
-        result.userId,
-        result.googleId,
-      );
-
-      return res.redirect(`${frontendUrl}/google/link?token=${linkToken}`);
-    }
-
-    const signupToken = await this.authService.createGoogleSignupToken(
-      result.googleUser,
-    );
-
-    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
+    return this.handleGoogleCallback(googleUser, metadata, res);
   }
 
   @Post('google/signup/complete')
+  @Serialize(TokenResponse)
   async completeGoogleSignup(
     @Body() dto: CompleteGoogleSignupDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
-    const tokens = await this.authService.completeGoogleSignup(
+  ) {
+    const tokens = await this.googleAuthService.completeGoogleSignup(
       dto.token,
       dto.companyName,
       metadata,
@@ -118,9 +131,9 @@ export class AuthController {
       tokens.refresh_token,
     );
 
-    return plainToInstance(TokenResponse, {
+    return {
       access_token: tokens.access_token,
-    });
+    };
   }
 
   @Get('/google')
@@ -132,41 +145,9 @@ export class AuthController {
   async googleLoginCallback(
     @CurrentUser() googleUser: GoogleUserPayload,
     @ReqMetadata() metadata: SessionMetadata,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-
-    const result = await this.authService.validateGoogleLogin(googleUser);
-
-    if (result.type === 'login') {
-      const tokens = await this.authService.createSession(
-        result.user,
-        metadata,
-      );
-
-      this.cookieService.setAuthCookies(
-        res,
-        tokens.access_token,
-        tokens.refresh_token,
-      );
-
-      return res.redirect(`${frontendUrl}/`);
-    }
-
-    if (result.type === 'link') {
-      const linkToken = await this.authService.createGoogleLinkToken(
-        result.userId,
-        result.googleId,
-      );
-
-      return res.redirect(`${frontendUrl}/google/link?token=${linkToken}`);
-    }
-
-    const signupToken = await this.authService.createGoogleSignupToken(
-      result.googleUser,
-    );
-
-    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
+    return this.handleGoogleCallback(googleUser, metadata, res);
   }
 
   @Get('google/link')
@@ -179,7 +160,10 @@ export class AuthController {
     const authContext = req.authContext;
     const googleUser = req.user;
 
-    await this.authService.completeGoogleLink(authContext.user.id, googleUser);
+    await this.googleAuthService.completeGoogleLink(
+      authContext.user.id,
+      googleUser,
+    );
 
     return {
       success: true,
@@ -188,12 +172,13 @@ export class AuthController {
   }
 
   @Post('google/link/complete')
+  @Serialize(TokenResponse)
   async completeGoogleLinkWithPassword(
     @Body() dto: CompleteGoogleLinkDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponse> {
-    const tokens = await this.authService.completeGoogleLinkWithPassword(
+    const tokens = await this.googleAuthService.completeGoogleLinkWithPassword(
       dto.token,
       dto.password,
       metadata,
@@ -205,13 +190,14 @@ export class AuthController {
       tokens.refresh_token,
     );
 
-    return plainToInstance(TokenResponse, {
+    return {
       access_token: tokens.access_token,
-    });
+    };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('signup')
+  @Serialize(TokenResponse)
   async signup(
     @Body() payload: SignUpPayload,
     @ReqMetadata() metadata: SessionMetadata,
@@ -219,7 +205,7 @@ export class AuthController {
   ): Promise<TokenResponse> {
     const user = await this.authService.signup(payload);
 
-    const tokens = await this.authService.createSession(user, metadata);
+    const tokens = await this.sessionService.createSession(user, metadata);
 
     this.cookieService.setAuthCookies(
       res,
@@ -227,20 +213,21 @@ export class AuthController {
       tokens.refresh_token,
     );
 
-    return plainToInstance(TokenResponse, {
+    return {
       access_token: tokens.access_token,
-    });
+    };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('signin')
+  @Serialize(TokenResponse)
   @UseGuards(LocalAuthGuard)
   async login(
     @CurrentUser() user: AuthUser,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
   ): Promise<TokenResponse> {
-    const tokens = await this.authService.createSession(user, metadata);
+    const tokens = await this.sessionService.createSession(user, metadata);
 
     this.cookieService.setAuthCookies(
       res,
@@ -248,13 +235,14 @@ export class AuthController {
       tokens.refresh_token,
     );
 
-    return plainToInstance(TokenResponse, {
+    return {
       access_token: tokens.access_token,
-    });
+    };
   }
 
   @Throttle({ default: { limit: 20, ttl: 60000 } })
   @Post('refresh')
+  @Serialize(TokenResponse)
   @UseGuards(RefreshGuard)
   async refresh(
     @CurrentAuth() auth: AuthContext,
@@ -274,12 +262,13 @@ export class AuthController {
       tokens.refresh_token,
     );
 
-    return plainToInstance(TokenResponse, {
+    return {
       access_token: tokens.access_token,
-    });
+    };
   }
 
   @Post('logout')
+  @Serialize(SuccessResponse)
   @UseGuards(AccessGuard)
   async logout(
     @SessionId() sessionId: string,
@@ -288,12 +277,13 @@ export class AuthController {
     await this.authService.logout(sessionId);
     this.cookieService.clearAuthCookies(res);
 
-    return plainToInstance(SuccessResponse, {
+    return {
       success: true,
-    });
+    };
   }
 
   @Post('logout-all')
+  @Serialize(SuccessResponse)
   @UseGuards(AccessGuard)
   async logoutAll(
     @CurrentUser() authUser: AuthUser,
@@ -302,29 +292,32 @@ export class AuthController {
     await this.authService.logoutAll(authUser.id);
     this.cookieService.clearAuthCookies(res);
 
-    return plainToInstance(SuccessResponse, {
+    return {
       success: true,
-    });
+    };
   }
 
   @Get('me')
+  @Serialize(AuthUserResponse)
   @UseGuards(AccessGuard)
-  me(@CurrentUser() authUser: AuthUser): AuthUserResponse {
-    return plainToInstance(AuthUserResponse, authUser);
+  me(@CurrentUser() user: AuthUser): AuthUserResponse {
+    return user;
   }
 
   @Post('/verification-code')
+  @Serialize(SuccessResponse)
   async sendVerificationCode(
     @Body() { email }: VerificationCodeRequestPayload,
   ) {
     await this.authService.sendVerificationCode(email);
-    return plainToInstance(SuccessResponse, {
+    return {
       success: true,
-    });
+    };
   }
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Patch('password')
+  @Serialize(SuccessResponse)
   @UseGuards(AccessGuard)
   async changePassword(
     @CurrentUser() authUser: AuthUser,
@@ -338,8 +331,8 @@ export class AuthController {
       body,
     );
 
-    return plainToInstance(SuccessResponse, {
+    return {
       success: true,
-    });
+    };
   }
 }

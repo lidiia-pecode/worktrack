@@ -4,9 +4,10 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
+
 import { CookieStateStore } from './cookie-state-store';
 
-function getGoogleStrategyOptions(
+export function getGoogleStrategyOptions(
   configService: ConfigService,
   callbackURL: string,
 ) {
@@ -20,13 +21,21 @@ function getGoogleStrategyOptions(
   };
 }
 
-function getGooglePayload(profile: Profile) {
+export function getGooglePayload(profile: Profile) {
   return {
     email: profile.emails?.[0]?.value ?? '',
     firstName: profile.name?.givenName ?? '',
     lastName: profile.name?.familyName ?? '',
     googleId: profile.id,
   };
+}
+
+export function validateGoogleProfile(profile: Profile, done: VerifyCallback) {
+  try {
+    done(null, getGooglePayload(profile));
+  } catch (error) {
+    done(error, false);
+  }
 }
 
 @Injectable()
@@ -49,11 +58,7 @@ export class GoogleLoginStrategy extends PassportStrategy(
     profile: Profile,
     done: VerifyCallback,
   ) {
-    try {
-      done(null, getGooglePayload(profile));
-    } catch (error) {
-      done(error, false);
-    }
+    validateGoogleProfile(profile, done);
   }
 }
 
@@ -77,11 +82,7 @@ export class GoogleSignupStrategy extends PassportStrategy(
     profile: Profile,
     done: VerifyCallback,
   ) {
-    try {
-      done(null, getGooglePayload(profile));
-    } catch (error) {
-      done(error, false);
-    }
+    validateGoogleProfile(profile, done);
   }
 }
 
@@ -105,10 +106,6 @@ export class GoogleLinkStrategy extends PassportStrategy(
     profile: Profile,
     done: VerifyCallback,
   ) {
-    try {
-      done(null, getGooglePayload(profile));
-    } catch (error) {
-      done(error, false);
-    }
+    validateGoogleProfile(profile, done);
   }
 }

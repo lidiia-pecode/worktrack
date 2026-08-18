@@ -38,7 +38,7 @@ export default function GoogleLinkPage() {
   const onSubmit = async (data: GoogleLinkFormInputs) => {
     if (!token) {
       toast.error("Google link token is missing or invalid.");
-      router.push("/login");
+      router.replace("/login");
       return;
     }
 
@@ -49,7 +49,7 @@ export default function GoogleLinkPage() {
       });
 
       toast.success("Account successfully linked!");
-      router.push("/");
+      router.replace("/");
       router.refresh();
     } catch (err: unknown) {
       if (isApiValidationError(err)) {

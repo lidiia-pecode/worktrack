@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { timingSafeEqual } from 'node:crypto';
 
-import { scryptAsync } from 'src/lib/utils/hash-password.util';
+import { hashPassword, scryptAsync } from 'src/lib/utils/hash-password.util';
 
 @Injectable()
 export class PasswordService {
+  async hash(password: string): Promise<string> {
+    return hashPassword(password);
+  }
+
   async verify(password: string, hashedPassword: string): Promise<boolean> {
     const [hashBase64, saltBase64] = hashedPassword.split('$');
 

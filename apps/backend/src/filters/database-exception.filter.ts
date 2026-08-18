@@ -15,9 +15,16 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       constraint?: string;
     };
 
-    // 23505: Unique violation
+    this.logger.error('DATABASE ERROR');
+    this.logger.error(`exception: ${exception.constructor.name}`);
+    this.logger.error(`driverError: ${JSON.stringify(driverError)}`);
+    this.logger.error(`code: ${driverError?.code}`);
+    this.logger.error(`constraint: ${driverError?.constraint}`);
+    this.logger.error(`detail: ${driverError?.detail}`);
+
     if (driverError.code === '23505') {
       const detail = driverError.detail || 'Resource already exists';
+
       return response.status(409).json({
         statusCode: 409,
         error: 'Conflict',
@@ -25,7 +32,6 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
       });
     }
 
-    // 23503: Foreign key violation
     if (driverError.code === '23503') {
       return response.status(400).json({
         statusCode: 400,

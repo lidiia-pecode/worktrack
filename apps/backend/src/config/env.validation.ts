@@ -11,18 +11,18 @@ export const envValidationSchema = Joi.object({
   // JWT Configuration
   ACCESS_TOKEN_SECRET: Joi.string().min(32).required(),
   ACCESS_TOKEN_EXPIRES_IN: Joi.string()
-    .pattern(/^(\d+[smhdy]|\d+)$/)
+    .pattern(/^(\d+[smhd]|\d+)$/)
     .default('1m'),
-  // .default('15m'),
 
-  REFRESH_TOKEN_SECRET: Joi.string().min(32).required(),
   REFRESH_TOKEN_EXPIRES_IN: Joi.string()
-    .pattern(/^(\d+[smhdy]|\d+)$/)
+    .pattern(/^(\d+[smhd]|\d+)$/)
     .default('30d'),
 
-  REFRESH_TOKEN_HASH_SECRET: Joi.string().min(32).required(),
+  GOOGLE_TOKEN_EXPIRES_IN: Joi.string()
+    .pattern(/^(\d+[smhd]|\d+)$/)
+    .default('1m'),
 
-  REFRESH_TOKEN_EXPIRES_IN_DAYS: Joi.number().default(30),
+  REFRESH_TOKEN_HASH_SECRET: Joi.string().min(32).required(),
 
   AUTH_COOKIE_SAMESITE: Joi.string()
     .valid('lax', 'strict', 'none')

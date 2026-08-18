@@ -23,6 +23,8 @@ import {
 } from './auth-strategies/google';
 import { GoogleSignupToken } from './entities/google-signup-token.entity';
 import { GoogleLinkToken } from './entities/google-link-token.entity';
+import { AuthPolicyService } from './services/auth-policy.service';
+import { GoogleAuthService } from './services/google-auth.service';
 
 @Module({
   imports: [
@@ -44,6 +46,8 @@ import { GoogleLinkToken } from './entities/google-link-token.entity';
     SessionService,
     TokenService,
     CookieService,
+    AuthPolicyService,
+    GoogleAuthService,
     LocalStrategy,
     AccessStrategy,
     RefreshStrategy,

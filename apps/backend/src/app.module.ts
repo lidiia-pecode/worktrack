@@ -15,11 +15,13 @@ import { envValidationSchema } from './config/env.validation';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
+import authConfig from './config/auth.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [authConfig],
       validationSchema: envValidationSchema,
       validationOptions: {
         allowUnknown: true,

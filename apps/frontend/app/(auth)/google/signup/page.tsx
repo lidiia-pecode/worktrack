@@ -44,7 +44,7 @@ export default function GoogleSignupPage() {
         companyName: data.companyName.trim(),
       });
 
-      router.push("/onboarding");
+      router.replace("/onboarding");
       router.refresh();
     } catch (err: unknown) {
       if (isApiMessageError(err) && typeof err.message === "string") {

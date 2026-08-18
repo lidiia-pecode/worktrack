@@ -353,6 +353,10 @@ export class Init1786539115459 implements MigrationInterface {
     );
     await queryRunner.query(`DROP INDEX "public"."IDX_activities_company_id"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_activities_category_id"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."UQ_activities_company_category_name_lower"`,
+    );
+
     await queryRunner.query(`DROP TABLE "activities"`);
     await queryRunner.query(`DROP TYPE "public"."activity_status_enum"`);
     await queryRunner.query(
@@ -361,8 +365,13 @@ export class Init1786539115459 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX "public"."IDX_project_activities_activity_id"`,
     );
+
     await queryRunner.query(`DROP TABLE "project_activities"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_projects_company_id"`);
+    await queryRunner.query(
+      `DROP INDEX "public"."UQ_projects_company_name_lower"`,
+    );
+
     await queryRunner.query(`DROP TABLE "projects"`);
     await queryRunner.query(`DROP TYPE "public"."project_status_enum"`);
     await queryRunner.query(`DROP INDEX "public"."IDX_users_company_id"`);
@@ -401,17 +410,10 @@ export class Init1786539115459 implements MigrationInterface {
     await queryRunner.query(
       `DROP INDEX "public"."IDX_act_categories_company_id"`,
     );
-    await queryRunner.query(`DROP TABLE "act_categories"`);
-    await queryRunner.query(`DROP TYPE "public"."act_category_status_enum"`);
-
-    await queryRunner.query(
-      `DROP INDEX "public"."UQ_activities_company_category_name_lower"`,
-    );
     await queryRunner.query(
       `DROP INDEX "public"."UQ_act_categories_company_name_lower"`,
     );
-    await queryRunner.query(
-      `DROP INDEX "public"."UQ_projects_company_name_lower"`,
-    );
+    await queryRunner.query(`DROP TABLE "act_categories"`);
+    await queryRunner.query(`DROP TYPE "public"."act_category_status_enum"`);
   }
 }

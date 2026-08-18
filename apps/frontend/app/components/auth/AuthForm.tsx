@@ -33,14 +33,11 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   const router = useRouter();
 
   const handleGoogleLogin = () => {
-    window.location.href = GOOGLE_LOGIN_URL;
+    window.location.replace(GOOGLE_LOGIN_URL);
   };
 
   const handleGoogleSignup = () => {
-    console.log("GOOGLE SIGNUP CLICK");
-    console.log(GOOGLE_SIGNUP_URL);
-
-    window.location.href = GOOGLE_SIGNUP_URL;
+    window.location.replace(GOOGLE_SIGNUP_URL);
   };
 
   const {
@@ -65,7 +62,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     try {
       await actions.login.mutateAsync(data);
 
-      router.push("/");
+      router.replace("/");
       router.refresh();
     } catch (err: unknown) {
       if (!isApiValidationError(err)) return;
@@ -78,7 +75,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
     try {
       await actions.signup.mutateAsync(data);
 
-      router.push("/onboarding");
+      router.replace("/onboarding");
       router.refresh();
     } catch (err: unknown) {
       if (!isApiValidationError(err)) return;

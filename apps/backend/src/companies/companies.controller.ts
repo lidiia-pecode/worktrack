@@ -7,9 +7,11 @@ import { UserRole } from 'src/users/enums/UserRole.enum';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
+import { Serialize } from 'src/lib/interceptors';
 
 @Controller('company')
 @UseGuards(AccessGuard, RolesGuard)
+@Serialize(CompanyResponseDto)
 export class CompaniesController {
   constructor(private readonly companiesService: CompaniesService) {}
 
@@ -20,7 +22,7 @@ export class CompaniesController {
     const company = await this.companiesService.findCurrentCompany(
       user.companyId,
     );
-    return this.companiesService.toResponseDto(company);
+    return company;
   }
 
   @Patch()
@@ -30,6 +32,6 @@ export class CompaniesController {
     @Body() dto: UpdateCompanyDto,
   ): Promise<CompanyResponseDto> {
     const company = await this.companiesService.update(user.companyId, dto);
-    return this.companiesService.toResponseDto(company);
+    return company;
   }
 }

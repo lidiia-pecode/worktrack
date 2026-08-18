@@ -64,9 +64,9 @@ export async function proxy(req: NextRequest) {
       );
     });
 
-    console.log("[AUTH] access token exists:", !!accessToken);
-    console.log("[AUTH] access token expired:", accessTokenExpired);
-    console.log("[AUTH] refresh token exists:", !!refreshToken);
+    // console.log("[AUTH] access token exists:", !!accessToken);
+    // console.log("[AUTH] access token expired:", accessTokenExpired);
+    // console.log("[AUTH] refresh token exists:", !!refreshToken);
 
     return handleRouteGuards(pathname, true, req, response);
   }
@@ -80,22 +80,22 @@ function handleRouteGuards(
   req: NextRequest,
   response: NextResponse,
 ) {
-  const isAuthRoute =
+  const isGuestRoute =
     pathname.startsWith("/login") || pathname.startsWith("/register");
 
-  // todo: add protected routes
   const isProtectedRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/onboarding");
 
-  if (isAuthenticated && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  if (isAuthenticated && isGuestRoute) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 
   if (!isAuthenticated && isProtectedRoute) {
     const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("returnTo", pathname);
+    // loginUrl.searchParams.set("returnTo", pathname);
+
     return NextResponse.redirect(loginUrl);
   }
 

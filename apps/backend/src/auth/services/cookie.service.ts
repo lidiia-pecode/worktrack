@@ -1,4 +1,3 @@
-// apps/backend/src/auth/services/cookie.service.ts
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions, Response } from 'express';
@@ -8,16 +7,12 @@ export class CookieService {
   constructor(private readonly configService: ConfigService) {}
 
   private getCookieOptions(): CookieOptions {
-    const sameSite = this.configService.get<CookieOptions['sameSite']>(
-      'AUTH_COOKIE_SAMESITE',
-      'lax',
-    );
-    const secure = this.configService.get<boolean>('AUTH_COOKIE_SECURE', false);
-
     return {
       httpOnly: true,
-      secure,
-      sameSite,
+      secure: this.configService.getOrThrow<boolean>('auth.cookie.secure'),
+      sameSite: this.configService.getOrThrow<CookieOptions['sameSite']>(
+        'auth.cookie.sameSite',
+      ),
       path: '/',
     };
   }
@@ -31,13 +26,16 @@ export class CookieService {
 
     res.cookie('access_token', accessToken, {
       ...options,
-      maxAge: 15 * 60 * 1000,
+      maxAge: this.configService.getOrThrow<number>(
+        'auth.accessToken.cookieMaxAgeMs',
+      ),
     });
 
     res.cookie('refresh_token', refreshToken, {
       ...options,
-      path: '/',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: this.configService.getOrThrow<number>(
+        'auth.refreshToken.cookieMaxAgeMs',
+      ),
     });
   }
 
@@ -45,9 +43,6 @@ export class CookieService {
     const options = this.getCookieOptions();
 
     res.clearCookie('access_token', options);
-    res.clearCookie('refresh_token', {
-      ...options,
-      path: '/',
-    });
+    res.clearCookie('refresh_token', options);
   }
 }
