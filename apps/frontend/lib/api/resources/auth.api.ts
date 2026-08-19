@@ -36,4 +36,10 @@ export const AuthClient = {
 
   changePassword: (data: { currentPassword?: string; newPassword: string }) =>
     authApi.patch<{ success: boolean }>("/password", data),
+
+  forgotPassword: (data: { email: string }) =>
+    auth.post<{ success: boolean }>("/forgot-password", data),
+
+  resetPassword: (data: { token: string; newPassword: string }) =>
+    auth.post<{ success: boolean }>("/reset-password", data),
 };

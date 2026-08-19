@@ -32,12 +32,8 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
   const isExisting = mode === "login";
   const router = useRouter();
 
-  const handleGoogleLogin = () => {
-    window.location.replace(GOOGLE_LOGIN_URL);
-  };
-
-  const handleGoogleSignup = () => {
-    window.location.replace(GOOGLE_SIGNUP_URL);
+  const handleGoogleAuth = () => {
+    window.location.replace(isExisting ? GOOGLE_LOGIN_URL : GOOGLE_SIGNUP_URL);
   };
 
   const {
@@ -146,6 +142,17 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
           error={errors.password?.message}
         />
 
+        {isExisting && (
+          <div className="-mt-1 flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-blue-600 font-semibold hover:underline"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+        )}
+
         <Button
           type="submit"
           isLoading={
@@ -166,11 +173,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
         <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
       </div>
 
-      <Button
-        isLoading={false}
-        onClick={isExisting ? handleGoogleLogin : handleGoogleSignup}
-        variant="google"
-      >
+      <Button onClick={handleGoogleAuth} variant="google">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="/images/google-icon-logo.svg"
@@ -187,7 +190,7 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
         <Link
           href={isExisting ? "/register" : "/login"}
-          className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+          className="text-blue-600 font-semibold hover:underline"
         >
           {isExisting ? "Sign up" : "Sign in"}
         </Link>

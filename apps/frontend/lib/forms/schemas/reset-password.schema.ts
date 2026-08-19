@@ -1,9 +1,7 @@
 import { z } from "zod";
 
-export const securitySchema = z
+export const resetPasswordSchema = z
   .object({
-    currentPassword: z.string().optional(),
-
     newPassword: z
       .string()
       .min(8, "Password must be at least 8 characters")
@@ -19,4 +17,4 @@ export const securitySchema = z
     path: ["confirmPassword"],
   });
 
-export type SecurityFormValues = z.infer<typeof securitySchema>;
+export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;

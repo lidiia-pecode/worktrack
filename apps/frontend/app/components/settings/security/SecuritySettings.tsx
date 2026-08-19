@@ -20,6 +20,7 @@ import { PasswordInput } from "../../auth/components/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/useAuth";
 import { PUBLIC_BACKEND_URL } from "@/lib/constants";
+import Link from "next/link";
 
 export const SecuritySettings = () => {
   const { user } = useAuth();
@@ -36,7 +37,7 @@ export const SecuritySettings = () => {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid, isSubmitting },
+    formState: { errors, isValid },
   } = useForm<SecurityFormValues>({
     resolver: zodResolver(securitySchema),
     mode: "onChange",
@@ -137,23 +138,30 @@ export const SecuritySettings = () => {
             className={settingsInputClassName}
             labelClassname={settingsLabelClassName}
           />
-
-          {/* requirements */}
-
-          <SettingsActions>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={!isValid || isSubmitting}
-            >
-              {isSubmitting
-                ? "Saving..."
-                : hasPassword
-                  ? "Change password"
-                  : "Set password"}
-            </Button>
-          </SettingsActions>
         </form>
+
+        <SettingsActions className="justify-between">
+          {hasPassword && (
+            <Link
+              href="/forgot-password"
+              className="text-sm text-blue-400 hover:underline"
+            >
+              Forgot your password?
+            </Link>
+          )}
+
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={!isValid || actions.changePassword.isPending}
+          >
+            {actions.changePassword.isPending
+              ? "Saving..."
+              : hasPassword
+                ? "Change password"
+                : "Set password"}
+          </Button>
+        </SettingsActions>
       </SettingsSection>
 
       <SettingsSection>
