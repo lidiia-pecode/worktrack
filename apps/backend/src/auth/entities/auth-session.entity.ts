@@ -36,6 +36,21 @@ export class AuthSession {
   @Column({ type: 'varchar', length: 64 })
   refreshHash!: string;
 
+  @Column({
+    type: 'varchar',
+    length: 64,
+    nullable: true,
+    name: 'previous_refresh_hash',
+  })
+  previousRefreshHash?: string | null;
+
+  @Column({
+    type: 'timestamp with time zone',
+    nullable: true,
+    name: 'rotated_at',
+  })
+  rotatedAt?: Date | null;
+
   @Column({ type: 'varchar', length: 45, nullable: true })
   ip?: string;
 

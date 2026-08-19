@@ -24,6 +24,10 @@ export const envValidationSchema = Joi.object({
 
   REFRESH_TOKEN_HASH_SECRET: Joi.string().min(32).required(),
 
+  REFRESH_TOKEN_REUSE_GRACE_MS: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('30s'),
+
   AUTH_COOKIE_SAMESITE: Joi.string()
     .valid('lax', 'strict', 'none')
     .default('lax'),

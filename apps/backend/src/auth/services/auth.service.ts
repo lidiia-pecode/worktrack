@@ -149,6 +149,49 @@ export class AuthService {
         throw new UnauthorizedException('Session has been terminated');
       }
 
+      const graceWindowMs = this.configService.getOrThrow<number>(
+        'auth.refreshToken.reuseGraceMs',
+      );
+
+      const previousHash = currentSession.previousRefreshHash;
+      const rotatedAt = currentSession.rotatedAt;
+
+      const rotatedRecently =
+        !!previousHash &&
+        !!rotatedAt &&
+        incomingRefreshHash === previousHash &&
+        Date.now() - rotatedAt.getTime() <= graceWindowMs;
+
+      if (rotatedRecently) {
+        const isReRotated = await this.sessionService.rotateRefreshHash(
+          session.id,
+          currentSession.refreshHash,
+          newRefreshHash,
+          newExpiresAt,
+          metadata,
+        );
+
+        if (isReRotated) {
+          const accessToken = this.tokenService.createAccessToken({
+            id: user.id,
+            email: user.email,
+            companyId: user.companyId,
+            role: user.role,
+            sessionId: session.id,
+          });
+
+          return {
+            access_token: accessToken,
+            refresh_token: newRefreshToken,
+          };
+        }
+
+        throw new UnauthorizedException(
+          'Session is being refreshed concurrently',
+        );
+      }
+
+      await this.sessionService.delete(session.id);
       throw new UnauthorizedException(
         'Invalid or previously used refresh token',
       );

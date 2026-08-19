@@ -38,6 +38,9 @@ export default registerAs('auth', () => {
       hashSecret: process.env.REFRESH_TOKEN_HASH_SECRET!,
       expiresIn: refreshTokenExpiresIn,
       maxAgeMs: parseDurationToMs(refreshTokenExpiresIn),
+      reuseGraceMs: parseDurationToMs(
+        process.env.REFRESH_TOKEN_REUSE_GRACE_MS ?? '30s',
+      ),
     },
 
     google: {

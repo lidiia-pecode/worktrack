@@ -86,6 +86,8 @@ export class SessionService {
   ): Promise<boolean> {
     const updateData: Partial<AuthSession> = {
       refreshHash: newHash,
+      previousRefreshHash: expectedOldHash,
+      rotatedAt: new Date(),
       expiresAt: newExpiresAt,
       lastActivityAt: new Date(),
     };
