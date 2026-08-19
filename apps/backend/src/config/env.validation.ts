@@ -38,6 +38,14 @@ export const envValidationSchema = Joi.object({
   GOOGLE_SIGNUP_CALLBACK_URL: Joi.string().uri().required(),
   GOOGLE_LINK_CALLBACK_URL: Joi.string().uri().required(),
 
+  PASSWORD_RESET_TOKEN_EXPIRES_IN: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('15m'),
+
+  RESEND_API_KEY: Joi.string().required(),
+
+  MAIL_FROM: Joi.string().required(),
+
   // Frontend & App
   FRONTEND_URL: Joi.string().uri().required(),
   PORT: Joi.number().port().default(3000),

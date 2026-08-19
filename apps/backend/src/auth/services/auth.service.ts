@@ -23,17 +23,23 @@ import { UsersService } from 'src/users/users.service';
 import { PasswordService } from './password.service';
 import { SessionService } from './session.service';
 import { TokenService } from './token.service';
+import { PasswordResetService } from './password-reset.service';
+import { MailService } from 'src/mail/mail.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly passwordService: PasswordService,
+    private readonly passwordResetService: PasswordResetService,
+    private readonly mailService: MailService,
     private readonly tokenService: TokenService,
     private readonly sessionService: SessionService,
     private readonly usersService: UsersService,
     private readonly companiesService: CompaniesService,
     private readonly authPolicyService: AuthPolicyService,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
   // used in local strategy
@@ -260,21 +266,57 @@ export class AuthService {
     });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async createVerificationCode(email: string) {
-    return new Promise<number>((resolve) => {
-      resolve(123456);
+  async forgotPassword(email: string): Promise<void> {
+    const normalizedEmail = this.authPolicyService.normalizeEmail(email);
+
+    await this.passwordResetService.requestPasswordReset(normalizedEmail);
+  }
+
+  async resetPassword(
+    token: string,
+    newPassword: string,
+    metadata: SessionMetadata,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const resetToken = await this.passwordResetService.consumeToken(
+        token,
+        manager,
+      );
+
+      const user = await this.usersService.findUserByIdWithCompany(
+        resetToken.userId,
+        manager,
+      );
+
+      if (!user) {
+        throw new UnauthorizedException('Invalid or expired reset token');
+      }
+
+      if (user.passwordHash) {
+        const isSamePassword = await this.passwordService.verify(
+          newPassword,
+          user.passwordHash,
+        );
+
+        if (isSamePassword) {
+          throw new ConflictException(
+            'New password must be different from your current password',
+          );
+        }
+      }
+
+      const passwordHash = await this.passwordService.hash(newPassword);
+
+      await this.usersService.updatePassword(
+        user.id,
+        user.companyId,
+        passwordHash,
+        manager,
+      );
+
+      await this.sessionService.deleteAllForUser(user.id, manager);
+
+      return this.sessionService.createSession(user, metadata, manager);
     });
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async verifyCode(email: string, code: number) {
-    return await Promise.resolve(true);
-  }
-
-  public async sendVerificationCode(email: string) {
-    const code = await this.createVerificationCode(email);
-
-    return code;
   }
 }

@@ -33,7 +33,6 @@ import {
   CompleteGoogleSignupDto,
   GoogleUserPayload,
   SignUpPayload,
-  VerificationCodeRequestPayload,
 } from './dtos/auth.dto';
 
 import type { GoogleLinkRequest } from './dtos/auth.dto';
@@ -43,6 +42,7 @@ import { CompleteGoogleLinkDto } from './dtos/complete-google-link.dto';
 import { SessionService } from './services';
 import { GoogleAuthService } from './services/google-auth.service';
 import { Serialize } from 'src/lib/interceptors';
+import { ForgotPasswordDto, ResetPasswordDto } from './dtos/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -306,17 +306,6 @@ export class AuthController {
     };
   }
 
-  @Post('/verification-code')
-  @Serialize(SuccessResponse)
-  async sendVerificationCode(
-    @Body() { email }: VerificationCodeRequestPayload,
-  ) {
-    await this.authService.sendVerificationCode(email);
-    return {
-      success: true,
-    };
-  }
-
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Patch('password')
   @Serialize(SuccessResponse)
@@ -335,6 +324,44 @@ export class AuthController {
 
     return {
       success: true,
+    };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('forgot-password')
+  @Serialize(SuccessResponse)
+  async forgotPassword(
+    @Body() dto: ForgotPasswordDto,
+  ): Promise<SuccessResponse> {
+    await this.authService.forgotPassword(dto.email);
+
+    return {
+      success: true,
+    };
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  @Serialize(TokenResponse)
+  async resetPassword(
+    @Body() dto: ResetPasswordDto,
+    @ReqMetadata() metadata: SessionMetadata,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<TokenResponse> {
+    const tokens = await this.authService.resetPassword(
+      dto.token,
+      dto.newPassword,
+      metadata,
+    );
+
+    this.cookieService.setAuthCookies(
+      res,
+      tokens.access_token,
+      tokens.refresh_token,
+    );
+
+    return {
+      access_token: tokens.access_token,
     };
   }
 }

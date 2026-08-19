@@ -16,12 +16,13 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
 import authConfig from './config/auth.config';
+import mailConfig from './config/mail.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [authConfig],
+      load: [authConfig, mailConfig],
       validationSchema: envValidationSchema,
       validationOptions: {
         allowUnknown: true,

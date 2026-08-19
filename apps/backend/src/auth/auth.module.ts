@@ -23,12 +23,20 @@ import {
 } from './auth-strategies/google';
 import { GoogleSignupToken } from './entities/google-signup-token.entity';
 import { GoogleLinkToken } from './entities/google-link-token.entity';
+import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { AuthPolicyService } from './services/auth-policy.service';
 import { GoogleAuthService } from './services/google-auth.service';
+import { PasswordResetService } from './services/password-reset.service';
+import { MailModule } from 'src/mail/mail.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AuthSession, GoogleSignupToken, GoogleLinkToken]),
+    TypeOrmModule.forFeature([
+      AuthSession,
+      GoogleSignupToken,
+      GoogleLinkToken,
+      PasswordResetToken,
+    ]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -37,6 +45,7 @@ import { GoogleAuthService } from './services/google-auth.service';
     }),
     UsersModule,
     CompaniesModule,
+    MailModule,
   ],
   controllers: [AuthController],
   providers: [
@@ -48,6 +57,7 @@ import { GoogleAuthService } from './services/google-auth.service';
     CookieService,
     AuthPolicyService,
     GoogleAuthService,
+    PasswordResetService,
     LocalStrategy,
     AccessStrategy,
     RefreshStrategy,

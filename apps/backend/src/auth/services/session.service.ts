@@ -23,7 +23,7 @@ export class SessionService {
 
   public getSessionExpirationDate(): Date {
     const maxAgeMs = this.configService.getOrThrow<number>(
-      'auth.refreshToken.cookieMaxAgeMs',
+      'auth.refreshToken.maxAgeMs',
     );
 
     return new Date(Date.now() + maxAgeMs);
@@ -50,8 +50,13 @@ export class SessionService {
     await this.repo.delete(id);
   }
 
-  async deleteAllForUser(userId: string): Promise<void> {
-    await this.repo.delete({ userId });
+  async deleteAllForUser(
+    userId: string,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const activeManager = manager || this.repo.manager;
+
+    await activeManager.getRepository(AuthSession).delete({ userId });
   }
 
   async deleteAllForUserExcept(
@@ -107,7 +112,11 @@ export class SessionService {
     return result.affected ?? 0;
   }
 
-  async createSession(user: AuthUser, metadata?: SessionMetadata) {
+  async createSession(
+    user: AuthUser,
+    metadata?: SessionMetadata,
+    manager?: EntityManager,
+  ) {
     const expiresAt = this.getSessionExpirationDate();
     const sessionId = randomUUID();
 
@@ -130,7 +139,9 @@ export class SessionService {
       sessionId,
     );
 
-    await this.create({
+    const activeManager = manager ?? this.repo.manager;
+
+    await activeManager.getRepository(AuthSession).save({
       id: sessionId,
       userId: user.id,
       companyId: user.companyId,

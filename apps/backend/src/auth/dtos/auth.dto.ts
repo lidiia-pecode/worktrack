@@ -66,12 +66,6 @@ export class SignInPayload {
   password!: string;
 }
 
-export class VerificationCodeRequestPayload {
-  @NormalizeString()
-  @IsEmail()
-  email!: string;
-}
-
 export class GoogleUserPayload {
   @IsString()
   firstName!: string;

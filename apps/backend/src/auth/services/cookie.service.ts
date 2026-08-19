@@ -27,14 +27,14 @@ export class CookieService {
     res.cookie('access_token', accessToken, {
       ...options,
       maxAge: this.configService.getOrThrow<number>(
-        'auth.accessToken.cookieMaxAgeMs',
+        'auth.accessToken.maxAgeMs',
       ),
     });
 
     res.cookie('refresh_token', refreshToken, {
       ...options,
       maxAge: this.configService.getOrThrow<number>(
-        'auth.refreshToken.cookieMaxAgeMs',
+        'auth.refreshToken.maxAgeMs',
       ),
     });
   }

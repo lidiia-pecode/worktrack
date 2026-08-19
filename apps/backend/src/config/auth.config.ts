@@ -23,23 +23,30 @@ const parseDurationToMs = (value: string): number => {
 export default registerAs('auth', () => {
   const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN!;
   const refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN!;
+  const passwordResetTokenExpiresIn =
+    process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN!;
 
   return {
     accessToken: {
       secret: process.env.ACCESS_TOKEN_SECRET!,
       expiresIn: accessTokenExpiresIn,
-      cookieMaxAgeMs: parseDurationToMs(accessTokenExpiresIn),
+      maxAgeMs: parseDurationToMs(accessTokenExpiresIn),
     },
 
     refreshToken: {
       secret: process.env.REFRESH_TOKEN_SECRET!,
       hashSecret: process.env.REFRESH_TOKEN_HASH_SECRET!,
       expiresIn: refreshTokenExpiresIn,
-      cookieMaxAgeMs: parseDurationToMs(refreshTokenExpiresIn),
+      maxAgeMs: parseDurationToMs(refreshTokenExpiresIn),
     },
 
     google: {
       tokenExpiresInMs: parseDurationToMs(process.env.GOOGLE_TOKEN_EXPIRES_IN!),
+    },
+
+    passwordReset: {
+      expiresIn: passwordResetTokenExpiresIn,
+      expiresInMs: parseDurationToMs(passwordResetTokenExpiresIn),
     },
 
     cookie: {

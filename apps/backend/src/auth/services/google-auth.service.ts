@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { createHash, randomBytes } from 'crypto';
+import { randomBytes } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
@@ -25,6 +25,7 @@ import { PasswordService } from './password.service';
 import { UsersService } from 'src/users/users.service';
 import { SessionService } from './session.service';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { hashToken } from 'src/lib/utils/hash-token.util';
 
 @Injectable()
 export class GoogleAuthService {
@@ -44,10 +45,6 @@ export class GoogleAuthService {
     private readonly googleLinkTokenRepository: Repository<GoogleLinkToken>,
   ) {}
 
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
-
   private async consumeGoogleSignupToken(
     rawToken: string,
     manager: EntityManager,
@@ -56,7 +53,7 @@ export class GoogleAuthService {
       throw new BadRequestException('Google signup token is required.');
     }
 
-    const tokenHash = this.hashToken(rawToken);
+    const tokenHash = hashToken(rawToken);
     const now = new Date();
     const tokenRepository = manager.getRepository(GoogleSignupToken);
 
@@ -88,7 +85,7 @@ export class GoogleAuthService {
 
   async createGoogleSignupToken(payload: GoogleUserPayload): Promise<string> {
     const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = this.hashToken(rawToken);
+    const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(
       Date.now() +
         this.configService.getOrThrow<number>('auth.google.tokenExpiresInMs'),
@@ -158,7 +155,7 @@ export class GoogleAuthService {
     googleId: string,
   ): Promise<string> {
     const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = this.hashToken(rawToken);
+    const tokenHash = hashToken(rawToken);
     const expiresAt = new Date(
       Date.now() +
         this.configService.getOrThrow<number>('auth.google.tokenExpiresInMs'),
@@ -192,7 +189,7 @@ export class GoogleAuthService {
       throw new BadRequestException('Google link token is required.');
     }
 
-    const tokenHash = this.hashToken(rawToken);
+    const tokenHash = hashToken(rawToken);
     const now = new Date();
     const tokenRepository = manager.getRepository(GoogleLinkToken);
 
