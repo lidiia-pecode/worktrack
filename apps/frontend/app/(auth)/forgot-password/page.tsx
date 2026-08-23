@@ -5,7 +5,7 @@ import { Mail } from "lucide-react";
 
 import { settingsInputClassName } from "@/app/components/settings/styles/settings-styles";
 import { useResetPassword } from "@/hooks/useResetPassword";
-import Input from "@/app/components/shared/Input";
+import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ResetPasswordPageLayout } from "@/app/components/auth";
 import { ResetPasswordPageHeader } from "@/app/components/auth";

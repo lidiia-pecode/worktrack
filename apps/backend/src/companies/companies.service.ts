@@ -104,9 +104,7 @@ export class CompaniesService {
     name: string,
     managerOrRepo?: EntityManager | Repository<Company>,
   ): Promise<Company> {
-    const companyName = name.trim();
-
-    if (!companyName) {
+    if (!name) {
       throw new BadRequestException('Company name is required.');
     }
 
@@ -119,11 +117,11 @@ export class CompaniesService {
       repo = this.companiesRepository;
     }
 
-    const baseSlug = this.buildBaseSlug(companyName);
+    const baseSlug = this.buildBaseSlug(name);
     const slug = await this.findAvailableSlug(baseSlug, repo);
 
     const company = repo.create({
-      companyName,
+      companyName: name,
       slug,
       status: CompanyStatus.ACTIVE,
       timezone: 'UTC',

@@ -170,6 +170,34 @@ export class UsersService {
     };
   }
 
+  async getUserDetailsById(
+    id: string,
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
+    const user = await this.getRepository(manager).findOne({
+      where: {
+        id,
+        companyId,
+      },
+      relations: {
+        projects: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException(
+        `User with id ${id} not found in this company`,
+      );
+    }
+
+    return {
+      ...user,
+      hasPassword: Boolean(user.passwordHash),
+      googleLinked: Boolean(user.googleId),
+    };
+  }
+
   async findUsersByIds(
     ids: string[],
     companyId: string,

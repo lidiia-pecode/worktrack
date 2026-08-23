@@ -2,9 +2,7 @@
 
 import {
   IsEmail,
-  // IsInt,
   IsNotEmpty,
-  IsOptional,
   IsString,
   Matches,
   MaxLength,
@@ -12,6 +10,7 @@ import {
 } from 'class-validator';
 import { NormalizeString } from 'src/lib/decorators';
 import { AuthContext } from '../auth-strategies/types';
+import { TrimString } from 'src/lib/decorators/trim-string.decorator';
 
 export class SignUpPayload {
   @IsNotEmpty()
@@ -26,14 +25,15 @@ export class SignUpPayload {
   @MaxLength(20)
   lastName!: string;
 
-  @NormalizeString()
-  @IsOptional()
-  @Matches(/^[a-zA-Z0-9_]+$/, {
-    message: 'CompanyName can contain only letters, numbers, and underscores',
-  })
+  @IsNotEmpty()
   @IsString()
   @MinLength(3)
-  @MaxLength(20)
+  @MaxLength(100)
+  @TrimString()
+  @Matches(/^[a-zA-Z0-9_ ]+$/, {
+    message:
+      'Company name can contain only letters, numbers, spaces, and underscores',
+  })
   companyName!: string;
 
   @NormalizeString()
@@ -44,12 +44,9 @@ export class SignUpPayload {
   @MinLength(8)
   @MaxLength(100)
   @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/, {
-    message: 'Password need to contain at least 1 Cap letter and 1 number',
+    message: 'Password needs to contain at least 1 capital letter and 1 number',
   })
   password!: string;
-
-  // @IsInt()
-  // code!: number;
 }
 
 export class SignInPayload {

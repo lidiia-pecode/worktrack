@@ -1,5 +1,6 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 import { UserRole, UserStatus } from '../enums/UserRole.enum';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
 @Exclude()
 export class UserResponse {
@@ -47,4 +48,23 @@ export class UserResponse {
 
   @Expose()
   createdAt!: Date;
+}
+
+@Exclude()
+export class UserProjectResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+
+  @Expose()
+  status!: ProjectStatus;
+}
+
+@Exclude()
+export class UserDetailsResponse extends UserResponse {
+  @Expose()
+  @Type(() => UserProjectResponse)
+  projects!: UserProjectResponse[];
 }

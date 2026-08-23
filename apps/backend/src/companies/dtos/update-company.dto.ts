@@ -10,16 +10,13 @@ import {
   Matches,
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
-import { NormalizeString } from 'src/lib/decorators';
 import { WeekDay } from '../enum/week-day.enum';
+import { TrimString } from 'src/lib/decorators/trim-string.decorator';
 
 export class UpdateCompanyDto {
   @IsOptional()
   @IsString()
-  @NormalizeString()
-  @Transform(({ value }: TransformFnParams): string | undefined =>
-    typeof value === 'string' ? value.trim() : value,
-  )
+  @TrimString()
   @Length(2, 255)
   companyName?: string;
 

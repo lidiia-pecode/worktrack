@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
-import { PasswordInput } from "@/app/components/auth/components/PasswordInput";
+import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { isApiValidationError } from "@/lib/api/errors";

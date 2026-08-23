@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
-import Input from "@/app/components/shared/Input";
+import Input from "@/components/ui/input";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { useAuthActions } from "@/hooks/useAuthActions";
 import { Button } from "@/components/ui/button";

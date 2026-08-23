@@ -10,7 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UserResponse } from './dtos/UserResponse.dto';
+import { UserDetailsResponse, UserResponse } from './dtos/UserResponse.dto';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
 import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
@@ -57,12 +57,12 @@ export class UsersController {
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id')
-  @Serialize(UserResponse)
+  @Serialize(UserDetailsResponse)
   async getUserById(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<User> {
-    return this.usersService.getUserById(id, authUser.companyId);
+  ) {
+    return this.usersService.getUserDetailsById(id, authUser.companyId);
   }
 
   @Role(UserRole.OWNER)
