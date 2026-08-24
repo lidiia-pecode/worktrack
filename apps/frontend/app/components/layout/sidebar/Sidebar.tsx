@@ -10,7 +10,7 @@ import { SidebarNavigation } from "./SidebarNavigation";
 import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
 import { User } from "@/types";
 import { hasManagerAccess } from "@/lib/utils/user";
-import { CloseButton } from "../../shared/CloseButton";
+import { CloseButton } from "../../shared/buttons/CloseButton";
 
 interface SidebarProps {
   user: User;

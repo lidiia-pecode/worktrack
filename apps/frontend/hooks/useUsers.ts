@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { UserRole } from "@/types/enums";
 import { UsersClientApi } from "@/lib/api/resources";
@@ -44,7 +44,7 @@ export const useUsers = () => {
     () =>
       usersQuery.data?.pages
         .flatMap((p) => p.results)
-        .filter((u) => u.role === UserRole.MEMBER) ?? [],
+        .filter((u) => u.role === UserRole.EMPLOYEE) ?? [],
     [usersQuery.data],
   );
 
@@ -65,4 +65,12 @@ export const useUsers = () => {
       isFetchingNextPage: usersQuery.isFetchingNextPage,
     },
   };
+};
+
+export const useUserDetails = (id: string) => {
+  return useQuery({
+    queryKey: queryKeys.users.detail(id),
+    queryFn: () => UsersClientApi.getById(id),
+    enabled: Boolean(id),
+  });
 };

@@ -13,7 +13,7 @@ import {
 } from "@/lib/forms/schemas/profile.schema";
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
-import Input from "../../shared/Input";
+import Input from "../../../../components/ui/input";
 import { SettingsActions } from "../components/SettingsActions";
 import {
   settingsInputClassName,

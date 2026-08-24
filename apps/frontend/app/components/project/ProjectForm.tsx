@@ -6,11 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ReactMarkdown from "react-markdown";
 import * as z from "zod";
 
-import { Status } from "@/types/enums";
 import { DescriptionEditor } from "./DescriptionEditor";
 import { Activity, Users } from "lucide-react";
 import { StatusMenu } from "../shared/StatusMenu";
 import { FormSection } from "../shared/FormSection";
+import { ProjectStatus } from "@/types/enums";
 
 const projectSchema = z.object({
   name: z
@@ -18,7 +18,7 @@ const projectSchema = z.object({
     .min(3, "Name must be at least 3 characters")
     .nonempty("Name is required"),
   description: z.string().optional(),
-  status: z.enum(Status),
+  status: z.enum(ProjectStatus),
 });
 
 export type ProjectFormData = z.infer<typeof projectSchema>;

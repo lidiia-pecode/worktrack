@@ -6,7 +6,14 @@ export const queryKeys = {
 
   teams: {
     all: ["teams"] as const,
+
     lists: () => [...queryKeys.teams.all, "list"] as const,
+
+    list: (page: number) => [...queryKeys.teams.lists(), page] as const,
+
+    infinite: () => [...queryKeys.teams.all, "infinite"] as const,
+
+    detail: (id: string) => [...queryKeys.teams.all, "detail", id] as const,
   },
 
   projects: {
@@ -74,5 +81,12 @@ export const queryKeys = {
 
   auth: {
     me: () => ["me"] as const,
+  },
+
+  invitations: {
+    all: ["invitations"] as const,
+
+    validate: (token: string) =>
+      [...queryKeys.invitations.all, "validate", token] as const,
   },
 };

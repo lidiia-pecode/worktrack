@@ -1,16 +1,33 @@
-import { User } from "@/types";
-import { fullName, initials } from "../../../lib/utils/user";
+import { AvatarUser } from "@/types";
+import { cn } from "@/lib/utils/cn";
+import { fullName, initials } from "@/lib/utils/user";
 
-type AvatarProps = { user: User; size?: "sm" | "md" };
+const sizeClasses = {
+  xs: "size-6 text-[10px]",
+  sm: "size-7 text-[10px]",
+  md: "size-9 text-xs",
+  lg: "size-11 text-sm",
+} as const;
 
-export const Avatar = ({ user, size = "sm" }: AvatarProps) => {
-  const sizeClass = size === "sm" ? "size-7 text-[10px]" : "size-6 text-[10px]";
+interface AvatarProps {
+  user: AvatarUser;
+  size?: keyof typeof sizeClasses;
+  className?: string;
+}
+
+export function Avatar({ user, size = "sm", className }: AvatarProps) {
   return (
     <div
       title={fullName(user)}
-      className={`${sizeClass} rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 text-white font-semibold flex items-center justify-center ring-2 ring-white shrink-0`}
+      className={cn(
+        "flex shrink-0 items-center justify-center rounded-full",
+        "bg-gradient-to-br from-brand to-brand-secondary font-semibold text-brand-foreground",
+        "ring-2 ring-card",
+        sizeClasses[size],
+        className,
+      )}
     >
       {initials(user)}
     </div>
   );
-};
+}

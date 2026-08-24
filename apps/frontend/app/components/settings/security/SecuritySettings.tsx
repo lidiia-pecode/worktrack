@@ -16,7 +16,7 @@ import {
   settingsInputClassName,
   settingsLabelClassName,
 } from "../styles/settings-styles";
-import { PasswordInput } from "../../auth/components/PasswordInput";
+import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/useAuth";
 import { PUBLIC_BACKEND_URL } from "@/lib/constants";

@@ -1,16 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCompany } from "@/hooks/useCompany";
 
-import Input from "@/app/components/shared/Input";
-import { StepActions } from "./StepActions";
+import { useCompany } from "@/hooks/useCompany";
+import Input from "@/components/ui/input";
 import {
   CompanyFormValues,
   companySchema,
 } from "@/lib/forms/schemas/company.schema";
-import { useEffect } from "react";
+import { OnboardingStepHeader } from "./OnboardingStepHeader";
+import { StepActions } from "./StepActions";
 
 interface StepProps {
   onContinue: () => void;
@@ -19,16 +20,14 @@ interface StepProps {
   showBack?: boolean;
 }
 
-export const CompanyNameStep = ({
+export function CompanyNameStep({
   onContinue,
   onBack,
   onSkip,
   showBack = false,
-}: StepProps) => {
+}: StepProps) {
   const { company, actions } = useCompany();
   const isPending = actions.update.isPending;
-
-  console.log(company?.companyName);
 
   const {
     register,
@@ -57,19 +56,15 @@ export const CompanyNameStep = ({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          What is your company name?
-        </h1>
-        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-          This will be used as the primary display name for your workspace.
-        </p>
-      </div>
+      <OnboardingStepHeader
+        title="What is your company name?"
+        description="This will be used as the primary display name for your workspace."
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <Input
           label="Company Name"
-          placeholder={company?.companyName}
+          placeholder="Your company name"
           {...register("companyName")}
           error={errors.companyName?.message}
           disabled={isPending}
@@ -85,4 +80,4 @@ export const CompanyNameStep = ({
       </form>
     </div>
   );
-};
+}

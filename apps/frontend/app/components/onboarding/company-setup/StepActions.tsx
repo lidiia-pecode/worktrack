@@ -12,14 +12,14 @@ interface StepActionsProps {
   submitLabel?: string;
 }
 
-export const StepActions = ({
+export function StepActions({
   onBack,
   onSkip,
   showBack = true,
   isPending,
   submitLabel = "Continue",
-}: StepActionsProps) => {
-  const canGoBack = showBack && onBack;
+}: StepActionsProps) {
+  const canGoBack = showBack && Boolean(onBack);
 
   return (
     <div className="space-y-3 pt-3">
@@ -33,7 +33,7 @@ export const StepActions = ({
         {submitLabel}
       </Button>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         {canGoBack ? (
           <Button
             type="button"
@@ -41,13 +41,13 @@ export const StepActions = ({
             size="sm"
             onClick={onBack}
             disabled={isPending}
-            className="text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-white/[0.06] dark:hover:text-white"
+            className="text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="size-4" />
             Back
           </Button>
         ) : (
-          <div />
+          <span />
         )}
 
         <Button
@@ -56,11 +56,11 @@ export const StepActions = ({
           size="sm"
           onClick={onSkip}
           disabled={isPending}
-          className="text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-white/[0.06] dark:hover:text-slate-300"
+          className="text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Skip for now
         </Button>
       </div>
     </div>
   );
-};
+}

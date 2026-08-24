@@ -1,12 +1,13 @@
-import { User } from "@/types";
+import { AvatarUser, User } from "@/types";
 import { UserRole } from "@/types/enums";
 
-export const initials = (u: User | null) => {
+export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
   return `${u.firstName[0]}${u.lastName[0]}`.toUpperCase();
 };
 
-export const fullName = (u: User) => `${u.firstName} ${u.lastName}`;
+export const fullName = (u: User | AvatarUser) =>
+  `${u.firstName} ${u.lastName}`;
 
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;

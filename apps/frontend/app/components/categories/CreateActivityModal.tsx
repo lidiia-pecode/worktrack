@@ -8,7 +8,7 @@ import { Modal } from "../shared/Modal/Modal";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 import { ActCategoryForm, ActCategoryFormData } from "./ActCategoryForm";
 import { Button } from "@/components/ui/button";
-import { CloseButton } from "../shared/CloseButton";
+import { CloseButton } from "../shared/buttons/CloseButton";
 import { ActivityStatus } from "@/types/enums";
 
 export function CreateActCategoryModal() {

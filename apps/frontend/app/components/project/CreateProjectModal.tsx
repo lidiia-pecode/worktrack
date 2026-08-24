@@ -17,7 +17,7 @@ import { ActivityChip } from "../shared/ActivityChip";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 import { SelectionDrawer } from "../shared/Selectiondrawer";
 import { Button } from "@/components/ui/button";
-import { CloseButton } from "../shared/CloseButton";
+import { CloseButton } from "../shared/buttons/CloseButton";
 
 export function CreateProjectModal() {
   const [isOpen, setIsOpen] = useState(false);

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { SearchInput } from "./SearchInput";
+import { SearchInput } from "./inputs/SearchInput";
 import { PickerRow } from "./PickerRow";
-import { CloseButton } from "./CloseButton";
+import { CloseButton } from "./buttons";
 
 export type SelectionDrawerProps<T> = {
   open: boolean;

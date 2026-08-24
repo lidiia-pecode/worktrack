@@ -31,6 +31,7 @@ export function createCrudClient<
   TUpdate,
   TList,
   TQuery = never,
+  TDetails = TEntity,
 >({ endpoint }: CrudClientConfig) {
   const client = createClient({ endpoint });
 
@@ -50,7 +51,7 @@ export function createCrudClient<
       return client.get<TList>(suffix ? `?${suffix}` : "");
     },
 
-    getById: (id: string) => client.get<TEntity>(`/${id}`),
+    getById: (id: string) => client.get<TDetails>(`/${id}`),
 
     create: (data: TCreate) => client.post<TEntity>("", data),
 

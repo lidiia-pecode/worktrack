@@ -32,7 +32,7 @@ export interface Team {
   memberships?: TeamMembership[];
   createdAt: string;
   updatedAt: string;
-  company?: Company;
+  company: Company;
 }
 
 // Payloads

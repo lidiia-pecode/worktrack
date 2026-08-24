@@ -10,7 +10,7 @@ import { useActivityCategories } from "@/hooks/useActivityCategories";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { Button } from "@/components/ui/button";
-import { CloseButton } from "../shared/CloseButton";
+import { CloseButton } from "../shared/buttons/CloseButton";
 import { ActivityStatus } from "@/types/enums";
 
 export function CreateActivityModal() {

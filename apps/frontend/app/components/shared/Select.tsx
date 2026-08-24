@@ -1,38 +1,85 @@
 "use client";
 
-import { forwardRef } from "react";
+import { forwardRef, useId } from "react";
 import { ChevronDown } from "lucide-react";
 
+import { cn } from "@/lib/utils/cn";
+
 type SelectProps = {
+  label?: string;
   error?: string;
+  description?: string;
 } & React.SelectHTMLAttributes<HTMLSelectElement>;
 
-export const Select = forwardRef<HTMLSelectElement, SelectProps>(
-  ({ error, className = "", children, ...props }, ref) => {
+const Select = forwardRef<HTMLSelectElement, SelectProps>(
+  (
+    { label, error, description, id, className, disabled, children, ...props },
+    ref,
+  ) => {
+    const generatedId = useId();
+    const selectId = id ?? generatedId;
+
     return (
       <div className="w-full">
+        {label && (
+          <label
+            htmlFor={selectId}
+            className="block text-sm font-medium text-foreground"
+          >
+            {label}
+          </label>
+        )}
+
         <div className="relative">
           <select
             ref={ref}
-            className={`
-              w-full appearance-none px-4 py-3 pr-10 rounded-md
-              bg-white border
-              ${error ? "border-red-400" : "border-slate-300"}
-              focus:outline-none focus:border-blue-300 focus:ring-1 focus:ring-blue-300
-              text-base transition disabled:bg-zinc-50 disabled:text-zinc-400
-              ${className}
-            `}
+            id={selectId}
+            disabled={disabled}
+            aria-invalid={!!error}
+            aria-describedby={
+              error
+                ? `${selectId}-error`
+                : description
+                  ? `${selectId}-description`
+                  : undefined
+            }
+            className={cn(
+              "w-full min-w-0 appearance-none rounded-lg border px-3.5 py-2.5 pr-9 text-sm outline-none",
+              "bg-input text-input-foreground",
+              "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+
+              error
+                ? "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+                : "border-input-placeholder/50",
+
+              className,
+            )}
             {...props}
           >
             {children}
           </select>
+
           <ChevronDown
-            size={16}
-            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400"
+            aria-hidden="true"
+            className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
           />
         </div>
 
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {description && !error && (
+          <p
+            id={`${selectId}-description`}
+            className="text-xs text-muted-foreground"
+          >
+            {description}
+          </p>
+        )}
+
+        {error && (
+          <p id={`${selectId}-error`} className="text-xs text-destructive">
+            {error}
+          </p>
+        )}
       </div>
     );
   },

@@ -40,18 +40,16 @@ export enum TeamStatus {
 
 export enum TeamRole {
   MEMBER = "MEMBER",
-  LEAD = "LEAD",
+  MANAGER = "MANAGER",
 }
 
 export enum UserRole {
   OWNER = "OWNER",
-  // ADMIN = "ADMIN",
   MANAGER = "MANAGER",
   EMPLOYEE = "EMPLOYEE",
 }
 
 export enum UserStatus {
-  INVITED = "INVITED",
   ACTIVE = "ACTIVE",
   SUSPENDED = "SUSPENDED",
 }

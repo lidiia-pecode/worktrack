@@ -1,10 +1,10 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { Status } from "@/types/enums";
 import { cn } from "@/lib/utils/cn";
+import { ProjectStatus } from "@/types/enums";
 
-type StatusFilter = "all" | Status;
+type StatusFilter = "all" | ProjectStatus;
 
 type FilterBarProps = {
   search: string;
@@ -17,8 +17,8 @@ type FilterBarProps = {
 
 const FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
   { value: "all", label: "All" },
-  { value: Status.ACTIVE, label: "Active" },
-  { value: Status.ARCHIVED, label: "Archived" },
+  { value: ProjectStatus.ACTIVE, label: "Active" },
+  { value: ProjectStatus.ARCHIVED, label: "Archived" },
 ];
 
 export function FilterBar({
@@ -47,7 +47,8 @@ export function FilterBar({
         {FILTER_OPTIONS.map((option) => {
           const isActive = statusFilter === option.value;
           const showCount =
-            option.value === Status.ARCHIVED && archivedCount !== undefined;
+            option.value === ProjectStatus.ARCHIVED &&
+            archivedCount !== undefined;
 
           return (
             <button

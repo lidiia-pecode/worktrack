@@ -13,8 +13,8 @@ const buttonVariants = cva(
     "text-sm font-semibold whitespace-nowrap",
     "transition-all duration-200",
     "outline-none select-none",
-    "focus-visible:ring-2 focus-visible:ring-blue-500/50",
-    "active:scale-[0.98]",
+    "focus-visible:ring-2 focus-visible:ring-ring/50",
+    "active:scale-[0.98] lg:cursor-pointer",
     "disabled:pointer-events-none disabled:opacity-50",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0",
     "[&_svg:not([class*='size-'])]:size-4",
@@ -23,62 +23,71 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          "bg-blue-600 text-white",
-          "shadow-lg shadow-blue-500/20",
-          "hover:bg-blue-700",
-          "focus-visible:ring-blue-500/50",
+          "bg-brand text-brand-foreground",
+          "shadow-lg shadow-glow-primary",
+          "hover:bg-brand/90",
+        ],
+
+        complete: [
+          "bg-brand-secondary text-brand-foreground",
+          "shadow-lg shadow-glow-secondary",
+          "hover:bg-brand-secondary/90",
         ],
 
         secondary: [
-          "bg-blue-50 text-blue-600",
-          "border-blue-100",
-          "hover:bg-blue-100 hover:border-blue-200",
-          "dark:bg-blue-500/10 dark:text-blue-400",
-          "dark:border-blue-500/20",
-          "dark:hover:bg-blue-500/20",
+          "border border-border",
+          "bg-secondary text-secondary-foreground",
+          "hover:bg-secondary/80",
         ],
 
         outline: [
-          "border-slate-200 bg-white text-slate-700",
-          "hover:bg-slate-50 hover:border-slate-300",
-          "dark:border-white/10 dark:bg-white/[0.03]",
-          "dark:text-slate-200",
-          "dark:hover:bg-white/[0.06]",
+          "border border-border",
+          "bg-transparent text-foreground",
+          "hover:bg-accent hover:text-accent-foreground",
         ],
 
         ghost: [
-          "bg-transparent text-slate-500",
-          "hover:bg-slate-100 hover:text-slate-900",
-          "dark:text-slate-400",
-          "dark:hover:bg-white/[0.06] dark:hover:text-white",
+          "bg-transparent text-muted-foreground",
+          "hover:bg-muted hover:text-foreground",
         ],
 
         destructive: [
-          "bg-red-50 text-red-600",
-          "border-red-100",
-          "hover:bg-red-100",
-          "dark:bg-red-500/10 dark:text-red-400",
-          "dark:border-red-500/20",
+          "border border-destructive/20",
+          "bg-destructive/10 text-destructive",
+          "hover:bg-destructive/20",
+        ],
+
+        success: [
+          "border border-success/20",
+          "bg-success/10 text-success",
+          "hover:bg-success/20",
+        ],
+
+        warning: [
+          "border border-warning/20",
+          "bg-warning/10 text-warning",
+          "hover:bg-warning/20",
         ],
 
         gradient: [
-          "bg-gradient-to-r from-blue-600 to-indigo-500",
-          "text-white",
-          "shadow-lg shadow-blue-500/20",
-          "hover:from-blue-700 hover:to-indigo-600",
-        ],
-
-        google: [
-          "w-full",
-          "bg-slate-700 text-white",
-          "shadow-lg shadow-slate-900/10",
-          "hover:bg-slate-600",
+          "bg-gradient-to-r from-brand to-brand-secondary",
+          "text-brand-foreground",
+          "shadow-lg shadow-glow-primary",
+          "hover:from-brand/90 hover:to-brand-secondary/90",
         ],
 
         link: [
-          "h-auto bg-transparent p-0 text-blue-600",
-          "hover:text-blue-700 hover:underline",
-          "dark:text-blue-400 dark:hover:text-blue-300",
+          "h-auto bg-transparent p-0 text-primary",
+          "hover:text-primary/80 hover:underline",
+        ],
+
+        neutral: [
+          "border border-neutral-300",
+          "bg-neutral-100 text-neutral-800",
+          "shadow-sm",
+          "hover:border-neutral-400",
+          "hover:bg-neutral-200",
+          "hover:text-neutral-900",
         ],
       },
 

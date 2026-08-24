@@ -2,29 +2,38 @@ import { cn } from "@/lib/utils/cn";
 
 interface GlowBackgroundProps {
   className?: string;
-  intensity?: "subtle" | "default" | "strong";
+  variant?: "auth";
+  animated?: boolean;
 }
 
-const intensityClasses = {
-  subtle: {
-    blue: "bg-blue-600/10",
-    indigo: "bg-indigo-600/7",
+const variantClasses = {
+  auth: {
+    silverTop:
+      "absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-secondary/25 blur-[100px]",
+    silverBottom:
+      "absolute -bottom-48 -right-32 h-[560px] w-[560px] rounded-full bg-secondary/20 blur-[120px]",
+    cyan: "absolute right-[-120px] top-[28%] h-[360px] w-[360px] rounded-full bg-brand/20 blur-[110px]",
   },
-  default: {
-    blue: "bg-blue-600/15",
-    indigo: "bg-indigo-600/10",
-  },
-  strong: {
-    blue: "bg-blue-600/20",
-    indigo: "bg-indigo-600/15",
-  },
-};
+} as const;
 
 export function GlowBackground({
   className,
-  intensity = "default",
+  variant = "auth",
+  animated = false,
 }: GlowBackgroundProps) {
-  const colors = intensityClasses[intensity];
+  const styles = variantClasses[variant];
+
+  const animation = animated
+    ? {
+        silverTop: "animate-glow-slow",
+        silverBottom: "animate-glow-slow-reverse",
+        cyan: "animate-glow-pulse",
+      }
+    : {
+        silverTop: "",
+        silverBottom: "",
+        cyan: "",
+      };
 
   return (
     <div
@@ -34,36 +43,14 @@ export function GlowBackground({
         className,
       )}
     >
-      {/* Top-left glow */}
-      <div
-        className={cn(
-          "absolute -left-32 -top-32 h-[500px] w-[500px]",
-          "rounded-full blur-[120px]",
-          colors.blue,
-          "animate-glow-slow",
-        )}
-      />
+      {/* Silver — top left */}
+      <div className={cn(styles.silverTop, animation.silverTop)} />
 
-      {/* Bottom-right glow */}
-      <div
-        className={cn(
-          "absolute -bottom-32 -right-32 h-[450px] w-[450px]",
-          "rounded-full blur-[110px]",
-          colors.indigo,
-          "animate-glow-slow-reverse",
-        )}
-      />
+      {/* Silver — bottom right */}
+      <div className={cn(styles.silverBottom, animation.silverBottom)} />
 
-      {/* Center ambient glow */}
-      <div
-        className={cn(
-          "absolute left-1/2 top-1/3",
-          "h-[300px] w-[500px] -translate-x-1/2",
-          "rounded-full blur-[140px]",
-          "bg-blue-600/5",
-          "animate-glow-pulse",
-        )}
-      />
+      {/* Pacific Cyan accent */}
+      <div className={cn(styles.cyan, animation.cyan)} />
     </div>
   );
 }

@@ -8,3 +8,5 @@ export const PUBLIC_BACKEND_URL =
 export const GOOGLE_SIGNUP_URL = `${PUBLIC_BACKEND_URL}/auth/google/signup`;
 
 export const GOOGLE_LOGIN_URL = `${PUBLIC_BACKEND_URL}/auth/google`;
+
+export const GOOGLE_INVITATION_URL = `${PUBLIC_BACKEND_URL}/invitations/google`;

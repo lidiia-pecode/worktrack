@@ -1,57 +1,72 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
 
 import {
+  InvitationFormInputs,
+  invitationSchema,
   LoginFormInputs,
   loginSchema,
   SignUpFormInputs,
   signupSchema,
 } from "@/lib/forms/schemas/auth.schema";
-
 import { applyServerErrors } from "@/lib/forms/utils";
-import { isApiValidationError } from "@/lib/api/errors";
+import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
+import {
+  GOOGLE_INVITATION_URL,
+  GOOGLE_LOGIN_URL,
+  GOOGLE_SIGNUP_URL,
+} from "@/lib/constants";
 
-import Input from "../shared/Input";
-
-import { PasswordInput } from "./components/PasswordInput";
-import { GOOGLE_LOGIN_URL, GOOGLE_SIGNUP_URL } from "@/lib/constants";
 import { useAuthActions } from "@/hooks/useAuthActions";
+import { useCompleteInvitation } from "@/hooks/useInvitation";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import Input from "@/components/ui/input";
+import { GoogleButton } from "../shared/buttons/GoogleButton";
+import { PasswordInput } from "../shared/inputs";
+
+type AuthFormMode = "login" | "signup" | "invitation";
 
 interface AuthFormProps {
-  mode: "login" | "signup";
+  mode: AuthFormMode;
+  invitation?: {
+    token: string;
+    email: string;
+    role: string;
+  };
 }
 
-export const AuthForm = ({ mode }: AuthFormProps) => {
-  const actions = useAuthActions();
-
-  const isExisting = mode === "login";
+export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
   const router = useRouter();
 
-  const handleGoogleAuth = () => {
-    window.location.replace(isExisting ? GOOGLE_LOGIN_URL : GOOGLE_SIGNUP_URL);
-  };
+  const actions = useAuthActions();
+  const invitationActions = useCompleteInvitation();
 
-  const {
-    register: loginRegister,
-    handleSubmit: handleLoginSubmit,
-    setError: setLoginError,
-    formState: { errors: loginErrors },
-  } = useForm<LoginFormInputs>({
+  const isLogin = mode === "login";
+  const isSignup = mode === "signup";
+  const isInvitation = mode === "invitation";
+
+  const loginForm = useForm<LoginFormInputs>({
     resolver: zodResolver(loginSchema),
   });
 
-  const {
-    register: signupRegister,
-    handleSubmit: handleSignUpSubmit,
-    setError: setSignupError,
-    formState: { errors: signupErrors },
-  } = useForm<SignUpFormInputs>({
+  const signupForm = useForm<SignUpFormInputs>({
     resolver: zodResolver(signupSchema),
+  });
+
+  const invitationForm = useForm<InvitationFormInputs>({
+    resolver: zodResolver(invitationSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      password: "",
+      confirmPassword: "",
+    },
   });
 
   const onLoginSubmit = async (data: LoginFormInputs) => {
@@ -60,141 +75,283 @@ export const AuthForm = ({ mode }: AuthFormProps) => {
 
       router.replace("/");
       router.refresh();
-    } catch (err: unknown) {
-      if (!isApiValidationError(err)) return;
+    } catch (error: unknown) {
+      if (!isApiValidationError(error)) return;
 
-      applyServerErrors(err, setLoginError);
+      applyServerErrors(error, loginForm.setError);
     }
   };
 
-  const onSignUpSubmit = async (data: SignUpFormInputs) => {
+  const onSignupSubmit = async (data: SignUpFormInputs) => {
     try {
       await actions.signup.mutateAsync(data);
 
       router.replace("/onboarding");
       router.refresh();
-    } catch (err: unknown) {
-      if (!isApiValidationError(err)) return;
+    } catch (error: unknown) {
+      if (!isApiValidationError(error)) return;
 
-      applyServerErrors(err, setSignupError);
+      applyServerErrors(error, signupForm.setError);
     }
   };
 
-  const errors = isExisting ? loginErrors : signupErrors;
+  const onInvitationSubmit = async (data: InvitationFormInputs) => {
+    if (!invitation?.token) return;
+
+    try {
+      await invitationActions.password.mutateAsync({
+        token: invitation.token,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        password: data.password,
+      });
+    } catch (error: unknown) {
+      if (!isApiValidationError(error)) return;
+
+      applyServerErrors(error, invitationForm.setError);
+    }
+  };
+
+  const handleGoogleAuth = () => {
+    if (isInvitation) {
+      if (!invitation?.token) return;
+
+      window.location.replace(
+        `${GOOGLE_INVITATION_URL}?token=${encodeURIComponent(
+          invitation.token,
+        )}`,
+      );
+
+      return;
+    }
+
+    window.location.replace(isLogin ? GOOGLE_LOGIN_URL : GOOGLE_SIGNUP_URL);
+  };
+
+  const isSubmitting =
+    actions.login.isPending ||
+    actions.signup.isPending ||
+    invitationActions.password.isPending;
 
   return (
-    <div className="w-full">
-      <div className="mb-8">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
-          {isExisting ? "Welcome back" : "Create your workspace"}
+    <div className="w-full rounded-2xl border border-border/80 bg-card/90 p-7 shadow-[0_18px_50px_-30px_rgba(60,45,40,0.35)] backdrop-blur-sm sm:p-8">
+      <div className="mb-7">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          {isLogin
+            ? "Welcome back"
+            : isSignup
+              ? "Create your workspace"
+              : "Complete your account"}
         </h2>
 
-        <p className="text-sm text-slate-500 mt-1.5">
-          {isExisting
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          {isLogin
             ? "Enter your credentials to access your workspace."
-            : "Set up your account and get started with Worktrack."}
+            : isSignup
+              ? "Set up your account and get started with Worktrack."
+              : "Create your account to join this workspace."}
         </p>
       </div>
 
-      <form
-        className="flex flex-col space-y-4"
-        onSubmit={
-          isExisting
-            ? handleLoginSubmit(onLoginSubmit)
-            : handleSignUpSubmit(onSignUpSubmit)
-        }
-      >
-        {!isExisting && (
-          <>
-            <div className="flex gap-3">
-              <Input
-                placeholder="First Name"
-                {...signupRegister("firstName")}
-                error={signupErrors.firstName?.message}
-              />
+      {isInvitation && invitation && (
+        <div className="mb-7 rounded-xl border border-border/80 bg-muted/30 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Email</span>
 
-              <Input
-                placeholder="Last Name"
-                {...signupRegister("lastName")}
-                error={signupErrors.lastName?.message}
-              />
-            </div>
+            <span className="truncate text-sm font-medium text-foreground">
+              {invitation.email}
+            </span>
+          </div>
 
-            <Input
-              placeholder="Company Name"
-              {...signupRegister("companyName")}
-              error={signupErrors.companyName?.message}
-            />
-          </>
-        )}
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Role</span>
 
-        <Input
-          placeholder="you@example.com"
-          {...(isExisting ? loginRegister("email") : signupRegister("email"))}
-          error={errors.email?.message}
-        />
+            <Badge variant="neutral">{invitation.role}</Badge>
+          </div>
+        </div>
+      )}
 
-        <PasswordInput
-          placeholder="Password"
-          {...(isExisting
-            ? loginRegister("password")
-            : signupRegister("password"))}
-          error={errors.password?.message}
-        />
+      {isLogin && (
+        <form
+          className="flex flex-col space-y-4"
+          onSubmit={loginForm.handleSubmit(onLoginSubmit)}
+        >
+          <Input
+            placeholder="you@example.com"
+            autoComplete="email"
+            {...loginForm.register("email")}
+            error={loginForm.formState.errors.email?.message}
+            disabled={isSubmitting}
+          />
 
-        {isExisting && (
+          <PasswordInput
+            placeholder="Password"
+            autoComplete="current-password"
+            {...loginForm.register("password")}
+            error={loginForm.formState.errors.password?.message}
+            disabled={isSubmitting}
+          />
+
           <div className="-mt-1 flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-xs text-blue-600 font-semibold hover:underline"
+              className="text-xs font-medium text-brand transition-colors hover:text-brand/80 hover:underline"
             >
               Forgot your password?
             </Link>
           </div>
-        )}
 
-        <Button
-          type="submit"
-          isLoading={
-            isExisting ? actions.login.isPending : actions.signup.isPending
-          }
+          <Button
+            type="submit"
+            className="w-full"
+            isLoading={actions.login.isPending}
+            disabled={isSubmitting}
+          >
+            Sign In
+          </Button>
+        </form>
+      )}
+
+      {isSignup && (
+        <form
+          className="flex flex-col space-y-4"
+          onSubmit={signupForm.handleSubmit(onSignupSubmit)}
         >
-          {isExisting ? "Sign In" : "Create account"}
-        </Button>
-      </form>
+          <div className="flex gap-3">
+            <Input
+              placeholder="First Name"
+              autoComplete="given-name"
+              {...signupForm.register("firstName")}
+              error={signupForm.formState.errors.firstName?.message}
+              disabled={isSubmitting}
+            />
 
-      <div className="flex items-center my-6">
-        <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+            <Input
+              placeholder="Last Name"
+              autoComplete="family-name"
+              {...signupForm.register("lastName")}
+              error={signupForm.formState.errors.lastName?.message}
+              disabled={isSubmitting}
+            />
+          </div>
 
-        <span className="px-3 text-xs uppercase tracking-wide text-slate-400">
+          <Input
+            placeholder="Company Name"
+            autoComplete="organization"
+            {...signupForm.register("companyName")}
+            error={signupForm.formState.errors.companyName?.message}
+            disabled={isSubmitting}
+          />
+
+          <Input
+            placeholder="you@example.com"
+            autoComplete="email"
+            {...signupForm.register("email")}
+            error={signupForm.formState.errors.email?.message}
+            disabled={isSubmitting}
+          />
+
+          <PasswordInput
+            placeholder="Password"
+            autoComplete="new-password"
+            {...signupForm.register("password")}
+            error={signupForm.formState.errors.password?.message}
+            disabled={isSubmitting}
+          />
+
+          <Button
+            type="submit"
+            className="w-full"
+            isLoading={actions.signup.isPending}
+            disabled={isSubmitting}
+          >
+            Create account
+          </Button>
+        </form>
+      )}
+
+      {isInvitation && (
+        <form
+          className="flex flex-col space-y-4"
+          onSubmit={invitationForm.handleSubmit(onInvitationSubmit)}
+        >
+          <div className="flex gap-3">
+            <Input
+              placeholder="First Name"
+              autoComplete="given-name"
+              {...invitationForm.register("firstName")}
+              error={invitationForm.formState.errors.firstName?.message}
+              disabled={isSubmitting}
+            />
+
+            <Input
+              placeholder="Last Name"
+              autoComplete="family-name"
+              {...invitationForm.register("lastName")}
+              error={invitationForm.formState.errors.lastName?.message}
+              disabled={isSubmitting}
+            />
+          </div>
+
+          <PasswordInput
+            placeholder="Password"
+            autoComplete="new-password"
+            {...invitationForm.register("password")}
+            error={invitationForm.formState.errors.password?.message}
+            disabled={isSubmitting}
+          />
+
+          <PasswordInput
+            placeholder="Confirm Password"
+            autoComplete="new-password"
+            {...invitationForm.register("confirmPassword")}
+            error={invitationForm.formState.errors.confirmPassword?.message}
+            disabled={isSubmitting}
+          />
+
+          {invitationActions.password.isError && (
+            <p className="text-sm text-destructive">
+              {getErrorMessage(invitationActions.password.error)}
+            </p>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            isLoading={invitationActions.password.isPending}
+            disabled={isSubmitting}
+          >
+            Create account
+          </Button>
+        </form>
+      )}
+
+      <div className="my-5 flex items-center gap-3">
+        <div className="h-px flex-1 bg-border" />
+
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           or continue with
         </span>
 
-        <div className="flex-1 h-px bg-slate-200 dark:bg-white/10" />
+        <div className="h-px flex-1 bg-border" />
       </div>
 
-      <Button onClick={handleGoogleAuth} variant="google">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/images/google-icon-logo.svg"
-          alt="Google"
-          className="w-5 h-5"
-        />
-        Continue with Google
-      </Button>
+      <GoogleButton onClick={handleGoogleAuth} disabled={isSubmitting} />
 
-      <p className="text-sm text-slate-500 dark:text-slate-400 text-center mt-6">
-        {isExisting
-          ? "Don't have an account yet? "
-          : "Already have an account? "}
+      {!isInvitation && (
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          {isLogin
+            ? "Don't have an account yet? "
+            : "Already have an account? "}
 
-        <Link
-          href={isExisting ? "/register" : "/login"}
-          className="text-blue-600 font-semibold hover:underline"
-        >
-          {isExisting ? "Sign up" : "Sign in"}
-        </Link>
-      </p>
+          <Link
+            href={isLogin ? "/register" : "/login"}
+            className="ml-1 font-medium text-brand transition-colors hover:text-brand/80 hover:underline"
+          >
+            {isLogin ? "Sign up" : "Sign in"}
+          </Link>
+        </p>
+      )}
     </div>
   );
 };

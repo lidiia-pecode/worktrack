@@ -22,7 +22,7 @@ import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
 import { SettingsField } from "../components/SettingsField";
-import Input from "../../shared/Input";
+import Input from "../../../../components/ui/input";
 import { useCompany } from "@/hooks/useCompany";
 import { CompanyCurrency, WeekDay } from "@/types/enums";
 import {

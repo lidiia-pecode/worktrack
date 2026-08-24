@@ -1,14 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCompany } from "@/hooks/useCompany";
 
-import { StepActions } from "./StepActions";
+import { useCompany } from "@/hooks/useCompany";
 import {
   CompanyFormValues,
   companySchema,
 } from "@/lib/forms/schemas/company.schema";
+import { OnboardingStepHeader } from "./OnboardingStepHeader";
+import { StepActions } from "./StepActions";
+import { CompanyCurrency } from "@/types/enums";
 
 const CURRENCIES = [
   { label: "USD ($)", value: "USD" },
@@ -23,18 +26,29 @@ interface StepProps {
   onSkip: () => void;
 }
 
-export const CurrencyStep = ({ onContinue, onBack, onSkip }: StepProps) => {
+export function CurrencyStep({ onContinue, onBack, onSkip }: StepProps) {
   const { company, actions } = useCompany();
   const isPending = actions.update.isPending;
 
   const {
     register,
+    reset,
     handleSubmit,
     formState: { errors },
   } = useForm<Pick<CompanyFormValues, "currency">>({
     resolver: zodResolver(companySchema.pick({ currency: true })),
-    defaultValues: { currency: company?.currency },
+    defaultValues: {
+      currency: CompanyCurrency.USD,
+    },
   });
+
+  useEffect(() => {
+    if (!company) return;
+
+    reset({
+      currency: company.currency ?? "USD",
+    });
+  }, [company, reset]);
 
   const onSubmit = async (data: Pick<CompanyFormValues, "currency">) => {
     await actions.update.mutateAsync(data);
@@ -43,33 +57,31 @@ export const CurrencyStep = ({ onContinue, onBack, onSkip }: StepProps) => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          Select primary currency
-        </h1>
-        <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400">
-          Used for project costing, billing, and financial summaries.
-        </p>
-      </div>
+      <OnboardingStepHeader
+        title="Select primary currency"
+        description="Used for project costing, billing, and financial summaries."
+      />
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-slate-900 dark:text-white">
+          <label className="block text-sm font-medium text-foreground">
             Currency
           </label>
+
           <select
             {...register("currency")}
             disabled={isPending}
-            className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3.5 py-2.5 text-sm text-slate-900 dark:text-white shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:opacity-50"
+            className="h-11 w-full rounded-xl border border-border bg-background px-3.5 text-sm text-foreground shadow-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/15 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {CURRENCIES.map((cur) => (
-              <option key={cur.value} value={cur.value}>
-                {cur.label}
+            {CURRENCIES.map((currency) => (
+              <option key={currency.value} value={currency.value}>
+                {currency.label}
               </option>
             ))}
           </select>
+
           {errors.currency && (
-            <p className="text-xs text-red-500 font-medium mt-1">
+            <p className="text-xs font-medium text-destructive">
               {errors.currency.message}
             </p>
           )}
@@ -79,4 +91,4 @@ export const CurrencyStep = ({ onContinue, onBack, onSkip }: StepProps) => {
       </form>
     </div>
   );
-};
+}

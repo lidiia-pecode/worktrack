@@ -1,31 +1,37 @@
 import { Button } from "@/components/ui/button";
 import { Pencil, Save } from "lucide-react";
-import { CloseButton } from "../CloseButton";
+
+import { CloseButton } from "../buttons/CloseButton";
 
 type ModalHeaderProps = {
-  edit: boolean;
-  isAdmin: boolean;
-  onToggleEdit: () => void;
-  onSave: () => void;
-  onClose: () => void;
   title?: string;
+
+  edit?: boolean;
+  isAdmin?: boolean;
+
+  onToggleEdit?: () => void;
+  onSave?: () => void;
+  onClose: () => void;
 };
 
 export const ModalHeader = ({
-  edit,
-  isAdmin,
+  title = "Details",
+  edit = false,
+  isAdmin = false,
   onToggleEdit,
   onSave,
   onClose,
-  title = "Details",
 }: ModalHeaderProps) => {
+  const showEditActions = isAdmin && onToggleEdit;
+
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 shrink-0">
+    <div className="flex shrink-0 items-center justify-between border-b border-zinc-100 px-6 py-4">
       <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
         {title}
       </p>
+
       <div className="flex items-center gap-2">
-        {isAdmin &&
+        {showEditActions &&
           (edit ? (
             <>
               <Button

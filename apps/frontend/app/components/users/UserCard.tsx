@@ -1,83 +1,105 @@
 "use client";
 
 import { useState } from "react";
+import { Mail, UserRound, UsersRound } from "lucide-react";
 
 import { User } from "@/types";
-import { useUsers } from "@/hooks/useUsers";
-import { EntityCard } from "../shared/EntityCard";
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ROLE_LABELS } from "@/lib/constants";
 import { initials } from "@/lib/utils/user";
+
 import { UpdateUserModal } from "./UpdateUserModal";
 
-type Props = { user: User; canManage: boolean };
+type Props = {
+  user: User;
+  canManage: boolean;
+};
 
-export const UserCard = ({ user, canManage }: Props) => {
+export const UserCard = ({ user }: Props) => {
   const [open, setOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const {
-    actions: { archive },
-  } = useUsers();
 
-  const handleConfirmDelete = async () => {
-    await archive.mutateAsync(user.id);
-    setShowDeleteConfirm(false);
-  };
+  const fullName = `${user.firstName} ${user.lastName}`;
 
   return (
     <>
-      <EntityCard onClick={() => setOpen(true)}>
-        <EntityCard.Header>
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="size-10 shrink-0 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-sm font-semibold">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="
+          group w-full text-left
+          rounded-2xl border border-border
+          bg-card p-5
+          shadow-sm
+          transition
+          hover:-translate-y-0.5
+          hover:border-brand/40
+          hover:shadow-md
+          focus:outline-none
+          focus:ring-2 focus:ring-ring/25
+        "
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {/* Avatar */}
+            <div
+              className="
+                flex size-11 shrink-0 items-center justify-center
+                rounded-xl
+                bg-brand-subtle
+                text-sm font-semibold
+                text-primary
+              "
+            >
               {initials(user)}
             </div>
 
             <div className="min-w-0">
-              <EntityCard.Title>
-                {user.firstName} {user.lastName}
-              </EntityCard.Title>
+              <h3 className="truncate text-sm font-semibold text-card-foreground">
+                {fullName}
+              </h3>
 
-              <EntityCard.Description className="truncate">
-                {user.email}
-              </EntityCard.Description>
-
-              {user.position && (
-                <p className="text-xs text-zinc-500 truncate mt-0.5">
-                  {user.position}
-                </p>
-              )}
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                {user.position || "No position"}
+              </p>
             </div>
           </div>
-        </EntityCard.Header>
 
-        <EntityCard.Footer>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 text-violet-700 ring-1 ring-violet-200 px-3 py-1 text-xs font-medium">
-            {user.role}
+          {/* Role */}
+          <span
+            className="
+              shrink-0 rounded-full
+              bg-accent px-2.5 py-1
+              text-[11px] font-medium
+              text-accent-foreground
+            "
+          >
+            {ROLE_LABELS[user.role] ?? user.role}
           </span>
-          <EntityCard.Meta>{user.username}</EntityCard.Meta>
-        </EntityCard.Footer>
-      </EntityCard>
+        </div>
 
-      {open && (
-        <UpdateUserModal
-          user={user}
-          isAdmin={canManage}
-          onClose={() => setOpen(false)}
-        />
-      )}
+        <div className="mt-5 space-y-2.5 border-t border-border pt-4">
+          <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+            <Mail className="size-3.5 shrink-0" />
+            <span className="truncate">{user.email}</span>
+          </div>
 
-      {canManage && (
-        <ConfirmModal
-          isOpen={showDeleteConfirm}
-          onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={handleConfirmDelete}
-          loading={archive.isPending}
-          title={`Delete "${user.firstName} ${user.lastName}"?`}
-          message="This user will be permanently removed. This action cannot be undone."
-          confirmText="Delete"
-          variant="danger"
-        />
-      )}
+          {user.username && (
+            <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+              <UserRound className="size-3.5 shrink-0" />
+              <span className="truncate">@{user.username}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <UsersRound className="size-3.5 shrink-0" />
+            {/* <span>
+              {user.projects?.length ?? 0}{" "}
+              {user.projects?.length === 1 ? "project" : "projects"}
+            </span> */}
+          </div>
+        </div>
+      </button>
+
+      {open && <UpdateUserModal user={user} onClose={() => setOpen(false)} />}
     </>
   );
 };

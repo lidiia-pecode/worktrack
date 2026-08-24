@@ -1,5 +1,5 @@
 import { PaginatedResponse, PaginationParams } from ".";
-import { UserRole, UserStatus } from "./enums";
+import { ProjectStatus, UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
@@ -49,3 +49,17 @@ export interface UpdateProfilePayload {
 }
 
 export type UserListResponse = PaginatedResponse<User>;
+
+export interface UserProject {
+  id: string;
+  name: string;
+  status: ProjectStatus;
+}
+
+export interface UserDetails extends User {
+  projects: UserProject[];
+}
+
+export type AvatarUser = Pick<User, "firstName" | "lastName"> & {
+  avatarUrl?: string | null;
+};

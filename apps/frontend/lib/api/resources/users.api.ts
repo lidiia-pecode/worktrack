@@ -3,18 +3,21 @@
 import {
   User,
   UserListResponse,
-  UpdateUserPayload,
   UserQuery,
   UpdateProfilePayload,
+  UserDetails,
+  CreateUserPayload,
+  UpdateUserPayload,
 } from "@/types";
 import { createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   User,
+  CreateUserPayload,
   UpdateUserPayload,
-  UpdateProfilePayload,
   UserListResponse,
-  UserQuery
+  UserQuery,
+  UserDetails
 >({ endpoint: "users" });
 
 const client = createClient({ endpoint: "users" });
