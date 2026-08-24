@@ -23,8 +23,12 @@ const parseDurationToMs = (value: string): number => {
 export default registerAs('auth', () => {
   const accessTokenExpiresIn = process.env.ACCESS_TOKEN_EXPIRES_IN!;
   const refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN!;
+  const googleTokenExpiresIn = process.env.GOOGLE_TOKEN_EXPIRES_IN!;
   const passwordResetTokenExpiresIn =
     process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN!;
+
+  const invitationTokenExpiresIn = process.env.INVITATION_EXPIRES_IN!;
+  const googleOAuthStateExpiresIn = process.env.GOOGLE_OAUTH_STATE_EXPIRES_IN!;
 
   return {
     accessToken: {
@@ -44,12 +48,18 @@ export default registerAs('auth', () => {
     },
 
     google: {
-      tokenExpiresInMs: parseDurationToMs(process.env.GOOGLE_TOKEN_EXPIRES_IN!),
+      tokenExpiresInMs: parseDurationToMs(googleTokenExpiresIn),
+      oauthStateExpiresInMs: parseDurationToMs(googleOAuthStateExpiresIn),
     },
 
     passwordReset: {
       expiresIn: passwordResetTokenExpiresIn,
       expiresInMs: parseDurationToMs(passwordResetTokenExpiresIn),
+    },
+
+    invitation: {
+      expiresIn: invitationTokenExpiresIn,
+      expiresInMs: parseDurationToMs(invitationTokenExpiresIn),
     },
 
     cookie: {

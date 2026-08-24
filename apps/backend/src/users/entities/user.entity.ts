@@ -82,7 +82,7 @@ export class User {
     name: 'password_hash',
     nullable: true,
   })
-  passwordHash?: string;
+  passwordHash!: string | null;
 
   @Column({
     type: 'varchar',
@@ -90,7 +90,7 @@ export class User {
     name: 'google_id',
     nullable: true,
   })
-  googleId?: string;
+  googleId!: string | null;
 
   @Column({
     type: 'numeric',

@@ -5,7 +5,6 @@ export enum UserRole {
 }
 
 export enum UserStatus {
-  INVITED = 'INVITED',
   ACTIVE = 'ACTIVE',
   DEACTIVATED = 'DEACTIVATED',
 }

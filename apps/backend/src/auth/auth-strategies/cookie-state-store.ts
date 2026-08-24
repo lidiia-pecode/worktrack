@@ -5,9 +5,12 @@ import type {
   StateStoreStoreCallback,
   StateStoreVerifyCallback,
 } from 'passport-oauth2';
+import { ConfigService } from '@nestjs/config';
 
 export class CookieStateStore implements StateStore {
   private readonly cookieName = 'oauth_state';
+
+  constructor(private readonly configService: ConfigService) {}
 
   store(
     req: Request,
@@ -27,8 +30,10 @@ export class CookieStateStore implements StateStore {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
-        maxAge: 10 * 60 * 1000,
-        path: '/auth/google',
+        maxAge: this.configService.getOrThrow<number>(
+          'auth.google.oauthStateExpiresInMs',
+        ),
+        path: '/',
       });
     }
 
@@ -54,7 +59,7 @@ export class CookieStateStore implements StateStore {
 
     const res = req.res as Response | undefined;
     if (res) {
-      res.clearCookie(this.cookieName, { path: '/auth/google' });
+      res.clearCookie(this.cookieName, { path: '/' });
     }
 
     const isValid = Boolean(

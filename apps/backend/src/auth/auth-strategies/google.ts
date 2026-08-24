@@ -1,4 +1,4 @@
-//apps/backend/src/auth/auth-strategies/google.ts
+// apps/backend/src/auth/auth-strategies/google.ts
 
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,7 +17,7 @@ export function getGoogleStrategyOptions(
     callbackURL,
     scope: ['email', 'profile'],
     state: true,
-    store: new CookieStateStore(),
+    store: new CookieStateStore(configService),
   };
 }
 
@@ -30,7 +30,10 @@ export function getGooglePayload(profile: Profile) {
   };
 }
 
-export function validateGoogleProfile(profile: Profile, done: VerifyCallback) {
+export function validateGoogleProfile(
+  profile: Profile,
+  done: VerifyCallback,
+): void {
   try {
     done(null, getGooglePayload(profile));
   } catch (error) {
@@ -57,7 +60,7 @@ export class GoogleLoginStrategy extends PassportStrategy(
     _refreshToken: string,
     profile: Profile,
     done: VerifyCallback,
-  ) {
+  ): void {
     validateGoogleProfile(profile, done);
   }
 }
@@ -81,7 +84,7 @@ export class GoogleSignupStrategy extends PassportStrategy(
     _refreshToken: string,
     profile: Profile,
     done: VerifyCallback,
-  ) {
+  ): void {
     validateGoogleProfile(profile, done);
   }
 }
@@ -105,7 +108,31 @@ export class GoogleLinkStrategy extends PassportStrategy(
     _refreshToken: string,
     profile: Profile,
     done: VerifyCallback,
-  ) {
+  ): void {
+    validateGoogleProfile(profile, done);
+  }
+}
+
+@Injectable()
+export class GoogleInvitationStrategy extends PassportStrategy(
+  Strategy,
+  'google-invitation',
+) {
+  constructor(configService: ConfigService) {
+    super(
+      getGoogleStrategyOptions(
+        configService,
+        configService.getOrThrow<string>('GOOGLE_INVITATION_CALLBACK_URL'),
+      ),
+    );
+  }
+
+  validate(
+    _accessToken: string,
+    _refreshToken: string,
+    profile: Profile,
+    done: VerifyCallback,
+  ): void {
     validateGoogleProfile(profile, done);
   }
 }

@@ -233,6 +233,38 @@ export class UsersService {
     return this.findUsersByIds(ids, companyId, manager);
   }
 
+  async createInvitedUser(
+    payload: {
+      companyId: string;
+      email: string;
+      role: UserRole;
+      firstName: string;
+      lastName: string;
+      passwordHash?: string | null;
+      googleId?: string | null;
+    },
+    manager?: EntityManager,
+  ): Promise<User> {
+    const execute = async (man: EntityManager): Promise<User> => {
+      const repo = this.getRepository(man);
+
+      const user = repo.create({
+        companyId: payload.companyId,
+        email: payload.email.toLowerCase().trim(),
+        role: payload.role,
+        firstName: payload.firstName.trim(),
+        lastName: payload.lastName.trim(),
+        passwordHash: payload.passwordHash ?? null,
+        status: UserStatus.ACTIVE,
+        googleId: payload.googleId ?? null,
+      });
+
+      return this.safeSave(repo, user, payload.email);
+    };
+
+    return manager ? execute(manager) : this.dataSource.transaction(execute);
+  }
+
   async createUser(
     companyId: string,
     payload: CreateUserPayload,

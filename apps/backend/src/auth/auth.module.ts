@@ -17,6 +17,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SessionCleanupService } from './services/session-cleanup.service';
 import { CompaniesModule } from 'src/companies/companies.module';
 import {
+  GoogleInvitationStrategy,
   GoogleLinkStrategy,
   GoogleLoginStrategy,
   GoogleSignupStrategy,
@@ -64,6 +65,7 @@ import { MailModule } from 'src/mail/mail.module';
     GoogleSignupStrategy,
     GoogleLoginStrategy,
     GoogleLinkStrategy,
+    GoogleInvitationStrategy,
   ],
   exports: [
     AuthService,

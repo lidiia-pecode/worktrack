@@ -17,6 +17,7 @@ import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
 import authConfig from './config/auth.config';
 import mailConfig from './config/mail.config';
+import { InvitationsModule } from './invitations/invitations.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import mailConfig from './config/mail.config';
     PlanningModule,
     CompaniesModule,
     TeamsModule,
+    InvitationsModule,
   ],
 
   providers: [

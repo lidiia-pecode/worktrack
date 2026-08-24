@@ -58,7 +58,7 @@ export class Init1786539115459 implements MigrationInterface {
       `CREATE TYPE "public"."user_role_enum" AS ENUM('EMPLOYEE', 'MANAGER', 'OWNER')`,
     );
     await queryRunner.query(
-      `CREATE TYPE "public"."user_status_enum" AS ENUM('INVITED', 'ACTIVE', 'DEACTIVATED')`,
+      `CREATE TYPE "public"."user_status_enum" AS ENUM('ACTIVE', 'DEACTIVATED')`,
     );
     await queryRunner.query(
       `CREATE TABLE "users" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "company_id" uuid NOT NULL, "role" "public"."user_role_enum" NOT NULL DEFAULT 'EMPLOYEE', "status" "public"."user_status_enum" NOT NULL DEFAULT 'ACTIVE', "position" character varying(255), "avatar_url" character varying(255), "first_name" character varying(255) NOT NULL, "last_name" character varying(255) NOT NULL, "username" character varying(20), "email" character varying(255) NOT NULL, "password_hash" character varying(255), "google_id" character varying(255), "capacity_hours_per_week" numeric(5,2) NOT NULL DEFAULT '40', "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "UQ_97672ac88f789774dd47f7c8be3" UNIQUE ("email"), CONSTRAINT "PK_a3ffb1c0c8416b9fc6f907b7433" PRIMARY KEY ("id"))`,

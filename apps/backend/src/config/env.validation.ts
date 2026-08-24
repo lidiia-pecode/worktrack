@@ -41,6 +41,11 @@ export const envValidationSchema = Joi.object({
   GOOGLE_CALLBACK_URL: Joi.string().uri().required(),
   GOOGLE_SIGNUP_CALLBACK_URL: Joi.string().uri().required(),
   GOOGLE_LINK_CALLBACK_URL: Joi.string().uri().required(),
+  GOOGLE_INVITATION_CALLBACK_URL: Joi.string().uri().required(),
+
+  GOOGLE_OAUTH_STATE_EXPIRES_IN: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('10m'),
 
   PASSWORD_RESET_TOKEN_EXPIRES_IN: Joi.string()
     .pattern(/^\d+[smhd]$/)

@@ -4,6 +4,10 @@ import type { CookieOptions, Response } from 'express';
 
 @Injectable()
 export class CookieService {
+  private static readonly ACCESS_TOKEN_COOKIE = 'access_token';
+  private static readonly REFRESH_TOKEN_COOKIE = 'refresh_token';
+  private static readonly INVITATION_FLOW_COOKIE = 'invitation_flow_token';
+
   constructor(private readonly configService: ConfigService) {}
 
   private getCookieOptions(): CookieOptions {
@@ -24,14 +28,14 @@ export class CookieService {
   ): void {
     const options = this.getCookieOptions();
 
-    res.cookie('access_token', accessToken, {
+    res.cookie(CookieService.ACCESS_TOKEN_COOKIE, accessToken, {
       ...options,
       maxAge: this.configService.getOrThrow<number>(
         'auth.accessToken.maxAgeMs',
       ),
     });
 
-    res.cookie('refresh_token', refreshToken, {
+    res.cookie(CookieService.REFRESH_TOKEN_COOKIE, refreshToken, {
       ...options,
       maxAge: this.configService.getOrThrow<number>(
         'auth.refreshToken.maxAgeMs',
@@ -42,7 +46,26 @@ export class CookieService {
   clearAuthCookies(res: Response): void {
     const options = this.getCookieOptions();
 
-    res.clearCookie('access_token', options);
-    res.clearCookie('refresh_token', options);
+    res.clearCookie(CookieService.ACCESS_TOKEN_COOKIE, options);
+    res.clearCookie(CookieService.REFRESH_TOKEN_COOKIE, options);
+  }
+
+  setInvitationFlowCookie(res: Response, token: string): void {
+    res.cookie(CookieService.INVITATION_FLOW_COOKIE, token, {
+      ...this.getCookieOptions(),
+      maxAge: this.configService.getOrThrow<number>(
+        'auth.invitation.expiresInMs',
+      ),
+    });
+  }
+
+  clearInvitationFlowCookie(res: Response): void {
+    res.clearCookie(CookieService.INVITATION_FLOW_COOKIE, {
+      ...this.getCookieOptions(),
+    });
+  }
+
+  getFrontendUrl(): string {
+    return this.configService.getOrThrow<string>('FRONTEND_URL');
   }
 }
