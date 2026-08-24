@@ -20,6 +20,8 @@ export const UsersPage = () => {
   const { items: users, isLoading, isError, refetch, pagination } = useUsers();
   const { user } = useAuth();
 
+  console.log("users", users);
+
   const canManage = hasManagerAccess(user?.role);
 
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = pagination;

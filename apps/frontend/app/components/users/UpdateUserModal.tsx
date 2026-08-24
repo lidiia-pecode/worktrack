@@ -120,7 +120,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   return (
     <>
       <Dialog open onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl overflow-hidden p-0">
+        <DialogContent className="sm:max-w-3xl overflow-hidden p-0">
           <DialogHeader className="border-b border-border px-6 py-5">
             <div className="flex items-start justify-between gap-4 pr-8">
               <div className="flex items-center gap-3">

@@ -44,7 +44,7 @@ export const useUsers = () => {
     () =>
       usersQuery.data?.pages
         .flatMap((p) => p.results)
-        .filter((u) => u.role === UserRole.EMPLOYEE) ?? [],
+        .filter((u) => u.role !== UserRole.OWNER) ?? [],
     [usersQuery.data],
   );
 

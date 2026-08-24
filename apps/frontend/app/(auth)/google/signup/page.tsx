@@ -5,9 +5,9 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import Input from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { useAuthActions } from "@/hooks/useAuthActions";
-import { Button } from "@/components/ui/button";
 import { isApiMessageError } from "@/lib/api";
 
 interface GoogleSignupForm {
@@ -17,7 +17,6 @@ interface GoogleSignupForm {
 export default function GoogleSignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-
   const token = searchParams.get("token");
 
   const actions = useAuthActions();
@@ -25,7 +24,7 @@ export default function GoogleSignupPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<GoogleSignupForm>({
     defaultValues: {
       companyName: "",
@@ -74,13 +73,10 @@ export default function GoogleSignupPage() {
               value.trim().length > 0 || "Company name is required",
           })}
           error={errors.companyName?.message}
-          disabled={actions.completeGoogleSignup.isPending}
+          disabled={isSubmitting}
         />
 
-        <Button
-          type="submit"
-          isLoading={actions.completeGoogleSignup.isPending}
-        >
+        <Button type="submit" isLoading={isSubmitting}>
           Complete signup
         </Button>
       </form>
