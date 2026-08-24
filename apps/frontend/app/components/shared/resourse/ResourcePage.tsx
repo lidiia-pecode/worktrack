@@ -2,12 +2,12 @@
 
 import { ReactNode, useMemo, useState } from "react";
 
-import { AlertCircle, Plus, RefreshCw, Search } from "lucide-react";
+import { AlertCircle, Plus, RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import Input from "@/components/ui/input";
 
-import { EmptyState } from "./EmptyState";
+import { EmptyState } from "../EmptyState";
+import { SearchInput } from "../inputs/SearchInput";
 
 interface ResourcePageProps<T> {
   title: string;
@@ -95,27 +95,12 @@ export function ResourcePage<T>({
       </div>
 
       {!isLoading && !isError && items.length > 0 && getSearchValue && (
-        <div className="mb-5">
-          <div className="relative w-full">
-            <Search
-              aria-hidden="true"
-              className="
-                pointer-events-none
-                absolute left-3 top-1/2
-                size-4
-                -translate-y-1/2
-                text-muted-foreground
-              "
-            />
-
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={searchPlaceholder}
-              aria-label={searchPlaceholder}
-              className="w-full pl-9"
-            />
-          </div>
+        <div className="mb-5 max-w-sm">
+          <SearchInput
+            value={search}
+            onChange={setSearch}
+            placeholder={searchPlaceholder}
+          />
         </div>
       )}
 

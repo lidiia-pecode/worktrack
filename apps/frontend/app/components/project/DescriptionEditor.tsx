@@ -4,9 +4,10 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
+
 import {
-  Bold as BoldIcon,
-  Italic as ItalicIcon,
+  Bold,
+  Italic,
   List,
   ListOrdered,
   Heading1,
@@ -15,142 +16,203 @@ import {
   Code,
 } from "lucide-react";
 
+import { cn } from "@/lib/utils/cn";
+
 interface DescriptionEditorProps {
   value: string;
-  onChange: (markdown: string) => void;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
 }
 
-const ToolbarButton = ({
-  onClick,
-  active,
-  title,
-  children,
-}: {
+interface ToolbarButtonProps {
   onClick: () => void;
   active?: boolean;
-  title: string;
+  disabled?: boolean;
+  label: string;
   children: React.ReactNode;
-}) => (
-  <button
-    type="button"
-    title={title}
-    onClick={onClick}
-    className={`p-1.5 rounded-md transition-colors ${
-      active
-        ? "bg-zinc-200 text-zinc-900"
-        : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
-    }`}
-  >
-    {children}
-  </button>
-);
+}
 
-export const DescriptionEditor = ({
+function ToolbarButton({
+  onClick,
+  active = false,
+  disabled = false,
+  label,
+  children,
+}: ToolbarButtonProps) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        "flex size-7 items-center justify-center rounded-md",
+        "text-muted-foreground transition-colors",
+        "hover:bg-muted hover:text-foreground",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "disabled:pointer-events-none disabled:opacity-50",
+        active && "bg-muted text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+export function DescriptionEditor({
   value,
   onChange,
-}: DescriptionEditorProps) => {
+  disabled = false,
+  placeholder = "Describe the project...",
+  className,
+}: DescriptionEditorProps) {
   const editor = useEditor({
+    editable: !disabled,
+
     extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+      StarterKit.configure({
+        heading: {
+          levels: [1, 2, 3],
+        },
+      }),
+
       Markdown.configure({
         html: false,
         transformCopiedText: true,
         transformPastedText: true,
       }),
+
       Placeholder.configure({
-        placeholder:
-          'Describe the project… Try "- " for bullet list or"# " for title',
+        placeholder,
       }),
     ],
+
     content: value,
 
     editorProps: {
       attributes: {
-        class:
-          "prose prose-sm max-w-none prose-zinc focus:outline-none min-h-[160px] px-3 py-2 " +
-          "prose-headings:font-semibold prose-ul:my-1 prose-li:my-0 prose-ol:my-1",
+        class: cn(
+          "min-h-[160px] px-3.5 py-3",
+          "text-sm text-foreground",
+          "outline-none",
+          "prose prose-sm max-w-none",
+          "prose-headings:font-semibold",
+          "prose-ul:my-1",
+          "prose-ol:my-1",
+          "prose-li:my-0",
+          "prose-p:my-1",
+        ),
       },
     },
-    onUpdate: ({ editor }) => onChange(editor.storage.markdown.getMarkdown()),
+
+    onUpdate: ({ editor }) => {
+      onChange(editor.storage.markdown.getMarkdown());
+    },
   });
 
-  if (!editor) return null;
+  if (!editor) {
+    return null;
+  }
 
   return (
-    <div className="rounded-xl border border-zinc-200 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
-      <div className="flex items-center gap-0.5 border-b border-zinc-100 bg-zinc-50 px-2 py-1.5">
+    <div
+      className={cn(
+        "overflow-hidden rounded-lg border border-input-placeholder/50 bg-input",
+        "transition",
+        "focus-within:border-ring",
+        "focus-within:ring-2 focus-within:ring-ring/20",
+        disabled && "cursor-not-allowed opacity-50",
+        className,
+      )}
+    >
+      <div className="flex items-center gap-0.5 border-b border-border bg-muted/50 px-2 py-1.5">
         <ToolbarButton
-          title="Bold"
+          label="Bold"
           active={editor.isActive("bold")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleBold().run()}
         >
-          <BoldIcon size={15} />
+          <Bold className="size-3.5" />
         </ToolbarButton>
+
         <ToolbarButton
-          title="Italic"
+          label="Italic"
           active={editor.isActive("italic")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleItalic().run()}
         >
-          <ItalicIcon size={15} />
+          <Italic className="size-3.5" />
         </ToolbarButton>
 
-        <span className="w-px h-4 bg-zinc-200 mx-1" />
+        <div className="mx-1 h-4 w-px bg-border" />
 
         <ToolbarButton
-          title="Heading 1"
+          label="Heading 1"
           active={editor.isActive("heading", { level: 1 })}
+          disabled={disabled}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 1 }).run()
           }
         >
-          <Heading1 size={15} />
+          <Heading1 className="size-3.5" />
         </ToolbarButton>
+
         <ToolbarButton
-          title="Heading 2"
+          label="Heading 2"
           active={editor.isActive("heading", { level: 2 })}
+          disabled={disabled}
           onClick={() =>
             editor.chain().focus().toggleHeading({ level: 2 }).run()
           }
         >
-          <Heading2 size={15} />
+          <Heading2 className="size-3.5" />
         </ToolbarButton>
 
-        <span className="w-px h-4 bg-zinc-200 mx-1" />
+        <div className="mx-1 h-4 w-px bg-border" />
 
         <ToolbarButton
-          title="Bullet list"
+          label="Bullet list"
           active={editor.isActive("bulletList")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleBulletList().run()}
         >
-          <List size={15} />
+          <List className="size-3.5" />
         </ToolbarButton>
+
         <ToolbarButton
-          title="Numbered list"
+          label="Numbered list"
           active={editor.isActive("orderedList")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
         >
-          <ListOrdered size={15} />
+          <ListOrdered className="size-3.5" />
         </ToolbarButton>
 
-        <span className="w-px h-4 bg-zinc-200 mx-1" />
+        <div className="mx-1 h-4 w-px bg-border" />
 
         <ToolbarButton
-          title="Quote"
+          label="Quote"
           active={editor.isActive("blockquote")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
         >
-          <Quote size={15} />
+          <Quote className="size-3.5" />
         </ToolbarButton>
+
         <ToolbarButton
-          title="Code"
+          label="Code"
           active={editor.isActive("code")}
+          disabled={disabled}
           onClick={() => editor.chain().focus().toggleCode().run()}
         >
-          <Code size={15} />
+          <Code className="size-3.5" />
         </ToolbarButton>
       </div>
 
       <EditorContent editor={editor} />
     </div>
   );
-};
+}

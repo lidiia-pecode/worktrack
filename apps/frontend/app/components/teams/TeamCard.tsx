@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/ResourceCard";
-import { ResourceCardField } from "../shared/ResourceCardField";
+import { ResourceCard } from "../shared/resourse/ResourceCard";
+import { ResourceCardField } from "../shared/resourse/ResourceCardField";
 import { Avatar } from "../shared/Avatar";
 
 interface TeamCardProps {

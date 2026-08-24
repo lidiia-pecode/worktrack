@@ -2,7 +2,7 @@
 
 import { MailPlus } from "lucide-react";
 
-import { ResourceFormModal } from "../shared/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
 import { useInvitations } from "@/hooks/useInvitation";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";

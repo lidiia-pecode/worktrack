@@ -2,237 +2,383 @@
 
 import { useState } from "react";
 
+import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+
 import { Project } from "@/types";
-import { UserRole } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
-import {
-  fullName,
-  getNonAdminMemberIds,
-  initials,
-} from "../../../lib/utils/user";
-
-import { Modal } from "../shared/Modal/Modal";
-import { ModalHeader } from "../shared/Modal/ModalHeader";
-import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { useActivities } from "@/hooks/useActivities";
-import { AssignmentSection } from "../shared/AsigmentSection";
-import { MemberChip } from "../shared/MemberChip";
-import { ActivityChip } from "../shared/ActivityChip";
-import { toggleSelection } from "@/lib/utils/toggle-selection";
-import { SelectionDrawer } from "../shared/Selectiondrawer";
-import { ConfirmModal } from "../shared/ConfirmModal";
 
-type UpdateProjectModalProps = {
+import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
+
+import { ProjectForm, ProjectFormData } from "./ProjectForm";
+import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { EntityPicker } from "../shared/resourse/EntityPicker";
+
+interface UpdateProjectModalProps {
   project: Project;
   canManage: boolean;
   onClose: () => void;
-  onDelete: () => void;
-};
+}
 
-export const UpdateProjectModal = ({
+type View = "form" | "members" | "activities";
+
+const FORM_ID = "project-details-form";
+
+export function UpdateProjectModal({
   project,
   canManage,
   onClose,
-}: UpdateProjectModalProps) => {
-  const [edit, setEdit] = useState(false);
-  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
-  const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
+}: UpdateProjectModalProps) {
+  const [view, setView] = useState<View>("form");
 
-  const [archiveOpen, setArchiveOpen] = useState(false);
-
-  const [memberIds, setMemberIds] = useState<string[]>(
-    () => project.users?.map((u) => u.id) || [],
-  );
-  const [activityIds, setActivityIds] = useState<string[]>(
-    () => project.projectActivities?.map((a) => a.activity.id) || [],
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
+    () => project.users?.map((user) => user.id) ?? [],
   );
 
-  const { items: users, pagination } = useUsers();
+  const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>(
+    () =>
+      project.projectActivities?.map(
+        (projectActivity) => projectActivity.activityId,
+      ) ?? [],
+  );
 
   const {
     actions: { update, archive, unarchive },
   } = useProjects();
-  const { items: activities } = useActivities();
 
-  const handleSave = (data: ProjectFormData) => {
-    update.mutate({
-      id: project.id,
-      data: {
-        ...data,
-        userIds: getNonAdminMemberIds(users, memberIds),
-        activityIds,
+  const { items: allUsers = [], isLoading: isUsersLoading } = useUsers();
+
+  const { items: activities = [], isLoading: isActivitiesLoading } =
+    useActivities();
+
+  const isArchived = project.status === ProjectStatus.ARCHIVED;
+
+  const isSubmitting = update.isPending;
+
+  const isPicking = view !== "form";
+
+  const employees = allUsers.filter((user) => user.role === UserRole.EMPLOYEE);
+
+  const selectedUsers = employees.filter((user) =>
+    selectedUserIds.includes(user.id),
+  );
+
+  const selectedActivities = activities.filter((activity) =>
+    selectedActivityIds.includes(activity.id),
+  );
+
+  const handleSubmit = (data: ProjectFormData) => {
+    update.mutate(
+      {
+        id: project.id,
+        data: {
+          ...data,
+          userIds: getNonAdminMemberIds(allUsers, selectedUserIds),
+          activityIds: selectedActivityIds,
+        },
       },
-    });
-
-    setEdit(false);
+      {
+        onSuccess: onClose,
+      },
+    );
   };
 
-  const handleArchive = async () => {
-    await archive.mutateAsync(project.id);
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds((prev) =>
+      prev.includes(userId)
+        ? prev.filter((id) => id !== userId)
+        : [...prev, userId],
+    );
+  };
 
-    setArchiveOpen(false);
+  const handleToggleActivity = (activityId: string) => {
+    setSelectedActivityIds((prev) =>
+      prev.includes(activityId)
+        ? prev.filter((id) => id !== activityId)
+        : [...prev, activityId],
+    );
+  };
+
+  const handleApplyMembers = () => {
+    update.mutate(
+      {
+        id: project.id,
+        data: {
+          userIds: getNonAdminMemberIds(allUsers, selectedUserIds),
+        },
+      },
+      {
+        onSuccess: () => {
+          setView("form");
+        },
+      },
+    );
+  };
+
+  const handleApplyActivities = () => {
+    update.mutate(
+      {
+        id: project.id,
+        data: {
+          activityIds: selectedActivityIds,
+        },
+      },
+      {
+        onSuccess: () => {
+          setView("form");
+        },
+      },
+    );
+  };
+
+  const handleArchive = () => {
+    archive.mutate(project.id);
+  };
+
+  const handleUnarchive = () => {
+    unarchive.mutate(project.id);
+  };
+
+  const handleClose = () => {
+    setView("form");
     onClose();
   };
 
-  const handleRestore = async () => {
-    await unarchive.mutateAsync(project.id);
+  const title =
+    view === "members"
+      ? "Add members"
+      : view === "activities"
+        ? "Add activities"
+        : project.name;
 
-    onClose();
-  };
-
-  const handleSetMembers = (id: string) => {
-    setMemberIds((prev) => toggleSelection(prev, id));
-  };
-
-  const handleSetActivities = (id: string) => {
-    setActivityIds((prev) => toggleSelection(prev, id));
-  };
-
-  const handleSaveMembers = () => {
-    update.mutate({
-      id: project.id,
-      data: {
-        userIds: getNonAdminMemberIds(users, memberIds),
-      },
-    });
-
-    setMemberDrawerOpen(false);
-  };
-
-  const handleSaveProjectActivities = () => {
-    update.mutate({
-      id: project.id,
-      data: {
-        activityIds,
-      },
-    });
-
-    setActivitiesDrawerOpen(false);
-  };
+  const description =
+    view === "members"
+      ? "Select people to add to this project."
+      : view === "activities"
+        ? "Select activities available for this project."
+        : "Update project details and manage its members and activities.";
 
   return (
-    <Modal contentClassName="pb-6" onClose={onClose} isOpen={true}>
-      <ModalHeader
-        title="Project details"
-        edit={edit}
-        isAdmin={canManage}
-        onToggleEdit={() => setEdit(!edit)}
-        onSave={() =>
-          document.getElementById("project-modal-form")?.dispatchEvent(
-            new Event("submit", {
-              cancelable: true,
-              bubbles: true,
-            }),
-          )
-        }
-        onClose={onClose}
-      />
+    <ResourceFormModal
+      open
+      onClose={handleClose}
+      size="lg"
+      bodyPadding={!isPicking}
+      title={title}
+      description={description}
+      icon={isPicking ? undefined : <FolderKanban className="size-5" />}
+      footer={
+        isPicking ? (
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setView("form")}
+              className="gap-1.5"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </Button>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
-        <ProjectForm
-          formId="project-modal-form"
-          isEditMode={edit}
-          defaultValues={{
-            name: project.name,
-            description: project.description || "",
-            status: project.status,
-          }}
-          membersCount={memberIds.length}
-          activitiesCount={activityIds.length}
-          onArchive={() => setArchiveOpen(true)}
-          onRestore={handleRestore}
-          archiveLoading={archive.isPending || unarchive.isPending}
-          onSubmit={handleSave}
-        />
+            <Button
+              type="button"
+              size="sm"
+              onClick={
+                view === "members" ? handleApplyMembers : handleApplyActivities
+              }
+              isLoading={isSubmitting}
+            >
+              Apply
+              {view === "members" && selectedUserIds.length > 0
+                ? ` (${selectedUserIds.length})`
+                : ""}
+              {view === "activities" && selectedActivityIds.length > 0
+                ? ` (${selectedActivityIds.length})`
+                : ""}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex w-full items-center justify-between gap-3">
+            {canManage ? (
+              <Button
+                type="button"
+                variant={isArchived ? "success" : "destructive"}
+                size="sm"
+                className="gap-1.5"
+                onClick={isArchived ? handleUnarchive : handleArchive}
+                isLoading={archive.isPending || unarchive.isPending}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="size-4" />
+                ) : (
+                  <Archive className="size-4" />
+                )}
 
-        <AssignmentSection
-          title="Team members"
-          addLabel="Add member"
-          onOpenDrawer={() => setMemberDrawerOpen(true)}
-        >
-          {users
-            .filter(
-              (u) => memberIds.includes(u.id) && u.role === UserRole.MEMBER,
-            )
-            .map((user) => (
-              <MemberChip
-                key={user.id}
-                label={fullName(user)}
-                avatar={initials(user)}
-                onRemove={() => handleSetMembers(user.id)}
-              />
-            ))}
-        </AssignmentSection>
+                {isArchived ? "Unarchive" : "Archive"}
+              </Button>
+            ) : (
+              <span />
+            )}
 
-        <AssignmentSection
-          title="Project activities"
-          addLabel="Add activity"
-          onOpenDrawer={() => setActivitiesDrawerOpen(true)}
-        >
-          {activities
-            .filter((activity) => activityIds.includes(activity.id))
-            .map((activity) => (
-              <ActivityChip
-                key={activity.id}
-                label={activity.name}
-                onRemove={() => handleSetActivities(activity.id)}
-              />
-            ))}
-        </AssignmentSection>
-      </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+              >
+                Cancel
+              </Button>
 
-      {memberDrawerOpen && (
-        <SelectionDrawer
-          open={memberDrawerOpen}
-          items={users.filter((u) => u.role === UserRole.MEMBER)}
-          selectedIds={memberIds}
-          onToggle={handleSetMembers}
-          onClose={() => setMemberDrawerOpen(false)}
-          hasNextPage={pagination.hasNextPage}
-          isFetchingNextPage={pagination.isFetchingNextPage}
-          onLoadMore={pagination.fetchNextPage}
-          onSave={handleSaveMembers}
-          title="Add members"
-          emptyMessage="No users found"
-          getId={(u) => u.id}
-          getLabel={fullName}
-          getSubtitle={(u) => u.role}
-          getAvatarText={initials}
-        />
+              {canManage && (
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  isLoading={isSubmitting}
+                >
+                  Save changes
+                </Button>
+              )}
+            </div>
+          </div>
+        )
+      }
+    >
+      {view === "members" ? (
+        <div className="px-6 py-5">
+          <EntityPicker
+            items={employees}
+            selectedIds={selectedUserIds}
+            onToggle={handleToggleUser}
+            getId={(user) => user.id}
+            getLabel={fullName}
+            getSubtitle={(user) => user.email}
+            getAvatarText={initials}
+            isLoading={isUsersLoading}
+            emptyMessage="No available users found."
+            searchPlaceholder="Search people..."
+          />
+        </div>
+      ) : view === "activities" ? (
+        <div className="px-6 py-5">
+          <EntityPicker
+            items={activities}
+            selectedIds={selectedActivityIds}
+            onToggle={handleToggleActivity}
+            getId={(activity) => activity.id}
+            getLabel={(activity) => activity.name}
+            getSubtitle={(activity) => activity.category?.name}
+            isLoading={isActivitiesLoading}
+            emptyMessage="No activities found."
+            searchPlaceholder="Search activities..."
+          />
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <ProjectForm
+            formId={FORM_ID}
+            mode="edit"
+            defaultValues={{
+              name: project.name,
+              description: project.description ?? "",
+              status: project.status,
+            }}
+            membersCount={selectedUsers.length}
+            activitiesCount={selectedActivities.length}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
+
+          <div className="border-t border-border pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Team members
+                </h3>
+
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {selectedUsers.length}{" "}
+                  {selectedUsers.length === 1
+                    ? "person assigned"
+                    : "people assigned"}
+                </p>
+              </div>
+
+              {canManage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("members")}
+                >
+                  Add members
+                </Button>
+              )}
+            </div>
+
+            {selectedUsers.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedUsers.map((user) => (
+                  <div
+                    key={user.id}
+                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                  >
+                    {fullName(user)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-border pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">
+                  Project activities
+                </h3>
+
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {selectedActivities.length}{" "}
+                  {selectedActivities.length === 1
+                    ? "activity assigned"
+                    : "activities assigned"}
+                </p>
+              </div>
+
+              {canManage && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("activities")}
+                >
+                  Add activities
+                </Button>
+              )}
+            </div>
+
+            {selectedActivities.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedActivities.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                  >
+                    {activity.name}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
-
-      {activitiesDrawerOpen && (
-        <SelectionDrawer
-          open={activitiesDrawerOpen}
-          items={activities}
-          selectedIds={activityIds}
-          onToggle={handleSetActivities}
-          onClose={() => setActivitiesDrawerOpen(false)}
-          hasNextPage={pagination.hasNextPage}
-          isFetchingNextPage={pagination.isFetchingNextPage}
-          onLoadMore={pagination.fetchNextPage}
-          onSave={handleSaveProjectActivities}
-          title="Add activities"
-          emptyMessage="No activities found"
-          getId={(a) => a.id}
-          getLabel={(a) => a.name}
-          getSubtitle={(a) => a.category?.name}
-        />
-      )}
-
-      <ConfirmModal
-        isOpen={archiveOpen}
-        onClose={() => setArchiveOpen(false)}
-        onConfirm={handleArchive}
-        loading={archive.isPending}
-        title={`Archive "${project.name}"?`}
-        message="Archived projects will be hidden from the active list. You can restore them later."
-        confirmText="Archive"
-        variant="archive"
-      />
-    </Modal>
+    </ResourceFormModal>
   );
-};
+}

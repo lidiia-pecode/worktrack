@@ -1,31 +1,24 @@
 import { ReactNode } from "react";
 
-import { fullName } from "@/lib/utils/user";
-import { Avatar } from "./Avatar";
-
-interface MemberListUser {
-  firstName: string;
-  lastName: string;
-  email?: string | null;
-  avatarUrl?: string | null;
-}
-
-interface MemberListItem {
-  id: string;
-  user: MemberListUser;
-}
-
-interface MemberListProps<T extends MemberListItem> {
+interface AssignedListProps<T> {
   items: T[];
+  getId: (item: T) => string;
+  renderLeading: (item: T) => ReactNode;
+  getPrimary: (item: T) => string;
+  getSecondary?: (item: T) => string | null | undefined;
   renderTrailing?: (item: T) => ReactNode;
   emptyMessage?: string;
 }
 
-export function MemberList<T extends MemberListItem>({
+export function AssignedList<T>({
   items,
+  getId,
+  renderLeading,
+  getPrimary,
+  getSecondary,
   renderTrailing,
-  emptyMessage = "No members yet.",
-}: MemberListProps<T>) {
+  emptyMessage = "Nothing assigned yet.",
+}: AssignedListProps<T>) {
   if (items.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
@@ -37,17 +30,17 @@ export function MemberList<T extends MemberListItem>({
   return (
     <ul className="divide-y divide-border">
       {items.map((item) => (
-        <li key={item.id} className="flex items-center gap-3 py-3">
-          <Avatar user={item.user} size="md" />
+        <li key={getId(item)} className="flex items-center gap-3 py-3">
+          {renderLeading(item)}
 
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground">
-              {fullName(item.user)}
+              {getPrimary(item)}
             </p>
 
-            {item.user.email && (
+            {getSecondary?.(item) && (
               <p className="truncate text-xs text-muted-foreground">
-                {item.user.email}
+                {getSecondary(item)}
               </p>
             )}
           </div>

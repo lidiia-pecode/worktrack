@@ -9,7 +9,7 @@ import { useTeams } from "@/hooks/useTeams";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 
-import { ResourcePage } from "../shared/ResourcePage";
+import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
 

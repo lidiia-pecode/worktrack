@@ -11,6 +11,7 @@ interface PickerRowProps {
   avatarText?: string;
   icon?: React.ReactNode;
   onToggle: () => void;
+  disabled?: boolean;
 }
 
 export function PickerRow({
@@ -20,15 +21,18 @@ export function PickerRow({
   avatarText,
   icon,
   onToggle,
+  disabled = false,
 }: PickerRowProps) {
   return (
     <button
       type="button"
       onClick={onToggle}
+      disabled={disabled}
       aria-pressed={selected}
       className={cn(
         "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         selected
           ? "bg-brand-subtle text-brand"
           : "text-foreground hover:bg-accent hover:text-accent-foreground",

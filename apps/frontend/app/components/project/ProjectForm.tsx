@@ -1,139 +1,132 @@
 "use client";
 
-import React from "react";
-import { useForm, Controller } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import ReactMarkdown from "react-markdown";
-import * as z from "zod";
-
-import { DescriptionEditor } from "./DescriptionEditor";
+import { z } from "zod";
 import { Activity, Users } from "lucide-react";
-import { StatusMenu } from "../shared/StatusMenu";
-import { FormSection } from "../shared/FormSection";
-import { ProjectStatus } from "@/types/enums";
 
-const projectSchema = z.object({
+import { ProjectStatus } from "@/types/enums";
+import Input from "@/components/ui/input";
+
+import { FormSection } from "../shared/FormSection";
+import { DescriptionEditor } from "./DescriptionEditor";
+
+const projectFormSchema = z.object({
   name: z
     .string()
-    .min(3, "Name must be at least 3 characters")
-    .nonempty("Name is required"),
+    .trim()
+    .min(3, "Project name must be at least 3 characters")
+    .max(100, "Project name must be less than 100 characters"),
+
   description: z.string().optional(),
+
   status: z.enum(ProjectStatus),
 });
 
-export type ProjectFormData = z.infer<typeof projectSchema>;
+export type ProjectFormData = z.infer<typeof projectFormSchema>;
 
 interface ProjectFormProps {
-  defaultValues: ProjectFormData;
+  formId?: string;
+  defaultValues?: Partial<ProjectFormData>;
+  mode?: "create" | "edit";
+  membersCount?: number;
+  activitiesCount?: number;
   onSubmit: (data: ProjectFormData) => void;
-  isEditMode: boolean;
-  formId: string;
-  membersCount: number;
-  activitiesCount: number;
-  onArchive?: () => void;
-  onRestore?: () => void;
-  archiveLoading?: boolean;
+  isSubmitting?: boolean;
 }
 
-export const ProjectForm: React.FC<ProjectFormProps> = ({
+export function ProjectForm({
+  formId = "project-form",
   defaultValues,
+  mode = "create",
+  membersCount = 0,
+  activitiesCount = 0,
   onSubmit,
-  isEditMode,
-  formId,
-  membersCount,
-  activitiesCount,
-  onArchive,
-  onRestore,
-  archiveLoading,
-}) => {
+  isSubmitting = false,
+}: ProjectFormProps) {
   const {
     register,
-    handleSubmit,
     control,
+    handleSubmit,
     formState: { errors },
   } = useForm<ProjectFormData>({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(projectSchema) as any,
-    defaultValues,
+    resolver: zodResolver(projectFormSchema),
+    defaultValues: {
+      name: defaultValues?.name ?? "",
+      description: defaultValues?.description ?? "",
+      status: defaultValues?.status ?? ProjectStatus.ACTIVE,
+    },
   });
 
+  const isEditMode = mode === "edit";
+
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-      {/* Project Name */}
-      <FormSection label="Project Name">
-        {isEditMode ? (
-          <div className="flex flex-col gap-1">
-            <input
-              {...register("name")}
-              placeholder="Enter project name"
-              className={`w-full rounded-xl border px-4 py-3 outline-none transition focus:border-blue-500 ${
-                errors.name ? "border-red-400" : "border-zinc-200"
-              }`}
-            />
-            {errors.name && (
-              <p className="text-xs text-red-500 mt-1">{errors.name.message}</p>
-            )}
-          </div>
-        ) : (
-          <div className="flex flex-col">
-            <div className="flex gap-4 justify-between items-start">
-              <h1 className="text-2xl font-semibold text-zinc-900 break-words">
-                {defaultValues.name}
-              </h1>
+    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      <FormSection label="Project name">
+        <Input
+          id="project-name"
+          {...register("name")}
+          placeholder="e.g. Website redesign"
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
 
-              <StatusMenu
-                status={defaultValues.status}
-                loading={archiveLoading}
-                onArchive={onArchive}
-                onRestore={onRestore}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-3 mt-3">
-              <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <Users className="size-3.5 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-700">
-                  {membersCount} {membersCount === 1 ? "member" : "members"}
-                </span>
-              </div>
-
-              <div className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
-                <Activity className="size-3.5 text-zinc-500" />
-                <span className="text-sm font-medium text-zinc-700">
-                  {activitiesCount}{" "}
-                  {activitiesCount === 1 ? "activity" : "activities"}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </FormSection>
-
-      {/* Description */}
-      <FormSection label="Description">
-        {isEditMode ? (
-          <Controller
-            name="description"
-            control={control}
-            render={({ field }) => (
-              <DescriptionEditor
-                value={field.value ?? ""}
-                onChange={field.onChange}
-              />
-            )}
-          />
-        ) : defaultValues.description ? (
-          <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-100 p-4">
-            <div className="prose prose-sm max-w-none prose-zinc prose-headings:font-semibold prose-ul:my-1 prose-li:my-0 prose-ol:my-1">
-              <ReactMarkdown>{defaultValues.description}</ReactMarkdown>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-zinc-400 italic">
-            No description provided
+        {!errors.name && (
+          <p className="mt-1.5 text-xs text-muted-foreground">
+            {isEditMode
+              ? "Update the name used to identify this project."
+              : "Choose a clear name that helps people understand what this project is about."}
           </p>
         )}
       </FormSection>
+
+      <FormSection label="Description">
+        <Controller
+          name="description"
+          control={control}
+          render={({ field }) => (
+            <DescriptionEditor
+              value={field.value ?? ""}
+              onChange={field.onChange}
+              disabled={isSubmitting}
+            />
+          )}
+        />
+
+        {errors.description?.message && (
+          <p className="mt-1.5 text-xs text-destructive">
+            {errors.description.message}
+          </p>
+        )}
+      </FormSection>
+
+      {isEditMode && (
+        <FormSection label="Project overview">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+              <Users className="size-4 text-muted-foreground" />
+
+              <div>
+                <p className="text-xs text-muted-foreground">Members</p>
+                <p className="text-sm font-medium text-foreground">
+                  {membersCount}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+              <Activity className="size-4 text-muted-foreground" />
+
+              <div>
+                <p className="text-xs text-muted-foreground">Activities</p>
+                <p className="text-sm font-medium text-foreground">
+                  {activitiesCount}
+                </p>
+              </div>
+            </div>
+          </div>
+        </FormSection>
+      )}
     </form>
   );
-};
+}

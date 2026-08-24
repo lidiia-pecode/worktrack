@@ -10,7 +10,7 @@ type FormSectionProps = {
 export function FormSection({ label, children, className }: FormSectionProps) {
   return (
     <section className={cn("space-y-2", className)}>
-      <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
+      <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
         {label}
       </p>
       {children}

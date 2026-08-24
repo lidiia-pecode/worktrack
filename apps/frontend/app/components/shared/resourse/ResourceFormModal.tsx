@@ -21,6 +21,7 @@ interface ResourceFormModalProps {
 
   size?: "md" | "lg";
   footer?: ReactNode;
+  bodyPadding?: boolean;
 
   children: ReactNode;
 }
@@ -38,6 +39,7 @@ export function ResourceFormModal({
   icon,
   size = "md",
   footer,
+  bodyPadding = true,
   children,
 }: ResourceFormModalProps) {
   return (
@@ -67,7 +69,14 @@ export function ResourceFormModal({
           </div>
         </DialogHeader>
 
-        <div className="max-h-[65vh] overflow-y-auto px-6 py-6">{children}</div>
+        <div
+          className={cn(
+            "max-h-[65vh] overflow-y-auto",
+            bodyPadding && "px-6 py-6",
+          )}
+        >
+          {children}
+        </div>
 
         {footer && (
           <div className="border-t border-border bg-muted/30 px-6 py-4">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -17,10 +17,13 @@ type Option = {
 };
 
 type FormSelectProps = {
+  id?: string;
+  label?: string;
   value?: string;
   options: Option[];
   placeholder?: string;
   error?: string;
+  description?: string;
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
@@ -28,22 +31,37 @@ type FormSelectProps = {
 };
 
 export function FormSelect({
+  id,
+  label,
   value,
   options,
   placeholder = "Select an option",
   error,
+  description,
   disabled,
   className,
   triggerClassName,
   onValueChange,
 }: FormSelectProps) {
+  const generatedId = useId();
+  const selectId = id ?? generatedId;
+
   const selectedLabel = useMemo(
     () => options.find((option) => option.value === value)?.label,
     [options, value],
   );
 
   return (
-    <div className={cn("flex flex-col gap-1.5", className)}>
+    <div className={cn("w-full", className)}>
+      {label && (
+        <label
+          htmlFor={selectId}
+          className="mb-1.5 block text-sm font-medium text-foreground"
+        >
+          {label}
+        </label>
+      )}
+
       <Select
         value={value ?? null}
         disabled={disabled}
@@ -52,24 +70,26 @@ export function FormSelect({
         }}
       >
         <SelectTrigger
+          id={selectId}
           aria-invalid={!!error}
           className={cn(
-            "h-11 w-full rounded-md border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-900 shadow-sm",
-            "transition-all duration-200",
-            "hover:border-zinc-300 hover:bg-zinc-50/60",
-            "focus-visible:border-blue-500 focus-visible:ring-3 focus-visible:ring-blue-500/10",
-            "disabled:cursor-not-allowed disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400",
-            "[&_svg]:transition-transform [&_svg]:duration-200",
-            "aria-expanded:border-blue-300 aria-expanded:ring-3 aria-expanded:ring-blue-400/10 aria-expanded:[&_svg]:rotate-180",
+            "h-11 w-full rounded-lg border-input-placeholder/50 bg-input px-3.5 text-sm text-input-foreground",
+            "transition",
+            "hover:bg-input/80",
+            "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
+            "disabled:cursor-not-allowed disabled:opacity-50",
             error &&
-              "border-red-400 focus-visible:border-red-500 focus-visible:ring-red-500/10",
+              "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
             triggerClassName,
           )}
         >
           <SelectValue placeholder={placeholder}>
             {() => (
               <span
-                className={cn("truncate", !selectedLabel && "text-zinc-400")}
+                className={cn(
+                  "truncate",
+                  !selectedLabel && "text-input-placeholder",
+                )}
               >
                 {selectedLabel ?? placeholder}
               </span>
@@ -82,14 +102,14 @@ export function FormSelect({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="rounded-lg border border-zinc-100 shadow-lg shadow-zinc-950/5 py-2"
+          className="rounded-lg border border-border py-1 shadow-lg"
         >
           {options.map((option) => (
             <SelectItem
               key={option.value}
               value={option.value}
               disabled={option.disabled}
-              className="py-2 pr-10 pl-4 text-sm rounded-none"
+              className="rounded-md py-2 pr-9 pl-3 text-sm"
             >
               {option.label}
             </SelectItem>
@@ -97,7 +117,11 @@ export function FormSelect({
         </SelectContent>
       </Select>
 
-      {error && <p className="text-sm font-medium text-red-500">{error}</p>}
+      {description && !error && (
+        <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>
+      )}
+
+      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
     </div>
   );
 }

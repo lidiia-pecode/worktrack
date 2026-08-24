@@ -9,7 +9,7 @@ import { useUsers } from "@/hooks/useUsers";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { User } from "@/types";
 
-import { ResourcePage } from "../shared/ResourcePage";
+import { ResourcePage } from "../shared/resourse/ResourcePage";
 
 import { UserCard } from "./UserCard";
 import { InviteUserModal } from "./InviteUserModal";
@@ -19,8 +19,6 @@ export const UsersPage = () => {
 
   const { items: users, isLoading, isError, refetch, pagination } = useUsers();
   const { user } = useAuth();
-
-  console.log("users", users);
 
   const canManage = hasManagerAccess(user?.role);
 
@@ -56,9 +54,7 @@ export const UsersPage = () => {
         hasNextPage={hasNextPage}
         isFetchingNextPage={isFetchingNextPage}
         onFetchNextPage={fetchNextPage}
-        renderItem={(user) => (
-          <UserCard key={user.id} user={user} canManage={canManage} />
-        )}
+        renderItem={(user) => <UserCard key={user.id} user={user} />}
       />
 
       <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} />

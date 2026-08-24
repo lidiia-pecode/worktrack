@@ -1,20 +1,14 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { UserRole } from "@/types/enums";
+import { ROLE_LABELS } from "@/lib/constants";
 
-import { ResourceFormField } from "../shared/ResourceFormField";
+import { FormSelect } from "../shared/FormSelect";
 import {
   InviteUserFormData,
   inviteUserSchema,
@@ -25,6 +19,11 @@ interface InviteUserFormProps {
   isSubmitting?: boolean;
   onSubmit: (data: InviteUserFormData) => void;
 }
+
+const roleOptions = [
+  { value: UserRole.EMPLOYEE, label: ROLE_LABELS[UserRole.EMPLOYEE] },
+  { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
+];
 
 export function InviteUserForm({
   formId = "invite-user-form",
@@ -48,6 +47,7 @@ export function InviteUserForm({
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <Input
         id="invite-user-email"
+        label="Email"
         type="email"
         placeholder="john@example.com"
         {...register("email")}
@@ -55,60 +55,22 @@ export function InviteUserForm({
         disabled={isSubmitting}
       />
 
-      <ResourceFormField id="invite-user-role" label="Role" error={errors.role}>
-        <Controller
-          name="role"
-          control={control}
-          render={({ field }) => (
-            <Select
-              value={field.value}
-              onValueChange={field.onChange}
-              disabled={isSubmitting}
-            >
-              <SelectTrigger
-                id="invite-user-role"
-                ref={field.ref}
-                aria-invalid={!!errors.role}
-                className="
-                  border-input-placeholder/50
-                  bg-input
-                  text-input-foreground
-                  focus-visible:ring-2
-                  focus-visible:ring-ring/20
-                "
-              >
-                <SelectValue placeholder="Select a role" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem
-                  className="
-                    rounded-none
-                    px-3
-                    py-2
-
-                  "
-                  value={UserRole.EMPLOYEE}
-                >
-                  Employee
-                </SelectItem>
-
-                <SelectItem
-                  className="
-                    rounded-none
-                    px-3
-                    py-2
-
-                  "
-                  value={UserRole.MANAGER}
-                >
-                  Manager
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          )}
-        />
-      </ResourceFormField>
+      <Controller
+        name="role"
+        control={control}
+        render={({ field, fieldState }) => (
+          <FormSelect
+            id="invite-user-role"
+            label="Role"
+            value={field.value}
+            onValueChange={field.onChange}
+            options={roleOptions}
+            placeholder="Select a role"
+            error={fieldState.error?.message}
+            disabled={isSubmitting}
+          />
+        )}
+      />
 
       <Button type="submit" disabled={isSubmitting} className="w-full">
         Send invitation

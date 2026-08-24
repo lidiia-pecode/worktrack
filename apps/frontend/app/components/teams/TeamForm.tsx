@@ -6,8 +6,6 @@ import { z } from "zod";
 
 import Input from "@/components/ui/input";
 
-import { ResourceFormField } from "../shared/ResourceFormField";
-
 export const teamFormSchema = z.object({
   name: z
     .string()
@@ -46,27 +44,24 @@ export function TeamForm({
 
   const isEditMode = mode === "edit";
 
+  const description = errors.name
+    ? undefined
+    : isEditMode
+      ? "Update the name used to identify this team."
+      : "Choose a clear name that helps people understand what this team is responsible for.";
+
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      <ResourceFormField
+      <Input
         id="team-name"
         label="Team name"
-        error={errors.name}
-        hint={
-          isEditMode
-            ? "Update the name used to identify this team."
-            : "Choose a clear name that helps people understand what this team is responsible for."
-        }
-      >
-        <Input
-          id="team-name"
-          type="text"
-          placeholder="e.g. Engineering"
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      </ResourceFormField>
+        type="text"
+        placeholder="e.g. Engineering"
+        {...register("name")}
+        error={errors.name?.message}
+        description={description}
+        disabled={isSubmitting}
+      />
     </form>
   );
 }

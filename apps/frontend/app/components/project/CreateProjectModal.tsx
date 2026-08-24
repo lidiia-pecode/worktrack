@@ -1,186 +1,313 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ArrowLeft, FolderKanban, Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
+import { useActivities } from "@/hooks/useActivities";
+
 import { ProjectStatus, UserRole } from "@/types/enums";
 
-import { ProjectForm, ProjectFormData } from "./ProjectForm";
-import { Modal } from "../shared/Modal/Modal";
-import { useActivities } from "@/hooks/useActivities";
-import { fullName, initials } from "../../../lib/utils/user";
-import { AssignmentSection } from "../shared/AsigmentSection";
-import { MemberChip } from "../shared/MemberChip";
-import { ActivityChip } from "../shared/ActivityChip";
+import { fullName, initials } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
-import { SelectionDrawer } from "../shared/Selectiondrawer";
-import { Button } from "@/components/ui/button";
-import { CloseButton } from "../shared/buttons/CloseButton";
 
-export function CreateProjectModal() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [memberDrawerOpen, setMemberDrawerOpen] = useState(false);
-  const [activitiesDrawerOpen, setActivitiesDrawerOpen] = useState(false);
+import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { EntityPicker } from "../shared/resourse/EntityPicker";
 
-  const [memberIds, setMemberIds] = useState<string[]>([]);
-  const [activityIds, setActivityIds] = useState<string[]>([]);
+import { ProjectForm, ProjectFormData } from "./ProjectForm";
+
+interface CreateProjectModalProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+type View = "form" | "members" | "activities";
+
+export function CreateProjectModal({
+  open: controlledOpen,
+  onClose: controlledOnClose,
+}: CreateProjectModalProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const [view, setView] = useState<View>("form");
+
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>([]);
+
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
 
   const {
     actions: { create },
   } = useProjects();
-  const { items: users, pagination } = useUsers();
 
-  const { items: activities } = useActivities();
+  const { items: users = [], isLoading: isUsersLoading } = useUsers();
 
-  const handleCreate = async (data: ProjectFormData) => {
+  const { items: activities = [], isLoading: isActivitiesLoading } =
+    useActivities();
+
+  const isSubmitting = create.isPending;
+
+  const isPicking = view !== "form";
+
+  const employees = users.filter((user) => user.role === UserRole.EMPLOYEE);
+
+  const selectedUsers = employees.filter((user) =>
+    selectedUserIds.includes(user.id),
+  );
+
+  const selectedActivities = activities.filter((activity) =>
+    selectedActivityIds.includes(activity.id),
+  );
+
+  const handleOpen = () => {
+    setInternalOpen(true);
+  };
+
+  const handleClose = () => {
+    setSelectedUserIds([]);
+    setSelectedActivityIds([]);
+    setView("form");
+
+    if (controlledOnClose) {
+      controlledOnClose();
+    } else {
+      setInternalOpen(false);
+    }
+  };
+
+  const handleSubmit = async (data: ProjectFormData) => {
     await create.mutateAsync({
       ...data,
-      userIds: memberIds,
+      userIds: selectedUserIds,
+      activityIds: selectedActivityIds,
     });
-    setIsOpen(false);
-    setMemberIds([]);
+
+    handleClose();
   };
 
-  const handleSetMembers = (id: string) => {
-    setMemberIds((prev) => toggleSelection(prev, id));
+  const handleToggleUser = (userId: string) => {
+    setSelectedUserIds((prev) => toggleSelection(prev, userId));
   };
 
-  const handleSetActivities = (id: string) => {
-    setActivityIds((prev) => toggleSelection(prev, id));
+  const handleToggleActivity = (activityId: string) => {
+    setSelectedActivityIds((prev) => toggleSelection(prev, activityId));
+  };
+
+  const handleBack = () => {
+    setView("form");
+  };
+
+  const getTitle = () => {
+    if (view === "members") {
+      return "Add members";
+    }
+
+    if (view === "activities") {
+      return "Add activities";
+    }
+
+    return "Create project";
+  };
+
+  const getDescription = () => {
+    if (view === "members") {
+      return "Select people to add to this project.";
+    }
+
+    if (view === "activities") {
+      return "Select activities available for this project.";
+    }
+
+    return "Create a project to organize work and manage access.";
   };
 
   return (
     <>
-      <Button
-        variant="secondary"
-        onClick={() => setIsOpen(true)}
-        className="group mb-6"
-      >
-        <Plus
-          size={18}
-          className="transition-transform group-hover:rotate-90"
-        />
-        <span>Create Project</span>
-      </Button>
+      {!isControlled && (
+        <Button type="button" onClick={handleOpen} className="gap-2">
+          <Plus className="size-4" />
+          Create project
+        </Button>
+      )}
 
-      <Modal
-        size="xl"
-        fullHeight
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100">
-          <p className="text-xs font-semibold uppercase tracking-widest text-zinc-400">
-            Create project
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              form="create-project-form"
-              type="submit"
-              disabled={create.isPending}
-              size="sm"
-              className="flex items-center gap-1.5"
-            >
-              {create.isPending ? "Creating..." : "Create"}
-            </Button>
+      <ResourceFormModal
+        open={open}
+        onClose={handleClose}
+        size="lg"
+        bodyPadding={!isPicking}
+        title={getTitle()}
+        description={getDescription()}
+        icon={isPicking ? undefined : <FolderKanban className="size-5" />}
+        footer={
+          isPicking ? (
+            <div className="flex items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="gap-1.5"
+              >
+                <ArrowLeft className="size-4" />
+                Back
+              </Button>
 
-            <CloseButton onClick={() => setIsOpen(false)} />
+              <Button type="button" size="sm" onClick={handleBack}>
+                Apply
+              </Button>
+            </div>
+          ) : (
+            <div className="flex w-full items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleClose}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                form="project-form"
+                size="sm"
+                isLoading={isSubmitting}
+              >
+                Create project
+              </Button>
+            </div>
+          )
+        }
+      >
+        {view === "members" ? (
+          <div className="px-6 py-5">
+            <EntityPicker
+              items={employees}
+              selectedIds={selectedUserIds}
+              onToggle={handleToggleUser}
+              getId={(user) => user.id}
+              getLabel={fullName}
+              getSubtitle={(user) => user.email}
+              getAvatarText={initials}
+              isLoading={isUsersLoading}
+              emptyMessage="No available users found."
+              searchPlaceholder="Search people..."
+            />
           </div>
-        </div>
+        ) : view === "activities" ? (
+          <div className="px-6 py-5">
+            <EntityPicker
+              items={activities}
+              selectedIds={selectedActivityIds}
+              onToggle={handleToggleActivity}
+              getId={(activity) => activity.id}
+              getLabel={(activity) => activity.name}
+              getSubtitle={(activity) => activity.category?.name}
+              isLoading={isActivitiesLoading}
+              emptyMessage="No activities found."
+              searchPlaceholder="Search activities..."
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <ProjectForm
+              formId="project-form"
+              mode="create"
+              defaultValues={{
+                name: "",
+                description: "",
+                status: ProjectStatus.ACTIVE,
+              }}
+              membersCount={selectedUserIds.length}
+              activitiesCount={selectedActivityIds.length}
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
-          <ProjectForm
-            formId="create-project-form"
-            isEditMode={true}
-            defaultValues={{
-              name: "",
-              description: "",
-              status: ProjectStatus.ACTIVE,
-            }}
-            membersCount={memberIds.length}
-            activitiesCount={activityIds.length}
-            onSubmit={handleCreate}
-          />
+            <div className="border-t border-border pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Team members
+                  </h3>
 
-          <AssignmentSection
-            title="Team members"
-            addLabel="Add member"
-            onOpenDrawer={() => setMemberDrawerOpen(true)}
-          >
-            {users
-              .filter(
-                (u) => memberIds.includes(u.id) && u.role === UserRole.EMPLOYEE,
-              )
-              .map((user) => (
-                <MemberChip
-                  key={user.id}
-                  label={fullName(user)}
-                  avatar={initials(user)}
-                  onRemove={() => handleSetMembers(user.id)}
-                />
-              ))}
-          </AssignmentSection>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {selectedUsers.length}{" "}
+                    {selectedUsers.length === 1
+                      ? "person selected"
+                      : "people selected"}
+                  </p>
+                </div>
 
-          <AssignmentSection
-            title="Project activities"
-            addLabel="Add activity"
-            onOpenDrawer={() => setActivitiesDrawerOpen(true)}
-          >
-            {activities
-              .filter((activity) => activityIds.includes(activity.id))
-              .map((activity) => (
-                <ActivityChip
-                  key={activity.id}
-                  label={activity.name}
-                  onRemove={() => handleSetActivities(activity.id)}
-                />
-              ))}
-          </AssignmentSection>
-        </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("members")}
+                >
+                  Add members
+                </Button>
+              </div>
 
-        {memberDrawerOpen && (
-          <SelectionDrawer
-            open={memberDrawerOpen}
-            items={users.filter((u) => u.role === UserRole.EMPLOYEE)}
-            selectedIds={memberIds}
-            onToggle={handleSetMembers}
-            onClose={() => setMemberDrawerOpen(false)}
-            hasNextPage={pagination.hasNextPage}
-            isFetchingNextPage={pagination.isFetchingNextPage}
-            onLoadMore={pagination.fetchNextPage}
+              {selectedUsers.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                    >
+                      {fullName(user)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-            title="Add members"
-            emptyMessage="No users found"
-            getId={(u) => u.id}
-            getLabel={fullName}
-            getSubtitle={(u) => u.role}
-            getAvatarText={initials}
-          />
+            <div className="border-t border-border pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Project activities
+                  </h3>
+
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {selectedActivities.length}{" "}
+                    {selectedActivities.length === 1
+                      ? "activity selected"
+                      : "activities selected"}
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setView("activities")}
+                >
+                  Add activities
+                </Button>
+              </div>
+
+              {selectedActivities.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                    >
+                      {activity.name}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
-
-        {activitiesDrawerOpen && (
-          <SelectionDrawer
-            open={activitiesDrawerOpen}
-            items={activities}
-            selectedIds={activityIds}
-            onToggle={handleSetActivities}
-            onClose={() => setActivitiesDrawerOpen(false)}
-            hasNextPage={pagination.hasNextPage}
-            isFetchingNextPage={pagination.isFetchingNextPage}
-            onLoadMore={pagination.fetchNextPage}
-
-            title="Add activities"
-            emptyMessage="No activities found"
-            getId={(a) => a.id}
-            getLabel={(a) => a.name}
-            getSubtitle={(a) => a.category?.name}
-          />
-        )}
-      </Modal>
+      </ResourceFormModal>
     </>
   );
 }

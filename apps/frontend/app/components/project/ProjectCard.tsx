@@ -1,81 +1,85 @@
-import { useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import { Users } from "lucide-react";
+"use client";
 
-import { useProjects } from "@/hooks/useProjects";
+import { FolderKanban, Pencil, UsersRound } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
 import { Project } from "@/types";
-
-import { StatusBadge } from "../shared/StatusBadge";
-import { EntityCard } from "../shared/EntityCard";
-import { UpdateProjectModal } from "./UpdateProjectModal";
-import { ConfirmModal } from "../shared/ConfirmModal";
 import { ProjectStatus } from "@/types/enums";
 
-type Props = { project: Project; canManage: boolean };
+import { ResourceCard } from "../shared/resourse/ResourceCard";
+import { ResourceCardField } from "../shared/resourse/ResourceCardField";
 
-export const ProjectCard = ({ project, canManage }: Props) => {
-  const [open, setOpen] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const {
-    actions: { archive },
-  } = useProjects();
+interface ProjectCardProps {
+  project: Project;
+  canManage?: boolean;
+  onView?: (project: Project) => void;
+}
 
-  const members = useMemo(
-    () => (project.users ?? []).filter((u) => !isAdminRole(u.role)),
-    [project.users],
-  );
+export function ProjectCard({
+  project,
+  canManage = false,
+  onView,
+}: ProjectCardProps) {
+  const members = project.users ?? [];
 
-  const handleConfirmArchive = () => {
-    archive.mutate(project.id);
-    setShowDeleteConfirm(false);
-  };
+  const isArchived = project.status === ProjectStatus.ARCHIVED;
 
   return (
-    <>
-      <EntityCard
-        onClick={() => setOpen(true)}
-        isArchived={project.status === ProjectStatus.ARCHIVED}
-      >
-        <EntityCard.Header>
-          <div className="min-w-0">
-            <EntityCard.Title>{project.name}</EntityCard.Title>
-            <EntityCard.Description>
-              <ReactMarkdown>
-                {project.description || "No description"}
-              </ReactMarkdown>
-            </EntityCard.Description>
-          </div>
-        </EntityCard.Header>
+    <ResourceCard
+      onClick={onView ? () => onView(project) : undefined}
+      icon={<FolderKanban className="size-5" />}
+      title={project.name}
+      subtitle={
+        <Badge variant={isArchived ? "neutral" : "success"} dot>
+          {isArchived ? "Archived" : "Active"}
+        </Badge>
+      }
+      actions={
+        canManage && !isArchived ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="iconSm"
+            aria-label={`Edit ${project.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onView?.(project);
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+        ) : undefined
+      }
+    >
+      <div className="space-y-4">
+        <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
+          {project.description || "No description"}
+        </p>
 
-        <EntityCard.Footer>
-          <StatusBadge status={project.status} />
-          <EntityCard.Meta icon={Users}>
-            {members.length === 0
-              ? "No members assigned"
-              : `${members.length} ${members.length === 1 ? "member" : "members"}`}
-          </EntityCard.Meta>
-        </EntityCard.Footer>
-      </EntityCard>
+        <div className="grid grid-cols-2 gap-4">
+          <ResourceCardField
+            label="Members"
+            value={members.length}
+            icon={<UsersRound className="size-3.5" />}
+          />
 
-      {open && (
-        <UpdateProjectModal
-          project={project}
-          canManage={canManage}
-          onClose={() => setOpen(false)}
-          onDelete={() => setShowDeleteConfirm(true)}
-        />
+          <ResourceCardField
+            label="Activities"
+            value={project.projectActivities?.length ?? 0}
+            icon={<FolderKanban className="size-3.5" />}
+          />
+        </div>
+      </div>
+
+      {onView && (
+        <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
+          <span className="text-xs text-muted-foreground">Manage project</span>
+
+          <span className="text-xs font-medium text-brand">View project →</span>
+        </div>
       )}
-
-      <ConfirmModal
-        isOpen={showDeleteConfirm}
-        onClose={() => setShowDeleteConfirm(false)}
-        onConfirm={handleConfirmArchive}
-        loading={archive.isPending}
-        title={`Archive "${project.name}"?`}
-        message="Archived projects will be hidden from the active list. You can restore them later."
-        confirmText="Archive"
-        variant="archive"
-      />
-    </>
+    </ResourceCard>
   );
-};
+}
