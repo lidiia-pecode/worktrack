@@ -1,14 +1,31 @@
 "use client";
 
-import { useMemo } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import { UserRole } from "@/types/enums";
 import { UsersClientApi } from "@/lib/api/resources";
 import { queryKeys } from "./shared/queryKeys";
 import { createEntityMutations } from "./shared/createEntityMutations";
+import { createEntityQuery } from "./shared/createEntityQuery";
+import { CreateUserPayload, UpdateUserPayload, User } from "@/types";
 
-const useUsersMutations = createEntityMutations({
+const usersQueries = createEntityQuery<User>({
+  queryKey: queryKeys.users,
+
+  api: {
+    getAll: UsersClientApi.getAll,
+  },
+});
+
+export const useUsersQuery = usersQueries.useQuery;
+export const useUsersInfiniteQuery = usersQueries.useInfiniteQuery;
+
+const useUsersMutations = createEntityMutations<
+  User,
+  CreateUserPayload,
+  UpdateUserPayload,
+  User,
+  User
+>({
   queryKey: queryKeys.users.all,
 
   api: {
@@ -26,46 +43,15 @@ const useUsersMutations = createEntityMutations({
   },
 });
 
-export const useUsers = () => {
-  const usersQuery = useInfiniteQuery({
-    queryKey: queryKeys.users.infinite(),
-
-    queryFn: ({ pageParam }) => UsersClientApi.getAll({ page: pageParam }),
-
-    initialPageParam: 1,
-
-    getNextPageParam: (lastPage, pages) => {
-      const loaded = pages.flatMap((p) => p.results).length;
-      return loaded < lastPage.count ? pages.length + 1 : undefined;
-    },
-  });
-
-  const users = useMemo(
-    () =>
-      usersQuery.data?.pages
-        .flatMap((p) => p.results)
-        .filter((u) => u.role !== UserRole.OWNER) ?? [],
-    [usersQuery.data],
-  );
-
+export function useUsers(page = 1) {
+  const query = useUsersQuery(page);
   const actions = useUsersMutations();
 
   return {
-    items: users,
-    count: usersQuery.data?.pages[0]?.count ?? 0,
-    isLoading: usersQuery.isLoading,
-    isError: usersQuery.isError,
-    refetch: usersQuery.refetch,
+    ...query,
     actions,
-
-    // Keep pagination for drawer usage in project modals
-    pagination: {
-      fetchNextPage: usersQuery.fetchNextPage,
-      hasNextPage: usersQuery.hasNextPage,
-      isFetchingNextPage: usersQuery.isFetchingNextPage,
-    },
   };
-};
+}
 
 export const useUserDetails = (id: string) => {
   return useQuery({

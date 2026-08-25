@@ -6,13 +6,16 @@ import { createEntityQuery } from "./shared/createEntityQuery";
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { queryKeys } from "./shared/queryKeys";
 
-const useProjectsQuery = createEntityQuery<Project>({
+const projectsQueries = createEntityQuery<Project>({
   queryKey: queryKeys.projects,
 
   api: {
     getAll: ProjectsClientApi.getAll,
   },
 });
+
+export const useProjectsQuery = projectsQueries.useQuery;
+export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 
 const useProjectsMutations = createEntityMutations<
   Project,

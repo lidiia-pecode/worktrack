@@ -1,25 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
+
 import { Project } from "@/types";
 
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { ProjectCard } from "./ProjectCard";
-import { CreateProjectModal } from "./CreateProjectModal";
+import { ProjectModal } from "./ProjectModal";
 
-export const ProjectList = () => {
+export function ProjectsContent() {
   const [createOpen, setCreateOpen] = useState(false);
-
-  const { items: projects, isLoading, isError, refetch } = useProjects(1);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
+
+  const {
+    items: projects,
+    isLoading,
+    isError,
+    refetch,
+    pagination,
+  } = useProjectsInfiniteQuery();
+
+  const editingProject = useMemo(
+    () => projects.find((project) => project.id === editingProjectId),
+    [projects, editingProjectId],
+  );
+
+  console.log("project", projects[0]);
 
   return (
     <>
@@ -38,19 +53,27 @@ export const ProjectList = () => {
         createLabel="Create project"
         onCreate={() => setCreateOpen(true)}
         canCreate={canManage}
+        hasNextPage={pagination.hasNextPage}
+        isFetchingNextPage={pagination.isFetchingNextPage}
+        onFetchNextPage={pagination.fetchNextPage}
         renderItem={(project) => (
           <ProjectCard
             key={project.id}
             project={project}
             canManage={canManage}
+            onView={(item) => setEditingProjectId(item.id)}
           />
         )}
       />
 
-      <CreateProjectModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
+      <ProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
+
+      <ProjectModal
+        key={editingProject?.id ?? "create"}
+        project={editingProject}
+        open={Boolean(editingProject)}
+        onClose={() => setEditingProjectId(null)}
       />
     </>
   );
-};
+}

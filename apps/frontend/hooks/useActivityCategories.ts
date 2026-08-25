@@ -10,12 +10,16 @@ import { queryKeys } from "./shared/queryKeys";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { createEntityMutations } from "./shared/createEntityMutations";
 
-export const useActivityCategoriesQuery = createEntityQuery<ActivityCategory>({
+const activityCategoriesQueries = createEntityQuery<ActivityCategory>({
   queryKey: queryKeys.activityCategories,
   api: {
     getAll: ActivityCategoriesClientApi.getAll,
   },
 });
+
+export const useActivityCategoriesQuery = activityCategoriesQueries.useQuery;
+export const useActivityCategoriesInfiniteQuery =
+  activityCategoriesQueries.useInfiniteQuery;
 
 export const useActivityCategoriesMutations = createEntityMutations<
   ActivityCategory,
@@ -34,10 +38,10 @@ export const useActivityCategoriesMutations = createEntityMutations<
   },
 
   messages: {
-    create: "Activity created successfully",
-    update: "Activity updated successfully",
-    archive: "Activity archived successfully",
-    unarchive: "Activity restored successfully",
+    create: "Category created successfully",
+    update: "Category updated successfully",
+    archive: "Category archived successfully",
+    unarchive: "Category restored successfully",
   },
 });
 

@@ -6,63 +6,62 @@ import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
+import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
+import { useProjects } from "@/hooks/useProjects";
+
 import { Project } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
-import { useProjects } from "@/hooks/useProjects";
-import { useUsers } from "@/hooks/useUsers";
-import { useActivities } from "@/hooks/useActivities";
-
 import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
 
-import { ProjectForm, ProjectFormData } from "./ProjectForm";
+import { toggleSelection } from "@/lib/utils/toggle-selection";
+
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 
-interface UpdateProjectModalProps {
-  project: Project;
-  canManage: boolean;
+import { ProjectForm, ProjectFormData } from "./ProjectForm";
+import { useUsersInfiniteQuery } from "@/hooks/useUsers";
+
+interface ProjectModalProps {
+  open: boolean;
   onClose: () => void;
+  project?: Project;
 }
 
 type View = "form" | "members" | "activities";
 
-const FORM_ID = "project-details-form";
+const FORM_ID = "project-form";
 
-export function UpdateProjectModal({
-  project,
-  canManage,
-  onClose,
-}: UpdateProjectModalProps) {
+export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
   const [view, setView] = useState<View>("form");
 
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
-    () => project.users?.map((user) => user.id) ?? [],
+    () => project?.users?.map((user) => user.id) ?? [],
   );
 
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>(
     () =>
-      project.projectActivities?.map(
+      project?.projectActivities?.map(
         (projectActivity) => projectActivity.activityId,
       ) ?? [],
   );
 
   const {
-    actions: { update, archive, unarchive },
+    actions: { create, update, archive, unarchive },
   } = useProjects();
 
-  const { items: allUsers = [], isLoading: isUsersLoading } = useUsers();
+  const { items: users, isLoading: isUsersLoading } = useUsersInfiniteQuery();
 
-  const { items: activities = [], isLoading: isActivitiesLoading } =
-    useActivities();
+  const { items: activities, isLoading: isActivitiesLoading } =
+    useActivitiesInfiniteQuery();
 
-  const isArchived = project.status === ProjectStatus.ARCHIVED;
-
-  const isSubmitting = update.isPending;
+  const isArchived = project?.status === ProjectStatus.ARCHIVED;
 
   const isPicking = view !== "form";
 
-  const employees = allUsers.filter((user) => user.role === UserRole.EMPLOYEE);
+  const isSubmitting = create.isPending || update.isPending;
+
+  const employees = users.filter((user) => user.role === UserRole.EMPLOYEE);
 
   const selectedUsers = employees.filter((user) =>
     selectedUserIds.includes(user.id),
@@ -72,15 +71,37 @@ export function UpdateProjectModal({
     selectedActivityIds.includes(activity.id),
   );
 
+  const handleClose = () => {
+    setView("form");
+    setSelectedUserIds([]);
+    setSelectedActivityIds([]);
+    onClose();
+  };
+
   const handleSubmit = (data: ProjectFormData) => {
-    update.mutate(
-      {
-        id: project.id,
-        data: {
-          ...data,
-          userIds: getNonAdminMemberIds(allUsers, selectedUserIds),
-          activityIds: selectedActivityIds,
+    if (project) {
+      update.mutate(
+        {
+          id: project.id,
+          data: {
+            ...data,
+            userIds: getNonAdminMemberIds(users, selectedUserIds),
+            activityIds: selectedActivityIds,
+          },
         },
+        {
+          onSuccess: onClose,
+        },
+      );
+
+      return;
+    }
+
+    create.mutate(
+      {
+        ...data,
+        userIds: getNonAdminMemberIds(users, selectedUserIds),
+        activityIds: selectedActivityIds,
       },
       {
         onSuccess: onClose,
@@ -89,64 +110,31 @@ export function UpdateProjectModal({
   };
 
   const handleToggleUser = (userId: string) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
-    );
+    setSelectedUserIds((current) => toggleSelection(current, userId));
   };
 
   const handleToggleActivity = (activityId: string) => {
-    setSelectedActivityIds((prev) =>
-      prev.includes(activityId)
-        ? prev.filter((id) => id !== activityId)
-        : [...prev, activityId],
-    );
+    setSelectedActivityIds((current) => toggleSelection(current, activityId));
   };
 
-  const handleApplyMembers = () => {
-    update.mutate(
-      {
-        id: project.id,
-        data: {
-          userIds: getNonAdminMemberIds(allUsers, selectedUserIds),
-        },
-      },
-      {
-        onSuccess: () => {
-          setView("form");
-        },
-      },
-    );
-  };
-
-  const handleApplyActivities = () => {
-    update.mutate(
-      {
-        id: project.id,
-        data: {
-          activityIds: selectedActivityIds,
-        },
-      },
-      {
-        onSuccess: () => {
-          setView("form");
-        },
-      },
-    );
+  const handleApplyPicker = () => {
+    setView("form");
   };
 
   const handleArchive = () => {
+    if (!project) {
+      return;
+    }
+
     archive.mutate(project.id);
   };
 
   const handleUnarchive = () => {
-    unarchive.mutate(project.id);
-  };
+    if (!project) {
+      return;
+    }
 
-  const handleClose = () => {
-    setView("form");
-    onClose();
+    unarchive.mutate(project.id);
   };
 
   const title =
@@ -154,18 +142,20 @@ export function UpdateProjectModal({
       ? "Add members"
       : view === "activities"
         ? "Add activities"
-        : project.name;
+        : (project?.name ?? "Create project");
 
   const description =
     view === "members"
       ? "Select people to add to this project."
       : view === "activities"
         ? "Select activities available for this project."
-        : "Update project details and manage its members and activities.";
+        : project
+          ? "Update project details and manage its members and activities."
+          : "Create a project to organize work and manage access.";
 
   return (
     <ResourceFormModal
-      open
+      open={open}
       onClose={handleClose}
       size="lg"
       bodyPadding={!isPicking}
@@ -186,14 +176,7 @@ export function UpdateProjectModal({
               Back
             </Button>
 
-            <Button
-              type="button"
-              size="sm"
-              onClick={
-                view === "members" ? handleApplyMembers : handleApplyActivities
-              }
-              isLoading={isSubmitting}
-            >
+            <Button type="button" size="sm" onClick={handleApplyPicker}>
               Apply
               {view === "members" && selectedUserIds.length > 0
                 ? ` (${selectedUserIds.length})`
@@ -205,7 +188,7 @@ export function UpdateProjectModal({
           </div>
         ) : (
           <div className="flex w-full items-center justify-between gap-3">
-            {canManage ? (
+            {project ? (
               <Button
                 type="button"
                 variant={isArchived ? "success" : "destructive"}
@@ -236,16 +219,14 @@ export function UpdateProjectModal({
                 Cancel
               </Button>
 
-              {canManage && (
-                <Button
-                  type="submit"
-                  form={FORM_ID}
-                  size="sm"
-                  isLoading={isSubmitting}
-                >
-                  Save changes
-                </Button>
-              )}
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSubmitting}
+              >
+                {project ? "Save changes" : "Create project"}
+              </Button>
             </div>
           </div>
         )
@@ -284,11 +265,10 @@ export function UpdateProjectModal({
         <div className="space-y-6">
           <ProjectForm
             formId={FORM_ID}
-            mode="edit"
+            mode={project ? "edit" : "create"}
             defaultValues={{
-              name: project.name,
-              description: project.description ?? "",
-              status: project.status,
+              name: project?.name ?? "",
+              description: project?.description ?? "",
             }}
             membersCount={selectedUsers.length}
             activitiesCount={selectedActivities.length}
@@ -306,21 +286,23 @@ export function UpdateProjectModal({
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {selectedUsers.length}{" "}
                   {selectedUsers.length === 1
-                    ? "person assigned"
-                    : "people assigned"}
+                    ? project
+                      ? "person assigned"
+                      : "person selected"
+                    : project
+                      ? "people assigned"
+                      : "people selected"}
                 </p>
               </div>
 
-              {canManage && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setView("members")}
-                >
-                  Add members
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setView("members")}
+              >
+                Add members
+              </Button>
             </div>
 
             {selectedUsers.length > 0 && (
@@ -347,21 +329,23 @@ export function UpdateProjectModal({
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {selectedActivities.length}{" "}
                   {selectedActivities.length === 1
-                    ? "activity assigned"
-                    : "activities assigned"}
+                    ? project
+                      ? "activity assigned"
+                      : "activity selected"
+                    : project
+                      ? "activities assigned"
+                      : "activities selected"}
                 </p>
               </div>
 
-              {canManage && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setView("activities")}
-                >
-                  Add activities
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setView("activities")}
+              >
+                Add activities
+              </Button>
             </div>
 
             {selectedActivities.length > 0 && (

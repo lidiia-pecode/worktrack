@@ -1,62 +1,74 @@
 "use client";
 
-import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { QueryKey } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery, QueryKey } from "@tanstack/react-query";
 import { PaginatedResponse } from "@/types";
 
 type EntityQueryApi<TEntity> = {
-  getAll: (page: number) => Promise<PaginatedResponse<TEntity>>;
+  getAll: (params: { page: number }) => Promise<PaginatedResponse<TEntity>>;
 };
 
 type CreateEntityQueryConfig<TEntity> = {
   queryKey: {
     list: (page: number) => QueryKey;
+    infinite: () => QueryKey;
   };
-
   api: EntityQueryApi<TEntity>;
-};
-
-export type EntityQueryResult<TEntity> = {
-  items: TEntity[];
-  count: number;
-
-  query: UseQueryResult<PaginatedResponse<TEntity>, Error>;
-
-  isLoading: boolean;
-  isFetching: boolean;
-  isError: boolean;
-
-  error: Error | null;
-
-  refetch: () => Promise<unknown>;
 };
 
 export function createEntityQuery<TEntity>(
   config: CreateEntityQueryConfig<TEntity>,
 ) {
-  return function useEntityQuery(page: number = 1): EntityQueryResult<TEntity> {
-    const query = useQuery({
-      queryKey: config.queryKey.list(page),
+  return {
+    // 1. Класичний хук зі звичайною пагінацією (для сторінок)
+    useQuery: (page: number = 1) => {
+      const query = useQuery({
+        queryKey: config.queryKey.list(page),
+        queryFn: () => config.api.getAll({ page }),
+      });
 
-      queryFn: () => config.api.getAll(page),
-    });
+      return {
+        items: query.data?.results ?? [],
+        count: query.data?.count ?? 0,
+        query,
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+        isError: query.isError,
+        error: query.error ?? null,
+        refetch: query.refetch,
+      };
+    },
 
-    return {
-      items: query.data?.results ?? [],
+    // 2. Інфініт-хук для скролу, сайдбарів та випадаючих списків (dropdowns)
+    useInfiniteQuery: () => {
+      const query = useInfiniteQuery({
+        queryKey: config.queryKey.infinite(),
+        queryFn: ({ pageParam }) =>
+          config.api.getAll({ page: pageParam as number }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, pages) => {
+          const loaded = pages.flatMap((page) => page.results).length;
+          return loaded < lastPage.count ? pages.length + 1 : undefined;
+        },
+      });
 
-      count: query.data?.count ?? 0,
+      const items = query.data?.pages.flatMap((page) => page.results) ?? [];
+      const count = query.data?.pages[0]?.count ?? 0;
 
-      query,
-
-      isLoading: query.isLoading,
-
-      isFetching: query.isFetching,
-
-      isError: query.isError,
-
-      error: query.error ?? null,
-
-      refetch: query.refetch,
-    };
+      return {
+        items,
+        count,
+        query,
+        isLoading: query.isLoading,
+        isFetching: query.isFetching,
+        isError: query.isError,
+        error: query.error ?? null,
+        refetch: query.refetch,
+        pagination: {
+          fetchNextPage: query.fetchNextPage,
+          hasNextPage: Boolean(query.hasNextPage),
+          isFetchingNextPage: query.isFetchingNextPage,
+        },
+      };
+    },
   };
 }

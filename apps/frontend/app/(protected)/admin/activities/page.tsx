@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/api/server/auth";
-import { ActivityList } from "@/app/components/activities/ActivitiesList";
+import { ActivitiesContent } from "@/app/components/activities/ActivitiesContent";
 
 export default async function ActivitiesAdminPage() {
   const user = await getCurrentUser();
@@ -9,5 +9,5 @@ export default async function ActivitiesAdminPage() {
     redirect("/");
   }
 
-  return <ActivityList />;
+  return <ActivitiesContent />;
 }

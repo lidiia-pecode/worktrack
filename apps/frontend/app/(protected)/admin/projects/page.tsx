@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/api/server/auth";
-import { ProjectList } from "@/app/components/project/ProjectList";
+import { ProjectsContent } from "@/app/components/projects/ProjectContent";
 
 export default async function ProjectsAdminPage() {
   const user = await getCurrentUser();
@@ -9,5 +9,5 @@ export default async function ProjectsAdminPage() {
     redirect("/");
   }
 
-  return <ProjectList />;
+  return <ProjectsContent />;
 }

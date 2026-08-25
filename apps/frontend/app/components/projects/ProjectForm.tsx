@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Activity, Users } from "lucide-react";
 
-import { ProjectStatus } from "@/types/enums";
 import Input from "@/components/ui/input";
 
 import { FormSection } from "../shared/FormSection";
@@ -19,8 +18,6 @@ const projectFormSchema = z.object({
     .max(100, "Project name must be less than 100 characters"),
 
   description: z.string().optional(),
-
-  status: z.enum(ProjectStatus),
 });
 
 export type ProjectFormData = z.infer<typeof projectFormSchema>;
@@ -54,7 +51,6 @@ export function ProjectForm({
     defaultValues: {
       name: defaultValues?.name ?? "",
       description: defaultValues?.description ?? "",
-      status: defaultValues?.status ?? ProjectStatus.ACTIVE,
     },
   });
 

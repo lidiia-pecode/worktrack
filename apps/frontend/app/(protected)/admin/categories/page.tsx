@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/api/server/auth";
-import { ActCategoryList } from "@/app/components/categories/ActCategoryList";
+import { ActivityCategoriesContent } from "@/app/components/categories/ActivityCategoriesContent";
 
 export default async function ActivityCategoriesAdminPage() {
   const user = await getCurrentUser();
@@ -9,5 +9,5 @@ export default async function ActivityCategoriesAdminPage() {
     redirect("/");
   }
 
-  return <ActCategoryList />;
+  return <ActivityCategoriesContent />;
 }

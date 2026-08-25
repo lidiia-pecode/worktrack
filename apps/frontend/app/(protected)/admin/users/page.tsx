@@ -1,5 +1,5 @@
+import { UsersContent } from "@/app/components/users/UsersContent";
 import { getCurrentUser } from "@/lib/api/server/auth";
-import { UsersPage } from "@/app/components/users/UsersPage";
 import { redirect } from "next/navigation";
 
 export default async function UsersAdminPage() {
@@ -8,5 +8,5 @@ export default async function UsersAdminPage() {
     redirect("/");
   }
 
-  return <UsersPage />;
+  return <UsersContent />;
 }

@@ -13,7 +13,7 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
 
-export function TeamsPage() {
+export function TeamsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 

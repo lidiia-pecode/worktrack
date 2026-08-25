@@ -5,7 +5,7 @@ import { useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { useUsers } from "@/hooks/useUsers";
+import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { User } from "@/types";
 
@@ -14,10 +14,16 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { UserCard } from "./UserCard";
 import { InviteUserModal } from "./InviteUserModal";
 
-export const UsersPage = () => {
+export const UsersContent = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  const { items: users, isLoading, isError, refetch, pagination } = useUsers();
+  const {
+    items: users,
+    isLoading,
+    isError,
+    refetch,
+    pagination,
+  } = useUsersInfiniteQuery();
   const { user } = useAuth();
 
   const canManage = hasManagerAccess(user?.role);

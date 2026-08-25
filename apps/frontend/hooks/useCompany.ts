@@ -10,7 +10,7 @@ export function useCompany() {
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: queryKeys.companies.current(),
+    queryKey: queryKeys.company.current,
     queryFn: CompaniesClientApi.get,
     staleTime: 1000 * 60 * 5,
   });
@@ -19,7 +19,7 @@ export function useCompany() {
     mutationFn: CompaniesClientApi.update,
 
     onSuccess: (company) => {
-      queryClient.setQueryData(queryKeys.companies.current(), company);
+      queryClient.setQueryData(queryKeys.company.current, company);
 
       toast.success("Workspace settings updated");
     },

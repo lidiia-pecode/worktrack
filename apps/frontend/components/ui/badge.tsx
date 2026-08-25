@@ -1,71 +1,55 @@
+// src/components/ui/badge.tsx
 import { cva, type VariantProps } from "class-variance-authority";
-
+import { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
 const badgeVariants = cva(
-  "inline-flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap",
+  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
   {
     variants: {
       variant: {
-        brand: "bg-brand-subtle text-brand",
-        success: "bg-success/10 text-success",
-        warning: "bg-warning/10 text-warning",
-        destructive: "bg-destructive/10 text-destructive",
-        neutral: "bg-muted text-muted-foreground",
-      },
-      size: {
-        sm: "px-2 py-0.5 text-[11px]",
-        md: "px-2.5 py-1 text-xs",
+        default: "bg-brand-subtle text-brand border border-brand/20",
+        success:
+          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
+        warning:
+          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+        destructive:
+          "bg-destructive/10 text-destructive border border-destructive/20",
+        neutral: "bg-muted text-muted-foreground border border-border",
       },
     },
     defaultVariants: {
-      variant: "neutral",
-      size: "md",
+      variant: "default",
     },
   },
 );
 
-const dotColor: Record<string, string> = {
-  brand: "bg-brand",
-  success: "bg-success",
-  warning: "bg-warning",
-  destructive: "bg-destructive",
-  neutral: "bg-muted-foreground",
-};
-
 export interface BadgeProps
-  extends
-    React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+  extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
   dot?: boolean;
 }
 
-function Badge({
+export function Badge({
   className,
-  variant = "neutral",
-  size,
+  variant,
   dot = false,
   children,
   ...props
 }: BadgeProps) {
   return (
-    <span
-      data-slot="badge"
-      className={cn(badgeVariants({ variant, size, className }))}
-      {...props}
-    >
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
       {dot && (
         <span
-          className={cn(
-            "size-1.5 rounded-full",
-            dotColor[variant ?? "neutral"],
-          )}
+          className={cn("size-1.5 rounded-full", {
+            "bg-brand": variant === "default",
+            "bg-emerald-500": variant === "success",
+            "bg-amber-500": variant === "warning",
+            "bg-destructive": variant === "destructive",
+            "bg-muted-foreground": variant === "neutral",
+          })}
         />
       )}
-
       {children}
-    </span>
+    </div>
   );
 }
-
-export { Badge, badgeVariants };

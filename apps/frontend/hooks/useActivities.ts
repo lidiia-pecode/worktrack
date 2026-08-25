@@ -6,12 +6,15 @@ import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { queryKeys } from "./shared/queryKeys";
 
-const useActivitiesQuery = createEntityQuery<Activity>({
+const activitiesQueries = createEntityQuery<Activity>({
   queryKey: queryKeys.activities,
   api: {
     getAll: ActivitiesClientApi.getAll,
   },
 });
+
+export const useActivitiesQuery = activitiesQueries.useQuery;
+export const useActivitiesInfiniteQuery = activitiesQueries.useInfiniteQuery;
 
 const useActivitiesMutations = createEntityMutations<
   Activity,

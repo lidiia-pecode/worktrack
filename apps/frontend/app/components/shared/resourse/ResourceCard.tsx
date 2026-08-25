@@ -61,25 +61,32 @@ export function ResourceCard({
 
   if (isInteractive) {
     return (
-      <button
-        type="button"
+      <article
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onClick?.();
+          }
+        }}
         className="
-          w-full text-left
-          rounded-2xl border border-border
-          bg-card
-          shadow-sm
-          transition-all
-          hover:-translate-y-0.5
-          hover:border-brand/30
-          hover:shadow-md
-          focus-visible:outline-none
-          focus-visible:ring-2
-          focus-visible:ring-ring
-        "
+        w-full cursor-pointer text-left
+        rounded-2xl border border-border
+        bg-card
+        shadow-sm
+        transition-all
+        hover:-translate-y-0.5
+        hover:border-brand/30
+        hover:shadow-md
+        focus-visible:outline-none
+        focus-visible:ring-2
+        focus-visible:ring-ring
+      "
       >
         {content}
-      </button>
+      </article>
     );
   }
 

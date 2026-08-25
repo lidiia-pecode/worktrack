@@ -1,7 +1,6 @@
 export const queryKeys = {
-  companies: {
-    all: ["company"] as const,
-    current: () => [...queryKeys.companies.all, "current"] as const,
+  company: {
+    current: ["company"] as const,
   },
 
   teams: {
@@ -13,7 +12,7 @@ export const queryKeys = {
 
     infinite: () => [...queryKeys.teams.all, "infinite"] as const,
 
-    detail: (id: string) => [...queryKeys.teams.all, "detail", id] as const,
+    // detail: (id: string) => [...queryKeys.teams.all, "detail", id] as const,
   },
 
   projects: {
@@ -23,9 +22,9 @@ export const queryKeys = {
 
     list: (page: number) => [...queryKeys.projects.lists(), page] as const,
 
-    detail: (id: string) => [...queryKeys.projects.all, "detail", id] as const,
+    infinite: () => [...queryKeys.projects.all, "infinite"] as const,
 
-    picker: () => [...queryKeys.projects.all, "picker"] as const,
+    // detail: (id: string) => [...queryKeys.projects.all, "detail", id] as const,
   },
 
   activities: {
@@ -37,8 +36,8 @@ export const queryKeys = {
 
     infinite: () => [...queryKeys.activities.all, "infinite"] as const,
 
-    detail: (id: string) =>
-      [...queryKeys.activities.all, "detail", id] as const,
+    // detail: (id: string) =>
+    //   [...queryKeys.activities.all, "detail", id] as const,
   },
 
   activityCategories: {
@@ -49,12 +48,18 @@ export const queryKeys = {
     list: (page: number) =>
       [...queryKeys.activityCategories.lists(), page] as const,
 
-    detail: (id: string) =>
-      [...queryKeys.activityCategories.all, "detail", id] as const,
+    infinite: () => [...queryKeys.activityCategories.all, "infinite"] as const,
+
+    // detail: (id: string) =>
+    //   [...queryKeys.activityCategories.all, "detail", id] as const,
   },
 
   users: {
     all: ["users"] as const,
+
+    lists: () => [...queryKeys.users.all, "list"] as const,
+
+    list: (page: number) => [...queryKeys.users.lists(), page] as const,
 
     infinite: () => [...queryKeys.users.all, "infinite"] as const,
 
@@ -75,8 +80,8 @@ export const queryKeys = {
 
     lists: () => [...queryKeys.projectActivities.all, "list"] as const,
 
-    list: (projectId: string) =>
-      [...queryKeys.projectActivities.lists(), projectId] as const,
+    // list: (projectId: string) =>
+    //   [...queryKeys.projectActivities.lists(), projectId] as const,
   },
 
   auth: {
