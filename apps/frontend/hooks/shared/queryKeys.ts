@@ -3,6 +3,11 @@ export const queryKeys = {
     current: ["company"] as const,
   },
 
+  onboarding: {
+    all: ["onboarding"] as const,
+    ownerSetup: () => [...queryKeys.onboarding.all, "owner-setup"] as const,
+  },
+
   teams: {
     all: ["teams"] as const,
 

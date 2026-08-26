@@ -5,14 +5,17 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
+
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 
 import { FormSelect } from "../shared/FormSelect";
+
 import {
   InviteUserFormData,
   inviteUserSchema,
 } from "@/lib/forms/schemas/invite-user.schema";
+import { useAuth } from "@/hooks/useAuth";
 
 interface InviteUserFormProps {
   formId?: string;
@@ -20,16 +23,34 @@ interface InviteUserFormProps {
   onSubmit: (data: InviteUserFormData) => void;
 }
 
-const roleOptions = [
-  { value: UserRole.EMPLOYEE, label: ROLE_LABELS[UserRole.EMPLOYEE] },
-  { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
-];
-
 export function InviteUserForm({
   formId = "invite-user-form",
   isSubmitting = false,
   onSubmit,
 }: InviteUserFormProps) {
+  const { user } = useAuth();
+  const isOwner = user?.role === UserRole.OWNER;
+
+  const roleOptions = isOwner
+    ? [
+        {
+          value: UserRole.MANAGER,
+          label: ROLE_LABELS[UserRole.MANAGER],
+        },
+        {
+          value: UserRole.EMPLOYEE,
+          label: ROLE_LABELS[UserRole.EMPLOYEE],
+        },
+      ]
+    : [
+        {
+          value: UserRole.EMPLOYEE,
+          label: ROLE_LABELS[UserRole.EMPLOYEE],
+        },
+      ];
+
+  const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
+
   const {
     register,
     control,
@@ -39,7 +60,7 @@ export function InviteUserForm({
     resolver: zodResolver(inviteUserSchema),
     defaultValues: {
       email: "",
-      role: UserRole.EMPLOYEE,
+      role: defaultRole,
     },
   });
 

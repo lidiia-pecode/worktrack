@@ -53,7 +53,9 @@ export class ActivitiesService {
   ): Promise<Activity> {
     const entity = await repo.findOne({
       where: { id, companyId },
-      relations: ['category'],
+      relations: {
+        category: true,
+      },
     });
 
     if (!entity) {
@@ -109,7 +111,9 @@ export class ActivitiesService {
 
     const [results, count] = await this.repo.findAndCount({
       where,
-      relations: ['category'],
+      relations: {
+        category: true,
+      },
       skip: query.offset,
       take: query.limit,
       order: {

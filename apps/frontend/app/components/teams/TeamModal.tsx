@@ -15,21 +15,29 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
+import { useRouter } from "next/navigation";
 
 interface TeamModalProps {
   open: boolean;
   onClose: () => void;
   team?: Team;
+  isOnboarding?: boolean;
 }
 
 type View = "form" | "members";
 
 const FORM_ID = "team-details-form";
 
-export function TeamModal({ open, onClose, team }: TeamModalProps) {
+export function TeamModal({
+  open,
+  onClose,
+  team,
+  isOnboarding,
+}: TeamModalProps) {
   const [view, setView] = useState<View>("form");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [isAddingMembers, setIsAddingMembers] = useState(false);
+  const router = useRouter();
 
   const {
     actions: { create, update, archive, unarchive },
@@ -46,10 +54,19 @@ export function TeamModal({ open, onClose, team }: TeamModalProps) {
   const handleSubmit = (data: TeamFormData) => {
     if (team) {
       update.mutate({ id: team.id, data }, { onSuccess: onClose });
+
       return;
     }
 
-    create.mutate(data, { onSuccess: onClose });
+    create.mutate(data, {
+      onSuccess: () => {
+        onClose();
+
+        if (isOnboarding) {
+          router.push("/");
+        }
+      },
+    });
   };
 
   const handleToggleUser = (userId: string) => {

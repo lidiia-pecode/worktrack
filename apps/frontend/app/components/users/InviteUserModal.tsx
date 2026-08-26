@@ -6,21 +6,33 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
 import { useInvitations } from "@/hooks/useInvitation";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
+import { useRouter } from "next/navigation";
 
 interface InviteUserModalProps {
   open: boolean;
   onClose: () => void;
+  isOnboarding?: boolean;
 }
 
-export function InviteUserModal({ open, onClose }: InviteUserModalProps) {
+export function InviteUserModal({
+  open,
+  onClose,
+  isOnboarding,
+}: InviteUserModalProps) {
   const {
     actions: { create },
   } = useInvitations();
+
+  const router = useRouter();
 
   const handleSubmit = (data: InviteUserFormData) => {
     create.mutate(data, {
       onSuccess: onClose,
     });
+
+    if (isOnboarding) {
+      router.push("/");
+    }
   };
 
   return (

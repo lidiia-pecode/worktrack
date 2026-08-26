@@ -12,6 +12,7 @@ import { Team } from "@/types/Team";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
+import { useSearchParams } from "next/navigation";
 
 export function TeamsContent() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -19,6 +20,10 @@ export function TeamsContent() {
 
   const { user } = useAuth();
   const { items: teams, isLoading, isError, refetch, pagination } = useTeams();
+
+  const searchParams = useSearchParams();
+
+  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const canManage = hasManagerAccess(user?.role);
 
@@ -57,7 +62,11 @@ export function TeamsContent() {
         )}
       />
 
-      <TeamModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <TeamModal
+        isOnboarding={isOnboarding}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
 
       <TeamModal
         team={editingTeam}

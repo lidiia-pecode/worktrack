@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, MoreThan, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/UserRole.enum';
@@ -104,6 +104,17 @@ export class InvitationsService {
     const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
 
     await this.mailService.sendInvitationEmail(email, inviteUrl);
+  }
+
+  async listPendingByCompany(companyId: string): Promise<Invitation[]> {
+    return this.invitationRepository.find({
+      where: {
+        companyId,
+        status: InvitationStatus.PENDING,
+        expiresAt: MoreThan(new Date()),
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   async findByToken(token: string): Promise<Invitation> {

@@ -13,6 +13,8 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 
 import { UserCard } from "./UserCard";
 import { InviteUserModal } from "./InviteUserModal";
+import { useSearchParams } from "next/navigation";
+import { UserRole } from "@/types/enums";
 
 export const UsersContent = () => {
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -30,12 +32,16 @@ export const UsersContent = () => {
 
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = pagination;
 
+  const searchParams = useSearchParams();
+
+  const isOnboarding = searchParams.get("onboarding") === "true";
+
   return (
     <>
       <ResourcePage<User>
         title="Users"
         description="Manage workspace users, roles and project access."
-        items={users}
+        items={users.filter((u) => u.role !== UserRole.OWNER)}
         isLoading={isLoading}
         isError={isError || !canManage}
         onRetry={refetch}
@@ -63,7 +69,11 @@ export const UsersContent = () => {
         renderItem={(user) => <UserCard key={user.id} user={user} />}
       />
 
-      <InviteUserModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <InviteUserModal
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        isOnboarding={isOnboarding}
+      />
     </>
   );
 };
