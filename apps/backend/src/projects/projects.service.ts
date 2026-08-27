@@ -136,17 +136,43 @@ export class ProjectsService {
     manager: EntityManager,
   ): Promise<void> {
     const targetUserIds = Array.from(new Set(rawUserIds));
-    const projectRepo = manager.getRepository(Project);
 
-    const users = targetUserIds.length
+    const targetUsers = targetUserIds.length
       ? await this.usersService.findActiveOnlyMany(
           targetUserIds,
           project.companyId,
         )
       : [];
 
-    project.users = users;
-    await projectRepo.save(project);
+    const targetIds = new Set(targetUsers.map((u) => u.id));
+
+    const currentRows: Array<{ user_id: string }> = await manager
+      .createQueryBuilder()
+      .select('pu.user_id', 'user_id')
+      .from('project_users', 'pu')
+      .where('pu.project_id = :projectId', { projectId: project.id })
+      .getRawMany();
+
+    const currentIds = new Set(currentRows.map((row) => row.user_id));
+
+    const idsToAdd = targetUsers
+      .filter((u) => !currentIds.has(u.id))
+      .map((u) => u.id);
+
+    const idsToRemove = [...currentIds].filter((id) => !targetIds.has(id));
+
+    const relation = manager
+      .createQueryBuilder()
+      .relation(Project, 'users')
+      .of(project.id);
+
+    if (idsToAdd.length > 0) {
+      await relation.add(idsToAdd);
+    }
+
+    if (idsToRemove.length > 0) {
+      await relation.remove(idsToRemove);
+    }
   }
 
   private async getByIdWithManager(

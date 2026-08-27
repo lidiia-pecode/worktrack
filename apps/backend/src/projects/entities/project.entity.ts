@@ -66,7 +66,10 @@ export class Project {
   @JoinColumn({ name: 'company_id' })
   company!: Company;
 
-  @OneToMany(() => ProjectActivity, (pa) => pa.project, { cascade: false })
+  @OneToMany(() => ProjectActivity, (pa) => pa.project, {
+    cascade: false,
+    orphanedRowAction: 'disable',
+  })
   projectActivities!: ProjectActivity[];
 
   @ManyToMany(() => User, (user) => user.projects)

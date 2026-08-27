@@ -57,30 +57,28 @@ export function ActivitiesContent() {
       <ResourcePage<Activity>
         title="Activities"
         description="Manage activities that can be assigned to projects."
-
         items={activeActivities}
-
         isLoading={isLoading}
         isError={isError || !canManage}
         onRetry={refetch}
-
         getSearchValue={(activity) => activity.name}
         searchPlaceholder="Search activities..."
-
         emptyTitle="No activities yet"
         emptyDescription="Create your first activity to start tracking work."
         emptyIcon={<ClipboardList className="size-6" />}
-
         createLabel="Create activity"
         onCreate={() => setCreateOpen(true)}
         canCreate={canManage}
-
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
-
         renderItem={(activity) => (
-          <ActivityCard key={activity.id} activity={activity} />
+          <ActivityCard
+            key={activity.id}
+            activity={activity}
+            canManage={canManage}
+            onView={(a) => setEditingActivityId(a.id)}
+          />
         )}
       />
 

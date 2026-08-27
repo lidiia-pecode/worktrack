@@ -1,14 +1,14 @@
 "use client";
 
-import { Tags } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
 import { ActivityCategory } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
 import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ActivityCategoryModal } from "./ActivityCategoryModal";
 
 interface ActivityCategoryCardProps {
   category: ActivityCategory;
@@ -18,41 +18,37 @@ interface ActivityCategoryCardProps {
 
 export function ActivityCategoryCard({
   category,
+  canManage = false,
   onView,
 }: ActivityCategoryCardProps) {
-  const [open, setOpen] = useState(false);
-
   const isArchived = category.status === ActCategoryStatus.ARCHIVED;
 
-  const handleView = () => {
-    if (onView) {
-      onView(category);
-      return;
-    }
-
-    setOpen(true);
-  };
-
   return (
-    <>
-      <ResourceCard
-        onClick={handleView}
-        icon={<Tags className="size-5" />}
-        title={category.name}
-        subtitle={
-          <Badge variant={isArchived ? "neutral" : "success"} dot>
-            {isArchived ? "Archived" : "Active"}
-          </Badge>
-        }
-      />
-
-      {!onView && open && (
-        <ActivityCategoryModal
-          category={category}
-          open
-          onClose={() => setOpen(false)}
-        />
-      )}
-    </>
+    <ResourceCard
+      onClick={onView ? () => onView(category) : undefined}
+      icon={<Tags className="size-5" />}
+      title={category.name}
+      subtitle={
+        <Badge variant={isArchived ? "neutral" : "success"} dot>
+          {isArchived ? "Archived" : "Active"}
+        </Badge>
+      }
+      actions={
+        canManage && !isArchived ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="iconSm"
+            aria-label={`Edit ${category.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onView?.(category);
+            }}
+          >
+            <Pencil className="size-4" />
+          </Button>
+        ) : undefined
+      }
+    ></ResourceCard>
   );
 }

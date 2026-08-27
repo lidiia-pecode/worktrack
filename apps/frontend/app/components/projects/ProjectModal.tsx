@@ -21,6 +21,8 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
+import { ProjectMembersSection } from "./ProjectMembersSection";
+import { ProjectActivitiesSection } from "./ProjectActivitieSsection";
 
 interface ProjectModalProps {
   open: boolean;
@@ -133,6 +135,14 @@ export function ProjectModal({
   };
 
   const handleToggleActivity = (activityId: string) => {
+    setSelectedActivityIds((current) => toggleSelection(current, activityId));
+  };
+
+  const handleRemoveUser = (userId: string) => {
+    setSelectedUserIds((current) => toggleSelection(current, userId));
+  };
+
+  const handleRemoveActivity = (activityId: string) => {
     setSelectedActivityIds((current) => toggleSelection(current, activityId));
   };
 
@@ -288,89 +298,21 @@ export function ProjectModal({
         />
 
         <div className="border-t border-border pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Team members
-              </h3>
-
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {selectedUsers.length}{" "}
-                {selectedUsers.length === 1
-                  ? project
-                    ? "person assigned"
-                    : "person selected"
-                  : project
-                    ? "people assigned"
-                    : "people selected"}
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setView("members")}
-            >
-              Add members
-            </Button>
-          </div>
-
-          {selectedUsers.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedUsers.map((user) => (
-                <div
-                  key={user.id}
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
-                >
-                  {fullName(user)}
-                </div>
-              ))}
-            </div>
-          )}
+          <ProjectMembersSection
+            members={selectedUsers}
+            isCreateMode={!project}
+            onOpenAddMembers={() => setView("members")}
+            onRemoveMember={handleRemoveUser}
+          />
         </div>
 
         <div className="border-t border-border pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Project activities
-              </h3>
-
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                {selectedActivities.length}{" "}
-                {selectedActivities.length === 1
-                  ? project
-                    ? "activity assigned"
-                    : "activity selected"
-                  : project
-                    ? "activities assigned"
-                    : "activities selected"}
-              </p>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setView("activities")}
-            >
-              Add activities
-            </Button>
-          </div>
-
-          {selectedActivities.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedActivities.map((activity) => (
-                <div
-                  key={activity.id}
-                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
-                >
-                  {activity.name}
-                </div>
-              ))}
-            </div>
-          )}
+          <ProjectActivitiesSection
+            activities={selectedActivities}
+            isCreateMode={!project}
+            onOpenAddActivities={() => setView("activities")}
+            onRemoveActivity={handleRemoveActivity}
+          />
         </div>
       </div>
     </ResourceFormModal>
