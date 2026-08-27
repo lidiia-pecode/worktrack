@@ -13,6 +13,7 @@ import { Project } from "@/types";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
+import { useSearchParams } from "next/navigation";
 
 export function ProjectsContent() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -20,6 +21,9 @@ export function ProjectsContent() {
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
+
+  const searchParams = useSearchParams();
+  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const {
     items: projects,
@@ -66,9 +70,14 @@ export function ProjectsContent() {
         )}
       />
 
-      <ProjectModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ProjectModal
+        isOnboarding={isOnboarding}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
 
       <ProjectModal
+        isOnboarding={isOnboarding}
         key={editingProject?.id ?? "create"}
         project={editingProject}
         open={Boolean(editingProject)}

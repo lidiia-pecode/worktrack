@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, MoreThan, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -90,8 +90,6 @@ export class OnboardingService {
   ): Promise<ManagerSetupStateDto> {
     const teamIds = await this.getManagerActiveTeamIds(companyId, userId);
 
-    console.log('MANAGERteamIds ', teamIds);
-
     const teamAssigned = teamIds.length > 0;
 
     if (!teamAssigned) {
@@ -100,27 +98,39 @@ export class OnboardingService {
         steps: {
           teamAssigned: false,
           inviteMember: false,
+          memberJoined: false,
+          addTeamMember: false,
+          createProject: false,
           createActivity: false,
           createCategory: false,
-          createProject: false,
         },
         setupComplete: false,
       };
     }
 
-    const [inviteMember, createActivity, createCategory, createProject] =
-      await Promise.all([
-        this.hasTeamMember(companyId, teamIds),
-        this.hasActiveActivity(companyId),
-        this.hasActiveCategory(companyId),
-        this.hasActiveProject(companyId),
-      ]);
+    const [
+      inviteMember,
+      memberJoined,
+      addTeamMember,
+      createCategory,
+      createActivity,
+      createProject,
+    ] = await Promise.all([
+      this.hasPendingOrAcceptedEmployeeInvitation(companyId),
+      this.hasActiveEmployee(companyId),
+      this.hasTeamMember(companyId, teamIds),
+      this.hasActiveActivity(companyId),
+      this.hasActiveCategory(companyId),
+      this.hasActiveProject(companyId),
+    ]);
 
     const steps: ManagerSetupStepStateDto = {
       teamAssigned,
       inviteMember,
-      createActivity,
+      memberJoined,
+      addTeamMember,
       createCategory,
+      createActivity,
       createProject,
     };
 
@@ -164,7 +174,9 @@ export class OnboardingService {
           status: UserStatus.ACTIVE,
         },
       },
-      select: { teamId: true },
+      select: {
+        teamId: true,
+      },
     });
 
     return memberships.map(({ teamId }) => teamId);
@@ -193,16 +205,17 @@ export class OnboardingService {
     companyId: string,
     teamIds: string[],
   ): Promise<boolean> {
-    if (!teamIds.length) return false;
+    if (teamIds.length === 0) {
+      return false;
+    }
 
-    return this.membershipRepo.exists({
-      where: {
-        companyId,
-        teamId: In(teamIds),
-        leftAt: IsNull(),
-        roleInTeam: TeamRole.MEMBER,
-      },
-    });
+    return this.membershipRepo
+      .createQueryBuilder('membership')
+      .where('membership.companyId = :companyId', { companyId })
+      .andWhere('membership.teamId IN (:...teamIds)', { teamIds })
+      .andWhere('membership.leftAt IS NULL')
+      .andWhere('membership.roleInTeam = :role', { role: TeamRole.MEMBER })
+      .getExists();
   }
 
   // ===========================================================================
@@ -228,6 +241,44 @@ export class OnboardingService {
         role: UserRole.MANAGER,
         status: InvitationStatus.PENDING,
         expiresAt: MoreThan(new Date()),
+      },
+    });
+  }
+
+  // ===========================================================================
+  // MANAGER — INVITATIONS
+  // ===========================================================================
+
+  private async hasPendingOrAcceptedEmployeeInvitation(
+    companyId: string,
+  ): Promise<boolean> {
+    return this.invitationRepo.exists({
+      where: [
+        {
+          companyId,
+          role: UserRole.EMPLOYEE,
+          status: InvitationStatus.PENDING,
+          expiresAt: MoreThan(new Date()),
+        },
+        {
+          companyId,
+          role: UserRole.EMPLOYEE,
+          status: InvitationStatus.ACCEPTED,
+        },
+      ],
+    });
+  }
+
+  // ===========================================================================
+  // MANAGER — EMPLOYEES
+  // ===========================================================================
+
+  private async hasActiveEmployee(companyId: string): Promise<boolean> {
+    return this.userRepo.exists({
+      where: {
+        companyId,
+        role: UserRole.EMPLOYEE,
+        status: UserStatus.ACTIVE,
       },
     });
   }

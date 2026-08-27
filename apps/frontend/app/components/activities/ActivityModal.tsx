@@ -13,16 +13,24 @@ import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategorie
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
+import { useRouter } from "next/navigation";
 
 interface ActivityModalProps {
   open: boolean;
   onClose: () => void;
   activity?: Activity;
+  isOnboarding?: boolean;
 }
 
 const FORM_ID = "activity-form";
 
-export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
+export function ActivityModal({
+  open,
+  onClose,
+  activity,
+  isOnboarding = false,
+}: ActivityModalProps) {
+  const router = useRouter();
   const {
     actions: { create, update, archive, unarchive },
   } = useActivities();
@@ -52,7 +60,13 @@ export function ActivityModal({ open, onClose, activity }: ActivityModalProps) {
     }
 
     create.mutate(data, {
-      onSuccess: onClose,
+      onSuccess: () => {
+        onClose();
+
+        if (isOnboarding) {
+          router.push("/");
+        }
+      },
     });
   };
 

@@ -14,11 +14,13 @@ import {
   ActivityCategoryForm,
   ActivityCategoryFormData,
 } from "./ActivityCategoryForm";
+import { useRouter } from "next/navigation";
 
 interface ActivityCategoryModalProps {
   open: boolean;
   onClose: () => void;
   category?: ActivityCategory;
+  isOnboarding?: boolean;
 }
 
 const FORM_ID = "activity-category-form";
@@ -27,7 +29,9 @@ export function ActivityCategoryModal({
   open,
   onClose,
   category,
+  isOnboarding = false,
 }: ActivityCategoryModalProps) {
+  const router = useRouter();
   const {
     actions: { create, update, archive, unarchive },
   } = useActivityCategories();
@@ -53,7 +57,13 @@ export function ActivityCategoryModal({
     }
 
     create.mutate(data, {
-      onSuccess: onClose,
+      onSuccess: () => {
+        onClose();
+
+        if (isOnboarding) {
+          router.push("/");
+        }
+      },
     });
   };
 

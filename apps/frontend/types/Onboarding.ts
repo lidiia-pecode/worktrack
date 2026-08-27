@@ -20,7 +20,9 @@ export interface ManagerSetupState {
 export interface ManagerSetupSteps {
   teamAssigned: boolean;
   inviteMember: boolean;
+  memberJoined: boolean;
+  addTeamMember: boolean;
+  createProject: boolean;
   createActivity: boolean;
   createCategory: boolean;
-  createProject: boolean;
 }

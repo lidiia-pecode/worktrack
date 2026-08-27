@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+
 import {
   Activity,
   ArrowRight,
@@ -15,10 +16,19 @@ import {
 import { useManagerSetupState } from "@/hooks/useOnboarding";
 
 type SetupStep = {
-  id: "team" | "users" | "project" | "activity" | "category";
+  id:
+    | "team"
+    | "members"
+    | "project"
+    | "activity"
+    | "category"
+    | "inviteMember"
+    | "memberJoined"
+    | "addTeamMember";
   title: string;
   description: string;
-  href: string;
+  href?: string;
+  actionLabel?: string;
   icon: typeof UsersRound;
   completed: boolean;
   locked: boolean;
@@ -42,6 +52,8 @@ export function ManagerWorkspaceSetup() {
   const {
     teamAssigned,
     inviteMember,
+    memberJoined,
+    addTeamMember,
     createProject,
     createActivity,
     createCategory,
@@ -51,48 +63,81 @@ export function ManagerWorkspaceSetup() {
     {
       id: "team",
       title: "Join your team",
-      description:
-        "Your owner needs to assign you to a team before you can start managing it.",
-      href: "/admin/teams?onboarding=true",
+      description: teamAssigned
+        ? "You have been assigned to a team."
+        : "Your owner needs to assign you to a team before you can start managing it.",
       icon: UsersRound,
       completed: teamAssigned,
       locked: false,
     },
+
     {
-      id: "users",
-      title: "Invite team members",
-      description:
-        "Invite the people who will work on your projects and track their time.",
+      id: "inviteMember",
+      title: "Invite a team member",
+      description: inviteMember
+        ? "An employee has been invited to your workspace."
+        : "Invite someone who will work on your projects and track their time.",
       href: "/admin/users?onboarding=true",
+      actionLabel: "Invite member",
       icon: UserPlus,
       completed: inviteMember,
       locked: !teamAssigned,
     },
+
     {
-      id: "project",
-      title: "Create your first project",
-      description: "Create a project to start organizing your team's work.",
-      href: "/admin/projects?onboarding=true",
-      icon: FolderKanban,
-      completed: createProject,
+      id: "memberJoined",
+      title: "Member joins the workspace",
+      description: memberJoined
+        ? "The invited member has joined the workspace."
+        : "The invited member needs to accept the invitation.",
+      icon: UserPlus,
+      completed: memberJoined,
       locked: !inviteMember,
     },
+
+    {
+      id: "addTeamMember",
+      title: "Add member to your team",
+      description: addTeamMember
+        ? "Your team has members assigned and is ready to work."
+        : "Add the member who will work on your team's projects.",
+      href: "/admin/teams?onboarding=true",
+      actionLabel: "Go to Teams",
+      icon: UsersRound,
+      completed: addTeamMember,
+      locked: !memberJoined,
+    },
+
+    {
+      id: "category",
+      title: "Create a category",
+      description: "Create a category to organize your activities.",
+      href: "/admin/categories?onboarding=true",
+      actionLabel: "Continue",
+      icon: Tags,
+      completed: createCategory,
+      locked: !addTeamMember,
+    },
+
     {
       id: "activity",
       title: "Create an activity",
       description: "Create an activity your team can use when logging time.",
       href: "/admin/activities?onboarding=true",
+      actionLabel: "Continue",
       icon: Activity,
       completed: createActivity,
-      locked: !createProject,
+      locked: !createCategory,
     },
+
     {
-      id: "category",
-      title: "Create a category",
-      description: "Create a category to help organize your projects.",
-      href: "/admin/categories?onboarding=true",
-      icon: Tags,
-      completed: createCategory,
+      id: "project",
+      title: "Create your first project",
+      description: "Create a project to start organizing your team's work.",
+      href: "/admin/projects?onboarding=true",
+      actionLabel: "Continue",
+      icon: FolderKanban,
+      completed: createProject,
       locked: !createActivity,
     },
   ];
@@ -155,7 +200,9 @@ export function ManagerWorkspaceSetup() {
                 className={[
                   "flex items-center gap-4 px-6 py-5",
                   step.locked && "opacity-60",
-                ].join(" ")}
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 <div
                   className={[
@@ -197,14 +244,20 @@ export function ManagerWorkspaceSetup() {
                   <p className="mt-1 text-sm leading-5 text-muted-foreground">
                     {step.description}
                   </p>
+
+                  {step.id === "team" && !teamAssigned && (
+                    <p className="mt-2 text-xs font-medium text-muted-foreground">
+                      Waiting for owner
+                    </p>
+                  )}
                 </div>
 
-                {isCurrent && (
+                {isCurrent && step.href && (
                   <Link
                     href={step.href}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    Continue
+                    {step.actionLabel}
                     <ArrowRight className="size-[15px]" />
                   </Link>
                 )}

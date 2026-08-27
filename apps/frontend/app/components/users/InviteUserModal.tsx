@@ -27,12 +27,14 @@ export function InviteUserModal({
 
   const handleSubmit = (data: InviteUserFormData) => {
     create.mutate(data, {
-      onSuccess: onClose,
-    });
+      onSuccess: () => {
+        onClose();
 
-    if (isOnboarding) {
-      router.push("/");
-    }
+        if (isOnboarding) {
+          router.push("/");
+        }
+      },
+    });
   };
 
   return (

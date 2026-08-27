@@ -5,18 +5,16 @@ import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-
+import { useAuth } from "@/hooks/useAuth";
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
 import { useUsers } from "@/hooks/useUsers";
 
 import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
-
 import { fullName, initials } from "@/lib/utils/user";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
-
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
 
@@ -37,19 +35,15 @@ export function TeamModal({
   team,
   isOnboarding = false,
 }: TeamModalProps) {
-  console.log("isOnboarding", isOnboarding);
   const router = useRouter();
+  const { user } = useAuth();
 
   const [view, setView] = useState<View>("form");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [isAddingMembers, setIsAddingMembers] = useState(false);
-
   const [assignRoleOverride, setAssignRoleOverride] = useState<TeamRole | null>(
     null,
   );
-
-  const defaultTeamRole = isOnboarding ? TeamRole.MANAGER : TeamRole.MEMBER;
-  const assignRole = assignRoleOverride ?? defaultTeamRole;
 
   const {
     actions: { create, update, archive, unarchive },
@@ -66,20 +60,34 @@ export function TeamModal({
   const isSubmitting = create.isPending || update.isPending;
   const isArchiving = archive.isPending || unarchive.isPending;
 
+  const isOwner = user?.role === UserRole.OWNER;
+  const isManager = user?.role === UserRole.MANAGER;
+
+  const defaultTeamRole = isOwner ? TeamRole.MANAGER : TeamRole.MEMBER;
+
+  const assignRole = assignRoleOverride ?? defaultTeamRole;
+
   const activeMemberUserIds = (team?.memberships ?? [])
     .filter((membership) => !membership.leftAt)
     .map((membership) => membership.userId);
 
-  const availableUsers = allUsers.filter((user) => {
-    if (activeMemberUserIds.includes(user.id)) {
+  const availableUsers = allUsers.filter((candidate) => {
+    if (activeMemberUserIds.includes(candidate.id)) {
       return false;
     }
 
-    if (assignRole === TeamRole.MANAGER) {
-      return user.role === UserRole.MANAGER;
+    /**
+     * Manager can ONLY add employees.
+     */
+    if (isManager) {
+      return candidate.role === UserRole.EMPLOYEE;
     }
 
-    return true;
+    if (assignRole === TeamRole.MANAGER) {
+      return candidate.role === UserRole.MANAGER;
+    }
+
+    return candidate.role === UserRole.EMPLOYEE;
   });
 
   const handleSubmit = (data: TeamFormData) => {
@@ -117,6 +125,10 @@ export function TeamModal({
   };
 
   const handleChangeAssignRole = (role: TeamRole) => {
+    if (isManager) {
+      return;
+    }
+
     if (role === assignRole) {
       return;
     }
@@ -160,6 +172,11 @@ export function TeamModal({
       setSelectedUserIds([]);
       setAssignRoleOverride(null);
       setView("form");
+
+      if (isOnboarding) {
+        onClose();
+        router.push("/");
+      }
     } finally {
       setIsAddingMembers(false);
     }
@@ -188,7 +205,7 @@ export function TeamModal({
   const pickerEmptyMessage =
     assignRole === TeamRole.MANAGER
       ? "No users with the manager role found."
-      : "No available users found.";
+      : "No employees available.";
 
   return (
     <ResourceFormModal
@@ -285,27 +302,39 @@ export function TeamModal({
             <p className="text-sm font-medium">Add as</p>
 
             <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={
-                  assignRole === TeamRole.MANAGER ? "primary" : "outline"
-                }
-                aria-pressed={assignRole === TeamRole.MANAGER}
-                onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
-              >
-                Manager
-              </Button>
+              {isOwner && (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={
+                      assignRole === TeamRole.MANAGER ? "primary" : "outline"
+                    }
+                    aria-pressed={assignRole === TeamRole.MANAGER}
+                    onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
+                  >
+                    Manager
+                  </Button>
 
-              <Button
-                type="button"
-                size="sm"
-                variant={assignRole === TeamRole.MEMBER ? "primary" : "outline"}
-                aria-pressed={assignRole === TeamRole.MEMBER}
-                onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
-              >
-                Member
-              </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={
+                      assignRole === TeamRole.MEMBER ? "primary" : "outline"
+                    }
+                    aria-pressed={assignRole === TeamRole.MEMBER}
+                    onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
+                  >
+                    Member
+                  </Button>
+                </>
+              )}
+
+              {isManager && (
+                <Button type="button" size="sm" variant="primary" aria-pressed>
+                  Member
+                </Button>
+              )}
             </div>
           </div>
 
@@ -313,9 +342,9 @@ export function TeamModal({
             items={availableUsers}
             selectedIds={selectedUserIds}
             onToggle={handleToggleUser}
-            getId={(user) => user.id}
+            getId={(candidate) => candidate.id}
             getLabel={fullName}
-            getSubtitle={(user) => user.email}
+            getSubtitle={(candidate) => candidate.email}
             getAvatarText={initials}
             isLoading={isUsersLoading}
             emptyMessage={pickerEmptyMessage}

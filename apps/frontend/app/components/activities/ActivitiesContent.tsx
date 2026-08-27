@@ -16,6 +16,7 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 
 import { ActivityCard } from "./ActivityCard";
 import { ActivityModal } from "./ActivityModal";
+import { useSearchParams } from "next/navigation";
 
 export function ActivitiesContent() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -47,6 +48,9 @@ export function ActivitiesContent() {
       activeActivities.find((activity) => activity.id === editingActivityId),
     [activeActivities, editingActivityId],
   );
+
+  const searchParams = useSearchParams();
+  const isOnboarding = searchParams.get("onboarding") === "true";
 
   return (
     <>
@@ -80,9 +84,14 @@ export function ActivitiesContent() {
         )}
       />
 
-      <ActivityModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <ActivityModal
+        isOnboarding={isOnboarding}
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+      />
 
       <ActivityModal
+        isOnboarding={isOnboarding}
         open={Boolean(editingActivityId)}
         onClose={() => setEditingActivityId(null)}
         activity={editingActivity}

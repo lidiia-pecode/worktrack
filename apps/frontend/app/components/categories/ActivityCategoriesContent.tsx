@@ -13,12 +13,16 @@ import { ActivityCategory } from "@/types";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { ActivityCategoryCard } from "./ActivityCategoryCard";
 import { ActivityCategoryModal } from "./ActivityCategoryModal";
+import { useSearchParams } from "next/navigation";
 
 export function ActivityCategoriesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
+
+  const searchParams = useSearchParams();
+  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
 
@@ -70,12 +74,14 @@ export function ActivityCategoriesContent() {
       <ActivityCategoryModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        isOnboarding={isOnboarding}
       />
 
       <ActivityCategoryModal
         open={Boolean(editingCategory)}
         category={editingCategory}
         onClose={() => setEditingCategoryId(null)}
+        isOnboarding={isOnboarding}
       />
     </>
   );

@@ -21,18 +21,26 @@ import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useRouter } from "next/navigation";
 
 interface ProjectModalProps {
   open: boolean;
   onClose: () => void;
   project?: Project;
+  isOnboarding?: boolean;
 }
 
 type View = "form" | "members" | "activities";
 
 const FORM_ID = "project-form";
 
-export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
+export function ProjectModal({
+  open,
+  onClose,
+  project,
+  isOnboarding = false,
+}: ProjectModalProps) {
+  const router = useRouter();
   const [view, setView] = useState<View>("form");
 
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
@@ -104,7 +112,13 @@ export function ProjectModal({ open, onClose, project }: ProjectModalProps) {
         activityIds: selectedActivityIds,
       },
       {
-        onSuccess: onClose,
+        onSuccess: () => {
+          onClose();
+
+          if (isOnboarding) {
+            router.push("/");
+          }
+        },
       },
     );
   };

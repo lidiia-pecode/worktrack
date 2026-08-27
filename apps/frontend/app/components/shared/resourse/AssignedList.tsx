@@ -30,7 +30,7 @@ export function AssignedList<T>({
   return (
     <ul className="divide-y divide-border">
       {items.map((item) => (
-        <li key={getId(item)} className="flex items-center gap-3 py-3">
+        <li key={getId(item)} className="flex items-center gap-3 p-3">
           {renderLeading(item)}
 
           <div className="min-w-0 flex-1">

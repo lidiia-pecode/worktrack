@@ -8,6 +8,12 @@ export class ManagerSetupStepStateDto {
   inviteMember!: boolean;
 
   @Expose()
+  memberJoined!: boolean;
+
+  @Expose()
+  addTeamMember!: boolean;
+
+  @Expose()
   createActivity!: boolean;
 
   @Expose()
