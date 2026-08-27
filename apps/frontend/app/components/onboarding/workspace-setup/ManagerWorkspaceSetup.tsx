@@ -1,24 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import {
+  Activity,
+  ArrowRight,
+  Check,
+  FolderKanban,
+  Lock,
+  Tags,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 
-import { ArrowRight, Check, Lock, UserPlus, UsersRound } from "lucide-react";
-
-import { useOwnerSetupState } from "@/hooks/useOnboarding";
+import { useManagerSetupState } from "@/hooks/useOnboarding";
 
 type SetupStep = {
-  id: "team" | "inviteManager" | "managerJoined" | "assignManager";
-
+  id: "team" | "users" | "project" | "activity" | "category";
   title: string;
   description: string;
-  href?: string;
+  href: string;
   icon: typeof UsersRound;
   completed: boolean;
   locked: boolean;
 };
 
-export function WorkspaceSetup() {
-  const { data, isLoading, isError } = useOwnerSetupState();
+export function ManagerWorkspaceSetup() {
+  const { data, isLoading, isError } = useManagerSetupState();
 
   if (isLoading) {
     return (
@@ -32,51 +39,66 @@ export function WorkspaceSetup() {
     return null;
   }
 
-  const { createTeam, inviteManager, managerJoined, assignManager } =
-    data.steps;
+  const {
+    teamAssigned,
+    inviteMember,
+    createProject,
+    createActivity,
+    createCategory,
+  } = data.steps;
 
   const steps: SetupStep[] = [
     {
       id: "team",
-      title: "Create your first team",
-      description: "Create a team to organize your people and projects.",
+      title: "Join your team",
+      description:
+        "Your owner needs to assign you to a team before you can start managing it.",
       href: "/admin/teams?onboarding=true",
       icon: UsersRound,
-      completed: createTeam,
+      completed: teamAssigned,
       locked: false,
     },
     {
-      id: "inviteManager",
-      title: "Invite a manager",
-      description: "Invite a manager to help manage your workspace.",
+      id: "users",
+      title: "Invite team members",
+      description:
+        "Invite the people who will work on your projects and track their time.",
       href: "/admin/users?onboarding=true",
       icon: UserPlus,
-      completed: inviteManager,
-      locked: !createTeam,
+      completed: inviteMember,
+      locked: !teamAssigned,
     },
     {
-      id: "managerJoined",
-      title: "Manager joins the workspace",
-      description: "Your manager needs to accept the invitation.",
-      icon: UserPlus,
-      completed: managerJoined,
-      locked: !inviteManager,
+      id: "project",
+      title: "Create your first project",
+      description: "Create a project to start organizing your team's work.",
+      href: "/admin/projects?onboarding=true",
+      icon: FolderKanban,
+      completed: createProject,
+      locked: !inviteMember,
     },
     {
-      id: "assignManager",
-      title: "Assign the manager to a team",
-      description: "Add the manager to the team they will manage.",
-      href: "/admin/teams?onboarding=true",
-      icon: UsersRound,
-      completed: assignManager,
-      locked: !managerJoined,
+      id: "activity",
+      title: "Create an activity",
+      description: "Create an activity your team can use when logging time.",
+      href: "/admin/activities?onboarding=true",
+      icon: Activity,
+      completed: createActivity,
+      locked: !createProject,
+    },
+    {
+      id: "category",
+      title: "Create a category",
+      description: "Create a category to help organize your projects.",
+      href: "/admin/categories?onboarding=true",
+      icon: Tags,
+      completed: createCategory,
+      locked: !createActivity,
     },
   ];
 
   const completedCount = steps.filter((step) => step.completed).length;
-
   const isComplete = data.setupComplete;
-
   const progress = (completedCount / steps.length) * 100;
 
   if (isComplete) {
@@ -88,14 +110,14 @@ export function WorkspaceSetup() {
   return (
     <section className="w-full max-w-3xl">
       <header className="mb-8">
-        <p className="mb-2 text-sm font-semibold text-brand">Workspace setup</p>
+        <p className="mb-2 text-sm font-semibold text-brand">Getting started</p>
 
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Let&apos;s get your workspace ready
+          Welcome to your workspace
         </h1>
 
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Complete these steps to finish setting up your workspace.
+          Complete these steps to get your workspace ready for your team.
         </p>
       </header>
 
@@ -117,9 +139,7 @@ export function WorkspaceSetup() {
           >
             <div
               className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{
-                width: `${progress}%`,
-              }}
+              style={{ width: `${progress}%` }}
             />
           </div>
         </div>
@@ -127,7 +147,6 @@ export function WorkspaceSetup() {
         <div className="divide-y divide-border">
           {steps.map((step, index) => {
             const Icon = step.icon;
-
             const isCurrent = currentStep?.id === step.id;
 
             return (
@@ -136,9 +155,7 @@ export function WorkspaceSetup() {
                 className={[
                   "flex items-center gap-4 px-6 py-5",
                   step.locked && "opacity-60",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
+                ].join(" ")}
               >
                 <div
                   className={[
@@ -182,7 +199,7 @@ export function WorkspaceSetup() {
                   </p>
                 </div>
 
-                {isCurrent && step.href && (
+                {isCurrent && (
                   <Link
                     href={step.href}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"

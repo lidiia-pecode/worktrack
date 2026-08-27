@@ -4,8 +4,9 @@ export const queryKeys = {
   },
 
   onboarding: {
-    all: ["onboarding"] as const,
-    ownerSetup: () => [...queryKeys.onboarding.all, "owner-setup"] as const,
+    ownerSetup: () => ["onboarding", "owner-setup"],
+
+    managerSetup: () => ["onboarding", "manager-setup"],
   },
 
   teams: {

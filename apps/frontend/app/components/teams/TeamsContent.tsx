@@ -69,6 +69,7 @@ export function TeamsContent() {
       />
 
       <TeamModal
+        isOnboarding={isOnboarding}
         team={editingTeam}
         open={Boolean(editingTeam)}
         onClose={() => setEditingTeamId(null)}

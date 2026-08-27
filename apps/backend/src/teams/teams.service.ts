@@ -184,6 +184,8 @@ export class TeamsService {
       where: { id: dto.userId, companyId },
     });
 
+    console.log('dto.roleInTeam', dto.roleInTeam);
+
     if (!user) {
       throw new NotFoundException(
         `User with id ${dto.userId} not found in this company`,
@@ -198,7 +200,6 @@ export class TeamsService {
     return this.dataSource.transaction(async (manager) => {
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
-      // Виправлений симетричний перетин інтервалів для нових записів
       const overlappingMembership = await trxMembershipRepo.findOne({
         where: {
           teamId,

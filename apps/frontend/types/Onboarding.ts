@@ -10,3 +10,17 @@ export interface OwnerSetupState {
   steps: OwnerSetupSteps;
   setupComplete: boolean;
 }
+
+export interface ManagerSetupState {
+  role: "MANAGER";
+  steps: ManagerSetupSteps;
+  setupComplete: boolean;
+}
+
+export interface ManagerSetupSteps {
+  teamAssigned: boolean;
+  inviteMember: boolean;
+  createActivity: boolean;
+  createCategory: boolean;
+  createProject: boolean;
+}

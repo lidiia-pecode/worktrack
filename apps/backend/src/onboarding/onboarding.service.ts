@@ -1,52 +1,76 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { In, IsNull, MoreThan, Repository } from 'typeorm';
 
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
+import { Activity } from 'src/activities/entities/activity.entity';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
+import { Project } from 'src/projects/entities/project.entity';
+
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
+import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
+import { ActCategoryStatus } from 'src/activity-categories/enums/category-status';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
 import {
   OwnerSetupStateDto,
   OwnerSetupStepStateDto,
 } from './dtos/owner-setup-state.dto';
 
+import {
+  ManagerSetupStateDto,
+  ManagerSetupStepStateDto,
+} from './dtos/manager-setup-state.dto';
+
 @Injectable()
 export class OnboardingService {
   constructor(
     @InjectRepository(Team)
     private readonly teamRepo: Repository<Team>,
+
     @InjectRepository(TeamMembership)
     private readonly membershipRepo: Repository<TeamMembership>,
+
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+
     @InjectRepository(Invitation)
     private readonly invitationRepo: Repository<Invitation>,
+
+    @InjectRepository(Activity)
+    private readonly activityRepo: Repository<Activity>,
+
+    @InjectRepository(ActCategory)
+    private readonly categoryRepo: Repository<ActCategory>,
+
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
   ) {}
 
+  // ===========================================================================
+  // OWNER
+  // ===========================================================================
+
   async getOwnerSetupState(companyId: string): Promise<OwnerSetupStateDto> {
-    const [
-      hasActiveTeam,
-      hasManagerUser,
-      hasPendingManagerInvitation,
-      hasManagerAssignedToTeam,
-    ] = await Promise.all([
-      this.hasActiveTeam(companyId),
-      this.hasActiveManagerUser(companyId),
-      this.hasPendingManagerInvitation(companyId),
-      this.hasManagerAssignedToActiveTeam(companyId),
-    ]);
+    const [createTeam, managerJoined, managerInvited, assignManager] =
+      await Promise.all([
+        this.hasActiveTeam(companyId),
+        this.hasActiveManagerUser(companyId),
+        this.hasPendingManagerInvitation(companyId),
+        this.hasManagerAssignedToTeam(companyId),
+      ]);
 
     const steps: OwnerSetupStepStateDto = {
-      createTeam: hasActiveTeam,
-      inviteManager: hasPendingManagerInvitation || hasManagerUser,
-      managerJoined: hasManagerUser,
-      assignManager: hasManagerAssignedToTeam,
+      createTeam,
+      inviteManager: managerInvited || managerJoined,
+      managerJoined,
+      assignManager,
     };
 
     return {
@@ -56,51 +80,98 @@ export class OnboardingService {
     };
   }
 
+  // ===========================================================================
+  // MANAGER
+  // ===========================================================================
+
+  async getManagerSetupState(
+    companyId: string,
+    userId: string,
+  ): Promise<ManagerSetupStateDto> {
+    const teamIds = await this.getManagerActiveTeamIds(companyId, userId);
+
+    console.log('MANAGERteamIds ', teamIds);
+
+    const teamAssigned = teamIds.length > 0;
+
+    if (!teamAssigned) {
+      return {
+        role: 'MANAGER',
+        steps: {
+          teamAssigned: false,
+          inviteMember: false,
+          createActivity: false,
+          createCategory: false,
+          createProject: false,
+        },
+        setupComplete: false,
+      };
+    }
+
+    const [inviteMember, createActivity, createCategory, createProject] =
+      await Promise.all([
+        this.hasTeamMember(companyId, teamIds),
+        this.hasActiveActivity(companyId),
+        this.hasActiveCategory(companyId),
+        this.hasActiveProject(companyId),
+      ]);
+
+    const steps: ManagerSetupStepStateDto = {
+      teamAssigned,
+      inviteMember,
+      createActivity,
+      createCategory,
+      createProject,
+    };
+
+    return {
+      role: 'MANAGER',
+      steps,
+      setupComplete: Object.values(steps).every(Boolean),
+    };
+  }
+
+  // ===========================================================================
+  // TEAM
+  // ===========================================================================
+
   private async hasActiveTeam(companyId: string): Promise<boolean> {
-    const count = await this.teamRepo.count({
+    return this.teamRepo.exists({
       where: {
         companyId,
         status: TeamStatus.ACTIVE,
       },
-      take: 1,
     });
-
-    return count > 0;
   }
 
-  private async hasActiveManagerUser(companyId: string): Promise<boolean> {
-    const count = await this.userRepo.count({
+  private async getManagerActiveTeamIds(
+    companyId: string,
+    userId: string,
+  ): Promise<string[]> {
+    const memberships = await this.membershipRepo.find({
       where: {
         companyId,
-        role: UserRole.MANAGER,
-        status: UserStatus.ACTIVE,
+        userId,
+        leftAt: IsNull(),
+        roleInTeam: TeamRole.MANAGER,
+        team: {
+          companyId,
+          status: TeamStatus.ACTIVE,
+        },
+        user: {
+          companyId,
+          role: UserRole.MANAGER,
+          status: UserStatus.ACTIVE,
+        },
       },
-      take: 1,
+      select: { teamId: true },
     });
 
-    return count > 0;
+    return memberships.map(({ teamId }) => teamId);
   }
 
-  private async hasPendingManagerInvitation(
-    companyId: string,
-  ): Promise<boolean> {
-    const count = await this.invitationRepo.count({
-      where: {
-        companyId,
-        role: UserRole.MANAGER,
-        status: InvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
-      },
-      take: 1,
-    });
-
-    return count > 0;
-  }
-
-  private async hasManagerAssignedToActiveTeam(
-    companyId: string,
-  ): Promise<boolean> {
-    const count = await this.membershipRepo.count({
+  private async hasManagerAssignedToTeam(companyId: string): Promise<boolean> {
+    return this.membershipRepo.exists({
       where: {
         companyId,
         leftAt: IsNull(),
@@ -115,9 +186,88 @@ export class OnboardingService {
           status: UserStatus.ACTIVE,
         },
       },
-      take: 1,
     });
+  }
 
-    return count > 0;
+  private async hasTeamMember(
+    companyId: string,
+    teamIds: string[],
+  ): Promise<boolean> {
+    if (!teamIds.length) return false;
+
+    return this.membershipRepo.exists({
+      where: {
+        companyId,
+        teamId: In(teamIds),
+        leftAt: IsNull(),
+        roleInTeam: TeamRole.MEMBER,
+      },
+    });
+  }
+
+  // ===========================================================================
+  // OWNER — MANAGER
+  // ===========================================================================
+
+  private async hasActiveManagerUser(companyId: string): Promise<boolean> {
+    return this.userRepo.exists({
+      where: {
+        companyId,
+        role: UserRole.MANAGER,
+        status: UserStatus.ACTIVE,
+      },
+    });
+  }
+
+  private async hasPendingManagerInvitation(
+    companyId: string,
+  ): Promise<boolean> {
+    return this.invitationRepo.exists({
+      where: {
+        companyId,
+        role: UserRole.MANAGER,
+        status: InvitationStatus.PENDING,
+        expiresAt: MoreThan(new Date()),
+      },
+    });
+  }
+
+  // ===========================================================================
+  // MANAGER — ACTIVITIES
+  // ===========================================================================
+
+  private async hasActiveActivity(companyId: string): Promise<boolean> {
+    return this.activityRepo.exists({
+      where: {
+        companyId,
+        status: ActivityStatus.ACTIVE,
+      },
+    });
+  }
+
+  // ===========================================================================
+  // MANAGER — CATEGORIES
+  // ===========================================================================
+
+  private async hasActiveCategory(companyId: string): Promise<boolean> {
+    return this.categoryRepo.exists({
+      where: {
+        companyId,
+        status: ActCategoryStatus.ACTIVE,
+      },
+    });
+  }
+
+  // ===========================================================================
+  // MANAGER — PROJECTS
+  // ===========================================================================
+
+  private async hasActiveProject(companyId: string): Promise<boolean> {
+    return this.projectRepo.exists({
+      where: {
+        companyId,
+        status: ProjectStatus.ACTIVE,
+      },
+    });
   }
 }

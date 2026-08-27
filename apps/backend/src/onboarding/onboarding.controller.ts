@@ -8,6 +8,7 @@ import { UserRole } from 'src/users/enums/UserRole.enum';
 
 import { OnboardingService } from './onboarding.service';
 import { OwnerSetupStateDto } from './dtos/owner-setup-state.dto';
+import { ManagerSetupStateDto } from './dtos/manager-setup-state.dto';
 
 @Controller('onboarding')
 @UseGuards(AccessGuard, RolesGuard)
@@ -15,11 +16,23 @@ export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
   @Role(UserRole.OWNER)
-  @Get('setup-state')
+  @Get('owner/setup-state')
   @Serialize(OwnerSetupStateDto)
   async getOwnerSetupState(
     @CurrentUser() authUser: AuthUser,
   ): Promise<OwnerSetupStateDto> {
     return this.onboardingService.getOwnerSetupState(authUser.companyId);
+  }
+
+  @Role(UserRole.MANAGER)
+  @Get('manager/setup-state')
+  @Serialize(ManagerSetupStateDto)
+  async getManagerSetupState(
+    @CurrentUser() authUser: AuthUser,
+  ): Promise<ManagerSetupStateDto> {
+    return this.onboardingService.getManagerSetupState(
+      authUser.companyId,
+      authUser.id,
+    );
   }
 }

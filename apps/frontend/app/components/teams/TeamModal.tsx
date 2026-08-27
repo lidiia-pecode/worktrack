@@ -1,21 +1,24 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
 import { useUsers } from "@/hooks/useUsers";
+
 import { Team } from "@/types/Team";
-import { TeamRole, TeamStatus } from "@/types/enums";
+import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
+
 import { fullName, initials } from "@/lib/utils/user";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
+
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
-import { useRouter } from "next/navigation";
 
 interface TeamModalProps {
   open: boolean;
@@ -32,28 +35,64 @@ export function TeamModal({
   open,
   onClose,
   team,
-  isOnboarding,
+  isOnboarding = false,
 }: TeamModalProps) {
+  console.log("isOnboarding", isOnboarding);
+  const router = useRouter();
+
   const [view, setView] = useState<View>("form");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [isAddingMembers, setIsAddingMembers] = useState(false);
-  const router = useRouter();
+
+  const [assignRoleOverride, setAssignRoleOverride] = useState<TeamRole | null>(
+    null,
+  );
+
+  const defaultTeamRole = isOnboarding ? TeamRole.MANAGER : TeamRole.MEMBER;
+  const assignRole = assignRoleOverride ?? defaultTeamRole;
 
   const {
     actions: { create, update, archive, unarchive },
   } = useTeams();
 
   const { addMember } = useTeamMembers(team?.id ?? "");
+
   const { items: allUsers = [], isLoading: isUsersLoading } = useUsers();
 
   const isEditMode = Boolean(team);
   const isArchived = team?.status === TeamStatus.ARCHIVED;
-  const isSubmitting = create.isPending || update.isPending;
   const isPicking = view === "members";
+
+  const isSubmitting = create.isPending || update.isPending;
+  const isArchiving = archive.isPending || unarchive.isPending;
+
+  const activeMemberUserIds = (team?.memberships ?? [])
+    .filter((membership) => !membership.leftAt)
+    .map((membership) => membership.userId);
+
+  const availableUsers = allUsers.filter((user) => {
+    if (activeMemberUserIds.includes(user.id)) {
+      return false;
+    }
+
+    if (assignRole === TeamRole.MANAGER) {
+      return user.role === UserRole.MANAGER;
+    }
+
+    return true;
+  });
 
   const handleSubmit = (data: TeamFormData) => {
     if (team) {
-      update.mutate({ id: team.id, data }, { onSuccess: onClose });
+      update.mutate(
+        {
+          id: team.id,
+          data,
+        },
+        {
+          onSuccess: onClose,
+        },
+      );
 
       return;
     }
@@ -70,45 +109,86 @@ export function TeamModal({
   };
 
   const handleToggleUser = (userId: string) => {
-    setSelectedUserIds((prev) =>
-      prev.includes(userId)
-        ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
+    setSelectedUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId],
     );
   };
 
+  const handleChangeAssignRole = (role: TeamRole) => {
+    if (role === assignRole) {
+      return;
+    }
+
+    setAssignRoleOverride(role);
+    setSelectedUserIds([]);
+  };
+
+  const handleOpenMembersPicker = () => {
+    setAssignRoleOverride(null);
+    setSelectedUserIds([]);
+    setView("members");
+  };
+
+  const handleCloseMembersPicker = () => {
+    setAssignRoleOverride(null);
+    setSelectedUserIds([]);
+    setView("form");
+  };
+
   const handleApplyMembers = async () => {
+    if (!team || selectedUserIds.length === 0) {
+      return;
+    }
+
     setIsAddingMembers(true);
+
     try {
+      const joinedAt = new Date().toISOString().slice(0, 10);
+
       await Promise.all(
         selectedUserIds.map((userId) =>
           addMember.mutateAsync({
             userId,
-            roleInTeam: TeamRole.MEMBER,
-            joinedAt: new Date().toISOString().slice(0, 10),
+            roleInTeam: assignRole,
+            joinedAt,
           }),
         ),
       );
+
       setSelectedUserIds([]);
+      setAssignRoleOverride(null);
       setView("form");
     } finally {
       setIsAddingMembers(false);
     }
   };
 
+  const handleArchiveToggle = () => {
+    if (!team) {
+      return;
+    }
+
+    if (isArchived) {
+      unarchive.mutate(team.id);
+      return;
+    }
+
+    archive.mutate(team.id);
+  };
+
   const handleCloseModal = () => {
     setSelectedUserIds([]);
+    setAssignRoleOverride(null);
     setView("form");
     onClose();
   };
 
-  const activeMemberUserIds = (team?.memberships ?? [])
-    .filter((m) => !m.leftAt && !!m.user)
-    .map((m) => m.userId);
-
-  const availableUsers = allUsers.filter(
-    (u) => !activeMemberUserIds.includes(u.id),
-  );
+  const pickerEmptyMessage =
+    assignRole === TeamRole.MANAGER
+      ? "No users with the manager role found."
+      : "No available users found.";
 
   return (
     <ResourceFormModal
@@ -134,11 +214,9 @@ export function TeamModal({
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => {
-                setSelectedUserIds([]);
-                setView("form");
-              }}
+              onClick={handleCloseMembersPicker}
               className="gap-1.5"
+              disabled={isAddingMembers}
             >
               <ArrowLeft className="size-4" />
               Back
@@ -149,9 +227,10 @@ export function TeamModal({
               size="sm"
               onClick={handleApplyMembers}
               isLoading={isAddingMembers}
+              disabled={selectedUserIds.length === 0}
             >
               Apply
-              {selectedUserIds.length > 0 ? ` (${selectedUserIds.length})` : ""}
+              {selectedUserIds.length > 0 && ` (${selectedUserIds.length})`}
             </Button>
           </div>
         ) : (
@@ -162,18 +241,15 @@ export function TeamModal({
                 variant={isArchived ? "success" : "destructive"}
                 size="sm"
                 className="gap-1.5"
-                onClick={() =>
-                  isArchived
-                    ? unarchive.mutate(team!.id)
-                    : archive.mutate(team!.id)
-                }
-                isLoading={archive.isPending || unarchive.isPending}
+                onClick={handleArchiveToggle}
+                isLoading={isArchiving}
               >
                 {isArchived ? (
                   <ArchiveRestore className="size-4" />
                 ) : (
                   <Archive className="size-4" />
                 )}
+
                 {isArchived ? "Unarchive" : "Archive"}
               </Button>
             ) : (
@@ -204,7 +280,35 @@ export function TeamModal({
       }
     >
       {isPicking ? (
-        <div className="px-6 py-5">
+        <div className="space-y-4 px-6 py-5">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Add as</p>
+
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  assignRole === TeamRole.MANAGER ? "primary" : "outline"
+                }
+                aria-pressed={assignRole === TeamRole.MANAGER}
+                onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
+              >
+                Manager
+              </Button>
+
+              <Button
+                type="button"
+                size="sm"
+                variant={assignRole === TeamRole.MEMBER ? "primary" : "outline"}
+                aria-pressed={assignRole === TeamRole.MEMBER}
+                onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
+              >
+                Member
+              </Button>
+            </div>
+          </div>
+
           <EntityPicker
             items={availableUsers}
             selectedIds={selectedUserIds}
@@ -214,7 +318,7 @@ export function TeamModal({
             getSubtitle={(user) => user.email}
             getAvatarText={initials}
             isLoading={isUsersLoading}
-            emptyMessage="No available users found."
+            emptyMessage={pickerEmptyMessage}
             searchPlaceholder="Search people..."
           />
         </div>
@@ -223,16 +327,22 @@ export function TeamModal({
           <TeamForm
             formId={FORM_ID}
             mode={isEditMode ? "edit" : "create"}
-            defaultValues={team ? { name: team.name } : undefined}
+            defaultValues={
+              team
+                ? {
+                    name: team.name,
+                  }
+                : undefined
+            }
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />
 
-          {isEditMode && (
+          {isEditMode && team && (
             <div className="border-t border-border pt-6">
               <TeamMembersSection
-                team={team!}
-                onOpenAddMembers={() => setView("members")}
+                team={team}
+                onOpenAddMembers={handleOpenMembersPicker}
               />
             </div>
           )}
