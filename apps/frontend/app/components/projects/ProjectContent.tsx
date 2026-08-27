@@ -38,7 +38,7 @@ export function ProjectsContent() {
     [projects, editingProjectId],
   );
 
-  console.log("project", projects[0]);
+  console.log("PROJECT", projects[0]);
 
   return (
     <>

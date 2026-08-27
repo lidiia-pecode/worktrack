@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { TimelogsQuery, TimelogPayload, UpdateTimelogPayload } from "@/types";
+import { TimelogsQuery, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { TimelogsClientApi } from "@/lib/api/resources";
 import { getErrorMessage } from "@/lib/api";
 import { queryKeys } from "./shared/queryKeys";
@@ -27,7 +27,7 @@ export function useTimelogs(range: DateRange) {
     queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
 
   const createTimelog = useMutation({
-    mutationFn: (data: TimelogPayload) => TimelogsClientApi.create(data),
+    mutationFn: (data: TimeLogPayload) => TimelogsClientApi.create(data),
     onSuccess: () => {
       invalidate();
       toast.success("Time logged");
@@ -36,7 +36,7 @@ export function useTimelogs(range: DateRange) {
   });
 
   const updateTimelog = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTimelogPayload }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateTimeLogPayload }) =>
       TimelogsClientApi.update(id, data),
     onSuccess: () => {
       invalidate();

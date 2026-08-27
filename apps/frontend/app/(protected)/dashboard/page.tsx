@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/api/server/auth";
-import { WeekTimesheet } from "@/app/components/dashboard/WeekTimesheet";
+import { WeekTimesheet } from "@/app/components/timesheet/WeekTimesheet";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();

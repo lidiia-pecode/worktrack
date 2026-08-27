@@ -9,7 +9,6 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
-import { Modal } from "../../shared/Modal/Modal";
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";

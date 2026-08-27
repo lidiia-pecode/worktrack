@@ -1,8 +1,8 @@
 import {
   Activity,
+  Clock3,
   FolderKanban,
   FolderTree,
-  LayoutDashboard,
   Users,
 } from "lucide-react";
 
@@ -38,8 +38,8 @@ export const managerNavigation = [
 
 export const employeeNavigation = [
   {
-    label: "Dashboard",
+    label: "Timesheet",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    icon: Clock3,
   },
 ];

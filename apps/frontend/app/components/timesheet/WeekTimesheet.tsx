@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
-import { Timelog } from "@/types";
+import { TimeLog } from "@/types";
 import {
   formatDuration,
   getWeekDates,
@@ -21,7 +21,7 @@ import { WeekProgressBar } from "./components/WeekProgressBar";
 
 type ModalState = {
   date: string;
-  timelog?: Timelog;
+  timelog?: TimeLog;
 };
 
 const DAILY_TARGET_MINUTES = 8 * 60;
@@ -47,7 +47,7 @@ export const WeekTimesheet = () => {
   const { items: pickerItems } = useMyProjectActivities();
 
   const timelogsByDate = useMemo(() => {
-    const map: Record<string, Timelog[]> = {};
+    const map: Record<string, TimeLog[]> = {};
 
     (data?.results ?? []).forEach((log) => {
       (map[log.date] ??= []).push(log);
@@ -62,7 +62,7 @@ export const WeekTimesheet = () => {
     weekDates.forEach((date) => {
       const iso = toISODate(date);
       totals[iso] = (timelogsByDate[iso] ?? []).reduce(
-        (sum, log) => sum + log.time,
+        (sum, log) => sum + log.minutes,
         0,
       );
     });
@@ -110,7 +110,7 @@ export const WeekTimesheet = () => {
     });
   };
 
-  const openEdit = (timelog: Timelog) =>
+  const openEdit = (timelog: TimeLog) =>
     setModalState({
       date: timelog.date,
       timelog,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 
@@ -8,20 +9,18 @@ import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { useProjects } from "@/hooks/useProjects";
+import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
-
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
-import { useUsersInfiniteQuery } from "@/hooks/useUsers";
-import { useRouter } from "next/navigation";
 
 interface ProjectModalProps {
   open: boolean;
@@ -33,6 +32,16 @@ interface ProjectModalProps {
 type View = "form" | "members" | "activities";
 
 const FORM_ID = "project-form";
+
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const byId = new Map<string, T>();
+
+  for (const item of items) {
+    byId.set(item.id, item);
+  }
+
+  return Array.from(byId.values());
+}
 
 export function ProjectModal({
   open,
@@ -49,34 +58,44 @@ export function ProjectModal({
 
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>(
     () =>
-      project?.projectActivities?.map(
-        (projectActivity) => projectActivity.activityId,
-      ) ?? [],
+      project?.projectActivities
+        ?.map((projectActivity) => projectActivity.activity?.id)
+        .filter((id): id is string => Boolean(id)) ?? [],
   );
 
   const {
     actions: { create, update, archive, unarchive },
   } = useProjects();
 
-  const { items: users, isLoading: isUsersLoading } = useUsersInfiniteQuery();
+  const { items: rawUsers, isLoading: isUsersLoading } =
+    useUsersInfiniteQuery();
 
-  const { items: activities, isLoading: isActivitiesLoading } =
+  const { items: rawActivities, isLoading: isActivitiesLoading } =
     useActivitiesInfiniteQuery();
 
+  const users = useMemo(() => dedupeById(rawUsers), [rawUsers]);
+  const activities = useMemo(() => dedupeById(rawActivities), [rawActivities]);
+
   const isArchived = project?.status === ProjectStatus.ARCHIVED;
-
   const isPicking = view !== "form";
-
   const isSubmitting = create.isPending || update.isPending;
 
-  const employees = users.filter((user) => user.role === UserRole.EMPLOYEE);
-
-  const selectedUsers = employees.filter((user) =>
-    selectedUserIds.includes(user.id),
+  const employees = useMemo(
+    () => users.filter((user) => user.role === UserRole.EMPLOYEE),
+    [users],
   );
 
-  const selectedActivities = activities.filter((activity) =>
-    selectedActivityIds.includes(activity.id),
+  const selectedUsers = useMemo(
+    () => employees.filter((user) => selectedUserIds.includes(user.id)),
+    [employees, selectedUserIds],
+  );
+
+  const selectedActivities = useMemo(
+    () =>
+      activities.filter((activity) =>
+        selectedActivityIds.includes(activity.id),
+      ),
+    [activities, selectedActivityIds],
   );
 
   const handleClose = () => {
@@ -87,40 +106,26 @@ export function ProjectModal({
   };
 
   const handleSubmit = (data: ProjectFormData) => {
-    if (project) {
-      update.mutate(
-        {
-          id: project.id,
-          data: {
-            ...data,
-            userIds: getNonAdminMemberIds(users, selectedUserIds),
-            activityIds: selectedActivityIds,
-          },
-        },
-        {
-          onSuccess: onClose,
-        },
-      );
+    const payload = {
+      ...data,
+      userIds: getNonAdminMemberIds(users, selectedUserIds),
+      activityIds: Array.from(new Set(selectedActivityIds)),
+    };
 
+    if (project) {
+      update.mutate({ id: project.id, data: payload }, { onSuccess: onClose });
       return;
     }
 
-    create.mutate(
-      {
-        ...data,
-        userIds: getNonAdminMemberIds(users, selectedUserIds),
-        activityIds: selectedActivityIds,
-      },
-      {
-        onSuccess: () => {
-          onClose();
+    create.mutate(payload, {
+      onSuccess: () => {
+        onClose();
 
-          if (isOnboarding) {
-            router.push("/");
-          }
-        },
+        if (isOnboarding) {
+          router.push("/");
+        }
       },
-    );
+    });
   };
 
   const handleToggleUser = (userId: string) => {
@@ -136,18 +141,12 @@ export function ProjectModal({
   };
 
   const handleArchive = () => {
-    if (!project) {
-      return;
-    }
-
+    if (!project) return;
     archive.mutate(project.id);
   };
 
   const handleUnarchive = () => {
-    if (!project) {
-      return;
-    }
-
+    if (!project) return;
     unarchive.mutate(project.id);
   };
 
@@ -216,7 +215,6 @@ export function ProjectModal({
                 ) : (
                   <Archive className="size-4" />
                 )}
-
                 {isArchived ? "Unarchive" : "Archive"}
               </Button>
             ) : (
@@ -246,137 +244,135 @@ export function ProjectModal({
         )
       }
     >
-      {view === "members" ? (
-        <div className="px-6 py-5">
-          <EntityPicker
-            items={employees}
-            selectedIds={selectedUserIds}
-            onToggle={handleToggleUser}
-            getId={(user) => user.id}
-            getLabel={fullName}
-            getSubtitle={(user) => user.email}
-            getAvatarText={initials}
-            isLoading={isUsersLoading}
-            emptyMessage="No available users found."
-            searchPlaceholder="Search people..."
-          />
-        </div>
-      ) : view === "activities" ? (
-        <div className="px-6 py-5">
-          <EntityPicker
-            items={activities}
-            selectedIds={selectedActivityIds}
-            onToggle={handleToggleActivity}
-            getId={(activity) => activity.id}
-            getLabel={(activity) => activity.name}
-            getSubtitle={(activity) => activity.category?.name}
-            isLoading={isActivitiesLoading}
-            emptyMessage="No activities found."
-            searchPlaceholder="Search activities..."
-          />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          <ProjectForm
-            formId={FORM_ID}
-            mode={project ? "edit" : "create"}
-            defaultValues={{
-              name: project?.name ?? "",
-              description: project?.description ?? "",
-            }}
-            membersCount={selectedUsers.length}
-            activitiesCount={selectedActivities.length}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-          />
+      <div className={view === "activities" ? "px-6 py-5" : "hidden"}>
+        <EntityPicker
+          items={activities}
+          selectedIds={selectedActivityIds}
+          onToggle={handleToggleActivity}
+          getId={(activity) => activity.id}
+          getLabel={(activity) => activity.name}
+          getSubtitle={(activity) => activity.category?.name}
+          isLoading={isActivitiesLoading}
+          emptyMessage="No activities found."
+          searchPlaceholder="Search activities..."
+        />
+      </div>
 
-          <div className="border-t border-border pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Team members
-                </h3>
+      <div className={view === "members" ? "px-6 py-5" : "hidden"}>
+        <EntityPicker
+          items={employees}
+          selectedIds={selectedUserIds}
+          onToggle={handleToggleUser}
+          getId={(user) => user.id}
+          getLabel={fullName}
+          getSubtitle={(user) => user.email}
+          getAvatarText={initials}
+          isLoading={isUsersLoading}
+          emptyMessage="No available users found."
+          searchPlaceholder="Search people..."
+        />
+      </div>
 
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {selectedUsers.length}{" "}
-                  {selectedUsers.length === 1
-                    ? project
-                      ? "person assigned"
-                      : "person selected"
-                    : project
-                      ? "people assigned"
-                      : "people selected"}
-                </p>
-              </div>
+      <div className={view === "form" ? "space-y-6" : "hidden"}>
+        <ProjectForm
+          formId={FORM_ID}
+          mode={project ? "edit" : "create"}
+          defaultValues={{
+            name: project?.name ?? "",
+            description: project?.description ?? "",
+          }}
+          membersCount={selectedUsers.length}
+          activitiesCount={selectedActivities.length}
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+        />
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setView("members")}
-              >
-                Add members
-              </Button>
+        <div className="border-t border-border pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Team members
+              </h3>
+
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {selectedUsers.length}{" "}
+                {selectedUsers.length === 1
+                  ? project
+                    ? "person assigned"
+                    : "person selected"
+                  : project
+                    ? "people assigned"
+                    : "people selected"}
+              </p>
             </div>
 
-            {selectedUsers.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedUsers.map((user) => (
-                  <div
-                    key={user.id}
-                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
-                  >
-                    {fullName(user)}
-                  </div>
-                ))}
-              </div>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setView("members")}
+            >
+              Add members
+            </Button>
           </div>
 
-          <div className="border-t border-border pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-semibold text-foreground">
-                  Project activities
-                </h3>
+          {selectedUsers.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedUsers.map((user) => (
+                <div
+                  key={user.id}
+                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                >
+                  {fullName(user)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {selectedActivities.length}{" "}
-                  {selectedActivities.length === 1
-                    ? project
-                      ? "activity assigned"
-                      : "activity selected"
-                    : project
-                      ? "activities assigned"
-                      : "activities selected"}
-                </p>
-              </div>
+        <div className="border-t border-border pt-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Project activities
+              </h3>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setView("activities")}
-              >
-                Add activities
-              </Button>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {selectedActivities.length}{" "}
+                {selectedActivities.length === 1
+                  ? project
+                    ? "activity assigned"
+                    : "activity selected"
+                  : project
+                    ? "activities assigned"
+                    : "activities selected"}
+              </p>
             </div>
 
-            {selectedActivities.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                {selectedActivities.map((activity) => (
-                  <div
-                    key={activity.id}
-                    className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
-                  >
-                    {activity.name}
-                  </div>
-                ))}
-              </div>
-            )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setView("activities")}
+            >
+              Add activities
+            </Button>
           </div>
+
+          {selectedActivities.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedActivities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm"
+                >
+                  {activity.name}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </ResourceFormModal>
   );
 }
