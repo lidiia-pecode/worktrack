@@ -4,8 +4,7 @@ import { useSearchParams } from "next/navigation";
 
 import { AuthForm } from "@/app/components/auth/AuthForm";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
-
-import { useInvitationValidation } from "@/hooks/useInvitation";
+import { useInvitationValidation } from "@/hooks/auth/useInvitation";
 
 export default function InvitationCompletePage() {
   const searchParams = useSearchParams();

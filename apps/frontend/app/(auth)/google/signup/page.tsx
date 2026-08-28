@@ -7,8 +7,8 @@ import { toast } from "sonner";
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
-import { useAuthActions } from "@/hooks/useAuthActions";
 import { isApiMessageError } from "@/lib/api";
+import { useAuthActions } from "@/hooks/auth/useAuthActions";
 
 interface GoogleSignupForm {
   companyName: string;

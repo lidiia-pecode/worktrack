@@ -23,7 +23,7 @@ import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
 import { SettingsField } from "../components/SettingsField";
 import Input from "../../../../components/ui/input";
-import { useCompany } from "@/hooks/useCompany";
+
 import { CompanyCurrency, WeekDay } from "@/types/enums";
 import {
   settingsFieldClassName,
@@ -34,6 +34,7 @@ import {
   settingsSelectItemClassName,
 } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
+import { useCompany } from "@/hooks/auth/useCompany";
 
 export const CompanySettings = () => {
   const { company, actions } = useCompany();

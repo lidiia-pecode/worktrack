@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { InvitationsClientApi } from "@/lib/api/resources/invitations-client-api";
 
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 import { toast } from "sonner";
 

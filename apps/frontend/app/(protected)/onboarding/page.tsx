@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 
-import { useCompany } from "@/hooks/useCompany";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/app/components/shared/Logo";
 
@@ -13,6 +12,7 @@ import { TimezoneStep } from "@/app/components/onboarding/company-setup/Timezone
 import { CurrencyStep } from "@/app/components/onboarding/company-setup/CurrencyStep";
 import { WorkHoursStep } from "@/app/components/onboarding/company-setup/WorkHoursStep";
 import { OnboardingProgress } from "@/app/components/onboarding/company-setup/OnboardingProgress";
+import { useCompany } from "@/hooks/auth/useCompany";
 
 const STEPS = ["Company", "Timezone", "Currency", "Hours"] as const;
 

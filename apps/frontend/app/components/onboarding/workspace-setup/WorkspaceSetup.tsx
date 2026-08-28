@@ -3,8 +3,7 @@
 import Link from "next/link";
 
 import { ArrowRight, Check, Lock, UserPlus, UsersRound } from "lucide-react";
-
-import { useOwnerSetupState } from "@/hooks/useOnboarding";
+import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
 
 type SetupStep = {
   id: "team" | "inviteManager" | "managerJoined" | "assignManager";

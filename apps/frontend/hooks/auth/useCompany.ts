@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { CompaniesClientApi } from "@/lib/api/resources";
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 export function useCompany() {
   const queryClient = useQueryClient();

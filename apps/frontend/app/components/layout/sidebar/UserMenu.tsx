@@ -14,7 +14,7 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { initials } from "@/lib/utils/user";
 import { useRouter } from "next/navigation";
-import { useAuthActions } from "@/hooks/useAuthActions";
+import { useAuthActions } from "@/hooks/auth/useAuthActions";
 
 export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
   const router = useRouter();

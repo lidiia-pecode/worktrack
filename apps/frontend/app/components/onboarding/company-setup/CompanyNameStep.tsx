@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useCompany } from "@/hooks/useCompany";
 import Input from "@/components/ui/input";
 import {
   CompanyFormValues,
@@ -12,6 +11,7 @@ import {
 } from "@/lib/forms/schemas/company.schema";
 import { OnboardingStepHeader } from "./OnboardingStepHeader";
 import { StepActions } from "./StepActions";
+import { useCompany } from "@/hooks/auth/useCompany";
 
 interface StepProps {
   onContinue: () => void;

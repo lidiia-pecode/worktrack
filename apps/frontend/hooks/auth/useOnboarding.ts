@@ -3,8 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { OnboardingClientApi } from "@/lib/api/resources/onboarding.api";
-
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 export function useOwnerSetupState() {
   return useQuery({

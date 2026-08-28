@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { useCompany } from "@/hooks/useCompany";
+import { useCompany } from "@/hooks/auth/useCompany";
 import {
   CompanyFormValues,
   companySchema,

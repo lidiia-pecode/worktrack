@@ -21,14 +21,13 @@ import {
   GOOGLE_SIGNUP_URL,
 } from "@/lib/constants";
 
-import { useAuthActions } from "@/hooks/useAuthActions";
-import { useCompleteInvitation } from "@/hooks/useInvitation";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { GoogleButton } from "../shared/buttons/GoogleButton";
 import { PasswordInput } from "../shared/inputs";
+import { useAuthActions } from "@/hooks/auth/useAuthActions";
+import { useCompleteInvitation } from "@/hooks/auth/useInvitation";
 
 type AuthFormMode = "login" | "signup" | "invitation";
 

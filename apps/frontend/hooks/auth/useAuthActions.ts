@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuthClient } from "@/lib/api/resources";
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 export function useAuthActions() {
   const queryClient = useQueryClient();

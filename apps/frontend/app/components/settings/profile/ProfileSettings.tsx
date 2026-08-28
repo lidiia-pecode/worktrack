@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
 import { User } from "@/types";
-import { useProfile } from "@/hooks/useProfile";
+
 import { Button } from "@/components/ui/button";
 import {
   ProfileFormValues,
@@ -19,6 +19,7 @@ import {
   settingsInputClassName,
   settingsLabelClassName,
 } from "../styles/settings-styles";
+import { useProfile } from "@/hooks/auth/useProfile";
 
 interface ProfileSettingsProps {
   user: User | null;
