@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useTeams } from "@/hooks/useTeams";
+import { useTeamsInfiniteQuery } from "@/hooks/useTeams";
 
 import { hasManagerAccess } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
@@ -19,7 +19,13 @@ export function TeamsContent() {
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
 
   const { user } = useAuth();
-  const { items: teams, isLoading, isError, refetch, pagination } = useTeams();
+  const {
+    items: teams,
+    isLoading,
+    isError,
+    refetch,
+    pagination,
+  } = useTeamsInfiniteQuery();
 
   const searchParams = useSearchParams();
 

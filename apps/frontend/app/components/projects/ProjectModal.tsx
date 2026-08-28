@@ -12,7 +12,12 @@ import { useProjects } from "@/hooks/useProjects";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
-import { ProjectStatus, UserRole } from "@/types/enums";
+import {
+  ActivityStatus,
+  ProjectStatus,
+  UserRole,
+  UserStatus,
+} from "@/types/enums";
 
 import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
@@ -69,11 +74,21 @@ export function ProjectModal({
     actions: { create, update, archive, unarchive },
   } = useProjects();
 
-  const { items: rawUsers, isLoading: isUsersLoading } =
-    useUsersInfiniteQuery();
+  const {
+    items: rawUsers,
+    isLoading: isUsersLoading,
+    pagination: usersPagination,
+  } = useUsersInfiniteQuery({
+    status: UserStatus.ACTIVE,
+  });
 
-  const { items: rawActivities, isLoading: isActivitiesLoading } =
-    useActivitiesInfiniteQuery();
+  const {
+    items: rawActivities,
+    isLoading: isActivitiesLoading,
+    pagination: activitiesPagination,
+  } = useActivitiesInfiniteQuery({
+    status: ActivityStatus.ACTIVE,
+  });
 
   const users = useMemo(() => dedupeById(rawUsers), [rawUsers]);
   const activities = useMemo(() => dedupeById(rawActivities), [rawActivities]);
@@ -263,6 +278,9 @@ export function ProjectModal({
           getLabel={(activity) => activity.name}
           getSubtitle={(activity) => activity.category?.name}
           isLoading={isActivitiesLoading}
+          hasNextPage={activitiesPagination.hasNextPage}
+          isFetchingNextPage={activitiesPagination.isFetchingNextPage}
+          onFetchNextPage={activitiesPagination.fetchNextPage}
           emptyMessage="No activities found."
           searchPlaceholder="Search activities..."
         />
@@ -278,6 +296,9 @@ export function ProjectModal({
           getSubtitle={(user) => user.email}
           getAvatarText={initials}
           isLoading={isUsersLoading}
+          hasNextPage={usersPagination.hasNextPage}
+          isFetchingNextPage={usersPagination.isFetchingNextPage}
+          onFetchNextPage={usersPagination.fetchNextPage}
           emptyMessage="No available users found."
           searchPlaceholder="Search people..."
         />

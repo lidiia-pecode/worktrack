@@ -23,7 +23,7 @@ export interface EntityPickerProps<T> {
   isLoading?: boolean;
   hasNextPage?: boolean;
   isFetchingNextPage?: boolean;
-  onLoadMore?: () => void;
+  onFetchNextPage?: () => void;
 
   className?: string;
 }
@@ -43,7 +43,7 @@ export function EntityPicker<T>({
   isLoading = false,
   hasNextPage = false,
   isFetchingNextPage = false,
-  onLoadMore,
+  onFetchNextPage,
   className,
 }: EntityPickerProps<T>) {
   const [search, setSearch] = useState("");
@@ -62,7 +62,7 @@ export function EntityPicker<T>({
 
   useEffect(() => {
     const el = listRef.current;
-    if (!el || !onLoadMore) return;
+    if (!el || !onFetchNextPage) return;
 
     let ticking = false;
 
@@ -76,7 +76,7 @@ export function EntityPicker<T>({
           hasNextPage &&
           !isFetchingNextPage
         ) {
-          onLoadMore();
+          onFetchNextPage();
         }
         ticking = false;
       });
@@ -84,7 +84,7 @@ export function EntityPicker<T>({
 
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
-  }, [hasNextPage, isFetchingNextPage, onLoadMore]);
+  }, [hasNextPage, isFetchingNextPage, onFetchNextPage]);
 
   return (
     <div className={className}>

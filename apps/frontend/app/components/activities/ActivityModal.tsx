@@ -5,7 +5,7 @@ import { Archive, ArchiveRestore, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { Activity } from "@/types";
-import { ActivityStatus } from "@/types/enums";
+import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useActivities } from "@/hooks/useActivities";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
@@ -36,7 +36,9 @@ export function ActivityModal({
   } = useActivities();
 
   const { items: categories, isLoading: categoriesLoading } =
-    useActivityCategoriesInfiniteQuery();
+    useActivityCategoriesInfiniteQuery({
+      status: ActCategoryStatus.ACTIVE,
+    });
 
   const isEditMode = Boolean(activity);
 

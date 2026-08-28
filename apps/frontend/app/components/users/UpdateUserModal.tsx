@@ -7,7 +7,7 @@ import { ArrowLeft, FolderKanban, Trash2 } from "lucide-react";
 import { User } from "@/types";
 
 import { useUserDetails, useUsers } from "@/hooks/useUsers";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjects, useProjectsInfiniteQuery } from "@/hooks/useProjects";
 
 import { initials } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
@@ -19,6 +19,7 @@ import { EntityPicker } from "../shared/resourse/EntityPicker";
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { UserForm, UserFormData } from "./UserForm";
+import { ProjectStatus } from "@/types/enums";
 
 type Props = {
   user: User;
@@ -43,9 +44,16 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   } = useUsers();
 
   const {
-    items: allProjects,
     actions: { update: updateProject },
   } = useProjects();
+
+  const {
+    items: allProjects,
+    isLoading: isProjectsLoading,
+    pagination: projectsPagination,
+  } = useProjectsInfiniteQuery({
+    status: ProjectStatus.ACTIVE,
+  });
 
   const fullName = `${user.firstName} ${user.lastName}`;
 
@@ -206,6 +214,10 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
               getLabel={(project) => project.name}
               getSubtitle={(project) => project.status}
               renderIcon={() => <FolderKanban className="size-3.5" />}
+              isLoading={isProjectsLoading}
+              hasNextPage={projectsPagination.hasNextPage}
+              isFetchingNextPage={projectsPagination.isFetchingNextPage}
+              onFetchNextPage={projectsPagination.fetchNextPage}
               emptyMessage="No projects found."
               searchPlaceholder="Search projects..."
             />

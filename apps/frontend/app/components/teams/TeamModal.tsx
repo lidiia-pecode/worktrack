@@ -7,10 +7,10 @@ import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
-import { useUsers } from "@/hooks/useUsers";
+import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Team } from "@/types/Team";
-import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
+import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 import { fullName, initials } from "@/lib/utils/user";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
@@ -51,7 +51,13 @@ export function TeamModal({
 
   const { addMember } = useTeamMembers(team?.id ?? "");
 
-  const { items: allUsers = [], isLoading: isUsersLoading } = useUsers();
+  const {
+    items: allUsers,
+    isLoading: isUsersLoading,
+    pagination,
+  } = useUsersInfiniteQuery({
+    status: UserStatus.ACTIVE,
+  });
 
   const isEditMode = Boolean(team);
   const isArchived = team?.status === TeamStatus.ARCHIVED;
@@ -76,9 +82,6 @@ export function TeamModal({
       return false;
     }
 
-    /**
-     * Manager can ONLY add employees.
-     */
     if (isManager) {
       return candidate.role === UserRole.EMPLOYEE;
     }
@@ -347,6 +350,9 @@ export function TeamModal({
             getSubtitle={(candidate) => candidate.email}
             getAvatarText={initials}
             isLoading={isUsersLoading}
+            hasNextPage={pagination.hasNextPage}
+            isFetchingNextPage={pagination.isFetchingNextPage}
+            onFetchNextPage={pagination.fetchNextPage}
             emptyMessage={pickerEmptyMessage}
             searchPlaceholder="Search people..."
           />

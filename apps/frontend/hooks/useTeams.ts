@@ -2,7 +2,7 @@
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { TeamsClientApi } from "@/lib/api/resources/teams";
+import { TeamsClientApi } from "@/lib/api/resources/teams.api";
 
 import {
   AddTeamMemberPayload,
