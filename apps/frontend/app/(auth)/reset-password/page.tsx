@@ -9,7 +9,7 @@ import {
   ResetPasswordFormValues,
   resetPasswordSchema,
 } from "@/lib/forms/schemas/reset-password.schema";
-import { useResetPassword } from "@/hooks/useResetPassword";
+import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import {
   settingsInputClassName,
   settingsLabelClassName,

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { FolderKanban } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 

@@ -4,6 +4,7 @@ import {
   Activity,
   ActivityListResponse,
   ActivityPayload,
+  ActivityQuery,
   UpdateActivityPayload,
 } from "@/types";
 
@@ -13,13 +14,20 @@ const crud = createCrudClient<
   Activity,
   ActivityPayload,
   UpdateActivityPayload,
-  ActivityListResponse
->({ endpoint: "activities" });
+  ActivityListResponse,
+  Omit<ActivityQuery, "page">
+>({
+  endpoint: "activities",
+});
 
-const client = createClient({ endpoint: "activities" });
+const client = createClient({
+  endpoint: "activities",
+});
 
 export const ActivitiesClientApi = {
   ...crud,
+
   archive: (id: string) => client.archive<Activity>(`/${id}/archive`),
+
   unarchive: (id: string) => client.patch<Activity>(`/${id}/unarchive`),
 };

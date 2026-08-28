@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeams } from "@/hooks/useTeams";
 
 import { hasManagerAccess } from "@/lib/utils/user";

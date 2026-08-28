@@ -6,19 +6,26 @@ import {
   Team,
   TeamListResponse,
   TeamMembership,
+  TeamsQuery,
   UpdateTeamMemberPayload,
   UpdateTeamPayload,
 } from "@/types/Team";
-import { createCrudClient, createClient } from "../core";
+
+import { createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   Team,
   CreateTeamPayload,
   UpdateTeamPayload,
-  TeamListResponse
->({ endpoint: "teams" });
+  TeamListResponse,
+  Omit<TeamsQuery, "page">
+>({
+  endpoint: "teams",
+});
 
-const client = createClient({ endpoint: "teams" });
+const client = createClient({
+  endpoint: "teams",
+});
 
 export const TeamsClientApi = {
   ...crud,
@@ -36,5 +43,6 @@ export const TeamsClientApi = {
     client.delete<void>(`/${teamId}/members/${membershipId}`),
 
   archive: (id: string) => client.archive<Team>(`/${id}/archive`),
+
   unarchive: (id: string) => client.patch<Team>(`/${id}/unarchive`),
 };

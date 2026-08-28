@@ -1,19 +1,30 @@
 "use client";
 
-import { Activity, ActivityPayload, UpdateActivityPayload } from "@/types";
+import {
+  Activity,
+  ActivityPayload,
+  ActivityQuery,
+  UpdateActivityPayload,
+} from "@/types";
+
 import { ActivitiesClientApi } from "@/lib/api/resources";
+
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { queryKeys } from "./shared/queryKeys";
 
-const activitiesQueries = createEntityQuery<Activity>({
+type ActivityQueryParams = Omit<ActivityQuery, "page">;
+
+const activitiesQueries = createEntityQuery<Activity, ActivityQueryParams>({
   queryKey: queryKeys.activities,
+
   api: {
     getAll: ActivitiesClientApi.getAll,
   },
 });
 
 export const useActivitiesQuery = activitiesQueries.useQuery;
+
 export const useActivitiesInfiniteQuery = activitiesQueries.useInfiniteQuery;
 
 const useActivitiesMutations = createEntityMutations<
@@ -40,8 +51,9 @@ const useActivitiesMutations = createEntityMutations<
   },
 });
 
-export function useActivities(page = 1) {
-  const query = useActivitiesQuery(page);
+export function useActivities(page = 1, params?: ActivityQueryParams) {
+  const query = useActivitiesQuery(page, params);
+
   const actions = useActivitiesMutations();
 
   return {

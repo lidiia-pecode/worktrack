@@ -1,12 +1,21 @@
 "use client";
 
-import { Project, ProjectPayload, UpdateProjectPayload } from "@/types";
+import {
+  Project,
+  ProjectPayload,
+  ProjectsQuery,
+  UpdateProjectPayload,
+} from "@/types";
+
 import { ProjectsClientApi } from "@/lib/api/resources";
-import { createEntityQuery } from "./shared/createEntityQuery";
+
 import { createEntityMutations } from "./shared/createEntityMutations";
+import { createEntityQuery } from "./shared/createEntityQuery";
 import { queryKeys } from "./shared/queryKeys";
 
-const projectsQueries = createEntityQuery<Project>({
+type ProjectQueryParams = Omit<ProjectsQuery, "page">;
+
+const projectsQueries = createEntityQuery<Project, ProjectQueryParams>({
   queryKey: queryKeys.projects,
 
   api: {
@@ -15,6 +24,7 @@ const projectsQueries = createEntityQuery<Project>({
 });
 
 export const useProjectsQuery = projectsQueries.useQuery;
+
 export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 
 const useProjectsMutations = createEntityMutations<
@@ -41,8 +51,9 @@ const useProjectsMutations = createEntityMutations<
   },
 });
 
-export function useProjects(page = 1) {
-  const query = useProjectsQuery(page);
+export function useProjects(page = 1, params?: ProjectQueryParams) {
+  const query = useProjectsQuery(page, params);
+
   const actions = useProjectsMutations();
 
   return {

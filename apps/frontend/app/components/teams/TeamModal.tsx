@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
 import { useUsers } from "@/hooks/useUsers";
 

@@ -15,7 +15,7 @@ import {
   InviteUserFormData,
   inviteUserSchema,
 } from "@/lib/forms/schemas/invite-user.schema";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface InviteUserFormProps {
   formId?: string;

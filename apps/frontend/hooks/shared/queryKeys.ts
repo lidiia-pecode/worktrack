@@ -1,93 +1,93 @@
+type QueryParams = Record<string, unknown>;
+
+const createListKey = (entity: string, page: number, params?: QueryParams) =>
+  [entity, "list", page, params ?? {}] as const;
+
+const createInfiniteKey = (entity: string, params?: QueryParams) =>
+  [entity, "infinite", params ?? {}] as const;
+
 export const queryKeys = {
   company: {
     current: ["company"] as const,
   },
 
   onboarding: {
-    ownerSetup: () => ["onboarding", "owner-setup"],
+    ownerSetup: () => ["onboarding", "owner-setup"] as const,
 
-    managerSetup: () => ["onboarding", "manager-setup"],
+    managerSetup: () => ["onboarding", "manager-setup"] as const,
   },
 
   teams: {
     all: ["teams"] as const,
 
-    lists: () => [...queryKeys.teams.all, "list"] as const,
+    lists: () => ["teams", "list"] as const,
 
-    list: (page: number) => [...queryKeys.teams.lists(), page] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("teams", page, params),
 
-    infinite: () => [...queryKeys.teams.all, "infinite"] as const,
-
-    // detail: (id: string) => [...queryKeys.teams.all, "detail", id] as const,
+    infinite: (params?: QueryParams) => createInfiniteKey("teams", params),
   },
 
   projects: {
     all: ["projects"] as const,
 
-    lists: () => [...queryKeys.projects.all, "list"] as const,
+    lists: () => ["projects", "list"] as const,
 
-    list: (page: number) => [...queryKeys.projects.lists(), page] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("projects", page, params),
 
-    infinite: () => [...queryKeys.projects.all, "infinite"] as const,
-
-    // detail: (id: string) => [...queryKeys.projects.all, "detail", id] as const,
+    infinite: (params?: QueryParams) => createInfiniteKey("projects", params),
   },
 
   activities: {
     all: ["activities"] as const,
 
-    lists: () => [...queryKeys.activities.all, "list"] as const,
+    lists: () => ["activities", "list"] as const,
 
-    list: (page: number) => [...queryKeys.activities.lists(), page] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("activities", page, params),
 
-    infinite: () => [...queryKeys.activities.all, "infinite"] as const,
-
-    // detail: (id: string) =>
-    //   [...queryKeys.activities.all, "detail", id] as const,
+    infinite: (params?: QueryParams) => createInfiniteKey("activities", params),
   },
 
   activityCategories: {
     all: ["activityCategories"] as const,
 
-    lists: () => [...queryKeys.activityCategories.all, "list"] as const,
+    lists: () => ["activityCategories", "list"] as const,
 
-    list: (page: number) =>
-      [...queryKeys.activityCategories.lists(), page] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("activityCategories", page, params),
 
-    infinite: () => [...queryKeys.activityCategories.all, "infinite"] as const,
-
-    // detail: (id: string) =>
-    //   [...queryKeys.activityCategories.all, "detail", id] as const,
+    infinite: (params?: QueryParams) =>
+      createInfiniteKey("activityCategories", params),
   },
 
   users: {
     all: ["users"] as const,
 
-    lists: () => [...queryKeys.users.all, "list"] as const,
+    lists: () => ["users", "list"] as const,
 
-    list: (page: number) => [...queryKeys.users.lists(), page] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("users", page, params),
 
-    infinite: () => [...queryKeys.users.all, "infinite"] as const,
+    infinite: (params?: QueryParams) => createInfiniteKey("users", params),
 
-    detail: (id: string) => [...queryKeys.users.all, "detail", id] as const,
+    detail: (id: string) => ["users", "detail", id] as const,
   },
 
   timelogs: {
     all: ["timelogs"] as const,
 
-    lists: () => [...queryKeys.timelogs.all, "list"] as const,
+    lists: () => ["timelogs", "list"] as const,
 
     list: (dateFrom: string, dateTo: string) =>
-      [...queryKeys.timelogs.lists(), dateFrom, dateTo] as const,
+      ["timelogs", "list", dateFrom, dateTo] as const,
   },
 
   projectActivities: {
     all: ["projectActivities"] as const,
 
-    lists: () => [...queryKeys.projectActivities.all, "list"] as const,
-
-    // list: (projectId: string) =>
-    //   [...queryKeys.projectActivities.lists(), projectId] as const,
+    lists: () => ["projectActivities", "list"] as const,
   },
 
   auth: {
@@ -97,7 +97,6 @@ export const queryKeys = {
   invitations: {
     all: ["invitations"] as const,
 
-    validate: (token: string) =>
-      [...queryKeys.invitations.all, "validate", token] as const,
+    validate: (token: string) => ["invitations", "validate", token] as const,
   },
 };

@@ -3,7 +3,7 @@
 import {
   User,
   UserListResponse,
-  UserQuery,
+  UsersQuery,
   UpdateProfilePayload,
   UserDetails,
   CreateUserPayload,
@@ -16,7 +16,7 @@ const crud = createCrudClient<
   CreateUserPayload,
   UpdateUserPayload,
   UserListResponse,
-  UserQuery,
+  UsersQuery,
   UserDetails
 >({ endpoint: "users" });
 

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { AuthClient } from "@/lib/api/resources";
 import { User } from "@/types";
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 export function useAuth() {
   const me = useQuery<User>({

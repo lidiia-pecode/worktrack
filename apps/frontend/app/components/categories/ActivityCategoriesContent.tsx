@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Tags } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 
 import { hasManagerAccess } from "@/lib/utils/user";

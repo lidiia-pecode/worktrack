@@ -28,7 +28,7 @@ export interface ProjectPayload {
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;
 
-export interface ProjectQuery extends PaginationParams {
+export interface ProjectsQuery extends PaginationParams {
   status?: ProjectStatus;
 }
 

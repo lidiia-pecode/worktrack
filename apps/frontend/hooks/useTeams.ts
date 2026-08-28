@@ -1,18 +1,43 @@
 "use client";
 
-import { useMemo } from "react";
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { TeamsClientApi } from "@/lib/api/resources/teams";
-import { AddTeamMemberPayload, UpdateTeamMemberPayload } from "@/types/Team";
-import { queryKeys } from "./shared/queryKeys";
-import { createEntityMutations } from "./shared/createEntityMutations";
 
-const useTeamsMutations = createEntityMutations({
+import {
+  AddTeamMemberPayload,
+  CreateTeamPayload,
+  Team,
+  TeamsQuery,
+  UpdateTeamMemberPayload,
+  UpdateTeamPayload,
+} from "@/types/Team";
+
+import { createEntityMutations } from "./shared/createEntityMutations";
+import { createEntityQuery } from "./shared/createEntityQuery";
+import { queryKeys } from "./shared/queryKeys";
+
+type TeamQueryParams = Omit<TeamsQuery, "page">;
+
+const teamsQueries = createEntityQuery<Team, TeamQueryParams>({
+  queryKey: queryKeys.teams,
+
+  api: {
+    getAll: TeamsClientApi.getAll,
+  },
+});
+
+export const useTeamsQuery = teamsQueries.useQuery;
+
+export const useTeamsInfiniteQuery = teamsQueries.useInfiniteQuery;
+
+const useTeamsMutations = createEntityMutations<
+  Team,
+  CreateTeamPayload,
+  UpdateTeamPayload,
+  Team,
+  Team
+>({
   queryKey: queryKeys.teams.all,
 
   api: {
@@ -30,55 +55,30 @@ const useTeamsMutations = createEntityMutations({
   },
 });
 
-export const useTeams = () => {
-  const teamsQuery = useInfiniteQuery({
-    queryKey: queryKeys.teams.infinite(),
-
-    queryFn: ({ pageParam }) => TeamsClientApi.getAll({ page: pageParam }),
-
-    initialPageParam: 1,
-
-    getNextPageParam: (lastPage, pages) => {
-      const loaded = pages.flatMap((page) => page.results).length;
-      return loaded < lastPage.count ? pages.length + 1 : undefined;
-    },
-  });
-
-  const items = useMemo(
-    () => teamsQuery.data?.pages.flatMap((page) => page.results) ?? [],
-    [teamsQuery.data],
-  );
+export function useTeams(page = 1, params?: TeamQueryParams) {
+  const query = useTeamsQuery(page, params);
 
   const actions = useTeamsMutations();
 
   return {
-    items,
-    count: teamsQuery.data?.pages[0]?.count ?? 0,
-
-    isLoading: teamsQuery.isLoading,
-    isError: teamsQuery.isError,
-    refetch: teamsQuery.refetch,
-
+    ...query,
     actions,
-
-    pagination: {
-      fetchNextPage: teamsQuery.fetchNextPage,
-      hasNextPage: teamsQuery.hasNextPage,
-      isFetchingNextPage: teamsQuery.isFetchingNextPage,
-    },
   };
-};
+}
 
-export const useTeamMembers = (teamId: string) => {
+export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.teams.all });
+  const invalidateTeams = () =>
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.teams.all,
+    });
 
   const addMember = useMutation({
     mutationFn: (data: AddTeamMemberPayload) =>
       TeamsClientApi.addMember(teamId, data),
-    onSuccess: invalidate,
+
+    onSuccess: invalidateTeams,
   });
 
   const updateMember = useMutation({
@@ -89,14 +89,20 @@ export const useTeamMembers = (teamId: string) => {
       membershipId: string;
       data: UpdateTeamMemberPayload;
     }) => TeamsClientApi.updateMember(teamId, membershipId, data),
-    onSuccess: invalidate,
+
+    onSuccess: invalidateTeams,
   });
 
   const removeMember = useMutation({
     mutationFn: (membershipId: string) =>
       TeamsClientApi.removeMember(teamId, membershipId),
-    onSuccess: invalidate,
+
+    onSuccess: invalidateTeams,
   });
 
-  return { addMember, updateMember, removeMember };
-};
+  return {
+    addMember,
+    updateMember,
+    removeMember,
+  };
+}

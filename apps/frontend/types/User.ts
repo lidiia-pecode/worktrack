@@ -50,6 +50,10 @@ export interface UpdateProfilePayload {
 
 export type UserListResponse = PaginatedResponse<User>;
 
+export interface UsersQuery extends PaginationParams {
+  status?: UserStatus;
+}
+
 export interface UserProject {
   id: string;
   name: string;

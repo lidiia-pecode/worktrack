@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ROLE_LABELS } from "@/lib/constants";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { initials } from "@/lib/utils/user";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@/hooks/useAuthActions";

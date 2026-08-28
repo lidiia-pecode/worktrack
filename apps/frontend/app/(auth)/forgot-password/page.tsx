@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Mail } from "lucide-react";
 
 import { settingsInputClassName } from "@/app/components/settings/styles/settings-styles";
-import { useResetPassword } from "@/hooks/useResetPassword";
+import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ResetPasswordPageLayout } from "@/app/components/auth";

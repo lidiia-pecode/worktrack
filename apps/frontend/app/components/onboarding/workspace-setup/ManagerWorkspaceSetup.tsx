@@ -12,8 +12,7 @@ import {
   UserPlus,
   UsersRound,
 } from "lucide-react";
-
-import { useManagerSetupState } from "@/hooks/useOnboarding";
+import { useManagerSetupState } from "@/hooks/auth/useOnboarding";
 
 type SetupStep = {
   id:

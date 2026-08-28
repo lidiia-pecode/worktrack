@@ -18,7 +18,7 @@ import {
 } from "../styles/settings-styles";
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { PUBLIC_BACKEND_URL } from "@/lib/constants";
 import Link from "next/link";
 

@@ -3,21 +3,31 @@
 import {
   ActivityCategory,
   ActivityCategoryPayload,
+  ActivityCategoryQuery,
   UpdateActivityCategoryPayload,
 } from "@/types";
-import { ActivityCategoriesClientApi } from "@/lib/api/resources";
-import { queryKeys } from "./shared/queryKeys";
-import { createEntityQuery } from "./shared/createEntityQuery";
-import { createEntityMutations } from "./shared/createEntityMutations";
 
-const activityCategoriesQueries = createEntityQuery<ActivityCategory>({
+import { ActivityCategoriesClientApi } from "@/lib/api/resources";
+
+import { createEntityMutations } from "./shared/createEntityMutations";
+import { createEntityQuery } from "./shared/createEntityQuery";
+import { queryKeys } from "./shared/queryKeys";
+
+type ActivityCategoryQueryParams = Omit<ActivityCategoryQuery, "page">;
+
+const activityCategoriesQueries = createEntityQuery<
+  ActivityCategory,
+  ActivityCategoryQueryParams
+>({
   queryKey: queryKeys.activityCategories,
+
   api: {
     getAll: ActivityCategoriesClientApi.getAll,
   },
 });
 
 export const useActivityCategoriesQuery = activityCategoriesQueries.useQuery;
+
 export const useActivityCategoriesInfiniteQuery =
   activityCategoriesQueries.useInfiniteQuery;
 
@@ -45,8 +55,12 @@ export const useActivityCategoriesMutations = createEntityMutations<
   },
 });
 
-export function useActivityCategories(page = 1) {
-  const query = useActivityCategoriesQuery(page);
+export function useActivityCategories(
+  page = 1,
+  params?: ActivityCategoryQueryParams,
+) {
+  const query = useActivityCategoriesQuery(page, params);
+
   const actions = useActivityCategoriesMutations();
 
   return {

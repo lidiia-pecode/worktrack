@@ -6,21 +6,18 @@ type CrudClientConfig = {
   endpoint: string;
 };
 
-type GetAllOptions<TQuery> = {
+type GetAllOptions<TQuery extends object> = {
   page?: number;
-  query?: TQuery;
-};
+} & TQuery;
 
-const buildQuery = (query?: unknown) => {
+const buildQuery = (query?: object): URLSearchParams => {
   const params = new URLSearchParams();
 
-  Object.entries((query ?? {}) as Record<string, unknown>).forEach(
-    ([key, value]) => {
-      if (value !== undefined && value !== null) {
-        params.set(key, String(value));
-      }
-    },
-  );
+  Object.entries(query ?? {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      params.set(key, String(value));
+    }
+  });
 
   return params;
 };
@@ -30,26 +27,22 @@ export function createCrudClient<
   TCreate,
   TUpdate,
   TList,
-  TQuery = never,
+  TQuery extends object = object,
   TDetails = TEntity,
 >({ endpoint }: CrudClientConfig) {
   const client = createClient({ endpoint });
 
+  const getAll = (options?: number | GetAllOptions<TQuery>) => {
+    const query = typeof options === "number" ? { page: options } : options;
+
+    const params = buildQuery(query);
+    const queryString = params.toString();
+
+    return client.get<TList>(queryString ? `?${queryString}` : "");
+  };
+
   return {
-    getAll: (options: number | GetAllOptions<TQuery> = {}) => {
-      const page = typeof options === "number" ? options : options.page;
-      const query = typeof options === "number" ? undefined : options.query;
-
-      const params = buildQuery(query);
-
-      if (page !== undefined) {
-        params.set("page", String(page));
-      }
-
-      const suffix = params.toString();
-
-      return client.get<TList>(suffix ? `?${suffix}` : "");
-    },
+    getAll,
 
     getById: (id: string) => client.get<TDetails>(`/${id}`),
 

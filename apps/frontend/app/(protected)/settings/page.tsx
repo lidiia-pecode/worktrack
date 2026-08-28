@@ -3,14 +3,14 @@
 import { useState } from "react";
 import { Settings2 } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { UserRole } from "@/types/enums";
 import { SettingsSidebar } from "@/app/components/settings/SettingsSidebar";
 import { ProfileSettings } from "@/app/components/settings/profile/ProfileSettings";
 import { SecuritySettings } from "@/app/components/settings/security/SecuritySettings";
 import { CompanySettings } from "@/app/components/settings/company/CompanySettings";
 import { GlowBackground } from "@/components/ui/glow-background";
-import { useGoogleLinkResult } from "@/hooks/useGoogleLinkResult";
+import { useGoogleLinkResult } from "@/hooks/auth/useGoogleLinkResult";
 
 type SettingsTab = "profile" | "security" | "company";
 
@@ -25,7 +25,7 @@ export default function SettingsPage() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <GlowBackground intensity="strong" />
+      <GlowBackground />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-12 pt-8 lg:px-8">
         <header className="mb-8 flex justify-end">

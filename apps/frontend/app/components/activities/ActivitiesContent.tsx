@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import { ClipboardList } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 
 import { hasManagerAccess } from "@/lib/utils/user";

@@ -4,9 +4,9 @@ import { MailPlus } from "lucide-react";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
-import { useInvitations } from "@/hooks/useInvitation";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
 import { useRouter } from "next/navigation";
+import { useInvitations } from "@/hooks/auth/useInvitation";
 
 interface InviteUserModalProps {
   open: boolean;

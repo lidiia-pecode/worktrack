@@ -1,4 +1,4 @@
-import { PaginatedResponse } from ".";
+import { PaginatedResponse, PaginationParams } from ".";
 import { Company } from "./Company";
 import { TeamRole, TeamStatus } from "./enums";
 
@@ -42,10 +42,8 @@ export interface CreateTeamPayload {
 
 export type UpdateTeamPayload = Partial<CreateTeamPayload>;
 
-export interface TeamsQuery {
+export interface TeamsQuery extends PaginationParams {
   status?: TeamStatus;
-  page?: number;
-  limit?: number;
 }
 
 export interface AddTeamMemberPayload {

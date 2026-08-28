@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { UsersRound } from "lucide-react";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { User } from "@/types";
