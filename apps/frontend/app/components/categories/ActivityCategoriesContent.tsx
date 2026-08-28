@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Tags } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
-
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityCategory } from "@/types";
@@ -13,18 +13,22 @@ import { ActivityCategory } from "@/types";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { ActivityCategoryCard } from "./ActivityCategoryCard";
 import { ActivityCategoryModal } from "./ActivityCategoryModal";
-import { useSearchParams } from "next/navigation";
+import { ActCategoryStatus } from "@/types/enums";
 
 export function ActivityCategoriesContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
+  const [status, setStatus] = useState<ActCategoryStatus>(
+    ActCategoryStatus.ACTIVE,
+  );
 
   const searchParams = useSearchParams();
   const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const {
     items: categories,
@@ -32,14 +36,22 @@ export function ActivityCategoriesContent() {
     isError,
     refetch,
     pagination,
-  } = useActivityCategoriesInfiniteQuery();
-
-  const canManage = hasManagerAccess(user?.role);
+  } = useActivityCategoriesInfiniteQuery({
+    status,
+  });
 
   const editingCategory = useMemo(
     () => categories.find((category) => category.id === editingCategoryId),
     [categories, editingCategoryId],
   );
+
+  const handleTabChange = (tab: "active" | "archived") => {
+    setStatus(
+      tab === "archived"
+        ? ActCategoryStatus.ARCHIVED
+        : ActCategoryStatus.ACTIVE,
+    );
+  };
 
   return (
     <>
@@ -61,6 +73,8 @@ export function ActivityCategoriesContent() {
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
+        tab={status === ActCategoryStatus.ARCHIVED ? "archived" : "active"}
+        onTabChange={handleTabChange}
         renderItem={(category) => (
           <ActivityCategoryCard
             key={category.id}

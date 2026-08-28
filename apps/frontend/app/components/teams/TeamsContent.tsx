@@ -13,19 +13,24 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
 import { useSearchParams } from "next/navigation";
+import { TeamStatus } from "@/types/enums";
 
 export function TeamsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
+  const [status, setStatus] = useState<TeamStatus>(TeamStatus.ACTIVE);
 
   const { user } = useAuth();
+
   const {
     items: teams,
     isLoading,
     isError,
     refetch,
     pagination,
-  } = useTeamsInfiniteQuery();
+  } = useTeamsInfiniteQuery({
+    status,
+  });
 
   const searchParams = useSearchParams();
 
@@ -38,11 +43,15 @@ export function TeamsContent() {
     [teams, editingTeamId],
   );
 
+  const handleTabChange = (tab: "active" | "archived") => {
+    setStatus(tab === "archived" ? TeamStatus.ARCHIVED : TeamStatus.ACTIVE);
+  };
+
   return (
     <>
       <ResourcePage<Team>
         title="Teams"
-        description="Organize people into teams and manage team access."
+        description="Manage teams and organize workspace members."
         items={teams}
         isLoading={isLoading}
         isError={isError || !canManage}
@@ -50,7 +59,7 @@ export function TeamsContent() {
         getSearchValue={(team) => team.name}
         searchPlaceholder="Search teams..."
         emptyTitle="No teams yet"
-        emptyDescription="Create your first team to start organizing people."
+        emptyDescription="Create your first team to organize your workspace."
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Create team"
         onCreate={() => setCreateOpen(true)}
@@ -58,12 +67,14 @@ export function TeamsContent() {
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
+        tab={status === TeamStatus.ARCHIVED ? "archived" : "active"}
+        onTabChange={handleTabChange}
         renderItem={(team) => (
           <TeamCard
             key={team.id}
             team={team}
             canManage={canManage}
-            onView={(t) => setEditingTeamId(t.id)}
+            onView={(team) => setEditingTeamId(team.id)}
           />
         )}
       />

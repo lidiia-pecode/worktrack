@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
+import { useSearchParams } from "next/navigation";
 import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -9,21 +9,22 @@ import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
+import { ProjectStatus } from "@/types/enums";
 
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
-import { useSearchParams } from "next/navigation";
 
 export function ProjectsContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
-
-  const { user } = useAuth();
-  const canManage = hasManagerAccess(user?.role);
+  const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.ACTIVE);
 
   const searchParams = useSearchParams();
   const isOnboarding = searchParams.get("onboarding") === "true";
+
+  const { user } = useAuth();
+  const canManage = hasManagerAccess(user?.role);
 
   const {
     items: projects,
@@ -31,14 +32,20 @@ export function ProjectsContent() {
     isError,
     refetch,
     pagination,
-  } = useProjectsInfiniteQuery();
+  } = useProjectsInfiniteQuery({
+    status,
+  });
 
   const editingProject = useMemo(
     () => projects.find((project) => project.id === editingProjectId),
     [projects, editingProjectId],
   );
 
-  console.log("PROJECT", projects[0]);
+  const handleTabChange = (tab: "active" | "archived") => {
+    setStatus(
+      tab === "archived" ? ProjectStatus.ARCHIVED : ProjectStatus.ACTIVE,
+    );
+  };
 
   return (
     <>
@@ -60,6 +67,8 @@ export function ProjectsContent() {
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
+        tab={status === ProjectStatus.ARCHIVED ? "archived" : "active"}
+        onTabChange={handleTabChange}
         renderItem={(project) => (
           <ProjectCard
             key={project.id}
