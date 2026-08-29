@@ -51,7 +51,7 @@ export enum UserRole {
 
 export enum UserStatus {
   ACTIVE = "ACTIVE",
-  SUSPENDED = "SUSPENDED",
+  DEACTIVATED = "DEACTIVATED",
 }
 
 export enum ReportingPeriodStatus {

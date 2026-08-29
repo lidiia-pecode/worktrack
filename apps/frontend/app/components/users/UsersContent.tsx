@@ -20,7 +20,7 @@ export function UsersContent() {
   const isOnboarding = searchParams.get("onboarding") === "true";
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
-  const status = tab === "active" ? UserStatus.ACTIVE : UserStatus.SUSPENDED;
+  const status = tab === "active" ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;
 
   const {
     items: users,

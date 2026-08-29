@@ -46,6 +46,7 @@ export function ActivityCategoriesContent() {
   );
 
   const handleTabChange = (tab: "active" | "archived") => {
+    setEditingCategoryId(null);
     setStatus(
       tab === "archived"
         ? ActCategoryStatus.ARCHIVED

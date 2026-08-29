@@ -44,6 +44,7 @@ export function ActivitiesContent() {
   );
 
   const handleTabChange = (tab: "active" | "archived") => {
+    setEditingActivityId(null);
     setStatus(
       tab === "archived" ? ActivityStatus.ARCHIVED : ActivityStatus.ACTIVE,
     );

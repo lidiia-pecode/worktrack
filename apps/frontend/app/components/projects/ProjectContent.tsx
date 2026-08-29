@@ -42,6 +42,7 @@ export function ProjectsContent() {
   );
 
   const handleTabChange = (tab: "active" | "archived") => {
+    setEditingProjectId(null);
     setStatus(
       tab === "archived" ? ProjectStatus.ARCHIVED : ProjectStatus.ACTIVE,
     );

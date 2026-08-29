@@ -92,8 +92,8 @@ export function ActivityModal({
               size="sm"
               onClick={() =>
                 isArchived
-                  ? unarchive.mutate(activity.id)
-                  : archive.mutate(activity!.id)
+                  ? unarchive.mutate(activity.id, { onSuccess: onClose })
+                  : archive.mutate(activity!.id, { onSuccess: onClose })
               }
               isLoading={archive.isPending || unarchive.isPending}
             >

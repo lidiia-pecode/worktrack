@@ -88,8 +88,8 @@ export function ActivityCategoryModal({
               className="gap-1.5"
               onClick={() =>
                 isArchived
-                  ? unarchive.mutate(category!.id)
-                  : archive.mutate(category!.id)
+                  ? unarchive.mutate(category!.id, { onSuccess: onClose })
+                  : archive.mutate(category!.id, { onSuccess: onClose })
               }
               isLoading={archive.isPending || unarchive.isPending}
             >

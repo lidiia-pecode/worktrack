@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-import { ArrowLeft, FolderKanban, Trash2 } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  ArrowLeft,
+  FolderKanban,
+  Trash2,
+} from "lucide-react";
 
 import { User } from "@/types";
 
@@ -14,12 +20,11 @@ import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { Button } from "@/components/ui/button";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { UserForm, UserFormData } from "./UserForm";
-import { ProjectStatus } from "@/types/enums";
+import { ProjectStatus, UserStatus } from "@/types/enums";
 
 type Props = {
   user: User;
@@ -31,7 +36,6 @@ type View = "form" | "projects";
 export const UpdateUserModal = ({ user, onClose }: Props) => {
   const [view, setView] = useState<View>("form");
   const [edit, setEdit] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [pendingProjectIds, setPendingProjectIds] = useState<string[]>([]);
   const [isSavingProjects, setIsSavingProjects] = useState(false);
 
@@ -40,7 +44,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   );
 
   const {
-    actions: { update, archive },
+    actions: { update, archive, unarchive },
   } = useUsers();
 
   const {
@@ -65,12 +69,6 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const handleSave = (data: UserFormData) => {
     update.mutate({ id: user.id, data }, { onSuccess: () => setEdit(false) });
-  };
-
-  const handleDelete = async () => {
-    await archive.mutateAsync(user.id);
-    setDeleteOpen(false);
-    onClose();
   };
 
   const applyProjectMembership = async (
@@ -123,6 +121,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const isPicking = view === "projects";
   const pendingCount = pendingProjectIds.length;
+  const isArchived = user.status === UserStatus.DEACTIVATED;
 
   return (
     <>
@@ -169,12 +168,20 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
             <div className="flex items-center justify-between">
               <Button
                 type="button"
-                variant="ghost"
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => setDeleteOpen(true)}
+                variant={isArchived ? "success" : "destructive"}
+                onClick={() =>
+                  isArchived
+                    ? unarchive.mutate(user.id, { onSuccess: onClose })
+                    : archive.mutate(user.id, { onSuccess: onClose })
+                }
               >
-                <Trash2 className="size-4" />
-                Delete user
+                {isArchived ? (
+                  <ArchiveRestore className="size-4" />
+                ) : (
+                  <Archive className="size-4" />
+                )}
+
+                {isArchived ? "Unarchive" : "Archive"}
               </Button>
 
               <div className="flex items-center gap-2">
@@ -196,7 +203,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   </Button>
                 ) : (
                   <Button type="button" onClick={() => setEdit(true)}>
-                    Edit user
+                    Save changes
                   </Button>
                 )}
               </div>
@@ -303,17 +310,6 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
           </div>
         )}
       </ResourceFormModal>
-
-      <ConfirmModal
-        isOpen={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={handleDelete}
-        loading={archive.isPending}
-        title={`Delete "${fullName}"?`}
-        message="This user will be permanently removed. This action cannot be undone."
-        confirmText="Delete"
-        variant="danger"
-      />
     </>
   );
 };

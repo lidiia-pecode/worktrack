@@ -191,11 +191,11 @@ export function TeamModal({
     }
 
     if (isArchived) {
-      unarchive.mutate(team.id);
+      unarchive.mutate(team.id, { onSuccess: onClose });
       return;
     }
 
-    archive.mutate(team.id);
+    archive.mutate(team.id, { onSuccess: onClose });
   };
 
   const handleCloseModal = () => {

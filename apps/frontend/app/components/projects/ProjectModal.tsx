@@ -167,12 +167,12 @@ export function ProjectModal({
 
   const handleArchive = () => {
     if (!project) return;
-    archive.mutate(project.id);
+    archive.mutate(project.id, { onSuccess: onClose });
   };
 
   const handleUnarchive = () => {
     if (!project) return;
-    unarchive.mutate(project.id);
+    unarchive.mutate(project.id, { onSuccess: onClose });
   };
 
   const title =

@@ -44,6 +44,7 @@ export function TeamsContent() {
   );
 
   const handleTabChange = (tab: "active" | "archived") => {
+    setEditingTeamId(null);
     setStatus(tab === "archived" ? TeamStatus.ARCHIVED : TeamStatus.ACTIVE);
   };
 
