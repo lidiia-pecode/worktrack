@@ -39,7 +39,7 @@ export const managerNavigation = [
 export const employeeNavigation = [
   {
     label: "Timesheet",
-    href: "/dashboard",
+    href: "/timesheet",
     icon: Clock3,
   },
 ];
