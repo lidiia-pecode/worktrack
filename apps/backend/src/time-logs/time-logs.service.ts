@@ -164,7 +164,7 @@ export class TimeLogsService {
 
       const projectActivity = await this.resolveProjectActivity(
         payload.projectActivityId,
-        user.companyId,
+        user,
         manager,
       );
 
@@ -212,7 +212,7 @@ export class TimeLogsService {
       if (payload.projectActivityId !== undefined) {
         log.projectActivity = await this.resolveProjectActivity(
           payload.projectActivityId,
-          user.companyId,
+          user,
           manager,
         );
       }
@@ -284,11 +284,11 @@ export class TimeLogsService {
 
   /**
    * Validates that a ProjectActivity exists, belongs to the caller's company,
-   * and is currently available for time logging.
+   * is assigned to the caller, and is currently available for time logging.
    */
   private async resolveProjectActivity(
     projectActivityId: string,
-    companyId: string,
+    user: AuthUser,
     manager?: EntityManager,
   ): Promise<ProjectActivity> {
     const repo = manager
@@ -300,9 +300,11 @@ export class TimeLogsService {
       relations: ['project', 'activity'],
     });
 
-    if (!pa || pa.companyId !== companyId) {
+    if (!pa || pa.companyId !== user.companyId) {
       throw new NotFoundException('Project activity not found');
     }
+
+    await this.assertProjectMembership(pa.projectId, user, manager);
 
     if (
       !pa.isActive ||
@@ -315,6 +317,28 @@ export class TimeLogsService {
     }
 
     return pa;
+  }
+
+  private async assertProjectMembership(
+    projectId: string,
+    user: AuthUser,
+    manager?: EntityManager,
+  ): Promise<void> {
+    const runner = manager ?? this.dataSource;
+
+    const isMember = await runner
+      .createQueryBuilder()
+      .select('1')
+      .from('project_users', 'pu')
+      .where('pu.project_id = :projectId', { projectId })
+      .andWhere('pu.user_id = :userId', { userId: user.id })
+      .getExists();
+
+    if (!isMember) {
+      throw new ForbiddenException(
+        'You can only log time against projects you are assigned to',
+      );
+    }
   }
 
   /**
