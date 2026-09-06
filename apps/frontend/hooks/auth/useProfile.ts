@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { UsersClientApi } from "@/lib/api/resources";
-import { queryKeys } from "./shared/queryKeys";
+import { queryKeys } from "../shared/queryKeys";
 
 export function useProfile() {
   const queryClient = useQueryClient();

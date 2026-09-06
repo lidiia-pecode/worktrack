@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
 import { Button } from "@/components/ui/button";
-import { useAuthActions } from "@/hooks/useAuthActions";
+import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import { isApiValidationError } from "@/lib/api/errors";
 import { applyServerErrors } from "@/lib/forms/utils";
 import {
