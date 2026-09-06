@@ -225,6 +225,45 @@
   background-image: url("/images/time-management.webp");
 }
 
+/* ============================================================================
+   DIAGONAL STRIPES
+
+   Used by the timesheet to mark non-work days and time logged past the daily
+   target. Derived from the tokens so they follow the palette instead of
+   carrying a second, hardcoded set of greys and ambers.
+   ============================================================================ */
+
+.bg-stripes-muted {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--card) 0px,
+    var(--card) 8px,
+    color-mix(in oklch, var(--muted) 22%, var(--card)) 8px,
+    color-mix(in oklch, var(--muted) 22%, var(--card)) 16px
+  );
+}
+
+.bg-stripes-warning {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklch, var(--warning) 12%, var(--card)) 0px,
+    color-mix(in oklch, var(--warning) 12%, var(--card)) 6px,
+    color-mix(in oklch, var(--warning) 26%, var(--card)) 6px,
+    color-mix(in oklch, var(--warning) 26%, var(--card)) 12px
+  );
+}
+
+/* Sits on top of a coloured surface, so both stops stay translucent. */
+.bg-stripes-overlay {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklch, var(--card) 35%, transparent) 0px,
+    color-mix(in oklch, var(--card) 35%, transparent) 4px,
+    color-mix(in oklch, var(--foreground) 10%, transparent) 4px,
+    color-mix(in oklch, var(--foreground) 10%, transparent) 8px
+  );
+}
+
 html,
 body {
   height: 100%;

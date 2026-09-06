@@ -8,6 +8,7 @@ import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
 import { TimelogSegment } from "./TimelogSegment";
 import { DAY_COLUMN_CLASS, OVERTIME_PATTERN, WEEKEND_PATTERN } from "../consts";
+import { Badge } from "@/components/ui/badge";
 
 type Props = {
   date: Date;
@@ -61,17 +62,19 @@ export const DayColumn = ({
       }}
       className={`
         ${DAY_COLUMN_CLASS}
-        ${weekend ? WEEKEND_PATTERN : "bg-white"}
+        ${weekend ? WEEKEND_PATTERN : "bg-card"}
       `}
     >
       {timelogs.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-[11px] text-zinc-300">Click to log time</span>
+          <span className="text-[11px] text-muted-foreground/60">
+            Click to log time
+          </span>
         </div>
       )}
 
       <div
-        className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-zinc-300"
+        className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-border"
         style={{
           top: targetLineOffset,
         }}
@@ -87,12 +90,13 @@ export const DayColumn = ({
             }}
           />
 
-          <div
-            className="absolute z-1 opacity-60 right-1.5 mt-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900 shadow-sm"
+          <Badge
+            variant="warning"
+            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold opacity-60 shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}
-          </div>
+          </Badge>
         </>
       )}
 

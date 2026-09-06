@@ -201,7 +201,7 @@ export const WeekTimesheet = () => {
 
   return (
     <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
-      <div className="border-b border-zinc-200">
+      <div className="border-b border-border">
         <div className="flex items-center justify-between py-3 pr-3">
           <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
@@ -209,13 +209,13 @@ export const WeekTimesheet = () => {
             <div className="flex items-center gap-2 text-sm">
               <span>Time logged:</span>
 
-              <span className="font-medium text-zinc-900">
+              <span className="font-medium text-foreground">
                 {formatDuration(totalMinutes)}
               </span>
 
-              <span className="text-zinc-300">/</span>
+              <span className="text-muted-foreground/50">/</span>
 
-              <span className="text-zinc-500">
+              <span className="text-muted-foreground">
                 {formatDuration(weeklyTargetMinutes)}
               </span>
             </div>
@@ -253,7 +253,7 @@ export const WeekTimesheet = () => {
 
       {!hasError && !isUnassigned && (
         <>
-          <div className="grid grid-cols-7 border-b border-zinc-200">
+          <div className="grid grid-cols-7 border-b border-border">
             {weekDates.map((date) => (
               <WeekHeaderDay
                 key={toISODate(date)}

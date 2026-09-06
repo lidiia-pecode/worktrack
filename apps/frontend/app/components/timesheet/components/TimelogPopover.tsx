@@ -55,7 +55,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
   return createPortal(
     <div
       role="tooltip"
-      className="pointer-events-none fixed z-50 w-60 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
+      className="pointer-events-none fixed z-50 w-60 rounded-xl border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
       style={style}
     >
       <div className="mb-2 flex items-center gap-2">
@@ -63,12 +63,12 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
           className="size-2.5 shrink-0 rounded-full"
           style={{ backgroundColor: color }}
         />
-        <p className={`truncate text-sm font-semibold text-zinc-900`}>
+        <p className="truncate text-sm font-semibold text-popover-foreground">
           {projectName}
         </p>
       </div>
 
-      <div className="space-y-1.5 text-xs text-zinc-500">
+      <div className="space-y-1.5 text-xs text-muted-foreground">
         <div className="flex items-center gap-1.5">
           <Tag className="size-3.5 shrink-0" />
           <span className="truncate">{activityName}</span>
@@ -78,7 +78,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
           <Clock className="size-3.5 shrink-0" />
           <span>{formatDuration(timelog.minutes)}</span>
           {!timelog.isBillable && (
-            <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
+            <span className="ml-1 rounded bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
               Non-billable
             </span>
           )}
@@ -90,9 +90,11 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
         </div>
 
         {timelog.note && (
-          <div className="mt-1.5 flex items-start gap-1.5 border-t border-zinc-100 pt-1.5">
+          <div className="mt-1.5 flex items-start gap-1.5 border-t border-border/60 pt-1.5">
             <StickyNote className="size-3.5 shrink-0 mt-0.5" />
-            <span className="line-clamp-3 text-zinc-600">{timelog.note}</span>
+            <span className="line-clamp-3 text-foreground/80">
+              {timelog.note}
+            </span>
           </div>
         )}
       </div>

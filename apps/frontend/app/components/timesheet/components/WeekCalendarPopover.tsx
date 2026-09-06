@@ -57,23 +57,23 @@ export const WeekCalendarPopover = ({
   return (
     <div
       ref={ref}
-      className="absolute z-40 top-full mt-2 left-0 w-72 bg-white rounded-2xl border border-zinc-200 shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
+      className="absolute z-40 top-full mt-2 left-0 w-72 bg-popover rounded-2xl border border-border shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
     >
       <div className="flex items-center justify-between mb-3">
         <button
           type="button"
           onClick={() => setViewMonth(addDays(viewMonth, -30))}
-          className="p-1.5 rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition"
+          className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
         >
           <ChevronLeft size={16} />
         </button>
-        <p className="text-sm font-semibold text-zinc-800">
+        <p className="text-sm font-semibold text-foreground">
           {MONTH_LABEL.format(viewMonth)}
         </p>
         <button
           type="button"
           onClick={() => setViewMonth(addDays(viewMonth, 30))}
-          className="p-1.5 rounded-md text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 transition"
+          className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
         >
           <ChevronRight size={16} />
         </button>
@@ -83,7 +83,7 @@ export const WeekCalendarPopover = ({
         {weekdayHeaders.map((d) => (
           <span
             key={d}
-            className="text-[11px] font-medium text-zinc-400 text-center py-1"
+            className="text-[11px] font-medium text-muted-foreground text-center py-1"
           >
             {d}
           </span>
@@ -106,14 +106,14 @@ export const WeekCalendarPopover = ({
               }}
               className={`
                 relative h-8 text-xs rounded-md transition mx-auto w-8
-                ${inCurrentMonth ? "text-zinc-700" : "text-zinc-300"}
-                ${inSelectedWeek ? "bg-blue-50" : "hover:bg-zinc-100"}
-                ${isSameDay(day, weekStart) || isSameDay(day, weekEnd) ? "font-semibold text-blue-600" : ""}
+                ${inCurrentMonth ? "text-foreground" : "text-muted-foreground/50"}
+                ${inSelectedWeek ? "bg-brand-muted" : "hover:bg-muted/40"}
+                ${isSameDay(day, weekStart) || isSameDay(day, weekEnd) ? "font-semibold text-brand" : ""}
               `}
             >
               {day.getDate()}
               {today && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-blue-500" />
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-brand" />
               )}
             </button>
           );
@@ -126,7 +126,7 @@ export const WeekCalendarPopover = ({
           onSelectWeek(new Date());
           onClose();
         }}
-        className="w-full mt-3 pt-3 border-t border-zinc-100 text-xs font-medium text-blue-600 hover:text-blue-700 transition"
+        className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:text-brand/80 transition"
       >
         Jump to this week
       </button>

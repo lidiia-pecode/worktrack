@@ -9,10 +9,8 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-brand-subtle text-brand border border-brand/20",
-        success:
-          "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20",
-        warning:
-          "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20",
+        success: "bg-success/10 text-success border border-success/20",
+        warning: "bg-warning/10 text-warning border border-warning/20",
         destructive:
           "bg-destructive/10 text-destructive border border-destructive/20",
         neutral: "bg-muted text-muted-foreground border border-border",
@@ -42,8 +40,8 @@ export function Badge({
         <span
           className={cn("size-1.5 rounded-full", {
             "bg-brand": variant === "default",
-            "bg-emerald-500": variant === "success",
-            "bg-amber-500": variant === "warning",
+            "bg-success": variant === "success",
+            "bg-warning": variant === "warning",
             "bg-destructive": variant === "destructive",
             "bg-muted-foreground": variant === "neutral",
           })}

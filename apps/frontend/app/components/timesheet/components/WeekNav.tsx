@@ -29,7 +29,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center rounded-lg border border-zinc-200 overflow-hidden">
+      <div className="flex items-center rounded-lg border border-border overflow-hidden">
         <Button
           variant="ghost"
           size="iconSm"
@@ -41,7 +41,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9 border-x border-zinc-200"
+          className="rounded-none w-9 border-x border-border"
           onClick={() => onWeekChange(addWeeks(weekStart, 1))}
         >
           <ChevronRight size={16} />
@@ -52,9 +52,9 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
         <button
           type="button"
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-zinc-200 text-sm font-medium text-zinc-800 hover:bg-zinc-50 transition"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition"
         >
-          <CalendarDays size={15} className="text-zinc-400" />
+          <CalendarDays size={15} className="text-muted-foreground" />
           {formatWeekRangeLabel(weekStart)}
         </button>
 

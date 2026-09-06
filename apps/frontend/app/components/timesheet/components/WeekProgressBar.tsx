@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import { formatDuration } from "@/lib/utils/date";
-import { OVERTIME_PATTERN } from "../consts";
+import { OVERTIME_PATTERN, OVERTIME_SEGMENT_PATTERN } from "../consts";
+import { Badge } from "@/components/ui/badge";
 
 type Props = {
   billableMinutes: number;
@@ -10,10 +11,10 @@ type Props = {
   plannedMinutes: number;
 };
 
-const COLOR_BILLABLE = "bg-emerald-300";
-const COLOR_BILLABLE_DOT = "bg-emerald-400";
-const COLOR_NON_BILLABLE = "bg-lime-100";
-const COLOR_NON_BILLABLE_DOT = "bg-lime-100";
+const COLOR_BILLABLE = "bg-brand/70";
+const COLOR_BILLABLE_DOT = "bg-brand/70";
+const COLOR_NON_BILLABLE = "bg-brand/25";
+const COLOR_NON_BILLABLE_DOT = "bg-brand/25";
 
 type BarSegment = {
   key: string;
@@ -112,7 +113,7 @@ export const WeekProgressBar = ({
 
   return (
     <div className="flex w-full flex-col gap-2 select-none">
-      <div className="group relative h-2 w-full overflow-hidden rounded-full bg-zinc-100">
+      <div className="group relative h-2 w-full overflow-hidden rounded-full bg-muted/30">
         {isOverTarget && (
           <div
             className={`pointer-events-none absolute inset-y-0 ${OVERTIME_PATTERN}`}
@@ -139,7 +140,7 @@ export const WeekProgressBar = ({
                 segment.overtimeWidth > 0 && (
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 right-0 bg-[repeating-linear-gradient(-45deg,rgba(255,255,255,0.4)_0px,rgba(255,255,255,0.4)_3px,rgba(0,0,0,0.06)_3px,rgba(0,0,0,0.06)_6px)]"
+                    className={`pointer-events-none absolute inset-y-0 right-0 ${OVERTIME_SEGMENT_PATTERN}`}
                     style={{
                       width: `${(segment.overtimeWidth / segment.width) * 100}%`,
                     }}
@@ -151,47 +152,50 @@ export const WeekProgressBar = ({
 
         {plannedPercent > 0 && plannedPercent < 100 && (
           <div
-            className="pointer-events-none absolute inset-y-0 z-10 w-px border-r border-dashed border-zinc-400/50"
+            className="pointer-events-none absolute inset-y-0 z-10 w-px border-r border-dashed border-muted-foreground/50"
             style={{ left: `${plannedPercent}%` }}
           />
         )}
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-zinc-500">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span
-              className={`h-1.5 w-1.5 rounded-full ${COLOR_BILLABLE_DOT} border border-slate-300`}
+              className={`h-1.5 w-1.5 rounded-full ${COLOR_BILLABLE_DOT} border border-border`}
             />
             Billable:{" "}
-            <span className="font-medium text-zinc-700">
+            <span className="font-medium text-foreground">
               {formatDuration(billableMinutes)}
             </span>
           </span>
 
           <span className="flex items-center gap-1.5">
             <span
-              className={`h-1.5 w-1.5 rounded-full ${COLOR_NON_BILLABLE_DOT} border border-slate-300`}
+              className={`h-1.5 w-1.5 rounded-full ${COLOR_NON_BILLABLE_DOT} border border-border`}
             />
             Non-billable:{" "}
-            <span className="font-medium text-zinc-700">
+            <span className="font-medium text-foreground">
               {formatDuration(nonBillableMinutes)}
             </span>
           </span>
         </div>
 
-        <div className="flex items-center gap-2 text-zinc-400">
+        <div className="flex items-center gap-2 text-muted-foreground">
           <span>
             Target:{" "}
-            <span className="text-zinc-600 font-medium">
+            <span className="text-foreground font-medium">
               {formatDuration(plannedMinutes)}
             </span>
           </span>
 
           {isOverTarget && (
-            <span className="inline-flex items-center rounded-full bg-amber-50 px-1.5 py-0.2 text-[10px] font-medium text-amber-600 border border-amber-200/60">
+            <Badge
+              variant="warning"
+              className="px-1.5 py-0.2 text-[10px] font-medium"
+            >
               +{formatDuration(overMinutes)}
-            </span>
+            </Badge>
           )}
         </div>
       </div>

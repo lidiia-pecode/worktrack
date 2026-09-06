@@ -46,9 +46,9 @@ export const TimelogSegment = ({
         right-[3px]
         rounded-md
         ring-1
-        ring-black/5
+        ring-foreground/5
         overflow-hidden
-        hover:ring-black/15
+        hover:ring-foreground/15
         hover:brightness-105
         transition-all
       "
@@ -62,11 +62,11 @@ export const TimelogSegment = ({
       )}
 
       <div className="relative z-10 pointer-events-none flex h-full flex-col justify-center overflow-hidden px-2 py-1">
-        <span className="truncate text-[11px] font-semibold leading-tight text-zinc-900/80">
+        <span className="truncate text-[11px] font-semibold leading-tight text-foreground/80">
           {formatDuration(timelog.minutes)}
         </span>
 
-        <span className="truncate text-[10px] leading-tight text-zinc-900/60">
+        <span className="truncate text-[10px] leading-tight text-foreground/70">
           {projectName} · {activityName}
         </span>
       </div>

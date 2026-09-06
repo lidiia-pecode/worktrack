@@ -27,8 +27,8 @@ export function TimePicker({
       className={cn(
         "flex items-center justify-between gap-1 rounded-lg border p-2 transition-colors",
         error
-          ? "border-red-300 bg-red-50 ring-1 ring-red-200"
-          : "border-slate-100 bg-slate-50 ring-1 ring-slate-200",
+          ? "border-destructive/40 bg-destructive/10 ring-1 ring-destructive/20"
+          : "border-border bg-muted/20 ring-1 ring-border",
         className,
       )}
     >
@@ -105,7 +105,7 @@ function TimeField({
         tabIndex={-1}
         aria-label={`Increase: ${label}`}
         disabled={!wrapOnStep && value >= max}
-        className="rounded-[2px] bg-slate-100 w-full h-3 p-0 text-muted-foreground hover:bg-transparent"
+        className="rounded-[2px] bg-muted/40 w-full h-3 p-0 text-muted-foreground hover:bg-transparent"
         onClick={() => step_(1)}
       >
         <ChevronUp className="size-3.5" />
@@ -151,7 +151,7 @@ function TimeField({
         className={cn(
           "w-8 rounded-md bg-transparent text-center text-xl leading-none",
           "tabular-nums outline-none transition-colors",
-          "hover:bg-muted focus:bg-muted",
+          "hover:bg-muted/40 focus:bg-muted/40",
         )}
       />
 
@@ -161,7 +161,7 @@ function TimeField({
         tabIndex={-1}
         aria-label={`Decrease: ${label}`}
         disabled={!wrapOnStep && value <= min}
-        className="rounded-[2px] bg-slate-100 w-full h-3 p-0 text-muted-foreground hover:bg-transparent"
+        className="rounded-[2px] bg-muted/40 w-full h-3 p-0 text-muted-foreground hover:bg-transparent"
         onClick={() => step_(-1)}
       >
         <ChevronDown className="size-3.5" />

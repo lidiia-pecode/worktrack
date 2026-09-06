@@ -24,19 +24,19 @@ export function WeekHeaderDay({
     <div
       className={`
         p-2 flex flex-col md:flex-row gap-2 justify-between
-        border-r border-zinc-100 last:border-r-0
-        ${weekend ? "bg-zinc-50" : ""}
+        border-r border-border/60 last:border-r-0
+        ${weekend ? "bg-muted/20" : ""}
       `}
     >
       <div className="flex gap-2 items-baseline">
-        <p className="text-[10px] uppercase tracking-wider text-zinc-400">
+        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
           {formatWeekdayLabel(date)}
         </p>
 
         <p
           className={`
             text-xs font-semibold
-            ${today ? "text-blue-600" : "text-zinc-700"}
+            ${today ? "text-brand" : "text-foreground"}
           `}
         >
           {date.getDate()}
@@ -46,7 +46,7 @@ export function WeekHeaderDay({
       <p
         className={`
           text-xs font-medium
-          ${isOverTarget ? "text-amber-600" : "text-zinc-400"}
+          ${isOverTarget ? "text-warning" : "text-muted-foreground"}
         `}
       >
         {totalMinutes > 0 ? formatDuration(totalMinutes) : "-"}
