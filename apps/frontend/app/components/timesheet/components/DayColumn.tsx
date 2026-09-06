@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { TimeLog } from "@/types";
-import { formatDuration } from "@/lib/utils/date";
+import { formatDuration, isWeekend } from "@/lib/utils/date";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
 import { TimelogSegment } from "./TimelogSegment";
@@ -33,7 +33,7 @@ export const DayColumn = ({
     anchor: DOMRect;
   } | null>(null);
 
-  const weekend = date.getDay() === 0 || date.getDay() === 6;
+  const weekend = isWeekend(date);
   const overTargetMinutes = Math.max(0, totalMinutes - plannedMinutes);
   const isOverTarget = overTargetMinutes > 0;
 

@@ -9,10 +9,14 @@ import {
   formatDuration,
   getWeekDates,
   getWeekStart,
+  isWeekend,
   toISODate,
+  todayISODate,
 } from "@/lib/utils/date";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import Container from "../layout/Container";
+import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "./components/WeekNav";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
@@ -24,22 +28,26 @@ type ModalState = {
   timelog?: TimeLog;
 };
 
-const DAILY_TARGET_MINUTES = 8 * 60;
-const WEEKLY_TARGET_MINUTES = DAILY_TARGET_MINUTES * 5;
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
-
-/**
- * The grid must show every entry in the week — a truncated page would silently
- * under-report someone's time. Requested explicitly because the API otherwise
- * falls back to its own default page size.
- */
 const WEEK_PAGE_SIZE = 500;
 
 export const WeekTimesheet = () => {
-  const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
+  const {
+    weekStartDay,
+    dailyTargetMinutes,
+    timezone,
+    isLoading: isLoadingSettings,
+  } = useWorkSettings();
+
+  const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [modalState, setModalState] = useState<ModalState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const weekStart = useMemo(
+    () => getWeekStart(anchorDate, weekStartDay),
+    [anchorDate, weekStartDay],
+  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
@@ -102,17 +110,22 @@ export const WeekTimesheet = () => {
     };
   }, [timelogs]);
 
+  const weeklyTargetMinutes = useMemo(
+    () => dailyTargetMinutes * weekDates.filter((d) => !isWeekend(d)).length,
+    [dailyTargetMinutes, weekDates],
+  );
+
+  const todayIso = todayISODate(timezone);
+
   const maxDailyMinutes = Math.max(
-    DAILY_TARGET_MINUTES,
+    dailyTargetMinutes,
     ...Object.values(dailyTotals),
   );
 
   const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + 100;
 
   const openCreate = (date: Date) => {
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-
-    if (isWeekend) {
+    if (isWeekend(date)) {
       const confirmed = window.confirm("Log time on a non-work day?");
 
       if (!confirmed) return;
@@ -132,11 +145,22 @@ export const WeekTimesheet = () => {
 
   const closeModal = () => setModalState(null);
 
+  if (isLoadingSettings) {
+    return (
+      <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+        <LoadingState
+          title="Loading your timesheet"
+          description="Fetching your workspace settings."
+        />
+      </Container>
+    );
+  }
+
   return (
     <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
       <div className="border-b border-zinc-200">
         <div className="flex items-center justify-between py-3 pr-3">
-          <WeekNav weekStart={weekStart} onWeekChange={setWeekStart} />
+          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
           <div className="flex items-center gap-2 text-sm">
             <span>Time logged:</span>
@@ -148,7 +172,7 @@ export const WeekTimesheet = () => {
             <span className="text-zinc-300">/</span>
 
             <span className="text-zinc-500">
-              {formatDuration(WEEKLY_TARGET_MINUTES)}
+              {formatDuration(weeklyTargetMinutes)}
             </span>
           </div>
         </div>
@@ -157,7 +181,7 @@ export const WeekTimesheet = () => {
           <WeekProgressBar
             billableMinutes={billableMinutes}
             nonBillableMinutes={nonBillableMinutes}
-            plannedMinutes={WEEKLY_TARGET_MINUTES}
+            plannedMinutes={weeklyTargetMinutes}
           />
         </div>
       </div>
@@ -167,8 +191,9 @@ export const WeekTimesheet = () => {
           <WeekHeaderDay
             key={toISODate(date)}
             date={date}
+            isToday={toISODate(date) === todayIso}
             totalMinutes={dailyTotals[toISODate(date)] ?? 0}
-            targetMinutes={DAILY_TARGET_MINUTES}
+            targetMinutes={dailyTargetMinutes}
           />
         ))}
       </div>
@@ -186,7 +211,7 @@ export const WeekTimesheet = () => {
                   timelogs={timelogsByDate[iso] ?? []}
                   totalMinutes={dailyTotals[iso] ?? 0}
                   pixelsPerMinute={PX_PER_MINUTE}
-                  plannedMinutes={DAILY_TARGET_MINUTES}
+                  plannedMinutes={dailyTargetMinutes}
                   onAddClick={openCreate}
                   onEntryClick={openEdit}
                 />

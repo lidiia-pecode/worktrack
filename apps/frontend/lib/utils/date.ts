@@ -1,9 +1,19 @@
+import { WeekDay } from "@/types/enums";
+
 /**
- * Weeks start on Monday (ISO-8601 style), matching how Float/most timesheet
- * tools lay out the grid. Everything here works in local time — never UTC —
- * for the same reason toISODate does: we don't want the week to roll over
- * at the wrong moment for users west of UTC.
+ * Which weekday a week starts on is a workspace setting (Company.weekStartDay),
+ * so the helpers here take it as an argument and default to Monday (ISO-8601),
+ * which is what the grid used before the setting existed.
+ *
+ * Everything works in local time — never UTC — because we don't want the week
+ * to roll over at the wrong moment for users west of UTC. The exception is the
+ * "today" comparison, which can be pinned to the workspace timezone.
  */
+const WEEK_START_INDEX: Record<WeekDay, number> = {
+  [WeekDay.SUNDAY]: 0,
+  [WeekDay.MONDAY]: 1,
+};
+
 export function toISODate(d: Date): string {
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -11,8 +21,26 @@ export function toISODate(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-export function todayISODate(): string {
-  return toISODate(new Date());
+/**
+ * Today in the workspace timezone. Falls back to the viewer's local date when
+ * no timezone is configured, or when the stored value is not a valid IANA name.
+ */
+export function todayISODate(timeZone?: string): string {
+  if (!timeZone) {
+    return toISODate(new Date());
+  }
+
+  try {
+    // en-CA formats as YYYY-MM-DD, which matches toISODate.
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+  } catch {
+    return toISODate(new Date());
+  }
 }
 
 export function formatDuration(minutes: number): string {
@@ -26,11 +54,13 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-export function getWeekStart(date: Date): Date {
+export function getWeekStart(
+  date: Date,
+  weekStartDay: WeekDay = WeekDay.MONDAY,
+): Date {
   const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = d.getDay(); // 0 = Sunday, 1 = Monday, ...
-  const diff = day === 0 ? -6 : 1 - day; // shift back to Monday
-  d.setDate(d.getDate() + diff);
+  const offset = (d.getDay() - WEEK_START_INDEX[weekStartDay] + 7) % 7;
+  d.setDate(d.getDate() - offset);
   return d;
 }
 
@@ -44,7 +74,7 @@ export function addWeeks(date: Date, amount: number): Date {
   return addDays(date, amount * 7);
 }
 
-/** Returns the 7 dates (Mon...Sun) belonging to the week that starts on weekStart. */
+/** Returns the 7 dates of the week beginning at weekStart. */
 export function getWeekDates(weekStart: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
@@ -53,8 +83,20 @@ export function isSameDay(a: Date, b: Date): boolean {
   return toISODate(a) === toISODate(b);
 }
 
-export function isToday(date: Date): boolean {
-  return isSameDay(date, new Date());
+export function isToday(date: Date, timeZone?: string): boolean {
+  return toISODate(date) === todayISODate(timeZone);
+}
+
+/**
+ * Saturday and Sunday. This is a calendar fact and stays fixed regardless of
+ * which day the grid starts on.
+ *
+ * TODO: Company has no "working days" setting, so a workspace with a different
+ * working week cannot be represented yet.
+ */
+export function isWeekend(date: Date): boolean {
+  const day = date.getDay();
+  return day === 0 || day === 6;
 }
 
 const WEEKDAY_LABEL = new Intl.DateTimeFormat(undefined, { weekday: "short" });
@@ -74,17 +116,20 @@ export function formatWeekdayLabel(date: Date): string {
 
 /** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 /**
- * Returns a 6-week (42 day) Monday-start grid covering the given month,
- * including the leading/trailing days from adjacent months — the classic
- * calendar-popover layout.
+ * Returns a 6-week (42 day) grid covering the given month, including the
+ * leading/trailing days from adjacent months — the classic calendar-popover
+ * layout.
  */
-export function getMonthGridDates(monthDate: Date): Date[] {
+export function getMonthGridDates(
+  monthDate: Date,
+  weekStartDay: WeekDay = WeekDay.MONDAY,
+): Date[] {
   const firstOfMonth = new Date(
     monthDate.getFullYear(),
     monthDate.getMonth(),
     1,
   );
-  const gridStart = getWeekStart(firstOfMonth);
+  const gridStart = getWeekStart(firstOfMonth, weekStartDay);
   return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 }
 

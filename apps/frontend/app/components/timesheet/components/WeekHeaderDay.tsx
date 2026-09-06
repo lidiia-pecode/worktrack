@@ -1,19 +1,23 @@
-import { formatDuration } from "@/lib/utils/date";
-import { formatWeekdayLabel, isToday } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatWeekdayLabel,
+  isWeekend,
+} from "@/lib/utils/date";
 
 type WeekHeaderDayProps = {
   date: Date;
+  isToday: boolean;
   totalMinutes: number;
   targetMinutes: number;
 };
 
 export function WeekHeaderDay({
   date,
+  isToday: today,
   totalMinutes,
   targetMinutes,
 }: WeekHeaderDayProps) {
-  const today = isToday(date);
-  const weekend = date.getDay() === 0 || date.getDay() === 6;
+  const weekend = isWeekend(date);
   const isOverTarget = totalMinutes > targetMinutes;
 
   return (

@@ -4,15 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addDays,
+  formatWeekdayLabel,
   getMonthGridDates,
+  getWeekDates,
   getWeekStart,
   isSameDay,
   isToday,
 } from "@/lib/utils/date";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 type Props = {
   weekStart: Date;
-  onSelectWeek: (weekStart: Date) => void;
+  onSelectWeek: (date: Date) => void;
   onClose: () => void;
 };
 
@@ -20,14 +23,13 @@ const MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "long",
   year: "numeric",
 });
-const WEEKDAY_HEADER = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-
 export const WeekCalendarPopover = ({
   weekStart,
   onSelectWeek,
   onClose,
 }: Props) => {
   const [viewMonth, setViewMonth] = useState(weekStart);
+  const { weekStartDay, timezone } = useWorkSettings();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,7 +48,11 @@ export const WeekCalendarPopover = ({
   }, [onClose]);
 
   const weekEnd = addDays(weekStart, 6);
-  const days = getMonthGridDates(viewMonth);
+  const days = getMonthGridDates(viewMonth, weekStartDay);
+
+  const weekdayHeaders = getWeekDates(
+    getWeekStart(new Date(), weekStartDay),
+  ).map(formatWeekdayLabel);
 
   return (
     <div
@@ -74,7 +80,7 @@ export const WeekCalendarPopover = ({
       </div>
 
       <div className="grid grid-cols-7 mb-1">
-        {WEEKDAY_HEADER.map((d) => (
+        {weekdayHeaders.map((d) => (
           <span
             key={d}
             className="text-[11px] font-medium text-zinc-400 text-center py-1"
@@ -88,14 +94,14 @@ export const WeekCalendarPopover = ({
         {days.map((day) => {
           const inCurrentMonth = day.getMonth() === viewMonth.getMonth();
           const inSelectedWeek = day >= weekStart && day <= weekEnd;
-          const today = isToday(day);
+          const today = isToday(day, timezone);
 
           return (
             <button
               type="button"
               key={day.toISOString()}
               onClick={() => {
-                onSelectWeek(getWeekStart(day));
+                onSelectWeek(day);
                 onClose();
               }}
               className={`
@@ -117,7 +123,7 @@ export const WeekCalendarPopover = ({
       <button
         type="button"
         onClick={() => {
-          onSelectWeek(getWeekStart(new Date()));
+          onSelectWeek(new Date());
           onClose();
         }}
         className="w-full mt-3 pt-3 border-t border-zinc-100 text-xs font-medium text-blue-600 hover:text-blue-700 transition"

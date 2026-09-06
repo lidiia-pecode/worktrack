@@ -8,18 +8,24 @@ import {
   getWeekStart,
   isSameDay,
 } from "@/lib/utils/date";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { Button } from "@/components/ui/button";
 
 type Props = {
   weekStart: Date;
-  onWeekChange: (weekStart: Date) => void;
+  onWeekChange: (date: Date) => void;
 };
 
 export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
-  const isCurrentWeek = isSameDay(weekStart, getWeekStart(new Date()));
+  const { weekStartDay } = useWorkSettings();
+
+  const isCurrentWeek = isSameDay(
+    weekStart,
+    getWeekStart(new Date(), weekStartDay),
+  );
 
   return (
     <div className="flex items-center gap-2">
@@ -66,7 +72,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           variant="secondary"
           size="sm"
           className="w-auto"
-          onClick={() => onWeekChange(getWeekStart(new Date()))}
+          onClick={() => onWeekChange(new Date())}
         >
           Today
         </Button>
