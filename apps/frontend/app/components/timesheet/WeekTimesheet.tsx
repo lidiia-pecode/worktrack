@@ -29,6 +29,13 @@ const WEEKLY_TARGET_MINUTES = DAILY_TARGET_MINUTES * 5;
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
 
+/**
+ * The grid must show every entry in the week — a truncated page would silently
+ * under-report someone's time. Requested explicitly because the API otherwise
+ * falls back to its own default page size.
+ */
+const WEEK_PAGE_SIZE = 500;
+
 export const WeekTimesheet = () => {
   const [weekStart, setWeekStart] = useState(() => getWeekStart(new Date()));
   const [modalState, setModalState] = useState<ModalState | null>(null);
@@ -39,9 +46,10 @@ export const WeekTimesheet = () => {
   const dateFrom = toISODate(weekDates[0]);
   const dateTo = toISODate(weekDates[6]);
 
-  const { data, createTimelog, updateTimelog, deleteTimelog } = useTimelogs({
+  const { items: timelogs, actions } = useTimelogs(1, {
     dateFrom,
     dateTo,
+    pageSize: WEEK_PAGE_SIZE,
   });
 
   const { items: pickerItems } = useMyProjectActivities();
@@ -49,18 +57,19 @@ export const WeekTimesheet = () => {
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};
 
-    (data?.results ?? []).forEach((log) => {
+    timelogs.forEach((log) => {
       (map[log.date] ??= []).push(log);
     });
 
     return map;
-  }, [data?.results]);
+  }, [timelogs]);
 
   const dailyTotals = useMemo(() => {
     const totals: Record<string, number> = {};
 
     weekDates.forEach((date) => {
       const iso = toISODate(date);
+
       totals[iso] = (timelogsByDate[iso] ?? []).reduce(
         (sum, log) => sum + log.minutes,
         0,
@@ -79,21 +88,25 @@ export const WeekTimesheet = () => {
     let billable = 0;
     let nonBillable = 0;
 
-    (data?.results ?? []).forEach((log) => {
+    timelogs.forEach((log) => {
       if (log.isBillable) {
-        billable += log.time;
+        billable += log.minutes;
       } else {
-        nonBillable += log.time;
+        nonBillable += log.minutes;
       }
     });
 
-    return { billableMinutes: billable, nonBillableMinutes: nonBillable };
-  }, [data?.results]);
+    return {
+      billableMinutes: billable,
+      nonBillableMinutes: nonBillable,
+    };
+  }, [timelogs]);
 
   const maxDailyMinutes = Math.max(
     DAILY_TARGET_MINUTES,
     ...Object.values(dailyTotals),
   );
+
   const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + 100;
 
   const openCreate = (date: Date) => {
@@ -110,16 +123,17 @@ export const WeekTimesheet = () => {
     });
   };
 
-  const openEdit = (timelog: TimeLog) =>
+  const openEdit = (timelog: TimeLog) => {
     setModalState({
       date: timelog.date,
       timelog,
     });
+  };
 
   const closeModal = () => setModalState(null);
 
   return (
-    <Container className="p-0 sm:pr-0 lg:pr-0 flex flex-col">
+    <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
       <div className="border-b border-zinc-200">
         <div className="flex items-center justify-between py-3 pr-3">
           <WeekNav weekStart={weekStart} onWeekChange={setWeekStart} />
@@ -161,7 +175,7 @@ export const WeekTimesheet = () => {
 
       <div ref={scrollRef} className="flex-1">
         <div className="relative" style={{ height: gridHeightPx }}>
-          <div className="grid grid-cols-7 h-full">
+          <div className="grid h-full grid-cols-7">
             {weekDates.map((date) => {
               const iso = toISODate(date);
 
@@ -189,16 +203,16 @@ export const WeekTimesheet = () => {
           date={modalState.date}
           timelog={modalState.timelog}
           pickerItems={pickerItems}
-          onCreate={(payload) => createTimelog.mutateAsync(payload)}
+          onCreate={(payload) => actions.create.mutateAsync(payload)}
           onUpdate={(id, data) =>
-            updateTimelog.mutateAsync({
+            actions.update.mutateAsync({
               id,
               data,
             })
           }
-          onDelete={(id) => deleteTimelog.mutateAsync(id)}
-          isSaving={createTimelog.isPending || updateTimelog.isPending}
-          isDeleting={deleteTimelog.isPending}
+          onDelete={(id) => actions.delete.mutateAsync(id)}
+          isSaving={actions.create.isPending || actions.update.isPending}
+          isDeleting={actions.delete.isPending}
         />
       )}
     </Container>

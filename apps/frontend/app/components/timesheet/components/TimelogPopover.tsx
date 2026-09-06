@@ -4,9 +4,10 @@ import { useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Clock, StickyNote, Tag } from "lucide-react";
 
-import { Timelog } from "@/types";
+import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
+import { getTimelogDisplay } from "../helpers/timelog-display";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   weekday: "short",
@@ -19,7 +20,7 @@ const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 8;
 
 type Props = {
-  timelog: Timelog;
+  timelog: TimeLog;
   anchor: DOMRect;
 };
 
@@ -48,7 +49,8 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
     };
   }, [anchor]);
 
-  const color = getProjectColor(timelog.projectActivity.project.id);
+  const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
+  const color = getProjectColor(colorSeed);
 
   return createPortal(
     <div
@@ -62,21 +64,19 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
           style={{ backgroundColor: color }}
         />
         <p className={`truncate text-sm font-semibold text-zinc-900`}>
-          {timelog.projectActivity.project.name}
+          {projectName}
         </p>
       </div>
 
       <div className="space-y-1.5 text-xs text-zinc-500">
         <div className="flex items-center gap-1.5">
           <Tag className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {timelog.projectActivity.activity.name}
-          </span>
+          <span className="truncate">{activityName}</span>
         </div>
 
         <div className="flex items-center gap-1.5">
           <Clock className="size-3.5 shrink-0" />
-          <span>{formatDuration(timelog.time)}</span>
+          <span>{formatDuration(timelog.minutes)}</span>
           {!timelog.isBillable && (
             <span className="ml-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
               Non-billable

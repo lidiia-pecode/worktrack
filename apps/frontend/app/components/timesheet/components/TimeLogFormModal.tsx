@@ -14,6 +14,7 @@ import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Modal } from "../../shared/Modal";
 
 const FORM_ID = "timelog-form";
 
@@ -70,28 +71,41 @@ export const TimeLogFormModal = ({
 }: Props) => {
   const isEditMode = !!timelog;
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
-
   const defaultValues = useMemo<TimeLogFormData>(() => {
-    if (timelog) {
+    if (!timelog) {
       return {
-        projectId: timelog.projectActivity.project.id,
-        activityId: timelog.projectActivity.activity.id,
-        hours: Math.floor(timelog.time / 60),
-        minutes: timelog.time % 60,
+        projectId: "",
+        activityId: "",
+        hours: 0,
+        minutes: 0,
+        note: "",
+        isBillable: true,
+      };
+    }
+
+    const projectId = timelog.projectActivity?.project?.id;
+    const activityId = timelog.projectActivity?.activity?.id;
+
+    if (!projectId || !activityId) {
+      return {
+        projectId: "",
+        activityId: "",
+        hours: Math.floor(timelog.minutes / 60),
+        minutes: timelog.minutes % 60,
         note: timelog.note ?? "",
         isBillable: timelog.isBillable,
       };
     }
+
     return {
-      projectId: "",
-      activityId: "",
-      hours: 0,
-      minutes: 0,
-      note: "",
-      isBillable: true,
+      projectId,
+      activityId,
+      hours: Math.floor(timelog.minutes / 60),
+      minutes: timelog.minutes % 60,
+      note: timelog.note ?? "",
+      isBillable: timelog.isBillable,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [timelog?.id]);
+  }, [timelog]);
 
   const {
     register,
@@ -149,10 +163,11 @@ export const TimeLogFormModal = ({
     );
     if (!match) return;
 
-    const time = data.hours * 60 + data.minutes;
+    const minutes = data.hours * 60 + data.minutes;
+
     const shared = {
       projectActivityId: match.id,
-      time,
+      minutes,
       note: data.note?.trim() || undefined,
       isBillable: data.isBillable,
     };

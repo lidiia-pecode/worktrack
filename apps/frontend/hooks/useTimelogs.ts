@@ -1,58 +1,56 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { TimelogsQuery, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
-import { TimelogsClientApi } from "@/lib/api/resources";
-import { getErrorMessage } from "@/lib/api";
+import {
+  TimeLog,
+  TimeLogPayload,
+  TimeLogsQuery,
+  UpdateTimeLogPayload,
+} from "@/types";
+
+import { TimeLogsClientApi } from "@/lib/api/resources";
+
 import { queryKeys } from "./shared/queryKeys";
+import { createEntityQuery } from "./shared/createEntityQuery";
+import { createEntityMutations } from "./shared/createEntityMutations";
 
-type DateRange = { dateFrom: string; dateTo: string };
+type TimeLogQueryParams = Omit<TimeLogsQuery, "page">;
 
-export function useTimelogs(range: DateRange) {
-  const queryClient = useQueryClient();
+const timelogsQueries = createEntityQuery<TimeLog, TimeLogQueryParams>({
+  queryKey: queryKeys.timelogs,
+  api: {
+    getAll: TimeLogsClientApi.getAll,
+  },
+});
 
-  const query = useQuery({
-    queryKey: queryKeys.timelogs.list(range.dateFrom, range.dateTo),
-    queryFn: () =>
-      TimelogsClientApi.getAll({
-        dateFrom: range.dateFrom,
-        dateTo: range.dateTo,
-        pageSize: 200,
-      } as TimelogsQuery),
-    enabled: !!range.dateFrom && !!range.dateTo,
-  });
+export const useTimeLogsQuery = timelogsQueries.useQuery;
 
-  const invalidate = () =>
-    queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
+const useTimeLogsMutations = createEntityMutations<
+  TimeLog,
+  TimeLogPayload,
+  UpdateTimeLogPayload,
+  unknown
+>({
+  queryKey: queryKeys.timelogs.all,
 
-  const createTimelog = useMutation({
-    mutationFn: (data: TimeLogPayload) => TimelogsClientApi.create(data),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Time logged");
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
+  api: {
+    create: TimeLogsClientApi.create,
+    update: TimeLogsClientApi.update,
+    delete: TimeLogsClientApi.delete,
+  },
 
-  const updateTimelog = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateTimeLogPayload }) =>
-      TimelogsClientApi.update(id, data),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Entry updated");
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
+  messages: {
+    create: "Time logged",
+    update: "Entry updated",
+    delete: "Entry deleted",
+  },
+});
 
-  const deleteTimelog = useMutation({
-    mutationFn: (id: string) => TimelogsClientApi.delete(id),
-    onSuccess: () => {
-      invalidate();
-      toast.success("Entry deleted");
-    },
-    onError: (error) => toast.error(getErrorMessage(error)),
-  });
+export function useTimelogs(page = 1, params?: TimeLogQueryParams) {
+  const query = useTimeLogsQuery(page, params);
+  const actions = useTimeLogsMutations();
 
-  return { ...query, createTimelog, updateTimelog, deleteTimelog };
+  return {
+    ...query,
+    actions,
+  };
 }

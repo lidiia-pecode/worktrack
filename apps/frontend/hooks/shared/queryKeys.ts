@@ -13,13 +13,11 @@ export const queryKeys = {
 
   onboarding: {
     ownerSetup: () => ["onboarding", "owner-setup"] as const,
-
     managerSetup: () => ["onboarding", "manager-setup"] as const,
   },
 
   teams: {
     all: ["teams"] as const,
-
     lists: () => ["teams", "list"] as const,
 
     list: (page: number, params?: QueryParams) =>
@@ -30,7 +28,6 @@ export const queryKeys = {
 
   projects: {
     all: ["projects"] as const,
-
     lists: () => ["projects", "list"] as const,
 
     list: (page: number, params?: QueryParams) =>
@@ -41,7 +38,6 @@ export const queryKeys = {
 
   activities: {
     all: ["activities"] as const,
-
     lists: () => ["activities", "list"] as const,
 
     list: (page: number, params?: QueryParams) =>
@@ -52,7 +48,6 @@ export const queryKeys = {
 
   activityCategories: {
     all: ["activityCategories"] as const,
-
     lists: () => ["activityCategories", "list"] as const,
 
     list: (page: number, params?: QueryParams) =>
@@ -64,7 +59,6 @@ export const queryKeys = {
 
   users: {
     all: ["users"] as const,
-
     lists: () => ["users", "list"] as const,
 
     list: (page: number, params?: QueryParams) =>
@@ -77,16 +71,16 @@ export const queryKeys = {
 
   timelogs: {
     all: ["timelogs"] as const,
-
     lists: () => ["timelogs", "list"] as const,
 
-    list: (dateFrom: string, dateTo: string) =>
-      ["timelogs", "list", dateFrom, dateTo] as const,
+    list: (page: number, params?: QueryParams) =>
+      createListKey("timelogs", page, params),
+
+    infinite: (params?: QueryParams) => createInfiniteKey("timelogs", params),
   },
 
   projectActivities: {
     all: ["projectActivities"] as const,
-
     lists: () => ["projectActivities", "list"] as const,
   },
 

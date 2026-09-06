@@ -1,13 +1,14 @@
 import { formatDuration } from "@/lib/utils/date";
 import { Segment } from "../types";
-import { Timelog } from "@/types";
+import { TimeLog } from "@/types";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { OVERTIME_SEGMENT_PATTERN } from "../consts";
+import { getTimelogDisplay } from "../helpers/timelog-display";
 
 type TimelogSegmentProps = {
   segment: Segment;
-  onClick: (timelog: Timelog) => void;
-  onHover: (timelog: Timelog, target: HTMLElement) => void;
+  onClick: (timelog: TimeLog) => void;
+  onHover: (timelog: TimeLog, target: HTMLElement) => void;
   onLeave: () => void;
 };
 
@@ -18,13 +19,14 @@ export const TimelogSegment = ({
   onLeave,
 }: TimelogSegmentProps) => {
   const { timelog, offsetTop, height, overtimeHeight } = segment;
-  const color = getProjectColor(timelog.projectActivity.project.id);
+  const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
+  const color = getProjectColor(colorSeed);
 
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-label={`${formatDuration(timelog.time)} — ${timelog.projectActivity.project.name} / ${timelog.projectActivity.activity.name}`}
+      aria-label={`${formatDuration(timelog.minutes)} — ${projectName} / ${activityName}`}
       onClick={(e) => {
         e.stopPropagation();
         onClick(timelog);
@@ -61,12 +63,11 @@ export const TimelogSegment = ({
 
       <div className="relative z-10 pointer-events-none flex h-full flex-col justify-center overflow-hidden px-2 py-1">
         <span className="truncate text-[11px] font-semibold leading-tight text-zinc-900/80">
-          {formatDuration(timelog.time)}
+          {formatDuration(timelog.minutes)}
         </span>
 
         <span className="truncate text-[10px] leading-tight text-zinc-900/60">
-          {timelog.projectActivity.project.name} ·{" "}
-          {timelog.projectActivity.activity.name}
+          {projectName} · {activityName}
         </span>
       </div>
     </div>

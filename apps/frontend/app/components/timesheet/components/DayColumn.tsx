@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 
-import { Timelog } from "@/types";
+import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
@@ -11,12 +11,12 @@ import { DAY_COLUMN_CLASS, OVERTIME_PATTERN, WEEKEND_PATTERN } from "../consts";
 
 type Props = {
   date: Date;
-  timelogs: Timelog[];
+  timelogs: TimeLog[];
   totalMinutes: number;
   pixelsPerMinute: number;
   plannedMinutes: number;
   onAddClick: (date: Date) => void;
-  onEntryClick: (timelog: Timelog) => void;
+  onEntryClick: (timelog: TimeLog) => void;
 };
 
 export const DayColumn = ({
@@ -29,7 +29,7 @@ export const DayColumn = ({
   onEntryClick,
 }: Props) => {
   const [hovered, setHovered] = useState<{
-    timelog: Timelog;
+    timelog: TimeLog;
     anchor: DOMRect;
   } | null>(null);
 
@@ -44,7 +44,7 @@ export const DayColumn = ({
     [timelogs, plannedMinutes, pixelsPerMinute],
   );
 
-  const showPopover = (timelog: Timelog, target: HTMLElement) =>
+  const showPopover = (timelog: TimeLog, target: HTMLElement) =>
     setHovered({ timelog, anchor: target.getBoundingClientRect() });
 
   const hidePopover = () => setHovered(null);

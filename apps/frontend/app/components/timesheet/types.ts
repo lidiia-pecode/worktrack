@@ -1,7 +1,7 @@
-import { Timelog } from "@/types";
+import { TimeLog } from "@/types";
 
 export interface Segment {
-  timelog: Timelog;
+  timelog: TimeLog;
   offsetTop: number;
   height: number;
   overtimeHeight: number;

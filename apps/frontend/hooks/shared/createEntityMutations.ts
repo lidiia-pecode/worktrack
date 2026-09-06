@@ -1,16 +1,18 @@
 "use client";
 
 import {
+  QueryKey,
   useMutation,
   useQueryClient,
   UseMutationResult,
-  QueryKey,
 } from "@tanstack/react-query";
+
 import { toast } from "sonner";
 
 type MutationMessages = {
   create?: string;
   update?: string;
+  delete?: string;
   archive?: string;
   unarchive?: string;
 };
@@ -25,9 +27,8 @@ type EntityMutationApi<
   create: (payload: TCreate) => Promise<TEntity>;
 
   update: (id: string, payload: TUpdate) => Promise<TEntity>;
-
-  archive: (id: string) => Promise<TDeleteResult>;
-
+  delete?: (id: string) => Promise<TDeleteResult>;
+  archive?: (id: string) => Promise<TDeleteResult>;
   unarchive?: (id: string) => Promise<TRestoreResult>;
 };
 
@@ -59,20 +60,13 @@ export type EntityMutations<
   TRestoreResult = void,
 > = {
   create: UseMutationResult<TEntity, Error, TCreate>;
-
-  update: UseMutationResult<
-    TEntity,
-    Error,
-    {
-      id: string;
-      data: TUpdate;
-    }
-  >;
-
+  update: UseMutationResult<TEntity, Error, { id: string; data: TUpdate }>;
+  delete: UseMutationResult<TDeleteResult, Error, string>;
   archive: UseMutationResult<TDeleteResult, Error, string>;
 
   unarchive: UseMutationResult<TRestoreResult, Error, string>;
-
+  canDelete: boolean;
+  canArchive: boolean;
   canRestore: boolean;
 };
 
@@ -101,10 +95,7 @@ export function createEntityMutations<
     const queryClient = useQueryClient();
 
     const invalidate = () =>
-      queryClient.invalidateQueries({
-        queryKey: config.queryKey,
-      });
-
+      queryClient.invalidateQueries({ queryKey: config.queryKey });
     const create = useMutation({
       mutationFn: config.api.create,
 
@@ -129,10 +120,25 @@ export function createEntityMutations<
         }
       },
     });
-
+    const deleteMutation = useMutation({
+      mutationFn:
+        config.api.delete ??
+        (() => {
+          throw new Error("Delete is not supported.");
+        }),
+      onSuccess: () => {
+        invalidate();
+        if (config.messages?.delete) {
+          toast.success(config.messages.delete);
+        }
+      },
+    });
     const archive = useMutation({
-      mutationFn: config.api.archive,
-
+      mutationFn:
+        config.api.archive ??
+        (() => {
+          throw new Error("Archive is not supported.");
+        }),
       onSuccess: () => {
         invalidate();
 
@@ -161,8 +167,11 @@ export function createEntityMutations<
     return {
       create,
       update,
+      delete: deleteMutation,
       archive,
       unarchive,
+      canDelete: !!config.api.delete,
+      canArchive: !!config.api.archive,
       canRestore: !!config.api.unarchive,
     };
   };
