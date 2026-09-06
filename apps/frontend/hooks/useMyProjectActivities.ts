@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
-import { ProjectStatus } from "@/types/enums";
-import { useProjectsQuery } from "@/hooks/useProjects";
-import { useAuth } from "./auth/useAuth";
+import { ProjectActivitiesClientApi } from "@/lib/api/resources";
+
+import { queryKeys } from "./shared/queryKeys";
 
 export type PickerProjectActivity = {
   id: string;
@@ -14,33 +15,35 @@ export type PickerProjectActivity = {
   activityName: string;
 };
 
-export function useMyProjectActivities() {
-  const { user } = useAuth();
+const ASSIGNABLE_PAGE_SIZE = 500;
 
-  const projectsQuery = useProjectsQuery(1, {
-    status: ProjectStatus.ACTIVE,
+export function useMyProjectActivities() {
+  const query = useQuery({
+    queryKey: queryKeys.projectActivities.mine(),
+    queryFn: () =>
+      ProjectActivitiesClientApi.getMine({ pageSize: ASSIGNABLE_PAGE_SIZE }),
   });
 
-  const projects = useMemo(() => {
-    return projectsQuery.items.filter((project) =>
-      project.users?.some((projectUser) => projectUser.id === user?.id),
-    );
-  }, [projectsQuery.items, user?.id]);
-
   const items = useMemo<PickerProjectActivity[]>(() => {
-    return projects.flatMap((project) =>
-      (project.projectActivities ?? [])
-        .filter((projectActivity) => projectActivity.isActive)
-        .filter((projectActivity) => projectActivity.activity)
-        .map((projectActivity) => ({
+    return (query.data?.results ?? []).flatMap((projectActivity) => {
+      const project = projectActivity.project;
+      const activity = projectActivity.activity;
+
+      if (!project || !activity) {
+        return [];
+      }
+
+      return [
+        {
           id: projectActivity.id,
           projectId: project.id,
           projectName: project.name,
-          activityId: projectActivity.activity!.id,
-          activityName: projectActivity.activity!.name,
-        })),
-    );
-  }, [projects]);
+          activityId: activity.id,
+          activityName: activity.name,
+        },
+      ];
+    });
+  }, [query.data?.results]);
 
   const byId = useMemo(
     () => Object.fromEntries(items.map((item) => [item.id, item])),
@@ -50,11 +53,10 @@ export function useMyProjectActivities() {
   return {
     items,
     byId,
-    projects,
-    isLoading: projectsQuery.isLoading,
-    isFetching: projectsQuery.isFetching,
-    isError: projectsQuery.isError,
-    error: projectsQuery.error,
-    refetch: projectsQuery.refetch,
+    isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error ?? null,
+    refetch: query.refetch,
   };
 }

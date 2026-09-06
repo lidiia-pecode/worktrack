@@ -83,6 +83,15 @@ export class ProjectsController {
     return this.service.unarchive(id, user);
   }
 
+  @Get('me/activities')
+  @SerializeList(ProjectActivityResponse)
+  listAssignableActivities(
+    @Query() query: PaginationQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.listAssignableActivities(query, user);
+  }
+
   @Get(':id/activities')
   @SerializeList(ProjectActivityResponse)
   listActivities(

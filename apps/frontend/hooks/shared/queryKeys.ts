@@ -82,6 +82,8 @@ export const queryKeys = {
   projectActivities: {
     all: ["projectActivities"] as const,
     lists: () => ["projectActivities", "list"] as const,
+
+    mine: () => ["projectActivities", "mine"] as const,
   },
 
   auth: {
