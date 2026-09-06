@@ -99,6 +99,20 @@ apps/frontend/.env
 
 Database credentials for Docker are configured through the root environment variables used by Docker Compose.
 
+## Documentation
+
+| Document                                                                           | Covers                                             |
+| :--------------------------------------------------------------------------------- | :------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here |
+| [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles     |
+| [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth             |
+| [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components     |
+| [`CLAUDE.md`](CLAUDE.md)                                                           | Coding conventions and workflow rules              |
+
+The backend serves Swagger at <http://localhost:3001/api/docs> when running.
+
 ## Current Status
 
-The project is currently under active development. Additional features, production Docker configuration, CI/CD, testing, and deployment guides will be added as the project evolves.
+Under active development. The employee timesheet and admin CRUD for users,
+teams, projects, activities and categories are implemented. Manager/owner
+reporting views, tests, CI/CD and production Docker configuration are not.
