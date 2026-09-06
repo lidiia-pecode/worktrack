@@ -2,6 +2,8 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import { FolderKanban } from "lucide-react";
+
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
 import { TimeLog } from "@/types";
@@ -16,6 +18,9 @@ import {
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import Container from "../layout/Container";
+import { ConfirmModal } from "../shared/ConfirmModal";
+import { EmptyState } from "../shared/EmptyState";
+import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "./components/WeekNav";
 import { DayColumn } from "./components/DayColumn";
@@ -32,16 +37,25 @@ const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
 const WEEK_PAGE_SIZE = 500;
 
+const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
 export const WeekTimesheet = () => {
   const {
     weekStartDay,
     dailyTargetMinutes,
     timezone,
     isLoading: isLoadingSettings,
+    isError: isSettingsError,
+    refetch: refetchSettings,
   } = useWorkSettings();
 
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [modalState, setModalState] = useState<ModalState | null>(null);
+  const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const weekStart = useMemo(
@@ -54,13 +68,25 @@ export const WeekTimesheet = () => {
   const dateFrom = toISODate(weekDates[0]);
   const dateTo = toISODate(weekDates[6]);
 
-  const { items: timelogs, actions } = useTimelogs(1, {
+  const {
+    items: timelogs,
+    actions,
+    isLoading: isLoadingLogs,
+    isError: isLogsError,
+    isPlaceholderData: isShowingPreviousWeek,
+    refetch: refetchLogs,
+  } = useTimelogs(1, {
     dateFrom,
     dateTo,
     pageSize: WEEK_PAGE_SIZE,
   });
 
-  const { items: pickerItems } = useMyProjectActivities();
+  const {
+    items: pickerItems,
+    isLoading: isLoadingPicker,
+    isError: isPickerError,
+    refetch: refetchPicker,
+  } = useMyProjectActivities();
 
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};
@@ -126,14 +152,22 @@ export const WeekTimesheet = () => {
 
   const openCreate = (date: Date) => {
     if (isWeekend(date)) {
-      const confirmed = window.confirm("Log time on a non-work day?");
-
-      if (!confirmed) return;
+      setNonWorkDayDate(date);
+      return;
     }
 
     setModalState({
       date: toISODate(date),
     });
+  };
+
+  const confirmNonWorkDay = () => {
+    if (!nonWorkDayDate) return;
+
+    setModalState({
+      date: toISODate(nonWorkDayDate),
+    });
+    setNonWorkDayDate(null);
   };
 
   const openEdit = (timelog: TimeLog) => {
@@ -145,12 +179,21 @@ export const WeekTimesheet = () => {
 
   const closeModal = () => setModalState(null);
 
-  if (isLoadingSettings) {
+  const retry = () => {
+    void refetchLogs();
+    void refetchPicker();
+    void refetchSettings();
+  };
+
+  const hasError = isLogsError || isPickerError || isSettingsError;
+  const isUnassigned = pickerItems.length === 0 && timelogs.length === 0;
+
+  if (isLoadingSettings || isLoadingLogs || isLoadingPicker) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
         <LoadingState
           title="Loading your timesheet"
-          description="Fetching your workspace settings."
+          description="Fetching your week and workspace settings."
         />
       </Container>
     );
@@ -162,68 +205,119 @@ export const WeekTimesheet = () => {
         <div className="flex items-center justify-between py-3 pr-3">
           <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
-          <div className="flex items-center gap-2 text-sm">
-            <span>Time logged:</span>
+          {!hasError && (
+            <div className="flex items-center gap-2 text-sm">
+              <span>Time logged:</span>
 
-            <span className="font-medium text-zinc-900">
-              {formatDuration(totalMinutes)}
-            </span>
+              <span className="font-medium text-zinc-900">
+                {formatDuration(totalMinutes)}
+              </span>
 
-            <span className="text-zinc-300">/</span>
+              <span className="text-zinc-300">/</span>
 
-            <span className="text-zinc-500">
-              {formatDuration(weeklyTargetMinutes)}
-            </span>
-          </div>
+              <span className="text-zinc-500">
+                {formatDuration(weeklyTargetMinutes)}
+              </span>
+            </div>
+          )}
         </div>
 
-        <div className="px-3 pb-3">
-          <WeekProgressBar
-            billableMinutes={billableMinutes}
-            nonBillableMinutes={nonBillableMinutes}
-            plannedMinutes={weeklyTargetMinutes}
+        {!hasError && (
+          <div className="px-3 pb-3">
+            <WeekProgressBar
+              billableMinutes={billableMinutes}
+              nonBillableMinutes={nonBillableMinutes}
+              plannedMinutes={weeklyTargetMinutes}
+            />
+          </div>
+        )}
+      </div>
+
+      {hasError && (
+        <ErrorState
+          title="We couldn't load your timesheet"
+          description="Your entries for this week are unavailable right now."
+          onRetry={retry}
+        />
+      )}
+
+      {!hasError && isUnassigned && (
+        <div className="p-6">
+          <EmptyState
+            title="You're not on any projects yet"
+            description="Once a manager adds you to a project, you'll be able to log time against it here."
+            icon={<FolderKanban />}
           />
         </div>
-      </div>
+      )}
 
-      <div className="grid grid-cols-7 border-b border-zinc-200">
-        {weekDates.map((date) => (
-          <WeekHeaderDay
-            key={toISODate(date)}
-            date={date}
-            isToday={toISODate(date) === todayIso}
-            totalMinutes={dailyTotals[toISODate(date)] ?? 0}
-            targetMinutes={dailyTargetMinutes}
-          />
-        ))}
-      </div>
-
-      <div ref={scrollRef} className="flex-1">
-        <div className="relative" style={{ height: gridHeightPx }}>
-          <div className="grid h-full grid-cols-7">
-            {weekDates.map((date) => {
-              const iso = toISODate(date);
-
-              return (
-                <DayColumn
-                  key={iso}
-                  date={date}
-                  timelogs={timelogsByDate[iso] ?? []}
-                  totalMinutes={dailyTotals[iso] ?? 0}
-                  pixelsPerMinute={PX_PER_MINUTE}
-                  plannedMinutes={dailyTargetMinutes}
-                  onAddClick={openCreate}
-                  onEntryClick={openEdit}
-                />
-              );
-            })}
+      {!hasError && !isUnassigned && (
+        <>
+          <div className="grid grid-cols-7 border-b border-zinc-200">
+            {weekDates.map((date) => (
+              <WeekHeaderDay
+                key={toISODate(date)}
+                date={date}
+                isToday={toISODate(date) === todayIso}
+                totalMinutes={dailyTotals[toISODate(date)] ?? 0}
+                targetMinutes={dailyTargetMinutes}
+              />
+            ))}
           </div>
-        </div>
-      </div>
+
+          <div
+            ref={scrollRef}
+            className="flex-1"
+            aria-busy={isShowingPreviousWeek}
+          >
+            <div
+              className={[
+                "relative transition-opacity",
+                isShowingPreviousWeek && "opacity-60",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              style={{ height: gridHeightPx }}
+            >
+              <div className="grid h-full grid-cols-7">
+                {weekDates.map((date) => {
+                  const iso = toISODate(date);
+
+                  return (
+                    <DayColumn
+                      key={iso}
+                      date={date}
+                      timelogs={timelogsByDate[iso] ?? []}
+                      totalMinutes={dailyTotals[iso] ?? 0}
+                      pixelsPerMinute={PX_PER_MINUTE}
+                      plannedMinutes={dailyTargetMinutes}
+                      onAddClick={openCreate}
+                      onEntryClick={openEdit}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <ConfirmModal
+        isOpen={!!nonWorkDayDate}
+        onClose={() => setNonWorkDayDate(null)}
+        onConfirm={confirmNonWorkDay}
+        title="Log time on a non-work day?"
+        message={
+          nonWorkDayDate
+            ? `${NON_WORK_DAY_LABEL.format(nonWorkDayDate)} is outside the standard work week.`
+            : undefined
+        }
+        confirmText="Log time"
+      />
 
       {modalState && (
         <TimeLogFormModal
-          isOpen
+          open
           onClose={closeModal}
           date={modalState.date}
           timelog={modalState.timelog}

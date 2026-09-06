@@ -4,17 +4,18 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, CircleAlert, Trash2 } from "lucide-react";
+import { Calendar, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
+import { FormSection } from "../../shared/FormSection";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
+import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
-import { Modal } from "../../shared/Modal";
 
 const FORM_ID = "timelog-form";
 
@@ -39,13 +40,13 @@ const timeLogSchema = z
 type TimeLogFormData = z.infer<typeof timeLogSchema>;
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
-  weekday: "short",
+  weekday: "long",
   day: "numeric",
-  month: "short",
+  month: "long",
 });
 
 type Props = {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
   date: string;
   timelog?: TimeLog;
@@ -58,7 +59,7 @@ type Props = {
 };
 
 export const TimeLogFormModal = ({
-  isOpen,
+  open,
   onClose,
   date,
   timelog,
@@ -83,23 +84,9 @@ export const TimeLogFormModal = ({
       };
     }
 
-    const projectId = timelog.projectActivity?.project?.id;
-    const activityId = timelog.projectActivity?.activity?.id;
-
-    if (!projectId || !activityId) {
-      return {
-        projectId: "",
-        activityId: "",
-        hours: Math.floor(timelog.minutes / 60),
-        minutes: timelog.minutes % 60,
-        note: timelog.note ?? "",
-        isBillable: timelog.isBillable,
-      };
-    }
-
     return {
-      projectId,
-      activityId,
+      projectId: timelog.projectActivity?.project?.id ?? "",
+      activityId: timelog.projectActivity?.activity?.id ?? "",
       hours: Math.floor(timelog.minutes / 60),
       minutes: timelog.minutes % 60,
       note: timelog.note ?? "",
@@ -114,6 +101,7 @@ export const TimeLogFormModal = ({
     watch,
     getValues,
     setValue,
+    setError,
     reset,
     formState: { errors },
   } = useForm<TimeLogFormData>({
@@ -131,6 +119,8 @@ export const TimeLogFormModal = ({
     pickerItems.forEach((item) => seen.set(item.projectId, item.projectName));
     return Array.from(seen, ([id, name]) => ({ value: id, label: name }));
   }, [pickerItems]);
+
+  const hasNoOptions = projectOptions.length === 0;
 
   const selectedProjectId = watch("projectId");
   const hours = watch("hours");
@@ -161,7 +151,13 @@ export const TimeLogFormModal = ({
         item.projectId === data.projectId &&
         item.activityId === data.activityId,
     );
-    if (!match) return;
+    if (!match) {
+      setError("activityId", {
+        message:
+          "That project and activity are no longer available to you. Pick another.",
+      });
+      return;
+    }
 
     const minutes = data.hours * 60 + data.minutes;
 
@@ -195,47 +191,68 @@ export const TimeLogFormModal = ({
 
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-lg">
-        <div className="flex items-center justify-between px-6 pb-3 pt-4 border-b border-zinc-100 bg-slate-50 shrink-0">
-          <div>
-            <p className="text-md font-semibold uppercase tracking-widest text-zinc-400 mb-1">
-              {isEditMode ? "Edit time entry" : "Log time"}
-            </p>
+      <ResourceFormModal
+        open={open}
+        onClose={onClose}
+        title={isEditMode ? "Edit time entry" : "Log time"}
+        description={DAY_LABEL.format(new Date(`${date}T00:00:00`))}
+        icon={<Calendar className="size-5" />}
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
+            {isEditMode ? (
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                <Trash2 className="size-4" />
+                Delete
+              </Button>
+            ) : (
+              <span />
+            )}
 
-            <p className="flex gap-2 items-baseline text-sm font-medium text-zinc-700 leading-none">
-              <Calendar className="w-4 h-4" />
-              {DAY_LABEL.format(new Date(`${date}T00:00:00`))}
-            </p>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSaving}
+                disabled={hasNoOptions}
+              >
+                {isEditMode ? "Save changes" : "Log time"}
+              </Button>
+            </div>
           </div>
-          <div className="relative inline-flex flex-col items-end">
+        }
+      >
+        <form
+          id={FORM_ID}
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
+          <FormSection label="Duration">
             <TimePicker
               hours={Number(hours)}
               minutes={Number(minutes)}
               onHoursChange={(value) => setValue("hours", value)}
               onMinutesChange={(value) => setValue("minutes", value)}
               error={!!errors.hours}
+              className="w-fit"
             />
 
             {errors.hours && (
-              <div className="absolute right-28 bottom-0 z-10 flex w-max items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-600 shadow-sm">
-                <CircleAlert className="size-3.5 shrink-0" />
-                <span>{errors.hours.message}</span>
-              </div>
+              <p className="text-xs text-destructive">{errors.hours.message}</p>
             )}
-          </div>
-        </div>
+          </FormSection>
 
-        <form
-          id={FORM_ID}
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex-1 overflow-y-auto px-6 py-6 space-y-5"
-        >
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                Project
-              </label>
-
+            <FormSection label="Project">
               <Controller
                 control={control}
                 name="projectId"
@@ -244,18 +261,17 @@ export const TimeLogFormModal = ({
                     value={field.value}
                     onValueChange={field.onChange}
                     options={projectOptions}
-                    placeholder="Select project"
+                    placeholder={
+                      hasNoOptions ? "No projects assigned" : "Select project"
+                    }
                     error={errors.projectId?.message}
+                    disabled={hasNoOptions}
                   />
                 )}
               />
-            </div>
+            </FormSection>
 
-            <div>
-              <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-                Activity
-              </label>
-
+            <FormSection label="Activity">
               <Controller
                 control={control}
                 name="activityId"
@@ -274,52 +290,29 @@ export const TimeLogFormModal = ({
                   />
                 )}
               />
-            </div>
+            </FormSection>
           </div>
 
-          <div>
-            <label className="text-xs font-semibold uppercase tracking-widest text-zinc-400 mb-1.5 block">
-              Note
-            </label>
+          <FormSection label="Note">
             <TextareaAutosize
               {...register("note")}
               minRows={3}
               maxRows={8}
               placeholder="What did you work on?"
-              className="w-full resize-none rounded-md border border-slate-300 p-3 text-sm leading-relaxed text-zinc-700 outline-none transition focus:border-blue-300 focus:ring-1 focus:ring-blue-300"
+              className="w-full resize-none rounded-lg border border-input-placeholder/50 bg-input px-3.5 py-2.5 text-sm leading-relaxed text-input-foreground outline-none transition placeholder:text-input-placeholder focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
             />
-          </div>
+          </FormSection>
 
-          <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <label className="flex cursor-pointer select-none items-center gap-2.5">
             <input
               type="checkbox"
               {...register("isBillable")}
-              className="size-4 rounded border-slate-300 accent-blue-600 focus:ring-blue-300"
+              className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring/20"
             />
-            <span className="text-sm text-zinc-700">Billable</span>
+            <span className="text-sm text-foreground">Billable</span>
           </label>
         </form>
-
-        <div className="flex items-center justify-end gap-2 p-4">
-          {isEditMode && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="iconSm"
-              className="md:hover:text-red-500 md:hover:bg-red-50 transition"
-              onClick={() => setConfirmDeleteOpen(true)}
-            >
-              <Trash2 size={15} />
-            </Button>
-          )}
-          <Button form={FORM_ID} type="submit" disabled={isSaving} size="sm">
-            {isSaving ? "Saving..." : "Save"}
-          </Button>
-          <Button type="button" onClick={onClose} variant="secondary" size="sm">
-            Cancel
-          </Button>
-        </div>
-      </Modal>
+      </ResourceFormModal>
 
       <ConfirmModal
         isOpen={confirmDeleteOpen}
@@ -327,6 +320,8 @@ export const TimeLogFormModal = ({
         onConfirm={handleDelete}
         title="Delete this time entry?"
         message="This action cannot be undone."
+        confirmText="Delete"
+        variant="danger"
         loading={isDeleting}
       />
     </>

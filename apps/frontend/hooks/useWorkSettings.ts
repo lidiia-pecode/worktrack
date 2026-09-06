@@ -27,5 +27,8 @@ export function useWorkSettings() {
     dailyTargetMinutes: Math.round(workHoursPerDay * 60),
     timezone: company?.timezone,
     isLoading: query.isLoading,
+
+    isError: query.isError,
+    refetch: query.refetch,
   };
 }

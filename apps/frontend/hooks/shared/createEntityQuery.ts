@@ -1,6 +1,11 @@
 "use client";
 
-import { QueryKey, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  QueryKey,
+  useInfiniteQuery,
+  useQuery,
+} from "@tanstack/react-query";
 
 import { PaginatedResponse } from "@/types";
 
@@ -16,6 +21,7 @@ type CreateEntityQueryConfig<TEntity, TParams> = {
     infinite: (params?: TParams) => QueryKey;
   };
   api: EntityQueryApi<TEntity, TParams>;
+  keepPreviousData?: boolean;
 };
 
 export function createEntityQuery<
@@ -30,6 +36,7 @@ export function createEntityQuery<
           ...params,
           page,
         } as TParams & { page: number }),
+      placeholderData: config.keepPreviousData ? keepPreviousData : undefined,
     });
 
     return {
@@ -38,6 +45,7 @@ export function createEntityQuery<
       query,
       isLoading: query.isLoading,
       isFetching: query.isFetching,
+      isPlaceholderData: query.isPlaceholderData,
       isError: query.isError,
       error: query.error ?? null,
       refetch: query.refetch,

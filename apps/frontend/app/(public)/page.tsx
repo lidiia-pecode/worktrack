@@ -1,4 +1,7 @@
+import { redirect } from "next/navigation";
+
 import { getCurrentUser } from "@/lib/api/server/auth";
+import { UserRole } from "@/types/enums";
 
 import { LandingPage } from "../components/homepage/LandingPage";
 
@@ -12,14 +15,16 @@ export default async function Home() {
     return <LandingPage />;
   }
 
-  console.log(user);
+  if (user.role === UserRole.EMPLOYEE) {
+    redirect("/timesheet");
+  }
 
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl justify-center px-6 py-10">
-        {user.role === "OWNER" && <WorkspaceSetup />}
+        {user.role === UserRole.OWNER && <WorkspaceSetup />}
 
-        {user.role === "MANAGER" && <ManagerWorkspaceSetup />}
+        {user.role === UserRole.MANAGER && <ManagerWorkspaceSetup />}
       </div>
     </main>
   );

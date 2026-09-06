@@ -20,6 +20,8 @@ const timelogsQueries = createEntityQuery<TimeLog, TimeLogQueryParams>({
   api: {
     getAll: TimeLogsClientApi.getAll,
   },
+
+  keepPreviousData: true,
 });
 
 export const useTimeLogsQuery = timelogsQueries.useQuery;
