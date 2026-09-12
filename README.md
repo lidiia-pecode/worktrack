@@ -104,6 +104,8 @@ Database credentials for Docker are configured through the root environment vari
 | Document                                                                           | Covers                                             |
 | :--------------------------------------------------------------------------------- | :------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here |
+| [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
+| [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)            |
 | [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles     |
 | [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth             |
 | [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components     |

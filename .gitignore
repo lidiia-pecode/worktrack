@@ -33,3 +33,5 @@ postgres-data
 
 *.md
 !README.md
+!docs/architecture.md
+!docs/business_architecture_docs.md
