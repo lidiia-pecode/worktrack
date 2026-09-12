@@ -84,6 +84,7 @@ function handleRouteGuards(
     pathname.startsWith("/login") || pathname.startsWith("/register");
 
   const isProtectedRoute =
+    pathname.startsWith("/admin") ||
     pathname.startsWith("/timesheet") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/onboarding");
