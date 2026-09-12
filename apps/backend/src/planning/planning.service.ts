@@ -20,10 +20,9 @@ import {
 } from './dtos/PlanningEntryPayload.dto';
 import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
-import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
@@ -36,10 +35,9 @@ export class PlanningService {
     private readonly repo: Repository<PlanningEntry>,
     @InjectRepository(ProjectActivity)
     private readonly projectActivityRepo: Repository<ProjectActivity>,
-    @InjectRepository(TeamMembership)
-    private readonly teamMembershipRepo: Repository<TeamMembership>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -68,32 +66,7 @@ export class PlanningService {
     user: AuthUser,
   ): void {
     this.applyTenantFilter(qb, user.companyId);
-
-    if (user.role === UserRole.OWNER) return;
-
-    if (user.role === UserRole.MANAGER) {
-      qb.andWhere(
-        `p.user_id IN (
-          SELECT tm_member.user_id
-          FROM team_memberships tm_mgr
-          JOIN team_memberships tm_member ON tm_member.team_id = tm_mgr.team_id
-          WHERE tm_mgr.user_id = :managerId
-            AND tm_mgr.role_in_team = :managerRole
-            AND tm_mgr.left_at IS NULL
-            AND tm_member.left_at IS NULL
-            AND tm_mgr.company_id = :companyId
-            AND tm_member.company_id = :companyId
-        )`,
-        {
-          managerId: user.id,
-          managerRole: TeamRole.MANAGER,
-          companyId: user.companyId,
-        },
-      );
-      return;
-    }
-
-    qb.andWhere('p.user_id = :userId', { userId: user.id });
+    this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user);
   }
 
   // ==========================================
@@ -290,27 +263,10 @@ export class PlanningService {
 
     if (targetUser.id === user.id) return;
 
-    const manages = await this.teamMembershipRepo
-      .createQueryBuilder('tm_mgr')
-      .innerJoin(
-        TeamMembership,
-        'tm_member',
-        'tm_member.team_id = tm_mgr.team_id',
-      )
-      .where('tm_mgr.user_id = :managerId', { managerId: user.id })
-      .andWhere('tm_mgr.role_in_team = :managerRole', {
-        managerRole: TeamRole.MANAGER,
-      })
-      .andWhere('tm_mgr.left_at IS NULL')
-      .andWhere('tm_member.user_id = :targetUserId', {
-        targetUserId: targetUser.id,
-      })
-      .andWhere('tm_member.left_at IS NULL')
-      .andWhere('tm_member.company_id = :companyId')
-      .andWhere('tm_mgr.company_id = :companyId', {
-        companyId: user.companyId,
-      })
-      .getExists();
+    const manages = await this.teamVisibility.isUserInManagedTeams(
+      targetUser.id,
+      user,
+    );
 
     if (!manages) {
       throw new ForbiddenException(
@@ -331,7 +287,10 @@ export class PlanningService {
     }
 
     if (user.role === UserRole.MANAGER) {
-      const visible = await this.isUserInManagedTeams(userId, user);
+      const visible = await this.teamVisibility.isUserInManagedTeams(
+        userId,
+        user,
+      );
       if (!visible) {
         throw new ForbiddenException(
           'You can only view planning of users in teams you manage',
@@ -344,31 +303,6 @@ export class PlanningService {
       where: { id: userId, companyId: user.companyId },
     });
     if (!exists) throw new NotFoundException('User not found');
-  }
-
-  private async isUserInManagedTeams(
-    userId: string,
-    user: AuthUser,
-  ): Promise<boolean> {
-    return this.teamMembershipRepo
-      .createQueryBuilder('tm_mgr')
-      .innerJoin(
-        TeamMembership,
-        'tm_member',
-        'tm_member.team_id = tm_mgr.team_id',
-      )
-      .where('tm_mgr.user_id = :managerId', { managerId: user.id })
-      .andWhere('tm_mgr.role_in_team = :managerRole', {
-        managerRole: TeamRole.MANAGER,
-      })
-      .andWhere('tm_mgr.left_at IS NULL')
-      .andWhere('tm_member.user_id = :userId', { userId })
-      .andWhere('tm_member.left_at IS NULL')
-      .andWhere('tm_member.company_id = :companyId')
-      .andWhere('tm_mgr.company_id = :companyId', {
-        companyId: user.companyId,
-      })
-      .getExists();
   }
 
   // ==========================================

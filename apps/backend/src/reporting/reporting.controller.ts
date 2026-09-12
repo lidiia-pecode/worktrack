@@ -11,9 +11,8 @@ import {
 
 import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
-import { CurrentAuth } from 'src/lib/decorators/current-auth.decorator';
 import { UserRole } from 'src/users/enums/UserRole.enum';
-import { Role } from 'src/lib/decorators';
+import { CurrentUser, Role } from 'src/lib/decorators';
 import {
   CreateReportingPeriodDto,
   UpdateReportingPeriodDto,
@@ -33,21 +32,21 @@ export class ReportingController {
   @Post('periods')
   @Role(UserRole.OWNER)
   createPeriod(
-    @CurrentAuth() user: AuthUser,
+    @CurrentUser() user: AuthUser,
     @Body() dto: CreateReportingPeriodDto,
   ) {
     return this.reportingService.createPeriod(user.companyId, dto);
   }
 
   @Get('periods')
-  findAllPeriods(@CurrentAuth() user: AuthUser) {
+  findAllPeriods(@CurrentUser() user: AuthUser) {
     return this.reportingService.findAllPeriods(user.companyId);
   }
 
   @Patch('periods/:id')
   @Role(UserRole.OWNER)
   updatePeriod(
-    @CurrentAuth() user: AuthUser,
+    @CurrentUser() user: AuthUser,
     @Param('id') id: string,
     @Body() dto: UpdateReportingPeriodDto,
   ) {
@@ -60,7 +59,7 @@ export class ReportingController {
 
   @Get('planned-vs-actual')
   getPlannedVsActual(
-    @CurrentAuth() user: AuthUser,
+    @CurrentUser() user: AuthUser,
     @Query() query: GetReportQueryDto,
   ) {
     return this.reportingService.getPlannedVsActualReport(user, query);

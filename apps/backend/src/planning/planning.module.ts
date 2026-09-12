@@ -5,17 +5,13 @@ import { PlanningController } from './planning.controller';
 import { PlanningService } from './planning.service';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
+import { TeamsModule } from 'src/teams/teams.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      PlanningEntry,
-      ProjectActivity,
-      TeamMembership,
-      User,
-    ]),
+    TypeOrmModule.forFeature([PlanningEntry, ProjectActivity, User]),
+    TeamsModule,
   ],
   controllers: [PlanningController],
   providers: [PlanningService],

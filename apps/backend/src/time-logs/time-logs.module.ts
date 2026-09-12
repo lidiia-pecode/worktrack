@@ -6,11 +6,13 @@ import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
 import { ReportingModule } from 'src/reporting/reporting.module';
+import { TeamsModule } from 'src/teams/teams.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([TimeLog, ProjectActivity, User]),
     ReportingModule,
+    TeamsModule,
   ],
   controllers: [TimeLogsController],
   providers: [TimeLogsService],

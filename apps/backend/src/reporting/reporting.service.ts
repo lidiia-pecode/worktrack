@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,6 +17,7 @@ import {
 } from './dtos/reporting-period.dto';
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { GetReportQueryDto } from './dtos/report-query.dto';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
 interface PlannedRawResult {
   userId: string;
@@ -33,6 +35,7 @@ export class ReportingService {
   constructor(
     @InjectRepository(ReportingPeriod)
     private readonly periodRepo: Repository<ReportingPeriod>,
+    private readonly teamVisibility: TeamVisibilityService,
   ) {}
 
   // ==========================================
@@ -128,11 +131,19 @@ export class ReportingService {
 
     let targetUserId = userId;
 
-    // RBAC Scope Verification
     if (role === UserRole.EMPLOYEE) {
       targetUserId = user.id; // Employee sees only own analytics
-    } else if (role === UserRole.MANAGER && userId && userId !== user.id) {
-      // TODO: Add TeamMembership check that targetUserId is in Manager's active team
+    } else if (role === UserRole.MANAGER && userId) {
+      const visible = await this.teamVisibility.isUserInManagedTeams(
+        userId,
+        user,
+      );
+
+      if (!visible) {
+        throw new ForbiddenException(
+          'You can only report on users in teams you manage',
+        );
+      }
     }
 
     // 1. Aggregate Planned Minutes
@@ -148,12 +159,13 @@ export class ReportingService {
         endDate,
       });
 
+    this.teamVisibility.applyUserVisibility(plannedQuery, 'pe.user_id', user);
+
     if (targetUserId)
       plannedQuery.andWhere('pe.user_id = :targetUserId', { targetUserId });
     if (projectId)
       plannedQuery.andWhere('pa.project_id = :projectId', { projectId });
 
-    // 👈 Явно вказуємо тип повертаного значення generic-параметром
     const plannedResult = await plannedQuery
       .groupBy('pe.user_id')
       .getRawMany<PlannedRawResult>();
@@ -175,12 +187,13 @@ export class ReportingService {
         endDate,
       });
 
+    this.teamVisibility.applyUserVisibility(actualQuery, 'tl.user_id', user);
+
     if (targetUserId)
       actualQuery.andWhere('tl.user_id = :targetUserId', { targetUserId });
     if (projectId)
       actualQuery.andWhere('pa.project_id = :projectId', { projectId });
 
-    // 👈 Явно вказуємо тип повертаного значення generic-параметром
     const actualResult = await actualQuery
       .groupBy('tl.user_id')
       .getRawMany<ActualRawResult>();
