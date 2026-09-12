@@ -8,7 +8,7 @@ import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
-import { useProjects } from "@/hooks/useProjects";
+import { useProjectDetails, useProjects } from "@/hooks/useProjects";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
@@ -59,9 +59,12 @@ export function ProjectModal({
   const router = useRouter();
   const [view, setView] = useState<View>("form");
 
-  const [selectedUserIds, setSelectedUserIds] = useState<string[]>(
-    () => project?.users?.map((user) => user.id) ?? [],
-  );
+  // The project list no longer returns members, so an existing project has to
+  // load them separately.
+  const { data: projectDetails, isLoading: isDetailsLoading } =
+    useProjectDetails(project?.id);
+
+  const [pickedUserIds, setPickedUserIds] = useState<string[] | null>(null);
 
   const [selectedActivityIds, setSelectedActivityIds] = useState<string[]>(
     () =>
@@ -90,6 +93,16 @@ export function ProjectModal({
     status: ActivityStatus.ACTIVE,
   });
 
+  const savedUserIds = useMemo(
+    () => projectDetails?.users?.map((user) => user.id) ?? [],
+    [projectDetails],
+  );
+
+  // Fall back to the saved members until the user picks their own selection.
+  const selectedUserIds = pickedUserIds ?? savedUserIds;
+
+  const isMembersLoading = isDetailsLoading || isUsersLoading;
+
   const users = useMemo(() => dedupeById(rawUsers), [rawUsers]);
   const activities = useMemo(() => dedupeById(rawActivities), [rawActivities]);
 
@@ -117,7 +130,7 @@ export function ProjectModal({
 
   const handleClose = () => {
     setView("form");
-    setSelectedUserIds([]);
+    setPickedUserIds(null);
     setSelectedActivityIds([]);
     onClose();
   };
@@ -146,7 +159,7 @@ export function ProjectModal({
   };
 
   const handleToggleUser = (userId: string) => {
-    setSelectedUserIds((current) => toggleSelection(current, userId));
+    setPickedUserIds(toggleSelection(selectedUserIds, userId));
   };
 
   const handleToggleActivity = (activityId: string) => {
@@ -154,7 +167,7 @@ export function ProjectModal({
   };
 
   const handleRemoveUser = (userId: string) => {
-    setSelectedUserIds((current) => toggleSelection(current, userId));
+    setPickedUserIds(toggleSelection(selectedUserIds, userId));
   };
 
   const handleRemoveActivity = (activityId: string) => {
@@ -261,6 +274,7 @@ export function ProjectModal({
                 form={FORM_ID}
                 size="sm"
                 isLoading={isSubmitting}
+                disabled={isMembersLoading}
               >
                 {project ? "Save changes" : "Create project"}
               </Button>
@@ -321,6 +335,7 @@ export function ProjectModal({
         <div className="border-t border-border pt-6">
           <ProjectMembersSection
             members={selectedUsers}
+            isLoading={isMembersLoading}
             isCreateMode={!project}
             onOpenAddMembers={() => setView("members")}
             onRemoveMember={handleRemoveUser}

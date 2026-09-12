@@ -8,6 +8,8 @@ interface AssignedListProps<T> {
   getSecondary?: (item: T) => string | null | undefined;
   renderTrailing?: (item: T) => ReactNode;
   emptyMessage?: string;
+  isLoading?: boolean;
+  loadingMessage?: string;
 }
 
 export function AssignedList<T>({
@@ -18,7 +20,17 @@ export function AssignedList<T>({
   getSecondary,
   renderTrailing,
   emptyMessage = "Nothing assigned yet.",
+  isLoading = false,
+  loadingMessage = "Loading...",
 }: AssignedListProps<T>) {
+  if (isLoading) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        {loadingMessage}
+      </p>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">

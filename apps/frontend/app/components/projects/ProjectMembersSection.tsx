@@ -13,6 +13,7 @@ import { Avatar } from "../shared/Avatar";
 
 interface ProjectMembersSectionProps {
   members: User[];
+  isLoading?: boolean;
   isCreateMode?: boolean;
   onOpenAddMembers: () => void;
   onRemoveMember: (userId: string) => void;
@@ -20,6 +21,7 @@ interface ProjectMembersSectionProps {
 
 export function ProjectMembersSection({
   members,
+  isLoading = false,
   isCreateMode = false,
   onOpenAddMembers,
   onRemoveMember,
@@ -33,8 +35,11 @@ export function ProjectMembersSection({
           </h3>
 
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {members.length} {members.length === 1 ? "person is" : "people are"}{" "}
-            {isCreateMode ? "selected" : "assigned to this project"}.
+            {isLoading
+              ? "Loading members..."
+              : `${members.length} ${
+                  members.length === 1 ? "person is" : "people are"
+                } ${isCreateMode ? "selected" : "assigned to this project"}.`}
           </p>
         </div>
 
@@ -43,6 +48,7 @@ export function ProjectMembersSection({
           variant="outline"
           size="sm"
           onClick={onOpenAddMembers}
+          disabled={isLoading}
           className="gap-1.5"
         >
           <UserPlus className="size-4" />
@@ -53,6 +59,8 @@ export function ProjectMembersSection({
       <div className="rounded-xl border border-border bg-card overflow-hidden">
         <AssignedList
           items={members}
+          isLoading={isLoading}
+          loadingMessage="Loading members..."
           getId={(user) => user.id}
           getPrimary={(user) => fullName(user)}
           getSecondary={(user) => user.email}

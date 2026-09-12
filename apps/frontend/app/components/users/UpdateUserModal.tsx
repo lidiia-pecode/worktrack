@@ -14,6 +14,7 @@ import { User } from "@/types";
 
 import { useUserDetails, useUsers } from "@/hooks/useUsers";
 import { useProjects, useProjectsInfiniteQuery } from "@/hooks/useProjects";
+import { ProjectsClientApi } from "@/lib/api/resources";
 
 import { initials } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
@@ -75,8 +76,10 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     projectId: string,
     shouldBeMember: boolean,
   ) => {
-    const project = allProjects.find((item) => item.id === projectId);
-    const existingIds = project?.users?.map((item) => item.id) ?? [];
+    // Members are not part of the project list, so read the current ones back
+    // before rewriting them.
+    const project = await ProjectsClientApi.getById(projectId);
+    const existingIds = project.users?.map((item) => item.id) ?? [];
 
     const userIds = shouldBeMember
       ? Array.from(new Set([...existingIds, user.id]))
@@ -275,36 +278,32 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
               </div>
 
               <div className="rounded-xl border border-border bg-card overflow-hidden">
-                {isLoadingDetails ? (
-                  <div className="py-6 text-center text-sm text-muted-foreground">
-                    Loading projects...
-                  </div>
-                ) : (
-                  <AssignedList
-                    items={assignedProjects}
-                    getId={(project) => project.id}
-                    getPrimary={(project) => project.name}
-                    getSecondary={(project) => project.status}
-                    renderLeading={() => (
-                      <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
-                        <FolderKanban className="size-4" />
-                      </div>
-                    )}
-                    renderTrailing={(project) => (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="iconSm"
-                        aria-label={`Remove ${project.name}`}
-                        onClick={() => removeProject(project.id)}
-                        disabled={updateProject.isPending}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    )}
-                    emptyMessage="No projects assigned yet."
-                  />
-                )}
+                <AssignedList
+                  items={assignedProjects}
+                  isLoading={isLoadingDetails}
+                  loadingMessage="Loading projects..."
+                  getId={(project) => project.id}
+                  getPrimary={(project) => project.name}
+                  getSecondary={(project) => project.status}
+                  renderLeading={() => (
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
+                      <FolderKanban className="size-4" />
+                    </div>
+                  )}
+                  renderTrailing={(project) => (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="iconSm"
+                      aria-label={`Remove ${project.name}`}
+                      onClick={() => removeProject(project.id)}
+                      disabled={updateProject.isPending}
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  )}
+                  emptyMessage="No projects assigned yet."
+                />
               </div>
             </section>
           </div>

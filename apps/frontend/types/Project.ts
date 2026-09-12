@@ -14,7 +14,10 @@ export interface Project {
   updatedAt: string;
   company?: Company;
   projectActivities?: ProjectActivity[];
+  /** Only returned for a single project, never in list results. */
   users?: User[];
+  /** Only returned in list results, where `users` is left out. */
+  membersCount?: number;
 }
 
 // ProjectPayload = back

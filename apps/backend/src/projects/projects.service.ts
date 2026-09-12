@@ -5,14 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  EntityManager,
-  FindOptionsWhere,
-  ILike,
-  Not,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, ILike, Not, Repository } from 'typeorm';
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
@@ -204,18 +197,24 @@ export class ProjectsService {
   // ---------------------------------------------------------------------------
 
   async list(query: ProjectsQuery, user: AuthUser) {
-    const where: FindOptionsWhere<Project> = {
-      companyId: user.companyId,
-      ...(query.status && { status: query.status }),
-    };
+    // Members are counted, not loaded — the roster itself is only returned by
+    // `getById` and `listUsers`.
+    const qb = this.repo
+      .createQueryBuilder('project')
+      .leftJoinAndSelect('project.projectActivities', 'projectActivities')
+      .leftJoinAndSelect('projectActivities.activity', 'activity')
+      .loadRelationCountAndMap('project.membersCount', 'project.users')
+      .where('project.companyId = :companyId', { companyId: user.companyId });
 
-    const [results, count] = await this.repo.findAndCount({
-      where,
-      relations: ['users', 'projectActivities', 'projectActivities.activity'],
-      skip: query.offset,
-      take: query.limit,
-      order: { createdAt: 'DESC' },
-    });
+    if (query.status) {
+      qb.andWhere('project.status = :status', { status: query.status });
+    }
+
+    const [results, count] = await qb
+      .orderBy('project.createdAt', 'DESC')
+      .skip(query.offset)
+      .take(query.limit)
+      .getManyAndCount();
 
     return { results, count };
   }

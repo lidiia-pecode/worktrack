@@ -34,6 +34,8 @@ export const queryKeys = {
       createListKey("projects", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("projects", params),
+
+    detail: (id: string) => ["projects", "detail", id] as const,
   },
 
   activities: {

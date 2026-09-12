@@ -1,3 +1,4 @@
+import { OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { ProjectActivityResponse } from './ProjectActivityResponse.dto';
 import { UserResponse } from 'src/users/dtos/UserResponse.dto';
@@ -36,4 +37,12 @@ export class ProjectResponse {
 
   @Expose()
   updatedAt!: Date;
+}
+
+// Project lists must not carry the member roster, only its size.
+export class ProjectListItemResponse extends OmitType(ProjectResponse, [
+  'users',
+] as const) {
+  @Expose()
+  membersCount!: number;
 }

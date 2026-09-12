@@ -10,7 +10,6 @@ import { ProjectStatus } from "@/types/enums";
 
 import { ResourceCard } from "../shared/resourse/ResourceCard";
 import { ResourceCardField } from "../shared/resourse/ResourceCardField";
-import { Avatar } from "../shared/Avatar";
 
 interface ProjectCardProps {
   project: Project;
@@ -18,19 +17,14 @@ interface ProjectCardProps {
   onView?: (project: Project) => void;
 }
 
-const MAX_VISIBLE_AVATARS = 4;
-
 export function ProjectCard({
   project,
   canManage = false,
   onView,
 }: ProjectCardProps) {
-  const members = project.users ?? [];
+  const membersCount = project.membersCount ?? 0;
   const activitiesCount = project.projectActivities?.length ?? 0;
   const isArchived = project.status === ProjectStatus.ARCHIVED;
-
-  const visibleMembers = members.slice(0, MAX_VISIBLE_AVATARS);
-  const extraCount = members.length - visibleMembers.length;
 
   return (
     <ResourceCard
@@ -66,7 +60,7 @@ export function ProjectCard({
       <div className="mt-4 grid grid-cols-2 gap-4">
         <ResourceCardField
           label="Members"
-          value={members.length}
+          value={membersCount}
           icon={<UsersRound className="size-3.5" />}
         />
         <ResourceCardField
@@ -75,20 +69,6 @@ export function ProjectCard({
           icon={<FolderKanban className="size-3.5" />}
         />
       </div>
-
-      {members.length > 0 && (
-        <div className="mt-4 flex items-center -space-x-2">
-          {visibleMembers.map((user) => (
-            <Avatar key={user.id} user={user} size="sm" />
-          ))}
-
-          {extraCount > 0 && (
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
-              +{extraCount}
-            </div>
-          )}
-        </div>
-      )}
 
       {onView && (
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4">

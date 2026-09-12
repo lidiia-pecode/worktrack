@@ -79,4 +79,8 @@ export class Project {
     inverseJoinColumn: { name: 'user_id', referencedColumnName: 'id' },
   })
   users!: User[];
+
+  // Not a column — filled in by `list()` so the project list can show how many
+  // members a project has without returning them.
+  membersCount?: number;
 }

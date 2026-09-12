@@ -1,5 +1,7 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
+
 import {
   Project,
   ProjectPayload,
@@ -50,6 +52,13 @@ const useProjectsMutations = createEntityMutations<
     unarchive: "Project restored successfully",
   },
 });
+
+export const useProjectDetails = (id?: string) =>
+  useQuery({
+    queryKey: queryKeys.projects.detail(id ?? ""),
+    queryFn: () => ProjectsClientApi.getById(id!),
+    enabled: Boolean(id),
+  });
 
 export function useProjects(page = 1, params?: ProjectQueryParams) {
   const query = useProjectsQuery(page, params);
