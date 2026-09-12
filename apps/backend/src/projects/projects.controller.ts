@@ -14,7 +14,10 @@ import {
   ProjectPayload,
   UpdateProjectPayload,
 } from './dtos/ProjectPayload.dto';
-import { ProjectResponse } from './dtos/ProjectResponse.dto';
+import {
+  ProjectListItemResponse,
+  ProjectResponse,
+} from './dtos/ProjectResponse.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -30,12 +33,14 @@ import { UserResponse } from 'src/users/dtos/UserResponse.dto';
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get()
-  @SerializeList(ProjectResponse)
+  @SerializeList(ProjectListItemResponse)
   getAll(@Query() query: ProjectsQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(query, user);
   }
 
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id')
   @Serialize(ProjectResponse)
   getById(
@@ -83,6 +88,8 @@ export class ProjectsController {
     return this.service.unarchive(id, user);
   }
 
+  // Open to everyone: employees need it for the timesheet picker, and it only
+  // returns their own projects. Must stay declared before `:id/activities`.
   @Get('me/activities')
   @SerializeList(ProjectActivityResponse)
   listAssignableActivities(
@@ -92,6 +99,8 @@ export class ProjectsController {
     return this.service.listAssignableActivities(query, user);
   }
 
+  // TODO: still open to any employee, for any project. Nothing calls it —
+  // decide whether to role-guard or remove it.
   @Get(':id/activities')
   @SerializeList(ProjectActivityResponse)
   listActivities(
@@ -102,6 +111,7 @@ export class ProjectsController {
     return this.service.listActivities(projectId, query, user);
   }
 
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id/users')
   @SerializeList(UserResponse)
   listUsers(
