@@ -12,6 +12,10 @@ down-hard:
 migrate:
 	docker-compose -f docker-compose.dev.yml exec backend npm run migration:run
 
+# Backend tests. They hit the dev database, so the stack must be running.
+test:
+	docker-compose -f docker-compose.dev.yml exec backend npm test
+
 seed:
 	docker-compose -f docker-compose.dev.yml exec backend npm run seed:admin
 
