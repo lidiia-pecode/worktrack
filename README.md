@@ -54,6 +54,11 @@ Install dependencies:
 npm install
 ```
 
+> Stop the containers before installing on your machine. `npm install` and
+> `npm ci` replace `node_modules`, which the running containers mount, and that
+> leaves them without dependencies. If you install while the stack is up, run
+> `make down && make up` afterwards.
+
 Start the development environment:
 
 ```bash
@@ -96,16 +101,39 @@ make setup      # First-time project setup (up + init)
 make dev        # Start development environment
 ```
 
-## Environment Variables
+The same checks CI runs are available from the repository root. Each fans out
+across both applications, skipping any that does not define the script — only
+the backend has tests today:
 
-Each application manages its own environment configuration:
-
-```text
-apps/backend/.env
-apps/frontend/.env
+```bash
+npm run lint
+npm run typecheck
+npm run build
+npm test
 ```
 
-Database credentials for Docker are configured through the root environment variables used by Docker Compose.
+## Environment Variables
+
+Each application manages its own environment configuration. Copy each sample
+and fill it in:
+
+```bash
+cp .env.sample .env                          # Postgres credentials for Docker
+cp apps/backend/.env.sample apps/backend/.env
+cp apps/frontend/.env.sample apps/frontend/.env
+```
+
+The samples list every variable, marked required or optional, and are the
+contract for what a deployment needs. The backend validates them at startup and
+refuses to boot if a required one is missing.
+
+Two things worth knowing:
+
+- The root `.env` sets the Postgres container's credentials. They must match
+  `DB_USERNAME`, `DB_PASSWORD` and `DB_NAME` in `apps/backend/.env`.
+- Hosted databases hand out a single connection URL instead of separate values.
+  Set `DATABASE_URL` (and `DATABASE_SSL=true`) and the discrete `DB_*` variables
+  are ignored.
 
 ## Documentation
 
@@ -120,10 +148,15 @@ Database credentials for Docker are configured through the root environment vari
 | [`CLAUDE.md`](CLAUDE.md)                                                           | Coding conventions and workflow rules                  |
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
+It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 ## Current Status
 
 Under active development. The employee timesheet and admin CRUD for users,
 teams, projects, activities and categories are implemented. Manager/owner
-reporting views, CI/CD and production Docker configuration are not. Test
-coverage has started with the role-visibility filters.
+reporting views are not. Test coverage has started with the role-visibility
+filters.
+
+The backend has a production Docker image (`apps/backend/Dockerfile`) and
+migrations can run as a deployment release step. Nothing is hosted yet, and
+there is no CI pipeline.
