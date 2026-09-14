@@ -15,7 +15,7 @@ import {
 import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
@@ -23,8 +23,8 @@ import { ReportingService } from 'src/reporting/reporting.service';
 import {
   TimeLogPayload,
   UpdateTimelogPayload,
-} from './dtos/TimelogPayload.dto';
-import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
+} from './dtos/timelog-payload.dto';
+import { GetTimelogsQuery } from './dtos/get-timelogs-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()

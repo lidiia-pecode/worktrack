@@ -4,7 +4,7 @@ import { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 /**

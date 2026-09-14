@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ProjectActivityResponse } from 'src/projects/dtos/ProjectActivityResponse.dto';
+import { ProjectActivityResponse } from 'src/projects/dtos/project-activity-response.dto';
 
 export class PlanningEntryResponse {
   @Expose()

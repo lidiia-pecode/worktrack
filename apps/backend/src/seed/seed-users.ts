@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { User } from 'src/users/entities/user.entity';
-import { UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 
 import { SEED_PASSWORD, USERS } from './seed-config';

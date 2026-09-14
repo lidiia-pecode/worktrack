@@ -4,7 +4,7 @@ import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { Serialize } from 'src/lib/interceptors';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { OnboardingService } from './onboarding.service';
 import { OwnerSetupStateDto } from './dtos/owner-setup-state.dto';

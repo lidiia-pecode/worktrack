@@ -6,7 +6,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { ReportingPeriodStatus } from '../enum/reporting-period-status.enum';
+import { ReportingPeriodStatus } from '../enums/reporting-period-status.enum';
 import { PartialType } from '@nestjs/swagger';
 
 export class CreateReportingPeriodDto {

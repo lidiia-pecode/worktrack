@@ -12,16 +12,16 @@ import {
 } from '@nestjs/common';
 
 import { TimeLogsService } from './time-logs.service';
-import { TimeLogResponse } from './dtos/TimelogResponse.dto';
+import { TimeLogResponse } from './dtos/timelog-response.dto';
 import {
   TimeLogPayload,
   UpdateTimelogPayload,
-} from './dtos/TimelogPayload.dto';
+} from './dtos/timelog-payload.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
 import { AccessGuard } from 'src/auth/guards';
-import { GetTimelogsQuery } from './dtos/GetTimelogsQuery.dto';
+import { GetTimelogsQuery } from './dtos/get-timelogs-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('time-logs')

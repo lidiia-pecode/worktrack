@@ -9,7 +9,7 @@ import { DataSource } from 'typeorm';
 
 import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
-import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';

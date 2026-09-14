@@ -14,9 +14,9 @@ import { UsersService } from 'src/users/users.service';
 import {
   ProjectPayload,
   UpdateProjectPayload,
-} from './dtos/ProjectPayload.dto';
-import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
+} from './dtos/project-payload.dto';
+import { ProjectsQuery } from './dtos/projects-query.dto';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';

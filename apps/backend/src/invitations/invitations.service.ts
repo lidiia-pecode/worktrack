@@ -1,4 +1,4 @@
-// apps/backend/src/invitations/invitations-service.ts
+// apps/backend/src/invitations/invitations.service.ts
 
 import {
   BadRequestException,
@@ -12,7 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, MoreThan, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import { SessionService } from 'src/auth/services/session.service';

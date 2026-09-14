@@ -12,19 +12,19 @@ import {
 } from '@nestjs/common';
 
 import { PlanningService } from './planning.service';
-import { PlanningEntryResponse } from './dtos/PlanningEntryResponse.dto';
+import { PlanningEntryResponse } from './dtos/planning-entry-response.dto';
 import {
   CreatePlanningEntryDto,
   UpdatePlanningEntryDto,
-} from './dtos/PlanningEntryPayload.dto';
-import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
+} from './dtos/planning-entry-payload.dto';
+import { PlanningQueryDto } from './dtos/planning-query.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
 import { AccessGuard } from 'src/auth/guards';
 import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('planning')

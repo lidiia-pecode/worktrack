@@ -7,7 +7,7 @@ import { MailModule } from 'src/mail/mail.module';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationsController } from './invitations.controller';
-import { InvitationsService } from './invitations-service';
+import { InvitationsService } from './invitations.service';
 
 @Module({
   imports: [

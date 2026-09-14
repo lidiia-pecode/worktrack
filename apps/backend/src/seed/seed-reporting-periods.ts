@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
-import { ReportingPeriodStatus } from 'src/reporting/enum/reporting-period-status.enum';
+import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 
 import { reportingPeriods } from './seed-config';
 

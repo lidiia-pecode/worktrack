@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ActivityResponse } from 'src/activities/dtos/ActivityResponse.dto';
+import { ActivityResponse } from 'src/activities/dtos/activity-response.dto';
 import { ProjectStatus } from '../enums/project-status.enum';
 
 class ProjectSummaryResponse {

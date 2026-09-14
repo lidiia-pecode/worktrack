@@ -12,7 +12,7 @@ import {
 
 import { Company } from 'src/companies/entities/company.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
-import { ActCategoryStatus } from '../enums/category-status';
+import { ActCategoryStatus } from '../enums/category-status.enum';
 
 @Entity('act_categories')
 @Index('IDX_act_categories_company_id', ['companyId'])

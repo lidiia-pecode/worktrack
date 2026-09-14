@@ -1,5 +1,5 @@
 import { Exclude, Expose, Type } from 'class-transformer';
-import { ActivityCategoryResponse } from 'src/activity-categories/dtos/ActivitiesCategoryResponse.dto';
+import { ActivityCategoryResponse } from 'src/activity-categories/dtos/activities-category-response.dto';
 import { ActivityStatus } from '../enums/activity-status.enum';
 
 @Exclude()

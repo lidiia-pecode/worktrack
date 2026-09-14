@@ -1,7 +1,7 @@
 // apps/backend/src/auth/auth-strategies/types.ts
 
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { GoogleUserPayload } from '../dtos/auth.dto';
 
 export interface JwtAccessPayload {

@@ -11,7 +11,7 @@ import {
 
 import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import {
   CreateReportingPeriodDto,

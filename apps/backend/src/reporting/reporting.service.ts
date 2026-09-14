@@ -8,9 +8,9 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { ReportingPeriod } from './entities/reporting-period.entity';
-import { ReportingPeriodStatus } from './enum/reporting-period-status.enum';
+import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
 import {
   CreateReportingPeriodDto,
   UpdateReportingPeriodDto,

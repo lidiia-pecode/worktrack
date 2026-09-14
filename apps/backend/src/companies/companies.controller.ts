@@ -3,7 +3,7 @@ import { Body, Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { CompanyResponseDto } from './dtos/company-response.dto';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';

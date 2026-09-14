@@ -10,7 +10,7 @@ import { EntityManager, QueryFailedError, Repository } from 'typeorm';
 
 import { Company } from './entities/company.entity';
 import { UpdateCompanyDto } from './dtos/update-company.dto';
-import { CompanyStatus } from './enum/company-status.enum';
+import { CompanyStatus } from './enums/company-status.enum';
 
 @Injectable()
 export class CompaniesService {

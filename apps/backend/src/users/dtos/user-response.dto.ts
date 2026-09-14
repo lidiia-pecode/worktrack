@@ -1,5 +1,5 @@
 import { Exclude, Expose, Type } from 'class-transformer';
-import { UserRole, UserStatus } from '../enums/UserRole.enum';
+import { UserRole, UserStatus } from '../enums/user-role.enum';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
 @Exclude()

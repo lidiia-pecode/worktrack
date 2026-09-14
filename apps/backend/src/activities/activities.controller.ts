@@ -16,10 +16,10 @@ import { ActivitiesService } from './activities.service';
 import {
   ActivityPayload,
   UpdateActivityPayload,
-} from './dtos/ActivityPayload.dto';
-import { ActivityResponse } from './dtos/ActivityResponse.dto';
-import { ActivitiesQuery } from './dtos/ActivitiesQuery.dto';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+} from './dtos/activity-payload.dto';
+import { ActivityResponse } from './dtos/activity-response.dto';
+import { ActivitiesQuery } from './dtos/activities-query.dto';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('activities')

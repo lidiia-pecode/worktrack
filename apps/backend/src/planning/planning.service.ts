@@ -17,11 +17,11 @@ import { PlanningEntry } from './entities/planning-entry.entity';
 import {
   CreatePlanningEntryDto,
   UpdatePlanningEntryDto,
-} from './dtos/PlanningEntryPayload.dto';
-import { PlanningQueryDto } from './dtos/PlanningQuery.dto';
+} from './dtos/planning-entry-payload.dto';
+import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';

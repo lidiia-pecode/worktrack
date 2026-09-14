@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { InvitationStatus } from '../enums/invitation-status.enum';
 
 @Entity('invitations')

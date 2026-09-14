@@ -1,5 +1,5 @@
 import { Exclude, Expose } from 'class-transformer';
-import { ActCategoryStatus } from '../enums/category-status';
+import { ActCategoryStatus } from '../enums/category-status.enum';
 
 @Exclude()
 export class ActivityCategoryResponse {

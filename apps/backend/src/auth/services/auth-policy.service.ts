@@ -1,8 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 
 import { User } from 'src/users/entities/user.entity';
-import { UserStatus } from 'src/users/enums/UserRole.enum';
-import { CompanyStatus } from 'src/companies/enum/company-status.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
+import { CompanyStatus } from 'src/companies/enums/company-status.enum';
 
 @Injectable()
 export class AuthPolicyService {

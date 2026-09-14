@@ -26,11 +26,11 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { GoogleUserPayload } from 'src/auth/dtos/auth.dto';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { CompleteInvitationDto } from './dtos/complete-invitation.dto';
-import { InvitationsService } from './invitations-service';
+import { InvitationsService } from './invitations.service';
 
 @Controller('invitations')
 export class InvitationsController {

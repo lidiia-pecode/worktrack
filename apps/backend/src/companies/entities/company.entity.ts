@@ -14,8 +14,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { WeekDay } from '../enum/week-day.enum';
-import { CompanyStatus } from '../enum/company-status.enum';
+import { WeekDay } from '../enums/week-day.enum';
+import { CompanyStatus } from '../enums/company-status.enum';
 
 @Entity({ name: 'companies' })
 export class Company {

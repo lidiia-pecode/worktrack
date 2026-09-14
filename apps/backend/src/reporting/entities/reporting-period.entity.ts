@@ -11,7 +11,7 @@ import {
 } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
-import { ReportingPeriodStatus } from '../enum/reporting-period-status.enum';
+import { ReportingPeriodStatus } from '../enums/reporting-period-status.enum';
 
 @Entity('reporting_periods')
 @Check(`"end_date" >= "start_date"`)

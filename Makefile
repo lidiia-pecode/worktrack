@@ -17,7 +17,7 @@ test:
 	docker-compose -f docker-compose.dev.yml exec backend npm test
 
 seed:
-	docker-compose -f docker-compose.dev.yml exec backend npm run seed:admin
+	docker-compose -f docker-compose.dev.yml exec backend npm run seed
 
 init: migrate seed
 

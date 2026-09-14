@@ -1,5 +1,5 @@
-import { UserRole } from 'src/users/enums/UserRole.enum';
-import { WeekDay } from 'src/companies/enum/week-day.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
+import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 
 /**

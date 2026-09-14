@@ -11,11 +11,11 @@ import { ActCategory } from 'src/activity-categories/entities/activities-categor
 import { Project } from 'src/projects/entities/project.entity';
 
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
-import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
-import { ActCategoryStatus } from 'src/activity-categories/enums/category-status';
+import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
 import {

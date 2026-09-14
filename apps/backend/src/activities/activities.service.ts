@@ -10,9 +10,9 @@ import { Activity } from './entities/activity.entity';
 import {
   ActivityPayload,
   UpdateActivityPayload,
-} from './dtos/ActivityPayload.dto';
+} from './dtos/activity-payload.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
-import { ActivitiesQuery } from './dtos/ActivitiesQuery.dto';
+import { ActivitiesQuery } from './dtos/activities-query.dto';
 import { ActivityStatus } from './enums/activity-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';

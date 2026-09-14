@@ -15,7 +15,7 @@ import { Company } from 'src/companies/entities/company.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
-import { UserRole, UserStatus } from '../enums/UserRole.enum';
+import { UserRole, UserStatus } from '../enums/user-role.enum';
 
 @Entity('users')
 @Index('IDX_users_company_id', ['companyId'])

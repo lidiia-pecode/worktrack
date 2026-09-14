@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
-import { ActCategoryStatus } from 'src/activity-categories/enums/category-status';
+import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 
 import { CATEGORIES } from './seed-config';
 

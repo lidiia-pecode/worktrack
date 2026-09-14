@@ -8,9 +8,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ActCategory } from './entities/activities-category.entity';
-import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
-import { ActivityCategoriesQuery } from './dtos/ActivitiesCategoriesQuery.dto';
-import { ActCategoryStatus } from './enums/category-status';
+import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
+import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
+import { ActCategoryStatus } from './enums/category-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
 @Injectable()

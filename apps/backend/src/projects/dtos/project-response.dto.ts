@@ -1,7 +1,7 @@
 import { OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
-import { ProjectActivityResponse } from './ProjectActivityResponse.dto';
-import { UserResponse } from 'src/users/dtos/UserResponse.dto';
+import { ProjectActivityResponse } from './project-activity-response.dto';
+import { UserResponse } from 'src/users/dtos/user-response.dto';
 import { ProjectStatus } from '../enums/project-status.enum';
 
 @Exclude()

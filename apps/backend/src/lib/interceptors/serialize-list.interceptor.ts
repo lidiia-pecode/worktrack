@@ -11,7 +11,7 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ClassConstructor, plainToInstance } from 'class-transformer';
-import { PaginationQuery } from '../dtos/PaginationQuery.dto';
+import { PaginationQuery } from '../dtos/pagination-query.dto';
 import { DEFAULT_PAGINATION_PAGE_SIZE } from '../consts';
 
 type ListResponse<T> = {

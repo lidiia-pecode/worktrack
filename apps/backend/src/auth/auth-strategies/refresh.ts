@@ -7,7 +7,7 @@ import { cookieExtractor } from '../helpers/cookies-extractor';
 import { AuthContext, JwtRefreshPayload } from './types';
 import { UsersService } from 'src/users/users.service';
 import { SessionService } from '../services';
-import { UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 @Injectable()
 export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {

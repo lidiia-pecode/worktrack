@@ -13,7 +13,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { GoogleSignupToken } from '../entities/google-signup-token.entity';
 import { GoogleLinkToken } from '../entities/google-link-token.entity';
-import { UserRole, UserStatus } from 'src/users/enums/UserRole.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
 import { SessionMetadata } from 'src/lib/types/session-metadata';
 import { GoogleLoginResult } from '../auth-strategies/types';

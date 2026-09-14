@@ -14,10 +14,10 @@ import { ActCategoriesService } from './activity-categories.service';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { ActivityCategoryResponse } from './dtos/ActivitiesCategoryResponse.dto';
-import { ActivityCategoryPayload } from './dtos/ActivitiesCategoryPayload.dto';
-import { ActivityCategoriesQuery } from './dtos/ActivitiesCategoriesQuery.dto';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { ActivityCategoryResponse } from './dtos/activities-category-response.dto';
+import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
+import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 @Controller('activity-categories')
 @UseGuards(AccessGuard, RolesGuard)

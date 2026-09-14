@@ -13,20 +13,20 @@ import { ProjectsService } from './projects.service';
 import {
   ProjectPayload,
   UpdateProjectPayload,
-} from './dtos/ProjectPayload.dto';
+} from './dtos/project-payload.dto';
 import {
   ProjectListItemResponse,
   ProjectResponse,
-} from './dtos/ProjectResponse.dto';
+} from './dtos/project-response.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { ProjectActivityResponse } from './dtos/ProjectActivityResponse.dto';
-import { ProjectsQuery } from './dtos/ProjectsQuery.dto';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
-import { UserResponse } from 'src/users/dtos/UserResponse.dto';
+import { ProjectActivityResponse } from './dtos/project-activity-response.dto';
+import { ProjectsQuery } from './dtos/projects-query.dto';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
+import { UserResponse } from 'src/users/dtos/user-response.dto';
 
 @Controller('projects')
 @UseGuards(AccessGuard, RolesGuard)

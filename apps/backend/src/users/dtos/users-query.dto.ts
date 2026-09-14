@@ -1,6 +1,6 @@
 import { IsEnum, IsOptional } from 'class-validator';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
-import { UserStatus } from '../enums/UserRole.enum';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
+import { UserStatus } from '../enums/user-role.enum';
 
 export class UsersQuery extends PaginationQuery {
   @IsOptional()

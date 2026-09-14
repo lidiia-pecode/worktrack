@@ -7,8 +7,8 @@ import { cookieExtractor } from '../helpers/cookies-extractor';
 import { AuthContext, JwtAccessPayload } from './types';
 import { UsersService } from 'src/users/users.service';
 import { SessionService } from '../services';
-import { UserStatus } from 'src/users/enums/UserRole.enum';
-import { CompanyStatus } from 'src/companies/enum/company-status.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
+import { CompanyStatus } from 'src/companies/enums/company-status.enum';
 
 @Injectable()
 export class AccessStrategy extends PassportStrategy(Strategy, 'jwt-access') {

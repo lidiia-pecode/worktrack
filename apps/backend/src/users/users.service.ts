@@ -7,11 +7,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, Repository } from 'typeorm';
-import { CreateUserPayload, UpdateUserPayload } from './dtos/UserPayload.dto';
-import { UpdateProfilePayload } from './dtos/UpdateProfilePayload.dto';
+import { CreateUserPayload, UpdateUserPayload } from './dtos/user-payload.dto';
+import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
-import { UsersQuery } from './dtos/UsersQuery.dto';
-import { UserRole, UserStatus } from './enums/UserRole.enum';
+import { UsersQuery } from './dtos/users-query.dto';
+import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 

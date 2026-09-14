@@ -10,7 +10,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { NormalizeString } from 'src/lib/decorators';
-import { PaginationQuery } from 'src/lib/dtos/PaginationQuery.dto';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { TeamStatus } from '../enums/team-status.enum';
 import { TeamRole } from '../enums/team-role.enum';
 

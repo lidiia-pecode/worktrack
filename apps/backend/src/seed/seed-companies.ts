@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 import { Company } from 'src/companies/entities/company.entity';
-import { CompanyStatus } from 'src/companies/enum/company-status.enum';
+import { CompanyStatus } from 'src/companies/enums/company-status.enum';
 
 import { COMPANY } from './seed-config';
 

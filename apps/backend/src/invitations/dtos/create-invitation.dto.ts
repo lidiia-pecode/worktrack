@@ -1,7 +1,7 @@
 import { IsEmail, IsEnum } from 'class-validator';
 import { NormalizeString } from 'src/lib/decorators';
 
-import { UserRole } from 'src/users/enums/UserRole.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 export class CreateInvitationPayload {
   @NormalizeString()

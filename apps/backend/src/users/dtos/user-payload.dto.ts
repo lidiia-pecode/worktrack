@@ -11,7 +11,7 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../enums/UserRole.enum';
+import { UserRole } from '../enums/user-role.enum';
 import { NormalizeString } from 'src/lib/decorators';
 
 export class CreateUserPayload {
