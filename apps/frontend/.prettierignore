@@ -1,0 +1,6 @@
+# Build output and generated files.
+.next
+next-env.d.ts
+
+# Documentation is written by hand; Prettier only reformats its tables.
+*.md
