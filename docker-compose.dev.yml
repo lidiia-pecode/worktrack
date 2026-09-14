@@ -44,6 +44,8 @@ services:
     volumes:
       - .:/app
       - frontend-node-modules:/app/node_modules
+      - /app/apps/frontend/node_modules
+      - /app/apps/backend/node_modules
       - frontend-next:/app/apps/frontend/.next
 
     depends_on:
