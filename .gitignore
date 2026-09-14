@@ -39,3 +39,4 @@ postgres-data
 !README.md
 !docs/architecture.md
 !docs/business_architecture_docs.md
+!.github/pull_request_template.md
