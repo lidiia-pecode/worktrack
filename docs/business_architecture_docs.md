@@ -395,29 +395,41 @@ The product records time but cannot yet answer the question it exists to answer:
 
 ### Authorization gaps
 
-Two real gaps, not design decisions:
+One real gap, not a design decision:
 
-1. **Project read routes carry no role check.** `GET /projects`,
-   `GET /projects/:id` and `GET /projects/:id/users` filter on `companyId` only,
-   and `ProjectResponse` eagerly includes `users`. Any authenticated employee
-   can enumerate every project in the company with its full roster **including
-   email addresses**.
-2. **Manager scope is missing from planned-vs-actual.**
+1. **Manager scope is incomplete in planned-vs-actual.**
    `ReportingService.getPlannedVsActualReport` pins an EMPLOYEE to their own
-   data, but the MANAGER branch contains a literal `TODO` where the team check
-   should be. A manager who calls it without a `userId` receives **company-wide**
-   aggregates.
+   data, and a MANAGER who names a `userId` is now checked against
+   `isUserInManagedTeams`. But that check only runs *when a `userId` is given*.
+   A manager who calls the endpoint without one leaves the user filter unset, so
+   the aggregates are scoped by `companyId` alone and come back **company-wide**.
 
-Compounding the first: `/admin/*` is not in the middleware's guarded prefix list,
-and the admin pages check only for a session, not for a role. An employee who
-navigates directly to an admin route renders the admin UI, and the backend then
-serves it project data.
+A second gap remains on the frontend, though it no longer leaks data:
+the admin pages check only for a session, not for a role, so an employee who
+navigates to an admin route still renders the admin UI. The backend now refuses
+to fill it — every admin project route answers an employee with 403 — so what
+is left is a broken-looking screen rather than an exposure.
+
+**Closed since this section was written.** The project read routes
+(`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
+on `companyId` only, letting any employee enumerate every project with its full
+roster. They now carry an OWNER/MANAGER role guard. `/admin/*` was also added to
+the middleware's guarded prefix list, so an unauthenticated visitor is
+redirected to login.
 
 ### Engineering state
 
-No tests anywhere — Jest is configured and zero spec files match. No CI. No
-production Docker configuration. Access tokens live one minute, so sessions drop
-during ordinary use even though refresh works.
+Test coverage has started but is thin: a single suite,
+`team-visibility.service.spec.ts`, covering the role-visibility filters against
+a real database. Nothing else is covered, and there is still no CI, so even that
+suite runs only when someone remembers to.
+
+The backend has a production image (`apps/backend/Dockerfile`) and migrations
+can run as a deployment release step. The frontend has no image on purpose — it
+is built by its host. Nothing is hosted yet.
+
+Access tokens live one minute, so sessions drop during ordinary use even though
+refresh works.
 
 ---
 
@@ -575,10 +587,10 @@ earlier if invoicing needs them sooner.*
 Not last in importance, only in sequence — parts of it should be pulled forward
 whenever the pain justifies it.
 
-Meaningful test coverage beyond Phase 0's start; CI; production Docker
-configuration; a sane access-token lifetime (one minute drops sessions during
-ordinary use); reminders for people who have not logged their week, if wanted
-(§10 Q5); and the accessibility and dead-code items listed as TODOs in the
+Meaningful test coverage beyond Phase 0's start; CI; a sane access-token
+lifetime (one minute drops sessions during ordinary use); a role check on the
+admin routes in the frontend; reminders for people who have not logged their
+week, if wanted (§10 Q5); and the accessibility items listed as TODOs in the
 frontend documentation.
 
 ---
@@ -613,7 +625,7 @@ Short list. These are the things that would be expensive or dangerous to break.
 2. **Tenant isolation is enforced in services, never assumed from the request.**
    Every domain query filters on `companyId`.
 3. **Role visibility is computed in one place per resource.** Reuse
-   `applyVisibilityFilter`; never write a second copy of the manager/team SQL.
+   `applyUserVisibility`; never write a second copy of the manager/team SQL.
 4. **Time logging never consults the plan** (D3).
 5. **Locked periods are immutable** — including moving an entry into or out of
    one (D5).
