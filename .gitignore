@@ -16,6 +16,10 @@ dist
 .next
 coverage
 
+# Next regenerates this on dev and build, and the two write different paths
+# into it, so a tracked copy is dirty after every build.
+next-env.d.ts
+
 # TypeScript
 *.tsbuildinfo
 

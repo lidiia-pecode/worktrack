@@ -5,6 +5,9 @@
     "apps/backend",
     "apps/frontend"
   ],
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
     "backend": "cd apps/backend && npm run start:dev",
     "frontend": "cd apps/frontend && npm run dev",
