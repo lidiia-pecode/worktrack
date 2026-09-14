@@ -421,8 +421,9 @@ redirected to login.
 
 Test coverage has started but is thin: a single suite,
 `team-visibility.service.spec.ts`, covering the role-visibility filters against
-a real database. Nothing else is covered, and there is still no CI, so even that
-suite runs only when someone remembers to.
+a real database. Nothing else is covered, but GitHub Actions now runs that suite
+on every pull request, alongside lint, typecheck and build for both
+applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations
 can run as a deployment release step. The frontend has no image on purpose — it

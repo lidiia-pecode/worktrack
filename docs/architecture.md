@@ -70,6 +70,7 @@ log.
 | [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
 | [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
 | [`docs/current-scope.md`](./current-scope.md) | The next implementation scope — what to build now |
+| [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
 
 ## Where to start for a given task
 
@@ -81,6 +82,7 @@ log.
 | Build a screen | `frontend-context.md` → Data layer + Shared components |
 | Change colours or styling | `frontend-context.md` → Visual foundation, then `globals.css` |
 | Schema change | `backend-context.md` → Data model, then `src/migrations/` |
+| Get a change reviewed and merged | `workflow.md` |
 
 ## Current state
 
@@ -94,9 +96,10 @@ backend's `planning` and `reporting` modules.
 
 Test coverage has started but is narrow: one suite,
 `team-visibility.service.spec.ts`, covering the role-visibility filters against
-a real database. There is no CI yet, so nothing runs it automatically. The
-backend has a production image (`apps/backend/Dockerfile`); the frontend has
-none by design, because it is built by its host.
+a real database. GitHub Actions runs it, along with lint, typecheck and build
+for both applications, on every pull request. The backend has a production image
+(`apps/backend/Dockerfile`); the frontend has none by design, because it is
+built by its host.
 
 See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
 fuller assessment and §7 for the order the remaining work should be built in.
