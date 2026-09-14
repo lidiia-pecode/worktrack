@@ -27,5 +27,8 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
+  },
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
   }
 }
