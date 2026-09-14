@@ -53,6 +53,8 @@ ${projects}
 > \`*.md\` by default. Re-run \`make seed\` to recreate it.
 `;
 
+  // Everything in docs/ is gitignored, so a fresh clone has no such folder.
+  fs.mkdirSync(path.dirname(TARGET), { recursive: true });
   fs.writeFileSync(TARGET, content, 'utf8');
 
   return TARGET;
