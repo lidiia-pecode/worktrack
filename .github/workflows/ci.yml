@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same branch makes the running check obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    env:
+      # The build only needs these to be set and syntactically valid — nothing
+      # is fetched from the backend while building.
+      BACKEND_URL: http://localhost:3001
+      NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -w apps/frontend
+
+      # Before the typecheck: tsconfig includes .next/types, which only a build
+      # writes, so typechecking first fails on any route that was just added.
+      - name: Build
+        run: npm run build -w apps/frontend
+
+      - name: Typecheck
+        run: npm run typecheck -w apps/frontend
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    services:
+      # Thrown away with the job. These credentials protect nothing and are
+      # deliberately not secrets.
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: worktrack
+          POSTGRES_USER: worktrack
+          POSTGRES_PASSWORD: worktrack
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U worktrack -d worktrack"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgres://worktrack:worktrack@localhost:5432/worktrack
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint -w apps/backend
+
+      - name: Typecheck
+        run: npm run typecheck -w apps/backend
+
+      - name: Build
+        run: npm run build -w apps/backend
+
+      # The tests run real SQL against this database, so the schema has to exist
+      # before they start.
+      - name: Run migrations
+        run: npm run migration:run -w apps/backend
+
+      - name: Test
+        run: npm run test -w apps/backend
