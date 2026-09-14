@@ -34,6 +34,7 @@ export const envValidationSchema = Joi.object({
     .pattern(/^(\d+[smhd]|\d+)$/)
     .default('1m'),
 
+  REFRESH_TOKEN_SECRET: Joi.string().min(32).required(),
   REFRESH_TOKEN_EXPIRES_IN: Joi.string()
     .pattern(/^(\d+[smhd]|\d+)$/)
     .default('30d'),
@@ -71,13 +72,17 @@ export const envValidationSchema = Joi.object({
     .pattern(/^\d+[smhd]$/)
     .default('15m'),
 
+  INVITATION_EXPIRES_IN: Joi.string()
+    .pattern(/^\d+[smhd]$/)
+    .default('1d'),
+
   RESEND_API_KEY: Joi.string().required(),
 
   MAIL_FROM: Joi.string().required(),
 
   // Frontend & App
   FRONTEND_URL: Joi.string().uri().required(),
-  PORT: Joi.number().port().default(3000),
+  PORT: Joi.number().port().default(3001),
 
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
