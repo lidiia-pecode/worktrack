@@ -135,6 +135,22 @@ Two things worth knowing:
   Set `DATABASE_URL` (and `DATABASE_SSL=true`) and the discrete `DB_*` variables
   are ignored.
 
+## Contributing
+
+`main` is protected — direct pushes are rejected. Branch off `main`, open a pull
+request, and merge it with **Squash and merge** once the `Frontend` and
+`Backend` checks pass.
+
+```bash
+git checkout main && git pull
+git checkout -b feat/short-description
+git push -u origin feat/short-description
+gh pr create
+```
+
+[`docs/workflow.md`](docs/workflow.md) has the full loop, the branch naming, what
+CI runs, and the rules for changes that touch the database.
+
 ## Documentation
 
 | Document                                                                           | Covers                                                 |
@@ -142,6 +158,7 @@ Two things worth knowing:
 | [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here     |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
 | [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)                |
+| [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
 | [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles         |
 | [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth                 |
 | [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components         |
@@ -158,5 +175,5 @@ reporting views are not. Test coverage has started with the role-visibility
 filters.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
-migrations can run as a deployment release step. Nothing is hosted yet, and
-there is no CI pipeline.
+migrations can run as a deployment release step. Pull requests are checked by
+GitHub Actions, and `main` is protected. Nothing is hosted yet.
