@@ -73,7 +73,14 @@ For the first project setup (or after resetting the database), initialize the da
 make setup
 ```
 
-This command runs all database migrations and seeds the default administrator account.
+This command runs all database migrations and seeds one test company with users,
+projects, activities, teams, planning and time logs.
+
+`make seed` creates the **WorkTrack Demo** company with five test users — an
+owner, a manager and three employees. The logins are written to
+`apps/backend/docs/TEST-CREDENTIALS.md` (ignored by Git) every time you seed.
+To change what gets created, edit `apps/backend/src/seed/seed-config.ts` and
+re-run `make seed`.
 
 ## Available Commands
 
@@ -82,8 +89,9 @@ make up         # Start development containers
 make down       # Stop containers
 make down-hard  # Stop containers and remove database volumes
 make migrate    # Run database migrations
-make seed       # Seed the administrator account
+make seed       # Seed the test company and write TEST-CREDENTIALS.md
 make init       # Run migrations and seed data
+make test       # Run backend tests (needs the stack running)
 make setup      # First-time project setup (up + init)
 make dev        # Start development environment
 ```
@@ -101,15 +109,15 @@ Database credentials for Docker are configured through the root environment vari
 
 ## Documentation
 
-| Document                                                                           | Covers                                             |
-| :--------------------------------------------------------------------------------- | :------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here |
+| Document                                                                           | Covers                                                 |
+| :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
+| [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here     |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
-| [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)            |
-| [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles     |
-| [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth             |
-| [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components     |
-| [`CLAUDE.md`](CLAUDE.md)                                                           | Coding conventions and workflow rules              |
+| [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)                |
+| [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles         |
+| [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth                 |
+| [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components         |
+| [`CLAUDE.md`](CLAUDE.md)                                                           | Coding conventions and workflow rules                  |
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 
@@ -117,4 +125,5 @@ The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 
 Under active development. The employee timesheet and admin CRUD for users,
 teams, projects, activities and categories are implemented. Manager/owner
-reporting views, tests, CI/CD and production Docker configuration are not.
+reporting views, CI/CD and production Docker configuration are not. Test
+coverage has started with the role-visibility filters.
