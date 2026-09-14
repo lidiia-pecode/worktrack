@@ -50,18 +50,10 @@ export async function proxy(req: NextRequest) {
       request: { headers: requestHeaders },
     });
 
+    // Forward the backend's cookies untouched: it already decides secure,
+    // sameSite and how long they live. Rebuilding them here dropped Max-Age.
     setCookieHeader.forEach((raw) => {
-      const [nameValue] = raw.split(";");
-      const eqIdx = nameValue.indexOf("=");
-      response.cookies.set(
-        nameValue.slice(0, eqIdx).trim(),
-        nameValue.slice(eqIdx + 1).trim(),
-        {
-          httpOnly: true,
-          path: "/",
-          sameSite: "lax",
-        },
-      );
+      response.headers.append("Set-Cookie", raw);
     });
 
     return handleRouteGuards(pathname, true, req, response);
