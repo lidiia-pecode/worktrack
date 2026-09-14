@@ -8,10 +8,10 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ActivitiesModule } from './activities/activities.module';
 import { ActCategoriesModule } from './activity-categories/activity-categories.module';
-import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 import { PlanningModule } from './planning/planning.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { envValidationSchema } from './config/env.validation';
+import { databaseConnectionOptions } from './config/database.options';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
@@ -44,16 +44,8 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.getOrThrow<string>('DB_HOST'),
-        port: config.get<number>('DB_PORT'),
-        username: config.getOrThrow<string>('DB_USERNAME'),
-        password: config.getOrThrow<string>('DB_PASSWORD'),
-        database: config.getOrThrow<string>('DB_NAME'),
+        ...databaseConnectionOptions((key) => config.get<string>(key)),
         autoLoadEntities: true,
-        synchronize: false,
-        logging: config.getOrThrow<string>('NODE_ENV') !== 'production',
-        namingStrategy: new SnakeNamingStrategy(),
       }),
     }),
     UsersModule,

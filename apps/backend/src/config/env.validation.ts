@@ -2,11 +2,31 @@ import * as Joi from 'joi';
 
 export const envValidationSchema = Joi.object({
   // Database Configuration
-  DB_HOST: Joi.string().required(),
+  // Either DATABASE_URL on its own, or the five DB_* values.
+  DATABASE_URL: Joi.string().uri({ scheme: ['postgres', 'postgresql'] }),
+  DATABASE_SSL: Joi.boolean().default(false),
+
+  DB_HOST: Joi.string().when('DATABASE_URL', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
   DB_PORT: Joi.number().port().default(5432),
-  DB_USERNAME: Joi.string().required(),
-  DB_PASSWORD: Joi.string().required(),
-  DB_NAME: Joi.string().required(),
+  DB_USERNAME: Joi.string().when('DATABASE_URL', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
+  DB_PASSWORD: Joi.string().when('DATABASE_URL', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
+  DB_NAME: Joi.string().when('DATABASE_URL', {
+    is: Joi.exist(),
+    then: Joi.optional(),
+    otherwise: Joi.required(),
+  }),
 
   // JWT Configuration
   ACCESS_TOKEN_SECRET: Joi.string().min(32).required(),
