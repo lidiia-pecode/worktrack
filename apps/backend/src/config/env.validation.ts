@@ -87,4 +87,7 @@ export const envValidationSchema = Joi.object({
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
+
+  // Unset means: on outside production, off in production.
+  ENABLE_SWAGGER: Joi.boolean(),
 });
