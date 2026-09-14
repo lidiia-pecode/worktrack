@@ -64,10 +64,6 @@ export async function proxy(req: NextRequest) {
       );
     });
 
-    // console.log("[AUTH] access token exists:", !!accessToken);
-    // console.log("[AUTH] access token expired:", accessTokenExpired);
-    // console.log("[AUTH] refresh token exists:", !!refreshToken);
-
     return handleRouteGuards(pathname, true, req, response);
   }
 
@@ -95,7 +91,6 @@ function handleRouteGuards(
 
   if (!isAuthenticated && isProtectedRoute) {
     const loginUrl = new URL("/login", req.url);
-    // loginUrl.searchParams.set("returnTo", pathname);
 
     return NextResponse.redirect(loginUrl);
   }

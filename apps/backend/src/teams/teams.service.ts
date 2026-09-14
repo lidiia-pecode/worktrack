@@ -184,8 +184,6 @@ export class TeamsService {
       where: { id: dto.userId, companyId },
     });
 
-    console.log('dto.roleInTeam', dto.roleInTeam);
-
     if (!user) {
       throw new NotFoundException(
         `User with id ${dto.userId} not found in this company`,

@@ -35,7 +35,7 @@ Browser
   │
   ├─ page request ──► proxy.ts (Next middleware)
   │                     · refreshes expired access tokens transparently
-  │                     · route guards, redirects to /login?returnTo=
+  │                     · route guards, redirects to /login
   │                   └─► Server Component ──► getCurrentUser() ──► GET /users/me
   │
   └─ data request ──► apiClient (TanStack Query)
