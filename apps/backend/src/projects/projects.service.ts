@@ -394,27 +394,6 @@ export class ProjectsService {
     return { results, count };
   }
 
-  async listActivities(
-    projectId: string,
-    query: PaginationQuery,
-    user: AuthUser,
-  ) {
-    await this.getById(projectId, user);
-
-    const [results, count] = await this.projectActivityRepo.findAndCount({
-      where: {
-        project: { id: projectId, companyId: user.companyId },
-        isActive: true,
-      },
-      relations: ['activity', 'activity.category'],
-      skip: query.offset,
-      take: query.limit,
-      order: { createdAt: 'ASC' },
-    });
-
-    return { results, count };
-  }
-
   async listUsers(projectId: string, query: PaginationQuery, user: AuthUser) {
     const project = await this.repo.findOne({
       where: { id: projectId, companyId: user.companyId },

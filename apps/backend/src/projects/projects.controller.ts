@@ -89,7 +89,7 @@ export class ProjectsController {
   }
 
   // Open to everyone: employees need it for the timesheet picker, and it only
-  // returns their own projects. Must stay declared before `:id/activities`.
+  // returns their own projects.
   @Get('me/activities')
   @SerializeList(ProjectActivityResponse)
   listAssignableActivities(
@@ -97,18 +97,6 @@ export class ProjectsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.listAssignableActivities(query, user);
-  }
-
-  // TODO: still open to any employee, for any project. Nothing calls it —
-  // decide whether to role-guard or remove it.
-  @Get(':id/activities')
-  @SerializeList(ProjectActivityResponse)
-  listActivities(
-    @Param('id', ParseUUIDPipe) projectId: string,
-    @Query() query: PaginationQuery,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.listActivities(projectId, query, user);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

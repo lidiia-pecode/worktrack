@@ -23,9 +23,6 @@ const buildQuery = (params?: PaginationParams): string => {
 };
 
 export const ProjectActivitiesClientApi = {
-  getAll: (projectId: string) =>
-    client.get<ProjectActivityListResponse>(`/${projectId}/activities`),
-
   getMine: (params?: PaginationParams) =>
     client.get<ProjectActivityListResponse>(
       `/me/activities${buildQuery(params)}`,
