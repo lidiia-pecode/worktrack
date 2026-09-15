@@ -1,4 +1,4 @@
-import { BACKEND_URL } from "@/lib/constants";
+import { BACKEND_URL } from "@/lib/constants/backend-url";
 import { getCookieHeader } from "./cookie-helper";
 
 export async function refreshSession() {
