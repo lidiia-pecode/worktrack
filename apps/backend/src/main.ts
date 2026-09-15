@@ -15,7 +15,9 @@ import { DatabaseExceptionFilter } from './filters/database-exception.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  app.set('trust proxy', 2);
+  // How many proxies sit in front of us. Too high and a client can fake its
+  // own IP through X-Forwarded-For, which would let it dodge the rate limits.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
   app.useGlobalFilters(new DatabaseExceptionFilter());
   app.use(cookieParser());
   app.useGlobalPipes(
