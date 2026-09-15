@@ -96,7 +96,7 @@ export class InvitationsController {
   ): void {
     this.cookieService.setInvitationFlowCookie(res, token);
 
-    res.redirect('/invitations/google/authorize');
+    res.redirect('./google/authorize');
   }
 
   @Get('google/authorize')
