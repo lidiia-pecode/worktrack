@@ -16,10 +16,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      # The build only needs these to be set and syntactically valid — nothing
-      # is fetched from the backend while building.
+      # The build only needs a valid value here; no backend requests are made
+      # during the build.
       BACKEND_URL: http://localhost:3001
-      NEXT_PUBLIC_BACKEND_URL: http://localhost:3001
 
     steps:
       - uses: actions/checkout@v4

@@ -19,7 +19,7 @@ import {
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { PUBLIC_BACKEND_URL } from "@/lib/constants";
+import { GOOGLE_LINK_URL } from "@/lib/constants";
 import Link from "next/link";
 
 export const SecuritySettings = () => {
@@ -30,7 +30,7 @@ export const SecuritySettings = () => {
   const isGoogleLinked = user?.googleLinked;
 
   const handleGoogleLink = () => {
-    window.location.href = `${PUBLIC_BACKEND_URL}/auth/google/link`;
+    window.location.href = GOOGLE_LINK_URL;
   };
 
   const {
