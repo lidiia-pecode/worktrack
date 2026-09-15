@@ -36,7 +36,8 @@ git push -u origin feat/team-week-grid
 gh pr create                          # the PR template asks for what changed and why
 ```
 
-Then wait for CI, and merge with **Squash and merge** — the only option enabled.
+Then wait for CI, open the preview Vercel comments on the PR and click through
+the change, and merge with **Squash and merge** — the only option enabled.
 One PR becomes one commit on `main`, which keeps the history readable and makes
 `git revert` a single reliable operation.
 
@@ -50,9 +51,9 @@ One PR becomes one commit on `main`, which keeps the history readable and makes
 | **Frontend** | `npm ci` → lint → build → typecheck |
 | **Backend** | `npm ci` → lint → typecheck → build → migrations → test |
 
-Both are required to pass before a PR can merge, and a branch has to be up to
-date with `main` — if `main` moves while the PR is open, update the branch and
-the checks run again.
+Both are required to pass before a PR can merge, along with Vercel's own
+**Vercel** check, and a branch has to be up to date with `main` — if `main` moves
+while the PR is open, update the branch and the checks run again.
 
 Node comes from `.nvmrc`, and the backend job gets a throwaway Postgres 16
 service container. Migrations run against it before the tests, because the tests
@@ -92,10 +93,73 @@ added to a populated table.
 
 ## Deployment
 
-Not set up yet. Nothing is hosted, so `main` is the last step in this workflow
-today rather than a trigger for anything.
+One environment so far: a shared development stand. There is no production yet —
+it will be a second copy of the same two services when there is a reason for one.
 
-The plan is Vercel for the frontend with a preview deployment per pull request,
-and a single long-running backend service that builds from the Dockerfile and
-runs `migration:run:prod` as its pre-deploy step. When that exists, this section
-gains the preview URL step and a rollback procedure.
+| Part | Runs on | URL |
+| :--- | :--- | :--- |
+| Frontend | Vercel, root directory `apps/frontend` | `worktrack-frontend-roan.vercel.app` |
+| Backend | Render, one Docker service built from `apps/backend/Dockerfile` | `worktrack-backend-wa4t.onrender.com` |
+| Database | Neon, managed Postgres | — |
+
+**The browser never calls the backend directly.** It calls `/api/backend/*` on
+the frontend's own domain and a Next rewrite forwards it server-side. That is
+what keeps auth cookies on the frontend's domain, and it is why the four Google
+callback URLs point at the frontend's proxy path rather than at the backend. It
+is also why `BACKEND_URL` must stay out of anything the browser loads.
+
+### On a pull request
+
+Vercel builds a preview of the frontend and comments the URL on the PR. Its
+**Vercel** check has to pass alongside `Frontend` and `Backend`. Open the preview
+and click through the change — that is the part CI cannot do for you, and it is
+what catches things that only break in a production build.
+
+Every preview talks to the same backend, so a PR that changes the backend needs
+its branch deployed to Render before its preview means anything.
+
+Google sign-in from a preview finishes on the main frontend domain rather than
+the preview, because the callback URLs are a single fixed value. Everything else
+on a preview behaves normally.
+
+### On merge to `main`
+
+Vercel builds and promotes the frontend. Render rebuilds the backend image and
+swaps the service over.
+
+**Migrations are not automatic.** Render's pre-deploy command is a paid feature,
+so a migration is run by hand against Neon before the code that needs it merges.
+That has to become a real release step before any of this is called production.
+
+### Environment variables
+
+Set in each host's dashboard. Nothing secret lives in the repository; the
+`.env.sample` files are the contract.
+
+Vercel needs one variable, `BACKEND_URL`, scoped to both Production and Preview.
+`next.config.ts` reads it at **build** time, so it has to be set before a build,
+not only at runtime.
+
+Render needs everything marked required in `apps/backend/.env.sample`, plus
+`DATABASE_URL`, `DATABASE_SSL=true`, `NODE_ENV=production` and
+`AUTH_COOKIE_SECURE=true`. Its secrets differ from the local ones deliberately: a
+token from one environment must not be valid in another.
+
+### Rollback
+
+| Broken | Do |
+| :--- | :--- |
+| Frontend | Vercel → previous deployment → *Promote to Production*. Seconds, no rebuild. |
+| Backend | Redeploy the previous commit from the Render dashboard. |
+| Both | Roll back both, then `git revert` the squash commit through a PR, so the repository matches what is running. |
+| A migration | Do not reach for `migration:revert`. It only helps if it was the last one and nothing has written data since. Default to a forward fix in a new PR. |
+
+### What the free tier costs you
+
+The backend sleeps after 15 minutes idle and takes about a minute to wake, and
+the Neon compute suspends after 5. A slow first request after a quiet spell is
+normal here, not a fault. Render's dashboard saying "Live" also does not mean new
+environment variables are in use — check the running service, not the dashboard.
+
+Vercel's Hobby plan is for non-commercial use, so this arrangement needs paid
+plans the day the project becomes real work.

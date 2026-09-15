@@ -426,8 +426,9 @@ on every pull request, alongside lint, typecheck and build for both
 applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations
-can run as a deployment release step. The frontend has no image on purpose — it
-is built by its host. Nothing is hosted yet.
+run as a deployment step. The frontend has no image on purpose — it is built by
+its host. A shared development stand is deployed on Vercel, Render and Neon; there
+is no production environment yet.
 
 Access tokens live one minute, so sessions drop during ordinary use even though
 refresh works.

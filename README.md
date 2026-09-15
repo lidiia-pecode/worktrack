@@ -175,5 +175,8 @@ reporting views are not. Test coverage has started with the role-visibility
 filters.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
-migrations can run as a deployment release step. Pull requests are checked by
-GitHub Actions, and `main` is protected. Nothing is hosted yet.
+migrations run as a deployment step. Pull requests are checked by GitHub Actions
+and by a Vercel preview build, and `main` is protected. A shared development
+stand is deployed — Vercel for the frontend, Render for the backend, Neon for the
+database; see [`docs/workflow.md`](docs/workflow.md). There is no production
+environment yet.
