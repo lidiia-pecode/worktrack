@@ -84,6 +84,8 @@ export const envValidationSchema = Joi.object({
   FRONTEND_URL: Joi.string().uri().required(),
   PORT: Joi.number().port().default(3001),
 
+  TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(1),
+
   NODE_ENV: Joi.string()
     .valid('development', 'production', 'test')
     .default('development'),
