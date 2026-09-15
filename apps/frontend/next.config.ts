@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-import { BACKEND_URL } from "./lib/constants/api";
+import { BACKEND_URL } from "./lib/constants/backend-url";
 
 const nextConfig: NextConfig = {
   async rewrites() {

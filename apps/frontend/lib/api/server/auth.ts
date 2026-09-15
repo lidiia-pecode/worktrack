@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { BACKEND_URL } from "@/lib/constants";
+import { BACKEND_URL } from "@/lib/constants/backend-url";
 import { User } from "@/types";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { getCookieHeader } from "./cookie-helper";
