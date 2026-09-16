@@ -131,6 +131,14 @@ swaps the service over.
 so a migration is run by hand against Neon before the code that needs it merges.
 That has to become a real release step before any of this is called production.
 
+That hand-run has not been done yet. Connecting from a laptop is proven —
+`migration:show` against Neon lists all six migrations as applied, so the
+connection string, TLS and the TypeORM setup all work — but `migration:run:prod`
+has never applied anything there, because nothing has been pending. The first
+real schema change is what verifies it: release it in the order above, with the
+compiled `dist/data-source.js`, and note anything this section gets wrong. Do
+not write a migration just to rehearse with.
+
 ### Environment variables
 
 Set in each host's dashboard. Nothing secret lives in the repository; the
