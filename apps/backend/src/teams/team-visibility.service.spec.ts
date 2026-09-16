@@ -207,9 +207,7 @@ describe('TeamVisibilityService', () => {
     });
 
     it('lets an employee see only themselves', async () => {
-      await expect(visibleUserIds(member)).resolves.toEqual(
-        sorted(member, owner),
-      );
+      await expect(visibleUserIds(member)).resolves.toEqual(sorted(member));
     });
 
     it('never reaches across companies', async () => {
