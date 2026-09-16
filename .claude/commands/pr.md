@@ -1,6 +1,6 @@
 ---
 description: Write the PR body for the current branch into .pr-body.md
-allowed-tools: Bash(git rev-parse:*), Bash(git status:*), Bash(git log:*), Bash(git diff:*), Write
+allowed-tools: Bash(git rev-parse:*), Bash(git status:*), Bash(git log:*), Bash(git diff:*), Bash(git merge-base:*), Write
 ---
 
 # /pr — write the PR body for this branch
@@ -14,19 +14,22 @@ the PR themselves.
 ```bash
 git rev-parse --abbrev-ref HEAD
 git status --short
-git log --format='%s%n%b' origin/main..HEAD
-git diff --stat origin/main
-git diff origin/main
+BASE=$(git merge-base origin/main HEAD)
+git log --format='%s%n%b' "$BASE"..HEAD
+git diff --stat "$BASE"
+git diff "$BASE"
 ```
 
-All read-only. This compares against the local `origin/main` ref and does not
-fetch; if it looks stale, say so and let the user run `git fetch` themselves.
+All read-only. Compare against the merge base, never against `origin/main`
+itself: on a branch that is behind, everything `main` gained since would show up
+as if this branch had deleted it. Nothing is fetched here, so if `origin/main`
+looks stale, say so and let the user run `git fetch` themselves.
 
 **The diff is the source of truth, not the commit list.** A branch that was
 squash-merged, or one carrying fixup commits, lists commits whose content is no
-longer part of the change. `git diff origin/main` includes uncommitted work in
-tracked files; check `git status --short` for untracked files that belong to the
-change and describe those too.
+longer part of the change. The diff includes uncommitted work in tracked files;
+check `git status --short` for untracked files that belong to the change and
+describe those too.
 
 ## 2. Write the two sections
 
