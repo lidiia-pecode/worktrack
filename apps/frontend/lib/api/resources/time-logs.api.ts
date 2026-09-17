@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  TeamSummary,
+  TeamSummaryQuery,
   TimeLog,
   TimeLogListResponse,
   TimeLogPayload,
@@ -8,7 +10,7 @@ import {
   UpdateTimeLogPayload,
 } from "@/types";
 
-import { createClient, createCrudClient } from "../core";
+import { buildQueryString, createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   TimeLog,
@@ -25,4 +27,7 @@ const client = createClient({ endpoint: "time-logs" });
 export const TimeLogsClientApi = {
   ...crud,
   delete: (id: string) => client.delete(`/${id}`),
+
+  getTeamSummary: (params: TeamSummaryQuery) =>
+    client.get<TeamSummary>(`/summary${buildQueryString(params)}`),
 };

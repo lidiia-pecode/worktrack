@@ -42,3 +42,49 @@ export interface TimeLogsQuery extends PaginationParams {
 }
 
 export type TimeLogListResponse = PaginatedResponse<TimeLog>;
+
+/**
+ * Params for the team summary. A type rather than an interface so it stays
+ * assignable to the query-key params, and there is no pagination to omit.
+ */
+export type TeamSummaryQuery = {
+  dateFrom: string;
+  dateTo: string;
+  teamId?: string;
+  projectId?: string;
+};
+
+// Mirrors the backend `TeamSummaryResponse` DTO.
+export interface TeamSummaryUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  position?: string | null;
+  avatarUrl?: string | null;
+}
+
+export interface TeamSummaryDay {
+  date: string;
+  minutes: number;
+  billableMinutes: number;
+  nonBillableMinutes: number;
+}
+
+export interface TeamSummaryRow {
+  user: TeamSummaryUser;
+  minutes: number;
+  billableMinutes: number;
+  nonBillableMinutes: number;
+  /** Only the days this person logged on, ascending. */
+  days: TeamSummaryDay[];
+}
+
+export interface TeamSummary {
+  dateFrom: string;
+  dateTo: string;
+  minutes: number;
+  billableMinutes: number;
+  nonBillableMinutes: number;
+  rows: TeamSummaryRow[];
+}

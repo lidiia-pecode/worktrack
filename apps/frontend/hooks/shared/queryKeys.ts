@@ -79,6 +79,9 @@ export const queryKeys = {
       createListKey("timelogs", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("timelogs", params),
+
+    teamSummary: (params?: QueryParams) =>
+      ["timelogs", "team-summary", params ?? {}] as const,
   },
 
   projectActivities: {
