@@ -37,4 +37,4 @@ export class TimeLogPayload {
   date!: string;
 }
 
-export class UpdateTimelogPayload extends PartialType(TimeLogPayload) {}
+export class UpdateTimeLogPayload extends PartialType(TimeLogPayload) {}

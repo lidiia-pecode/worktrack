@@ -60,6 +60,35 @@ export class TeamVisibilityService {
     });
   }
 
+  /**
+   * Filters the query to users who are currently members of the given team.
+   *
+   * The caller's visibility scope is applied separately, so passing a team
+   * the caller cannot access results in no matching users.
+   */
+  applyTeamMembershipFilter<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+    userColumn: string,
+    teamId: string | undefined,
+    user: AuthUser,
+  ): void {
+    if (!teamId) return;
+
+    qb.andWhere(
+      `${userColumn} IN (
+        SELECT tm_team.user_id
+        FROM team_memberships tm_team
+        WHERE tm_team.team_id = :teamFilterTeamId
+          AND tm_team.left_at IS NULL
+          AND tm_team.company_id = :teamFilterCompanyId
+      )`,
+      {
+        teamFilterTeamId: teamId,
+        teamFilterCompanyId: user.companyId,
+      },
+    );
+  }
+
   /** True when the caller currently leads a team the given user belongs to. */
   async isUserInManagedTeams(userId: string, user: AuthUser): Promise<boolean> {
     return this.repo
