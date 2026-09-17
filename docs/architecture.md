@@ -55,9 +55,12 @@ session-bound HMAC hashes.
 `OWNER | MANAGER | EMPLOYEE`. Owners administer the company, managers administer
 resources and see the people in teams they lead, employees log their own time.
 
-The rule worth internalising: **read visibility widens with role, write
-ownership never does.** No role can create, edit or delete another user's time
-log.
+The rule worth internalising: **write access to a time entry matches read
+visibility** — owners company-wide, managers within the teams they lead,
+employees themselves. In the code today no role can create, edit or delete
+another user's time log; D9 in
+[`business_architecture_docs.md`](./business_architecture_docs.md) is agreed but
+not yet built.
 
 ## Documentation map
 

@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { useManagerSetupState } from "@/hooks/auth/useOnboarding";
 
+import { useSetupCompleteRedirect } from "./useSetupCompleteRedirect";
+import { SetupSkeleton } from "./SetupSkeleton";
+
 type SetupStep = {
   id:
     | "team"
@@ -36,12 +39,10 @@ type SetupStep = {
 export function ManagerWorkspaceSetup() {
   const { data, isLoading, isError } = useManagerSetupState();
 
+  useSetupCompleteRedirect(data?.setupComplete);
+
   if (isLoading) {
-    return (
-      <section className="w-full max-w-3xl">
-        <div className="h-40 animate-pulse rounded-xl border border-border bg-card" />
-      </section>
-    );
+    return <SetupSkeleton />;
   }
 
   if (isError || !data) {
@@ -146,7 +147,7 @@ export function ManagerWorkspaceSetup() {
   const progress = (completedCount / steps.length) * 100;
 
   if (isComplete) {
-    return null;
+    return <SetupSkeleton />;
   }
 
   const currentStep = steps.find((step) => !step.completed && !step.locked);

@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ArrowRight, Check, Lock, UserPlus, UsersRound } from "lucide-react";
 import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
 
+import { useSetupCompleteRedirect } from "./useSetupCompleteRedirect";
+import { SetupSkeleton } from "./SetupSkeleton";
+
 type SetupStep = {
   id: "team" | "inviteManager" | "managerJoined" | "assignManager";
 
@@ -19,12 +22,10 @@ type SetupStep = {
 export function WorkspaceSetup() {
   const { data, isLoading, isError } = useOwnerSetupState();
 
+  useSetupCompleteRedirect(data?.setupComplete);
+
   if (isLoading) {
-    return (
-      <section className="w-full max-w-3xl">
-        <div className="h-40 animate-pulse rounded-xl border border-border bg-card" />
-      </section>
-    );
+    return <SetupSkeleton />;
   }
 
   if (isError || !data) {
@@ -78,8 +79,9 @@ export function WorkspaceSetup() {
 
   const progress = (completedCount / steps.length) * 100;
 
+  // The redirect to /team is already in flight; do not flash an empty page.
   if (isComplete) {
-    return null;
+    return <SetupSkeleton />;
   }
 
   const currentStep = steps.find((step) => !step.completed && !step.locked);

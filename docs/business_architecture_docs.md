@@ -182,6 +182,53 @@ reliable client-level reporting becomes a requirement — most likely if WorkTra
 is ever extended to other businesses — promoting clients to an entity is the
 correct move at that point, not before.
 
+### D9 — Time-log write access follows read visibility
+
+Creating, editing and deleting a time entry is allowed for:
+
+- **OWNER** — anyone in the company.
+- **MANAGER** — employees in the teams they actively manage, and nobody else.
+- **EMPLOYEE** — themselves only.
+
+*Why.* The person who notices a wrong or missing entry is usually not the person
+who logged it. There is no approval step to catch it (D4), so without this the
+only remedy is to ask the employee and wait — which is why weeks stay wrong.
+Write scope now mirrors read scope, which also makes the rule easy to state and
+to test.
+
+*Consequence, and this reverses a previous invariant.* Write access is no longer
+"own entries only", so the boundary has to be enforced in the service layer, from
+the same team-leadership source as read visibility. Hiding a button is not a
+permission.
+
+Everything else about a time entry is unchanged. Period locking (D5) applies to
+every role without exception; the daily 1440-minute ceiling, the project
+membership requirement and the billability default all still hold, and they apply
+to **the person the entry belongs to**, not to whoever is typing.
+
+*Deliberately not included: audit tracking.* `TimeLog` records no actor, and
+nothing in the current architecture requires one. Adding `lastEditedById` is a
+migration and a UI change for a need nobody has stated yet, so it stays out until
+someone asks for it.
+
+### D10 — A manager sees only their own teams, everywhere
+
+An OWNER has company-wide visibility: every team, every person. A MANAGER sees
+the teams they actively manage and the people in them — and that limit applies
+to every list, not only to time data.
+
+*Why.* The rule already holds for time logs, planning and reporting, but
+`GET /users` and `GET /teams` still hand a manager the whole company. A manager
+who may not read someone's time can still read their profile and pick them out
+of a filter, which makes the boundary look arbitrary and exposes the full
+roster.
+
+*Consequence.* The user and team list endpoints have to be narrowed for
+managers. Together with D9 this makes one rule cover both halves: a manager reads
+and writes within their own teams. It settles the read half of §10 Q3; whether
+managers should also administer company-wide teams and projects is still open
+there.
+
 ---
 
 ## 3. Domain model
@@ -259,12 +306,14 @@ specify it (D2).
 
 ### The invariant worth internalising
 
-> **Read visibility widens with role. Write ownership never does.**
+> **Write access for a time entry matches read visibility: owners company-wide,
+> managers within the teams they lead, employees themselves.**
 
-Nobody — owner included — creates, edits or deletes another person's time log.
-This is what makes a time entry mean "this person says they did this work".
-Changing it would require an approval or audit model first, and D4 says there
-isn't one.
+The code today is still stricter than that: `getOwnedLogForUpdate` matches on
+`userId`, so nobody — owner included — creates, edits or deletes another
+person's time log. D9 replaces that with the rule above, enforced in the service.
+A time entry now means "this person, or someone answerable for them, says this
+work happened".
 
 ### Planning
 
@@ -333,15 +382,20 @@ another OWNER or grant the OWNER role.
 | Invitations | create | create | — |
 | Teams, Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
-| Time logs — write | **own only** | **own only** | **own only** |
+| Time logs — write | whole company (D9, not built yet) | own, plus users in teams they manage (D9, not built yet) | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | create + update | read | read |
 
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
-leads no team sees nobody. Visibility is computed from active
-`TeamMembership` rows with `roleInTeam = MANAGER`, so it follows team changes
-automatically and respects membership history.
+leads no team sees nobody, and under D9 may therefore edit nobody's time but
+their own. Scope is computed from active `TeamMembership` rows with
+`roleInTeam = MANAGER`, so it follows team changes automatically and respects
+membership history.
+
+The write row is a decision, not a description: D9 is agreed but not yet
+implemented, and the same team-leadership source must drive it. Until it ships,
+the code still allows own-entries-only for every role.
 
 Note that MANAGER currently has full CRUD over teams, projects, activities and
 categories company-wide — not restricted to their own teams. See §10 Q3.
@@ -395,7 +449,7 @@ The product records time but cannot yet answer the question it exists to answer:
 
 ### Authorization gaps
 
-One real gap, not a design decision:
+Three gaps, none of them a design decision:
 
 1. **Manager scope is incomplete in planned-vs-actual.**
    `ReportingService.getPlannedVsActualReport` pins an EMPLOYEE to their own
@@ -404,7 +458,17 @@ One real gap, not a design decision:
    A manager who calls the endpoint without one leaves the user filter unset, so
    the aggregates are scoped by `companyId` alone and come back **company-wide**.
 
-A second gap remains on the frontend, though it no longer leaks data:
+2. **`GET /users` is company-wide for managers.** The list and detail routes are
+   guarded to OWNER and MANAGER but scoped by `companyId` alone, so a manager
+   reads the profile of anyone in the company, including people in no team of
+   theirs. This contradicts D10.
+
+3. **`GET /teams` is company-wide for everyone authenticated.** The list route
+   carries no role guard and no team filter, so a manager — and an employee —
+   sees every team in the company. Also contradicts D10, and it is the route a
+   team filter would be built on.
+
+A further gap remains on the frontend, though it no longer leaks data:
 the admin pages check only for a session, not for a role, so an employee who
 navigates to an admin route still renders the admin UI. The backend now refuses
 to fill it — every admin project route answers an employee with 403 — so what
@@ -451,7 +515,9 @@ For the company using it:
 - **The owner** sees the same across the company, closes periods once hours have
   been used for invoicing, and can export hours — split by client, project, and
   billable/non-billable — to hand to whoever produces the invoices.
-- **Nobody** approves anybody's timesheet, and nobody edits anybody else's time.
+- **Nobody** approves anybody's timesheet. Someone else's time can be corrected
+  by their manager or by the owner, inside an open period, and never by anyone
+  else (D9).
 
 ### Roadmap
 
@@ -487,10 +553,10 @@ available, because the authorization work already exists.
 
 Owners and managers get somewhere to land and a team week view: people down the
 side, days across the top, totals in the cells, filterable by team and project,
-with under-target rows visible at a glance and a read-only drill-down into one
-person's entries.
+with under-target rows visible at a glance and a drill-down into one person's
+entries, editable by the owner and by the manager of that person's team (D9).
 
-Two constraints that matter more than the UI:
+Three constraints that matter more than the UI:
 
 - **The summary must reuse the existing visibility filter.** A hand-written
   second copy of the manager/team SQL is exactly how authorization bugs get
@@ -498,9 +564,13 @@ Two constraints that matter more than the UI:
   a manager may see.
 - **Aggregate in the database, not the browser.** Summing raw logs client-side
   works for one person's week and will not survive the whole company.
+- **Editing someone else's time is a server-side permission.** The check belongs
+  in the time-log service, next to the period lock and the ownership match, and
+  the same visibility source has to decide it. A hidden edit button is not a
+  permission.
 
-Also closes the blank home page and adds the missing timesheet link for
-managers.
+Also closes the blank home page, adds the missing timesheet link for managers,
+and narrows the user and team lists to a manager's own teams (D10).
 
 *Depends on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
 
@@ -623,7 +693,9 @@ Phase 1  Team time view                  (hours + billable
 
 Short list. These are the things that would be expensive or dangerous to break.
 
-1. **Nobody writes another user's time log.** Not managers, not owners.
+1. **A time log is written only by the person it belongs to, by a manager of a
+   team that person is in, or by an owner** (D9) — enforced in the service,
+   never by the UI alone.
 2. **Tenant isolation is enforced in services, never assumed from the request.**
    Every domain query filters on `companyId`.
 3. **Role visibility is computed in one place per resource.** Reuse
@@ -679,10 +751,12 @@ offer to assign the person to the project.
 MANAGER currently has full CRUD over teams, projects, activities and categories
 across the whole company, while user management is OWNER-only. A manager can
 create and archive a project belonging to a team they have nothing to do with.
-*Recommendation: decide explicitly rather than leave it as an accident.* If the
-company is small and managers are trusted broadly, the current setting is fine
-and should simply be documented as intentional. If not, the natural narrowing is
-projects scoped to teams they lead.
+D10 settles the reading half — a manager only *sees* their own teams and their
+people — but says nothing about writing.
+*Recommendation: narrow writing to match reading.* Once a manager cannot see a
+team, being able to rename or archive it is an obvious inconsistency. Teams look
+like the clear case; projects and activities are more arguable, since projects
+cross teams.
 
 **Q4 — What form should the hours export take?**
 Required by Phase 5, since invoicing is external (D7).
