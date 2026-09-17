@@ -6,21 +6,28 @@ import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import {
   formatDuration,
+  formatWeekRangeLabel,
   getWeekDates,
   getWeekStart,
   isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
+import { UserRole } from "@/types/enums";
 
 import Container from "../layout/Container";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekNav } from "../shared/week/WeekNav";
+import { TeamEmptyState } from "./components/TeamEmptyState";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 
-export const TeamTimeView = () => {
+type TeamTimeViewProps = {
+  role: UserRole;
+};
+
+export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
   const {
     weekStartDay,
     dailyTargetMinutes,
@@ -43,6 +50,7 @@ export const TeamTimeView = () => {
     rows,
     totals,
     isLoading: isLoadingSummary,
+    isPlaceholderData: isShowingPreviousWeek,
     isError: isSummaryError,
     refetch: refetchSummary,
   } = useTeamTimeSummary({
@@ -75,6 +83,9 @@ export const TeamTimeView = () => {
 
   const todayIso = todayISODate(timezone);
   const hasError = isSettingsError || isSummaryError;
+
+  const hasNobodyToShow = rows.length === 0;
+  const isEmpty = hasNobodyToShow || totals.minutes === 0;
 
   const retry = () => {
     void refetchSummary();
@@ -116,8 +127,26 @@ export const TeamTimeView = () => {
         />
       )}
 
-      {!hasError && (
-        <div className="overflow-x-auto">
+      {!hasError && isEmpty && (
+        <div className="p-6">
+          <TeamEmptyState
+            hasNobodyToShow={hasNobodyToShow}
+            role={role}
+            weekLabel={formatWeekRangeLabel(weekStart)}
+          />
+        </div>
+      )}
+
+      {!hasError && !isEmpty && (
+        <div
+          className={[
+            "overflow-x-auto transition-opacity",
+            isShowingPreviousWeek && "opacity-60",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-busy={isShowingPreviousWeek}
+        >
           <table className="w-full min-w-5xl table-fixed border-collapse">
             <colgroup>
               <col className="w-56" />

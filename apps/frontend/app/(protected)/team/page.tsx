@@ -3,7 +3,7 @@ import { PageHeader } from "@/app/components/shared/PageHeader";
 import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 
 export default async function TeamPage() {
-  await requireManagerAccess();
+  const user = await requireManagerAccess();
 
   return (
     <section className="flex min-h-full w-full flex-col p-6">
@@ -12,7 +12,7 @@ export default async function TeamPage() {
         description="See who logged time this week, how much, and where it went."
       />
 
-      <TeamTimeView />
+      <TeamTimeView role={user.role} />
     </section>
   );
 }
