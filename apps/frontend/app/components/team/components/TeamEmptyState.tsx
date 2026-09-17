@@ -1,20 +1,41 @@
-import { Clock3, UsersRound } from "lucide-react";
+import { Clock3, SearchX, UsersRound } from "lucide-react";
 
 import { UserRole } from "@/types/enums";
+
+import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "../../shared/EmptyState";
 
 type TeamEmptyStateProps = {
   hasNobodyToShow: boolean;
+  hasActiveFilters: boolean;
   role: UserRole;
   weekLabel: string;
+  onClearFilters: () => void;
 };
 
 export function TeamEmptyState({
   hasNobodyToShow,
+  hasActiveFilters,
   role,
   weekLabel,
+  onClearFilters,
 }: TeamEmptyStateProps) {
+  if (hasActiveFilters) {
+    return (
+      <EmptyState
+        icon={<SearchX />}
+        title="Nothing matches these filters"
+        description={`No logged time in the week of ${weekLabel} for the team and project you picked.`}
+        action={
+          <Button variant="secondary" onClick={onClearFilters}>
+            Clear filters
+          </Button>
+        }
+      />
+    );
+  }
+
   if (hasNobodyToShow) {
     return (
       <EmptyState

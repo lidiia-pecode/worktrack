@@ -21,6 +21,7 @@ import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekNav } from "../shared/week/WeekNav";
 import { TeamEmptyState } from "./components/TeamEmptyState";
+import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 
 type TeamTimeViewProps = {
@@ -38,6 +39,8 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
   } = useWorkSettings();
 
   const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const [teamId, setTeamId] = useState<string | undefined>();
+  const [projectId, setProjectId] = useState<string | undefined>();
 
   const weekStart = useMemo(
     () => getWeekStart(anchorDate, weekStartDay),
@@ -56,6 +59,8 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
   } = useTeamTimeSummary({
     dateFrom: toISODate(weekDates[0]),
     dateTo: toISODate(weekDates[6]),
+    teamId,
+    projectId,
   });
 
   /**
@@ -84,8 +89,14 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
   const todayIso = todayISODate(timezone);
   const hasError = isSettingsError || isSummaryError;
 
+  const hasActiveFilters = Boolean(teamId ?? projectId);
   const hasNobodyToShow = rows.length === 0;
   const isEmpty = hasNobodyToShow || totals.minutes === 0;
+
+  const clearFilters = () => {
+    setTeamId(undefined);
+    setProjectId(undefined);
+  };
 
   const retry = () => {
     void refetchSummary();
@@ -119,6 +130,15 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
         )}
       </div>
 
+      {!hasError && (
+        <TeamFilters
+          teamId={teamId}
+          projectId={projectId}
+          onTeamChange={setTeamId}
+          onProjectChange={setProjectId}
+        />
+      )}
+
       {hasError && (
         <ErrorState
           title="We couldn't load the team's week"
@@ -131,8 +151,10 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
         <div className="p-6">
           <TeamEmptyState
             hasNobodyToShow={hasNobodyToShow}
+            hasActiveFilters={hasActiveFilters}
             role={role}
             weekLabel={formatWeekRangeLabel(weekStart)}
+            onClearFilters={clearFilters}
           />
         </div>
       )}

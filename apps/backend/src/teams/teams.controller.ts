@@ -34,19 +34,21 @@ import { TeamMembership } from './entities/team-membership.entity';
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get()
   @SerializeList(TeamResponse)
   async list(@CurrentUser() authUser: AuthUser, @Query() query: TeamsQuery) {
-    return this.teamsService.list(authUser.companyId, query);
+    return this.teamsService.list(authUser.companyId, query, authUser);
   }
 
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id')
   @Serialize(TeamResponse)
   async getTeamById(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<Team> {
-    return this.teamsService.getTeamById(id, authUser.companyId);
+    return this.teamsService.getTeamForRead(id, authUser.companyId, authUser);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
