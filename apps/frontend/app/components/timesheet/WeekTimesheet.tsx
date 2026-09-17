@@ -22,10 +22,10 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
-import { WeekNav } from "./components/WeekNav";
+import { WeekNav } from "../shared/week/WeekNav";
+import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
-import { WeekHeaderDay } from "./components/WeekHeaderDay";
 import { WeekProgressBar } from "./components/WeekProgressBar";
 
 type ModalState = {

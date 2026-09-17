@@ -1,5 +1,6 @@
 import { requireManagerAccess } from "@/lib/api/server/auth";
 import { PageHeader } from "@/app/components/shared/PageHeader";
+import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 
 export default async function TeamPage() {
   await requireManagerAccess();
@@ -10,6 +11,8 @@ export default async function TeamPage() {
         title="Team time"
         description="See who logged time this week, how much, and where it went."
       />
+
+      <TeamTimeView />
     </section>
   );
 }
