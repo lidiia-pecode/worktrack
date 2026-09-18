@@ -181,16 +181,18 @@ stands in its way.
 
 | Rule | Today | Detail |
 | :--- | :--- | :--- |
-| §3.1 A manager invites into their own team | Not possible — an invitation carries no team. A manager can also invite another manager | business §6 gaps 2, 3 |
-| §3.2 The Owner owns structure | Any manager can create, rename and archive teams and set `roleInTeam` | business §6 gap 1 |
-| §3.3 A manager adds only people who are new | A manager can add any existing user — this is what turns gap 1 into an escalation | business §6 gap 1 |
-| §3.3 Removal closes `leftAt` | `removeMember` hard-deletes the row | backend-context, Teams |
+| §3.1 A manager invites into their own team | Not possible — an invitation carries no team | business §6 gap 3 |
+| §3.1 A manager invites an EMPLOYEE only | **Already enforced** | — |
+| §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
+| §3.3 A manager adds only people who are new | A manager cannot add anyone at all for now; the safe route arrives in Scope D | §7, Scope C |
+| §3.3 A manager removes only from a team they lead | **Already enforced** | — |
+| §3.3 Removal closes `leftAt` | **Already enforced** | — |
 | §3.4 Two levels of visibility | One level. Project detail returns every member's name and email to any manager | business §6 gap 5 |
 | §3.5 Projects stay company-wide | **Already true** | — |
 | §3.5 Assign only people you can see | No server-side check, and `/users/assignable` is company-wide | business §6 gap 4 |
 | §3.5 Managers may be project members | Stripped twice on the client | business §6 gap 6 |
 | §3.6 A responsible person | The field does not exist | — |
-| §3.7 Time-log access | **Already enforced** (D9, D10) — but only as strong as gap 1 | — |
+| §3.7 Time-log access | **Already enforced** (D9, D10) | — |
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
 membership dates, and it does not need to be while §3.3 holds (P4). Projects are

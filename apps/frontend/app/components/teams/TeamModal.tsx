@@ -67,11 +67,8 @@ export function TeamModal({
   const isArchiving = archive.isPending || unarchive.isPending;
 
   const isOwner = user?.role === UserRole.OWNER;
-  const isManager = user?.role === UserRole.MANAGER;
 
-  const defaultTeamRole = isOwner ? TeamRole.MANAGER : TeamRole.MEMBER;
-
-  const assignRole = assignRoleOverride ?? defaultTeamRole;
+  const assignRole = assignRoleOverride ?? TeamRole.MANAGER;
 
   const activeMemberUserIds = (team?.memberships ?? [])
     .filter((membership) => !membership.leftAt)
@@ -80,10 +77,6 @@ export function TeamModal({
   const availableUsers = allUsers.filter((candidate) => {
     if (activeMemberUserIds.includes(candidate.id)) {
       return false;
-    }
-
-    if (isManager) {
-      return candidate.role === UserRole.EMPLOYEE;
     }
 
     if (assignRole === TeamRole.MANAGER) {
@@ -128,10 +121,6 @@ export function TeamModal({
   };
 
   const handleChangeAssignRole = (role: TeamRole) => {
-    if (isManager) {
-      return;
-    }
-
     if (role === assignRole) {
       return;
     }
@@ -223,7 +212,9 @@ export function TeamModal({
         isPicking
           ? "Select people to add to this team."
           : isEditMode
-            ? "Update team details and manage who's on it."
+            ? isOwner
+              ? "Update team details and manage who's on it."
+              : "See who is on this team and remove anyone who has left."
             : "Create a team to organize people and manage access."
       }
       icon={isPicking ? undefined : <UsersRound className="size-5" />}
@@ -255,7 +246,7 @@ export function TeamModal({
           </div>
         ) : (
           <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+            {isEditMode && isOwner ? (
               <Button
                 type="button"
                 variant={isArchived ? "success" : "destructive"}
@@ -283,17 +274,19 @@ export function TeamModal({
                 size="sm"
                 onClick={handleCloseModal}
               >
-                Cancel
+                {isOwner ? "Cancel" : "Close"}
               </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSubmitting}
-              >
-                {isEditMode ? "Save changes" : "Create team"}
-              </Button>
+              {isOwner && (
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  isLoading={isSubmitting}
+                >
+                  {isEditMode ? "Save changes" : "Create team"}
+                </Button>
+              )}
             </div>
           </div>
         )
@@ -305,39 +298,27 @@ export function TeamModal({
             <p className="text-sm font-medium">Add as</p>
 
             <div className="flex gap-2">
-              {isOwner && (
-                <>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      assignRole === TeamRole.MANAGER ? "primary" : "outline"
-                    }
-                    aria-pressed={assignRole === TeamRole.MANAGER}
-                    onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
-                  >
-                    Manager
-                  </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  assignRole === TeamRole.MANAGER ? "primary" : "outline"
+                }
+                aria-pressed={assignRole === TeamRole.MANAGER}
+                onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
+              >
+                Manager
+              </Button>
 
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={
-                      assignRole === TeamRole.MEMBER ? "primary" : "outline"
-                    }
-                    aria-pressed={assignRole === TeamRole.MEMBER}
-                    onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
-                  >
-                    Member
-                  </Button>
-                </>
-              )}
-
-              {isManager && (
-                <Button type="button" size="sm" variant="primary" aria-pressed>
-                  Member
-                </Button>
-              )}
+              <Button
+                type="button"
+                size="sm"
+                variant={assignRole === TeamRole.MEMBER ? "primary" : "outline"}
+                aria-pressed={assignRole === TeamRole.MEMBER}
+                onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
+              >
+                Member
+              </Button>
             </div>
           </div>
 
@@ -359,22 +340,26 @@ export function TeamModal({
         </div>
       ) : (
         <div className="space-y-6">
-          <TeamForm
-            formId={FORM_ID}
-            mode={isEditMode ? "edit" : "create"}
-            defaultValues={
-              team
-                ? {
-                    name: team.name,
-                  }
-                : undefined
-            }
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-          />
+          {isOwner && (
+            <TeamForm
+              formId={FORM_ID}
+              mode={isEditMode ? "edit" : "create"}
+              defaultValues={
+                team
+                  ? {
+                      name: team.name,
+                    }
+                  : undefined
+              }
+              onSubmit={handleSubmit}
+              isSubmitting={isSubmitting}
+            />
+          )}
 
           {isEditMode && team && (
-            <div className="border-t border-border pt-6">
+            <div
+              className={isOwner ? "border-t border-border pt-6" : undefined}
+            >
               <TeamMembersSection
                 team={team}
                 onOpenAddMembers={handleOpenMembersPicker}

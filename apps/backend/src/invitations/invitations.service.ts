@@ -3,6 +3,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -19,6 +20,7 @@ import { SessionService } from 'src/auth/services/session.service';
 import { PasswordService } from 'src/auth/services/password.service';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 import type { GoogleUserPayload } from 'src/auth/dtos/auth.dto';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
@@ -42,10 +44,11 @@ export class InvitationsService {
   async create(
     companyId: string,
     payload: CreateInvitationPayload,
+    user: AuthUser,
   ): Promise<void> {
     const email = this.normalizeEmail(payload.email);
 
-    this.validateInvitationRole(payload.role);
+    this.validateInvitationRole(payload.role, user.role);
 
     const existingUser = await this.usersService.findByEmailWithCompany(email);
 
@@ -284,13 +287,21 @@ export class InvitationsService {
     await repository.save(invitation);
   }
 
-  private validateInvitationRole(role: UserRole): void {
+  /**
+   * Appointing a manager is how the Owner delegates, so it must not be
+   * something a manager can do for themselves.
+   */
+  private validateInvitationRole(role: UserRole, callerRole: UserRole): void {
     const allowedRoles = [UserRole.MANAGER, UserRole.EMPLOYEE];
 
     if (!allowedRoles.includes(role)) {
       throw new BadRequestException(
         'Only MANAGER and EMPLOYEE roles can be assigned through an invitation',
       );
+    }
+
+    if (role === UserRole.MANAGER && callerRole !== UserRole.OWNER) {
+      throw new ForbiddenException('Only an owner can invite a manager');
     }
   }
 

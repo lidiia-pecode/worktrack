@@ -371,8 +371,9 @@ A `SUSPENDED` company cannot be updated and cannot authenticate.
 A new company is created by self-service signup, which creates the `Company` and
 its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role, and the invitee completes signup
-by setting a password or via Google. Invitation tokens are stored hashed and are
-`PENDING | ACCEPTED | REVOKED`.
+by setting a password or via Google. An owner may invite a manager or an
+employee, a manager only an employee. Invitation tokens are stored hashed and
+are `PENDING | ACCEPTED | REVOKED`.
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -389,8 +390,9 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create | create | — |
-| Teams, Projects, Activities, Categories | full CRUD | full CRUD | read |
+| Invitations | create, any role | create, EMPLOYEE only | — |
+| Teams | full CRUD | read, within their teams; remove a member | read |
+| Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
@@ -411,8 +413,12 @@ D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the team view's per-person panel is
 where an owner or manager acts on it.
 
-Note that MANAGER currently has full CRUD over teams, projects, activities and
-categories company-wide — not restricted to their own teams. See §10 Q3.
+Team structure is the Owner's: only an owner creates, renames or archives a
+team, adds a member or changes a `roleInTeam`. A manager may remove a member
+from a team they lead, because removal only narrows their own reach.
+
+Note that MANAGER still has full CRUD over projects, activities and categories
+company-wide — not restricted to their own teams. See §10 Q3.
 
 ---
 
@@ -477,17 +483,16 @@ These are current-state facts. The rules meant to replace them are in
 [`permission-model.md`](./permission-model.md), and the order they will be fixed
 in is §7 of that document.
 
-1. **A manager can widen their own visibility.** The team write paths do not
-   receive the caller — `createTeam(companyId, dto)` and
-   `addMember(teamId, companyId, dto)` — so they are guarded by role and
-   `companyId` alone. Since `roleInTeam = MANAGER` is the only source of
-   people-visibility, a manager can create a team, add themselves to it as its
-   manager, add any employee, and then read and edit that person's time under
-   D9. Reachable through the UI, not only the API. **This makes D10 bypassable
-   by the role it constrains.**
+1. **A manager can widen their own visibility — closed.** Creating, renaming
+   and archiving a team, adding a member and setting `roleInTeam` are now Owner
+   actions at the route level, so a manager can no longer build a team around
+   themselves to reach another person's time. **D10 is a boundary rather than a
+   route-level narrowing.** The teams screen offers a manager only what still
+   works: reading the teams they lead and removing someone from them.
 
-2. **A manager can invite another manager.** `validateInvitationRole` checks the
-   invitee's role but never the caller's.
+2. **A manager can invite another manager — closed.**
+   `validateInvitationRole` now takes the caller's role: an owner may invite a
+   manager or an employee, a manager only an employee.
 
 3. **An invitation cannot place anyone in a team.** `Invitation` carries no
    `teamId` and no `invitedById`, so an invitee arrives in no team and is
@@ -511,8 +516,7 @@ in is §7 of that document.
    the aggregates are scoped by `companyId` alone and come back **company-wide**.
 
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
-level, though gap 1 above means the user narrowing is not yet a boundary a
-manager cannot cross.
+level.
 
 A further gap remains on the frontend, though it no longer leaks data:
 the admin pages check only for a session, not for a role, so an employee who

@@ -2,11 +2,13 @@
 
 import { UserPlus, X } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { Team } from "@/types/Team";
-import { TeamRole } from "@/types/enums";
+import { TeamRole, UserRole } from "@/types/enums";
 import { fullName } from "@/lib/utils/user";
 
 import { AssignedList } from "../shared/resourse/AssignedList";
@@ -18,6 +20,9 @@ const roleOptions = [
   { label: "Manager", value: TeamRole.MANAGER },
 ];
 
+const roleLabel = (role: TeamRole) =>
+  roleOptions.find((option) => option.value === role)?.label ?? role;
+
 interface TeamMembersSectionProps {
   team: Team;
   onOpenAddMembers: () => void;
@@ -27,7 +32,10 @@ export function TeamMembersSection({
   team,
   onOpenAddMembers,
 }: TeamMembersSectionProps) {
+  const { user } = useAuth();
   const { updateMember, removeMember } = useTeamMembers(team.id);
+
+  const isOwner = user?.role === UserRole.OWNER;
 
   const activeMembers = (team.memberships ?? []).filter(
     (m): m is typeof m & { user: NonNullable<typeof m.user> } =>
@@ -46,16 +54,18 @@ export function TeamMembersSection({
           </p>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onOpenAddMembers}
-          className="gap-1.5"
-        >
-          <UserPlus className="size-4" />
-          Add members
-        </Button>
+        {isOwner && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onOpenAddMembers}
+            className="gap-1.5"
+          >
+            <UserPlus className="size-4" />
+            Add members
+          </Button>
+        )}
       </div>
 
       <div className="rounded-xl border border-border bg-card overflow-hidden">
@@ -67,27 +77,35 @@ export function TeamMembersSection({
           renderLeading={(membership) => (
             <Avatar user={membership.user} size="md" />
           )}
-          emptyMessage="No members yet. Click 'Add members' to get started."
+          emptyMessage={
+            isOwner
+              ? "No members yet. Click 'Add members' to get started."
+              : "No members yet. An owner adds people to this team."
+          }
           renderTrailing={(membership) => (
             <>
-              <Select
-                aria-label={`Role for ${membership.user.firstName}`}
-                value={membership.roleInTeam}
-                onChange={(event) =>
-                  updateMember.mutate({
-                    membershipId: membership.id,
-                    data: { roleInTeam: event.target.value as TeamRole },
-                  })
-                }
-                disabled={updateMember.isPending}
-                className="h-8 w-auto py-1 text-xs"
-              >
-                {roleOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </Select>
+              {isOwner ? (
+                <Select
+                  aria-label={`Role for ${membership.user.firstName}`}
+                  value={membership.roleInTeam}
+                  onChange={(event) =>
+                    updateMember.mutate({
+                      membershipId: membership.id,
+                      data: { roleInTeam: event.target.value as TeamRole },
+                    })
+                  }
+                  disabled={updateMember.isPending}
+                  className="h-8 w-auto py-1 text-xs"
+                >
+                  {roleOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              ) : (
+                <Badge>{roleLabel(membership.roleInTeam)}</Badge>
+              )}
 
               <Button
                 type="button"
