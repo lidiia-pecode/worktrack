@@ -393,8 +393,8 @@ their own. Scope is computed from active `TeamMembership` rows with
 membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
-writes, so the two cannot drift apart. The UI that uses it is still to come —
-see [`current-scope.md`](./current-scope.md).
+writes, so the two cannot drift apart, and the team view's per-person panel is
+where an owner or manager acts on it.
 
 Note that MANAGER currently has full CRUD over teams, projects, activities and
 categories company-wide — not restricted to their own teams. See §10 Q3.
@@ -415,9 +415,9 @@ the gap is the main fact about the project's current state.
   driven by company work settings, with loading, error, empty and over-target
   states.
 - **Admin CRUD** — users, teams, projects, activities and categories.
-- **Team time view** — owners and managers land on `/team` and read their
-  people's week, filtered by team and project. The detail panel is still to
-  come.
+- **Team time view** — owners and managers land on `/team`, read their people's
+  week filtered by team and project, and open any row to see that person's
+  entries day by day and correct them.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
@@ -431,10 +431,11 @@ the gap is the main fact about the project's current state.
 ### Phase 1 in progress
 
 Owners and managers now land on `/team` and see their people's week as a grid,
-filterable by team and project, with loading, error and empty states. The
-remaining pieces are the per-user detail panel with editing, and narrowing
-`GET /users` to a manager's teams. See [`current-scope.md`](./current-scope.md)
-for the step list and the current stopping point.
+filterable by team and project, with loading, error and empty states, and can
+open a row to read and correct that person's entries. The remaining piece is
+narrowing `GET /users` to a manager's teams. See
+[`current-scope.md`](./current-scope.md) for the step list and the current
+stopping point.
 
 ### Fields that exist but do nothing
 

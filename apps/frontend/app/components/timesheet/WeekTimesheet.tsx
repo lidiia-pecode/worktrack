@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
-import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
+import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { TimeLog } from "@/types";
 import {
   formatDuration,
@@ -86,7 +86,7 @@ export const WeekTimesheet = () => {
     isLoading: isLoadingPicker,
     isError: isPickerError,
     refetch: refetchPicker,
-  } = useMyProjectActivities();
+  } = useAssignableActivities();
 
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};

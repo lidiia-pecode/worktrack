@@ -12,7 +12,7 @@ export default async function TeamPage() {
         description="See who logged time this week, how much, and where it went."
       />
 
-      <TeamTimeView role={user.role} />
+      <TeamTimeView role={user.role} viewerId={user.id} />
     </section>
   );
 }

@@ -17,11 +17,21 @@ export type PickerProjectActivity = {
 
 const ASSIGNABLE_PAGE_SIZE = 500;
 
-export function useMyProjectActivities() {
+/**
+ * The project/activity options someone may log time against, flattened for the
+ * form picker. Without a `userId` it answers for the caller; with one it
+ * answers for that person, which is how a manager logs time on their behalf.
+ * Pass `undefined` to skip the request entirely.
+ */
+export function useAssignableActivities(userId?: string, enabled = true) {
   const query = useQuery({
-    queryKey: queryKeys.projectActivities.mine(),
+    queryKey: queryKeys.projectActivities.assignable({ userId }),
     queryFn: () =>
-      ProjectActivitiesClientApi.getMine({ pageSize: ASSIGNABLE_PAGE_SIZE }),
+      ProjectActivitiesClientApi.getAssignable({
+        pageSize: ASSIGNABLE_PAGE_SIZE,
+        userId,
+      }),
+    enabled,
   });
 
   const items = useMemo<PickerProjectActivity[]>(() => {

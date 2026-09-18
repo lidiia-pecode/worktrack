@@ -12,6 +12,18 @@ export const fullName = (u: User | AvatarUser) =>
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;
 
+/**
+ * Whether the viewer may create, edit and delete someone's time entries.
+ * Write access follows what the viewer can already see, so anyone whose row
+ * reaches the team grid is also someone they may correct; everyone else only
+ * ever edits their own. The backend enforces the same rule.
+ */
+export const canWriteTimeLogsFor = (
+  role: string | undefined,
+  viewerId: string,
+  targetUserId: string,
+) => hasManagerAccess(role) || viewerId === targetUserId;
+
 export function getNonAdminMemberIds(users: User[], ids: string[]) {
   return ids.filter(
     (id) => !hasManagerAccess(users.find((u) => u.id === id)?.role),

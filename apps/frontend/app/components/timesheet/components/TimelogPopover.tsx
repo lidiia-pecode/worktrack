@@ -7,7 +7,7 @@ import { CalendarDays, Clock, StickyNote, Tag } from "lucide-react";
 import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
-import { getTimelogDisplay } from "../helpers/timelog-display";
+import { getTimelogDisplay } from "@/lib/utils/timelog";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   weekday: "short",

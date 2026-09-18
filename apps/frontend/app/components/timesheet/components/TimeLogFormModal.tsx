@@ -7,7 +7,7 @@ import * as z from "zod";
 import { Calendar, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { PickerProjectActivity } from "@/hooks/useMyProjectActivities";
+import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSection } from "../../shared/FormSection";
@@ -49,6 +49,7 @@ type Props = {
   open: boolean;
   onClose: () => void;
   date: string;
+  subjectName?: string;
   timelog?: TimeLog;
   pickerItems: PickerProjectActivity[];
   onCreate: (payload: TimeLogPayload) => Promise<unknown>;
@@ -62,6 +63,7 @@ export const TimeLogFormModal = ({
   open,
   onClose,
   date,
+  subjectName,
   timelog,
   pickerItems,
   onCreate,
@@ -195,7 +197,12 @@ export const TimeLogFormModal = ({
         open={open}
         onClose={onClose}
         title={isEditMode ? "Edit time entry" : "Log time"}
-        description={DAY_LABEL.format(new Date(`${date}T00:00:00`))}
+        description={[
+          DAY_LABEL.format(new Date(`${date}T00:00:00`)),
+          subjectName,
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         icon={<Calendar className="size-5" />}
         footer={
           <div className="flex w-full items-center justify-between gap-3">

@@ -88,7 +88,8 @@ export const queryKeys = {
     all: ["projectActivities"] as const,
     lists: () => ["projectActivities", "list"] as const,
 
-    mine: () => ["projectActivities", "mine"] as const,
+    assignable: (params?: QueryParams) =>
+      ["projectActivities", "assignable", params ?? {}] as const,
   },
 
   auth: {

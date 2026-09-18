@@ -24,6 +24,7 @@ export interface TimeLog {
 }
 
 export interface TimeLogPayload {
+  userId?: string;
   projectActivityId: string;
   minutes: number;
   note?: string;
@@ -31,7 +32,7 @@ export interface TimeLogPayload {
   date: string;
 }
 
-export type UpdateTimeLogPayload = Partial<TimeLogPayload>;
+export type UpdateTimeLogPayload = Partial<Omit<TimeLogPayload, "userId">>;
 
 export interface TimeLogsQuery extends PaginationParams {
   date?: string;

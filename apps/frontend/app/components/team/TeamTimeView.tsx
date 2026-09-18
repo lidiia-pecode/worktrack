@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { TeamSummaryUser } from "@/types";
 import {
   formatDuration,
   formatWeekRangeLabel,
@@ -13,6 +14,7 @@ import {
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
+import { canWriteTimeLogsFor } from "@/lib/utils/user";
 import { UserRole } from "@/types/enums";
 
 import Container from "../layout/Container";
@@ -23,12 +25,14 @@ import { WeekNav } from "../shared/week/WeekNav";
 import { TeamEmptyState } from "./components/TeamEmptyState";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
+import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
 
 type TeamTimeViewProps = {
   role: UserRole;
+  viewerId: string;
 };
 
-export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
+export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const {
     weekStartDay,
     dailyTargetMinutes,
@@ -41,6 +45,7 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
+  const [openedUser, setOpenedUser] = useState<TeamSummaryUser | null>(null);
 
   const weekStart = useMemo(
     () => getWeekStart(anchorDate, weekStartDay),
@@ -219,11 +224,27 @@ export const TeamTimeView = ({ role }: TeamTimeViewProps) => {
                   row={row}
                   weekDates={weekDates}
                   expectedMinutes={expectedMinutes}
+                  onOpen={(opened) => setOpenedUser(opened.user)}
                 />
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {openedUser && (
+        // Keyed per person: the timelog query keeps the previous page while
+        // loading, and reusing the panel would flash one person's entries
+        // under another's name.
+        <UserTimeDetailPanel
+          key={openedUser.id}
+          user={openedUser}
+          weekDates={weekDates}
+          weekLabel={formatWeekRangeLabel(weekStart)}
+          todayIso={todayIso}
+          canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
+          onClose={() => setOpenedUser(null)}
+        />
       )}
     </Container>
   );

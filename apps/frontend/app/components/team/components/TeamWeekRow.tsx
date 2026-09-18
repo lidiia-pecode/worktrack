@@ -8,36 +8,49 @@ type TeamWeekRowProps = {
   row: TeamSummaryRow;
   weekDates: Date[];
   expectedMinutes: number;
+  onOpen: (row: TeamSummaryRow) => void;
 };
 
 export function TeamWeekRow({
   row,
   weekDates,
   expectedMinutes,
+  onOpen,
 }: TeamWeekRowProps) {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
 
   return (
-    <tr className="border-b border-border last:border-b-0 hover:bg-muted/10">
+    <tr
+      onClick={() => onOpen(row)}
+      className="cursor-pointer border-b border-border last:border-b-0 hover:bg-muted/10"
+    >
       <th
         scope="row"
-        className="border-r border-border/60 p-3 text-left font-normal"
+        className="border-r border-border/60 p-0 text-left font-normal"
       >
-        <div className="flex min-w-0 items-center gap-2.5">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(row);
+          }}
+          aria-label={`Open ${fullName(row.user)}'s entries`}
+          className="flex w-full min-w-0 items-center gap-2.5 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+        >
           <Avatar user={row.user} />
 
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-foreground">
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-medium text-foreground">
               {fullName(row.user)}
-            </p>
+            </span>
 
             {row.user.position && (
-              <p className="truncate text-xs text-muted-foreground">
+              <span className="block truncate text-xs text-muted-foreground">
                 {row.user.position}
-              </p>
+              </span>
             )}
-          </div>
-        </div>
+          </span>
+        </button>
       </th>
 
       {weekDates.map((date) => {

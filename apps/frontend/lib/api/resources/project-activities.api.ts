@@ -1,15 +1,17 @@
 "use client";
 
 import { buildQueryString, createClient } from "../core";
-import { PaginationParams } from "@/types";
-import { ProjectActivityListResponse } from "@/types/ProjectActivities";
+import {
+  AssignableActivitiesQuery,
+  ProjectActivityListResponse,
+} from "@/types/ProjectActivities";
 
 const client = createClient({
   endpoint: "projects",
 });
 
 export const ProjectActivitiesClientApi = {
-  getMine: (params?: PaginationParams) =>
+  getAssignable: (params?: AssignableActivitiesQuery) =>
     client.get<ProjectActivityListResponse>(
       `/me/activities${buildQueryString(params)}`,
     ),
