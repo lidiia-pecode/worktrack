@@ -51,7 +51,7 @@ export class TeamsController {
     return this.teamsService.getTeamForRead(id, authUser.companyId, authUser);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Post()
   @Serialize(TeamResponse)
   async createTeam(
@@ -61,7 +61,7 @@ export class TeamsController {
     return this.teamsService.createTeam(authUser.companyId, dto);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id')
   @Serialize(TeamResponse)
   async updateTeam(
@@ -72,7 +72,7 @@ export class TeamsController {
     return this.teamsService.updateTeam(id, authUser.companyId, dto);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   @Serialize(TeamResponse)
   async archiveTeam(
@@ -82,7 +82,7 @@ export class TeamsController {
     return this.teamsService.archiveTeam(id, authUser.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
   @Serialize(TeamResponse)
   async unarchiveTeam(
@@ -96,7 +96,7 @@ export class TeamsController {
   // MEMBERSHIPS ENDPOINTS (UNIFIED REST)
   // ==========================================
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Post(':id/members')
   @Serialize(TeamMembershipResponse)
   async addMember(
@@ -107,7 +107,7 @@ export class TeamsController {
     return this.teamsService.addMember(teamId, authUser.companyId, dto);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/members/:membershipId')
   @Serialize(TeamMembershipResponse)
   async updateMember(

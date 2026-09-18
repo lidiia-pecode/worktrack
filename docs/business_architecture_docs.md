@@ -477,14 +477,12 @@ These are current-state facts. The rules meant to replace them are in
 [`permission-model.md`](./permission-model.md), and the order they will be fixed
 in is §7 of that document.
 
-1. **A manager can widen their own visibility.** The team write paths do not
-   receive the caller — `createTeam(companyId, dto)` and
-   `addMember(teamId, companyId, dto)` — so they are guarded by role and
-   `companyId` alone. Since `roleInTeam = MANAGER` is the only source of
-   people-visibility, a manager can create a team, add themselves to it as its
-   manager, add any employee, and then read and edit that person's time under
-   D9. Reachable through the UI, not only the API. **This makes D10 bypassable
-   by the role it constrains.**
+1. **A manager can widen their own visibility — closed.** Creating, renaming
+   and archiving a team, adding a member and setting `roleInTeam` are now Owner
+   actions at the route level, so a manager can no longer build a team around
+   themselves to reach another person's time. **D10 is a boundary rather than a
+   route-level narrowing.** The teams screen still offers a manager the buttons
+   for those actions, which now answer 403, until Scope C6 lands.
 
 2. **A manager can invite another manager.** `validateInvitationRole` checks the
    invitee's role but never the caller's.
@@ -511,8 +509,7 @@ in is §7 of that document.
    the aggregates are scoped by `companyId` alone and come back **company-wide**.
 
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
-level, though gap 1 above means the user narrowing is not yet a boundary a
-manager cannot cross.
+level.
 
 A further gap remains on the frontend, though it no longer leaks data:
 the admin pages check only for a session, not for a role, so an employee who
