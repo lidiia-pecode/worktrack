@@ -72,6 +72,7 @@ enforced in `TimeLogsService`.
 | [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
 | [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
 | [`docs/permission-model.md`](./permission-model.md) | Target permission model — future state, not yet built |
+| [`docs/known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
 | [`docs/current-scope.md`](./current-scope.md) | The next implementation scope — what to build now |
 | [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
 

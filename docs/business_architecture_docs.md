@@ -450,8 +450,17 @@ the gap is the main fact about the project's current state.
 Owners and managers land on `/team` and see their people's week as a grid,
 filterable by team and project, and can open a row to read and correct that
 person's entries. A manager's user, team and time lists all narrow to the teams
-they actively lead, with staffing on its own company-wide list. See
-[`current-scope.md`](./current-scope.md) for the step list.
+they actively lead, with staffing on its own company-wide list.
+
+**Decided while building it: `/team` stays a summary grid.** Whether it should
+become a full team timesheet — entries or per-project rows inside the cells —
+was raised and rejected. The grid and the timesheet answer different questions:
+the grid is for scanning who logged and how much, the timesheet for inspecting
+what a week consisted of, and that already exists. A team timesheet would need
+per-user-per-day-per-project data the summary endpoint does not return, and
+would be unreadable at company size. "Where did the time go" is answered by the
+project filter at team level and by the per-person panel for one person;
+cross-cutting hours by client and project belong to Phase 5.
 
 ### Fields that exist but do nothing
 
@@ -761,6 +770,7 @@ Short list. These are the things that would be expensive or dangerous to break.
 | :--- | :--- |
 | **This document** | Product definition, business rules, decisions, roadmap |
 | [`permission-model.md`](./permission-model.md) | Target permission model — **future state**, not yet built |
+| [`known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
 | [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
 | [`backend-context.md`](../apps/backend/docs/backend-context.md) | Modules, API surface, data model, constraints |
 | [`auth.md`](../apps/backend/docs/auth.md) | Tokens, sessions, guards, OAuth, password flows |
