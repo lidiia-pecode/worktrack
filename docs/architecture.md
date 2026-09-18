@@ -52,8 +52,9 @@ session-bound HMAC hashes.
 
 ## Roles
 
-`OWNER | MANAGER | EMPLOYEE`. Owners administer the company, managers administer
-resources and see the people in teams they lead, employees log their own time.
+`OWNER | MANAGER | EMPLOYEE`. Owners administer the company and own its
+structure — who exists, which teams exist and who leads them. Managers run the
+teams they were given and see the people in them. Employees log their own time.
 
 The rule worth internalising: **write access to a time entry matches read
 visibility** — owners company-wide, managers within the teams they lead,
@@ -99,16 +100,16 @@ filtered by team and project, with a per-person panel they can edit through.
 Not built yet: any frontend for the backend's `planning` and `reporting`
 modules.
 
-Test coverage has started but is narrow: three suites,
-`team-visibility.service.spec.ts`, `time-logs.service.spec.ts` and
-`users.service.spec.ts`, covering the role-visibility filters, time-log write
-scope and user-list scope against a real database. GitHub Actions runs them,
-along with lint, typecheck and build for both applications, on every pull
-request. The backend has a production image
+Test coverage has started but is narrow: six suites and 79 tests, covering the
+role-visibility filters, the team route roles and membership rules, who may
+invite whom, the time-log write scope and the user-list scope — mostly against a
+real database. GitHub Actions runs them, along with lint, typecheck and build
+for both applications, on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
 built by its host.
 
 See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
 fuller assessment and §7 for the order the remaining work should be built in.
-The target permission model, which is not yet built, is in
-[`permission-model.md`](./permission-model.md).
+The target permission model is in
+[`permission-model.md`](./permission-model.md); its §5 says which parts of it
+are enforced today and which are still ahead.

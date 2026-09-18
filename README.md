@@ -169,10 +169,10 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 ## Current Status
 
-Under active development. The employee timesheet and admin CRUD for users,
-teams, projects, activities and categories are implemented. Manager/owner
-reporting views are not. Test coverage has started with the role-visibility
-filters.
+Under active development. The employee timesheet, the owner/manager team time
+view and admin CRUD for users, teams, projects, activities and categories are
+implemented. Reporting and planning views are not. Test coverage is six backend
+suites, covering who may see and change whose data.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
