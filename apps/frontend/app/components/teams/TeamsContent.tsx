@@ -13,7 +13,7 @@ import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
 import { useSearchParams } from "next/navigation";
-import { TeamStatus } from "@/types/enums";
+import { TeamStatus, UserRole } from "@/types/enums";
 
 export function TeamsContent() {
   const [createOpen, setCreateOpen] = useState(false);
@@ -36,7 +36,8 @@ export function TeamsContent() {
 
   const isOnboarding = searchParams.get("onboarding") === "true";
 
-  const canManage = hasManagerAccess(user?.role);
+  const canRead = hasManagerAccess(user?.role);
+  const isOwner = user?.role === UserRole.OWNER;
 
   const editingTeam = useMemo(
     () => teams.find((team) => team.id === editingTeamId),
@@ -55,16 +56,20 @@ export function TeamsContent() {
         description="Manage teams and organize workspace members."
         items={teams}
         isLoading={isLoading}
-        isError={isError || !canManage}
+        isError={isError || !canRead}
         onRetry={refetch}
         getSearchValue={(team) => team.name}
         searchPlaceholder="Search teams..."
         emptyTitle="No teams yet"
-        emptyDescription="Create your first team to organize your workspace."
+        emptyDescription={
+          isOwner
+            ? "Create your first team to organize your workspace."
+            : "You do not lead any team yet. An owner adds you to one."
+        }
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Create team"
         onCreate={() => setCreateOpen(true)}
-        canCreate={canManage}
+        canCreate={isOwner}
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
@@ -74,7 +79,7 @@ export function TeamsContent() {
           <TeamCard
             key={team.id}
             team={team}
-            canManage={canManage}
+            canManage={isOwner}
             onView={(team) => setEditingTeamId(team.id)}
           />
         )}

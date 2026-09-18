@@ -1,39 +1,60 @@
 import 'reflect-metadata';
+import { ExecutionContext } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 
-import { ROLES_KEY } from 'src/lib/decorators';
+import { RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { TeamsController } from './teams.controller';
 
 /**
  * Team structure decides who a manager can see, so the routes that change it
- * must stay Owner-only.
+ * must stay Owner-only. This runs the real guard rather than reading the
+ * decorator, so a change to either one is caught.
  */
 
 type Handler = keyof TeamsController;
 
-const rolesFor = (handler: Handler): UserRole[] =>
-  Reflect.getMetadata(
-    ROLES_KEY,
-    TeamsController.prototype[handler],
-  ) as UserRole[];
+const OWNER_ONLY: Handler[] = [
+  'createTeam',
+  'updateTeam',
+  'archiveTeam',
+  'unarchiveTeam',
+  'addMember',
+  'updateMember',
+];
+
+const OPEN_TO_MANAGER: Handler[] = ['list', 'getTeamById', 'removeMember'];
 
 describe('TeamsController route roles', () => {
-  it.each<Handler>([
-    'createTeam',
-    'updateTeam',
-    'archiveTeam',
-    'unarchiveTeam',
-    'addMember',
-    'updateMember',
-  ])('%s is owner-only', (handler) => {
-    expect(rolesFor(handler)).toEqual([UserRole.OWNER]);
+  const guard = new RolesGuard(new Reflector());
+
+  const allows = (handler: Handler, role: UserRole): boolean =>
+    guard.canActivate({
+      getHandler: () => TeamsController.prototype[handler],
+      getClass: () => TeamsController,
+      switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
+    } as unknown as ExecutionContext);
+
+  it.each(OWNER_ONLY)('refuses a manager on %s', (handler) => {
+    expect(allows(handler, UserRole.MANAGER)).toBe(false);
   });
 
-  it.each<Handler>(['list', 'getTeamById', 'removeMember'])(
-    '%s stays available to a manager',
+  it.each(OPEN_TO_MANAGER)('allows a manager on %s', (handler) => {
+    expect(allows(handler, UserRole.MANAGER)).toBe(true);
+  });
+
+  it.each([...OWNER_ONLY, ...OPEN_TO_MANAGER])(
+    'allows an owner on %s',
     (handler) => {
-      expect(rolesFor(handler)).toEqual([UserRole.OWNER, UserRole.MANAGER]);
+      expect(allows(handler, UserRole.OWNER)).toBe(true);
+    },
+  );
+
+  it.each([...OWNER_ONLY, ...OPEN_TO_MANAGER])(
+    'refuses an employee on %s',
+    (handler) => {
+      expect(allows(handler, UserRole.EMPLOYEE)).toBe(false);
     },
   );
 });

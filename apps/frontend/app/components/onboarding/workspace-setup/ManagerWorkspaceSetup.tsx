@@ -34,6 +34,7 @@ type SetupStep = {
   icon: typeof UsersRound;
   completed: boolean;
   locked: boolean;
+  waitingForOwner?: boolean;
 };
 
 export function ManagerWorkspaceSetup() {
@@ -69,6 +70,7 @@ export function ManagerWorkspaceSetup() {
       icon: UsersRound,
       completed: teamAssigned,
       locked: false,
+      waitingForOwner: !teamAssigned,
     },
 
     {
@@ -97,15 +99,14 @@ export function ManagerWorkspaceSetup() {
 
     {
       id: "addTeamMember",
-      title: "Add member to your team",
+      title: "Member is added to your team",
       description: addTeamMember
         ? "Your team has members assigned and is ready to work."
-        : "Add the member who will work on your team's projects.",
-      href: "/admin/teams?onboarding=true",
-      actionLabel: "Go to Teams",
+        : "Your owner adds the member to your team once they have joined.",
       icon: UsersRound,
       completed: addTeamMember,
       locked: !memberJoined,
+      waitingForOwner: !addTeamMember,
     },
 
     {
@@ -245,7 +246,7 @@ export function ManagerWorkspaceSetup() {
                     {step.description}
                   </p>
 
-                  {step.id === "team" && !teamAssigned && (
+                  {step.waitingForOwner && !step.locked && (
                     <p className="mt-2 text-xs font-medium text-muted-foreground">
                       Waiting for owner
                     </p>

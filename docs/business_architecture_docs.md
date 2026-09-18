@@ -487,8 +487,8 @@ in is §7 of that document.
    and archiving a team, adding a member and setting `roleInTeam` are now Owner
    actions at the route level, so a manager can no longer build a team around
    themselves to reach another person's time. **D10 is a boundary rather than a
-   route-level narrowing.** The teams screen still offers a manager the buttons
-   for those actions, which now answer 403, until Scope C6 lands.
+   route-level narrowing.** The teams screen offers a manager only what still
+   works: reading the teams they lead and removing someone from them.
 
 2. **A manager can invite another manager — closed.**
    `validateInvitationRole` now takes the caller's role: an owner may invite a
