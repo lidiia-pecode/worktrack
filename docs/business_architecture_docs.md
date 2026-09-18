@@ -468,6 +468,19 @@ would be unreadable at company size. "Where did the time go" is answered by the
 project filter at team level and by the per-person panel for one person;
 cross-cutting hours by client and project belong to Phase 5.
 
+### Scope C delivered
+
+Team structure became the Owner's alone: creating, renaming and archiving a team,
+adding a member and setting anyone's `roleInTeam` are Owner actions, and a
+manager may only remove someone from a team they lead. Removal closes `leftAt`
+instead of deleting the row, so past time data stays explicable. An invitation's
+role now follows the caller, so a manager cannot appoint another manager. The
+teams screen offers a manager only what still works.
+
+**This closes the escalation**, so D10 is a boundary rather than a route-level
+narrowing. It also leaves a deliberate gap: until Scope D, a manager cannot put
+anyone on their team at all, and the Owner covers it.
+
 ### Fields that exist but do nothing
 
 | Field | Status |
@@ -533,12 +546,12 @@ redirected to login.
 
 ### Engineering state
 
-Test coverage has started but is thin: three suites,
-`team-visibility.service.spec.ts`, `time-logs.service.spec.ts` and
-`users.service.spec.ts`, covering the role-visibility filters, the time-log write
-scope and the user-list scope against a real database. Nothing else is covered,
-but GitHub Actions runs them on every pull request, alongside lint, typecheck and
-build for both applications.
+Test coverage has started but is thin: six suites and 79 tests, covering the
+role-visibility filters, the team route roles and membership rules, who may
+invite whom, the time-log write scope and the user-list scope. Most run against a
+real database; the team route suite runs the real guard, and the invitation suite
+is pure logic. Nothing else is covered, but GitHub Actions runs them on every
+pull request, alongside lint, typecheck and build for both applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations
 run as a deployment step. The frontend has no image on purpose — it is built by
@@ -812,14 +825,13 @@ offer to assign the person to the project.
 
 **Q3 — Should managers administer company-wide resources? — answered for teams,
 still open for the rest.**
-MANAGER currently has full CRUD over teams, projects, activities and categories
-across the whole company, while user management is OWNER-only.
-[`permission-model.md`](./permission-model.md) settles the team half: the Owner
-creates teams and appoints their managers, and a manager operates the team they
-lead. Projects are settled the other way — they stay company-wide, because a
-project spans teams and narrowing it by team would be wrong by construction.
+The team half is settled and built: the Owner creates teams and appoints their
+managers, and a manager operates the team they lead. Projects are settled the
+other way — they stay company-wide, because a project spans teams and narrowing
+it by team would be wrong by construction. User management stays OWNER-only.
+
 What remains genuinely open is **activities and categories**, which are company
-lookup tables that any manager can currently edit or archive.
+lookup tables any manager can still edit or archive across the whole company.
 *Recommendation: leave them company-wide for now* and revisit if two managers
 ever disagree about the catalogue.
 
