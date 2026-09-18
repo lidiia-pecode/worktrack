@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Not, Raw, Repository } from 'typeorm';
+import { DataSource, In, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -18,6 +18,8 @@ import {
 } from './dtos/team.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
+import { TeamVisibilityService } from './team-visibility.service';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
 export class TeamsService {
@@ -28,6 +30,7 @@ export class TeamsService {
     private readonly membershipRepo: Repository<TeamMembership>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -42,9 +45,16 @@ export class TeamsService {
   // TEAMS CRUD
   // ==========================================
 
-  async list(companyId: string, query: TeamsQuery) {
+  async list(companyId: string, query: TeamsQuery, user: AuthUser) {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds?.length === 0) {
+      return { results: [], count: 0 };
+    }
+
     const where = {
       companyId,
+      ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
       ...(query.status ? { status: query.status } : {}),
     };
 
@@ -64,6 +74,26 @@ export class TeamsService {
     }));
 
     return { results, count };
+  }
+
+  /**
+   * Read path for a single team. Separate from `getTeamById` so the write
+   * paths, which decide who may change a team, keep their own rules.
+   */
+  async getTeamForRead(
+    id: string,
+    companyId: string,
+    user: AuthUser,
+  ): Promise<Team> {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds && !visibleTeamIds.includes(id)) {
+      throw new NotFoundException(
+        `Team with id ${id} not found in this company`,
+      );
+    }
+
+    return this.getTeamById(id, companyId);
   }
 
   async getTeamById(

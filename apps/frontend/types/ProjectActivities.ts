@@ -1,4 +1,4 @@
-import { PaginatedResponse } from ".";
+import { PaginatedResponse, PaginationParams } from ".";
 import { Activity } from "./Activities";
 import { Company } from "./Company";
 
@@ -31,3 +31,11 @@ export type UpdateProjectActivityPayload = {
 };
 
 export type ProjectActivityListResponse = PaginatedResponse<ProjectActivity>;
+
+/**
+ * Params for the assignable-activities route. `userId` asks for someone else's
+ * projects and is open to owners and managers within their own scope.
+ */
+export type AssignableActivitiesQuery = PaginationParams & {
+  userId?: string;
+};

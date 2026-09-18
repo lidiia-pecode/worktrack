@@ -5,7 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
-import { useMyProjectActivities } from "@/hooks/useMyProjectActivities";
+import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { TimeLog } from "@/types";
 import {
   formatDuration,
@@ -22,10 +22,10 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
-import { WeekNav } from "./components/WeekNav";
+import { WeekNav } from "../shared/week/WeekNav";
+import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
-import { WeekHeaderDay } from "./components/WeekHeaderDay";
 import { WeekProgressBar } from "./components/WeekProgressBar";
 
 type ModalState = {
@@ -86,7 +86,7 @@ export const WeekTimesheet = () => {
     isLoading: isLoadingPicker,
     isError: isPickerError,
     refetch: refetchPicker,
-  } = useMyProjectActivities();
+  } = useAssignableActivities();
 
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};

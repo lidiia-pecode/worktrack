@@ -182,6 +182,63 @@ reliable client-level reporting becomes a requirement — most likely if WorkTra
 is ever extended to other businesses — promoting clients to an entity is the
 correct move at that point, not before.
 
+### D9 — Time-log write access follows read visibility
+
+Creating, editing and deleting a time entry is allowed for:
+
+- **OWNER** — anyone in the company.
+- **MANAGER** — employees in the teams they actively manage, and nobody else.
+- **EMPLOYEE** — themselves only.
+
+*Why.* The person who notices a wrong or missing entry is usually not the person
+who logged it. There is no approval step to catch it (D4), so without this the
+only remedy is to ask the employee and wait — which is why weeks stay wrong.
+Write scope now mirrors read scope, which also makes the rule easy to state and
+to test.
+
+*Consequence, and this reverses a previous invariant.* Write access is no longer
+"own entries only", so the boundary has to be enforced in the service layer, from
+the same team-leadership source as read visibility. Hiding a button is not a
+permission.
+
+Everything else about a time entry is unchanged. Period locking (D5) applies to
+every role without exception; the daily 1440-minute ceiling, the project
+membership requirement and the billability default all still hold, and they apply
+to **the person the entry belongs to**, not to whoever is typing.
+
+*Deliberately not included: audit tracking.* `TimeLog` records no actor, and
+nothing in the current architecture requires one. Adding `lastEditedById` is a
+migration and a UI change for a need nobody has stated yet, so it stays out until
+someone asks for it.
+
+### D10 — A manager sees only their own teams, everywhere
+
+An OWNER has company-wide visibility: every team, every person. A MANAGER sees
+the teams they actively manage and the people in them — and that limit applies
+to every list, not only to time data.
+
+*Why.* The rule already holds for time logs, planning and reporting, but
+`GET /users` and `GET /teams` still hand a manager the whole company. A manager
+who may not read someone's time can still read their profile and pick them out
+of a filter, which makes the boundary look arbitrary and exposes the full
+roster.
+
+*Consequence.* The user and team list endpoints have to be narrowed for
+managers. Together with D9 this makes one rule cover both halves: a manager reads
+and writes within their own teams. It settles the read half of §10 Q3; whether
+managers should also administer company-wide teams and projects is still open
+there.
+
+*Staffing is not yet covered by this decision.* `GET /users` used to answer two
+questions at once — who a manager's people are, and who they may add to a team
+or project. D10 narrows only the first. The second kept its own company-wide
+source, `GET /users/assignable`, because narrowing a picker while the write path
+behind it is unchecked would be a hidden button rather than a permission.
+
+That is **current behaviour, not a settled decision.** The intended rule is that
+a manager assigns only people they can see, which needs enforcement in the
+service first. See [`permission-model.md`](./permission-model.md) §3.5.
+
 ---
 
 ## 3. Domain model
@@ -259,12 +316,13 @@ specify it (D2).
 
 ### The invariant worth internalising
 
-> **Read visibility widens with role. Write ownership never does.**
+> **Write access for a time entry matches read visibility: owners company-wide,
+> managers within the teams they lead, employees themselves.**
 
-Nobody — owner included — creates, edits or deletes another person's time log.
-This is what makes a time entry mean "this person says they did this work".
-Changing it would require an approval or audit model first, and D4 says there
-isn't one.
+This is enforced in the service, and the caller is kept distinct from the
+entry's owner throughout the write path — the daily ceiling, the project
+membership and the row lock all follow the owner. A time entry now means "this
+person, or someone answerable for them, says this work happened".
 
 ### Planning
 
@@ -329,19 +387,29 @@ another OWNER or grant the OWNER role.
 | Area | OWNER | MANAGER | EMPLOYEE |
 | :--- | :--- | :--- | :--- |
 | Company settings | read + update | read | read |
-| Users | full CRUD | list + read | own profile only |
+| Users — roster | full CRUD | list + read, within their teams | own profile only |
+| Users — assignment list | whole company | whole company | — |
 | Invitations | create | create | — |
 | Teams, Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
-| Time logs — write | **own only** | **own only** | **own only** |
+| Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | create + update | read | read |
 
+This matrix is what the code does today. The intended model —
+Owner-owned structure, manager-operated teams — is in
+[`permission-model.md`](./permission-model.md) §3.
+
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
-leads no team sees nobody. Visibility is computed from active
-`TeamMembership` rows with `roleInTeam = MANAGER`, so it follows team changes
-automatically and respects membership history.
+leads no team sees nobody, and under D9 may therefore edit nobody's time but
+their own. Scope is computed from active `TeamMembership` rows with
+`roleInTeam = MANAGER`, so it follows team changes automatically and respects
+membership history.
+
+D9 is implemented: `TimeLogsService` shares one scope check between reads and
+writes, so the two cannot drift apart, and the team view's per-person panel is
+where an owner or manager acts on it.
 
 Note that MANAGER currently has full CRUD over teams, projects, activities and
 categories company-wide — not restricted to their own teams. See §10 Q3.
@@ -362,6 +430,11 @@ the gap is the main fact about the project's current state.
   driven by company work settings, with loading, error, empty and over-target
   states.
 - **Admin CRUD** — users, teams, projects, activities and categories.
+- **Team time view** — owners and managers land on `/team`, read their people's
+  week filtered by team and project, and open any row to see that person's
+  entries day by day and correct them.
+- **Manager scope** — a manager's user, team and time lists all narrow to the
+  teams they actively lead, with staffing kept on its own company-wide list.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
@@ -371,18 +444,14 @@ the gap is the main fact about the project's current state.
 - **Reporting.** Period lifecycle and a planned-vs-actual aggregation. No screen
   exists — including no way for an owner to actually lock a period, despite
   locking being enforced everywhere.
-- **Team time visibility.** `GET /time-logs` is already role-filtered and
-  accepts user, project and date-range filters, but nothing consumes it beyond
-  the employee's own week.
 
-### Broken or missing for managers and owners
+### Phase 1 delivered
 
-An owner or manager who signs in **lands on a blank page** once workspace setup
-is complete, and `managerNavigation` contains no link to their own timesheet.
-The application currently serves one of its three roles.
-
-The product records time but cannot yet answer the question it exists to answer:
-*did the team log what they were supposed to, and where did the time go?*
+Owners and managers land on `/team` and see their people's week as a grid,
+filterable by team and project, and can open a row to read and correct that
+person's entries. A manager's user, team and time lists all narrow to the teams
+they actively lead, with staffing on its own company-wide list. See
+[`current-scope.md`](./current-scope.md) for the step list.
 
 ### Fields that exist but do nothing
 
@@ -395,16 +464,48 @@ The product records time but cannot yet answer the question it exists to answer:
 
 ### Authorization gaps
 
-One real gap, not a design decision:
+These are current-state facts. The rules meant to replace them are in
+[`permission-model.md`](./permission-model.md), and the order they will be fixed
+in is §7 of that document.
 
-1. **Manager scope is incomplete in planned-vs-actual.**
+1. **A manager can widen their own visibility.** The team write paths do not
+   receive the caller — `createTeam(companyId, dto)` and
+   `addMember(teamId, companyId, dto)` — so they are guarded by role and
+   `companyId` alone. Since `roleInTeam = MANAGER` is the only source of
+   people-visibility, a manager can create a team, add themselves to it as its
+   manager, add any employee, and then read and edit that person's time under
+   D9. Reachable through the UI, not only the API. **This makes D10 bypassable
+   by the role it constrains.**
+
+2. **A manager can invite another manager.** `validateInvitationRole` checks the
+   invitee's role but never the caller's.
+
+3. **An invitation cannot place anyone in a team.** `Invitation` carries no
+   `teamId` and no `invitedById`, so an invitee arrives in no team and is
+   invisible to whoever invited them.
+
+4. **Project membership is assigned without a visibility check.**
+   `syncProjectUsers` validates only that the users are active and in the same
+   company. The restriction to employees exists on the client alone.
+
+5. **`GET /projects/:id` discloses every member's name and email** to any
+   manager, including people `GET /users/:id` now refuses.
+
+6. **Managers and owners cannot be project members**, so a manager has no
+   project to log against and their timesheet cannot be used.
+
+7. **Manager scope is incomplete in planned-vs-actual.**
    `ReportingService.getPlannedVsActualReport` pins an EMPLOYEE to their own
    data, and a MANAGER who names a `userId` is now checked against
    `isUserInManagedTeams`. But that check only runs *when a `userId` is given*.
    A manager who calls the endpoint without one leaves the user filter unset, so
    the aggregates are scoped by `companyId` alone and come back **company-wide**.
 
-A second gap remains on the frontend, though it no longer leaks data:
+`GET /users` and `GET /teams` were two earlier gaps and are closed at the route
+level, though gap 1 above means the user narrowing is not yet a boundary a
+manager cannot cross.
+
+A further gap remains on the frontend, though it no longer leaks data:
 the admin pages check only for a session, not for a role, so an employee who
 navigates to an admin route still renders the admin UI. The backend now refuses
 to fill it — every admin project route answers an employee with 403 — so what
@@ -419,11 +520,12 @@ redirected to login.
 
 ### Engineering state
 
-Test coverage has started but is thin: a single suite,
-`team-visibility.service.spec.ts`, covering the role-visibility filters against
-a real database. Nothing else is covered, but GitHub Actions now runs that suite
-on every pull request, alongside lint, typecheck and build for both
-applications.
+Test coverage has started but is thin: three suites,
+`team-visibility.service.spec.ts`, `time-logs.service.spec.ts` and
+`users.service.spec.ts`, covering the role-visibility filters, the time-log write
+scope and the user-list scope against a real database. Nothing else is covered,
+but GitHub Actions runs them on every pull request, alongside lint, typecheck and
+build for both applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations
 run as a deployment step. The frontend has no image on purpose — it is built by
@@ -451,7 +553,9 @@ For the company using it:
 - **The owner** sees the same across the company, closes periods once hours have
   been used for invoicing, and can export hours — split by client, project, and
   billable/non-billable — to hand to whoever produces the invoices.
-- **Nobody** approves anybody's timesheet, and nobody edits anybody else's time.
+- **Nobody** approves anybody's timesheet. Someone else's time can be corrected
+  by their manager or by the owner, inside an open period, and never by anyone
+  else (D9).
 
 ### Roadmap
 
@@ -487,10 +591,10 @@ available, because the authorization work already exists.
 
 Owners and managers get somewhere to land and a team week view: people down the
 side, days across the top, totals in the cells, filterable by team and project,
-with under-target rows visible at a glance and a read-only drill-down into one
-person's entries.
+with under-target rows visible at a glance and a drill-down into one person's
+entries, editable by the owner and by the manager of that person's team (D9).
 
-Two constraints that matter more than the UI:
+Three constraints that matter more than the UI:
 
 - **The summary must reuse the existing visibility filter.** A hand-written
   second copy of the manager/team SQL is exactly how authorization bugs get
@@ -498,13 +602,22 @@ Two constraints that matter more than the UI:
   a manager may see.
 - **Aggregate in the database, not the browser.** Summing raw logs client-side
   works for one person's week and will not survive the whole company.
+- **Editing someone else's time is a server-side permission.** The check belongs
+  in the time-log service, next to the period lock and the ownership match, and
+  the same visibility source has to decide it. A hidden edit button is not a
+  permission.
 
-Also closes the blank home page and adds the missing timesheet link for
-managers.
+Also closes the blank home page, adds the missing timesheet link for managers,
+and narrows the user and team lists to a manager's own teams (D10) — with
+assignment kept on its own company-wide list, so Q3 stays open.
 
 *Depends on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
 
 ---
+
+> Before Phase 2, the permission scopes in
+> [`permission-model.md`](./permission-model.md) §7 close the authorization gaps
+> listed in §6. Scope C of that list is a security fix.
 
 **Phase 2 — Absences**
 
@@ -623,7 +736,9 @@ Phase 1  Team time view                  (hours + billable
 
 Short list. These are the things that would be expensive or dangerous to break.
 
-1. **Nobody writes another user's time log.** Not managers, not owners.
+1. **A time log is written only by the person it belongs to, by a manager of a
+   team that person is in, or by an owner** (D9) — enforced in the service,
+   never by the UI alone.
 2. **Tenant isolation is enforced in services, never assumed from the request.**
    Every domain query filters on `companyId`.
 3. **Role visibility is computed in one place per resource.** Reuse
@@ -645,6 +760,7 @@ Short list. These are the things that would be expensive or dangerous to break.
 | Document | Covers |
 | :--- | :--- |
 | **This document** | Product definition, business rules, decisions, roadmap |
+| [`permission-model.md`](./permission-model.md) | Target permission model — **future state**, not yet built |
 | [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
 | [`backend-context.md`](../apps/backend/docs/backend-context.md) | Modules, API surface, data model, constraints |
 | [`auth.md`](../apps/backend/docs/auth.md) | Tokens, sessions, guards, OAuth, password flows |
@@ -655,6 +771,11 @@ Short list. These are the things that would be expensive or dangerous to break.
 ---
 
 ## 10. Open decisions
+
+Questions about the permission model — team membership, invitations, project
+responsibility — live in [`permission-model.md`](./permission-model.md) §6,
+alongside the model they belong to. The ones below are about the rest of the
+product.
 
 Genuinely undecided. Each includes a recommendation, but none should be treated
 as settled until confirmed.
@@ -675,14 +796,18 @@ therefore plan someone onto a project that person cannot log against.
 in the wrong direction. But the planning UI should flag the mismatch, and ideally
 offer to assign the person to the project.
 
-**Q3 — Should managers administer company-wide resources?**
+**Q3 — Should managers administer company-wide resources? — answered for teams,
+still open for the rest.**
 MANAGER currently has full CRUD over teams, projects, activities and categories
-across the whole company, while user management is OWNER-only. A manager can
-create and archive a project belonging to a team they have nothing to do with.
-*Recommendation: decide explicitly rather than leave it as an accident.* If the
-company is small and managers are trusted broadly, the current setting is fine
-and should simply be documented as intentional. If not, the natural narrowing is
-projects scoped to teams they lead.
+across the whole company, while user management is OWNER-only.
+[`permission-model.md`](./permission-model.md) settles the team half: the Owner
+creates teams and appoints their managers, and a manager operates the team they
+lead. Projects are settled the other way — they stay company-wide, because a
+project spans teams and narrowing it by team would be wrong by construction.
+What remains genuinely open is **activities and categories**, which are company
+lookup tables that any manager can currently edit or archive.
+*Recommendation: leave them company-wide for now* and revisit if two managers
+ever disagree about the catalogue.
 
 **Q4 — What form should the hours export take?**
 Required by Phase 5, since invoicing is external (D7).

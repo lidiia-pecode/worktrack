@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,7 +17,10 @@ import {
   UpdateProjectPayload,
 } from './dtos/project-payload.dto';
 import { ProjectsQuery } from './dtos/projects-query.dto';
+import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
@@ -31,6 +35,7 @@ export class ProjectsService {
     private readonly projectActivityRepo: Repository<ProjectActivity>,
     private readonly activitiesService: ActivitiesService,
     private readonly usersService: UsersService,
+    private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -353,16 +358,55 @@ export class ProjectsService {
     return this.repo.save(project);
   }
 
+  private async assertUserInWriteScope(
+    userId: string,
+    user: AuthUser,
+  ): Promise<void> {
+    if (user.role === UserRole.OWNER) {
+      const exists = await this.usersService.findUserById(
+        userId,
+        user.companyId,
+      );
+      if (!exists) throw new NotFoundException('User not found');
+      return;
+    }
+
+    if (user.role !== UserRole.MANAGER) {
+      throw new ForbiddenException('You can only list your own projects');
+    }
+
+    const visible = await this.teamVisibility.isUserInManagedTeams(
+      userId,
+      user,
+    );
+
+    if (!visible) {
+      throw new ForbiddenException(
+        'You can only list projects of users in teams you manage',
+      );
+    }
+  }
+
   /**
-   * Project activities the caller may log time against: the activity link is
-   * enabled, both the project and the activity are active, and the caller is
-   * a member of the project.
+   * Project activities a person may log time against: the activity link is
+   * enabled, both the project and the activity are active, and that person is
+   * a member of the project. Defaults to the caller; owners and managers may
+   * ask for someone they are allowed to write for.
    *
    * Exists so clients do not have to fetch every company project and filter
    * membership themselves — that leaked the whole project roster to employees
    * and silently truncated at the project page size.
    */
-  async listAssignableActivities(query: PaginationQuery, user: AuthUser) {
+  async listAssignableActivities(
+    query: AssignableActivitiesQuery,
+    user: AuthUser,
+  ) {
+    const targetUserId = query.userId ?? user.id;
+
+    if (targetUserId !== user.id) {
+      await this.assertUserInWriteScope(targetUserId, user);
+    }
+
     const [results, count] = await this.projectActivityRepo
       .createQueryBuilder('pa')
       .innerJoinAndSelect('pa.project', 'project')
@@ -371,8 +415,8 @@ export class ProjectsService {
       .innerJoin(
         'project_users',
         'pu',
-        'pu.project_id = project.id AND pu.user_id = :userId',
-        { userId: user.id },
+        'pu.project_id = project.id AND pu.user_id = :targetUserId',
+        { targetUserId },
       )
       .where('pa.company_id = :companyId', { companyId: user.companyId })
       .andWhere('project.company_id = :companyId', {

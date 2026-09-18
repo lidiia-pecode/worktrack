@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import {
+  AssignableUser,
   CreateUserPayload,
   UpdateUserPayload,
   User,
@@ -28,6 +29,25 @@ const usersQueries = createEntityQuery<User, UserQueryParams>({
 export const useUsersQuery = usersQueries.useQuery;
 
 export const useUsersInfiniteQuery = usersQueries.useInfiniteQuery;
+
+/**
+ * Who may be added to a team or project. A separate list from the one above:
+ * that one narrows to a manager's own people, and staffing has to reach past
+ * them.
+ */
+const assignableUsersQueries = createEntityQuery<
+  AssignableUser,
+  UserQueryParams
+>({
+  queryKey: queryKeys.users.assignable,
+
+  api: {
+    getAll: UsersClientApi.getAssignable,
+  },
+});
+
+export const useAssignableUsersInfiniteQuery =
+  assignableUsersQueries.useInfiniteQuery;
 
 const useUsersMutations = createEntityMutations<
   User,

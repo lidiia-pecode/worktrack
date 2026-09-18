@@ -3,7 +3,7 @@ import { Segment } from "../types";
 import { TimeLog } from "@/types";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { OVERTIME_SEGMENT_PATTERN } from "../consts";
-import { getTimelogDisplay } from "../helpers/timelog-display";
+import { getTimelogDisplay } from "@/lib/utils/timelog";
 
 type TimelogSegmentProps = {
   segment: Segment;

@@ -1,5 +1,6 @@
 "use client";
 
+import { buildQueryString } from "./build-query-string";
 import { createClient } from "./create-client";
 
 type CrudClientConfig = {
@@ -9,18 +10,6 @@ type CrudClientConfig = {
 type GetAllOptions<TQuery extends object> = {
   page?: number;
 } & TQuery;
-
-const buildQuery = (query?: object): URLSearchParams => {
-  const params = new URLSearchParams();
-
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      params.set(key, String(value));
-    }
-  });
-
-  return params;
-};
 
 export function createCrudClient<
   TEntity,
@@ -35,10 +24,7 @@ export function createCrudClient<
   const getAll = (options?: number | GetAllOptions<TQuery>) => {
     const query = typeof options === "number" ? { page: options } : options;
 
-    const params = buildQuery(query);
-    const queryString = params.toString();
-
-    return client.get<TList>(queryString ? `?${queryString}` : "");
+    return client.get<TList>(buildQueryString(query));
   };
 
   return {

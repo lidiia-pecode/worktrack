@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import { IsNull, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
@@ -58,6 +58,56 @@ export class TeamVisibilityService {
     qb.andWhere(`${userColumn} = :visibilityUserId`, {
       visibilityUserId: user.id,
     });
+  }
+
+  /**
+   * Filters the query to users who are currently members of the given team.
+   *
+   * The caller's visibility scope is applied separately, so passing a team
+   * the caller cannot access results in no matching users.
+   */
+  applyTeamMembershipFilter<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+    userColumn: string,
+    teamId: string | undefined,
+    user: AuthUser,
+  ): void {
+    if (!teamId) return;
+
+    qb.andWhere(
+      `${userColumn} IN (
+        SELECT tm_team.user_id
+        FROM team_memberships tm_team
+        WHERE tm_team.team_id = :teamFilterTeamId
+          AND tm_team.left_at IS NULL
+          AND tm_team.company_id = :teamFilterCompanyId
+      )`,
+      {
+        teamFilterTeamId: teamId,
+        teamFilterCompanyId: user.companyId,
+      },
+    );
+  }
+
+  /**
+   * The teams the caller may see: every team for an owner, the teams they
+   * actively lead for a manager. Returns ids so callers can keep their own
+   * query shape.
+   */
+  async getVisibleTeamIds(user: AuthUser): Promise<string[] | null> {
+    if (user.role === UserRole.OWNER) return null;
+
+    const memberships = await this.repo.find({
+      select: ['teamId'],
+      where: {
+        userId: user.id,
+        companyId: user.companyId,
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: IsNull(),
+      },
+    });
+
+    return memberships.map((membership) => membership.teamId);
   }
 
   /** True when the caller currently leads a team the given user belongs to. */

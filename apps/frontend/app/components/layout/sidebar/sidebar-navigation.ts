@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarRange,
   Clock3,
   FolderKanban,
   FolderTree,
@@ -7,6 +8,16 @@ import {
 } from "lucide-react";
 
 export const managerNavigation = [
+  {
+    label: "Team time",
+    href: "/team",
+    icon: CalendarRange,
+  },
+  {
+    label: "Timesheet",
+    href: "/timesheet",
+    icon: Clock3,
+  },
   {
     label: "Teams",
     href: "/admin/teams",

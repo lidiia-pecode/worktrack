@@ -69,6 +69,14 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("users", params),
 
     detail: (id: string) => ["users", "detail", id] as const,
+
+    assignable: {
+      list: (page: number, params?: QueryParams) =>
+        createListKey("users-assignable", page, params),
+
+      infinite: (params?: QueryParams) =>
+        createInfiniteKey("users-assignable", params),
+    },
   },
 
   timelogs: {
@@ -79,13 +87,17 @@ export const queryKeys = {
       createListKey("timelogs", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("timelogs", params),
+
+    teamSummary: (params?: QueryParams) =>
+      ["timelogs", "team-summary", params ?? {}] as const,
   },
 
   projectActivities: {
     all: ["projectActivities"] as const,
     lists: () => ["projectActivities", "list"] as const,
 
-    mine: () => ["projectActivities", "mine"] as const,
+    assignable: (params?: QueryParams) =>
+      ["projectActivities", "assignable", params ?? {}] as const,
   },
 
   auth: {

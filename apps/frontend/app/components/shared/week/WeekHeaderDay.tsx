@@ -8,7 +8,7 @@ type WeekHeaderDayProps = {
   date: Date;
   isToday: boolean;
   totalMinutes: number;
-  targetMinutes: number;
+  targetMinutes?: number;
 };
 
 export function WeekHeaderDay({
@@ -18,7 +18,8 @@ export function WeekHeaderDay({
   targetMinutes,
 }: WeekHeaderDayProps) {
   const weekend = isWeekend(date);
-  const isOverTarget = totalMinutes > targetMinutes;
+  const isOverTarget =
+    targetMinutes !== undefined && totalMinutes > targetMinutes;
 
   return (
     <div

@@ -12,16 +12,18 @@ import {
 } from '@nestjs/common';
 
 import { TimeLogsService } from './time-logs.service';
-import { TimeLogResponse } from './dtos/timelog-response.dto';
+import { TimeLogResponse } from './dtos/time-log-response.dto';
 import {
   TimeLogPayload,
-  UpdateTimelogPayload,
-} from './dtos/timelog-payload.dto';
+  UpdateTimeLogPayload,
+} from './dtos/time-log-payload.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
 import { AccessGuard } from 'src/auth/guards';
-import { GetTimelogsQuery } from './dtos/get-timelogs-query.dto';
+import { TimeLogsQuery } from './dtos/time-logs-query.dto';
+import { TeamSummaryQuery } from './dtos/team-summary-query.dto';
+import { TeamSummaryResponse } from './dtos/team-summary-response.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('time-logs')
@@ -32,10 +34,20 @@ export class TimeLogsController {
   @Get()
   @SerializeList(TimeLogResponse)
   async getAllTimeLogs(
-    @Query() query: GetTimelogsQuery,
+    @Query() query: TimeLogsQuery,
     @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.list(query, user);
+  }
+
+  // Declared before ':id' so the path is not swallowed by the id route.
+  @Get('summary')
+  @Serialize(TeamSummaryResponse)
+  async getTeamSummary(
+    @Query() query: TeamSummaryQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.timeLogsService.getTeamSummary(query, user);
   }
 
   @Get(':id')
@@ -60,7 +72,7 @@ export class TimeLogsController {
   @Serialize(TimeLogResponse)
   async updateTimeLog(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() payload: UpdateTimelogPayload,
+    @Body() payload: UpdateTimeLogPayload,
     @CurrentUser() user: AuthUser,
   ) {
     return this.timeLogsService.update(id, payload, user);
