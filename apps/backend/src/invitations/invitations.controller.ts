@@ -46,7 +46,7 @@ export class InvitationsController {
     @CurrentUser() user: AuthUser,
     @Body() payload: CreateInvitationPayload,
   ) {
-    await this.invitationsService.create(user.companyId, payload);
+    await this.invitationsService.create(user.companyId, payload, user);
 
     return {
       success: true,

@@ -371,8 +371,9 @@ A `SUSPENDED` company cannot be updated and cannot authenticate.
 A new company is created by self-service signup, which creates the `Company` and
 its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role, and the invitee completes signup
-by setting a password or via Google. Invitation tokens are stored hashed and are
-`PENDING | ACCEPTED | REVOKED`.
+by setting a password or via Google. An owner may invite a manager or an
+employee, a manager only an employee. Invitation tokens are stored hashed and
+are `PENDING | ACCEPTED | REVOKED`.
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -389,7 +390,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create | create | — |
+| Invitations | create, any role | create, EMPLOYEE only | — |
 | Teams | full CRUD | read, within their teams; remove a member | read |
 | Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
@@ -489,8 +490,9 @@ in is §7 of that document.
    route-level narrowing.** The teams screen still offers a manager the buttons
    for those actions, which now answer 403, until Scope C6 lands.
 
-2. **A manager can invite another manager.** `validateInvitationRole` checks the
-   invitee's role but never the caller's.
+2. **A manager can invite another manager — closed.**
+   `validateInvitationRole` now takes the caller's role: an owner may invite a
+   manager or an employee, a manager only an employee.
 
 3. **An invitation cannot place anyone in a team.** `Invitation` carries no
    `teamId` and no `invitedById`, so an invitee arrives in no team and is

@@ -391,6 +391,17 @@ export class TeamsService {
       );
     }
 
-    await this.membershipRepo.remove(membership);
+    if (membership.leftAt) {
+      throw new BadRequestException('This membership is already closed');
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    // A membership that has not started yet closes on its start date, so the
+    // stored range stays valid.
+    membership.leftAt =
+      today < membership.joinedAt ? membership.joinedAt : today;
+
+    await this.membershipRepo.save(membership);
   }
 }

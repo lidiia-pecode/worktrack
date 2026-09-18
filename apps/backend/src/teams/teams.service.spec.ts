@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -23,6 +23,9 @@ import { TeamsService } from './teams.service';
 const RUN = Date.now();
 const SLUG = `teams-service-test-${RUN}`;
 const JOINED_AT = '2025-12-31';
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const TOMORROW = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
 describe('TeamsService', () => {
   let dataSource: DataSource;
@@ -171,6 +174,43 @@ describe('TeamsService', () => {
       await service.removeMember(membershipId, companyId, beta, owner);
 
       await expect(activeMemberIds(beta)).resolves.not.toContain(employee.id);
+    });
+
+    it('closes leftAt and keeps the row', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await service.removeMember(membershipId, companyId, alpha, alphaManager);
+
+      const membership = await dataSource
+        .getRepository(TeamMembership)
+        .findOneByOrFail({ id: membershipId });
+
+      expect(membership.leftAt).toBe(TODAY);
+      expect(membership.joinedAt).toBe(JOINED_AT);
+    });
+
+    it('refuses to close the same membership twice', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await service.removeMember(membershipId, companyId, alpha, alphaManager);
+
+      await expect(
+        service.removeMember(membershipId, companyId, alpha, alphaManager),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lets an owner add the person back afterwards', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+      await service.removeMember(membershipId, companyId, alpha, alphaManager);
+
+      const readded = await service.addMember(alpha, companyId, {
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: TOMORROW,
+      });
+
+      expect(readded.leftAt).toBeNull();
+      await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
     });
   });
 });
