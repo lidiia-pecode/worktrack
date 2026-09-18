@@ -309,11 +309,10 @@ specify it (D2).
 > **Write access for a time entry matches read visibility: owners company-wide,
 > managers within the teams they lead, employees themselves.**
 
-The code today is still stricter than that: `getOwnedLogForUpdate` matches on
-`userId`, so nobody — owner included — creates, edits or deletes another
-person's time log. D9 replaces that with the rule above, enforced in the service.
-A time entry now means "this person, or someone answerable for them, says this
-work happened".
+This is enforced in the service, and the caller is kept distinct from the
+entry's owner throughout the write path — the daily ceiling, the project
+membership and the row lock all follow the owner. A time entry now means "this
+person, or someone answerable for them, says this work happened".
 
 ### Planning
 
@@ -382,7 +381,7 @@ another OWNER or grant the OWNER role.
 | Invitations | create | create | — |
 | Teams, Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
-| Time logs — write | whole company (D9, not built yet) | own, plus users in teams they manage (D9, not built yet) | **own only** |
+| Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | create + update | read | read |
@@ -393,9 +392,9 @@ their own. Scope is computed from active `TeamMembership` rows with
 `roleInTeam = MANAGER`, so it follows team changes automatically and respects
 membership history.
 
-The write row is a decision, not a description: D9 is agreed but not yet
-implemented, and the same team-leadership source must drive it. Until it ships,
-the code still allows own-entries-only for every role.
+D9 is implemented: `TimeLogsService` shares one scope check between reads and
+writes, so the two cannot drift apart. The UI that uses it is still to come —
+see [`current-scope.md`](./current-scope.md).
 
 Note that MANAGER currently has full CRUD over teams, projects, activities and
 categories company-wide — not restricted to their own teams. See §10 Q3.
@@ -416,6 +415,9 @@ the gap is the main fact about the project's current state.
   driven by company work settings, with loading, error, empty and over-target
   states.
 - **Admin CRUD** — users, teams, projects, activities and categories.
+- **Team time view** — owners and managers land on `/team` and read their
+  people's week, filtered by team and project. The detail panel is still to
+  come.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
@@ -425,18 +427,14 @@ the gap is the main fact about the project's current state.
 - **Reporting.** Period lifecycle and a planned-vs-actual aggregation. No screen
   exists — including no way for an owner to actually lock a period, despite
   locking being enforced everywhere.
-- **Team time visibility.** `GET /time-logs` is already role-filtered and
-  accepts user, project and date-range filters, but nothing consumes it beyond
-  the employee's own week.
 
-### Broken or missing for managers and owners
+### Phase 1 in progress
 
-An owner or manager who signs in **lands on a blank page** once workspace setup
-is complete, and `managerNavigation` contains no link to their own timesheet.
-The application currently serves one of its three roles.
-
-The product records time but cannot yet answer the question it exists to answer:
-*did the team log what they were supposed to, and where did the time go?*
+Owners and managers now land on `/team` and see their people's week as a grid,
+filterable by team and project, with loading, error and empty states. The
+remaining pieces are the per-user detail panel with editing, and narrowing
+`GET /users` to a manager's teams. See [`current-scope.md`](./current-scope.md)
+for the step list and the current stopping point.
 
 ### Fields that exist but do nothing
 
@@ -483,11 +481,11 @@ redirected to login.
 
 ### Engineering state
 
-Test coverage has started but is thin: a single suite,
-`team-visibility.service.spec.ts`, covering the role-visibility filters against
-a real database. Nothing else is covered, but GitHub Actions now runs that suite
-on every pull request, alongside lint, typecheck and build for both
-applications.
+Test coverage has started but is thin: two suites,
+`team-visibility.service.spec.ts` and `time-logs.service.spec.ts`, covering the
+role-visibility filters and the time-log write scope against a real database.
+Nothing else is covered, but GitHub Actions runs them on every pull request,
+alongside lint, typecheck and build for both applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations
 run as a deployment step. The frontend has no image on purpose — it is built by

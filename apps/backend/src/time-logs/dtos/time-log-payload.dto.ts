@@ -10,10 +10,14 @@ import {
   Min,
   MinLength,
 } from 'class-validator';
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 
 export class TimeLogPayload {
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
+
   @IsUUID()
   projectActivityId!: string;
 
@@ -37,4 +41,7 @@ export class TimeLogPayload {
   date!: string;
 }
 
-export class UpdateTimeLogPayload extends PartialType(TimeLogPayload) {}
+// An entry cannot be reassigned to a different person, so userId is not updatable.
+export class UpdateTimeLogPayload extends PartialType(
+  OmitType(TimeLogPayload, ['userId'] as const),
+) {}

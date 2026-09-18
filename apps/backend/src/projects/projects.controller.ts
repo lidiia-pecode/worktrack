@@ -26,6 +26,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectActivityResponse } from './dtos/project-activity-response.dto';
 import { ProjectsQuery } from './dtos/projects-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
+import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { UserResponse } from 'src/users/dtos/user-response.dto';
 
 @Controller('projects')
@@ -93,7 +94,7 @@ export class ProjectsController {
   @Get('me/activities')
   @SerializeList(ProjectActivityResponse)
   listAssignableActivities(
-    @Query() query: PaginationQuery,
+    @Query() query: AssignableActivitiesQuery,
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.listAssignableActivities(query, user);
