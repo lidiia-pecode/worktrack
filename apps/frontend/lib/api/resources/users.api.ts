@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AssignableUserListResponse,
   User,
   UserListResponse,
   UsersQuery,
@@ -9,7 +10,7 @@ import {
   CreateUserPayload,
   UpdateUserPayload,
 } from "@/types";
-import { createClient, createCrudClient } from "../core";
+import { buildQueryString, createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   User,
@@ -24,6 +25,12 @@ const client = createClient({ endpoint: "users" });
 
 export const UsersClientApi = {
   ...crud,
+
+  getAssignable: (params?: UsersQuery) =>
+    client.get<AssignableUserListResponse>(
+      `/assignable${buildQueryString(params)}`,
+    ),
+
   archive: (id: string) => client.archive<User>(`/${id}/archive`),
   unarchive: (id: string) => client.patch<User>(`/${id}/unarchive`),
 

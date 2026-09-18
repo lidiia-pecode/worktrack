@@ -50,6 +50,22 @@ export interface UpdateProfilePayload {
 
 export type UserListResponse = PaginatedResponse<User>;
 
+/**
+ * Who can be put on a team or project. Narrower than `User` because the API
+ * sends less: this list exists only so someone can pick a name.
+ */
+export interface AssignableUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  position?: string | null;
+  avatarUrl?: string | null;
+}
+
+export type AssignableUserListResponse = PaginatedResponse<AssignableUser>;
+
 export interface UsersQuery extends PaginationParams {
   status?: UserStatus;
 }

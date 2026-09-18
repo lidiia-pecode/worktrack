@@ -4,7 +4,7 @@ import { UserPlus, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { User } from "@/types";
+import { AssignableUser } from "@/types";
 
 import { fullName } from "@/lib/utils/user";
 
@@ -12,7 +12,7 @@ import { AssignedList } from "../shared/resourse/AssignedList";
 import { Avatar } from "../shared/Avatar";
 
 interface ProjectMembersSectionProps {
-  members: User[];
+  members: AssignableUser[];
   isLoading?: boolean;
   isCreateMode?: boolean;
   onOpenAddMembers: () => void;

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserDetailsResponse, UserResponse } from './dtos/user-response.dto';
+import { AssignableUserResponse } from './dtos/assignable-user-response.dto';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
@@ -52,7 +53,18 @@ export class UsersController {
     @CurrentUser() authUser: AuthUser,
     @Query() query: UsersQuery,
   ) {
-    return this.usersService.list(authUser.companyId, query);
+    return this.usersService.list(authUser.companyId, query, authUser);
+  }
+
+  // Must stay above ':id', or "assignable" is read as a user id.
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Get('assignable')
+  @SerializeList(AssignableUserResponse)
+  async getAssignableUsers(
+    @CurrentUser() authUser: AuthUser,
+    @Query() query: UsersQuery,
+  ) {
+    return this.usersService.listAssignable(authUser.companyId, query);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
@@ -62,7 +74,11 @@ export class UsersController {
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.usersService.getUserDetailsById(id, authUser.companyId);
+    return this.usersService.getUserDetailsById(
+      id,
+      authUser.companyId,
+      authUser,
+    );
   }
 
   @Role(UserRole.OWNER)

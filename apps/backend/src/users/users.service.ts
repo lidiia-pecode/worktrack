@@ -14,12 +14,15 @@ import { UsersQuery } from './dtos/users-query.dto';
 import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly repo: Repository<User>,
+    private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -123,17 +126,45 @@ export class UsersService {
 
   // Multi-Tenant Business API
 
-  async list(companyId: string, query: UsersQuery, manager?: EntityManager) {
-    const where = {
-      companyId,
-      ...(query.status ? { status: query.status } : {}),
-    };
+  async list(
+    companyId: string,
+    query: UsersQuery,
+    user: AuthUser,
+    manager?: EntityManager,
+  ) {
+    const qb = this.getRepository(manager)
+      .createQueryBuilder('u')
+      .where('u.company_id = :companyId', { companyId });
 
-    const [results, count] = await this.getRepository(manager).findAndCount({
-      where,
+    if (query.status) {
+      qb.andWhere('u.status = :status', { status: query.status });
+    }
+
+    this.teamVisibility.applyUserVisibility(qb, 'u.id', user);
+
+    const [results, count] = await qb
+      .orderBy('u.created_at', 'DESC')
+      .skip(query.offset)
+      .take(query.limit)
+      .getManyAndCount();
+
+    return { results, count };
+  }
+
+  /**
+   * Everyone in the company who can be put on a team or a project. Separate
+   * from `list` because that one narrows to a manager's own people, and a
+   * manager staffing a team has to be able to reach past them.
+   */
+  async listAssignable(companyId: string, query: UsersQuery) {
+    const [results, count] = await this.repo.findAndCount({
+      where: {
+        companyId,
+        ...(query.status ? { status: query.status } : {}),
+      },
       skip: query.offset,
       take: query.limit,
-      order: { createdAt: 'DESC' },
+      order: { firstName: 'ASC', lastName: 'ASC' },
     });
 
     return { results, count };
@@ -173,6 +204,7 @@ export class UsersService {
   async getUserDetailsById(
     id: string,
     companyId: string,
+    caller: AuthUser,
     manager?: EntityManager,
   ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
     const user = await this.getRepository(manager).findOne({
@@ -186,6 +218,15 @@ export class UsersService {
     });
 
     if (!user) {
+      throw new NotFoundException(
+        `User with id ${id} not found in this company`,
+      );
+    }
+
+    if (
+      caller.role === UserRole.MANAGER &&
+      !(await this.teamVisibility.isUserInManagedTeams(id, caller))
+    ) {
       throw new NotFoundException(
         `User with id ${id} not found in this company`,
       );

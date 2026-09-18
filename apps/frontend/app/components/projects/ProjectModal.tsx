@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { useProjectDetails, useProjects } from "@/hooks/useProjects";
-import { useUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
 import {
@@ -81,7 +81,7 @@ export function ProjectModal({
     items: rawUsers,
     isLoading: isUsersLoading,
     pagination: usersPagination,
-  } = useUsersInfiniteQuery({
+  } = useAssignableUsersInfiniteQuery({
     status: UserStatus.ACTIVE,
   });
 

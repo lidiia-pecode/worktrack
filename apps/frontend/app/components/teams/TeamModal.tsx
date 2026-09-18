@@ -7,7 +7,7 @@ import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
-import { useUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
@@ -55,7 +55,7 @@ export function TeamModal({
     items: allUsers,
     isLoading: isUsersLoading,
     pagination,
-  } = useUsersInfiniteQuery({
+  } = useAssignableUsersInfiniteQuery({
     status: UserStatus.ACTIVE,
   });
 
