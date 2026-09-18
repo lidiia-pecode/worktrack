@@ -136,6 +136,7 @@ export class TeamsController {
       membershipId,
       authUser.companyId,
       teamId,
+      authUser,
     );
   }
 }

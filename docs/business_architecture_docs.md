@@ -390,7 +390,8 @@ another OWNER or grant the OWNER role.
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
 | Invitations | create | create | — |
-| Teams, Projects, Activities, Categories | full CRUD | full CRUD | read |
+| Teams | full CRUD | read, within their teams; remove a member | read |
+| Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
@@ -411,8 +412,12 @@ D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the team view's per-person panel is
 where an owner or manager acts on it.
 
-Note that MANAGER currently has full CRUD over teams, projects, activities and
-categories company-wide — not restricted to their own teams. See §10 Q3.
+Team structure is the Owner's: only an owner creates, renames or archives a
+team, adds a member or changes a `roleInTeam`. A manager may remove a member
+from a team they lead, because removal only narrows their own reach.
+
+Note that MANAGER still has full CRUD over projects, activities and categories
+company-wide — not restricted to their own teams. See §10 Q3.
 
 ---
 

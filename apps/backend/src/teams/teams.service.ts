@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -39,6 +40,20 @@ export class TeamsService {
   // ==========================================
   private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
     return new Date(leftAt).getTime() < new Date(joinedAt).getTime();
+  }
+
+  /** An owner acts on any team, a manager only on one they actively lead. */
+  private async assertTeamInScope(
+    teamId: string,
+    user: AuthUser,
+  ): Promise<void> {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
+      throw new ForbiddenException(
+        'You can only change the membership of teams you lead',
+      );
+    }
   }
 
   // ==========================================
@@ -358,7 +373,10 @@ export class TeamsService {
     membershipId: string,
     companyId: string,
     teamId: string,
+    user: AuthUser,
   ): Promise<void> {
+    await this.assertTeamInScope(teamId, user);
+
     const membership = await this.membershipRepo.findOne({
       where: {
         id: membershipId,

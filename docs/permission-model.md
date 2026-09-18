@@ -184,6 +184,7 @@ stands in its way.
 | §3.1 A manager invites into their own team | Not possible — an invitation carries no team. A manager can also invite another manager | business §6 gaps 2, 3 |
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
 | §3.3 A manager adds only people who are new | A manager cannot add anyone at all for now; the safe route arrives in Scope D | §7, Scope C |
+| §3.3 A manager removes only from a team they lead | **Already enforced** | — |
 | §3.3 Removal closes `leftAt` | `removeMember` hard-deletes the row | backend-context, Teams |
 | §3.4 Two levels of visibility | One level. Project detail returns every member's name and email to any manager | business §6 gap 5 |
 | §3.5 Projects stay company-wide | **Already true** | — |
