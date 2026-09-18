@@ -238,12 +238,18 @@ Backend and tests only; no migration, no UI.
 
 - Pass the caller into the team write paths.
 - Team create, rename, archive and any `roleInTeam` change become OWNER-only.
-- Membership add and remove scoped to teams the manager leads.
+- **Adding** a member becomes OWNER-only too, until Scope D gives managers the
+  safe route. "May add" is only safe once it means "may add someone new", and
+  that needs the invitation to carry a team.
+- **Removing** a member is scoped to teams the manager leads. Removal narrows
+  their own reach, so it grants nothing and is safe to delegate now.
 - `removeMember` closes `leftAt` instead of deleting.
 - Invitation role restricted by the caller's role.
 
-Closes F1, F2, F3, F8. **This is the security fix and should be deployed before
-anything else in this list.**
+Closes the first three gaps in business §6 and the hard delete. **This is the
+security fix and should be deployed before anything else in this list.** It
+leaves managers unable to add anyone to their team until Scope D; if that gap
+matters in practice, ship C and D together rather than weakening C.
 
 ### Scope D — A manager hires into their own team
 
@@ -288,6 +294,7 @@ Absences (Phase 2), correct expected hours (Phase 3), the planning interface
 | What is being built **right now** | [`current-scope.md`](./current-scope.md) |
 | System shape and where to start | [`architecture.md`](./architecture.md) |
 | Modules, routes, data model | [`backend-context.md`](../apps/backend/docs/backend-context.md) |
+| Defects and debt no scope owns | [`known-issues.md`](./known-issues.md) |
 
 When a scope in §7 ships, move its rules into the business reference as current
 behaviour and strike them from here.
