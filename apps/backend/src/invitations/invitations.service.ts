@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, MoreThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, MoreThan, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -18,6 +18,11 @@ import { UsersService } from 'src/users/users.service';
 import { MailService } from 'src/mail/mail.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { PasswordService } from 'src/auth/services/password.service';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { Team } from 'src/teams/entities/team.entity';
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
+import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 import type { GoogleUserPayload } from 'src/auth/dtos/auth.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -39,6 +44,10 @@ export class InvitationsService {
     private readonly passwordService: PasswordService,
     private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
+    private readonly teamVisibility: TeamVisibilityService,
+
+    @InjectRepository(Team)
+    private readonly teamRepository: Repository<Team>,
   ) {}
 
   async create(
@@ -49,6 +58,8 @@ export class InvitationsService {
     const email = this.normalizeEmail(payload.email);
 
     this.validateInvitationRole(payload.role, user.role);
+
+    const teamId = await this.resolveInvitationTeamId(companyId, payload, user);
 
     const existingUser = await this.usersService.findByEmailWithCompany(email);
 
@@ -93,6 +104,8 @@ export class InvitationsService {
 
     const invitation = this.invitationRepository.create({
       companyId,
+      teamId,
+      invitedById: user.id,
       email,
       role: payload.role,
       status: InvitationStatus.PENDING,
@@ -170,6 +183,8 @@ export class InvitationsService {
         manager,
       );
 
+      await this.createInvitationMembership(invitation, user.id, manager);
+
       await this.acceptInvitation(invitation, invitationRepository);
 
       return user;
@@ -238,6 +253,8 @@ export class InvitationsService {
         manager,
       );
 
+      await this.createInvitationMembership(invitation, user.id, manager);
+
       await this.acceptInvitation(invitation, invitationRepository);
 
       return user;
@@ -285,6 +302,102 @@ export class InvitationsService {
     invitation.acceptedAt = new Date();
 
     await repository.save(invitation);
+  }
+
+  /**
+   * A manager may only staff a team they lead, and only with someone new to
+   * the company, so the invitation has to carry the team from the start.
+   */
+  private async resolveInvitationTeamId(
+    companyId: string,
+    payload: CreateInvitationPayload,
+    user: AuthUser,
+  ): Promise<string | null> {
+    const { teamId } = payload;
+
+    if (!teamId) {
+      if (user.role === UserRole.OWNER) {
+        return null;
+      }
+
+      throw new BadRequestException(
+        'A team is required when a manager sends an invitation',
+      );
+    }
+
+    // Accepting always creates a plain member, so a manager invited into a
+    // team would not lead it. The owner assigns them afterwards instead.
+    if (payload.role !== UserRole.EMPLOYEE) {
+      throw new BadRequestException(
+        'Only an employee can be invited into a team',
+      );
+    }
+
+    // TODO: this lookup also exists in TeamsService.addMember. Move it onto
+    // TeamsService as a public helper once a third caller needs it.
+    const team = await this.teamRepository.findOne({
+      where: { id: teamId, companyId },
+      select: ['id', 'status'],
+    });
+
+    if (!team) {
+      throw new NotFoundException(
+        `Team with id ${teamId} not found in this company`,
+      );
+    }
+
+    if (team.status === TeamStatus.ARCHIVED) {
+      throw new BadRequestException('Cannot invite into an archived team');
+    }
+
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
+      throw new ForbiddenException('You can only invite into teams you lead');
+    }
+
+    return teamId;
+  }
+
+  /**
+   * The team may have been archived while the invitation was waiting. Nobody's
+   * signup should fail over that, so the person is created without a
+   * membership and the owner places them.
+   */
+  private async createInvitationMembership(
+    invitation: Invitation,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<void> {
+    if (!invitation.teamId) {
+      return;
+    }
+
+    const teamRepository = manager.getRepository(Team);
+
+    const team = await teamRepository.findOne({
+      where: { id: invitation.teamId, companyId: invitation.companyId },
+      select: ['id', 'status'],
+    });
+
+    if (!team || team.status === TeamStatus.ARCHIVED) {
+      return;
+    }
+
+    const membershipRepository = manager.getRepository(TeamMembership);
+
+    const membership = membershipRepository.create({
+      companyId: invitation.companyId,
+      teamId: invitation.teamId,
+      userId,
+      // Never taken from the invitation: accepting must not become a second
+      // route to a manager membership.
+      roleInTeam: TeamRole.MEMBER,
+      joinedAt: new Date().toISOString().slice(0, 10),
+      leftAt: null,
+    });
+
+    await membershipRepository.save(membership);
   }
 
   /**
