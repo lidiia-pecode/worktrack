@@ -258,6 +258,9 @@ Company  (tenant root — everything below carries companyId)
 │                   roleInTeam: MEMBER | MANAGER
 │                   time-bounded: joinedAt / leftAt
 │
+├── Invitation      email + role + status (PENDING | ACCEPTED | REVOKED)
+│                   teamId (the team it is for) + invitedById (who sent it)
+│
 ├── ActCategory ──< Activity          isAbsence, defaultBillable
 │
 ├── Project  (clientName: free text)
@@ -370,10 +373,12 @@ A `SUSPENDED` company cannot be updated and cannot authenticate.
 
 A new company is created by self-service signup, which creates the `Company` and
 its first `OWNER` together. Everyone else joins by **invitation**: an owner or
-manager invites an email address with a role, and the invitee completes signup
-by setting a password or via Google. An owner may invite a manager or an
-employee, a manager only an employee. Invitation tokens are stored hashed and
-are `PENDING | ACCEPTED | REVOKED`.
+manager invites an email address with a role and, for an employee, a team, and
+the invitee completes signup by setting a password or via Google. An owner may
+invite a manager or an employee, a manager only an employee into a team they
+lead. Accepting an invitation that carries a team creates the team membership,
+always as a `MEMBER`, in the same transaction that creates the user. Invitation
+tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -390,7 +395,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create, any role | create, EMPLOYEE only | — |
+| Invitations | create, any role, any team or none | create, EMPLOYEE only, into a team they lead | — |
 | Teams | full CRUD | read, within their teams; remove a member | read |
 | Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
@@ -478,8 +483,22 @@ role now follows the caller, so a manager cannot appoint another manager. The
 teams screen offers a manager only what still works.
 
 **This closes the escalation**, so D10 is a boundary rather than a route-level
-narrowing. It also leaves a deliberate gap: until Scope D, a manager cannot put
-anyone on their team at all, and the Owner covers it.
+narrowing. It also left a deliberate gap — a manager could not put anyone on
+their team at all — which Scope D closes.
+
+### Scope D delivered
+
+`Invitation` carries `teamId` and `invitedById`. A manager must invite into a
+team they actively lead; an owner may name any active team, or none. A team can
+only be attached to an EMPLOYEE invitation. Accepting the invitation creates the
+membership as a `MEMBER`, in the same transaction that creates the user, so a
+new hire is inside their inviter's scope from the moment they join. If the team
+was archived in the meantime, the person is still created and the Owner places
+them.
+
+**A manager still only ever gains people who are new to the company.** There is
+no route to adding an existing user to a team, which is what kept Scope C's
+guarantee intact.
 
 ### Fields that exist but do nothing
 
@@ -507,9 +526,10 @@ in is §7 of that document.
    `validateInvitationRole` now takes the caller's role: an owner may invite a
    manager or an employee, a manager only an employee.
 
-3. **An invitation cannot place anyone in a team.** `Invitation` carries no
-   `teamId` and no `invitedById`, so an invitee arrives in no team and is
-   invisible to whoever invited them.
+3. **An invitation cannot place anyone in a team — closed.** `Invitation` now
+   carries `teamId` and `invitedById`. A manager must name a team they lead, and
+   accepting the invitation creates the membership, so a new hire is inside
+   their inviter's scope from the moment they join.
 
 4. **Project membership is assigned without a visibility check.**
    `syncProjectUsers` validates only that the users are active and in the same
@@ -546,11 +566,12 @@ redirected to login.
 
 ### Engineering state
 
-Test coverage has started but is thin: six suites and 79 tests, covering the
+Test coverage has started but is thin: seven suites and 93 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
-invite whom, the time-log write scope and the user-list scope. Most run against a
-real database; the team route suite runs the real guard, and the invitation suite
-is pure logic. Nothing else is covered, but GitHub Actions runs them on every
+invite whom into which team, what accepting an invitation creates, the time-log
+write scope and the user-list scope. Most run against a real database; the team
+route suite runs the real guard, and the invitation authorisation suite is pure
+logic. Nothing else is covered, but GitHub Actions runs them on every
 pull request, alongside lint, typecheck and build for both applications.
 
 The backend has a production image (`apps/backend/Dockerfile`) and migrations

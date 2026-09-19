@@ -181,10 +181,10 @@ stands in its way.
 
 | Rule | Today | Detail |
 | :--- | :--- | :--- |
-| §3.1 A manager invites into their own team | Not possible — an invitation carries no team | business §6 gap 3 |
+| §3.1 A manager invites into their own team | **Already enforced** — the invitation carries `teamId` and `invitedById` | §7, Scope D |
 | §3.1 A manager invites an EMPLOYEE only | **Already enforced** | — |
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
-| §3.3 A manager adds only people who are new | A manager cannot add anyone at all for now; the safe route arrives in Scope D | §7, Scope C |
+| §3.3 A manager adds only people who are new | **Already enforced** — the only route is inviting someone new into a team they lead | §7, Scope D |
 | §3.3 A manager removes only from a team they lead | **Already enforced** | — |
 | §3.3 Removal closes `leftAt` | **Already enforced** | — |
 | §3.4 Two levels of visibility | One level. Project detail returns every member's name and email to any manager | business §6 gap 5 |
@@ -215,8 +215,12 @@ Visible, deliberately unanswered, and none of them block the roadmap in §7.
 - **P5 — Should an employee see their own team and teammates?** Today they see
   neither.
 - **P6 — What happens to an invitation whose target team is archived before it
-  is accepted?**
-- **P7 — What happens to a team when its only manager leaves?**
+  is accepted?** *Answered by Scope D:* the user is created, the membership is
+  skipped, and the Owner places them. A signup must not fail over an
+  administrative action taken after the invitation was sent.
+- **P7 — What happens to a team when its only manager leaves?** Still open. Scope
+  D settled the neighbouring case only: an invitation sent by a manager who has
+  since stopped leading the team still creates the membership.
 - **P8 — Should project visibility ever narrow?** Not at this company size.
 
 Open questions about absences, planning, export and notifications stay in
@@ -253,14 +257,14 @@ security fix and should be deployed before anything else in this list.** It
 leaves managers unable to add anyone to their team until Scope D; if that gap
 matters in practice, ship C and D together rather than weakening C.
 
-### Scope D — A manager hires into their own team
+### Scope D — A manager hires into their own team — **delivered**
 
 - `Invitation` gains `teamId` and `invitedById`. *(migration)*
 - A manager may invite an EMPLOYEE into a team they lead; accepting the
-  invitation creates the membership.
+  invitation creates the membership, always as a `MEMBER`.
 - Invite UI for managers.
 
-Closes F4. Depends on C.
+Closes business §6 gap 3. Depends on C.
 
 ### Scope E — Project assignment and disclosure
 
