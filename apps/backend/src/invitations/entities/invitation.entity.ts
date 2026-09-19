@@ -10,6 +10,8 @@ import {
 } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
+import { Team } from 'src/teams/entities/team.entity';
+import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { InvitationStatus } from '../enums/invitation-status.enum';
 
@@ -31,6 +33,20 @@ export class Invitation {
     nullable: false,
   })
   companyId!: string;
+
+  @Column({
+    type: 'uuid',
+    name: 'team_id',
+    nullable: true,
+  })
+  teamId!: string | null;
+
+  @Column({
+    type: 'uuid',
+    name: 'invited_by_id',
+    nullable: true,
+  })
+  invitedById!: string | null;
 
   @Column({
     type: 'varchar',
@@ -102,4 +118,20 @@ export class Invitation {
   })
   @JoinColumn({ name: 'company_id' })
   company!: Company;
+
+  // An invitation is history, so it outlives the team it was for and the
+  // person who sent it.
+  @ManyToOne(() => Team, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'team_id' })
+  team!: Team | null;
+
+  @ManyToOne(() => User, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  @JoinColumn({ name: 'invited_by_id' })
+  invitedBy!: User | null;
 }

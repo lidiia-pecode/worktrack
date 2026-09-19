@@ -3,6 +3,7 @@ import { UserRole } from "./enums";
 export interface CreateInvitationPayload {
   email: string;
   role: UserRole;
+  teamId?: string;
 }
 
 export interface InvitationValidation {
