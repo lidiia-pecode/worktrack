@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 
 import { useProjectsQuery } from "@/hooks/useProjects";
-import { useTeamsQuery } from "@/hooks/useTeams";
-import { ProjectStatus, TeamStatus } from "@/types/enums";
+import { useTeamOptions } from "@/hooks/useTeams";
+import { ProjectStatus } from "@/types/enums";
 
 import { FilterBar } from "../../shared/FilterBar";
 import { FormSelect } from "../../shared/FormSelect";
@@ -26,10 +26,7 @@ export function TeamFilters({
   onTeamChange,
   onProjectChange,
 }: TeamFiltersProps) {
-  const { items: teams } = useTeamsQuery(1, {
-    status: TeamStatus.ACTIVE,
-    pageSize: FILTER_PAGE_SIZE,
-  });
+  const { options: activeTeamOptions } = useTeamOptions();
 
   const { items: projects } = useProjectsQuery(1, {
     status: ProjectStatus.ACTIVE,
@@ -37,11 +34,8 @@ export function TeamFilters({
   });
 
   const teamOptions = useMemo(
-    () => [
-      { value: ALL_OPTION, label: "All teams" },
-      ...teams.map((team) => ({ value: team.id, label: team.name })),
-    ],
-    [teams],
+    () => [{ value: ALL_OPTION, label: "All teams" }, ...activeTeamOptions],
+    [activeTeamOptions],
   );
 
   const projectOptions = useMemo(
