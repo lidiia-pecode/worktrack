@@ -395,7 +395,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create, any role, any team or none | create, EMPLOYEE only, into a team they lead | — |
+| Invitations | create, any role; a team only on an employee invitation | create, EMPLOYEE only, always into a team they lead | — |
 | Teams | full CRUD | read, within their teams; remove a member | read |
 | Projects, Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
