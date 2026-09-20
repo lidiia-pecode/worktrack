@@ -100,10 +100,10 @@ filtered by team and project, with a per-person panel they can edit through.
 Not built yet: any frontend for the backend's `planning` and `reporting`
 modules.
 
-Test coverage has started but is narrow: six suites and 79 tests, covering the
+Test coverage has started but is narrow: seven suites and 93 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
-invite whom, the time-log write scope and the user-list scope — mostly against a
-real database. GitHub Actions runs them, along with lint, typecheck and build
+invite whom into which team, what accepting an invitation creates, the time-log
+write scope and the user-list scope — mostly against a real database. GitHub Actions runs them, along with lint, typecheck and build
 for both applications, on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
 built by its host.

@@ -25,8 +25,7 @@ type SetupStep = {
     | "activity"
     | "category"
     | "inviteMember"
-    | "memberJoined"
-    | "addTeamMember";
+    | "memberJoined";
   title: string;
   description: string;
   href?: string;
@@ -60,6 +59,15 @@ export function ManagerWorkspaceSetup() {
     createCategory,
   } = data.steps;
 
+  // TODO: memberJoined is company-wide (any active employee), not scoped to the
+  // manager's teams. Pre-existing, see onboarding.service.ts.
+  const memberOnTeam = memberJoined && addTeamMember;
+
+  // Someone joined but did not land on this team: the invitation carried no
+  // team, or its team was archived before they accepted. Only an owner can
+  // place them, so the step has to say so rather than wait silently.
+  const awaitingPlacement = memberJoined && !addTeamMember;
+
   const steps: SetupStep[] = [
     {
       id: "team",
@@ -88,25 +96,16 @@ export function ManagerWorkspaceSetup() {
 
     {
       id: "memberJoined",
-      title: "Member joins the workspace",
-      description: memberJoined
-        ? "The invited member has joined the workspace."
-        : "The invited member needs to accept the invitation.",
-      icon: UserPlus,
-      completed: memberJoined,
-      locked: !inviteMember,
-    },
-
-    {
-      id: "addTeamMember",
-      title: "Member is added to your team",
-      description: addTeamMember
-        ? "Your team has members assigned and is ready to work."
-        : "Your owner adds the member to your team once they have joined.",
+      title: "Member joins your team",
+      description: memberOnTeam
+        ? "The invited member has joined and is on your team."
+        : awaitingPlacement
+          ? "They have joined, but are not on your team yet. Your owner can add them."
+          : "The invited member lands on your team as soon as they accept.",
       icon: UsersRound,
-      completed: addTeamMember,
-      locked: !memberJoined,
-      waitingForOwner: !addTeamMember,
+      completed: memberOnTeam,
+      locked: !inviteMember,
+      waitingForOwner: awaitingPlacement,
     },
 
     {
@@ -117,7 +116,7 @@ export function ManagerWorkspaceSetup() {
       actionLabel: "Continue",
       icon: Tags,
       completed: createCategory,
-      locked: !addTeamMember,
+      locked: !memberOnTeam,
     },
 
     {
