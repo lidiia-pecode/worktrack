@@ -68,11 +68,65 @@ commands CI calls.
 
 ## Database changes
 
-Migrations live in `apps/backend/src/migrations/`. `migration:run` runs them from
-TypeScript and is what you use locally and in CI; `migration:run:prod` runs the
-compiled `dist/data-source.js` and is what a deployed image uses.
+### What a migration is, and when one appears
 
-Four rules:
+A migration is a TypeScript class in `apps/backend/src/migrations/` with an `up`
+and a `down`, holding the exact SQL that moves the schema from one shape to the
+next. The filename starts with a timestamp, and that timestamp is the order they
+run in.
+
+You never write one by hand. Change the entity, then let TypeORM diff the
+entities against a live database and write the file:
+
+```bash
+make up                         # the diff is taken against the running local database
+docker-compose -f docker-compose.dev.yml exec backend \
+  npm run migration:generate -- src/migrations/DescriptiveName
+npx prettier --write apps/backend/src/migrations/<the new file>.ts
+```
+
+Generated files come out with different formatting from the rest of the
+repository, so run prettier over the new one before committing. Read the SQL
+afterwards — generation is a starting point, not an authority, and it will
+happily write a destructive statement you did not intend.
+
+### How TypeORM knows what has already run
+
+A `migrations` table in each database, holding one row per applied migration:
+
+| id | timestamp | name |
+| :--- | :--- | :--- |
+| 7 | 1789830866330 | AddInvitationTeamAndInviter1789830866330 |
+| 8 | 1790004090909 | CreateAbsenceEntity1790004090909 |
+| 9 | 1790006851300 | RemoveActivityIsAbsence1790006851300 |
+
+On `migration:run`, TypeORM reads that table, compares it with the migration
+files it can find, and runs whatever is in the files but not in the table, in
+timestamp order. Two consequences worth internalising:
+
+- **A database is "at" whatever its own `migrations` table says.** Local, CI and
+  Neon each keep their own, and they are routinely at different counts. That
+  difference is also the quickest proof of which database you are connected to.
+- **What it can find is the file list, not the git history.** Migrations are
+  discovered by globbing `src/migrations/*` (or `dist/migrations/*` for the
+  compiled data source), so a file that is not in that directory does not exist
+  as far as a run is concerned. This is what makes it possible to apply only
+  some of the pending migrations — see below.
+
+### Checking what is pending
+
+There is **no `migration:show` npm script**; call the binary directly. Against
+the local database, inside the container:
+
+```bash
+docker-compose -f docker-compose.dev.yml exec backend \
+  npx typeorm migration:show -d dist/data-source.js
+```
+
+`[X]` is applied, `[ ]` is pending. Run this before and after every apply,
+everywhere. It is the cheapest check in this whole document.
+
+### The four rules
 
 1. **Migrations run as a release step, never at application boot.**
    `synchronize` stays `false` — two instances racing the same DDL is not a
@@ -86,10 +140,52 @@ Four rules:
 4. **Label destructive migrations in the PR.** `DROP`, `ALTER ... TYPE`, or
    `NOT NULL` on an existing column deserves a second look before merge.
 
-Test a schema change twice: `make down-hard && make setup` proves it runs on an
-empty database, and `make up && make migrate` against a database that already
-has data proves it runs as an upgrade. Only the second catches a `NOT NULL`
-added to a populated table.
+### Additive and destructive migrations are deployed in opposite orders
+
+This is the single thing most likely to break the stand, and rule 3 is the
+reason for it.
+
+An **additive** migration — a new table, a nullable column, an index — is
+invisible to code that does not know about it. The old code keeps working after
+it runs, so it goes **before** the deploy, and the new code finds what it needs
+the moment it starts.
+
+A **destructive** migration — `DROP COLUMN`, a narrowed type, a new `NOT NULL` —
+breaks the code that is currently running. TypeORM selects every mapped column by
+name, so dropping one makes every query against that table fail until the new
+code is live. It goes **after** the deploy.
+
+| Kind | Examples | Apply |
+| :--- | :--- | :--- |
+| Additive | `CREATE TABLE`, nullable column, index, new enum type | **Before** the merge |
+| Destructive | `DROP COLUMN`, `DROP TABLE`, `NOT NULL` on existing data, type narrowing | **After** Render is serving the new code |
+
+A change that contains both is applied in two sittings, not one.
+
+### Applying only some of the pending migrations
+
+`migration:run` has no "stop at this one" option — it applies every pending
+migration it can find. When a branch carries an additive and a destructive
+migration together, hide the destructive one from the run by moving its
+**compiled** files out of the way:
+
+```bash
+cd apps/backend && npm run build
+mkdir -p /tmp/held
+mv dist/migrations/<timestamp>-<DestructiveName>.* /tmp/held/
+# migration:show now lists only the additive one as pending
+```
+
+Only `dist/` is touched — the source file stays committed, and `npm run build`
+afterwards puts it back. Confirm with `migration:show` that the held-back
+migration has genuinely disappeared from the list before running anything.
+
+### Testing a schema change
+
+Twice. `make down-hard && make setup` proves it runs on an empty database, and
+`make up && make migrate` against a database that already has data proves it
+runs as an upgrade. Only the second catches a `NOT NULL` added to a populated
+table. CI covers the first of these on every pull request; the second is yours.
 
 ## Deployment
 
@@ -128,13 +224,18 @@ Vercel builds and promotes the frontend. Render rebuilds the backend image and
 swaps the service over.
 
 **Migrations are not automatic.** Render's pre-deploy command is a paid feature,
-so a migration is run by hand against Neon **before the code that needs it
-merges**. That has to become a real release step before any of this is called
-production.
+so every migration is run by hand against Neon from a laptop. That has to become
+a real release step before any of this is called production.
 
-The order matters and is not a formality. Merging first deploys code that reads
-columns the database does not have, and `synchronize` is `false`, so nothing
-creates them — the stand breaks until the migration catches up.
+**When by hand means depends on the kind of migration**, per the table in
+*Database changes*: additive ones go before the merge, destructive ones after
+Render has swapped the service over. Getting it backwards breaks the stand in
+one of two ways — merging before an additive migration deploys code that reads
+columns the database does not have, and applying a destructive one early breaks
+the code that is still running.
+
+Nothing rescues either case automatically: `synchronize` is `false`, so the
+application never creates or drops anything on its own.
 
 #### Running a migration against Neon
 
@@ -142,43 +243,138 @@ Neon's credentials live in `apps/backend/.env.neon`, which is gitignored and
 holds `DATABASE_URL` and `DATABASE_SSL=true`. Render has its own copy in its
 dashboard; the file is for running migrations from a laptop.
 
-The `migration:show` npm script points at `src/data-source.ts`, so call the
-`typeorm` binary directly when you want the compiled one:
+Node 22 reads an env file without the shell touching it, which is what these
+commands rely on:
 
 ```bash
 cd apps/backend
-npm run build                 # required: migration:run:prod reads dist/data-source.js
-# load .env.neon into the environment, then:
-npx typeorm migration:show -d dist/data-source.js   # confirm target and what is pending
-npm run migration:run:prod
-npx typeorm migration:show -d dist/data-source.js   # confirm it applied
+npm run build                 # required: the compiled data source is what runs
+
+# 1. which database is this, really?
+node --env-file=.env.neon ../../node_modules/.bin/typeorm \
+  query "select current_database(), current_user, version()" -d dist/data-source.js
+
+# 2. what is pending?
+node --env-file=.env.neon ../../node_modules/.bin/typeorm \
+  migration:show -d dist/data-source.js
+
+# 3. apply
+node --env-file=.env.neon ../../node_modules/.bin/typeorm \
+  migration:run -d dist/data-source.js
+
+# 4. confirm
+node --env-file=.env.neon ../../node_modules/.bin/typeorm \
+  migration:show -d dist/data-source.js
 ```
 
-Two things that cost time the first time:
+Four things that cost time the first time:
 
-- **Build first.** `migration:run:prod` runs against `dist/data-source.js`, so a
-  migration added since the last build is simply invisible to it.
-- **Do not `source .env.neon`.** The connection string contains `&`, so the
-  shell parses it as a background operator and the file fails to load. Read the
-  file with a tool that does not interpret it — a short Python or Node snippet
-  that splits each line on the first `=` and puts the result in the environment
-  — or paste the variables into the command's own environment.
+- **Build first.** The run reads `dist/data-source.js`, so a migration added
+  since the last build is simply invisible to it.
+- **Do not `source .env.neon`.** The connection string contains `&`, so the shell
+  parses it as a background operator and the file fails to load. `--env-file`
+  avoids this entirely — the value never reaches the shell. (`npm run
+  migration:run:prod` is the same command without the env file, so it will talk
+  to whatever `.env` points at. Prefer the explicit form above.)
+- **`dotenv.config()` does not override.** `data-source.ts` calls it, and it
+  leaves existing environment variables alone, so the Neon values win over
+  `.env`.
+- **Neon is Postgres 18 and the user is `worktrack_owner`**; local is Postgres 16
+  as `worktrack`. Step 1 above prints both, so there is no guessing about which
+  database is about to be written to.
 
-`data-source.ts` calls `dotenv.config()`, which does **not** override variables
-already in the environment, so exported Neon values win over `.env`.
+Step 1 and step 2 together are the pre-flight: the first names the server, the
+second proves the state — local and Neon are always at different counts, so a
+pending list matching local means the connection went to the wrong place.
 
-The pre-flight `migration:show` is worth running every time: it names what is
-pending and, because local and Neon are at different counts, proves which
-database you are actually connected to before anything is written.
+#### Verifying a production migration
 
-#### What the first real run showed
+Before applying, all of these:
 
-Scope D's `AddInvitationTeamAndInviter1789830866330` was the first migration
-this project ever deployed, in September 2026. It applied cleanly in a single
-transaction — two nullable columns and two `ON DELETE SET NULL` foreign keys —
-and the schema was verified against `information_schema` afterwards rather than
-trusted from the `migrations` table. The procedure above is what it took; the
-two pitfalls listed are the ones actually hit.
+- the pre-flight above names Neon, and lists exactly the migrations you expect
+  to be pending — no more;
+- for a destructive migration, **Render is genuinely serving the new code.**
+  "Live" in the dashboard is not proof. Probe a route that only exists in the new
+  build: a registered route answers `401` behind `AccessGuard`, while a path that
+  does not exist answers `404` with `Cannot GET`. That difference is conclusive;
+- the migration file on your machine matches what merged —
+  `git show origin/main:<path> | diff - <path>`.
+
+After applying, all of these:
+
+- `migration:show` lists it as `[X]`;
+- the schema itself agrees, read from `information_schema` and `pg_constraint`
+  rather than trusted from the `migrations` table — columns, constraints,
+  indexes, foreign keys and enum labels;
+- row counts on the affected tables are what you expected;
+- the deployed application still works: load the screens that touch the changed
+  tables and check the network panel for `5xx`, not just that the page renders.
+
+#### Where migrations run, and how those differ
+
+| | Runs | Data source | Applied by |
+| :--- | :--- | :--- | :--- |
+| **Local** | `make migrate`, or `migration:run` in the container | `src/data-source.ts` via ts-node | You, whenever you pull a schema change |
+| **CI** | every pull request, before the tests | `src/data-source.ts` | `ci.yml`, against a throwaway Postgres |
+| **Neon** | by hand from a laptop | `dist/data-source.js` | You, around the deploy |
+
+CI proves a migration runs on an **empty** database, since its Postgres is
+created fresh per job. It says nothing about running as an upgrade over existing
+rows — that is what the local populated-database test and the Neon run are for.
+
+#### Who does what
+
+There is one environment and one person deploying to it, so "who" mostly means
+"what must not be skipped".
+
+| Step | Done by |
+| :--- | :--- |
+| Change an entity, generate and read the migration | Whoever writes the feature |
+| Label a destructive migration in the PR body | Author, before review |
+| Prove it runs on an empty database | CI, on every pull request |
+| Prove it runs over existing data | Author, locally, before opening the PR |
+| Decide additive-before / destructive-after | Author and reviewer, from the table above |
+| Run the pre-flight and apply against Neon | You, from a laptop — nothing automates this |
+| Confirm Render is serving new code before a destructive run | You, with the route probe |
+| Verify schema and application after applying | You |
+| Deploy the code itself | Vercel and Render, automatically on merge |
+
+#### Two runs worth learning from
+
+**Scope D — `AddInvitationTeamAndInviter1789830866330`**, September 2026, the
+first migration this project ever deployed. Additive and uneventful: two
+nullable columns and two `ON DELETE SET NULL` foreign keys, applied in one
+transaction before the merge, with the schema checked against
+`information_schema` afterwards rather than trusted from the `migrations` table.
+The two pitfalls above — build first, do not `source` the env file — are the
+ones actually hit.
+
+**Phase 2 absences — two migrations in one pull request**, and the reason the
+additive/destructive split is written down here. `CreateAbsenceEntity` added the
+`absences` table; `RemoveActivityIsAbsence` dropped `activities.is_absence`,
+which the deployed code still selected. Running both before the merge would have
+broken every activities query until the deploy landed.
+
+What was done instead:
+
+1. `CreateAbsenceEntity` applied to Neon **before** merging, with
+   `RemoveActivityIsAbsence` held back by moving its compiled files out of
+   `dist/migrations/` — `migration:show` confirmed it had vanished from the
+   pending list before anything ran.
+2. Verified: table, enum, check constraint, index and both foreign keys present;
+   `activities.is_absence` still present; the deployed activities API still
+   returning `200`.
+3. Merged, and waited for Render.
+4. Confirmed the new code was actually serving — `GET /absences` answered `401`
+   while `/absences-does-not-exist` answered `404`, which only the new build
+   does.
+5. `RemoveActivityIsAbsence` applied **after** that, then verified: column gone,
+   the twelve activity rows intact, and absences created, edited and deleted
+   through the deployed UI with no `5xx` anywhere.
+
+A local footnote worth knowing: after a column is dropped, a *running* dev
+backend keeps its old compiled entity and fails with `column ... does not exist`
+until the container is restarted. That is staleness, not a broken migration.
 
 One warning surfaced that is worth acting on before a `pg` upgrade: `pg` now
 reports that `sslmode=require` is treated as `verify-full`, and that this
@@ -213,7 +409,9 @@ token from one environment must not be valid in another.
 The backend sleeps after 15 minutes idle and takes about a minute to wake, and
 the Neon compute suspends after 5. A slow first request after a quiet spell is
 normal here, not a fault. Render's dashboard saying "Live" also does not mean new
-environment variables are in use — check the running service, not the dashboard.
+environment variables are in use, or that the new image is the one answering —
+check the running service, not the dashboard. The route probe under *Verifying a
+production migration* is how you check.
 
 Vercel's Hobby plan is for non-commercial use, so this arrangement needs paid
 plans the day the project becomes real work.

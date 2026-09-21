@@ -87,7 +87,7 @@ control and are not part of the published documentation.
 | Anything touching login or sessions | `apps/backend/src/auth/` |
 | Build a screen | `apps/frontend/app/` — the route, then `app/components/shared` |
 | Change colours or styling | `apps/frontend/app/globals.css` |
-| Schema change | the entity, then `apps/backend/src/migrations/` |
+| Schema change | the entity, then `apps/backend/src/migrations/`; [`workflow.md`](./workflow.md) for getting it onto Neon |
 | Get a change reviewed and merged | [`workflow.md`](./workflow.md) |
 
 ## Current state
