@@ -1,9 +1,11 @@
 # WorkTrack — Target permission model
 
-**Status: future state.** This document describes how responsibility and access
-*should* work, not how the code behaves today. Nothing here is implemented
-unless [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6
-says so — those sections remain the record of current behaviour.
+**Status: partly delivered.** This document describes how responsibility and
+access *should* work. Nothing here is implemented unless
+[`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 says so
+— those sections remain the record of current behaviour. §5 is the crosswalk
+from each rule to what stands in its way, and §7 is the order the rest is being
+built in: Scopes C and D are delivered, Scope E is next and not started.
 
 It exists because the permission rules outgrew a decision entry. They span
 company membership, invitations, teams, projects and time data at once, and
@@ -16,15 +18,15 @@ business reference.
 
 ---
 
-## 1. What is wrong with the model today
+## 1. The problem this model solves
 
-WorkTrack currently has one permission where the business has four.
+WorkTrack had one permission where the business has four.
 
 `User.role` decides whether a route is reachable, and
 `TeamMembership.roleInTeam = MANAGER` decides which people's data comes back.
 That is the whole system. Because `roleInTeam` is the single source of
 people-visibility, **any write path that can set it is a privilege-granting
-operation** — and today those paths are guarded only by "you are a manager
+operation** — and those paths used to be guarded only by "you are a manager
 somewhere in this company".
 
 The business actually distinguishes four things:
@@ -36,8 +38,10 @@ The business actually distinguishes four things:
 | Operational membership | Who is in a team now? | Manager, within their team |
 | Work assignment | Who is on which project? | Manager, within their people |
 
-Collapsing these into one role check is why a manager can widen their own
-visibility, and why an invitation cannot place anybody anywhere.
+Collapsing these into one role check is why a manager could widen their own
+visibility, and why an invitation could not place anybody anywhere. Scopes C and
+D separated the first three. The fourth — work assignment — is Scope E and is
+still collapsed: project membership is not checked against the caller at all.
 
 ---
 
@@ -61,14 +65,14 @@ visibility, and why an invitation cannot place anybody anywhere.
 
 ## 3. The model
 
-### 3.1 Company membership and invitations
+### 3.1 Company membership and invitations — delivered
 
-The Owner may invite anyone in any role. A **manager may invite an EMPLOYEE, and
-only into a team they lead** — the invitation carries the team, and accepting it
-places the person in that team.
+Shipped in Scope C (the role rule) and Scope D (the team rule). Struck from this
+model per §8; the behaviour is now recorded as current in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §4 and §5.
 
-Managers may not invite managers; appointing a manager is the Owner's act of
-delegation and cannot be self-propagating.
+The principle it rested on still governs the rest of this document: appointing a
+manager is the Owner's act of delegation and cannot be self-propagating.
 
 ### 3.2 Team creation and manager assignment
 
@@ -78,13 +82,16 @@ operate in.
 
 ### 3.3 Team membership
 
-A manager may **add a newly invited person** to a team they lead, and may
-**remove** someone from it. Removal closes `leftAt`; it never deletes the row,
-because the history is what makes past time data explicable.
+Adding a newly invited person and removing someone from a team a manager leads
+are **delivered** — Scope C and Scope D — and struck from the model per §8. See
+[`business_architecture_docs.md`](./business_architecture_docs.md) §5 and §6.
+
+What remains here is the guarantee those scopes were built to preserve, because
+it constrains everything after them:
 
 A manager may **not** add an existing company user to their team. That is the
 move that would hand them another manager's person — and with it that person's
-entire time history. Moving someone between teams is an Owner action.
+entire time history. Moving someone between teams is an Owner action (P2).
 
 **Why this is enough.** Because a manager only ever gains people who are new to
 the company, there is no prior history for them to acquire retroactively. That
@@ -95,16 +102,34 @@ For now **a person belongs to exactly one team.** Multi-team membership is P1.
 
 ### 3.4 People visibility
 
-Two levels, because one is not enough once projects cross teams:
+**One level, and one rule.** A manager sees the people in the teams they
+currently lead, plus themselves. An Owner sees everyone in the company. Nobody
+else's name, profile, time or plan is readable, on any screen, by any route.
 
-| Level | Fields | Granted by |
-| :--- | :--- | :--- |
-| **Identity** | name, position, avatar | managing them, **or** sharing a project you can see |
-| **Profile and data** | email, capacity, credential flags, time logs, planning | managing them, or being the Owner |
+Sharing a project grants nothing. A manager working on a cross-team project
+reads their own people on it and no one else — not a name, not an avatar.
 
-Without the identity level, a manager cannot read the member list of a
-cross-team project they are legitimately working on. With it, they still cannot
-open that person's profile or touch their time.
+*This replaces an earlier two-level model*, which had an "identity" tier
+disclosing name, position and avatar to anyone sharing a project. It was struck
+in September 2026 when Scope E's rules were settled. The reason: D10 narrows
+`GET /users` so that a manager cannot enumerate the company roster, and a
+project route handing back the names it refuses is a way around that. One rule
+with no exceptions is also cheaper — every future endpoint returning a person
+would otherwise have to decide which tier it is at.
+
+**What is given up, and the replacement.** A manager can no longer tell who
+else is on a cross-team project, so "is the design work covered?" has to be
+asked rather than read. Scope F's responsible person gives them a name to ask.
+
+**A count is not a roster, and stays whole.** Every role sees the project's true
+total member count, and any screen listing fewer people than that says how many
+are hidden and why. A count names nobody, so it discloses nothing the scoping
+protects — while a scoped count would tell a manager a fully staffed project is
+empty, which is worse than opacity.
+
+If that proves insufficient, the next step is team-level composition — "4 from
+Design, 5 from Platform" — which also names nobody and so does not reopen D10.
+Reinstating per-person identity is not the fix.
 
 ### 3.5 Projects: creation, visibility and membership
 
@@ -119,10 +144,27 @@ manager responsible for it the moment their last report rotates off.
 **Project membership** is who may log time against the project. A manager may
 add **only people they can see**; the Owner may add anyone. A cross-team project
 is therefore staffed by each manager contributing their own people, which is
-also how it works in practice.
+also how it works in practice. Managers and owners are ordinary members —
+today they cannot be members at all, which is why a manager has no project to
+log against.
 
-Managers and owners may be project members like anyone else. Today they cannot
-be, which is why a manager has no projects to log against at all.
+Three further rules follow from §3.4 and are settled:
+
+- **A manager changes only what they were shown.** Because their member list is
+  scoped, their save adds and removes inside that scope and leaves everyone else
+  untouched. They cannot remove another manager's person from a project, even
+  one who has clearly rolled off — that is the Owner's call, or that person's
+  manager's.
+- **A manager may always add themselves**, including one who currently leads no
+  team and therefore sees nobody. Otherwise they would still have no project to
+  log time against, which is the whole reason managers become members at all.
+- **Active status gates joining, not staying.** Only an ACTIVE user may be newly
+  assigned. Archiving someone leaves their existing project memberships — and
+  their team memberships — exactly as they are, un-archiving restores nothing
+  because nothing was taken, and only a deliberate removal ever changes them.
+  This is "archive, never delete" (business §8) applied to `project_users`.
+- **The member count stays whole.** A scoped list is still reported against the
+  project's true size, per §3.4.
 
 **Employees** see the projects they are assigned to, and no others.
 
@@ -163,8 +205,10 @@ project staffed from both teams.
 | Marta tries to invite a new MANAGER | Refused. Appointing managers is Olena's |
 | Marta tries to add Petro to Alpha | Refused. Petro already belongs to Beta; only Olena moves people |
 | Marta removes Iryna from Alpha | Allowed. `leftAt` is closed; the row and the history stay |
-| Marta opens *Retail Redesign* | Allowed — projects are company-wide. She sees Petro's **name**, because he is on her project, but cannot open his profile or see his time |
-| Marta staffs *Retail Redesign* | She may add Dmytro, Iryna and Sofia. She may not add Petro — Mykola or Olena adds him |
+| Marta opens *Retail Redesign* | Allowed — projects are company-wide. She sees Dmytro, Iryna and Sofia on it, and a count telling her others are there. She does **not** see Petro, not even his name |
+| Marta staffs *Retail Redesign* | She may add Dmytro, Iryna, Sofia and **herself**. She may not add Petro — Mykola or Olena adds him |
+| Marta saves *Retail Redesign* without Petro in her list | Petro stays. Her save only touches the people she was shown |
+| Olena archives Dmytro | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Un-archiving him changes nothing back, because nothing was removed |
 | Marta is made responsible for *Retail Redesign* | A label. It gives her nothing she did not already have, and she need not be a member |
 | Marta logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mykola opens *Retail Redesign* | Same rights as Marta. Projects are not owned by a team |
@@ -179,18 +223,18 @@ belongs — [`business_architecture_docs.md`](./business_architecture_docs.md) �
 "Authorization gaps". This table is only the crosswalk from a rule above to what
 stands in its way.
 
+The §3.1 and §3.3 rows are gone: those rules shipped in Scopes C and D and were
+struck from §3, so there is nothing left to cross-walk.
+
 | Rule | Today | Detail |
 | :--- | :--- | :--- |
-| §3.1 A manager invites into their own team | **Already enforced** — the invitation carries `teamId` and `invitedById` | §7, Scope D |
-| §3.1 A manager invites an EMPLOYEE only | **Already enforced** | — |
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
-| §3.3 A manager adds only people who are new | **Already enforced** — the only route is inviting someone new into a team they lead | §7, Scope D |
-| §3.3 A manager removes only from a team they lead | **Already enforced** | — |
-| §3.3 Removal closes `leftAt` | **Already enforced** | — |
-| §3.4 Two levels of visibility | One level. Project detail returns every member's name and email to any manager | business §6 gap 5 |
+| §3.4 One level of visibility | Project detail returns every member's name and email to any manager, including people `GET /users/:id` refuses | business §6 gap 5 |
 | §3.5 Projects stay company-wide | **Already true** | — |
-| §3.5 Assign only people you can see | No server-side check, and `/users/assignable` is company-wide | business §6 gap 4 |
-| §3.5 Managers may be project members | Stripped twice on the client | business §6 gap 6 |
+| §3.5 Assign only people you can see, plus yourself | No server-side check, and `/users/assignable` is company-wide | business §6 gap 4 |
+| §3.5 A manager changes only what they were shown | `syncProjectUsers` treats the submitted list as the whole membership | business §6 gap 4 |
+| §3.5 Active status gates joining, not staying | Saving a project with an archived member 404s; re-picking members drops them | business §6 gap 4 |
+| §3.5 Managers may be project members | Stripped twice on the client — the picker filters, and the submit filters again | business §6 gap 6 |
 | §3.6 A responsible person | The field does not exist | — |
 | §3.7 Time-log access | **Already enforced** (D9, D10) | — |
 
@@ -221,7 +265,9 @@ Visible, deliberately unanswered, and none of them block the roadmap in §7.
 - **P7 — What happens to a team when its only manager leaves?** Still open. Scope
   D settled the neighbouring case only: an invitation sent by a manager who has
   since stopped leading the team still creates the membership.
-- **P8 — Should project visibility ever narrow?** Not at this company size.
+- **P8 — Should project visibility ever narrow?** Not at this company size, and
+  note the distinction §3.4 now rests on: the **project** is visible to every
+  owner and manager, its **roster** is not.
 
 Open questions about absences, planning, export and notifications stay in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §10.
@@ -231,31 +277,32 @@ Open questions about absences, planning, export and notifications stay in
 ## 7. Implementation roadmap
 
 Four scopes, in dependency order. Each is meant to become a
-`current-scope.md` in turn, and each is independently shippable.
+`current-scope.md` in turn, and each is independently shippable. **C and D are
+delivered; E is next and has not been started; F follows it.**
 
 These sit **between Phase 1 and Phase 2** of the product roadmap in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7. They are a
 different axis — that roadmap sequences product capability, this one sequences
-permission correctness — and Scope C is the reason not to start Phase 2 first.
+permission correctness — and Scope C was the reason not to start Phase 2 first.
 
-### Scope C — Close the escalation *(next, after B1–B10)*
+### Scope C — Close the escalation — **delivered**
 
 Backend and tests only; no migration, no UI.
 
 - Pass the caller into the team write paths.
 - Team create, rename, archive and any `roleInTeam` change become OWNER-only.
-- **Adding** a member becomes OWNER-only too, until Scope D gives managers the
+- **Adding** a member became OWNER-only too, until Scope D gave managers the
   safe route. "May add" is only safe once it means "may add someone new", and
-  that needs the invitation to carry a team.
+  that needed the invitation to carry a team.
 - **Removing** a member is scoped to teams the manager leads. Removal narrows
   their own reach, so it grants nothing and is safe to delegate now.
 - `removeMember` closes `leftAt` instead of deleting.
 - Invitation role restricted by the caller's role.
 
-Closes the first three gaps in business §6 and the hard delete. **This is the
-security fix and should be deployed before anything else in this list.** It
-leaves managers unable to add anyone to their team until Scope D; if that gap
-matters in practice, ship C and D together rather than weakening C.
+Closed the first two gaps in business §6 and the hard delete. **This was the
+security fix and was deployed before anything else in this list.** It left
+managers unable to add anyone to their team, which Scope D then closed — the two
+are best read together.
 
 ### Scope D — A manager hires into their own team — **delivered**
 
@@ -266,16 +313,23 @@ matters in practice, ship C and D together rather than weakening C.
 
 Closes business §6 gap 3. Depends on C.
 
-### Scope E — Project assignment and disclosure
+### Scope E — Project assignment and disclosure — **next**
 
 - Enforce assignment scope in `syncProjectUsers`, and narrow
-  `GET /users/assignable` to the caller's people — the two must land together.
-- Identity-level serializer for project members.
+  `GET /users/assignable` to the caller's people plus themselves — the two must
+  land together, and the save becomes a diff bounded by that scope.
+- Scope the project's member list to the caller, and narrow the member DTO. One
+  shape for every role; only the rows differ.
 - Allow managers and owners to be project members; drop the client-side
   stripping.
-- Stop dropping archived users from project membership.
+- Separate "may be newly assigned" from "may remain assigned", so archiving
+  neither errors nor removes.
 
-Closes F5, F6, F7, F9. Depends on C.
+Closes gaps 4, 5 and 6 in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §6 — the last
+three still open. Depends on C. **Its business rules were settled on 21
+September 2026** and are recorded in §0 of
+[`current-scope.md`](./current-scope.md), which is the implementation plan.
 
 ### Scope F — Project responsibility
 
@@ -287,8 +341,7 @@ Closes nothing; adds §3.6. Depends on E.
 ### Not in any of these
 
 Absences (Phase 2), correct expected hours (Phase 3), the planning interface
-(Phase 4), reporting and export (Phase 5), the `Client` entity (D8), and the
-`planned-vs-actual` manager gap, which belongs with Phase 5.
+(Phase 4), reporting and export (Phase 5), and the `Client` entity (D8).
 
 ---
 

@@ -16,6 +16,13 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
+**Last verified against the code: 21 September 2026.** At that point Phases 0
+and 1 of the roadmap in §7 were delivered, as were Scopes C and D of
+[`permission-model.md`](./permission-model.md) §7. Scope E — project assignment
+and disclosure — is the next thing to build and has not been started; its
+business rules were settled the same day and it is written up, ready to
+implement, in [`current-scope.md`](./current-scope.md).
+
 ---
 
 ## 1. What WorkTrack is
@@ -235,9 +242,15 @@ or project. D10 narrows only the first. The second kept its own company-wide
 source, `GET /users/assignable`, because narrowing a picker while the write path
 behind it is unchecked would be a hidden button rather than a permission.
 
-That is **current behaviour, not a settled decision.** The intended rule is that
-a manager assigns only people they can see, which needs enforcement in the
-service first. See [`permission-model.md`](./permission-model.md) §3.5.
+That is **current behaviour. The rule that replaces it is now settled** (21
+September 2026): a manager assigns only the people they manage, plus themselves,
+and that same set is all they see of a project's membership — sharing a project
+discloses nobody. It still needs enforcement in the service, which is Scope E.
+See [`permission-model.md`](./permission-model.md) §3.4 and §3.5, and §0 of
+[`current-scope.md`](./current-scope.md).
+
+**D10 therefore has no exceptions left.** A manager sees the people in the teams
+they lead, on every list in the product, once Scope E ships.
 
 ---
 
@@ -396,8 +409,9 @@ another OWNER or grant the OWNER role.
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
 | Invitations | create, any role; a team only on an employee invitation | create, EMPLOYEE only, always into a team they lead | — |
-| Teams | full CRUD | read, within their teams; remove a member | read |
-| Projects, Activities, Categories | full CRUD | full CRUD | read |
+| Teams | full CRUD | read, within their teams; remove a member | — |
+| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
+| Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | users in teams they manage | own only |
@@ -484,7 +498,7 @@ teams screen offers a manager only what still works.
 
 **This closes the escalation**, so D10 is a boundary rather than a route-level
 narrowing. It also left a deliberate gap — a manager could not put anyone on
-their team at all — which Scope D closes.
+their team at all — which Scope D then closed.
 
 ### Scope D delivered
 
@@ -500,6 +514,17 @@ them.
 no route to adding an existing user to a team, which is what kept Scope C's
 guarantee intact.
 
+### Scope E not started
+
+Project membership is where the product stands still. `syncProjectUsers` takes
+no caller and will assign anyone in the company, `GET /users/assignable` lists
+everyone, `GET /projects/:id` serializes every member with their email, and a
+manager cannot be a project member at all, so their own timesheet has nothing to
+log against. Those are gaps 4, 5 and 6 under **Authorization gaps** below, and
+[`current-scope.md`](./current-scope.md) is the plan for closing them. Its
+business rules were all settled on 21 September 2026, so the scope is ready to
+build with nothing open.
+
 ### Fields that exist but do nothing
 
 | Field | Status |
@@ -511,9 +536,11 @@ guarantee intact.
 
 ### Authorization gaps
 
-These are current-state facts. The rules meant to replace them are in
-[`permission-model.md`](./permission-model.md), and the order they will be fixed
-in is §7 of that document.
+Current-state facts, kept numbered so other documents can point at them. Closed
+items stay on the list with their resolution rather than disappearing. The rules
+meant to replace the open ones are in
+[`permission-model.md`](./permission-model.md), and the order they are fixed in
+is §7 of that document.
 
 1. **A manager can widen their own visibility — closed.** Creating, renaming
    and archiving a team, adding a member and setting `roleInTeam` are now Owner
@@ -536,33 +563,32 @@ in is §7 of that document.
    company. The restriction to employees exists on the client alone.
 
 5. **`GET /projects/:id` discloses every member's name and email** to any
-   manager, including people `GET /users/:id` now refuses.
+   manager, including people `GET /users/:id` now refuses. This is the one route
+   that still works around D10.
 
 6. **Managers and owners cannot be project members**, so a manager has no
    project to log against and their timesheet cannot be used.
 
-7. **Manager scope is incomplete in planned-vs-actual.**
-   `ReportingService.getPlannedVsActualReport` pins an EMPLOYEE to their own
-   data, and a MANAGER who names a `userId` is now checked against
-   `isUserInManagedTeams`. But that check only runs *when a `userId` is given*.
-   A manager who calls the endpoint without one leaves the user filter unset, so
-   the aggregates are scoped by `companyId` alone and come back **company-wide**.
+7. **Manager scope in planned-vs-actual — closed.** Both aggregates in
+   `ReportingService.getPlannedVsActualReport` now run through
+   `applyUserVisibility`, so a manager who omits `userId` gets their own teams
+   rather than the whole company, and an employee is pinned to themselves.
+   Naming a `userId` outside a manager's teams is still refused with 403.
 
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
 level.
 
-A further gap remains on the frontend, though it no longer leaks data:
-the admin pages check only for a session, not for a role, so an employee who
-navigates to an admin route still renders the admin UI. The backend now refuses
-to fill it — every admin project route answers an employee with 403 — so what
-is left is a broken-looking screen rather than an exposure.
+**Gaps 4, 5 and 6 are the only ones still open, and together they are Scope E.**
+Everything else on this list is closed.
 
 **Closed since this section was written.** The project read routes
 (`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
 on `companyId` only, letting any employee enumerate every project with its full
-roster. They now carry an OWNER/MANAGER role guard. `/admin/*` was also added to
-the middleware's guarded prefix list, so an unauthenticated visitor is
-redirected to login.
+roster. They now carry an OWNER/MANAGER role guard. `/admin/*` was added to the
+middleware's guarded prefix list, so an unauthenticated visitor is redirected to
+login, and every `/admin/*` page and `/team` now calls `requireManagerAccess()`,
+so an employee who navigates there is sent back to their own timesheet instead
+of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
@@ -607,41 +633,47 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list.
+not a task list. Phases 0 and 1 are delivered; Phase 2 is the next product
+phase, after Scope E of [`permission-model.md`](./permission-model.md) §7.
 
 ---
 
-**Phase 0 — Close the authorization gaps**
+**Phase 0 — Close the authorization gaps — delivered**
 
-Both gaps in §6 leak data across roles today. The project one exposes the
-company roster with email addresses to every employee; the reporting one hands
+Two gaps leaked data across roles: the project read routes exposed the company
+roster with email addresses to every employee, and planned-vs-actual handed
 managers company-wide figures. Everything later builds on these code paths, so
-fixing them first avoids building on top of a leak.
+they were fixed first.
 
-Scope: role guards on the project read routes, trimming the eager user roster out
-of the default project response, the missing manager team check in
-planned-vs-actual, and `/admin/*` guarded properly on both middleware and page.
+Delivered: OWNER/MANAGER role guards on the project read routes, the member
+roster trimmed out of the project list response, `applyUserVisibility` on both
+planned-vs-actual aggregates, and `/admin/*` guarded on the middleware and in
+every page through `requireManagerAccess()`.
 
-This is also the natural place for the **first tests**. The role-visibility
-filters are the highest-value thing to test in the codebase — they are security
-logic, they are about to gain a second consumer, and they are pure query
-construction that tests well.
+It was also where the **first tests** landed. The role-visibility filters were
+the highest-value thing to test in the codebase — security logic, about to gain
+a second consumer, and pure query construction that tests well.
 
-*Depends on: nothing. Blocks: everything, in practice.*
+*Depended on: nothing. Blocked: everything, in practice.*
 
 ---
 
-**Phase 1 — Manager and owner team time view**
+**Phase 1 — Manager and owner team time view — delivered**
 
 The largest missing piece of product value, and the cheapest large feature
-available, because the authorization work already exists.
+available, because the authorization work already existed.
 
-Owners and managers get somewhere to land and a team week view: people down the
+Owners and managers now land on `/team` and read a team week: people down the
 side, days across the top, totals in the cells, filterable by team and project,
-with under-target rows visible at a glance and a drill-down into one person's
-entries, editable by the owner and by the manager of that person's team (D9).
+with a drill-down into one person's entries, editable by the owner and by the
+manager of that person's team (D9).
 
-Three constraints that matter more than the UI:
+**Expected hours are shown as neutral context, not as a warning.** Nothing is
+styled as under target, because absences do not exist yet and
+`capacityHoursPerWeek` is unread, so the signal would fire on people who are not
+actually short. Phases 2 and 3 are what make it trustworthy.
+
+Three constraints that mattered more than the UI, and still hold:
 
 - **The summary must reuse the existing visibility filter.** A hand-written
   second copy of the manager/team SQL is exactly how authorization bugs get
@@ -654,17 +686,18 @@ Three constraints that matter more than the UI:
   the same visibility source has to decide it. A hidden edit button is not a
   permission.
 
-Also closes the blank home page, adds the missing timesheet link for managers,
-and narrows the user and team lists to a manager's own teams (D10) — with
-assignment kept on its own company-wide list, so Q3 stays open.
+It also closed the blank home page, added the missing timesheet link for
+managers, and narrowed the user and team lists to a manager's own teams (D10) —
+with assignment kept on its own company-wide list, so Q3 stays open.
 
-*Depends on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
+*Depended on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
 
 ---
 
 > Before Phase 2, the permission scopes in
 > [`permission-model.md`](./permission-model.md) §7 close the authorization gaps
-> listed in §6. Scope C of that list is a security fix.
+> listed in §6. Scopes C and D are delivered; **Scope E is next**, and it is the
+> last of them that closes a gap.
 
 **Phase 2 — Absences**
 
@@ -749,11 +782,11 @@ earlier if invoicing needs them sooner.*
 Not last in importance, only in sequence — parts of it should be pulled forward
 whenever the pain justifies it.
 
-Meaningful test coverage beyond Phase 0's start; CI; a sane access-token
-lifetime (one minute drops sessions during ordinary use); a role check on the
-admin routes in the frontend; reminders for people who have not logged their
-week, if wanted (§10 Q5); and the accessibility items listed as TODOs in the
-frontend documentation.
+Meaningful test coverage beyond Phase 0's start; a sane access-token lifetime
+(one minute drops sessions during ordinary use); reminders for people who have
+not logged their week, if wanted (§10 Q5); and the accessibility items listed as
+TODOs in the frontend documentation. CI and the frontend admin role check were
+both pulled forward and are done.
 
 ---
 
@@ -796,7 +829,10 @@ Short list. These are the things that would be expensive or dangerous to break.
 6. **Archive, never delete.** Projects, activities, categories, teams and users
    are archived so historical time stays resolvable. `ProjectActivity` rows are
    deactivated rather than removed for the same reason. Team membership closes
-   with `leftAt` rather than deleting the row.
+   with `leftAt` rather than deleting the row, and archiving a person changes
+   neither their team memberships nor their project memberships — active status
+   gates joining, not staying. Only a deliberate removal ever takes someone off
+   a team or a project.
 7. **Aggregate in the database.** Client-side summing does not survive company
    scale.
 
@@ -807,12 +843,14 @@ Short list. These are the things that would be expensive or dangerous to break.
 | Document | Covers |
 | :--- | :--- |
 | **This document** | Product definition, business rules, decisions, roadmap |
-| [`permission-model.md`](./permission-model.md) | Target permission model — **future state**, not yet built |
+| [`permission-model.md`](./permission-model.md) | Target permission model and the scopes that deliver it; §5 says which parts are built |
+| [`current-scope.md`](./current-scope.md) | The one scope being built now, in English and Ukrainian |
 | [`known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
 | [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
 | [`backend-context.md`](../apps/backend/docs/backend-context.md) | Modules, API surface, data model, constraints |
 | [`auth.md`](../apps/backend/docs/auth.md) | Tokens, sessions, guards, OAuth, password flows |
 | [`frontend-context.md`](../apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components |
+| [`workflow.md`](./workflow.md) | Branching, pull requests, CI, migrations, deployment |
 | [`README.md`](../README.md) | Setup, commands, environment |
 | [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
 
