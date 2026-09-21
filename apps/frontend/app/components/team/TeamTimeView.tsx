@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
+import { useAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { TeamSummaryUser } from "@/types";
 import {
@@ -15,6 +16,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { canWriteTimeLogsFor } from "@/lib/utils/user";
+import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { UserRole } from "@/types/enums";
 
 import Container from "../layout/Container";
@@ -26,6 +28,8 @@ import { TeamEmptyState } from "./components/TeamEmptyState";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
+
+const WEEK_PAGE_SIZE = 500;
 
 type TeamTimeViewProps = {
   role: UserRole;
@@ -68,6 +72,22 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     projectId,
   });
 
+  const {
+    items: absences,
+    isLoading: isLoadingAbsences,
+    isError: isAbsencesError,
+    refetch: refetchAbsences,
+  } = useAbsencesQuery(1, {
+    dateFrom: toISODate(weekDates[0]),
+    dateTo: toISODate(weekDates[6]),
+    pageSize: WEEK_PAGE_SIZE,
+  });
+
+  const absencesByUser = useMemo(
+    () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
+    [absences, weekDates],
+  );
+
   /**
    * The same target the timesheet shows, so the two views cannot disagree.
    * Part-time capacity and absences are not in it yet, so it stays context
@@ -92,11 +112,15 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   }, [rows]);
 
   const todayIso = todayISODate(timezone);
-  const hasError = isSettingsError || isSummaryError;
+  const hasError = isSettingsError || isSummaryError || isAbsencesError;
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
   const hasNobodyToShow = rows.length === 0;
-  const isEmpty = hasNobodyToShow || totals.minutes === 0;
+
+  // A week where everyone was away is the case this view exists to explain,
+  // so absences alone are reason enough to show the grid.
+  const isEmpty =
+    hasNobodyToShow || (totals.minutes === 0 && absences.length === 0);
 
   const clearFilters = () => {
     setTeamId(undefined);
@@ -106,9 +130,10 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const retry = () => {
     void refetchSummary();
     void refetchSettings();
+    void refetchAbsences();
   };
 
-  if (isLoadingSettings || isLoadingSummary) {
+  if (isLoadingSettings || isLoadingSummary || isLoadingAbsences) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
         <LoadingState
@@ -223,6 +248,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   key={row.user.id}
                   row={row}
                   weekDates={weekDates}
+                  absencesByDate={absencesByUser[row.user.id] ?? {}}
                   expectedMinutes={expectedMinutes}
                   onOpen={(opened) => setOpenedUser(opened.user)}
                 />

@@ -33,7 +33,6 @@ export async function seedActivities(
           companyId,
           categoryId: category.id,
           name: item.name,
-          isAbsence: item.isAbsence ?? false,
           defaultBillable: item.billable,
           status: ActivityStatus.ACTIVE,
         }),

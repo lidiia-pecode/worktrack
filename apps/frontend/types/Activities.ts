@@ -9,7 +9,6 @@ export interface Activity {
   id: string;
   companyId: string;
   name: string;
-  isAbsence: boolean;
   defaultBillable: boolean;
   status: ActivityStatus;
   category: ActivityCategoryResponse;
@@ -20,7 +19,6 @@ export interface Activity {
 export interface ActivityPayload {
   name: string;
   categoryId: string;
-  isAbsence?: boolean;
   defaultBillable?: boolean;
 }
 

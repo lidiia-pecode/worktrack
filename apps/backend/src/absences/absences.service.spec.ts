@@ -438,6 +438,46 @@ describe('AbsencesService', () => {
     });
   });
 
+  describe('absences never count as hours', () => {
+    it('leaves the team summary at zero for a week that is only absence', async () => {
+      await service.create(absenceFor(member.id), member);
+
+      const summary = await timeLogs.getTeamSummary(
+        { dateFrom: START, dateTo: END },
+        owner,
+      );
+
+      expect(summary.minutes).toBe(0);
+      expect(summary.rows.every((row) => row.minutes === 0)).toBe(true);
+    });
+
+    it('counts only logged time when a person has both in the same week', async () => {
+      await existingTimeLog(member.id, '2026-02-09');
+      await service.create(absenceFor(member.id), member);
+
+      const summary = await timeLogs.getTeamSummary(
+        { dateFrom: '2026-02-09', dateTo: END },
+        owner,
+      );
+
+      expect(summary.minutes).toBe(60);
+    });
+  });
+
+  describe('the database backs the range rule up', () => {
+    it('refuses a reversed range written straight to the table', async () => {
+      await expect(
+        dataSource.getRepository(Absence).save({
+          companyId,
+          userId: member.id,
+          type: AbsenceType.VACATION,
+          startDate: END,
+          endDate: START,
+        }),
+      ).rejects.toThrow(/CHK_|check constraint/i);
+    });
+  });
+
   describe('reading', () => {
     it('lets an employee read only their own', async () => {
       await service.create(absenceFor(member.id), member);

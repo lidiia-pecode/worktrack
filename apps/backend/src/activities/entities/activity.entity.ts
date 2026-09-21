@@ -41,14 +41,6 @@ export class Activity {
 
   @Column({
     type: 'boolean',
-    name: 'is_absence',
-    default: false,
-    nullable: false,
-  })
-  isAbsence!: boolean;
-
-  @Column({
-    type: 'boolean',
     name: 'default_billable',
     default: true,
     nullable: false,

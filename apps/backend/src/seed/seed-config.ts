@@ -1,3 +1,4 @@
+import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -122,12 +123,6 @@ export const ACTIVITIES = [
   { name: 'UI Design', category: 'Design', billable: true },
   { name: 'UX Research', category: 'Design', billable: true },
   { name: 'Documentation', category: 'Management', billable: false },
-  {
-    name: 'Vacation',
-    category: 'Management',
-    billable: false,
-    isAbsence: true,
-  },
 ];
 
 /**
@@ -298,6 +293,21 @@ export const PLANNING = [
     day: 0,
     minutes: 480,
   },
+];
+
+/**
+ * Two absences each, on days the time logs above leave free — Friday of this
+ * week, and a whole week off after it. Seeding a public holiday per person is
+ * not a duplicate: a holiday belongs to whoever takes it, and somebody may
+ * work it instead.
+ */
+export const ABSENCES = [
+  ...[MANAGER_EMAIL, DEV_EMAIL, DESIGNER_EMAIL, UNASSIGNED_EMAIL].flatMap(
+    (email) => [
+      { email, type: AbsenceType.PUBLIC_HOLIDAY, startDay: 4, endDay: 4 },
+      { email, type: AbsenceType.VACATION, startDay: 7, endDay: 11 },
+    ],
+  ),
 ];
 
 /** Monday of the current week, as `YYYY-MM-DD`. */

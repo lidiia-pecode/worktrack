@@ -156,9 +156,9 @@ representation, separate from `TimeLog`, supporting **date ranges** so a
 two-week holiday is recorded once rather than fourteen times. It exists so that
 a person and a future report can see *why* no time was logged.
 
-The current `Activity.isAbsence` flag contradicts this decision. It is unused by
-any business logic today and should be removed when absences are built. See §7
-Phase 2.
+An `Activity.isAbsence` flag used to contradict this decision. It was read by no
+business logic and was removed in September 2026, when absences got a record of
+their own. See §7 Phase 2.
 
 ### D7 — No money in WorkTrack
 
@@ -276,7 +276,7 @@ Company  (tenant root — everything below carries companyId)
 ├── Invitation      email + role + status (PENDING | ACCEPTED | REVOKED)
 │                   teamId (the team it is for) + invitedById (who sent it)
 │
-├── ActCategory ──< Activity          isAbsence, defaultBillable
+├── ActCategory ──< Activity          defaultBillable
 │
 ├── Project  (clientName: free text)
 │     ├──< ProjectActivity >── Activity     which activities are allowed here
@@ -537,7 +537,6 @@ plus themselves.
 
 | Field | Status |
 | :--- | :--- |
-| `Activity.isAbsence` | Read by no logic. **Contradicts D6** — remove with Phase 2. |
 | `User.capacityHoursPerWeek` | Read by no logic. Part-time staff measured wrongly. Phase 3. |
 | `Company.currency` | Read by no logic. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
@@ -725,8 +724,8 @@ range** with a type (vacation, sick leave, public holiday) so a two-week absence
 is recorded once. Surfaced in the timesheet and the team view so that a week with
 no logged time reads as "on holiday" rather than "did not log".
 
-Includes removing `Activity.isAbsence`, which contradicts D6 and is read by
-nothing.
+`Activity.isAbsence`, which contradicted D6 and was read by nothing, is removed
+with it.
 
 Deliberately excluded: requests, approvals, balances, accrual. Leave management
 lives elsewhere (§1). WorkTrack records that the absence happened.
