@@ -4,24 +4,23 @@ The single reference for **what WorkTrack is, how its business rules behave
 today, what it should become, and in what order to get there.**
 
 Companion documents describe *how* things are built:
-[`architecture.md`](./architecture.md) for the system shape,
-[`backend-context.md`](../apps/backend/docs/backend-context.md) for modules and
-API surface, [`auth.md`](../apps/backend/docs/auth.md) for sessions,
-[`frontend-context.md`](../apps/frontend/docs/frontend-context.md) for the UI
-layer. This document does not repeat them; it explains the product those pieces
-serve.
+[`architecture.md`](./architecture.md) for the system shape, and — in a local
+checkout only, since they are kept outside version control — context notes for
+the backend modules and API surface, for sessions and authentication, and for
+the UI layer. This document does not repeat them; it explains the product those
+pieces serve.
 
 **Status of this document.** Sections 1–6 describe behaviour verified against
 the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 21 September 2026.** At that point Phases 0
-and 1 of the roadmap in §7 were delivered, as were Scopes C and D of
-[`permission-model.md`](./permission-model.md) §7. Scope E — project assignment
-and disclosure — is delivered: its business rules were settled the same day and
-all four of its steps are implemented. Only Scope F is left, and it closes no
-gap.
+**Last verified against the code: 21 September 2026**, and reconciled again
+when Scope E merged. Phases 0 and 1 of the roadmap in §7 are delivered, as are
+Scopes C, D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E
+closed the last of the authorization gaps in §6, and the permission model is
+complete. The next work is Phase 2, absences, and its business decisions are
+still open.
 
 ---
 
@@ -247,19 +246,21 @@ enforced: a manager assigns only the people they manage, plus themselves, both
 in `GET /users/assignable` and in `syncProjectUsers`; their save changes nobody
 outside that set; and that same set is all they see of a project's membership,
 so sharing a project discloses nobody. See
-[`permission-model.md`](./permission-model.md) §3.4 and §3.5, and §0 of
-[`current-scope.md`](./current-scope.md).
+[`permission-model.md`](./permission-model.md) §3.4 and §3.5.
 
-**D10 therefore has no exceptions left.** A manager sees the people in the teams
-they lead, on every list in the product.
+**D10 therefore has no exceptions, and is not expected to gain any.** A manager
+sees the people in the teams they lead, on every list in the product. A
+project-level **responsible person** was considered as the one deliberate
+exception and rejected in September 2026: responsibility in WorkTrack runs
+through teams, so there is nobody to name. See
+[`permission-model.md`](./permission-model.md) §3.6.
 
 ---
 
 ## 3. Domain model
 
-Verified against the entities in `apps/backend/src/*/entities/`. See
-[`backend-context.md`](../apps/backend/docs/backend-context.md) for columns,
-indexes and constraints.
+Verified against the entities in `apps/backend/src/*/entities/`, which remain
+the source for columns, indexes and constraints.
 
 ```text
 Company  (tenant root — everything below carries companyId)
@@ -650,8 +651,9 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 and 1 are delivered; Phase 2 is the next product
-phase, after Scope E of [`permission-model.md`](./permission-model.md) §7.
+not a task list. Phases 0 and 1 are delivered, and so is every permission scope
+in [`permission-model.md`](./permission-model.md) §7, so Phase 2 is the work now
+being planned.
 
 ---
 
@@ -712,9 +714,9 @@ Assignment kept its own company-wide list until Scope E narrowed that too.
 ---
 
 > Before Phase 2, the permission scopes in
-> [`permission-model.md`](./permission-model.md) §7 close the authorization gaps
-> listed in §6. Scopes C, D and E are delivered, and §6 has no open gaps left.
-> Only Scope F remains, and it closes none.
+> [`permission-model.md`](./permission-model.md) §7 closed the authorization gaps
+> listed in §6. Scopes C, D and E are delivered and §6 has no open gaps left. A
+> fourth scope, project responsibility, was cancelled rather than built.
 
 **Phase 2 — Absences**
 
@@ -729,9 +731,12 @@ nothing.
 Deliberately excluded: requests, approvals, balances, accrual. Leave management
 lives elsewhere (§1). WorkTrack records that the absence happened.
 
-Two decisions to settle when this starts: who may record an absence for whom
-(managers for their people is the obvious answer, mirroring planning's write
-scope), and whether absences respect period locking (§10 Q1).
+Decisions to settle before this is built, none of them yet answered: who may
+record an absence for whom, whether absences respect period locking (§10 Q1),
+whether the absence types are fixed or configurable per company, whether a
+public holiday is one record for the company or one per person, whether an
+absence may cover part of a day, and whether it may overlap a day that already
+has logged time.
 
 *Depends on: Phase 1 for the surfaces to show absences in. Blocks: Phase 3 —
 expected hours cannot be right until absences are known.*
@@ -860,25 +865,24 @@ Short list. These are the things that would be expensive or dangerous to break.
 | Document | Covers |
 | :--- | :--- |
 | **This document** | Product definition, business rules, decisions, roadmap |
-| [`permission-model.md`](./permission-model.md) | Target permission model and the scopes that deliver it; §5 says which parts are built |
-| [`current-scope.md`](./current-scope.md) | The one scope being built now, in English and Ukrainian |
-| [`known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
+| [`permission-model.md`](./permission-model.md) | The permission model and the scopes that delivered it; §5 says which parts are built |
 | [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
-| [`backend-context.md`](../apps/backend/docs/backend-context.md) | Modules, API surface, data model, constraints |
-| [`auth.md`](../apps/backend/docs/auth.md) | Tokens, sessions, guards, OAuth, password flows |
-| [`frontend-context.md`](../apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components |
 | [`workflow.md`](./workflow.md) | Branching, pull requests, CI, migrations, deployment |
 | [`README.md`](../README.md) | Setup, commands, environment |
-| [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
+
+Alongside these, a local checkout also carries working documents that are
+deliberately not version-controlled: the active scope, the list of defects and
+debt no scope owns, context notes for the backend and the frontend, and the
+repository's coding conventions. They are named here rather than linked, because
+they are not part of the published documentation.
 
 ---
 
 ## 10. Open decisions
 
-Questions about the permission model — team membership, invitations, project
-responsibility — live in [`permission-model.md`](./permission-model.md) §6,
-alongside the model they belong to. The ones below are about the rest of the
-product.
+Questions about the permission model — team membership, invitations, team
+structure — live in [`permission-model.md`](./permission-model.md) §6, alongside
+the model they belong to. The ones below are about the rest of the product.
 
 Genuinely undecided. Each includes a recommendation, but none should be treated
 as settled until confirmed.

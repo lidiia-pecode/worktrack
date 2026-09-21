@@ -1,12 +1,11 @@
 # WorkTrack — Target permission model
 
-**Status: the authorization rules are delivered; §3.6 is not.** This document
-describes how responsibility and access *should* work. Nothing here is
-implemented unless
+**Status: delivered.** This document describes how responsibility and access
+work. Nothing here is implemented unless
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 says so
 — those sections remain the record of current behaviour. §5 is the crosswalk
-from each rule to what stands in its way, and §7 is the order the rest is being
-built in: Scopes C, D and E are delivered, and only Scope F is left.
+from each rule to what stands in its way, and §7 is the order it was built in:
+Scopes C, D and E are delivered, and the model is complete.
 
 It exists because the permission rules outgrew a decision entry. They span
 company membership, invitations, teams, projects and time data at once, and
@@ -58,8 +57,9 @@ project's membership are checked against the caller.
 4. **Teams and projects are independent axes.** A project never belongs to a
    team. Project membership, project access and team membership are separate
    concepts with separate permissions.
-5. **Responsibility is not the same as access.** Being responsible for a project
-   is a label, not a permission grant.
+5. **Responsibility runs through teams, not projects.** A project is never
+   owned by one person. Each manager answers for their own team's people and
+   work, and the Owner is where a question that crosses teams goes.
 6. **Access is enforced in services.** A hidden button is not a permission. This
    already holds for time logs and must hold for everything here.
 
@@ -119,9 +119,11 @@ project route handing back the names it refuses is a way around that. One rule
 with no exceptions is also cheaper — every future endpoint returning a person
 would otherwise have to decide which tier it is at.
 
-**What is given up, and the replacement.** A manager can no longer tell who
-else is on a cross-team project, so "is the design work covered?" has to be
-asked rather than read. Scope F's responsible person gives them a name to ask.
+**What is given up, and why that is accepted.** A manager can no longer tell
+who else is on a cross-team project, so "is the design work covered?" has to be
+asked rather than read. They ask the Owner, who sees everyone. That is the
+answer, not a stopgap: a manager answers for their own team's people, not for a
+project's total staffing, and the Owner is the escalation path by design (§2).
 
 **A count is not a roster, and stays whole.** Every role sees the project's true
 total member count, and any screen listing fewer people than that says how many
@@ -129,9 +131,12 @@ are hidden and why. A count names nobody, so it discloses nothing the scoping
 protects — while a scoped count would tell a manager a fully staffed project is
 empty, which is worse than opacity.
 
-If that proves insufficient, the next step is team-level composition — "4 from
-Design, 5 from Platform" — which also names nobody and so does not reopen D10.
-Reinstating per-person identity is not the fix.
+Team-level composition — "4 from Design, 5 from Platform" — was considered as a
+further step and declined in September 2026. It names nobody, so it would not
+have reopened D10, but it would have given managers a way to reach each other's
+teams directly and so route around the Owner. Reinstating per-person identity is
+not the fix either. The scoped list, the true count, and the Owner are the whole
+answer here.
 
 ### 3.5 Projects: creation, visibility and membership
 
@@ -141,14 +146,13 @@ projects do not.
 Two alternatives were considered and rejected. Scoping projects by team is wrong
 by construction, since projects span teams. Scoping them by membership makes a
 project appear and disappear as staffing changes, and hides a project from the
-manager responsible for it the moment their last report rotates off.
+manager whose team is doing the work the moment their last report rotates off.
 
 **Project membership** is who may log time against the project. A manager may
 add **only people they can see**; the Owner may add anyone. A cross-team project
 is therefore staffed by each manager contributing their own people, which is
-also how it works in practice. Managers and owners are ordinary members —
-today they cannot be members at all, which is why a manager has no project to
-log against.
+also how it works in practice. Managers and owners are ordinary members, so a
+manager has a project of their own to log against.
 
 Three further rules follow from §3.4 and are settled:
 
@@ -170,14 +174,18 @@ Three further rules follow from §3.4 and are settled:
 
 **Employees** see the projects they are assigned to, and no others.
 
-### 3.6 Project ownership
+### 3.6 A project has no owner
 
-A project may name a **responsible person**. It is a label: it says who to ask
-about the project. It grants nothing and restricts nothing, and it does not have
-to be a project member (P3).
+WorkTrack does not model one person as responsible for a project. A project
+deliberately spans teams; each team's manager answers for that team's people and
+their work, and a manager who needs to clarify something outside their own team
+goes to the Owner.
 
-If per-project rights are ever wanted, this field is the hook — but that is not
-the current intent.
+A nullable `Project.responsibleUserId` was planned as Scope F and struck in
+September 2026, before any code was written. One name would have flattened a
+relationship that is per-team, and it would have kept by hand a fact the team
+memberships already hold. If per-project rights are ever wanted, that is a new
+decision, not a field waiting to be filled in.
 
 ### 3.7 Time-log visibility and editing
 
@@ -211,7 +219,7 @@ project staffed from both teams.
 | Marta staffs *Retail Redesign* | She may add Dmytro, Iryna, Sofia and **herself**. She may not add Petro — Mykola or Olena adds him |
 | Marta saves *Retail Redesign* without Petro in her list | Petro stays. Her save only touches the people she was shown |
 | Olena archives Dmytro | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Un-archiving him changes nothing back, because nothing was removed |
-| Marta is made responsible for *Retail Redesign* | A label. It gives her nothing she did not already have, and she need not be a member |
+| Marta wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Petro's side of the work she asks Olena — nobody is responsible for the project itself (§3.6) |
 | Marta logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mykola opens *Retail Redesign* | Same rights as Marta. Projects are not owned by a team |
 | Olena does any of the above | Allowed, always |
@@ -228,6 +236,9 @@ stands in its way.
 The §3.1 and §3.3 rows are gone: those rules shipped in Scopes C and D and were
 struck from §3, so there is nothing left to cross-walk.
 
+**Nothing differs any more.** Every row below is enforced or already true. The
+table is kept as the record of which rule is answered where.
+
 | Rule | Today | Detail |
 | :--- | :--- | :--- |
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
@@ -237,7 +248,7 @@ struck from §3, so there is nothing left to cross-walk.
 | §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
 | §3.5 Active status gates joining, not staying | **Already enforced** — only an addition is checked for active status | — |
 | §3.5 Managers may be project members | **Already enforced** — the client no longer strips them, and a manager's own timesheet can reach their projects | — |
-| §3.6 A responsible person | The field does not exist | — |
+| §3.6 A project has no owner | **Already true** — no such field exists, and none is planned | — |
 | §3.7 Time-log access | **Already enforced** (D9, D10) | — |
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
@@ -255,7 +266,8 @@ Visible, deliberately unanswered, and none of them block the roadmap in §7.
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*
-- **P3 — Must the responsible person be a project member?** Recommend no.
+- **P3 — Must the responsible person be a project member?** *Moot.* There is
+  no responsible person, and there will not be one — §3.6 records why.
 - **P4 — Should time visibility be bounded by membership dates?** Recommend no
   while §3.3 holds; revisit if transfers become common.
 - **P5 — Should an employee see their own team and teammates?** Today they see
@@ -278,13 +290,13 @@ Open questions about absences, planning, export and notifications stay in
 
 ## 7. Implementation roadmap
 
-Four scopes, in dependency order. Each is meant to become a
-`current-scope.md` in turn, and each is independently shippable. **C, D and E
-are delivered; only F is left, and it closes no gap.**
+Three scopes, in dependency order. Each became the active scope document in its
+turn, and each was independently shippable. **All three are delivered, and the permission
+axis is closed.**
 
-These sit **between Phase 1 and Phase 2** of the product roadmap in
+They sat **between Phase 1 and Phase 2** of the product roadmap in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7. They are a
-different axis — that roadmap sequences product capability, this one sequences
+different axis — that roadmap sequences product capability, this one sequenced
 permission correctness — and Scope C was the reason not to start Phase 2 first.
 
 ### Scope C — Close the escalation — **delivered**
@@ -336,16 +348,20 @@ Closes business §6 gap 3. Depends on C.
 
 Closed gaps 4, 5 and 6 in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §6, which
-were the last three open. Depended on C. **Its business rules were settled on 21
-September 2026** and are recorded in §0 of
-[`current-scope.md`](./current-scope.md), which is the implementation plan.
+were the last three open. Depended on C. Its business rules were settled on 21
+September 2026 and are reflected in §3.4 and §3.5 above.
 
-### Scope F — Project responsibility
+### Scope F — Project responsibility — **cancelled**
 
-- `Project.responsibleUserId`, nullable. *(migration)*
-- Shown on the project card and form.
+A fourth scope was planned and then struck in September 2026, before any code
+was written: a nullable `Project.responsibleUserId` naming one person to ask
+about a project, meant to soften what Scope E's scoped roster gave up.
 
-Closes nothing; adds §3.6. Depends on E.
+It was cancelled because WorkTrack has no concept of a project belonging to one
+person, and adding a field to invent one would have contradicted the model it
+was supposed to serve — see §3.6. The permission model ends at Scope E, and the
+next work is Phase 2 of
+[`business_architecture_docs.md`](./business_architecture_docs.md) §7.
 
 ### Not in any of these
 
@@ -359,10 +375,12 @@ Absences (Phase 2), correct expected hours (Phase 3), the planning interface
 | For | Read |
 | :--- | :--- |
 | How the product behaves **today** | [`business_architecture_docs.md`](./business_architecture_docs.md) §1–§6 |
-| What is being built **right now** | [`current-scope.md`](./current-scope.md) |
 | System shape and where to start | [`architecture.md`](./architecture.md) |
-| Modules, routes, data model | [`backend-context.md`](../apps/backend/docs/backend-context.md) |
-| Defects and debt no scope owns | [`known-issues.md`](./known-issues.md) |
+
+What is being built right now, the defects no scope owns, and the modules,
+routes and data model are covered by working documents that are deliberately
+kept outside version control. They are not linked here because they exist only
+in a local checkout.
 
 When a scope in §7 ships, move its rules into the business reference as current
 behaviour and strike them from here.

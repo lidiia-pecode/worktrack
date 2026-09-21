@@ -69,27 +69,26 @@ enforced in `TimeLogsService`.
 | Document | Covers |
 | :--- | :--- |
 | [`README.md`](../README.md) | Setup, commands, environment |
-| [`apps/backend/docs/backend-context.md`](../apps/backend/docs/backend-context.md) | Domain modules, API surface, data model, roles, business rules |
-| [`apps/backend/docs/auth.md`](../apps/backend/docs/auth.md) | Tokens, sessions, guards, Google OAuth, password flows |
-| [`apps/frontend/docs/frontend-context.md`](../apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, shared components |
-| [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
 | [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
-| [`docs/permission-model.md`](./permission-model.md) | Target permission model and the scopes delivering it; partly built |
-| [`docs/known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
-| [`docs/current-scope.md`](./current-scope.md) | The next implementation scope — what to build now |
+| [`docs/permission-model.md`](./permission-model.md) | The permission model and the scopes that delivered it |
 | [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
+
+A local checkout carries more: the active scope document, the list of defects
+and debt no scope owns, context notes for the backend and the frontend, and the
+repository's coding conventions. These are deliberately kept outside version
+control and are not part of the published documentation.
 
 ## Where to start for a given task
 
 | Task | Read |
 | :--- | :--- |
-| Add or change an API endpoint | `backend-context.md` → the module, then its service |
-| Change who can see or do what | `backend-context.md` → Roles, then `applyUserVisibility` |
-| Anything touching login or sessions | `auth.md` |
-| Build a screen | `frontend-context.md` → Data layer + Shared components |
-| Change colours or styling | `frontend-context.md` → Visual foundation, then `globals.css` |
-| Schema change | `backend-context.md` → Data model, then `src/migrations/` |
-| Get a change reviewed and merged | `workflow.md` |
+| Add or change an API endpoint | `apps/backend/src/<module>/` — the controller, then its service |
+| Change who can see or do what | `TeamVisibilityService`, then whichever service calls it |
+| Anything touching login or sessions | `apps/backend/src/auth/` |
+| Build a screen | `apps/frontend/app/` — the route, then `app/components/shared` |
+| Change colours or styling | `apps/frontend/app/globals.css` |
+| Schema change | the entity, then `apps/backend/src/migrations/` |
+| Get a change reviewed and merged | [`workflow.md`](./workflow.md) |
 
 ## Current state
 
@@ -100,9 +99,8 @@ categories. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
 Not built yet: any frontend for the backend's `planning` and `reporting`
-modules. The authorization gaps are all closed — see
-[`current-scope.md`](./current-scope.md) for the scope that closed the last of
-them.
+modules, and absences, which have no representation anywhere and are the scope
+being planned now. The authorization gaps are all closed.
 
 Test coverage has started but is narrow: eight suites and 139 tests, covering
 the role-visibility filters, the team route roles and membership rules, who may
