@@ -1,0 +1,5 @@
+export enum AbsenceType {
+  VACATION = 'VACATION',
+  SICK_LEAVE = 'SICK_LEAVE',
+  PUBLIC_HOLIDAY = 'PUBLIC_HOLIDAY',
+}

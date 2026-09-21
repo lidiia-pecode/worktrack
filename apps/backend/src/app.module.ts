@@ -19,6 +19,7 @@ import authConfig from './config/auth.config';
 import mailConfig from './config/mail.config';
 import { InvitationsModule } from './invitations/invitations.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
+import { AbsencesModule } from './absences/absences.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
     TeamsModule,
     InvitationsModule,
     OnboardingModule,
+    AbsencesModule,
   ],
 
   providers: [
