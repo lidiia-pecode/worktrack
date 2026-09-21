@@ -173,10 +173,10 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 Under active development. The employee timesheet, the owner/manager team time
 view and admin CRUD for users, teams, projects, activities and categories are
-implemented. Reporting and planning views are not. Test coverage is seven backend
-suites and 93 tests, covering who may see and change whose data.
+implemented. Reporting and planning views are not. Test coverage is eight backend
+suites and 118 tests, covering who may see and change whose data.
 
-The next piece of work is project assignment and disclosure — see
+The work in progress is project assignment and disclosure — see
 [`docs/current-scope.md`](docs/current-scope.md).
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and

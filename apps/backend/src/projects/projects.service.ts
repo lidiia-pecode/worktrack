@@ -20,7 +20,6 @@ import { ProjectsQuery } from './dtos/projects-query.dto';
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
@@ -129,10 +128,18 @@ export class ProjectsService {
     }
   }
 
+  /**
+   * Applies the submitted membership to the project.
+   *
+   * The caller only ever sees the people they may assign, so their list is
+   * not the whole truth: both sides of the diff are bounded by that scope,
+   * and members outside it are left alone rather than read as removals.
+   */
   private async syncProjectUsers(
     project: Project,
     rawUserIds: string[],
     manager: EntityManager,
+    user: AuthUser,
   ): Promise<void> {
     const targetUserIds = Array.from(new Set(rawUserIds));
 
@@ -158,7 +165,23 @@ export class ProjectsService {
       .filter((u) => !currentIds.has(u.id))
       .map((u) => u.id);
 
-    const idsToRemove = [...currentIds].filter((id) => !targetIds.has(id));
+    const removalCandidates = [...currentIds].filter(
+      (id) => !targetIds.has(id),
+    );
+
+    const assignable = await this.teamVisibility.filterVisibleUserIds(
+      [...idsToAdd, ...removalCandidates],
+      user,
+      { includeSelf: true },
+    );
+
+    if (idsToAdd.some((id) => !assignable.has(id))) {
+      throw new ForbiddenException(
+        'You can only assign yourself and users in teams you manage',
+      );
+    }
+
+    const idsToRemove = removalCandidates.filter((id) => assignable.has(id));
 
     const relation = manager
       .createQueryBuilder()
@@ -282,7 +305,12 @@ export class ProjectsService {
       }
 
       if (payload.userIds?.length) {
-        await this.syncProjectUsers(savedProject, payload.userIds, manager);
+        await this.syncProjectUsers(
+          savedProject,
+          payload.userIds,
+          manager,
+          user,
+        );
       }
 
       return this.getByIdWithManager(savedProject.id, user.companyId, manager);
@@ -331,7 +359,7 @@ export class ProjectsService {
       }
 
       if (payload.userIds !== undefined) {
-        await this.syncProjectUsers(project, payload.userIds, manager);
+        await this.syncProjectUsers(project, payload.userIds, manager, user);
       }
 
       return this.getByIdWithManager(project.id, user.companyId, manager);
@@ -358,35 +386,6 @@ export class ProjectsService {
     return this.repo.save(project);
   }
 
-  private async assertUserInWriteScope(
-    userId: string,
-    user: AuthUser,
-  ): Promise<void> {
-    if (user.role === UserRole.OWNER) {
-      const exists = await this.usersService.findUserById(
-        userId,
-        user.companyId,
-      );
-      if (!exists) throw new NotFoundException('User not found');
-      return;
-    }
-
-    if (user.role !== UserRole.MANAGER) {
-      throw new ForbiddenException('You can only list your own projects');
-    }
-
-    const visible = await this.teamVisibility.isUserInManagedTeams(
-      userId,
-      user,
-    );
-
-    if (!visible) {
-      throw new ForbiddenException(
-        'You can only list projects of users in teams you manage',
-      );
-    }
-  }
-
   /**
    * Project activities a person may log time against: the activity link is
    * enabled, both the project and the activity are active, and that person is
@@ -404,7 +403,10 @@ export class ProjectsService {
     const targetUserId = query.userId ?? user.id;
 
     if (targetUserId !== user.id) {
-      await this.assertUserInWriteScope(targetUserId, user);
+      await this.teamVisibility.assertCanActForUser(targetUserId, user, {
+        action: 'list',
+        subject: 'projects',
+      });
     }
 
     const [results, count] = await this.projectActivityRepo

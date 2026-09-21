@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -117,6 +118,7 @@ describe('TeamVisibilityService', () => {
 
     service = new TeamVisibilityService(
       dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
     );
 
     companyA = await createCompany(SLUG_A);
@@ -213,6 +215,104 @@ describe('TeamVisibilityService', () => {
     it('never reaches across companies', async () => {
       await expect(visibleUserIds(otherCompanyUser)).resolves.toEqual(
         sorted(otherCompanyUser),
+      );
+    });
+  });
+
+  describe('filterVisibleUserIds', () => {
+    const candidates = (): string[] =>
+      sorted(
+        owner,
+        manager,
+        loneManager,
+        nonLeadManager,
+        member,
+        formerMember,
+        outsider,
+        otherCompanyUser,
+      );
+
+    const filtered = async (
+      caller: AuthUser,
+      includeSelf = false,
+    ): Promise<string[]> => {
+      const visible = await service.filterVisibleUserIds(candidates(), caller, {
+        includeSelf,
+      });
+
+      return [...visible].sort();
+    };
+
+    it('keeps every candidate for an owner', async () => {
+      await expect(filtered(owner)).resolves.toEqual(candidates());
+    });
+
+    it('keeps only the active members of teams a manager leads', async () => {
+      await expect(filtered(manager)).resolves.toEqual(
+        sorted(manager, nonLeadManager, member),
+      );
+    });
+
+    it('agrees with applyUserVisibility', async () => {
+      await expect(filtered(manager)).resolves.toEqual(
+        await visibleUserIds(manager),
+      );
+    });
+
+    it('keeps nobody for a manager who leads no team', async () => {
+      await expect(filtered(loneManager)).resolves.toEqual([]);
+    });
+
+    it('keeps a manager who leads no team when self is included', async () => {
+      await expect(filtered(loneManager, true)).resolves.toEqual([
+        loneManager.id,
+      ]);
+    });
+
+    it('keeps only themselves for an employee', async () => {
+      await expect(filtered(member)).resolves.toEqual([member.id]);
+    });
+
+    it('returns nothing for an empty list', async () => {
+      await expect(service.filterVisibleUserIds([], owner)).resolves.toEqual(
+        new Set(),
+      );
+    });
+  });
+
+  describe('assertCanActForUser', () => {
+    const wording = { action: 'assign', subject: 'projects' };
+
+    const assertFor = (userId: string, caller: AuthUser): Promise<void> =>
+      service.assertCanActForUser(userId, caller, wording);
+
+    it('lets an owner act for anyone in their company', async () => {
+      await expect(assertFor(outsider.id, owner)).resolves.toBeUndefined();
+    });
+
+    it('tells an owner a user in another company does not exist', async () => {
+      await expect(assertFor(otherCompanyUser.id, owner)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('lets a manager act for someone in a team they lead', async () => {
+      await expect(assertFor(member.id, manager)).resolves.toBeUndefined();
+    });
+
+    it('refuses a manager for someone outside their teams', async () => {
+      await expect(assertFor(outsider.id, manager)).rejects.toThrow(
+        'You can only assign projects of users in teams you manage',
+      );
+    });
+
+    it('lets an employee act for themselves', async () => {
+      await expect(assertFor(member.id, member)).resolves.toBeUndefined();
+    });
+
+    it('refuses an employee for anyone else', async () => {
+      await expect(assertFor(outsider.id, member)).rejects.toThrow(
+        ForbiddenException,
       );
     });
   });

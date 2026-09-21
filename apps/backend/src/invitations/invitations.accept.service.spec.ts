@@ -129,6 +129,7 @@ describe('InvitationsService acceptance', () => {
 
     teamVisibility = new TeamVisibilityService(
       dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
     );
 
     service = new InvitationsService(

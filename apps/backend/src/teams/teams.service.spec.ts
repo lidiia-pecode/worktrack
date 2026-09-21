@@ -107,7 +107,10 @@ describe('TeamsService', () => {
       dataSource.getRepository(Team),
       dataSource.getRepository(TeamMembership),
       dataSource.getRepository(User),
-      new TeamVisibilityService(dataSource.getRepository(TeamMembership)),
+      new TeamVisibilityService(
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+      ),
       dataSource,
     );
 

@@ -5,7 +5,7 @@ access *should* work. Nothing here is implemented unless
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 says so
 — those sections remain the record of current behaviour. §5 is the crosswalk
 from each rule to what stands in its way, and §7 is the order the rest is being
-built in: Scopes C and D are delivered, Scope E is next and not started.
+built in: Scopes C and D are delivered, and Scope E is in progress.
 
 It exists because the permission rules outgrew a decision entry. They span
 company membership, invitations, teams, projects and time data at once, and
@@ -40,8 +40,9 @@ The business actually distinguishes four things:
 
 Collapsing these into one role check is why a manager could widen their own
 visibility, and why an invitation could not place anybody anywhere. Scopes C and
-D separated the first three. The fourth — work assignment — is Scope E and is
-still collapsed: project membership is not checked against the caller at all.
+D separated the first three. The fourth — work assignment — is Scope E: who may
+be assigned is now checked against the caller, and what a caller may read of a
+project's membership is the part still being built.
 
 ---
 
@@ -231,8 +232,8 @@ struck from §3, so there is nothing left to cross-walk.
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
 | §3.4 One level of visibility | Project detail returns every member's name and email to any manager, including people `GET /users/:id` refuses | business §6 gap 5 |
 | §3.5 Projects stay company-wide | **Already true** | — |
-| §3.5 Assign only people you can see, plus yourself | No server-side check, and `/users/assignable` is company-wide | business §6 gap 4 |
-| §3.5 A manager changes only what they were shown | `syncProjectUsers` treats the submitted list as the whole membership | business §6 gap 4 |
+| §3.5 Assign only people you can see, plus yourself | **Already enforced** — `syncProjectUsers` takes the caller, and `/users/assignable` is narrowed to the same set | — |
+| §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
 | §3.5 Active status gates joining, not staying | Saving a project with an archived member 404s; re-picking members drops them | business §6 gap 4 |
 | §3.5 Managers may be project members | Stripped twice on the client — the picker filters, and the submit filters again | business §6 gap 6 |
 | §3.6 A responsible person | The field does not exist | — |
@@ -313,11 +314,13 @@ are best read together.
 
 Closes business §6 gap 3. Depends on C.
 
-### Scope E — Project assignment and disclosure — **next**
+### Scope E — Project assignment and disclosure — **in progress**
 
-- Enforce assignment scope in `syncProjectUsers`, and narrow
+- ~~Enforce assignment scope in `syncProjectUsers`, and narrow
   `GET /users/assignable` to the caller's people plus themselves — the two must
-  land together, and the save becomes a diff bounded by that scope.
+  land together, and the save becomes a diff bounded by that scope.~~
+  **Delivered.** `TeamVisibilityService` now owns the whole owner/manager/employee
+  decision, so time logs, projects and the user lists share one copy of it.
 - Scope the project's member list to the caller, and narrow the member DTO. One
   shape for every role; only the rows differ.
 - Allow managers and owners to be project members; drop the client-side

@@ -1,11 +1,30 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
+import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+
+/** Wording for the refusal, e.g. `{ action: 'view', subject: 'time logs' }`. */
+export interface UserScopeWording {
+  action: string;
+  subject: string;
+}
+
+interface VisibilityOptions {
+  /**
+   * Also let the caller through for themselves. Assignment needs this: a
+   * manager who leads no team sees nobody, but may always pick themselves.
+   */
+  includeSelf?: boolean;
+}
 
 /**
  * The single place that answers "whose data may this person read", so time
@@ -16,6 +35,8 @@ export class TeamVisibilityService {
   constructor(
     @InjectRepository(TeamMembership)
     private readonly repo: Repository<TeamMembership>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
   ) {}
 
   /**
@@ -30,12 +51,12 @@ export class TeamVisibilityService {
     qb: SelectQueryBuilder<T>,
     userColumn: string,
     user: AuthUser,
+    options: VisibilityOptions = {},
   ): void {
     if (user.role === UserRole.OWNER) return;
 
     if (user.role === UserRole.MANAGER) {
-      qb.andWhere(
-        `${userColumn} IN (
+      const managedTeams = `${userColumn} IN (
           SELECT tm_member.user_id
           FROM team_memberships tm_mgr
           JOIN team_memberships tm_member ON tm_member.team_id = tm_mgr.team_id
@@ -45,7 +66,12 @@ export class TeamVisibilityService {
             AND tm_member.left_at IS NULL
             AND tm_mgr.company_id = :visibilityCompanyId
             AND tm_member.company_id = :visibilityCompanyId
-        )`,
+        )`;
+
+      qb.andWhere(
+        options.includeSelf
+          ? `(${managedTeams} OR ${userColumn} = :visibilityUserId)`
+          : managedTeams,
         {
           visibilityUserId: user.id,
           visibilityManagerRole: TeamRole.MANAGER,
@@ -58,6 +84,78 @@ export class TeamVisibilityService {
     qb.andWhere(`${userColumn} = :visibilityUserId`, {
       visibilityUserId: user.id,
     });
+  }
+
+  /**
+   * Of the given user ids, the ones the caller may see. Same rule as
+   * `applyUserVisibility`, for callers holding a list of ids rather than a
+   * query.
+   */
+  async filterVisibleUserIds(
+    userIds: string[],
+    user: AuthUser,
+    options: VisibilityOptions = {},
+  ): Promise<Set<string>> {
+    const uniqueIds = Array.from(new Set(userIds));
+    if (!uniqueIds.length) return new Set();
+
+    if (user.role === UserRole.OWNER) return new Set(uniqueIds);
+
+    const includesSelf = uniqueIds.includes(user.id);
+
+    if (user.role !== UserRole.MANAGER) {
+      return new Set(includesSelf ? [user.id] : []);
+    }
+
+    const self = options.includeSelf && includesSelf ? [user.id] : [];
+
+    const qb = this.repo
+      .createQueryBuilder('tm')
+      .select('DISTINCT tm.user_id', 'userId')
+      .where('tm.user_id IN (:...scopeUserIds)', { scopeUserIds: uniqueIds })
+      .andWhere('tm.company_id = :scopeCompanyId', {
+        scopeCompanyId: user.companyId,
+      })
+      .andWhere('tm.left_at IS NULL');
+
+    this.applyUserVisibility(qb, 'tm.user_id', user);
+
+    const rows = await qb.getRawMany<{ userId: string }>();
+
+    return new Set([...self, ...rows.map((row) => row.userId)]);
+  }
+
+  /**
+   * Refuses the caller when the target user is outside their scope: an owner
+   * may act for anyone in their company, a manager for the people in the teams
+   * they lead, anyone else only for themselves.
+   */
+  async assertCanActForUser(
+    userId: string,
+    user: AuthUser,
+    wording: UserScopeWording,
+  ): Promise<void> {
+    if (user.role === UserRole.OWNER) {
+      const exists = await this.userRepo.exists({
+        where: { id: userId, companyId: user.companyId },
+      });
+      if (!exists) throw new NotFoundException('User not found');
+      return;
+    }
+
+    if (user.role === UserRole.MANAGER) {
+      if (await this.isUserInManagedTeams(userId, user)) return;
+
+      throw new ForbiddenException(
+        `You can only ${wording.action} ${wording.subject} of users in teams you manage`,
+      );
+    }
+
+    if (userId !== user.id) {
+      throw new ForbiddenException(
+        `You can only ${wording.action} your own ${wording.subject}`,
+      );
+    }
   }
 
   /**
