@@ -14,9 +14,6 @@ export class ActivityResponse {
   name!: string;
 
   @Expose()
-  isAbsence!: boolean;
-
-  @Expose()
   defaultBillable!: boolean;
 
   @Expose()

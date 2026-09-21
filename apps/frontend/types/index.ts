@@ -1,3 +1,4 @@
+export * from "./Absence";
 export * from "./Project";
 export * from "./Timelog";
 export * from "./User";

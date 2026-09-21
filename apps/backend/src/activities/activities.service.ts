@@ -144,7 +144,6 @@ export class ActivitiesService {
       companyId,
       name: payload.name,
       category,
-      isAbsence: payload.isAbsence ?? false,
       defaultBillable: payload.defaultBillable ?? true,
       status: ActivityStatus.ACTIVE,
     });
@@ -178,10 +177,6 @@ export class ActivitiesService {
         payload.categoryId,
         companyId,
       );
-    }
-
-    if (payload.isAbsence !== undefined) {
-      activity.isAbsence = payload.isAbsence;
     }
 
     if (payload.defaultBillable !== undefined) {

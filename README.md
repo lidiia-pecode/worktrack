@@ -171,13 +171,14 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 ## Current Status
 
 Under active development. The employee timesheet, the owner/manager team time
-view and admin CRUD for users, teams, projects, activities and categories are
-implemented. Reporting and planning views are not. Test coverage is eight backend
-suites and 139 tests, covering who may see and change whose data.
+view, absences and admin CRUD for users, teams, projects, activities and
+categories are implemented. Reporting and planning views are not. Test coverage
+is nine backend suites and 178 tests, covering who may see and change whose data.
 
-Project assignment and disclosure was the most recent piece of work, and it
-completed the permission model. The next scope is absences, and its business
-decisions are still open.
+Absences were the most recent piece of work: a person records the days they were
+away as a date range, and both week views mark them, so an empty week explains
+itself. The next scope is making expected hours true — part-time capacity and
+absences both count — and its business decisions are still open.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions

@@ -23,10 +23,6 @@ export class ActivityPayload {
 
   @IsOptional()
   @IsBoolean()
-  isAbsence?: boolean;
-
-  @IsOptional()
-  @IsBoolean()
   defaultBillable?: boolean;
 }
 

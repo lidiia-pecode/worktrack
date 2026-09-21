@@ -117,6 +117,26 @@ export class ReportingService {
     return !!lockedPeriod;
   }
 
+  /**
+   * True when any day between the two dates falls in a LOCKED period. A record
+   * covering a range is frozen as soon as it touches one.
+   */
+  async isRangeLocked(
+    companyId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<boolean> {
+    const lockedPeriod = await this.periodRepo
+      .createQueryBuilder('rp')
+      .where('rp.companyId = :companyId', { companyId })
+      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
+      .andWhere('rp.startDate <= :endDate', { endDate })
+      .andWhere('rp.endDate >= :startDate', { startDate })
+      .getOne();
+
+    return !!lockedPeriod;
+  }
+
   // ==========================================
   // ANALYTICS & REPORTS
   // ==========================================

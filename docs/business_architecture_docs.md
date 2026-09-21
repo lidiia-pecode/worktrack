@@ -16,11 +16,11 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 21 September 2026**, and reconciled again
-when Scope E merged. Phases 0 and 1 of the roadmap in §7 are delivered, as are
-Scopes C, D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E
-closed the last of the authorization gaps in §6, and the permission model is
-complete. The next work is Phase 2, absences, and its business decisions are
-still open.
+when Phase 2 merged. Phases 0, 1 and 2 of the roadmap in §7 are delivered, as
+are Scopes C, D and E of [`permission-model.md`](./permission-model.md) §7 —
+Scope E closed the last of the authorization gaps in §6, and the permission
+model is complete. The next work is Phase 3, correct expected hours, and its
+business decisions are still open.
 
 ---
 
@@ -156,9 +156,10 @@ representation, separate from `TimeLog`, supporting **date ranges** so a
 two-week holiday is recorded once rather than fourteen times. It exists so that
 a person and a future report can see *why* no time was logged.
 
-The current `Activity.isAbsence` flag contradicts this decision. It is unused by
-any business logic today and should be removed when absences are built. See §7
-Phase 2.
+**Built in September 2026 as Phase 2.** `Absence` is its own table with a date
+range, a fixed type and an owner; an `Activity.isAbsence` flag that contradicted
+this decision was removed with it. The rules that came out of building it are in
+§7 Phase 2.
 
 ### D7 — No money in WorkTrack
 
@@ -276,11 +277,14 @@ Company  (tenant root — everything below carries companyId)
 ├── Invitation      email + role + status (PENDING | ACCEPTED | REVOKED)
 │                   teamId (the team it is for) + invitedById (who sent it)
 │
-├── ActCategory ──< Activity          isAbsence, defaultBillable
+├── ActCategory ──< Activity          defaultBillable
 │
 ├── Project  (clientName: free text)
 │     ├──< ProjectActivity >── Activity     which activities are allowed here
 │     └──< project_users    >── User        who may log against this project
+│
+├── Absence         user + type + startDate + endDate + note
+│                   type: VACATION | SICK_LEAVE | PUBLIC_HOLIDAY
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
 ├── PlanningEntry   user + projectActivity + date + plannedMinutes + createdBy
@@ -332,6 +336,35 @@ writes cannot exceed the budget between them.
 `isBillable` defaults from `Activity.defaultBillable` when the entry does not
 specify it (D2).
 
+### Absences
+
+An absence is a date range belonging to one person, with a type — vacation, sick
+leave or public holiday — and an optional note. It is never a time entry and
+never appears in an hours total (D6).
+
+Every write passes three checks:
+
+1. **Write scope** — the same rule as time logs, through the same
+   `assertCanActForUser` helper: an owner records for anyone in the company, a
+   manager for the people in the teams they lead, an employee for themselves.
+2. **Period lock** — a range touching a `LOCKED` period cannot be created,
+   changed or deleted, and neither can it be moved into one.
+3. **The day is free** — no day of the range may already have logged time, and
+   no day may already be covered by another absence, whatever its type.
+
+The rule runs both ways: time logging is refused on a day an absence covers.
+Each service reads the other's table directly rather than depending on it, and
+both check inside the transaction that locks the owner's user row, which is what
+stops two concurrent writes from each seeing a free day.
+
+A range is refused whole rather than partially, and the refusal names the
+conflicting dates. The database backs the range up with a check constraint that
+`endDate >= startDate`.
+
+**A public holiday belongs to a person, not the company.** Whether somebody
+takes it or works it is their own record to make, so there is no company-wide
+holiday calendar and nothing tells a person which days are holidays.
+
 ### The invariant worth internalising
 
 > **Write access for a time entry matches read visibility: owners company-wide,
@@ -361,9 +394,11 @@ Currently derived entirely from `Company.standardWorkHoursPerDay` (default 8):
 the weekly target is that value multiplied by the number of weekdays in the
 week. Weekends are Saturday and Sunday.
 
-**`User.capacityHoursPerWeek` is stored and editable but read by nothing.** A
-part-time employee is therefore measured against the full-time target. This is a
-correctness gap, not a design decision — see §7 Phase 3.
+**`User.capacityHoursPerWeek` is stored but read by nothing, and no screen sets
+it.** It is writable through the users API and returned in the response, yet the
+admin user form offers only position and role — so a part-time employee is
+measured against the full-time target and there is no way to say otherwise. This
+is a correctness gap, not a design decision — see §7 Phase 3.
 
 ### Period locking
 
@@ -460,6 +495,9 @@ the gap is the main fact about the project's current state.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
   entries day by day and correct them.
+- **Absences** — a person records their own days away as a date range with a
+  type, from the timesheet; the timesheet and the team grid mark those days, so
+  an empty week explains itself. A day is either worked or absent, never both.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -537,8 +575,7 @@ plus themselves.
 
 | Field | Status |
 | :--- | :--- |
-| `Activity.isAbsence` | Read by no logic. **Contradicts D6** — remove with Phase 2. |
-| `User.capacityHoursPerWeek` | Read by no logic. Part-time staff measured wrongly. Phase 3. |
+| `User.capacityHoursPerWeek` | Read by no logic, and set by no screen. Part-time staff measured wrongly. Phase 3. |
 | `Company.currency` | Read by no logic. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
 
@@ -651,9 +688,9 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 and 1 are delivered, and so is every permission scope
-in [`permission-model.md`](./permission-model.md) §7, so Phase 2 is the work now
-being planned.
+not a task list. Phases 0, 1 and 2 are delivered, and so is every permission
+scope in [`permission-model.md`](./permission-model.md) §7, so Phase 3 is the
+work now being planned.
 
 ---
 
@@ -688,9 +725,10 @@ with a drill-down into one person's entries, editable by the owner and by the
 manager of that person's team (D9).
 
 **Expected hours are shown as neutral context, not as a warning.** Nothing is
-styled as under target, because absences do not exist yet and
-`capacityHoursPerWeek` is unread, so the signal would fire on people who are not
-actually short. Phases 2 and 3 are what make it trustworthy.
+styled as under target, because the figure is not yet true: it counts every
+weekday against a company-wide 8-hour day, so the signal would fire on part-time
+staff and on anyone who was away. Absences arrived with Phase 2 but do not yet
+reduce the expectation; Phase 3 is what makes it trustworthy.
 
 Three constraints that mattered more than the UI, and still hold:
 
@@ -718,28 +756,41 @@ Assignment kept its own company-wide list until Scope E narrowed that too.
 > listed in §6. Scopes C, D and E are delivered and §6 has no open gaps left. A
 > fourth scope, project responsibility, was cancelled rather than built.
 
-**Phase 2 — Absences**
+**Phase 2 — Absences — delivered**
 
-Implements D6. A new representation, separate from `TimeLog`, covering a **date
-range** with a type (vacation, sick leave, public holiday) so a two-week absence
-is recorded once. Surfaced in the timesheet and the team view so that a week with
-no logged time reads as "on holiday" rather than "did not log".
+Implements D6. `Absence` is its own table, separate from `TimeLog`, covering a
+**date range** with a type, so a two-week holiday is one row rather than
+fourteen. A person records their own from the timesheet; the timesheet and the
+team week grid mark the days, so a week with no logged time reads as "on
+holiday" rather than "did not log". `Activity.isAbsence` was removed with it.
 
-Includes removing `Activity.isAbsence`, which contradicts D6 and is read by
-nothing.
+Six business decisions were settled while building it, and they are the rules
+now in force:
 
-Deliberately excluded: requests, approvals, balances, accrual. Leave management
-lives elsewhere (§1). WorkTrack records that the absence happened.
+- **Who may record for whom** follows the time-log scope exactly (D9), through
+  the same `assertCanActForUser` helper rather than a second copy of the rule.
+- **Absences respect period locking** across their whole range (§10 Q1).
+- **Three fixed types** — vacation, sick leave, public holiday — as a database
+  enum, not a per-company lookup table.
+- **A public holiday is personal.** It belongs to one person like any other
+  absence, because a holiday is not automatically a day off and somebody may
+  work it. There is therefore **no company holiday calendar**, and nothing tells
+  a person which days those are.
+- **Whole days only.** No half-days, no hours.
+- **A day is either worked or absent, never both.** An absence touching a day
+  with logged time is refused, and logged time on a covered day is refused;
+  two absences may never overlap. The cost, accepted deliberately: *worked half
+  a day, then went home sick* cannot be recorded without deleting the time log.
 
-Decisions to settle before this is built, none of them yet answered: who may
-record an absence for whom, whether absences respect period locking (§10 Q1),
-whether the absence types are fixed or configurable per company, whether a
-public holiday is one record for the company or one per person, whether an
-absence may cover part of a day, and whether it may overlap a day that already
-has logged time.
+Deliberately excluded, and still excluded: requests, approvals, balances,
+accrual. Leave management lives elsewhere (§1). WorkTrack records that the
+absence happened.
 
-*Depends on: Phase 1 for the surfaces to show absences in. Blocks: Phase 3 —
-expected hours cannot be right until absences are known.*
+Not built, and known: a manager cannot record an absence for someone in their
+team through the UI, though the API allows it and enforces the scope.
+
+*Depended on: Phase 1 for the surfaces. Blocks: Phase 3 — expected hours cannot
+be right until absences are known.*
 
 ---
 
@@ -754,7 +805,13 @@ reducing the days expected. A person on holiday for a week should be at target,
 not 40 hours short, and a 3-day-a-week employee should never be measured against
 5 days.
 
-*Depends on: Phases 1 and 2. Blocks: Phase 5's utilisation figures.*
+One thing to settle first, and it is not only arithmetic: `capacityHoursPerWeek`
+exists on `User` with a default of 40, is writable through the API and is offered
+by no screen — so part-time capacity cannot be set by anybody using the
+application. Making the number true means exposing it as well as reading it.
+
+*Depends on: Phases 1 and 2, both delivered. Blocks: Phase 5's utilisation
+figures.*
 
 ---
 
@@ -887,13 +944,12 @@ the model they belong to. The ones below are about the rest of the product.
 Genuinely undecided. Each includes a recommendation, but none should be treated
 as settled until confirmed.
 
-**Q1 — Do absences respect period locking?**
-Time logs freeze when a period locks (D5). Absences are not time and carry no
-invoicing weight, so freezing them is less obviously necessary.
-*Recommendation: freeze them too.* If a closed month's reports show absence
-alongside hours, letting absence change afterwards makes those reports unstable
-in exactly the way D5 exists to prevent. Cost is minimal — the same
-`isDateLocked` check.
+**Q1 — Do absences respect period locking? — answered.**
+Yes. Confirmed in September 2026 and built with Phase 2: an absence cannot be
+created, changed or deleted once any day of its range falls in a locked period.
+The reasoning was that Phase 3 makes absence an input to expected hours, so
+editing one in a closed month would silently change whether somebody was short
+that month — exactly the instability D5 exists to prevent.
 
 **Q2 — Should planning require project membership?**
 Time logging requires a `project_users` row; planning does not. A manager can

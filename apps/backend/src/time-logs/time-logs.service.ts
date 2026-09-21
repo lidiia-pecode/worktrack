@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -243,6 +244,13 @@ export class TimeLogsService {
         manager,
       );
 
+      await this.assertNotAbsent(
+        manager,
+        ownerId,
+        user.companyId,
+        payload.date,
+      );
+
       await this.assertDailyLimit(
         manager,
         ownerId,
@@ -284,6 +292,12 @@ export class TimeLogsService {
       await this.assertDateNotLocked(user.companyId, log.date);
       if (payload.date && payload.date !== log.date) {
         await this.assertDateNotLocked(user.companyId, payload.date);
+        await this.assertNotAbsent(
+          manager,
+          ownerId,
+          user.companyId,
+          payload.date,
+        );
       }
 
       if (payload.projectActivityId !== undefined) {
@@ -569,6 +583,32 @@ export class TimeLogsService {
       .getOne();
 
     if (!user) throw new NotFoundException('User not found');
+  }
+
+  /**
+   * A day is either worked or absent, never both. Absences are read straight
+   * from their table so the two services do not have to depend on each other.
+   */
+  private async assertNotAbsent(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    const isAbsent = await manager
+      .createQueryBuilder()
+      .select('1')
+      .from('absences', 'a')
+      .where('a.company_id = :companyId', { companyId })
+      .andWhere('a.user_id = :userId', { userId })
+      .andWhere(':date BETWEEN a.start_date AND a.end_date', { date })
+      .getExists();
+
+    if (isAbsent) {
+      throw new ConflictException(
+        `${date} is covered by an absence, so time cannot be logged for it.`,
+      );
+    }
   }
 
   private async assertDailyLimit(

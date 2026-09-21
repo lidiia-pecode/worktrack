@@ -98,15 +98,20 @@ empty states. Admin CRUD exists for users, teams, projects, activities and
 categories. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
-Not built yet: any frontend for the backend's `planning` and `reporting`
-modules, and absences, which have no representation anywhere and are the scope
-being planned now. The authorization gaps are all closed.
+Absences are built: a person records days away as a date range with a type, and
+the timesheet and the team view mark those days, so a week with no logged time
+says why. A day is either worked or absent, never both.
 
-Test coverage has started but is narrow: eight suites and 139 tests, covering
+Not built yet: any frontend for the backend's `planning` and `reporting`
+modules, and correct expected hours — the target still counts every weekday
+against a company-wide 8-hour day, ignoring part-time capacity and absence.
+That is the scope being planned now. The authorization gaps are all closed.
+
+Test coverage has started but is narrow: nine suites and 178 tests, covering
 the role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
-write scope, the user-list scope and the project assignment scope — mostly
-against a real database. GitHub Actions runs them, along with lint, typecheck and build
+write scope, the user-list scope, the project assignment scope and the absence
+rules — mostly against a real database. GitHub Actions runs them, along with lint, typecheck and build
 for both applications, on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
 built by its host.

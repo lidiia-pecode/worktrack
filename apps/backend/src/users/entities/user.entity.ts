@@ -14,6 +14,7 @@ import { Project } from 'src/projects/entities/project.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { Absence } from 'src/absences/entities/absence.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserRole, UserStatus } from '../enums/user-role.enum';
 
@@ -137,6 +138,11 @@ export class User {
     cascade: false,
   })
   planningEntries!: PlanningEntry[];
+
+  @OneToMany(() => Absence, (absence) => absence.user, {
+    cascade: false,
+  })
+  absences!: Absence[];
 
   @ManyToMany(() => Project, (project) => project.users)
   projects?: Project[];

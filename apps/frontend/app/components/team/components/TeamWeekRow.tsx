@@ -1,12 +1,15 @@
-import { TeamSummaryRow } from "@/types";
+import { Absence, TeamSummaryRow } from "@/types";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
+import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 
 import { Avatar } from "../../shared/Avatar";
+import { Badge } from "@/components/ui/badge";
 
 type TeamWeekRowProps = {
   row: TeamSummaryRow;
   weekDates: Date[];
+  absencesByDate: Record<string, Absence>;
   expectedMinutes: number;
   onOpen: (row: TeamSummaryRow) => void;
 };
@@ -14,6 +17,7 @@ type TeamWeekRowProps = {
 export function TeamWeekRow({
   row,
   weekDates,
+  absencesByDate,
   expectedMinutes,
   onOpen,
 }: TeamWeekRowProps) {
@@ -56,16 +60,22 @@ export function TeamWeekRow({
       {weekDates.map((date) => {
         const iso = toISODate(date);
         const minutes = minutesByDate.get(iso) ?? 0;
+        const absence = absencesByDate[iso];
 
         return (
           <td
             key={iso}
             className={`
               border-r border-border/60 p-3 text-center text-sm tabular-nums
-              ${isWeekend(date) ? "bg-muted/20" : ""}
+              ${absence ? "bg-brand-subtle" : ""}
+              ${!absence && isWeekend(date) ? "bg-muted/20" : ""}
             `}
           >
-            {minutes > 0 ? (
+            {absence ? (
+              <Badge variant="default" className="text-[10px]">
+                {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
+              </Badge>
+            ) : minutes > 0 ? (
               <span className="font-medium text-foreground">
                 {formatDuration(minutes)}
               </span>

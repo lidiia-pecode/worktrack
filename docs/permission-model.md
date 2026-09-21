@@ -333,7 +333,9 @@ Closes business §6 gap 3. Depends on C.
   `GET /users/assignable` to the caller's people plus themselves — the two must
   land together, and the save becomes a diff bounded by that scope.~~
   **Delivered.** `TeamVisibilityService` now owns the whole owner/manager/employee
-  decision, so time logs, projects and the user lists share one copy of it.
+  decision, so time logs, projects and the user lists share one copy of it — and
+  absences joined them in Phase 2 by calling the same helper rather than
+  restating the rule.
 - ~~Scope the project's member list to the caller, and narrow the member DTO. One
   shape for every role; only the rows differ.~~ **Delivered.** `ProjectResponse`
   also carries the project's true `membersCount`, so a scoped list never makes a
@@ -360,13 +362,16 @@ about a project, meant to soften what Scope E's scoped roster gave up.
 It was cancelled because WorkTrack has no concept of a project belonging to one
 person, and adding a field to invent one would have contradicted the model it
 was supposed to serve — see §3.6. The permission model ends at Scope E, and the
-next work is Phase 2 of
+product work carried on without it: Phase 2, absences, shipped in September 2026,
+and Phase 3 is next — see
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7.
 
 ### Not in any of these
 
-Absences (Phase 2), correct expected hours (Phase 3), the planning interface
-(Phase 4), reporting and export (Phase 5), and the `Client` entity (D8).
+Correct expected hours (Phase 3), the planning interface (Phase 4), reporting and
+export (Phase 5), and the `Client` entity (D8). Absences (Phase 2) were built
+afterwards and needed nothing new here: their write scope is D9's, reached
+through the same helper.
 
 ---
 

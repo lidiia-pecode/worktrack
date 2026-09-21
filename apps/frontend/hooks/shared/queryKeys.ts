@@ -79,6 +79,16 @@ export const queryKeys = {
     },
   },
 
+  absences: {
+    all: ["absences"] as const,
+    lists: () => ["absences", "list"] as const,
+
+    list: (page: number, params?: QueryParams) =>
+      createListKey("absences", page, params),
+
+    infinite: (params?: QueryParams) => createInfiniteKey("absences", params),
+  },
+
   timelogs: {
     all: ["timelogs"] as const,
     lists: () => ["timelogs", "list"] as const,
