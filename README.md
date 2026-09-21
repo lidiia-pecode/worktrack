@@ -157,14 +157,13 @@ CI runs, and the rules for changes that touch the database.
 | :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here     |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
-| [`docs/permission-model.md`](docs/permission-model.md)                             | Target permission model and the scopes delivering it   |
-| [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)                |
-| [`docs/known-issues.md`](docs/known-issues.md)                                     | Defects and debt that no current scope owns            |
+| [`docs/permission-model.md`](docs/permission-model.md)                             | The permission model and the scopes that delivered it  |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
-| [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles         |
-| [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth                 |
-| [`apps/frontend/docs/frontend-context.md`](apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, components         |
-| [`CLAUDE.md`](CLAUDE.md)                                                           | Coding conventions and workflow rules                  |
+
+A local checkout also carries working documents that are deliberately kept out
+of version control and so are not listed above: the active scope, the defects
+and debt no scope owns, context notes for the backend and the frontend, and the
+repository's coding conventions.
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 It is off in production unless `ENABLE_SWAGGER=true` is set.
@@ -176,8 +175,9 @@ view and admin CRUD for users, teams, projects, activities and categories are
 implemented. Reporting and planning views are not. Test coverage is eight backend
 suites and 139 tests, covering who may see and change whose data.
 
-Project assignment and disclosure is the most recent piece of work — see
-[`docs/current-scope.md`](docs/current-scope.md).
+Project assignment and disclosure was the most recent piece of work, and it
+completed the permission model. The next scope is absences, and its business
+decisions are still open.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
