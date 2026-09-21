@@ -1,3 +1,4 @@
+export * from "./absences.api";
 export * from "./activities.api";
 export * from "./activity-categories.api";
 export * from "./auth.api";

@@ -54,6 +54,12 @@ export enum UserStatus {
   DEACTIVATED = "DEACTIVATED",
 }
 
+export enum AbsenceType {
+  VACATION = "VACATION",
+  SICK_LEAVE = "SICK_LEAVE",
+  PUBLIC_HOLIDAY = "PUBLIC_HOLIDAY",
+}
+
 export enum ReportingPeriodStatus {
   OPEN = "OPEN",
   LOCKED = "LOCKED",

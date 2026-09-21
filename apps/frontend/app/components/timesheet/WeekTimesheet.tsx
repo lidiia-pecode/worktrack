@@ -5,6 +5,7 @@ import { useMemo, useRef, useState } from "react";
 import { FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
+import { useAbsencesQuery } from "@/hooks/useAbsences";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { TimeLog } from "@/types";
 import {
@@ -16,6 +17,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { mapAbsencesByDate } from "@/lib/utils/absence";
 
 import Container from "../layout/Container";
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -82,6 +84,17 @@ export const WeekTimesheet = () => {
   });
 
   const {
+    items: absences,
+    isLoading: isLoadingAbsences,
+    isError: isAbsencesError,
+    refetch: refetchAbsences,
+  } = useAbsencesQuery(1, {
+    dateFrom,
+    dateTo,
+    pageSize: WEEK_PAGE_SIZE,
+  });
+
+  const {
     items: pickerItems,
     isLoading: isLoadingPicker,
     isError: isPickerError,
@@ -97,6 +110,11 @@ export const WeekTimesheet = () => {
 
     return map;
   }, [timelogs]);
+
+  const absencesByDate = useMemo(
+    () => mapAbsencesByDate(absences, weekDates.map(toISODate)),
+    [absences, weekDates],
+  );
 
   const dailyTotals = useMemo(() => {
     const totals: Record<string, number> = {};
@@ -183,12 +201,23 @@ export const WeekTimesheet = () => {
     void refetchLogs();
     void refetchPicker();
     void refetchSettings();
+    void refetchAbsences();
   };
 
-  const hasError = isLogsError || isPickerError || isSettingsError;
-  const isUnassigned = pickerItems.length === 0 && timelogs.length === 0;
+  const hasError =
+    isLogsError || isPickerError || isSettingsError || isAbsencesError;
 
-  if (isLoadingSettings || isLoadingLogs || isLoadingPicker) {
+  // Someone on no project can still be on holiday, so an absence is enough to
+  // show the week rather than the "not on any projects" state.
+  const isUnassigned =
+    pickerItems.length === 0 && timelogs.length === 0 && absences.length === 0;
+
+  if (
+    isLoadingSettings ||
+    isLoadingLogs ||
+    isLoadingPicker ||
+    isLoadingAbsences
+  ) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
         <LoadingState
@@ -288,6 +317,7 @@ export const WeekTimesheet = () => {
                       key={iso}
                       date={date}
                       timelogs={timelogsByDate[iso] ?? []}
+                      absence={absencesByDate[iso]}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
                       plannedMinutes={dailyTargetMinutes}

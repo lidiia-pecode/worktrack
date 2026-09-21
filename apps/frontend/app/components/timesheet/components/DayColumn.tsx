@@ -2,17 +2,24 @@
 
 import { useMemo, useState } from "react";
 
-import { TimeLog } from "@/types";
+import { Absence, TimeLog } from "@/types";
 import { formatDuration, isWeekend } from "@/lib/utils/date";
+import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
 import { TimelogSegment } from "./TimelogSegment";
-import { DAY_COLUMN_CLASS, OVERTIME_PATTERN, WEEKEND_PATTERN } from "../consts";
+import {
+  ABSENCE_PATTERN,
+  DAY_COLUMN_CLASS,
+  OVERTIME_PATTERN,
+  WEEKEND_PATTERN,
+} from "../consts";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {
   date: Date;
   timelogs: TimeLog[];
+  absence?: Absence;
   totalMinutes: number;
   pixelsPerMinute: number;
   plannedMinutes: number;
@@ -23,6 +30,7 @@ type Props = {
 export const DayColumn = ({
   date,
   timelogs,
+  absence,
   totalMinutes,
   pixelsPerMinute,
   plannedMinutes,
@@ -50,22 +58,46 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
+  // Time cannot be logged on a day an absence covers, so the column does not
+  // invite it.
+  const openCreate = () => {
+    if (absence) return;
+    onAddClick(date);
+  };
+
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onAddClick(date)}
+      role={absence ? undefined : "button"}
+      tabIndex={absence ? undefined : 0}
+      aria-disabled={absence ? true : undefined}
+      onClick={openCreate}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          onAddClick(date);
+          openCreate();
         }
       }}
       className={`
         ${DAY_COLUMN_CLASS}
-        ${weekend ? WEEKEND_PATTERN : "bg-card"}
+        ${absence ? `${ABSENCE_PATTERN} cursor-default hover:bg-transparent` : ""}
+        ${!absence && weekend ? WEEKEND_PATTERN : ""}
+        ${!absence && !weekend ? "bg-card" : ""}
       `}
     >
-      {timelogs.length === 0 && (
+      {absence && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
+          <Badge variant="default" dot className="text-[10px]">
+            {ABSENCE_TYPE_LABELS[absence.type]}
+          </Badge>
+
+          {absence.note && (
+            <span className="line-clamp-2 text-[11px] text-muted-foreground">
+              {absence.note}
+            </span>
+          )}
+        </div>
+      )}
+
+      {!absence && timelogs.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-[11px] text-muted-foreground/60">
             Click to log time

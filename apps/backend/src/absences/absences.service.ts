@@ -6,7 +6,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -16,6 +21,7 @@ import {
   AbsencePayload,
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
+import { AbsencesQuery } from './dtos/absences-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -27,6 +33,52 @@ export class AbsencesService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
+
+  // ==========================================
+  // READ
+  // ==========================================
+
+  /**
+   * Absences overlapping the range, narrowed to the people the caller may see.
+   * An absence spanning the edge of the range still belongs in it, so the
+   * comparison is an overlap rather than a containment.
+   */
+  async list(
+    query: AbsencesQuery,
+    user: AuthUser,
+  ): Promise<{ results: Absence[]; count: number }> {
+    if (query.dateFrom && query.dateTo && query.dateFrom > query.dateTo) {
+      throw new BadRequestException('dateFrom cannot be after dateTo');
+    }
+
+    const qb = this.repo.createQueryBuilder('a');
+    this.applyVisibilityFilter(qb, user);
+
+    if (query.userId) {
+      await this.teamVisibility.assertCanActForUser(query.userId, user, {
+        action: 'view',
+        subject: 'absences',
+      });
+      qb.andWhere('a.userId = :userId', { userId: query.userId });
+    }
+
+    if (query.dateFrom) {
+      qb.andWhere('a.endDate >= :dateFrom', { dateFrom: query.dateFrom });
+    }
+
+    if (query.dateTo) {
+      qb.andWhere('a.startDate <= :dateTo', { dateTo: query.dateTo });
+    }
+
+    const [results, count] = await qb
+      .orderBy('a.startDate', 'DESC')
+      .addOrderBy('a.createdAt', 'DESC')
+      .skip(query.offset)
+      .take(query.limit)
+      .getManyAndCount();
+
+    return { results, count };
+  }
 
   // ==========================================
   // WRITE
@@ -137,6 +189,14 @@ export class AbsencesService {
   // ==========================================
   // HELPER METHODS
   // ==========================================
+
+  private applyVisibilityFilter(
+    qb: SelectQueryBuilder<Absence>,
+    user: AuthUser,
+  ): void {
+    qb.andWhere('a.companyId = :companyId', { companyId: user.companyId });
+    this.teamVisibility.applyUserVisibility(qb, 'a.user_id', user);
+  }
 
   private assertRangeOrder(startDate: string, endDate: string): void {
     if (startDate > endDate) {

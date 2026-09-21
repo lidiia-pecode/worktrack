@@ -27,6 +27,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Absence } from './entities/absence.entity';
 import { AbsenceType } from './enums/absence-type.enum';
+import { AbsencesQuery } from './dtos/absences-query.dto';
 import { AbsencesService } from './absences.service';
 
 /**
@@ -95,6 +96,9 @@ describe('AbsencesService', () => {
 
     return absence.id;
   };
+
+  const query = (overrides: Partial<AbsencesQuery> = {}): AbsencesQuery =>
+    Object.assign(new AbsencesQuery(), overrides);
 
   const existingTimeLog = async (ownerId: string, date = START) => {
     const log = await dataSource.getRepository(TimeLog).save({
@@ -431,6 +435,90 @@ describe('AbsencesService', () => {
       await expect(timeLogs.delete(logId, member)).resolves.toEqual({
         success: true,
       });
+    });
+  });
+
+  describe('reading', () => {
+    it('lets an employee read only their own', async () => {
+      await service.create(absenceFor(member.id), member);
+      await service.create(absenceFor(outsider.id), owner);
+
+      const { results } = await service.list(query(), member);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].userId).toBe(member.id);
+    });
+
+    it('lets a manager read their own team and nobody else', async () => {
+      await service.create(absenceFor(member.id), member);
+      await service.create(absenceFor(outsider.id), owner);
+
+      const { results } = await service.list(query(), manager);
+
+      expect(results.map((absence) => absence.userId)).toEqual([member.id]);
+    });
+
+    it('lets an owner read everyone in the company', async () => {
+      await service.create(absenceFor(member.id), member);
+      await service.create(absenceFor(outsider.id), owner);
+
+      const { results } = await service.list(query(), owner);
+
+      expect(results).toHaveLength(2);
+    });
+
+    it('refuses a userId filter the caller may not see', async () => {
+      await expect(
+        service.list(query({ userId: outsider.id }), manager),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('returns an absence that only overlaps the edge of the range', async () => {
+      await service.create(
+        absenceFor(member.id, '2026-02-10', '2026-02-20'),
+        member,
+      );
+
+      const { results } = await service.list(
+        query({ dateFrom: '2026-02-18', dateTo: '2026-02-25' }),
+        member,
+      );
+
+      expect(results).toHaveLength(1);
+    });
+
+    it('leaves out an absence entirely outside the range', async () => {
+      await service.create(
+        absenceFor(member.id, '2026-02-10', '2026-02-12'),
+        member,
+      );
+
+      const { results } = await service.list(
+        query({ dateFrom: '2026-02-13', dateTo: '2026-02-25' }),
+        member,
+      );
+
+      expect(results).toHaveLength(0);
+    });
+
+    it('refuses a reversed range', async () => {
+      await expect(
+        service.list(
+          query({ dateFrom: '2026-02-20', dateTo: '2026-02-10' }),
+          member,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('treats a public holiday like any other absence', async () => {
+      await service.create(
+        absenceFor(outsider.id, START, START, AbsenceType.PUBLIC_HOLIDAY),
+        owner,
+      );
+
+      const { results } = await service.list(query(), member);
+
+      expect(results).toHaveLength(0);
     });
   });
 

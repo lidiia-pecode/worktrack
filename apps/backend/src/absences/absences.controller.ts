@@ -2,10 +2,12 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -16,7 +18,9 @@ import {
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
 
-import { Serialize } from 'src/lib/interceptors';
+import { AbsencesQuery } from './dtos/absences-query.dto';
+
+import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
 import { AccessGuard } from 'src/auth/guards';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -25,6 +29,15 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 @UseGuards(AccessGuard)
 export class AbsencesController {
   constructor(private readonly absencesService: AbsencesService) {}
+
+  @Get()
+  @SerializeList(AbsenceResponse)
+  async getAllAbsences(
+    @Query() query: AbsencesQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.absencesService.list(query, user);
+  }
 
   @Post()
   @Serialize(AbsenceResponse)
