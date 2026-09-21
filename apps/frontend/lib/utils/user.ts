@@ -24,11 +24,3 @@ export const canWriteTimeLogsFor = (
   targetUserId: string,
 ) => hasManagerAccess(role) || viewerId === targetUserId;
 
-export function getNonAdminMemberIds(
-  users: Pick<User, "id" | "role">[],
-  ids: string[],
-) {
-  return ids.filter(
-    (id) => !hasManagerAccess(users.find((u) => u.id === id)?.role),
-  );
-}

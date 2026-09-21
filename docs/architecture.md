@@ -100,11 +100,10 @@ categories. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
 Not built yet: any frontend for the backend's `planning` and `reporting`
-modules, and a project's member list still discloses every member to every
-manager — that is the scope in progress,
-[`current-scope.md`](./current-scope.md).
+modules. Archiving someone still breaks their project membership, which is what
+is left of the scope in progress, [`current-scope.md`](./current-scope.md).
 
-Test coverage has started but is narrow: eight suites and 118 tests, covering
+Test coverage has started but is narrow: eight suites and 130 tests, covering
 the role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
 write scope, the user-list scope and the project assignment scope — mostly

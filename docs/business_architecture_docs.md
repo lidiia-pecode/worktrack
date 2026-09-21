@@ -242,16 +242,16 @@ or project. D10 narrowed only the first. The second kept its own company-wide
 source, `GET /users/assignable`, because narrowing a picker while the write path
 behind it is unchecked would be a hidden button rather than a permission.
 
-**The rule that replaces it was settled on 21 September 2026** and its first
-half is now enforced: a manager assigns only the people they manage, plus
-themselves, both in `GET /users/assignable` and in `syncProjectUsers`, and their
-save changes nobody outside that set. The other half — that the same set is all
-they see of a project's membership, so sharing a project discloses nobody — is
-the rest of Scope E. See [`permission-model.md`](./permission-model.md) §3.4 and
-§3.5, and §0 of [`current-scope.md`](./current-scope.md).
+**The rule that replaces it was settled on 21 September 2026** and is now
+enforced: a manager assigns only the people they manage, plus themselves, both
+in `GET /users/assignable` and in `syncProjectUsers`; their save changes nobody
+outside that set; and that same set is all they see of a project's membership,
+so sharing a project discloses nobody. See
+[`permission-model.md`](./permission-model.md) §3.4 and §3.5, and §0 of
+[`current-scope.md`](./current-scope.md).
 
 **D10 therefore has no exceptions left.** A manager sees the people in the teams
-they lead, on every list in the product, once Scope E ships.
+they lead, on every list in the product.
 
 ---
 
@@ -522,11 +522,13 @@ guarantee intact.
 Assignment scope has landed: `syncProjectUsers` takes the caller and refuses
 anyone outside the people they manage, `GET /users/assignable` returns that same
 set plus the caller themselves, and a manager's save only adds and removes
-inside it. Still open: `GET /projects/:id` serializes every member with their
-email, and a manager cannot be a project member at all, so their own timesheet
-has nothing to log against. Those are gaps 5 and 6 under **Authorization gaps**
-below, along with what is left of gap 4, and
-[`current-scope.md`](./current-scope.md) is the plan for closing them.
+inside it. So has disclosure: a project's member list is scoped to the caller
+and narrowed to identity fields, while the project still reports its true size.
+And managers and owners may now be project members, so a manager finally has
+something to log against. What is left is archiving — saving a project whose
+member has since been archived still fails. That is what remains of gap 4 under
+**Authorization gaps** below, and [`current-scope.md`](./current-scope.md) is
+the plan for closing it.
 
 ### Fields that exist but do nothing
 
@@ -569,12 +571,18 @@ is §7 of that document.
    404s, because "may be newly assigned" and "may remain assigned" are one
    check.
 
-5. **`GET /projects/:id` discloses every member's name and email** to any
-   manager, including people `GET /users/:id` now refuses. This is the one route
-   that still works around D10.
+5. **`GET /projects/:id` disclosed every member's name and email — closed.**
+   Both member routes are now scoped to the caller and serialize through
+   `AssignableUserResponse`, so a manager reads nobody from another team and
+   capacity and credential flags never leave a project route. The project still
+   reports its true member count, so a scoped list does not make a staffed
+   project look empty. D10 has no way around it left.
 
-6. **Managers and owners cannot be project members**, so a manager has no
-   project to log against and their timesheet cannot be used.
+6. **Managers and owners cannot be project members — closed.** The client used
+   to filter them out of the picker and strip them again on submit; both are
+   gone, and the server always stored whatever it was given. A manager can now
+   put themselves on a project and log against it, including a manager who
+   leads no team.
 
 7. **Manager scope in planned-vs-actual — closed.** Both aggregates in
    `ReportingService.getPlannedVsActualReport` now run through
@@ -585,9 +593,8 @@ is §7 of that document.
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
 level.
 
-**Gaps 5 and 6, and the archiving half of gap 4, are the only ones still open,
-and together they are the rest of Scope E.** Everything else on this list is
-closed.
+**The archiving half of gap 4 is all that is still open, and it is the rest of
+Scope E.** Everything else on this list is closed.
 
 **Closed since this section was written.** The project read routes
 (`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
@@ -600,7 +607,7 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Test coverage has started but is thin: eight suites and 118 tests, covering the
+Test coverage has started but is thin: eight suites and 130 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
 write scope, the user-list scope and the project assignment scope. Most run against a real database; the team

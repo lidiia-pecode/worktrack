@@ -235,7 +235,7 @@ struck from §3, so there is nothing left to cross-walk.
 | §3.5 Assign only people you can see, plus yourself | **Already enforced** — `syncProjectUsers` takes the caller, and `/users/assignable` is narrowed to the same set | — |
 | §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
 | §3.5 Active status gates joining, not staying | Saving a project with an archived member 404s; re-picking members drops them | business §6 gap 4 |
-| §3.5 Managers may be project members | Stripped twice on the client — the picker filters, and the submit filters again | business §6 gap 6 |
+| §3.5 Managers may be project members | **Already enforced** — the client no longer strips them, and a manager's own timesheet can reach their projects | — |
 | §3.6 A responsible person | The field does not exist | — |
 | §3.7 Time-log access | **Already enforced** (D9, D10) | — |
 
@@ -325,14 +325,17 @@ Closes business §6 gap 3. Depends on C.
   shape for every role; only the rows differ.~~ **Delivered.** `ProjectResponse`
   also carries the project's true `membersCount`, so a scoped list never makes a
   staffed project look empty.
-- Allow managers and owners to be project members; drop the client-side
-  stripping.
+- ~~Allow managers and owners to be project members; drop the client-side
+  stripping.~~ **Delivered.** The server always stored whatever it was given,
+  so this was deletion: the picker's role filter and `getNonAdminMemberIds`
+  are both gone.
 - Separate "may be newly assigned" from "may remain assigned", so archiving
   neither errors nor removes.
 
 Closes gaps 4, 5 and 6 in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §6 — the last
-three still open. Depends on C. **Its business rules were settled on 21
+three still open. Gaps 5 and 6 are closed; only the archiving half of gap 4 is
+left. Depends on C. **Its business rules were settled on 21
 September 2026** and are recorded in §0 of
 [`current-scope.md`](./current-scope.md), which is the implementation plan.
 

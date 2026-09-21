@@ -12,14 +12,9 @@ import { useProjectDetails, useProjects } from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
-import {
-  ActivityStatus,
-  ProjectStatus,
-  UserRole,
-  UserStatus,
-} from "@/types/enums";
+import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
 
-import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
+import { fullName, initials } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
@@ -117,14 +112,9 @@ export function ProjectModal({
   const isPicking = view !== "form";
   const isSubmitting = create.isPending || update.isPending;
 
-  const employees = useMemo(
-    () => users.filter((user) => user.role === UserRole.EMPLOYEE),
-    [users],
-  );
-
   const selectedUsers = useMemo(
-    () => employees.filter((user) => selectedUserIds.includes(user.id)),
-    [employees, selectedUserIds],
+    () => users.filter((user) => selectedUserIds.includes(user.id)),
+    [users, selectedUserIds],
   );
 
   const selectedActivities = useMemo(
@@ -145,7 +135,7 @@ export function ProjectModal({
   const handleSubmit = (data: ProjectFormData) => {
     const payload = {
       ...data,
-      userIds: getNonAdminMemberIds(users, selectedUserIds),
+      userIds: selectedUserIds,
       activityIds: Array.from(new Set(selectedActivityIds)),
     };
 
@@ -309,7 +299,7 @@ export function ProjectModal({
 
       <div className={view === "members" ? "px-6 py-5" : "hidden"}>
         <EntityPicker
-          items={employees}
+          items={users}
           selectedIds={selectedUserIds}
           onToggle={handleToggleUser}
           getId={(user) => user.id}

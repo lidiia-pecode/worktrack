@@ -7,6 +7,8 @@ import { AppDataSource } from 'src/data-source';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
+import { Activity } from 'src/activities/entities/activity.entity';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -16,6 +18,7 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
+import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { ProjectsService } from './projects.service';
@@ -45,6 +48,8 @@ describe('ProjectsService membership scope', () => {
   let loneManager: AuthUser; // has the MANAGER role but is on no team
   let alphaMember: AuthUser; // in "Alpha"
   let betaMember: AuthUser; // in "Beta"
+
+  let activityId: string;
 
   const createUser = async (
     name: string,
@@ -96,6 +101,13 @@ describe('ProjectsService membership scope', () => {
     }
 
     return project.id;
+  };
+
+  /** Makes the project loggable by giving it one active activity. */
+  const linkActivity = async (projectId: string): Promise<void> => {
+    await dataSource
+      .getRepository(ProjectActivity)
+      .save({ companyId, projectId, activityId });
   };
 
   const memberIds = async (projectId: string): Promise<string[]> => {
@@ -160,6 +172,18 @@ describe('ProjectsService membership scope', () => {
     await addToTeam(alpha.id, alphaMember, TeamRole.MEMBER);
     await addToTeam(beta.id, betaManager, TeamRole.MANAGER);
     await addToTeam(beta.id, betaMember, TeamRole.MEMBER);
+
+    const category = await dataSource
+      .getRepository(ActCategory)
+      .save({ companyId, name: `Category ${RUN}` });
+
+    const activity = await dataSource.getRepository(Activity).save({
+      companyId,
+      name: `Activity ${RUN}`,
+      categoryId: category.id,
+    });
+
+    activityId = activity.id;
   });
 
   afterAll(async () => {
@@ -398,6 +422,64 @@ describe('ProjectsService membership scope', () => {
       await expect(
         service.listUsers(randomUUID(), PAGE, owner),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('a manager as a project member', () => {
+    const PAGE = { offset: 0, limit: 50 } as AssignableActivitiesQuery;
+
+    const loggableProjectIds = async (caller: AuthUser): Promise<string[]> => {
+      const { results } = await service.listAssignableActivities(PAGE, caller);
+
+      return results.map((projectActivity) => projectActivity.project.id);
+    };
+
+    it('lets a manager put themselves on a project and log against it', async () => {
+      const projectId = await createProject('manager logs', []);
+      await linkActivity(projectId);
+
+      await service.update(
+        projectId,
+        { userIds: [alphaManager.id] },
+        alphaManager,
+      );
+
+      await expect(loggableProjectIds(alphaManager)).resolves.toContain(
+        projectId,
+      );
+    });
+
+    it('lets a manager who leads no team do the same', async () => {
+      const projectId = await createProject('lone manager logs', []);
+      await linkActivity(projectId);
+
+      await service.update(
+        projectId,
+        { userIds: [loneManager.id] },
+        loneManager,
+      );
+
+      await expect(loggableProjectIds(loneManager)).resolves.toContain(
+        projectId,
+      );
+    });
+
+    it('lets an owner be a project member', async () => {
+      const projectId = await createProject('owner logs', []);
+      await linkActivity(projectId);
+
+      await service.update(projectId, { userIds: [owner.id] }, owner);
+
+      await expect(loggableProjectIds(owner)).resolves.toContain(projectId);
+    });
+
+    it("leaves a project off a manager's timesheet when they are not a member", async () => {
+      const projectId = await createProject('not a member', [alphaMember]);
+      await linkActivity(projectId);
+
+      await expect(loggableProjectIds(alphaManager)).resolves.not.toContain(
+        projectId,
+      );
     });
   });
 
