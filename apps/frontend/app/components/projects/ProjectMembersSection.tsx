@@ -2,17 +2,20 @@
 
 import { UserPlus, X } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { AssignableUser } from "@/types";
 
-import { fullName } from "@/lib/utils/user";
+import { fullName, isArchivedUser } from "@/lib/utils/user";
 
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { Avatar } from "../shared/Avatar";
 
 interface ProjectMembersSectionProps {
   members: AssignableUser[];
+  /** Members on the project that this viewer may not read. */
+  hiddenCount?: number;
   isLoading?: boolean;
   isCreateMode?: boolean;
   onOpenAddMembers: () => void;
@@ -21,11 +24,23 @@ interface ProjectMembersSectionProps {
 
 export function ProjectMembersSection({
   members,
+  hiddenCount = 0,
   isLoading = false,
   isCreateMode = false,
   onOpenAddMembers,
   onRemoveMember,
 }: ProjectMembersSectionProps) {
+  const summary = `${members.length} ${
+    members.length === 1 ? "person is" : "people are"
+  } ${isCreateMode ? "selected" : "assigned to this project"}.`;
+
+  const hiddenSummary =
+    hiddenCount > 0
+      ? ` ${hiddenCount} ${
+          hiddenCount === 1 ? "is" : "are"
+        } in teams you do not manage.`
+      : "";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -35,11 +50,7 @@ export function ProjectMembersSection({
           </h3>
 
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {isLoading
-              ? "Loading members..."
-              : `${members.length} ${
-                  members.length === 1 ? "person is" : "people are"
-                } ${isCreateMode ? "selected" : "assigned to this project"}.`}
+            {isLoading ? "Loading members..." : `${summary}${hiddenSummary}`}
           </p>
         </div>
 
@@ -67,15 +78,19 @@ export function ProjectMembersSection({
           renderLeading={(user) => <Avatar user={user} size="md" />}
           emptyMessage="No members yet. Click 'Add members' to get started."
           renderTrailing={(user) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="iconSm"
-              aria-label={`Remove ${user.firstName}`}
-              onClick={() => onRemoveMember(user.id)}
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {isArchivedUser(user) && <Badge variant="neutral">Archived</Badge>}
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="iconSm"
+                aria-label={`Remove ${user.firstName}`}
+                onClick={() => onRemoveMember(user.id)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           )}
         />
       </div>

@@ -19,9 +19,9 @@ genuinely open.
 **Last verified against the code: 21 September 2026.** At that point Phases 0
 and 1 of the roadmap in §7 were delivered, as were Scopes C and D of
 [`permission-model.md`](./permission-model.md) §7. Scope E — project assignment
-and disclosure — is the next thing to build and has not been started; its
-business rules were settled the same day and it is written up, ready to
-implement, in [`current-scope.md`](./current-scope.md).
+and disclosure — is delivered: its business rules were settled the same day and
+all four of its steps are implemented. Only Scope F is left, and it closes no
+gap.
 
 ---
 
@@ -236,21 +236,22 @@ and writes within their own teams. It settles the read half of §10 Q3; whether
 managers should also administer company-wide teams and projects is still open
 there.
 
-*Staffing is not yet covered by this decision.* `GET /users` used to answer two
+*Staffing was not covered by this decision.* `GET /users` used to answer two
 questions at once — who a manager's people are, and who they may add to a team
-or project. D10 narrows only the first. The second kept its own company-wide
+or project. D10 narrowed only the first. The second kept its own company-wide
 source, `GET /users/assignable`, because narrowing a picker while the write path
 behind it is unchecked would be a hidden button rather than a permission.
 
-That is **current behaviour. The rule that replaces it is now settled** (21
-September 2026): a manager assigns only the people they manage, plus themselves,
-and that same set is all they see of a project's membership — sharing a project
-discloses nobody. It still needs enforcement in the service, which is Scope E.
-See [`permission-model.md`](./permission-model.md) §3.4 and §3.5, and §0 of
+**The rule that replaces it was settled on 21 September 2026** and is now
+enforced: a manager assigns only the people they manage, plus themselves, both
+in `GET /users/assignable` and in `syncProjectUsers`; their save changes nobody
+outside that set; and that same set is all they see of a project's membership,
+so sharing a project discloses nobody. See
+[`permission-model.md`](./permission-model.md) §3.4 and §3.5, and §0 of
 [`current-scope.md`](./current-scope.md).
 
 **D10 therefore has no exceptions left.** A manager sees the people in the teams
-they lead, on every list in the product, once Scope E ships.
+they lead, on every list in the product.
 
 ---
 
@@ -459,7 +460,8 @@ the gap is the main fact about the project's current state.
   week filtered by team and project, and open any row to see that person's
   entries day by day and correct them.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
-  teams they actively lead, with staffing kept on its own company-wide list.
+  teams they actively lead, and so does the list they staff from, plus
+  themselves.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
@@ -475,7 +477,8 @@ the gap is the main fact about the project's current state.
 Owners and managers land on `/team` and see their people's week as a grid,
 filterable by team and project, and can open a row to read and correct that
 person's entries. A manager's user, team and time lists all narrow to the teams
-they actively lead, with staffing on its own company-wide list.
+they actively lead; Scope E narrowed the staffing list the same way, plus the
+manager themselves.
 
 **Decided while building it: `/team` stays a summary grid.** Whether it should
 become a full team timesheet — entries or per-project rows inside the cells —
@@ -514,16 +517,20 @@ them.
 no route to adding an existing user to a team, which is what kept Scope C's
 guarantee intact.
 
-### Scope E not started
+### Scope E delivered
 
-Project membership is where the product stands still. `syncProjectUsers` takes
-no caller and will assign anyone in the company, `GET /users/assignable` lists
-everyone, `GET /projects/:id` serializes every member with their email, and a
-manager cannot be a project member at all, so their own timesheet has nothing to
-log against. Those are gaps 4, 5 and 6 under **Authorization gaps** below, and
-[`current-scope.md`](./current-scope.md) is the plan for closing them. Its
-business rules were all settled on 21 September 2026, so the scope is ready to
-build with nothing open.
+`syncProjectUsers` takes the caller and refuses anyone outside the people they
+manage, `GET /users/assignable` returns that same set plus the caller
+themselves, and a manager's save only adds and removes inside it. A project's
+member list is scoped the same way and narrowed to identity fields, while the
+project still reports its true size, so a scoped list does not make a staffed
+project look empty. Managers and owners may be project members, so a manager
+finally has something to log against. And active status gates joining rather
+than staying, so archiving a person neither errors nor drops their membership.
+
+**This closed the last of the authorization gaps in §6.** What a manager may
+see and change is now one rule everywhere: the people in the teams they lead,
+plus themselves.
 
 ### Fields that exist but do nothing
 
@@ -558,16 +565,26 @@ is §7 of that document.
    accepting the invitation creates the membership, so a new hire is inside
    their inviter's scope from the moment they join.
 
-4. **Project membership is assigned without a visibility check.**
-   `syncProjectUsers` validates only that the users are active and in the same
-   company. The restriction to employees exists on the client alone.
+4. **Project membership is assigned without a visibility check — closed.**
+   `syncProjectUsers` takes the caller and refuses anyone outside the people
+   they manage, and the diff only removes inside that set, so a manager cannot
+   drop someone else's person by submitting a list that never contained them.
+   "May be newly assigned" and "may remain assigned" are now separate checks:
+   only an addition is tested for active status, so archiving a person neither
+   errors nor drops their membership.
 
-5. **`GET /projects/:id` discloses every member's name and email** to any
-   manager, including people `GET /users/:id` now refuses. This is the one route
-   that still works around D10.
+5. **`GET /projects/:id` disclosed every member's name and email — closed.**
+   Both member routes are now scoped to the caller and serialize through
+   `AssignableUserResponse`, so a manager reads nobody from another team and
+   capacity and credential flags never leave a project route. The project still
+   reports its true member count, so a scoped list does not make a staffed
+   project look empty. D10 has no way around it left.
 
-6. **Managers and owners cannot be project members**, so a manager has no
-   project to log against and their timesheet cannot be used.
+6. **Managers and owners cannot be project members — closed.** The client used
+   to filter them out of the picker and strip them again on submit; both are
+   gone, and the server always stored whatever it was given. A manager can now
+   put themselves on a project and log against it, including a manager who
+   leads no team.
 
 7. **Manager scope in planned-vs-actual — closed.** Both aggregates in
    `ReportingService.getPlannedVsActualReport` now run through
@@ -578,8 +595,7 @@ is §7 of that document.
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
 level.
 
-**Gaps 4, 5 and 6 are the only ones still open, and together they are Scope E.**
-Everything else on this list is closed.
+**Every gap on this list is closed.** Scope E closed the last three.
 
 **Closed since this section was written.** The project read routes
 (`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
@@ -592,10 +608,11 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Test coverage has started but is thin: seven suites and 93 tests, covering the
+Test coverage has started but is thin: eight suites and 139 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
-write scope and the user-list scope. Most run against a real database; the team
+write scope, the user-list scope, and the project assignment, disclosure and archiving
+rules. Most run against a real database; the team
 route suite runs the real guard, and the invitation authorisation suite is pure
 logic. Nothing else is covered, but GitHub Actions runs them on every
 pull request, alongside lint, typecheck and build for both applications.
@@ -687,8 +704,8 @@ Three constraints that mattered more than the UI, and still hold:
   permission.
 
 It also closed the blank home page, added the missing timesheet link for
-managers, and narrowed the user and team lists to a manager's own teams (D10) —
-with assignment kept on its own company-wide list, so Q3 stays open.
+managers, and narrowed the user and team lists to a manager's own teams (D10).
+Assignment kept its own company-wide list until Scope E narrowed that too.
 
 *Depended on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
 
@@ -696,8 +713,8 @@ with assignment kept on its own company-wide list, so Q3 stays open.
 
 > Before Phase 2, the permission scopes in
 > [`permission-model.md`](./permission-model.md) §7 close the authorization gaps
-> listed in §6. Scopes C and D are delivered; **Scope E is next**, and it is the
-> last of them that closes a gap.
+> listed in §6. Scopes C, D and E are delivered, and §6 has no open gaps left.
+> Only Scope F remains, and it closes none.
 
 **Phase 2 — Absences**
 

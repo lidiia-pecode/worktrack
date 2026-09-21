@@ -94,6 +94,7 @@ describe('TimeLogsService write scope', () => {
 
     const teamVisibility = new TeamVisibilityService(
       dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
     );
 
     const reporting = new ReportingService(

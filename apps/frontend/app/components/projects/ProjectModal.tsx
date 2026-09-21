@@ -12,14 +12,9 @@ import { useProjectDetails, useProjects } from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 
 import { Project } from "@/types";
-import {
-  ActivityStatus,
-  ProjectStatus,
-  UserRole,
-  UserStatus,
-} from "@/types/enums";
+import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
 
-import { fullName, getNonAdminMemberIds, initials } from "@/lib/utils/user";
+import { fullName, initials, isArchivedUser } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
@@ -93,9 +88,21 @@ export function ProjectModal({
     status: ActivityStatus.ACTIVE,
   });
 
-  const savedUserIds = useMemo(
-    () => projectDetails?.users?.map((user) => user.id) ?? [],
+  const savedMembers = useMemo(
+    () => projectDetails?.users ?? [],
     [projectDetails],
+  );
+
+  const savedUserIds = useMemo(
+    () => savedMembers.map((user) => user.id),
+    [savedMembers],
+  );
+
+  // The member list is scoped to the viewer while the count is the project's
+  // true size, so the difference is what a manager may not read.
+  const hiddenMembersCount = Math.max(
+    (projectDetails?.membersCount ?? 0) - savedUserIds.length,
+    0,
   );
 
   // Fall back to the saved members until the user picks their own selection.
@@ -103,21 +110,22 @@ export function ProjectModal({
 
   const isMembersLoading = isDetailsLoading || isUsersLoading;
 
-  const users = useMemo(() => dedupeById(rawUsers), [rawUsers]);
+  // Current members first: an archived one is not in the assignable list, and
+  // dropping out of this pool would silently drop them from the save.
+  const users = useMemo(
+    () => dedupeById([...savedMembers, ...rawUsers]),
+    [savedMembers, rawUsers],
+  );
+
   const activities = useMemo(() => dedupeById(rawActivities), [rawActivities]);
 
   const isArchived = project?.status === ProjectStatus.ARCHIVED;
   const isPicking = view !== "form";
   const isSubmitting = create.isPending || update.isPending;
 
-  const employees = useMemo(
-    () => users.filter((user) => user.role === UserRole.EMPLOYEE),
-    [users],
-  );
-
   const selectedUsers = useMemo(
-    () => employees.filter((user) => selectedUserIds.includes(user.id)),
-    [employees, selectedUserIds],
+    () => users.filter((user) => selectedUserIds.includes(user.id)),
+    [users, selectedUserIds],
   );
 
   const selectedActivities = useMemo(
@@ -138,7 +146,7 @@ export function ProjectModal({
   const handleSubmit = (data: ProjectFormData) => {
     const payload = {
       ...data,
-      userIds: getNonAdminMemberIds(users, selectedUserIds),
+      userIds: selectedUserIds,
       activityIds: Array.from(new Set(selectedActivityIds)),
     };
 
@@ -302,12 +310,14 @@ export function ProjectModal({
 
       <div className={view === "members" ? "px-6 py-5" : "hidden"}>
         <EntityPicker
-          items={employees}
+          items={users}
           selectedIds={selectedUserIds}
           onToggle={handleToggleUser}
           getId={(user) => user.id}
           getLabel={fullName}
-          getSubtitle={(user) => user.email}
+          getSubtitle={(user) =>
+            isArchivedUser(user) ? `${user.email} · Archived` : user.email
+          }
           getAvatarText={initials}
           isLoading={isUsersLoading}
           hasNextPage={usersPagination.hasNextPage}
@@ -326,7 +336,7 @@ export function ProjectModal({
             name: project?.name ?? "",
             description: project?.description ?? "",
           }}
-          membersCount={selectedUsers.length}
+          membersCount={selectedUsers.length + hiddenMembersCount}
           activitiesCount={selectedActivities.length}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
@@ -335,6 +345,7 @@ export function ProjectModal({
         <div className="border-t border-border pt-6">
           <ProjectMembersSection
             members={selectedUsers}
+            hiddenCount={hiddenMembersCount}
             isLoading={isMembersLoading}
             isCreateMode={!project}
             onOpenAddMembers={() => setView("members")}

@@ -65,7 +65,10 @@ describe('UsersService scope', () => {
 
     service = new UsersService(
       dataSource.getRepository(User),
-      new TeamVisibilityService(dataSource.getRepository(TeamMembership)),
+      new TeamVisibilityService(
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+      ),
       dataSource,
     );
 
@@ -136,13 +139,31 @@ describe('UsersService scope', () => {
   });
 
   describe('listAssignable', () => {
-    it('stays company-wide for a manager, so they can still staff a team', async () => {
-      const { results } = await service.listAssignable(companyId, PAGE);
-      const ids = results.map((user) => user.id);
+    const assignableIds = async (caller: AuthUser) => {
+      const { results } = await service.listAssignable(companyId, PAGE, caller);
+      return results.map((user) => user.id);
+    };
 
-      expect(ids).toEqual(
-        expect.arrayContaining([manager.id, member.id, outsider.id]),
+    it('stays company-wide for an owner', async () => {
+      expect(await assignableIds(owner)).toEqual(
+        expect.arrayContaining([
+          owner.id,
+          manager.id,
+          member.id,
+          outsider.id,
+          leadNothing.id,
+        ]),
       );
+    });
+
+    it('narrows a manager to their own people, and themselves', async () => {
+      const ids = await assignableIds(manager);
+
+      expect(ids.sort()).toEqual([manager.id, member.id].sort());
+    });
+
+    it('offers a manager who leads no team only themselves', async () => {
+      expect(await assignableIds(leadNothing)).toEqual([leadNothing.id]);
     });
   });
 

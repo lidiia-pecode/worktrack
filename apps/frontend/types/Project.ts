@@ -1,7 +1,7 @@
 import { PaginatedResponse, PaginationParams, ProjectActivity } from ".";
 import { Company } from "./Company";
 import { ProjectStatus } from "./enums";
-import { User } from "./User";
+import { AssignableUser } from "./User";
 
 export interface Project {
   id: string;
@@ -14,9 +14,12 @@ export interface Project {
   updatedAt: string;
   company?: Company;
   projectActivities?: ProjectActivity[];
-  /** Only returned for a single project, never in list results. */
-  users?: User[];
-  /** Only returned in list results, where `users` is left out. */
+  /**
+   * Only returned for a single project, never in list results, and scoped to
+   * the caller — a manager reads their own people and nobody else's.
+   */
+  users?: AssignableUser[];
+  /** The project's true size, which `users` can be shorter than. */
   membersCount?: number;
 }
 

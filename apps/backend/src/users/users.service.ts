@@ -152,20 +152,30 @@ export class UsersService {
   }
 
   /**
-   * Everyone in the company who can be put on a team or a project. Separate
-   * from `list` because that one narrows to a manager's own people, and a
-   * manager staffing a team has to be able to reach past them.
+   * The people the caller may put on a team or a project: everyone in the
+   * company for an owner, a manager's own people plus the manager themselves.
+   * Separate from `list` only because of that "plus themselves" — a manager
+   * who leads no team must still be able to pick themselves.
    */
-  async listAssignable(companyId: string, query: UsersQuery) {
-    const [results, count] = await this.repo.findAndCount({
-      where: {
-        companyId,
-        ...(query.status ? { status: query.status } : {}),
-      },
-      skip: query.offset,
-      take: query.limit,
-      order: { firstName: 'ASC', lastName: 'ASC' },
+  async listAssignable(companyId: string, query: UsersQuery, user: AuthUser) {
+    const qb = this.repo
+      .createQueryBuilder('u')
+      .where('u.company_id = :companyId', { companyId });
+
+    if (query.status) {
+      qb.andWhere('u.status = :status', { status: query.status });
+    }
+
+    this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
+      includeSelf: true,
     });
+
+    const [results, count] = await qb
+      .orderBy('u.first_name', 'ASC')
+      .addOrderBy('u.last_name', 'ASC')
+      .skip(query.offset)
+      .take(query.limit)
+      .getManyAndCount();
 
     return { results, count };
   }

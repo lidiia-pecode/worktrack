@@ -64,7 +64,11 @@ export class UsersController {
     @CurrentUser() authUser: AuthUser,
     @Query() query: UsersQuery,
   ) {
-    return this.usersService.listAssignable(authUser.companyId, query);
+    return this.usersService.listAssignable(
+      authUser.companyId,
+      query,
+      authUser,
+    );
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

@@ -15,7 +15,7 @@ import {
 import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
@@ -602,7 +602,10 @@ export class TimeLogsService {
 
   /** Verifies the caller may filter by a specific user id. */
   private assertUserVisible(userId: string, user: AuthUser): Promise<void> {
-    return this.assertUserInScope(userId, user, 'view');
+    return this.teamVisibility.assertCanActForUser(userId, user, {
+      action: 'view',
+      subject: 'time logs',
+    });
   }
 
   /**
@@ -612,40 +615,9 @@ export class TimeLogsService {
   private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
     if (ownerId === user.id) return Promise.resolve();
 
-    return this.assertUserInScope(ownerId, user, 'change');
-  }
-
-  private async assertUserInScope(
-    userId: string,
-    user: AuthUser,
-    action: 'view' | 'change',
-  ): Promise<void> {
-    if (user.role === UserRole.EMPLOYEE) {
-      if (userId !== user.id) {
-        throw new ForbiddenException(
-          `You can only ${action} your own time logs`,
-        );
-      }
-      return;
-    }
-
-    if (user.role === UserRole.MANAGER) {
-      const visible = await this.teamVisibility.isUserInManagedTeams(
-        userId,
-        user,
-      );
-      if (!visible) {
-        throw new ForbiddenException(
-          `You can only ${action} time logs of users in teams you manage`,
-        );
-      }
-      return;
-    }
-
-    // OWNER: the target user must belong to the same company.
-    const exists = await this.dataSource
-      .getRepository(User)
-      .exists({ where: { id: userId, companyId: user.companyId } });
-    if (!exists) throw new NotFoundException('User not found');
+    return this.teamVisibility.assertCanActForUser(ownerId, user, {
+      action: 'change',
+      subject: 'time logs',
+    });
   }
 }

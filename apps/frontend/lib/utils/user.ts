@@ -1,5 +1,5 @@
 import { AvatarUser, User } from "@/types";
-import { UserRole } from "@/types/enums";
+import { UserRole, UserStatus } from "@/types/enums";
 
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
@@ -11,6 +11,9 @@ export const fullName = (u: User | AvatarUser) =>
 
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;
+
+export const isArchivedUser = (user: { status?: UserStatus }) =>
+  user.status === UserStatus.DEACTIVATED;
 
 /**
  * Whether the viewer may create, edit and delete someone's time entries.
@@ -24,11 +27,3 @@ export const canWriteTimeLogsFor = (
   targetUserId: string,
 ) => hasManagerAccess(role) || viewerId === targetUserId;
 
-export function getNonAdminMemberIds(
-  users: Pick<User, "id" | "role">[],
-  ids: string[],
-) {
-  return ids.filter(
-    (id) => !hasManagerAccess(users.find((u) => u.id === id)?.role),
-  );
-}
