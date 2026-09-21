@@ -19,9 +19,9 @@ genuinely open.
 **Last verified against the code: 21 September 2026.** At that point Phases 0
 and 1 of the roadmap in §7 were delivered, as were Scopes C and D of
 [`permission-model.md`](./permission-model.md) §7. Scope E — project assignment
-and disclosure — is in progress: its business rules were settled the same day,
-it is written up in [`current-scope.md`](./current-scope.md), and the first
-step, assignment scope, is implemented.
+and disclosure — is delivered: its business rules were settled the same day and
+all four of its steps are implemented. Only Scope F is left, and it closes no
+gap.
 
 ---
 
@@ -517,18 +517,20 @@ them.
 no route to adding an existing user to a team, which is what kept Scope C's
 guarantee intact.
 
-### Scope E in progress
+### Scope E delivered
 
-Assignment scope has landed: `syncProjectUsers` takes the caller and refuses
-anyone outside the people they manage, `GET /users/assignable` returns that same
-set plus the caller themselves, and a manager's save only adds and removes
-inside it. So has disclosure: a project's member list is scoped to the caller
-and narrowed to identity fields, while the project still reports its true size.
-And managers and owners may now be project members, so a manager finally has
-something to log against. What is left is archiving — saving a project whose
-member has since been archived still fails. That is what remains of gap 4 under
-**Authorization gaps** below, and [`current-scope.md`](./current-scope.md) is
-the plan for closing it.
+`syncProjectUsers` takes the caller and refuses anyone outside the people they
+manage, `GET /users/assignable` returns that same set plus the caller
+themselves, and a manager's save only adds and removes inside it. A project's
+member list is scoped the same way and narrowed to identity fields, while the
+project still reports its true size, so a scoped list does not make a staffed
+project look empty. Managers and owners may be project members, so a manager
+finally has something to log against. And active status gates joining rather
+than staying, so archiving a person neither errors nor drops their membership.
+
+**This closed the last of the authorization gaps in §6.** What a manager may
+see and change is now one rule everywhere: the people in the teams they lead,
+plus themselves.
 
 ### Fields that exist but do nothing
 
@@ -563,13 +565,13 @@ is §7 of that document.
    accepting the invitation creates the membership, so a new hire is inside
    their inviter's scope from the moment they join.
 
-4. **Project membership — assignment scope closed, archiving still open.**
-   `syncProjectUsers` now takes the caller and refuses anyone outside the people
+4. **Project membership is assigned without a visibility check — closed.**
+   `syncProjectUsers` takes the caller and refuses anyone outside the people
    they manage, and the diff only removes inside that set, so a manager cannot
    drop someone else's person by submitting a list that never contained them.
-   What remains is archiving: saving a project with an archived member still
-   404s, because "may be newly assigned" and "may remain assigned" are one
-   check.
+   "May be newly assigned" and "may remain assigned" are now separate checks:
+   only an addition is tested for active status, so archiving a person neither
+   errors nor drops their membership.
 
 5. **`GET /projects/:id` disclosed every member's name and email — closed.**
    Both member routes are now scoped to the caller and serialize through
@@ -593,8 +595,7 @@ is §7 of that document.
 `GET /users` and `GET /teams` were two earlier gaps and are closed at the route
 level.
 
-**The archiving half of gap 4 is all that is still open, and it is the rest of
-Scope E.** Everything else on this list is closed.
+**Every gap on this list is closed.** Scope E closed the last three.
 
 **Closed since this section was written.** The project read routes
 (`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
@@ -607,10 +608,11 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Test coverage has started but is thin: eight suites and 130 tests, covering the
+Test coverage has started but is thin: eight suites and 136 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
-write scope, the user-list scope and the project assignment scope. Most run against a real database; the team
+write scope, the user-list scope, and the project assignment, disclosure and archiving
+rules. Most run against a real database; the team
 route suite runs the real guard, and the invitation authorisation suite is pure
 logic. Nothing else is covered, but GitHub Actions runs them on every
 pull request, alongside lint, typecheck and build for both applications.
@@ -711,8 +713,8 @@ Assignment kept its own company-wide list until Scope E narrowed that too.
 
 > Before Phase 2, the permission scopes in
 > [`permission-model.md`](./permission-model.md) §7 close the authorization gaps
-> listed in §6. Scopes C and D are delivered; **Scope E is in progress**, and it
-> is the last of them that closes a gap.
+> listed in §6. Scopes C, D and E are delivered, and §6 has no open gaps left.
+> Only Scope F remains, and it closes none.
 
 **Phase 2 — Absences**
 

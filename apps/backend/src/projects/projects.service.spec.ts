@@ -48,6 +48,7 @@ describe('ProjectsService membership scope', () => {
   let loneManager: AuthUser; // has the MANAGER role but is on no team
   let alphaMember: AuthUser; // in "Alpha"
   let betaMember: AuthUser; // in "Beta"
+  let leaver: AuthUser; // in "Alpha", archived by the archiving tests
 
   let activityId: string;
 
@@ -101,6 +102,13 @@ describe('ProjectsService membership scope', () => {
     }
 
     return project.id;
+  };
+
+  const setStatus = async (
+    user: AuthUser,
+    status: UserStatus,
+  ): Promise<void> => {
+    await dataSource.getRepository(User).update({ id: user.id }, { status });
   };
 
   /** Makes the project loggable by giving it one active activity. */
@@ -160,6 +168,7 @@ describe('ProjectsService membership scope', () => {
     loneManager = await createUser('lonemanager', UserRole.MANAGER);
     alphaMember = await createUser('alphamember', UserRole.EMPLOYEE);
     betaMember = await createUser('betamember', UserRole.EMPLOYEE);
+    leaver = await createUser('leaver', UserRole.EMPLOYEE);
 
     const alpha = await dataSource
       .getRepository(Team)
@@ -170,6 +179,7 @@ describe('ProjectsService membership scope', () => {
 
     await addToTeam(alpha.id, alphaManager, TeamRole.MANAGER);
     await addToTeam(alpha.id, alphaMember, TeamRole.MEMBER);
+    await addToTeam(alpha.id, leaver, TeamRole.MEMBER);
     await addToTeam(beta.id, betaManager, TeamRole.MANAGER);
     await addToTeam(beta.id, betaMember, TeamRole.MEMBER);
 
@@ -480,6 +490,88 @@ describe('ProjectsService membership scope', () => {
       await expect(loggableProjectIds(alphaManager)).resolves.not.toContain(
         projectId,
       );
+    });
+  });
+
+  describe('an archived member', () => {
+    afterEach(async () => {
+      await setStatus(leaver, UserStatus.ACTIVE);
+    });
+
+    it('survives a save that leaves the project unchanged', async () => {
+      const projectId = await createProject('archived stays', [
+        alphaMember,
+        leaver,
+      ]);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      await service.update(
+        projectId,
+        { userIds: [alphaMember.id, leaver.id] },
+        alphaManager,
+      );
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaMember, leaver),
+      );
+    });
+
+    it('is still listed, marked as archived', async () => {
+      const projectId = await createProject('archived listed', [leaver]);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      const project = await service.getById(projectId, alphaManager);
+
+      expect(project.users.map((u) => u.id)).toEqual([leaver.id]);
+      expect(project.users[0].status).toBe(UserStatus.DEACTIVATED);
+      expect(project.membersCount).toBe(1);
+    });
+
+    it('can still be removed deliberately', async () => {
+      const projectId = await createProject('archived removed', [
+        alphaMember,
+        leaver,
+      ]);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      await service.update(
+        projectId,
+        { userIds: [alphaMember.id] },
+        alphaManager,
+      );
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(alphaMember));
+    });
+
+    it('cannot be newly added', async () => {
+      const projectId = await createProject('archived refused', []);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      await expect(
+        service.update(projectId, { userIds: [leaver.id] }, alphaManager),
+      ).rejects.toThrow(NotFoundException);
+
+      await expect(memberIds(projectId)).resolves.toEqual([]);
+    });
+
+    it('keeps the membership across un-archiving', async () => {
+      const projectId = await createProject('archived restored', [leaver]);
+
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+      await setStatus(leaver, UserStatus.ACTIVE);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(leaver));
+    });
+
+    it('does not let an archived id smuggle someone past the scope check', async () => {
+      const projectId = await createProject('archived scope', []);
+      await setStatus(betaMember, UserStatus.DEACTIVATED);
+
+      await expect(
+        service.update(projectId, { userIds: [betaMember.id] }, alphaManager),
+      ).rejects.toThrow(NotFoundException);
+
+      await setStatus(betaMember, UserStatus.ACTIVE);
     });
   });
 

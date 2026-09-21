@@ -141,9 +141,12 @@ export class ProjectsService {
   /**
    * Applies the submitted membership to the project.
    *
-   * The caller only ever sees the people they may assign, so their list is
-   * not the whole truth: both sides of the diff are bounded by that scope,
-   * and members outside it are left alone rather than read as removals.
+   * Two rules meet here. The caller only ever sees the people they may assign,
+   * so their list is not the whole truth: both sides of the diff are bounded
+   * by that scope, and members outside it are left alone rather than read as
+   * removals. And active status gates joining, not staying — only someone
+   * being added is checked for it, so archiving a person neither errors nor
+   * drops them.
    */
   private async syncProjectUsers(
     project: Project,
@@ -151,16 +154,7 @@ export class ProjectsService {
     manager: EntityManager,
     user: AuthUser,
   ): Promise<void> {
-    const targetUserIds = Array.from(new Set(rawUserIds));
-
-    const targetUsers = targetUserIds.length
-      ? await this.usersService.findActiveOnlyMany(
-          targetUserIds,
-          project.companyId,
-        )
-      : [];
-
-    const targetIds = new Set(targetUsers.map((u) => u.id));
+    const targetIds = new Set(rawUserIds);
 
     const currentRows: Array<{ user_id: string }> = await manager
       .createQueryBuilder()
@@ -171,13 +165,17 @@ export class ProjectsService {
 
     const currentIds = new Set(currentRows.map((row) => row.user_id));
 
-    const idsToAdd = targetUsers
-      .filter((u) => !currentIds.has(u.id))
-      .map((u) => u.id);
+    const idsToAdd = [...targetIds].filter((id) => !currentIds.has(id));
 
     const removalCandidates = [...currentIds].filter(
       (id) => !targetIds.has(id),
     );
+
+    // Only the newcomers are checked: an existing member stays whatever their
+    // status, and this also rejects an id from another company.
+    if (idsToAdd.length > 0) {
+      await this.usersService.findActiveOnlyMany(idsToAdd, project.companyId);
+    }
 
     const assignable = await this.teamVisibility.filterVisibleUserIds(
       [...idsToAdd, ...removalCandidates],

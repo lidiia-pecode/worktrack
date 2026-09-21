@@ -1,5 +1,5 @@
 import { Exclude, Expose } from 'class-transformer';
-import { UserRole } from '../enums/user-role.enum';
+import { UserRole, UserStatus } from '../enums/user-role.enum';
 
 /**
  * Deliberately narrower than `UserResponse`: this list exists so someone can
@@ -21,6 +21,10 @@ export class AssignableUserResponse {
 
   @Expose()
   role!: UserRole;
+
+  /** A project keeps archived members, so a list of them has to say which. */
+  @Expose()
+  status!: UserStatus;
 
   @Expose()
   position?: string;

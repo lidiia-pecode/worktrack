@@ -60,6 +60,8 @@ export interface AssignableUser {
   lastName: string;
   email: string;
   role: UserRole;
+  /** A project keeps archived members, so its list has to say which. */
+  status: UserStatus;
   position?: string | null;
   avatarUrl?: string | null;
 }

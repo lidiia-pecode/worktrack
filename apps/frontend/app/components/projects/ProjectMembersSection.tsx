@@ -2,11 +2,12 @@
 
 import { UserPlus, X } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { AssignableUser } from "@/types";
 
-import { fullName } from "@/lib/utils/user";
+import { fullName, isArchivedUser } from "@/lib/utils/user";
 
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { Avatar } from "../shared/Avatar";
@@ -77,15 +78,19 @@ export function ProjectMembersSection({
           renderLeading={(user) => <Avatar user={user} size="md" />}
           emptyMessage="No members yet. Click 'Add members' to get started."
           renderTrailing={(user) => (
-            <Button
-              type="button"
-              variant="ghost"
-              size="iconSm"
-              aria-label={`Remove ${user.firstName}`}
-              onClick={() => onRemoveMember(user.id)}
-            >
-              <X className="size-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              {isArchivedUser(user) && <Badge variant="neutral">Archived</Badge>}
+
+              <Button
+                type="button"
+                variant="ghost"
+                size="iconSm"
+                aria-label={`Remove ${user.firstName}`}
+                onClick={() => onRemoveMember(user.id)}
+              >
+                <X className="size-4" />
+              </Button>
+            </div>
           )}
         />
       </div>

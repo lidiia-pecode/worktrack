@@ -1,11 +1,12 @@
 # WorkTrack — Target permission model
 
-**Status: partly delivered.** This document describes how responsibility and
-access *should* work. Nothing here is implemented unless
+**Status: the authorization rules are delivered; §3.6 is not.** This document
+describes how responsibility and access *should* work. Nothing here is
+implemented unless
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 says so
 — those sections remain the record of current behaviour. §5 is the crosswalk
 from each rule to what stands in its way, and §7 is the order the rest is being
-built in: Scopes C and D are delivered, and Scope E is in progress.
+built in: Scopes C, D and E are delivered, and only Scope F is left.
 
 It exists because the permission rules outgrew a decision entry. They span
 company membership, invitations, teams, projects and time data at once, and
@@ -40,8 +41,8 @@ The business actually distinguishes four things:
 
 Collapsing these into one role check is why a manager could widen their own
 visibility, and why an invitation could not place anybody anywhere. Scopes C and
-D separated the first three. The fourth — work assignment — is Scope E, and it
-is now separated too: both who may be assigned and what a caller may read of a
+D separated the first three. The fourth — work assignment — was Scope E, and is
+separated too: both who may be assigned and what a caller may read of a
 project's membership are checked against the caller.
 
 ---
@@ -234,7 +235,7 @@ struck from §3, so there is nothing left to cross-walk.
 | §3.5 Projects stay company-wide | **Already true** | — |
 | §3.5 Assign only people you can see, plus yourself | **Already enforced** — `syncProjectUsers` takes the caller, and `/users/assignable` is narrowed to the same set | — |
 | §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
-| §3.5 Active status gates joining, not staying | Saving a project with an archived member 404s; re-picking members drops them | business §6 gap 4 |
+| §3.5 Active status gates joining, not staying | **Already enforced** — only an addition is checked for active status | — |
 | §3.5 Managers may be project members | **Already enforced** — the client no longer strips them, and a manager's own timesheet can reach their projects | — |
 | §3.6 A responsible person | The field does not exist | — |
 | §3.7 Time-log access | **Already enforced** (D9, D10) | — |
@@ -314,7 +315,7 @@ are best read together.
 
 Closes business §6 gap 3. Depends on C.
 
-### Scope E — Project assignment and disclosure — **in progress**
+### Scope E — Project assignment and disclosure — **delivered**
 
 - ~~Enforce assignment scope in `syncProjectUsers`, and narrow
   `GET /users/assignable` to the caller's people plus themselves — the two must
@@ -329,13 +330,13 @@ Closes business §6 gap 3. Depends on C.
   stripping.~~ **Delivered.** The server always stored whatever it was given,
   so this was deletion: the picker's role filter and `getNonAdminMemberIds`
   are both gone.
-- Separate "may be newly assigned" from "may remain assigned", so archiving
-  neither errors nor removes.
+- ~~Separate "may be newly assigned" from "may remain assigned", so archiving
+  neither errors nor removes.~~ **Delivered.** Only the ids being added are
+  checked for active status; an existing member never is.
 
-Closes gaps 4, 5 and 6 in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §6 — the last
-three still open. Gaps 5 and 6 are closed; only the archiving half of gap 4 is
-left. Depends on C. **Its business rules were settled on 21
+Closed gaps 4, 5 and 6 in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §6, which
+were the last three open. Depended on C. **Its business rules were settled on 21
 September 2026** and are recorded in §0 of
 [`current-scope.md`](./current-scope.md), which is the implementation plan.
 
