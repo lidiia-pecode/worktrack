@@ -1,8 +1,10 @@
 import 'reflect-metadata';
-import { ForbiddenException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { Team } from 'src/teams/entities/team.entity';
@@ -124,6 +126,7 @@ describe('ProjectsService membership scope', () => {
     service = new ProjectsService(
       dataSource.getRepository(Project),
       dataSource.getRepository(ProjectActivity),
+      dataSource.getRepository(User),
       stub<ActivitiesService>({}),
       new UsersService(
         dataSource.getRepository(User),
@@ -287,6 +290,114 @@ describe('ProjectsService membership scope', () => {
       await expect(memberIds(projectId)).resolves.toEqual(
         sorted(alphaMember, alphaManager, betaMember),
       );
+    });
+  });
+
+  describe('getById', () => {
+    it('gives an owner every member', async () => {
+      const projectId = await createProject('owner reads', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      const project = await service.getById(projectId, owner);
+
+      expect(project.users.map((u) => u.id).sort()).toEqual(
+        sorted(alphaMember, betaMember),
+      );
+    });
+
+    it('gives a manager only their own people', async () => {
+      const projectId = await createProject('manager reads', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      const project = await service.getById(projectId, alphaManager);
+
+      expect(project.users.map((u) => u.id)).toEqual([alphaMember.id]);
+    });
+
+    it('shows a manager themselves when they are a member', async () => {
+      const projectId = await createProject('manager is member', [
+        alphaManager,
+        betaMember,
+      ]);
+
+      const project = await service.getById(projectId, alphaManager);
+
+      expect(project.users.map((u) => u.id)).toEqual([alphaManager.id]);
+    });
+
+    it('reports the true member count to every role', async () => {
+      const projectId = await createProject('true count', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      const asManager = await service.getById(projectId, alphaManager);
+      const asOwner = await service.getById(projectId, owner);
+
+      expect(asManager.membersCount).toBe(2);
+      expect(asManager.users).toHaveLength(1);
+      expect(asOwner.membersCount).toBe(2);
+    });
+
+    it('keeps the members a manager cannot see when the project is archived', async () => {
+      const projectId = await createProject('archive keeps', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      await service.archive(projectId, alphaManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaMember, betaMember),
+      );
+    });
+  });
+
+  describe('listUsers', () => {
+    const PAGE = { offset: 0, limit: 50 } as PaginationQuery;
+
+    it('gives an owner every member', async () => {
+      const projectId = await createProject('list owner', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      const { results, count } = await service.listUsers(
+        projectId,
+        PAGE,
+        owner,
+      );
+
+      expect(results.map((u) => u.id).sort()).toEqual(
+        sorted(alphaMember, betaMember),
+      );
+      expect(count).toBe(2);
+    });
+
+    it('gives a manager their own people and the scoped count', async () => {
+      const projectId = await createProject('list manager', [
+        alphaMember,
+        betaMember,
+      ]);
+
+      const { results, count } = await service.listUsers(
+        projectId,
+        PAGE,
+        alphaManager,
+      );
+
+      expect(results.map((u) => u.id)).toEqual([alphaMember.id]);
+      expect(count).toBe(1);
+    });
+
+    it('404s on a project in another company', async () => {
+      await expect(
+        service.listUsers(randomUUID(), PAGE, owner),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

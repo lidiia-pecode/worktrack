@@ -98,6 +98,13 @@ export function ProjectModal({
     [projectDetails],
   );
 
+  // The member list is scoped to the viewer while the count is the project's
+  // true size, so the difference is what a manager may not read.
+  const hiddenMembersCount = Math.max(
+    (projectDetails?.membersCount ?? 0) - savedUserIds.length,
+    0,
+  );
+
   // Fall back to the saved members until the user picks their own selection.
   const selectedUserIds = pickedUserIds ?? savedUserIds;
 
@@ -326,7 +333,7 @@ export function ProjectModal({
             name: project?.name ?? "",
             description: project?.description ?? "",
           }}
-          membersCount={selectedUsers.length}
+          membersCount={selectedUsers.length + hiddenMembersCount}
           activitiesCount={selectedActivities.length}
           onSubmit={handleSubmit}
           isSubmitting={isSubmitting}
@@ -335,6 +342,7 @@ export function ProjectModal({
         <div className="border-t border-border pt-6">
           <ProjectMembersSection
             members={selectedUsers}
+            hiddenCount={hiddenMembersCount}
             isLoading={isMembersLoading}
             isCreateMode={!project}
             onOpenAddMembers={() => setView("members")}

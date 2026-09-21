@@ -27,7 +27,7 @@ import { ProjectActivityResponse } from './dtos/project-activity-response.dto';
 import { ProjectsQuery } from './dtos/projects-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
-import { UserResponse } from 'src/users/dtos/user-response.dto';
+import { AssignableUserResponse } from 'src/users/dtos/assignable-user-response.dto';
 
 @Controller('projects')
 @UseGuards(AccessGuard, RolesGuard)
@@ -102,7 +102,7 @@ export class ProjectsController {
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get(':id/users')
-  @SerializeList(UserResponse)
+  @SerializeList(AssignableUserResponse)
   listUsers(
     @Param('id', ParseUUIDPipe) projectId: string,
     @Query() query: PaginationQuery,

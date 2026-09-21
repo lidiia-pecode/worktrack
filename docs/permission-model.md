@@ -40,9 +40,9 @@ The business actually distinguishes four things:
 
 Collapsing these into one role check is why a manager could widen their own
 visibility, and why an invitation could not place anybody anywhere. Scopes C and
-D separated the first three. The fourth — work assignment — is Scope E: who may
-be assigned is now checked against the caller, and what a caller may read of a
-project's membership is the part still being built.
+D separated the first three. The fourth — work assignment — is Scope E, and it
+is now separated too: both who may be assigned and what a caller may read of a
+project's membership are checked against the caller.
 
 ---
 
@@ -230,7 +230,7 @@ struck from §3, so there is nothing left to cross-walk.
 | Rule | Today | Detail |
 | :--- | :--- | :--- |
 | §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
-| §3.4 One level of visibility | Project detail returns every member's name and email to any manager, including people `GET /users/:id` refuses | business §6 gap 5 |
+| §3.4 One level of visibility | **Already enforced** — the project's member list is scoped to the caller and narrowed to identity fields | — |
 | §3.5 Projects stay company-wide | **Already true** | — |
 | §3.5 Assign only people you can see, plus yourself | **Already enforced** — `syncProjectUsers` takes the caller, and `/users/assignable` is narrowed to the same set | — |
 | §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
@@ -321,8 +321,10 @@ Closes business §6 gap 3. Depends on C.
   land together, and the save becomes a diff bounded by that scope.~~
   **Delivered.** `TeamVisibilityService` now owns the whole owner/manager/employee
   decision, so time logs, projects and the user lists share one copy of it.
-- Scope the project's member list to the caller, and narrow the member DTO. One
-  shape for every role; only the rows differ.
+- ~~Scope the project's member list to the caller, and narrow the member DTO. One
+  shape for every role; only the rows differ.~~ **Delivered.** `ProjectResponse`
+  also carries the project's true `membersCount`, so a scoped list never makes a
+  staffed project look empty.
 - Allow managers and owners to be project members; drop the client-side
   stripping.
 - Separate "may be newly assigned" from "may remain assigned", so archiving

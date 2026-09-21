@@ -13,6 +13,8 @@ import { Avatar } from "../shared/Avatar";
 
 interface ProjectMembersSectionProps {
   members: AssignableUser[];
+  /** Members on the project that this viewer may not read. */
+  hiddenCount?: number;
   isLoading?: boolean;
   isCreateMode?: boolean;
   onOpenAddMembers: () => void;
@@ -21,11 +23,23 @@ interface ProjectMembersSectionProps {
 
 export function ProjectMembersSection({
   members,
+  hiddenCount = 0,
   isLoading = false,
   isCreateMode = false,
   onOpenAddMembers,
   onRemoveMember,
 }: ProjectMembersSectionProps) {
+  const summary = `${members.length} ${
+    members.length === 1 ? "person is" : "people are"
+  } ${isCreateMode ? "selected" : "assigned to this project"}.`;
+
+  const hiddenSummary =
+    hiddenCount > 0
+      ? ` ${hiddenCount} ${
+          hiddenCount === 1 ? "is" : "are"
+        } in teams you do not manage.`
+      : "";
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -35,11 +49,7 @@ export function ProjectMembersSection({
           </h3>
 
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {isLoading
-              ? "Loading members..."
-              : `${members.length} ${
-                  members.length === 1 ? "person is" : "people are"
-                } ${isCreateMode ? "selected" : "assigned to this project"}.`}
+            {isLoading ? "Loading members..." : `${summary}${hiddenSummary}`}
           </p>
         </div>
 

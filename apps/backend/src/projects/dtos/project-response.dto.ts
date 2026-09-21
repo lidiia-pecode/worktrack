@@ -1,7 +1,7 @@
 import { OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { ProjectActivityResponse } from './project-activity-response.dto';
-import { UserResponse } from 'src/users/dtos/user-response.dto';
+import { AssignableUserResponse } from 'src/users/dtos/assignable-user-response.dto';
 import { ProjectStatus } from '../enums/project-status.enum';
 
 @Exclude()
@@ -28,9 +28,17 @@ export class ProjectResponse {
   @Type(() => ProjectActivityResponse)
   projectActivities!: ProjectActivityResponse[];
 
+  /**
+   * Scoped to the caller, so it can be shorter than the project — read its
+   * size from `membersCount`, never from this array's length.
+   */
   @Expose()
-  @Type(() => UserResponse)
-  users!: UserResponse[];
+  @Type(() => AssignableUserResponse)
+  users!: AssignableUserResponse[];
+
+  /** The project's true size, the same for every role. */
+  @Expose()
+  membersCount!: number;
 
   @Expose()
   createdAt!: Date;
@@ -42,7 +50,4 @@ export class ProjectResponse {
 // Project lists must not carry the member roster, only its size.
 export class ProjectListItemResponse extends OmitType(ProjectResponse, [
   'users',
-] as const) {
-  @Expose()
-  membersCount!: number;
-}
+] as const) {}
