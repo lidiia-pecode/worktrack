@@ -59,9 +59,9 @@ Node comes from `.nvmrc`, and the backend job gets a throwaway Postgres 16
 service container. Migrations run against it before the tests, because the tests
 use real SQL and need the schema to exist.
 
-CI needs no repository secrets. The one test suite talks to the database
-directly and never boots the Nest application, so none of the application's
-required environment variables come into play.
+CI needs no repository secrets. The suites talk to the database directly and
+never boot the Nest application, so none of the application's required
+environment variables come into play.
 
 To reproduce a CI failure locally, run the same root scripts; they are the same
 commands CI calls.
@@ -128,16 +128,62 @@ Vercel builds and promotes the frontend. Render rebuilds the backend image and
 swaps the service over.
 
 **Migrations are not automatic.** Render's pre-deploy command is a paid feature,
-so a migration is run by hand against Neon before the code that needs it merges.
-That has to become a real release step before any of this is called production.
+so a migration is run by hand against Neon **before the code that needs it
+merges**. That has to become a real release step before any of this is called
+production.
 
-That hand-run has not been done yet. Connecting from a laptop is proven —
-`migration:show` against Neon lists all six migrations as applied, so the
-connection string, TLS and the TypeORM setup all work — but `migration:run:prod`
-has never applied anything there, because nothing has been pending. The first
-real schema change is what verifies it: release it in the order above, with the
-compiled `dist/data-source.js`, and note anything this section gets wrong. Do
-not write a migration just to rehearse with.
+The order matters and is not a formality. Merging first deploys code that reads
+columns the database does not have, and `synchronize` is `false`, so nothing
+creates them — the stand breaks until the migration catches up.
+
+#### Running a migration against Neon
+
+Neon's credentials live in `apps/backend/.env.neon`, which is gitignored and
+holds `DATABASE_URL` and `DATABASE_SSL=true`. Render has its own copy in its
+dashboard; the file is for running migrations from a laptop.
+
+The `migration:show` npm script points at `src/data-source.ts`, so call the
+`typeorm` binary directly when you want the compiled one:
+
+```bash
+cd apps/backend
+npm run build                 # required: migration:run:prod reads dist/data-source.js
+# load .env.neon into the environment, then:
+npx typeorm migration:show -d dist/data-source.js   # confirm target and what is pending
+npm run migration:run:prod
+npx typeorm migration:show -d dist/data-source.js   # confirm it applied
+```
+
+Two things that cost time the first time:
+
+- **Build first.** `migration:run:prod` runs against `dist/data-source.js`, so a
+  migration added since the last build is simply invisible to it.
+- **Do not `source .env.neon`.** The connection string contains `&`, so the
+  shell parses it as a background operator and the file fails to load. Read the
+  file with a tool that does not interpret it — a short Python or Node snippet
+  that splits each line on the first `=` and puts the result in the environment
+  — or paste the variables into the command's own environment.
+
+`data-source.ts` calls `dotenv.config()`, which does **not** override variables
+already in the environment, so exported Neon values win over `.env`.
+
+The pre-flight `migration:show` is worth running every time: it names what is
+pending and, because local and Neon are at different counts, proves which
+database you are actually connected to before anything is written.
+
+#### What the first real run showed
+
+Scope D's `AddInvitationTeamAndInviter1789830866330` was the first migration
+this project ever deployed, in September 2026. It applied cleanly in a single
+transaction — two nullable columns and two `ON DELETE SET NULL` foreign keys —
+and the schema was verified against `information_schema` afterwards rather than
+trusted from the `migrations` table. The procedure above is what it took; the
+two pitfalls listed are the ones actually hit.
+
+One warning surfaced that is worth acting on before a `pg` upgrade: `pg` now
+reports that `sslmode=require` is treated as `verify-full`, and that this
+changes in pg v9 / pg-connection-string v3. Make the Neon URL say
+`sslmode=verify-full` explicitly before then.
 
 ### Environment variables
 

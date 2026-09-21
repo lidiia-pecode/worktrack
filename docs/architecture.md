@@ -5,14 +5,16 @@ documents; it deliberately does not repeat them.
 
 ## What the project is
 
-A multi-tenant time-tracking application. A company signs up, invites users,
-defines projects and activities, and its employees log time against the
+A time-tracking application for one services company. It signs up, invites
+users, defines projects and activities, and its employees log time against the
 project/activity pairs they are assigned to. Managers and owners get wider
 visibility over that data.
 
 Everything is scoped to a **company** — the tenant root. Users, teams, projects,
 activities and every time entry carry a `companyId`, and isolation is enforced
-in the backend services on every query.
+in the backend services on every query. The data model is therefore multi-tenant,
+but a multi-company SaaS product is explicitly not a goal — see
+[`business_architecture_docs.md`](./business_architecture_docs.md) §1.
 
 ## Shape
 
@@ -72,7 +74,7 @@ enforced in `TimeLogsService`.
 | [`apps/frontend/docs/frontend-context.md`](../apps/frontend/docs/frontend-context.md) | Routing, data layer, design tokens, shared components |
 | [`CLAUDE.md`](../CLAUDE.md) | Coding conventions and workflow rules |
 | [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
-| [`docs/permission-model.md`](./permission-model.md) | Target permission model — future state, not yet built |
+| [`docs/permission-model.md`](./permission-model.md) | Target permission model and the scopes delivering it; partly built |
 | [`docs/known-issues.md`](./known-issues.md) | Defects and debt that no current scope owns |
 | [`docs/current-scope.md`](./current-scope.md) | The next implementation scope — what to build now |
 | [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
@@ -98,7 +100,8 @@ categories. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
 Not built yet: any frontend for the backend's `planning` and `reporting`
-modules.
+modules, and project membership is still assigned without a permission check —
+that is the next scope, [`current-scope.md`](./current-scope.md).
 
 Test coverage has started but is narrow: seven suites and 93 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may

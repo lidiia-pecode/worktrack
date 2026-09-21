@@ -1,6 +1,6 @@
 # WorkTrack
 
-WorkTrack is a full-stack time tracking application designed for teams and companies. It provides an intuitive way for employees to log working hours while giving managers visibility into projects, teams, and productivity.
+WorkTrack is a full-stack time tracking application for a single services company. Employees log working hours against the projects they are assigned to, and managers and owners get visibility into projects, teams and where the time went.
 
 The project is organized as a **monorepo**, containing both the frontend and backend applications, along with shared Docker configuration for local development.
 
@@ -157,7 +157,9 @@ CI runs, and the rules for changes that touch the database.
 | :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here     |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
+| [`docs/permission-model.md`](docs/permission-model.md)                             | Target permission model and the scopes delivering it   |
 | [`docs/current-scope.md`](docs/current-scope.md)                                   | The next implementation scope (EN + UA)                |
+| [`docs/known-issues.md`](docs/known-issues.md)                                     | Defects and debt that no current scope owns            |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
 | [`apps/backend/docs/backend-context.md`](apps/backend/docs/backend-context.md)     | Domain modules, API surface, data model, roles         |
 | [`apps/backend/docs/auth.md`](apps/backend/docs/auth.md)                           | Tokens, sessions, guards, Google OAuth                 |
@@ -171,8 +173,11 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 Under active development. The employee timesheet, the owner/manager team time
 view and admin CRUD for users, teams, projects, activities and categories are
-implemented. Reporting and planning views are not. Test coverage is six backend
-suites, covering who may see and change whose data.
+implemented. Reporting and planning views are not. Test coverage is seven backend
+suites and 93 tests, covering who may see and change whose data.
+
+The next piece of work is project assignment and disclosure — see
+[`docs/current-scope.md`](docs/current-scope.md).
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
