@@ -104,7 +104,7 @@ modules. The authorization gaps are all closed — see
 [`current-scope.md`](./current-scope.md) for the scope that closed the last of
 them.
 
-Test coverage has started but is narrow: eight suites and 136 tests, covering
+Test coverage has started but is narrow: eight suites and 139 tests, covering
 the role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
 write scope, the user-list scope and the project assignment scope — mostly

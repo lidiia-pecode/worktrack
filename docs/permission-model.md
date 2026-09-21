@@ -279,8 +279,8 @@ Open questions about absences, planning, export and notifications stay in
 ## 7. Implementation roadmap
 
 Four scopes, in dependency order. Each is meant to become a
-`current-scope.md` in turn, and each is independently shippable. **C and D are
-delivered; E is next and has not been started; F follows it.**
+`current-scope.md` in turn, and each is independently shippable. **C, D and E
+are delivered; only F is left, and it closes no gap.**
 
 These sit **between Phase 1 and Phase 2** of the product roadmap in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7. They are a

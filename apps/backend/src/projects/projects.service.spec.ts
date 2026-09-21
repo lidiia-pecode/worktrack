@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
-import { DataSource } from 'typeorm';
+import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
@@ -147,7 +147,10 @@ describe('ProjectsService membership scope', () => {
       dataSource.getRepository(Project),
       dataSource.getRepository(ProjectActivity),
       dataSource.getRepository(User),
-      stub<ActivitiesService>({}),
+      stub<ActivitiesService>({
+        findActiveOnlyMany: (ids: string[]) =>
+          dataSource.getRepository(Activity).findBy({ id: In(ids) }),
+      }),
       new UsersService(
         dataSource.getRepository(User),
         teamVisibility,
@@ -307,14 +310,15 @@ describe('ProjectsService membership scope', () => {
       );
     });
 
-    it('adds and removes one person when the user modal sends the whole list', async () => {
-      const projectId = await createProject('user modal', [
+    // `UpdateUserModal` reads the members back and writes them all again. A
+    // manager's read is partial, so the members they never saw must survive
+    // both directions of that toggle.
+    it('adds one person when the user modal sends the whole list', async () => {
+      const projectId = await createProject('user modal add', [
         alphaMember,
         betaMember,
       ]);
 
-      // `UpdateUserModal` reads the members back and writes them all again.
-      // A manager's read is partial, so the absent beta member must survive.
       await service.update(
         projectId,
         { userIds: [alphaMember.id, alphaManager.id] },
@@ -323,6 +327,24 @@ describe('ProjectsService membership scope', () => {
 
       await expect(memberIds(projectId)).resolves.toEqual(
         sorted(alphaMember, alphaManager, betaMember),
+      );
+    });
+
+    it('removes one person when the user modal sends the whole list', async () => {
+      const projectId = await createProject('user modal remove', [
+        alphaMember,
+        alphaManager,
+        betaMember,
+      ]);
+
+      await service.update(
+        projectId,
+        { userIds: [alphaManager.id] },
+        alphaManager,
+      );
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaManager, betaMember),
       );
     });
   });
@@ -361,6 +383,15 @@ describe('ProjectsService membership scope', () => {
       const project = await service.getById(projectId, alphaManager);
 
       expect(project.users.map((u) => u.id)).toEqual([alphaManager.id]);
+    });
+
+    it('still opens a project staffed entirely by people the manager cannot see', async () => {
+      const projectId = await createProject('all invisible', [betaMember]);
+
+      const project = await service.getById(projectId, alphaManager);
+
+      expect(project.users).toEqual([]);
+      expect(project.membersCount).toBe(1);
     });
 
     it('reports the true member count to every role', async () => {
@@ -583,6 +614,19 @@ describe('ProjectsService membership scope', () => {
           alphaManager,
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('returns the new project with its activities', async () => {
+      const project = await service.create(
+        { name: `With activities ${RUN}`, activityIds: [activityId] },
+        alphaManager,
+      );
+
+      expect(
+        project.projectActivities.map(
+          (projectActivity) => projectActivity.activity.id,
+        ),
+      ).toEqual([activityId]);
     });
 
     it('lets a manager staff a new project from their own people', async () => {

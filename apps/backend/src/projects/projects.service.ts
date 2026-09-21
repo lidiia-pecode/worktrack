@@ -367,7 +367,12 @@ export class ProjectsService {
         );
       }
 
-      return this.withScopedMembers(savedProject, user, manager);
+      // Re-read, or the response loses the activities just linked to it.
+      return this.withScopedMembers(
+        await this.findOrFail(savedProject.id, user.companyId, manager),
+        user,
+        manager,
+      );
     });
   }
 

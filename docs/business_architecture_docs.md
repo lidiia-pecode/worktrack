@@ -608,7 +608,7 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Test coverage has started but is thin: eight suites and 136 tests, covering the
+Test coverage has started but is thin: eight suites and 139 tests, covering the
 role-visibility filters, the team route roles and membership rules, who may
 invite whom into which team, what accepting an invitation creates, the time-log
 write scope, the user-list scope, and the project assignment, disclosure and archiving
