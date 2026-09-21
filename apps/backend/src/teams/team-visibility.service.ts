@@ -89,7 +89,8 @@ export class TeamVisibilityService {
   /**
    * Of the given user ids, the ones the caller may see. Same rule as
    * `applyUserVisibility`, for callers holding a list of ids rather than a
-   * query.
+   * query — including its convention that tenant scoping stays with the
+   * caller, so an owner gets every id back untouched.
    */
   async filterVisibleUserIds(
     userIds: string[],

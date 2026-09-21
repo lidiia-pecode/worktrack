@@ -251,8 +251,10 @@ export class ProjectsService {
     return qb;
   }
 
+  /** The same rows `scopedMembersQuery` counts, before the caller's scope. */
   private countMembers(
     projectId: string,
+    user: AuthUser,
     manager?: EntityManager,
   ): Promise<number> {
     const repo = manager ? manager.getRepository(User) : this.userRepo;
@@ -261,6 +263,7 @@ export class ProjectsService {
       .createQueryBuilder('u')
       .innerJoin('project_users', 'pu', 'pu.user_id = u.id')
       .where('pu.project_id = :projectId', { projectId })
+      .andWhere('u.companyId = :companyId', { companyId: user.companyId })
       .getCount();
   }
 
@@ -281,7 +284,7 @@ export class ProjectsService {
       user,
       manager,
     ).getMany();
-    project.membersCount = await this.countMembers(project.id, manager);
+    project.membersCount = await this.countMembers(project.id, user, manager);
 
     return project;
   }

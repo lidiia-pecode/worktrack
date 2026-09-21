@@ -243,7 +243,7 @@ describe('TeamVisibilityService', () => {
       return [...visible].sort();
     };
 
-    it('keeps every candidate for an owner', async () => {
+    it("keeps every candidate for an owner, tenant scoping being the caller's job", async () => {
       await expect(filtered(owner)).resolves.toEqual(candidates());
     });
 
