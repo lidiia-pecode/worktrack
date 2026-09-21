@@ -2,12 +2,12 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { FolderKanban } from "lucide-react";
+import { CalendarOff, FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
-import { useAbsencesQuery } from "@/hooks/useAbsences";
+import { useAbsences } from "@/hooks/useAbsences";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
-import { TimeLog } from "@/types";
+import { Absence, TimeLog } from "@/types";
 import {
   formatDuration,
   getWeekDates,
@@ -26,6 +26,8 @@ import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { Button } from "@/components/ui/button";
+import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { WeekProgressBar } from "./components/WeekProgressBar";
@@ -33,6 +35,11 @@ import { WeekProgressBar } from "./components/WeekProgressBar";
 type ModalState = {
   date: string;
   timelog?: TimeLog;
+};
+
+type AbsenceModalState = {
+  date: string;
+  absence?: Absence;
 };
 
 const PX_PER_HOUR = 56;
@@ -45,7 +52,11 @@ const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "long",
 });
 
-export const WeekTimesheet = () => {
+type WeekTimesheetProps = {
+  userId: string;
+};
+
+export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
   const {
     weekStartDay,
     dailyTargetMinutes,
@@ -57,6 +68,9 @@ export const WeekTimesheet = () => {
 
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [modalState, setModalState] = useState<ModalState | null>(null);
+  const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(
+    null,
+  );
   const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -85,10 +99,14 @@ export const WeekTimesheet = () => {
 
   const {
     items: absences,
+    actions: absenceActions,
     isLoading: isLoadingAbsences,
     isError: isAbsencesError,
     refetch: refetchAbsences,
-  } = useAbsencesQuery(1, {
+  } = useAbsences(1, {
+    // Own absences only. A manager may read their team's, and this is their
+    // own week — somebody else's holiday must not read as theirs.
+    userId,
     dateFrom,
     dateTo,
     pageSize: WEEK_PAGE_SIZE,
@@ -188,6 +206,15 @@ export const WeekTimesheet = () => {
     setNonWorkDayDate(null);
   };
 
+  // From a day already marked absent: edit that one.
+  const openAbsence = (date: Date) => {
+    const iso = toISODate(date);
+    setAbsenceModal({ date: iso, absence: absencesByDate[iso] });
+  };
+
+  // From the header: always a new one, starting today, whatever today holds.
+  const openNewAbsence = () => setAbsenceModal({ date: todayIso });
+
   const openEdit = (timelog: TimeLog) => {
     setModalState({
       date: timelog.date,
@@ -250,6 +277,20 @@ export const WeekTimesheet = () => {
             </div>
           )}
         </div>
+
+        {!hasError && (
+          <div className="px-3 pb-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openNewAbsence}
+            >
+              <CalendarOff className="size-4" />
+              Add absence
+            </Button>
+          </div>
+        )}
 
         {!hasError && (
           <div className="px-3 pb-3">
@@ -322,6 +363,7 @@ export const WeekTimesheet = () => {
                       pixelsPerMinute={PX_PER_MINUTE}
                       plannedMinutes={dailyTargetMinutes}
                       onAddClick={openCreate}
+                      onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}
                     />
                   );
@@ -344,6 +386,24 @@ export const WeekTimesheet = () => {
         }
         confirmText="Log time"
       />
+
+      {absenceModal && (
+        <AbsenceFormModal
+          open
+          onClose={() => setAbsenceModal(null)}
+          date={absenceModal.date}
+          absence={absenceModal.absence}
+          onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
+          onUpdate={(id, data) =>
+            absenceActions.update.mutateAsync({ id, data })
+          }
+          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+          isSaving={
+            absenceActions.create.isPending || absenceActions.update.isPending
+          }
+          isDeleting={absenceActions.delete.isPending}
+        />
+      )}
 
       {modalState && (
         <TimeLogFormModal

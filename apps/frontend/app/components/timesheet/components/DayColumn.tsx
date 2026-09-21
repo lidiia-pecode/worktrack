@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Absence, TimeLog } from "@/types";
-import { formatDuration, isWeekend } from "@/lib/utils/date";
+import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
@@ -24,6 +24,7 @@ type Props = {
   pixelsPerMinute: number;
   plannedMinutes: number;
   onAddClick: (date: Date) => void;
+  onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
 };
 
@@ -35,6 +36,7 @@ export const DayColumn = ({
   pixelsPerMinute,
   plannedMinutes,
   onAddClick,
+  onAbsenceClick,
   onEntryClick,
 }: Props) => {
   const [hovered, setHovered] = useState<{
@@ -58,27 +60,33 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // Time cannot be logged on a day an absence covers, so the column does not
-  // invite it.
-  const openCreate = () => {
-    if (absence) return;
+  // Time cannot be logged on a day an absence covers, so the column opens the
+  // absence instead.
+  const openDay = () => {
+    if (absence) {
+      onAbsenceClick(date);
+      return;
+    }
+
     onAddClick(date);
   };
 
   return (
     <div
-      role={absence ? undefined : "button"}
-      tabIndex={absence ? undefined : 0}
-      aria-disabled={absence ? true : undefined}
-      onClick={openCreate}
+      role="button"
+      tabIndex={0}
+      aria-label={
+        absence ? `Edit the absence covering ${toISODate(date)}` : undefined
+      }
+      onClick={openDay}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          openCreate();
+          openDay();
         }
       }}
       className={`
         ${DAY_COLUMN_CLASS}
-        ${absence ? `${ABSENCE_PATTERN} cursor-default hover:bg-transparent` : ""}
+        ${absence ? ABSENCE_PATTERN : ""}
         ${!absence && weekend ? WEEKEND_PATTERN : ""}
         ${!absence && !weekend ? "bg-card" : ""}
       `}

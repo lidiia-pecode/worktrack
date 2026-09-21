@@ -10,5 +10,5 @@ export default async function DashboardPage() {
     redirect("/");
   }
 
-  return <WeekTimesheet />;
+  return <WeekTimesheet userId={user.id} />;
 }
