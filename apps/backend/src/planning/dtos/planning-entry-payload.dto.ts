@@ -17,7 +17,7 @@ export class CreatePlanningEntryDto {
   userId!: string;
 
   @IsUUID()
-  projectActivityId!: string;
+  projectId!: string;
 
   @IsDateWithoutTimeString()
   date!: string;

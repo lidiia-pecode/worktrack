@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { ProjectActivityResponse } from 'src/projects/dtos/project-activity-response.dto';
+import { ProjectResponse } from 'src/projects/dtos/project-response.dto';
 
 export class PlanningEntryResponse {
   @Expose()
@@ -12,8 +12,8 @@ export class PlanningEntryResponse {
   createdById?: string;
 
   @Expose()
-  @Type(() => ProjectActivityResponse)
-  projectActivity!: ProjectActivityResponse;
+  @Type(() => ProjectResponse)
+  project!: ProjectResponse;
 
   @Expose()
   plannedMinutes!: number;

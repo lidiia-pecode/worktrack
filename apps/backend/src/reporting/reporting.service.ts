@@ -118,6 +118,21 @@ export class ReportingService {
   }
 
   /**
+   * The last day covered by a LOCKED period, or null when nothing is locked.
+   * Anything effective on or before it would rewrite a closed month.
+   */
+  async latestLockedDate(companyId: string): Promise<string | null> {
+    const latest = await this.periodRepo
+      .createQueryBuilder('rp')
+      .select(`TO_CHAR(MAX(rp.end_date), 'YYYY-MM-DD')`, 'endDate')
+      .where('rp.companyId = :companyId', { companyId })
+      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
+      .getRawOne<{ endDate: string | null }>();
+
+    return latest?.endDate ?? null;
+  }
+
+  /**
    * True when any day between the two dates falls in a LOCKED period. A record
    * covering a range is frozen as soon as it touches one.
    */
@@ -172,7 +187,6 @@ export class ReportingService {
       .select('pe.user_id', 'userId')
       .addSelect('SUM(pe.planned_minutes)', 'totalPlannedMinutes')
       .from('planning_entries', 'pe')
-      .innerJoin('project_activities', 'pa', 'pa.id = pe.project_activity_id')
       .where('pe.company_id = :companyId', { companyId })
       .andWhere('pe.date BETWEEN :startDate AND :endDate', {
         startDate,
@@ -184,7 +198,7 @@ export class ReportingService {
     if (targetUserId)
       plannedQuery.andWhere('pe.user_id = :targetUserId', { targetUserId });
     if (projectId)
-      plannedQuery.andWhere('pa.project_id = :projectId', { projectId });
+      plannedQuery.andWhere('pe.project_id = :projectId', { projectId });
 
     const plannedResult = await plannedQuery
       .groupBy('pe.user_id')

@@ -2,13 +2,10 @@ import {
   IsEmail,
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Matches,
-  Max,
   MaxLength,
-  Min,
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
@@ -54,12 +51,6 @@ export class CreateUserPayload {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(168)
-  capacityHoursPerWeek?: number;
 }
 
 export class UpdateUserPayload {
@@ -83,10 +74,4 @@ export class UpdateUserPayload {
   @IsString()
   @MaxLength(255)
   position?: string;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  @Max(168)
-  capacityHoursPerWeek?: number;
 }

@@ -34,6 +34,10 @@ const useAbsencesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.absences.all,
 
+  // Days away are an input to Expected, which the server works out — so the
+  // week views have to re-read it, not just the absence list.
+  alsoInvalidate: [queryKeys.capacity.all, queryKeys.timelogs.all],
+
   api: {
     create: AbsencesClientApi.create,
     update: AbsencesClientApi.update,

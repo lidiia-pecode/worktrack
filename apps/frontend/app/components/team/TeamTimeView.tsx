@@ -11,7 +11,6 @@ import {
   formatWeekRangeLabel,
   getWeekDates,
   getWeekStart,
-  isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
@@ -39,7 +38,6 @@ type TeamTimeViewProps = {
 export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const {
     weekStartDay,
-    dailyTargetMinutes,
     timezone,
     isLoading: isLoadingSettings,
     isError: isSettingsError,
@@ -86,17 +84,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const absencesByUser = useMemo(
     () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
     [absences, weekDates],
-  );
-
-  /**
-   * The same target the timesheet shows, so the two views cannot disagree.
-   * Part-time capacity and absences are not in it yet, so it stays context
-   * rather than a judgement.
-   */
-  const expectedMinutes = useMemo(
-    () =>
-      dailyTargetMinutes * weekDates.filter((date) => !isWeekend(date)).length,
-    [dailyTargetMinutes, weekDates],
   );
 
   const dailyTotals = useMemo(() => {
@@ -249,7 +236,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   row={row}
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  expectedMinutes={expectedMinutes}
                   onOpen={(opened) => setOpenedUser(opened.user)}
                 />
               ))}

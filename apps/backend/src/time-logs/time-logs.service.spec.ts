@@ -17,6 +17,10 @@ import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { Absence } from 'src/absences/entities/absence.entity';
+import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { TimeLog } from './entities/time-log.entity';
@@ -107,6 +111,15 @@ describe('TimeLogsService write scope', () => {
       dataSource.getRepository(ProjectActivity),
       reporting,
       teamVisibility,
+      new ExpectedHoursService(
+        dataSource.getRepository(Absence),
+        new CapacityService(
+          dataSource.getRepository(UserCapacity),
+          dataSource.getRepository(Company),
+          dataSource.getRepository(User),
+          reporting,
+        ),
+      ),
       dataSource,
     );
 

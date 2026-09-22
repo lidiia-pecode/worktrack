@@ -19,12 +19,11 @@ import {
   UpdatePlanningEntryDto,
 } from './dtos/planning-entry-payload.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
-import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
-import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -33,8 +32,8 @@ export class PlanningService {
   constructor(
     @InjectRepository(PlanningEntry)
     private readonly repo: Repository<PlanningEntry>,
-    @InjectRepository(ProjectActivity)
-    private readonly projectActivityRepo: Repository<ProjectActivity>,
+    @InjectRepository(Project)
+    private readonly projectRepo: Repository<Project>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
@@ -48,10 +47,7 @@ export class PlanningService {
   private buildBaseQuery(): SelectQueryBuilder<PlanningEntry> {
     return this.repo
       .createQueryBuilder('p')
-      .leftJoinAndSelect('p.projectActivity', 'projectActivity')
-      .leftJoinAndSelect('projectActivity.project', 'project')
-      .leftJoinAndSelect('projectActivity.activity', 'activity')
-      .leftJoinAndSelect('activity.category', 'category');
+      .leftJoinAndSelect('p.project', 'project');
   }
 
   private applyTenantFilter(
@@ -142,8 +138,8 @@ export class PlanningService {
 
       await this.assertCanPlanForUser(targetUser, user);
 
-      const projectActivity = await this.resolveProjectActivity(
-        payload.projectActivityId,
+      const project = await this.resolveProject(
+        payload.projectId,
         user.companyId,
         manager,
       );
@@ -159,7 +155,7 @@ export class PlanningService {
       const entity = manager.create(PlanningEntry, {
         companyId: user.companyId,
         userId: payload.userId,
-        projectActivity,
+        project,
         createdById: user.id,
         plannedMinutes: payload.plannedMinutes,
         note: payload.note,
@@ -171,7 +167,7 @@ export class PlanningService {
       } catch (error: unknown) {
         if (isDatabaseConflictError(error)) {
           throw new ConflictException(
-            'A planning entry for this user, activity and date already exists. Edit the existing entry instead.',
+            'A planning entry for this user, project and date already exists. Edit the existing entry instead.',
           );
         }
         throw error;
@@ -187,7 +183,6 @@ export class PlanningService {
     return this.dataSource.transaction(async (manager) => {
       const entry = await this.getEntryForUpdate(id, user, manager);
 
-      // 🔒 ПЕРЕВІРКА ПРАВ: чи має менеджер право керувати цільовим юзером цього запису
       const targetUser = await this.getActiveUser(
         entry.userId,
         user.companyId,
@@ -197,9 +192,9 @@ export class PlanningService {
 
       await this.lockUser(manager, entry.userId, user.companyId);
 
-      if (payload.projectActivityId !== undefined) {
-        entry.projectActivity = await this.resolveProjectActivity(
-          payload.projectActivityId,
+      if (payload.projectId !== undefined) {
+        entry.project = await this.resolveProject(
+          payload.projectId,
           user.companyId,
           manager,
         );
@@ -225,7 +220,7 @@ export class PlanningService {
       } catch (error: unknown) {
         if (isDatabaseConflictError(error)) {
           throw new ConflictException(
-            'A planning entry for this user, activity and date already exists. Edit the existing entry instead.',
+            'A planning entry for this user, project and date already exists. Edit the existing entry instead.',
           );
         }
         throw error;
@@ -237,7 +232,6 @@ export class PlanningService {
     await this.dataSource.transaction(async (manager) => {
       const entry = await this.getEntryForUpdate(id, user, manager);
 
-      // 🔒 ПЕРЕВІРКА ПРАВ на видалення
       const targetUser = await this.getActiveUser(
         entry.userId,
         user.companyId,
@@ -323,35 +317,24 @@ export class PlanningService {
     return entry;
   }
 
-  private async resolveProjectActivity(
-    projectActivityId: string,
+  private async resolveProject(
+    projectId: string,
     companyId: string,
     manager?: EntityManager,
-  ): Promise<ProjectActivity> {
-    const repo = manager
-      ? manager.getRepository(ProjectActivity)
-      : this.projectActivityRepo;
+  ): Promise<Project> {
+    const repo = manager ? manager.getRepository(Project) : this.projectRepo;
 
-    const pa = await repo.findOne({
-      where: { id: projectActivityId },
-      relations: ['project', 'activity'],
-    });
+    const project = await repo.findOne({ where: { id: projectId } });
 
-    if (!pa || pa.companyId !== companyId) {
-      throw new NotFoundException('Project activity not found');
+    if (!project || project.companyId !== companyId) {
+      throw new NotFoundException('Project not found');
     }
 
-    if (
-      !pa.isActive ||
-      pa.project.status !== ProjectStatus.ACTIVE ||
-      pa.activity.status !== ActivityStatus.ACTIVE
-    ) {
-      throw new BadRequestException(
-        'Project activity is not available for planning',
-      );
+    if (project.status !== ProjectStatus.ACTIVE) {
+      throw new BadRequestException('Project is not available for planning');
     }
 
-    return pa;
+    return project;
   }
 
   private async getActiveUser(

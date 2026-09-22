@@ -41,6 +41,9 @@ type CreateEntityMutationsConfig<
 > = {
   queryKey: QueryKey;
 
+  /** Other caches this entity feeds into, refreshed alongside its own. */
+  alsoInvalidate?: QueryKey[];
+
   api: EntityMutationApi<
     TEntity,
     TCreate,
@@ -94,8 +97,13 @@ export function createEntityMutations<
   > {
     const queryClient = useQueryClient();
 
-    const invalidate = () =>
+    const invalidate = () => {
       queryClient.invalidateQueries({ queryKey: config.queryKey });
+
+      config.alsoInvalidate?.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
+    };
     const create = useMutation({
       mutationFn: config.api.create,
 

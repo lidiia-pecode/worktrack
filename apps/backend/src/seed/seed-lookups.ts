@@ -24,6 +24,12 @@ export async function buildLookups(dataSource: DataSource, companyId: string) {
       return user.id;
     },
 
+    projectId(projectName: string): string {
+      const project = projects.find((p) => p.name === projectName);
+      if (!project) throw new Error(`Project "${projectName}" not found`);
+      return project.id;
+    },
+
     projectActivityId(projectName: string, activityName: string): string {
       const project = projects.find((p) => p.name === projectName);
       const activity = activities.find((a) => a.name === activityName);

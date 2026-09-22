@@ -15,6 +15,7 @@ import { Company } from 'src/companies/entities/company.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { Absence } from 'src/absences/entities/absence.entity';
+import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserRole, UserStatus } from '../enums/user-role.enum';
 
@@ -93,20 +94,6 @@ export class User {
   })
   googleId!: string | null;
 
-  @Column({
-    type: 'numeric',
-    name: 'capacity_hours_per_week',
-    precision: 5,
-    scale: 2,
-    default: 40,
-    nullable: false,
-    transformer: {
-      to: (value: number) => value,
-      from: (value: string) => parseFloat(value),
-    },
-  })
-  capacityHoursPerWeek!: number;
-
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
 
@@ -138,6 +125,11 @@ export class User {
     cascade: false,
   })
   planningEntries!: PlanningEntry[];
+
+  @OneToMany(() => UserCapacity, (capacity) => capacity.user, {
+    cascade: false,
+  })
+  capacities!: UserCapacity[];
 
   @OneToMany(() => Absence, (absence) => absence.user, {
     cascade: false,

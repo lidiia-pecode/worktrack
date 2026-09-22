@@ -77,7 +77,8 @@ export interface TeamSummaryRow {
   minutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;
-  /** Only the days this person logged on, ascending. */
+  expectedMinutes: number;
+  expectedToDateMinutes: number;
   days: TeamSummaryDay[];
 }
 

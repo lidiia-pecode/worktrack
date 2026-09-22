@@ -11,16 +11,13 @@ export async function seedPlanning(dataSource: DataSource, companyId: string) {
 
   for (const item of PLANNING) {
     const userId = lookup.userId(item.email);
-    const projectActivityId = lookup.projectActivityId(
-      item.project,
-      item.activity,
-    );
+    const projectId = lookup.projectId(item.project);
     const date = dayOfWeek(item.day);
 
     const existing = await planningRepo.findOneBy({
       companyId,
       userId,
-      projectActivityId,
+      projectId,
       date,
     });
 
@@ -29,7 +26,7 @@ export async function seedPlanning(dataSource: DataSource, companyId: string) {
         planningRepo.create({
           companyId,
           userId,
-          projectActivityId,
+          projectId,
           createdById,
           date,
           plannedMinutes: item.minutes,
