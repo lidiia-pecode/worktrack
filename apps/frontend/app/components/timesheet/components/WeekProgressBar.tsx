@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 type Props = {
   billableMinutes: number;
   nonBillableMinutes: number;
-  plannedMinutes: number;
+  expectedMinutes: number;
 };
 
 const COLOR_BILLABLE = "bg-brand/70";
@@ -24,7 +24,7 @@ type BarSegment = {
   dotColorClass: string;
   left: number;
   width: number;
-  crossesPlanned: boolean;
+  crossesExpected: boolean;
   overtimeWidth: number;
   isFullyOvertime: boolean;
 };
@@ -37,7 +37,7 @@ function buildBarSegments(
     bgColorClass: string;
     dotColorClass: string;
   }[],
-  plannedMinutes: number,
+  expectedMinutes: number,
   scaleMinutes: number,
 ): BarSegment[] {
   let cumulative = 0;
@@ -51,14 +51,14 @@ function buildBarSegments(
       const left = (start / scaleMinutes) * 100;
       const width = (entry.minutes / scaleMinutes) * 100;
 
-      const crossesPlanned = start < plannedMinutes && end > plannedMinutes;
-      const isFullyOvertime = start >= plannedMinutes;
+      const crossesExpected = start < expectedMinutes && end > expectedMinutes;
+      const isFullyOvertime = start >= expectedMinutes;
 
       let overtimeWidth = 0;
       if (isFullyOvertime) {
         overtimeWidth = width;
-      } else if (crossesPlanned) {
-        overtimeWidth = width * ((end - plannedMinutes) / entry.minutes);
+      } else if (crossesExpected) {
+        overtimeWidth = width * ((end - expectedMinutes) / entry.minutes);
       }
 
       cumulative = end;
@@ -67,7 +67,7 @@ function buildBarSegments(
         ...entry,
         left,
         width,
-        crossesPlanned,
+        crossesExpected,
         isFullyOvertime,
         overtimeWidth,
       };
@@ -77,14 +77,14 @@ function buildBarSegments(
 export const WeekProgressBar = ({
   billableMinutes,
   nonBillableMinutes,
-  plannedMinutes,
+  expectedMinutes,
 }: Props) => {
   const totalMinutes = billableMinutes + nonBillableMinutes;
-  const overMinutes = Math.max(0, totalMinutes - plannedMinutes);
-  const isOverTarget = overMinutes > 0;
+  const overMinutes = Math.max(0, totalMinutes - expectedMinutes);
+  const isOverExpected = overMinutes > 0;
 
-  const scaleMinutes = Math.max(totalMinutes, plannedMinutes, 1);
-  const plannedPercent = Math.min((plannedMinutes / scaleMinutes) * 100, 100);
+  const scaleMinutes = Math.max(totalMinutes, expectedMinutes, 1);
+  const expectedPercent = Math.min((expectedMinutes / scaleMinutes) * 100, 100);
 
   const segments = useMemo(
     () =>
@@ -105,19 +105,19 @@ export const WeekProgressBar = ({
             dotColorClass: COLOR_NON_BILLABLE_DOT,
           },
         ],
-        plannedMinutes,
+        expectedMinutes,
         scaleMinutes,
       ),
-    [billableMinutes, nonBillableMinutes, plannedMinutes, scaleMinutes],
+    [billableMinutes, nonBillableMinutes, expectedMinutes, scaleMinutes],
   );
 
   return (
     <div className="flex w-full flex-col gap-2 select-none">
       <div className="group relative h-2 w-full overflow-hidden rounded-full bg-muted/30">
-        {isOverTarget && (
+        {isOverExpected && (
           <div
             className={`pointer-events-none absolute inset-y-0 ${OVERTIME_PATTERN}`}
-            style={{ left: `${plannedPercent}%`, right: 0 }}
+            style={{ left: `${expectedPercent}%`, right: 0 }}
           />
         )}
 
@@ -136,7 +136,7 @@ export const WeekProgressBar = ({
                 width: `${segment.width}%`,
               }}
             >
-              {(segment.crossesPlanned || segment.isFullyOvertime) &&
+              {(segment.crossesExpected || segment.isFullyOvertime) &&
                 segment.overtimeWidth > 0 && (
                   <div
                     aria-hidden="true"
@@ -150,10 +150,10 @@ export const WeekProgressBar = ({
           );
         })}
 
-        {plannedPercent > 0 && plannedPercent < 100 && (
+        {expectedPercent > 0 && expectedPercent < 100 && (
           <div
             className="pointer-events-none absolute inset-y-0 z-10 w-px border-r border-dashed border-muted-foreground/50"
-            style={{ left: `${plannedPercent}%` }}
+            style={{ left: `${expectedPercent}%` }}
           />
         )}
       </div>
@@ -183,13 +183,13 @@ export const WeekProgressBar = ({
 
         <div className="flex items-center gap-2 text-muted-foreground">
           <span>
-            Target:{" "}
+            Expected:{" "}
             <span className="text-foreground font-medium">
-              {formatDuration(plannedMinutes)}
+              {formatDuration(expectedMinutes)}
             </span>
           </span>
 
-          {isOverTarget && (
+          {isOverExpected && (
             <Badge
               variant="warning"
               className="px-1.5 py-0.2 text-[10px] font-medium"

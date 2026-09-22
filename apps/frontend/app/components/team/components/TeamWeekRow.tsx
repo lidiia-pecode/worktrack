@@ -21,6 +21,9 @@ export function TeamWeekRow({
 }: TeamWeekRowProps) {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
 
+  const behindMinutes = Math.max(0, row.expectedToDateMinutes - row.minutes);
+  const isBehind = behindMinutes > 0;
+
   return (
     <tr
       onClick={() => onOpen(row)}
@@ -85,13 +88,27 @@ export function TeamWeekRow({
       })}
 
       <td className="p-3 text-right text-sm whitespace-nowrap tabular-nums">
-        <span className="font-semibold text-foreground">
-          {formatDuration(row.minutes)}
-        </span>
+        <div className="flex items-center justify-end gap-1.5">
+          <div>
+            <span className="font-semibold text-foreground">
+              {formatDuration(row.minutes)}
+            </span>
 
-        <span className="ml-1.5 text-xs text-muted-foreground">
-          / {formatDuration(row.expectedMinutes)}
-        </span>
+            <span className="ml-1.5 text-xs text-muted-foreground">
+              / {formatDuration(row.expectedMinutes)}
+            </span>
+          </div>
+
+          {isBehind && (
+            <Badge
+              variant="warning"
+              title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
+              className="px-1.5 py-0.2 text-[10px] font-medium"
+            >
+              −{formatDuration(behindMinutes)}
+            </Badge>
+          )}
+        </div>
       </td>
     </tr>
   );

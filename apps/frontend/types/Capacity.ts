@@ -3,6 +3,7 @@ export interface ExpectedHours {
   dateFrom: string;
   dateTo: string;
   expectedMinutes: number;
+  expectedToDateMinutes: number;
 }
 
 export type ExpectedHoursQuery = {

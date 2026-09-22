@@ -10,4 +10,8 @@ export class ExpectedHoursResponse {
 
   @Expose()
   expectedMinutes!: number;
+
+  /** Only days that have finished — what "behind" is measured against. */
+  @Expose()
+  expectedToDateMinutes!: number;
 }

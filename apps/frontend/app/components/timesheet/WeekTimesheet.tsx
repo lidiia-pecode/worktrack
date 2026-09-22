@@ -27,6 +27,7 @@ import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
@@ -122,6 +123,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
 
   const {
     expectedMinutes,
+    expectedToDateMinutes,
     isLoading: isLoadingExpected,
     isError: isExpectedError,
     refetch: refetchExpected,
@@ -181,6 +183,8 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
   }, [timelogs]);
 
   const todayIso = todayISODate(timezone);
+
+  const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
 
   const maxDailyMinutes = Math.max(
     dailyTargetMinutes,
@@ -283,6 +287,16 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
               <span className="text-muted-foreground">
                 {formatDuration(expectedMinutes)}
               </span>
+
+              {behindMinutes > 0 && (
+                <Badge
+                  variant="warning"
+                  title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
+                  className="px-1.5 py-0.2 text-[10px] font-medium"
+                >
+                  −{formatDuration(behindMinutes)}
+                </Badge>
+              )}
             </div>
           )}
         </div>
@@ -306,7 +320,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
             <WeekProgressBar
               billableMinutes={billableMinutes}
               nonBillableMinutes={nonBillableMinutes}
-              plannedMinutes={expectedMinutes}
+              expectedMinutes={expectedMinutes}
             />
           </div>
         )}
@@ -370,7 +384,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                       absence={absencesByDate[iso]}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
-                      plannedMinutes={dailyTargetMinutes}
+                      expectedMinutes={dailyTargetMinutes}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}

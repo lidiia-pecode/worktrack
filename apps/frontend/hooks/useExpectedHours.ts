@@ -16,6 +16,7 @@ export function useExpectedHours(params: ExpectedHoursQuery) {
 
   return {
     expectedMinutes: query.data?.expectedMinutes ?? 0,
+    expectedToDateMinutes: query.data?.expectedToDateMinutes ?? 0,
     isLoading: query.isLoading,
     isError: query.isError,
     refetch: query.refetch,

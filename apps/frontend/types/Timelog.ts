@@ -78,6 +78,7 @@ export interface TeamSummaryRow {
   billableMinutes: number;
   nonBillableMinutes: number;
   expectedMinutes: number;
+  expectedToDateMinutes: number;
   days: TeamSummaryDay[];
 }
 

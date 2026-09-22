@@ -96,8 +96,8 @@ describe('ExpectedHoursService', () => {
     });
   };
 
-  const expectedFor = (userId: string, from = MONDAY, to = SUNDAY) =>
-    service.expectedMinutesForUser(companyId, userId, from, to);
+  const expectedFor = async (userId: string, from = MONDAY, to = SUNDAY) =>
+    (await service.expectedForUser(companyId, userId, from, to)).total;
 
   beforeAll(async () => {
     dataSource = await new DataSource({
@@ -124,6 +124,7 @@ describe('ExpectedHoursService', () => {
 
     service = new ExpectedHoursService(
       dataSource.getRepository(Absence),
+      dataSource.getRepository(Company),
       capacity,
     );
 
@@ -318,6 +319,86 @@ describe('ExpectedHoursService', () => {
     });
   });
 
+  describe('only finished days count towards behind', () => {
+    const thisMonday = () => {
+      const today = new Date();
+      const monday = new Date(
+        Date.UTC(
+          today.getUTCFullYear(),
+          today.getUTCMonth(),
+          today.getUTCDate(),
+        ),
+      );
+      monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+
+      return monday;
+    };
+
+    const isoOffsetFromMonday = (days: number) => {
+      const date = thisMonday();
+      date.setUTCDate(date.getUTCDate() + days);
+
+      return date.toISOString().slice(0, 10);
+    };
+
+    it('expects nothing yet from a week that has not started', async () => {
+      const expected = await service.expectedForUser(
+        companyId,
+        fullTimer,
+        isoOffsetFromMonday(7),
+        isoOffsetFromMonday(13),
+      );
+
+      expect(expected.total).toBe(FULL_WEEK);
+      expect(expected.toDate).toBe(0);
+    });
+
+    it('counts the whole of a week that is over', async () => {
+      const expected = await service.expectedForUser(
+        companyId,
+        fullTimer,
+        isoOffsetFromMonday(-7),
+        isoOffsetFromMonday(-1),
+      );
+
+      expect(expected.toDate).toBe(expected.total);
+    });
+
+    it('leaves today itself out, whatever day it is', async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const inAWeek = isoOffsetFromMonday(13);
+
+      const expected = await service.expectedForUser(
+        companyId,
+        fullTimer,
+        today,
+        inAWeek,
+      );
+
+      // Nothing in a range starting today has finished yet.
+      expect(expected.toDate).toBe(0);
+      expect(expected.total).toBeGreaterThan(0);
+    });
+
+    it('expects nothing to date from somebody away all of a finished week', async () => {
+      await setAbsence(
+        partTimer,
+        isoOffsetFromMonday(-7),
+        isoOffsetFromMonday(-1),
+      );
+
+      const expected = await service.expectedForUser(
+        companyId,
+        partTimer,
+        isoOffsetFromMonday(-7),
+        isoOffsetFromMonday(-1),
+      );
+
+      expect(expected.total).toBe(0);
+      expect(expected.toDate).toBe(0);
+    });
+  });
+
   describe('setting capacity', () => {
     it('reports the company default when nobody has set anything', async () => {
       const current = await capacity.currentFor(companyId, fullTimer, MONDAY);
@@ -413,15 +494,15 @@ describe('ExpectedHoursService', () => {
     });
 
     it('answers for several people in one call', async () => {
-      const expected = await service.expectedMinutesFor(
+      const expected = await service.expectedFor(
         companyId,
         [fullTimer, partTimer],
         MONDAY,
         SUNDAY,
       );
 
-      expect(expected.get(fullTimer)).toBe(FULL_WEEK);
-      expect(expected.get(partTimer)).toBe(PART_WEEK);
+      expect(expected.get(fullTimer)?.total).toBe(FULL_WEEK);
+      expect(expected.get(partTimer)?.total).toBe(PART_WEEK);
     });
   });
 });

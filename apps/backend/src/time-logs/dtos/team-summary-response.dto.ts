@@ -55,6 +55,9 @@ export class TeamSummaryRowResponse {
   expectedMinutes!: number;
 
   @Expose()
+  expectedToDateMinutes!: number;
+
+  @Expose()
   @Type(() => TeamSummaryDayResponse)
   days!: TeamSummaryDayResponse[];
 }

@@ -3,13 +3,24 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { Absence } from 'src/absences/entities/absence.entity';
+import { Company } from 'src/companies/entities/company.entity';
 
 import { CapacityService } from './capacity.service';
 import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
   isWorkingDay,
+  todayISODate,
 } from './working-days.util';
+
+export interface ExpectedMinutes {
+  /** The whole range. */
+  total: number;
+  /** Only the days that have finished, which is what "behind" is measured against. */
+  toDate: number;
+}
+
+const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0 };
 
 /**
  * How many minutes somebody was expected to work: their capacity, minus the
@@ -21,47 +32,45 @@ export class ExpectedHoursService {
   constructor(
     @InjectRepository(Absence)
     private readonly absenceRepo: Repository<Absence>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     private readonly capacity: CapacityService,
   ) {}
 
-  async expectedMinutesForUser(
+  async expectedForUser(
     companyId: string,
     userId: string,
     from: string,
     to: string,
-  ): Promise<number> {
-    const expected = await this.expectedMinutesFor(
-      companyId,
-      [userId],
-      from,
-      to,
-    );
-
-    return expected.get(userId) ?? 0;
+  ): Promise<ExpectedMinutes> {
+    const expected = await this.expectedFor(companyId, [userId], from, to);
+    return expected.get(userId) ?? NOTHING_EXPECTED;
   }
 
-  async expectedMinutesFor(
+  async expectedFor(
     companyId: string,
     userIds: string[],
     from: string,
     to: string,
-  ): Promise<Map<string, number>> {
+  ): Promise<Map<string, ExpectedMinutes>> {
     if (from > to) {
       throw new BadRequestException('from cannot be after to');
     }
 
-    const expected = new Map<string, number>();
+    const expected = new Map<string, ExpectedMinutes>();
     if (userIds.length === 0) return expected;
 
-    const [timelines, absencesByUser] = await Promise.all([
+    const [timelines, absencesByUser, today] = await Promise.all([
       this.capacity.timelinesFor(companyId, userIds, to),
       this.absenceRangesFor(companyId, userIds, from, to),
+      this.companyToday(companyId),
     ]);
 
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
-      let minutes = 0;
+      let total = 0;
+      let toDate = 0;
 
       for (const date of eachDate(from, to)) {
         if (!isWorkingDay(date)) continue;
@@ -69,14 +78,29 @@ export class ExpectedHoursService {
           continue;
         }
 
-        minutes +=
+        const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
+
+        total += share;
+        if (date < today) toDate += share;
       }
 
-      expected.set(userId, Math.round(minutes));
+      expected.set(userId, {
+        total: Math.round(total),
+        toDate: Math.round(toDate),
+      });
     }
 
     return expected;
+  }
+
+  private async companyToday(companyId: string): Promise<string> {
+    const company = await this.companyRepo.findOne({
+      where: { id: companyId },
+      select: ['id', 'timezone'],
+    });
+
+    return todayISODate(company?.timezone);
   }
 
   private async absenceRangesFor(

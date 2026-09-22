@@ -53,6 +53,7 @@ export interface TeamSummaryRow {
   billableMinutes: number;
   nonBillableMinutes: number;
   expectedMinutes: number;
+  expectedToDateMinutes: number;
   days: TeamSummaryDay[];
 }
 
@@ -176,7 +177,7 @@ export class TimeLogsService {
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
     const users = await this.findSummaryUsers(query, user, loggedUserIds);
 
-    const expected = await this.expectedHours.expectedMinutesFor(
+    const expected = await this.expectedHours.expectedFor(
       user.companyId,
       users.map((summaryUser) => summaryUser.id),
       query.dateFrom,
@@ -191,7 +192,8 @@ export class TimeLogsService {
           minutes: 0,
           billableMinutes: 0,
           nonBillableMinutes: 0,
-          expectedMinutes: expected.get(summaryUser.id) ?? 0,
+          expectedMinutes: expected.get(summaryUser.id)?.total ?? 0,
+          expectedToDateMinutes: expected.get(summaryUser.id)?.toDate ?? 0,
           days: [],
         },
       ]),

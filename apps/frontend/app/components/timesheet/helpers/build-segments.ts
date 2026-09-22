@@ -7,7 +7,7 @@ export const STACK_TOP_INSET_PX = 3;
 
 export function buildSegments(
   timelogs: TimeLog[],
-  plannedMinutes: number,
+  expectedMinutes: number,
   pixelsPerMinute: number,
 ): Segment[] {
   let cumulativeMinutes = 0;
@@ -23,11 +23,11 @@ export function buildSegments(
 
     let overtimeHeight = 0;
 
-    if (startMinutes >= plannedMinutes) {
+    if (startMinutes >= expectedMinutes) {
       overtimeHeight = height;
-    } else if (endMinutes > plannedMinutes) {
+    } else if (endMinutes > expectedMinutes) {
       overtimeHeight =
-        height * ((endMinutes - plannedMinutes) / timelog.minutes);
+        height * ((endMinutes - expectedMinutes) / timelog.minutes);
     }
 
     const segment: Segment = {

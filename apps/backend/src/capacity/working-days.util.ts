@@ -12,6 +12,22 @@ const toUtc = (date: string): number => Date.parse(`${date}T00:00:00Z`);
 export const toISODate = (timestamp: number): string =>
   new Date(timestamp).toISOString().slice(0, 10);
 
+/** Today where the company is, so nobody is "behind" at nine on Monday. */
+export const todayISODate = (timeZone?: string): string => {
+  if (!timeZone) return new Date().toISOString().slice(0, 10);
+
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+};
+
 export const isWorkingDay = (date: string): boolean => {
   const day = new Date(toUtc(date)).getUTCDay();
   return day >= 1 && day <= 5;

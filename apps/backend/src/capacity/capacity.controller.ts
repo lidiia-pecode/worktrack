@@ -38,14 +38,19 @@ export class CapacityController {
     @Query() query: ExpectedHoursQuery,
     @CurrentUser() user: AuthUser,
   ): Promise<ExpectedHoursResponse> {
-    const expectedMinutes = await this.expectedHours.expectedMinutesForUser(
+    const expected = await this.expectedHours.expectedForUser(
       user.companyId,
       user.id,
       query.dateFrom,
       query.dateTo,
     );
 
-    return { dateFrom: query.dateFrom, dateTo: query.dateTo, expectedMinutes };
+    return {
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      expectedMinutes: expected.total,
+      expectedToDateMinutes: expected.toDate,
+    };
   }
 
   @UseGuards(RolesGuard)

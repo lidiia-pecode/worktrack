@@ -22,7 +22,7 @@ type Props = {
   absence?: Absence;
   totalMinutes: number;
   pixelsPerMinute: number;
-  plannedMinutes: number;
+  expectedMinutes: number;
   onAddClick: (date: Date) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
@@ -34,7 +34,7 @@ export const DayColumn = ({
   absence,
   totalMinutes,
   pixelsPerMinute,
-  plannedMinutes,
+  expectedMinutes,
   onAddClick,
   onAbsenceClick,
   onEntryClick,
@@ -45,14 +45,14 @@ export const DayColumn = ({
   } | null>(null);
 
   const weekend = isWeekend(date);
-  const overTargetMinutes = Math.max(0, totalMinutes - plannedMinutes);
+  const overTargetMinutes = Math.max(0, totalMinutes - expectedMinutes);
   const isOverTarget = overTargetMinutes > 0;
 
-  const targetLineOffset = plannedMinutes * pixelsPerMinute;
+  const targetLineOffset = expectedMinutes * pixelsPerMinute;
 
   const segments = useMemo(
-    () => buildSegments(timelogs, plannedMinutes, pixelsPerMinute),
-    [timelogs, plannedMinutes, pixelsPerMinute],
+    () => buildSegments(timelogs, expectedMinutes, pixelsPerMinute),
+    [timelogs, expectedMinutes, pixelsPerMinute],
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
