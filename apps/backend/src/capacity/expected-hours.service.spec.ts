@@ -126,7 +126,6 @@ describe('ExpectedHoursService', () => {
 
     service = new ExpectedHoursService(
       dataSource.getRepository(Absence),
-      dataSource.getRepository(Company),
       capacity,
     );
 
@@ -479,6 +478,37 @@ describe('ExpectedHoursService', () => {
           owner.id,
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses a change backdated before a locked period', async () => {
+      // It would apply inside the locked period and rewrite what was expected
+      // of somebody in a month already signed off.
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          fullTimer,
+          32 * 60,
+          '2025-12-01',
+          owner.id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('leaves a locked month untouched once the change is refused', async () => {
+      const lockedWeek = ['2026-01-12', '2026-01-16'] as const;
+      const before = await expectedFor(fullTimer, ...lockedWeek);
+
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          fullTimer,
+          20 * 60,
+          '2025-12-01',
+          owner.id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(expectedFor(fullTimer, ...lockedWeek)).resolves.toBe(before);
     });
 
     it('refuses to set capacity for somebody in another company', async () => {

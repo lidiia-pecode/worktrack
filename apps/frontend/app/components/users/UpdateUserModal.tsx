@@ -81,11 +81,16 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
       capacity !== null && minutesPerWeek !== capacity.minutesPerWeek;
 
     if (hoursChanged) {
-      await setCapacity.mutateAsync({
-        userId: user.id,
-        minutesPerWeek,
-        validFrom: capacityValidFrom,
-      });
+      try {
+        await setCapacity.mutateAsync({
+          userId: user.id,
+          minutesPerWeek,
+          validFrom: capacityValidFrom,
+        });
+      } catch {
+        // Reported by the global mutation handler; keep the form open.
+        return;
+      }
     }
 
     update.mutate(

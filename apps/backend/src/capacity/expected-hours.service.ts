@@ -3,14 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { Absence } from 'src/absences/entities/absence.entity';
-import { Company } from 'src/companies/entities/company.entity';
 
 import { CapacityService } from './capacity.service';
 import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
   isWorkingDay,
-  todayISODate,
 } from './working-days.util';
 
 export interface ExpectedMinutes {
@@ -32,8 +30,6 @@ export class ExpectedHoursService {
   constructor(
     @InjectRepository(Absence)
     private readonly absenceRepo: Repository<Absence>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
     private readonly capacity: CapacityService,
   ) {}
 
@@ -63,7 +59,7 @@ export class ExpectedHoursService {
     const [timelines, absencesByUser, today] = await Promise.all([
       this.capacity.timelinesFor(companyId, userIds, to),
       this.absenceRangesFor(companyId, userIds, from, to),
-      this.companyToday(companyId),
+      this.capacity.today(companyId),
     ]);
 
     for (const userId of userIds) {
@@ -92,15 +88,6 @@ export class ExpectedHoursService {
     }
 
     return expected;
-  }
-
-  private async companyToday(companyId: string): Promise<string> {
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-      select: ['id', 'timezone'],
-    });
-
-    return todayISODate(company?.timezone);
   }
 
   private async absenceRangesFor(

@@ -11,7 +11,7 @@ import { User } from 'src/users/entities/user.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 
 import { UserCapacity } from './entities/user-capacity.entity';
-import { WORKING_DAYS_PER_WEEK } from './working-days.util';
+import { WORKING_DAYS_PER_WEEK, todayISODate } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
@@ -105,16 +105,28 @@ export class CapacityService {
     return timeline.minutesPerWeekOn(date);
   }
 
+  /** Today where the company is, so every view agrees on which day it is. */
+  async today(companyId: string): Promise<string> {
+    const company = await this.companyRepo.findOne({
+      where: { id: companyId },
+      select: ['id', 'timezone'],
+    });
+
+    return todayISODate(company?.timezone);
+  }
+
   /** What the form shows: the row in force today, or the company default. */
   async currentFor(
     companyId: string,
     userId: string,
-    onDate: string,
+    onDate?: string,
   ): Promise<CurrentCapacity> {
     await this.assertUserInCompany(companyId, userId);
 
+    const date = onDate ?? (await this.today(companyId));
+
     const row = await this.repo.findOne({
-      where: { companyId, userId, validFrom: LessThanOrEqual(onDate) },
+      where: { companyId, userId, validFrom: LessThanOrEqual(date) },
       order: { validFrom: 'DESC' },
     });
 
@@ -148,14 +160,13 @@ export class CapacityService {
   ): Promise<CurrentCapacity> {
     await this.assertUserInCompany(companyId, userId);
 
-    const isLocked = await this.reportingService.isDateLocked(
-      companyId,
-      validFrom,
-    );
+    // A change effective on or before the last closed day would silently
+    // rewrite what was expected of somebody in a month already signed off.
+    const lockedUntil = await this.reportingService.latestLockedDate(companyId);
 
-    if (isLocked) {
+    if (lockedUntil && validFrom <= lockedUntil) {
       throw new ForbiddenException(
-        `Cannot change capacity from ${validFrom} because that date falls in a LOCKED reporting period.`,
+        `Cannot change capacity from ${validFrom}: periods are LOCKED up to ${lockedUntil}, and the change would alter what was expected then.`,
       );
     }
 

@@ -61,7 +61,7 @@ export class CapacityController {
     @Param('userId', ParseUUIDPipe) userId: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.capacity.currentFor(user.companyId, userId, todayISODate());
+    return this.capacity.currentFor(user.companyId, userId);
   }
 
   @UseGuards(RolesGuard)
@@ -81,5 +81,3 @@ export class CapacityController {
     );
   }
 }
-
-const todayISODate = () => new Date().toISOString().slice(0, 10);

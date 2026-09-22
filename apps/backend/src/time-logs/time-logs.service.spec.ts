@@ -113,7 +113,6 @@ describe('TimeLogsService write scope', () => {
       teamVisibility,
       new ExpectedHoursService(
         dataSource.getRepository(Absence),
-        dataSource.getRepository(Company),
         new CapacityService(
           dataSource.getRepository(UserCapacity),
           dataSource.getRepository(Company),

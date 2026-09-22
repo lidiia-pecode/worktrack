@@ -118,6 +118,21 @@ export class ReportingService {
   }
 
   /**
+   * The last day covered by a LOCKED period, or null when nothing is locked.
+   * Anything effective on or before it would rewrite a closed month.
+   */
+  async latestLockedDate(companyId: string): Promise<string | null> {
+    const latest = await this.periodRepo
+      .createQueryBuilder('rp')
+      .select(`TO_CHAR(MAX(rp.end_date), 'YYYY-MM-DD')`, 'endDate')
+      .where('rp.companyId = :companyId', { companyId })
+      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
+      .getRawOne<{ endDate: string | null }>();
+
+    return latest?.endDate ?? null;
+  }
+
+  /**
    * True when any day between the two dates falls in a LOCKED period. A record
    * covering a range is frozen as soon as it touches one.
    */
