@@ -94,6 +94,8 @@ export const queryKeys = {
 
     expected: (params?: QueryParams) =>
       ["capacity", "expected", params ?? {}] as const,
+
+    forUser: (userId: string) => ["capacity", "user", userId] as const,
   },
 
   timelogs: {

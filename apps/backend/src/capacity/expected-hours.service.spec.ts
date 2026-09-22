@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { BadRequestException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
@@ -12,6 +13,7 @@ import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
+import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
@@ -31,6 +33,7 @@ import { ExpectedHoursService } from './expected-hours.service';
 
 const RUN = Date.now();
 const SLUG = `capacity-test-${RUN}`;
+const OTHER_SLUG = `capacity-other-${RUN}`;
 
 const MONDAY = '2026-02-09';
 const FRIDAY = '2026-02-13';
@@ -38,6 +41,8 @@ const SUNDAY = '2026-02-15';
 
 const FULL_WEEK = 40 * 60;
 const PART_WEEK = 24 * 60;
+
+const LOCKED_DATE = '2026-01-12';
 
 describe('ExpectedHoursService', () => {
   let dataSource: DataSource;
@@ -50,10 +55,14 @@ describe('ExpectedHoursService', () => {
   let owner: AuthUser;
   let fullTimer: string;
   let partTimer: string;
+  let stranger: string;
 
-  const createUser = async (name: string): Promise<string> => {
+  const createUser = async (
+    name: string,
+    inCompanyId?: string,
+  ): Promise<string> => {
     const user = await dataSource.getRepository(User).save({
-      companyId,
+      companyId: inCompanyId ?? companyId,
       role: UserRole.EMPLOYEE,
       firstName: name,
       lastName: 'Test',
@@ -96,9 +105,21 @@ describe('ExpectedHoursService', () => {
       logging: false,
     }).initialize();
 
+    const teamVisibility = new TeamVisibilityService(
+      dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
+    );
+
+    const reporting = new ReportingService(
+      dataSource.getRepository(ReportingPeriod),
+      teamVisibility,
+    );
+
     capacity = new CapacityService(
       dataSource.getRepository(UserCapacity),
       dataSource.getRepository(Company),
+      dataSource.getRepository(User),
+      reporting,
     );
 
     service = new ExpectedHoursService(
@@ -106,18 +127,10 @@ describe('ExpectedHoursService', () => {
       capacity,
     );
 
-    const teamVisibility = new TeamVisibilityService(
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
-    );
-
     timeLogs = new TimeLogsService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(ProjectActivity),
-      new ReportingService(
-        dataSource.getRepository(ReportingPeriod),
-        teamVisibility,
-      ),
+      reporting,
       teamVisibility,
       service,
       dataSource,
@@ -140,6 +153,19 @@ describe('ExpectedHoursService', () => {
       companyId,
       role: UserRole.OWNER,
     };
+
+    const otherCompany = await dataSource
+      .getRepository(Company)
+      .save({ companyName: OTHER_SLUG, slug: OTHER_SLUG });
+    stranger = await createUser('stranger', otherCompany.id);
+
+    await dataSource.getRepository(ReportingPeriod).save({
+      companyId,
+      name: `Locked ${RUN}`,
+      startDate: LOCKED_DATE,
+      endDate: LOCKED_DATE,
+      status: ReportingPeriodStatus.LOCKED,
+    });
   });
 
   beforeEach(async () => {
@@ -153,7 +179,9 @@ describe('ExpectedHoursService', () => {
 
   afterAll(async () => {
     if (!dataSource?.isInitialized) return;
-    await dataSource.getRepository(Company).delete({ slug: In([SLUG]) });
+    await dataSource
+      .getRepository(Company)
+      .delete({ slug: In([SLUG, OTHER_SLUG]) });
     await dataSource.destroy();
   });
 
@@ -287,6 +315,93 @@ describe('ExpectedHoursService', () => {
 
       expect(fromSummary).toBe(await expectedFor(partTimer));
       expect(fromSummary).toBeLessThan(PART_WEEK);
+    });
+  });
+
+  describe('setting capacity', () => {
+    it('reports the company default when nobody has set anything', async () => {
+      const current = await capacity.currentFor(companyId, fullTimer, MONDAY);
+
+      expect(current).toMatchObject({
+        minutesPerWeek: FULL_WEEK,
+        validFrom: null,
+        isCompanyDefault: true,
+      });
+    });
+
+    it('records a change from the date it takes effect', async () => {
+      const current = await capacity.setCapacity(
+        companyId,
+        fullTimer,
+        32 * 60,
+        '2026-02-11',
+        owner.id,
+      );
+
+      expect(current).toMatchObject({
+        minutesPerWeek: 32 * 60,
+        validFrom: '2026-02-11',
+        isCompanyDefault: false,
+      });
+    });
+
+    it('leaves the weeks before that date alone', async () => {
+      const beforeChange = await expectedFor(
+        fullTimer,
+        '2026-02-02',
+        '2026-02-08',
+      );
+
+      await capacity.setCapacity(
+        companyId,
+        fullTimer,
+        16 * 60,
+        MONDAY,
+        owner.id,
+      );
+
+      await expect(
+        expectedFor(fullTimer, '2026-02-02', '2026-02-08'),
+      ).resolves.toBe(beforeChange);
+    });
+
+    it('replaces a row dated the same day rather than failing', async () => {
+      await capacity.setCapacity(
+        companyId,
+        fullTimer,
+        32 * 60,
+        MONDAY,
+        owner.id,
+      );
+      await capacity.setCapacity(
+        companyId,
+        fullTimer,
+        30 * 60,
+        MONDAY,
+        owner.id,
+      );
+
+      const current = await capacity.currentFor(companyId, fullTimer, MONDAY);
+
+      expect(current.minutesPerWeek).toBe(30 * 60);
+    });
+
+    it('refuses a change dated into a locked period', async () => {
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          fullTimer,
+          32 * 60,
+          LOCKED_DATE,
+          owner.id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses to set capacity for somebody in another company', async () => {
+      await expect(
+        capacity.setCapacity(companyId, stranger, 32 * 60, MONDAY, owner.id),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

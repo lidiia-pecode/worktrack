@@ -13,10 +13,12 @@ import {
 import { User } from "@/types";
 
 import { useUserDetails, useUsers } from "@/hooks/useUsers";
+import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import { useProjects, useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { ProjectsClientApi } from "@/lib/api/resources";
 
 import { initials } from "@/lib/utils/user";
+import { todayISODate } from "@/lib/utils/date";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,9 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     actions: { update, archive, unarchive },
   } = useUsers();
 
+  const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(user.id);
+  const setCapacity = useSetCapacity();
+
   const {
     actions: { update: updateProject },
   } = useProjects();
@@ -68,16 +73,31 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     projectIds.includes(project.id),
   );
 
-  const handleSave = (data: UserFormData) => {
-    update.mutate({ id: user.id, data }, { onSuccess: () => setEdit(false) });
+  const handleSave = async (data: UserFormData) => {
+    const { capacityHoursPerWeek, capacityValidFrom, ...userData } = data;
+
+    const minutesPerWeek = Math.round(capacityHoursPerWeek * 60);
+    const hoursChanged =
+      capacity !== null && minutesPerWeek !== capacity.minutesPerWeek;
+
+    if (hoursChanged) {
+      await setCapacity.mutateAsync({
+        userId: user.id,
+        minutesPerWeek,
+        validFrom: capacityValidFrom,
+      });
+    }
+
+    update.mutate(
+      { id: user.id, data: userData },
+      { onSuccess: () => setEdit(false) },
+    );
   };
 
   const applyProjectMembership = async (
     projectId: string,
     shouldBeMember: boolean,
   ) => {
-    // Members are not part of the project list, so read the current ones back
-    // before rewriting them.
     const project = await ProjectsClientApi.getById(projectId);
     const existingIds = project.users?.map((item) => item.id) ?? [];
 
@@ -200,12 +220,18 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   <Button
                     type="submit"
                     form="user-modal-form"
-                    disabled={update.isPending}
+                    disabled={update.isPending || setCapacity.isPending}
                   >
-                    {update.isPending ? "Saving..." : "Save changes"}
+                    {update.isPending || setCapacity.isPending
+                      ? "Saving..."
+                      : "Save changes"}
                   </Button>
                 ) : (
-                  <Button type="button" onClick={() => setEdit(true)}>
+                  <Button
+                    type="button"
+                    onClick={() => setEdit(true)}
+                    disabled={isLoadingCapacity}
+                  >
                     Save changes
                   </Button>
                 )}
@@ -245,12 +271,18 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
               </div>
 
               <UserForm
+                // Remounts once the current hours arrive, so the form opens
+                // with the real number rather than a placeholder.
+                key={capacity?.minutesPerWeek ?? "loading"}
                 formId="user-modal-form"
                 defaultValues={{
                   position: user.position ?? "",
                   role: user.role,
+                  capacityHoursPerWeek: (capacity?.minutesPerWeek ?? 0) / 60,
+                  capacityValidFrom: todayISODate(),
                 }}
                 isEditMode={edit}
+                capacity={capacity}
                 onSubmit={handleSave}
               />
             </section>

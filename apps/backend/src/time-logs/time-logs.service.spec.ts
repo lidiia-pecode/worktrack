@@ -116,6 +116,8 @@ describe('TimeLogsService write scope', () => {
         new CapacityService(
           dataSource.getRepository(UserCapacity),
           dataSource.getRepository(Company),
+          dataSource.getRepository(User),
+          reporting,
         ),
       ),
       dataSource,

@@ -149,6 +149,8 @@ describe('AbsencesService', () => {
         new CapacityService(
           dataSource.getRepository(UserCapacity),
           dataSource.getRepository(Company),
+          dataSource.getRepository(User),
+          reporting,
         ),
       ),
       dataSource,

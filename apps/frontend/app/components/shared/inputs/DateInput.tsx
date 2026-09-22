@@ -8,15 +8,15 @@ type DateInputProps = {
   id?: string;
   label?: string;
   error?: string;
+  description?: string;
   className?: string;
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "type" | "className">;
 
-/**
- * A native date field carrying the form tokens, so the browser's own picker and
- * keyboard handling come for free.
- */
 export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
-  function DateInput({ id, label, error, className, ...props }, ref) {
+  function DateInput(
+    { id, label, error, description, className, ...props },
+    ref,
+  ) {
     const generatedId = useId();
     const inputId = id ?? generatedId;
 
@@ -37,6 +37,13 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           id={inputId}
           type="date"
           aria-invalid={!!error}
+          aria-describedby={
+            error
+              ? `${inputId}-error`
+              : description
+                ? `${inputId}-description`
+                : undefined
+          }
           className={cn(
             "h-11 w-full rounded-lg border border-input-placeholder/50 bg-input px-3.5 text-sm text-input-foreground",
             "outline-none transition hover:bg-input/80",
@@ -47,7 +54,23 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
           )}
         />
 
-        {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+        {description && !error && (
+          <p
+            id={`${inputId}-description`}
+            className="mt-1.5 text-xs text-muted-foreground"
+          >
+            {description}
+          </p>
+        )}
+
+        {error && (
+          <p
+            id={`${inputId}-error`}
+            className="mt-1.5 text-xs text-destructive"
+          >
+            {error}
+          </p>
+        )}
       </div>
     );
   },

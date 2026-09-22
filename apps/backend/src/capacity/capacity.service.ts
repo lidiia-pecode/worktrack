@@ -1,14 +1,27 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
+import { User } from 'src/users/entities/user.entity';
+import { ReportingService } from 'src/reporting/reporting.service';
 
 import { UserCapacity } from './entities/user-capacity.entity';
 import { WORKING_DAYS_PER_WEEK } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
+}
+
+export interface CurrentCapacity {
+  userId: string;
+  minutesPerWeek: number;
+  validFrom: string | null;
+  isCompanyDefault: boolean;
 }
 
 @Injectable()
@@ -18,6 +31,9 @@ export class CapacityService {
     private readonly repo: Repository<UserCapacity>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(User)
+    private readonly userRepo: Repository<User>,
+    private readonly reportingService: ReportingService,
   ) {}
 
   async defaultMinutesPerWeek(companyId: string): Promise<number> {
@@ -87,6 +103,95 @@ export class CapacityService {
   ): Promise<number> {
     const timeline = await this.timelineFor(companyId, userId, date);
     return timeline.minutesPerWeekOn(date);
+  }
+
+  /** What the form shows: the row in force today, or the company default. */
+  async currentFor(
+    companyId: string,
+    userId: string,
+    onDate: string,
+  ): Promise<CurrentCapacity> {
+    await this.assertUserInCompany(companyId, userId);
+
+    const row = await this.repo.findOne({
+      where: { companyId, userId, validFrom: LessThanOrEqual(onDate) },
+      order: { validFrom: 'DESC' },
+    });
+
+    if (row) {
+      return {
+        userId,
+        minutesPerWeek: row.minutesPerWeek,
+        validFrom: row.validFrom,
+        isCompanyDefault: false,
+      };
+    }
+
+    return {
+      userId,
+      minutesPerWeek: await this.defaultMinutesPerWeek(companyId),
+      validFrom: null,
+      isCompanyDefault: true,
+    };
+  }
+
+  /**
+   * Sets somebody's capacity from a date. Setting the same date twice replaces
+   * that row rather than failing, so a typo can be corrected the same day.
+   */
+  async setCapacity(
+    companyId: string,
+    userId: string,
+    minutesPerWeek: number,
+    validFrom: string,
+    actorId: string,
+  ): Promise<CurrentCapacity> {
+    await this.assertUserInCompany(companyId, userId);
+
+    const isLocked = await this.reportingService.isDateLocked(
+      companyId,
+      validFrom,
+    );
+
+    if (isLocked) {
+      throw new ForbiddenException(
+        `Cannot change capacity from ${validFrom} because that date falls in a LOCKED reporting period.`,
+      );
+    }
+
+    const existing = await this.repo.findOne({
+      where: { companyId, userId, validFrom },
+    });
+
+    if (existing) {
+      existing.minutesPerWeek = minutesPerWeek;
+      existing.createdById = actorId;
+      await this.repo.save(existing);
+    } else {
+      await this.repo.save(
+        this.repo.create({
+          companyId,
+          userId,
+          validFrom,
+          minutesPerWeek,
+          createdById: actorId,
+        }),
+      );
+    }
+
+    return this.currentFor(companyId, userId, validFrom);
+  }
+
+  private async assertUserInCompany(
+    companyId: string,
+    userId: string,
+  ): Promise<void> {
+    const exists = await this.userRepo.findOne({
+      where: { id: userId, companyId },
+      select: ['id'],
+    });
+
+    if (!exists) throw new NotFoundException('User not found');
   }
 }
 
