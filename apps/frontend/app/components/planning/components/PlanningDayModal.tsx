@@ -10,7 +10,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { PlanningEntry, PlanningWeekRow } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 import { usePlanningMutations } from "@/hooks/usePlanning";
-import { formatDuration } from "@/lib/utils/date";
+import { formatDuration, formatLongDayLabel } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
@@ -69,12 +69,6 @@ const toFormData = (entry: PlanningEntry): PlanFormData => ({
 
 const isArchivedEntry = (entry: PlanningEntry) =>
   entry.project.status === ProjectStatus.ARCHIVED;
-
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
 
 type PlanningDayModalProps = {
   row: PlanningWeekRow;
@@ -166,7 +160,6 @@ export const PlanningDayModal = ({
 
   const onSubmit = async (data: PlanFormData) => {
     const plannedMinutes = data.hours * 60 + data.minutes;
-    const note = data.note || undefined;
 
     try {
       if (editing) {
@@ -174,7 +167,8 @@ export const PlanningDayModal = ({
           id: editing.id,
           data: {
             plannedMinutes,
-            note,
+            // null clears a saved note; undefined would leave it unchanged.
+            note: data.note || null,
             ...(data.projectId !== editing.project.id && {
               projectId: data.projectId,
             }),
@@ -186,7 +180,7 @@ export const PlanningDayModal = ({
           projectId: data.projectId,
           date,
           plannedMinutes,
-          note,
+          note: data.note || undefined,
         });
       }
 
@@ -214,7 +208,7 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        title={DAY_LABEL.format(new Date(`${date}T00:00:00`))}
+        title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
         description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of a ${formatDuration(dayLimitMinutes)} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={

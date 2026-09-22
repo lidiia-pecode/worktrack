@@ -28,7 +28,7 @@ export interface UpdatePlanningEntryPayload {
   projectId?: string;
   date?: string;
   plannedMinutes?: number;
-  note?: string;
+  note?: string | null;
 }
 
 // Query (back PlanningQueryDto)
@@ -40,12 +40,12 @@ export type PlanningQuery = PaginationParams & {
   dateTo?: string;
 };
 
-// Mirrors the backend `PlanningWeekResponse` DTO.
 export type PlanningWeekQuery = {
   date: string;
   teamId?: string;
 };
 
+// Mirrors the backend `PlanningWeekResponse` DTO.
 export interface PlanningProjectOption {
   id: string;
   name: string;

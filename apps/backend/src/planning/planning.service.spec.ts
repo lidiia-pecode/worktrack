@@ -623,9 +623,10 @@ describe('PlanningService', () => {
     });
 
     it('lets a manager who leads no team read their own plan', async () => {
-      await existingEntry(loneManager.id, MONDAY, HOUR);
+      const id = await existingEntry(loneManager.id, MONDAY, HOUR);
 
       expect((await listFor(loneManager.id, loneManager)).count).toBe(1);
+      expect((await service.getById(id, loneManager)).id).toBe(id);
       await expect(listFor(member.id, loneManager)).rejects.toThrow(
         ForbiddenException,
       );

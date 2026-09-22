@@ -114,6 +114,17 @@ export function formatWeekdayLabel(date: Date): string {
   return WEEKDAY_LABEL.format(date);
 }
 
+const LONG_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
+/** e.g. "Wednesday, September 23". */
+export function formatLongDayLabel(date: Date): string {
+  return LONG_DAY_LABEL.format(date);
+}
+
 /** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 /**
  * Returns a 6-week (42 day) grid covering the given month, including the

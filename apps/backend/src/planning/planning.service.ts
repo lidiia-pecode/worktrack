@@ -108,19 +108,20 @@ export class PlanningService {
     qb.andWhere('p.company_id = :companyId', { companyId });
   }
 
+  // Everyone may read their own plan, including a manager who leads no team.
   private applyVisibilityFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     user: AuthUser,
   ): void {
     this.applyTenantFilter(qb, user.companyId);
-    this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user, {
+      includeSelf: true,
+    });
   }
 
   /**
-   * The entries that removing these people from these projects would delete:
-   * from today onwards, never inside a locked period. The cascade and the
-   * count shown before it share this, so the number shown is the number
-   * deleted.
+   * What a membership removal deletes: from today on, outside locked periods.
+   * Shared by the cascade and its count, so the two always agree.
    */
   private applyRemovableFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
@@ -169,17 +170,13 @@ export class PlanningService {
     }
 
     const qb = this.buildBaseQuery();
+    this.applyVisibilityFilter(qb, user);
 
-    if (query.userId === user.id) {
-      this.applyTenantFilter(qb, user.companyId);
-      qb.andWhere('p.user_id = :userId', { userId: user.id });
-    } else {
-      this.applyVisibilityFilter(qb, user);
-
-      if (query.userId) {
+    if (query.userId) {
+      if (query.userId !== user.id) {
         await this.assertUserVisible(query.userId, user);
-        qb.andWhere('p.user_id = :userId', { userId: query.userId });
       }
+      qb.andWhere('p.user_id = :userId', { userId: query.userId });
     }
 
     if (query.projectId) {
@@ -207,10 +204,6 @@ export class PlanningService {
     return { results, count };
   }
 
-  /**
-   * One week of the grid: a row per visible person, with their entries, the
-   * week's planned minutes and the minutes they have available that week.
-   */
   async getWeek(
     query: PlanningWeekQuery,
     user: AuthUser,
@@ -255,7 +248,6 @@ export class PlanningService {
     };
   }
 
-  /** How many entries removing these people from these projects would delete. */
   async countRemovable(
     query: PlanningRemovalCountQuery,
     user: AuthUser,
@@ -454,10 +446,7 @@ export class PlanningService {
     return { success: true };
   }
 
-  /**
-   * Called when people leave a project, inside the membership transaction and
-   * before their `project_users` rows go. Past plans stay for reporting.
-   */
+  /** Runs inside the membership transaction, before the `project_users` rows go. */
   async deleteForRemovedMembers(
     manager: EntityManager,
     companyId: string,
@@ -717,10 +706,8 @@ export class PlanningService {
   }
 
   /**
-   * A write may not raise the day above the company's working day, or the week
-   * above the hours the person has available. A week can already be over
-   * either limit after an absence or a capacity change, so a write that does
-   * not raise the total is always allowed.
+   * Refuses only a write that raises the day or the week past its limit, so a
+   * week left over budget by an absence or a capacity change can be reduced.
    */
   private async assertWithinLimits(
     manager: EntityManager,

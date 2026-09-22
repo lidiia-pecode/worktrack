@@ -102,10 +102,10 @@ Absences are built: a person records days away as a date range with a type, and
 the timesheet and the team view mark those days, so a week with no logged time
 says why. A day is either worked or absent, never both.
 
-Not built yet: any frontend for the backend's `planning` and `reporting`
-modules, and correct expected hours — the target still counts every weekday
-against a company-wide 8-hour day, ignoring part-time capacity and absence.
-That is the scope being planned now. The authorization gaps are all closed.
+Expected hours are capacity minus absences, and owners and managers plan their
+people's week by project at `/planning`, against the hours each person has
+available. Not built yet: any frontend for the backend's `reporting` module,
+which is the next scope. The authorization gaps are all closed.
 
 Test coverage has started but is narrow: nine suites and 178 tests, covering
 the role-visibility filters, the team route roles and membership rules, who may

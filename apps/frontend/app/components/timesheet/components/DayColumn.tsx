@@ -108,8 +108,7 @@ export const DayColumn = ({
         </div>
       )}
 
-      {/* The plan is context for an empty day only: once any time is logged,
-          the record of what happened replaces it. */}
+      {/* Once any time is logged, the record replaces the plan. */}
       {!absence && timelogs.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
           {plannedEntries.length > 0 && (

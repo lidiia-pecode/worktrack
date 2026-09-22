@@ -2,7 +2,12 @@ import { Plus } from "lucide-react";
 
 import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
 import { ProjectStatus } from "@/types/enums";
-import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  isWeekend,
+  toISODate,
+} from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -10,12 +15,6 @@ import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/badge";
 
 import { PersonLabel } from "../../shared/PersonLabel";
-
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -103,7 +102,7 @@ export const PlanningWeekRow = ({
             <button
               type="button"
               onClick={() => onOpenDay(row, iso)}
-              aria-label={`Plan ${fullName(row.user)} on ${DAY_LABEL.format(date)}`}
+              aria-label={`Plan ${fullName(row.user)} on ${formatLongDayLabel(date)}`}
               className="group flex h-full min-h-14 w-full flex-col gap-1 p-2 text-left hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
             >
               {absence && (

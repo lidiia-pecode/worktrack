@@ -14,10 +14,7 @@ import { PlanningClientApi } from "@/lib/api/resources";
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { queryKeys } from "./shared/queryKeys";
 
-/**
- * One week of the planning grid. Keeps the previous week on screen while the
- * next one loads, like the team view.
- */
+/** Keeps the previous week on screen while the next one loads. */
 export function usePlanningWeek(params: PlanningWeekQuery) {
   const query = useQuery({
     queryKey: queryKeys.planning.week(params),
@@ -35,7 +32,6 @@ export function usePlanningWeek(params: PlanningWeekQuery) {
   };
 }
 
-/** Planning entries as a flat list, e.g. one person's week on their timesheet. */
 export function usePlanningEntries(params: PlanningQuery) {
   const query = useQuery({
     queryKey: queryKeys.planning.list({ ...params }),
