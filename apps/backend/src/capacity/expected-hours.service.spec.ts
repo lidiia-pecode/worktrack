@@ -15,7 +15,9 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -483,6 +485,49 @@ describe('ExpectedHoursService', () => {
       await expect(
         capacity.setCapacity(companyId, stranger, 32 * 60, MONDAY, owner.id),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('planning never changes an expected figure', () => {
+    let projectId: string;
+
+    beforeAll(async () => {
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Project ${RUN}` });
+
+      projectId = project.id;
+    });
+
+    afterEach(async () => {
+      await dataSource.getRepository(PlanningEntry).delete({ companyId });
+    });
+
+    it('leaves a full-timer untouched whether or not they are planned', async () => {
+      const before = await expectedFor(fullTimer);
+
+      await dataSource.getRepository(PlanningEntry).save({
+        companyId,
+        userId: fullTimer,
+        projectId,
+        date: MONDAY,
+        plannedMinutes: 120,
+      });
+
+      await expect(expectedFor(fullTimer)).resolves.toBe(before);
+    });
+
+    it('expects the same of somebody with no planning at all', async () => {
+      await dataSource.getRepository(PlanningEntry).save({
+        companyId,
+        userId: fullTimer,
+        projectId,
+        date: MONDAY,
+        plannedMinutes: 480,
+      });
+
+      // The part-timer has nothing planned; their expectation is their own.
+      await expect(expectedFor(partTimer)).resolves.toBe(PART_WEEK);
     });
   });
 

@@ -172,7 +172,6 @@ export class ReportingService {
       .select('pe.user_id', 'userId')
       .addSelect('SUM(pe.planned_minutes)', 'totalPlannedMinutes')
       .from('planning_entries', 'pe')
-      .innerJoin('project_activities', 'pa', 'pa.id = pe.project_activity_id')
       .where('pe.company_id = :companyId', { companyId })
       .andWhere('pe.date BETWEEN :startDate AND :endDate', {
         startDate,
@@ -184,7 +183,7 @@ export class ReportingService {
     if (targetUserId)
       plannedQuery.andWhere('pe.user_id = :targetUserId', { targetUserId });
     if (projectId)
-      plannedQuery.andWhere('pa.project_id = :projectId', { projectId });
+      plannedQuery.andWhere('pe.project_id = :projectId', { projectId });
 
     const plannedResult = await plannedQuery
       .groupBy('pe.user_id')

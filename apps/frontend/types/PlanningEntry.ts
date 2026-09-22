@@ -1,10 +1,10 @@
-import { ProjectActivity } from "./ProjectActivities";
+import { Project } from "./Project";
 
 export interface PlanningEntry {
   id: string;
   userId: string;
   createdById?: string | null;
-  projectActivity: ProjectActivity;
+  project: Project;
   plannedMinutes: number;
   note?: string | null;
   date: string;
@@ -15,7 +15,7 @@ export interface PlanningEntry {
 // Payload (back CreatePlanningEntryDto)
 export interface CreatePlanningEntryPayload {
   userId: string;
-  projectActivityId: string;
+  projectId: string;
   date: string;
   plannedMinutes: number;
   note?: string;
@@ -23,7 +23,7 @@ export interface CreatePlanningEntryPayload {
 
 // Payload (back UpdatePlanningEntryDto)
 export interface UpdatePlanningEntryPayload {
-  projectActivityId?: string;
+  projectId?: string;
   date?: string;
   plannedMinutes?: number;
   note?: string;

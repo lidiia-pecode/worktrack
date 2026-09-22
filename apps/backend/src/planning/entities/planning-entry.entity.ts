@@ -12,23 +12,19 @@ import {
 
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { Project } from 'src/projects/entities/project.entity';
 
 @Entity('planning_entries')
 @Check(`"planned_minutes" > 0 AND "planned_minutes" <= 1440`)
 @Index(
-  'UQ_planning_company_user_activity_date',
-  ['companyId', 'userId', 'projectActivityId', 'date'],
+  'UQ_planning_company_user_project_date',
+  ['companyId', 'userId', 'projectId', 'date'],
   {
     unique: true,
   },
 )
 @Index('IDX_planning_company_user_date', ['companyId', 'userId', 'date'])
-@Index('IDX_planning_company_activity_date', [
-  'companyId',
-  'projectActivityId',
-  'date',
-])
+@Index('IDX_planning_company_project_date', ['companyId', 'projectId', 'date'])
 export class PlanningEntry {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -49,10 +45,10 @@ export class PlanningEntry {
 
   @Column({
     type: 'uuid',
-    name: 'project_activity_id',
+    name: 'project_id',
     nullable: false,
   })
-  projectActivityId!: string;
+  projectId!: string;
 
   @Column({
     type: 'uuid',
@@ -110,12 +106,12 @@ export class PlanningEntry {
   @JoinColumn({ name: 'user_id' })
   user!: User;
 
-  @ManyToOne(() => ProjectActivity, {
+  @ManyToOne(() => Project, {
     nullable: false,
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'project_activity_id' })
-  projectActivity!: ProjectActivity;
+  @JoinColumn({ name: 'project_id' })
+  project!: Project;
 
   @ManyToOne(() => User, {
     nullable: true,
