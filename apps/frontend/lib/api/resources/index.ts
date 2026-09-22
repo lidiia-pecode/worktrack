@@ -8,3 +8,4 @@ export * from "./projects.api";
 export * from "./time-logs.api";
 export * from "./users.api";
 export * from "./companies.api";
+export * from "./planning.api";

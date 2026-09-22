@@ -8,6 +8,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UsersModule } from 'src/users/users.module';
 import { ActivitiesModule } from 'src/activities/activities.module';
 import { TeamsModule } from 'src/teams/teams.module';
+import { PlanningModule } from 'src/planning/planning.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { TeamsModule } from 'src/teams/teams.module';
     UsersModule,
     ActivitiesModule,
     TeamsModule,
+    PlanningModule,
   ],
   controllers: [ProjectsController],
   providers: [ProjectsService],

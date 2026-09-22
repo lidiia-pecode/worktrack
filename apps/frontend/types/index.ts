@@ -6,6 +6,7 @@ export * from "./User";
 export * from "./Activities";
 export * from "./ActivityCategory";
 export * from "./ProjectActivities";
+export * from "./PlanningEntry";
 
 export interface PaginationParams {
   page?: number;

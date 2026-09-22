@@ -16,6 +16,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
+import { PlanningService } from 'src/planning/planning.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
@@ -157,6 +158,9 @@ describe('ProjectsService membership scope', () => {
         dataSource,
       ),
       teamVisibility,
+      stub<PlanningService>({
+        deleteForRemovedMembers: () => Promise.resolve(),
+      }),
       dataSource,
     );
 

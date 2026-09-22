@@ -27,6 +27,7 @@ import { ProjectsQuery } from './dtos/projects-query.dto';
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { PlanningService } from 'src/planning/planning.service';
 import { User } from 'src/users/entities/user.entity';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
@@ -45,6 +46,7 @@ export class ProjectsService {
     private readonly activitiesService: ActivitiesService,
     private readonly usersService: UsersService,
     private readonly teamVisibility: TeamVisibilityService,
+    private readonly planning: PlanningService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -201,6 +203,12 @@ export class ProjectsService {
     }
 
     if (idsToRemove.length > 0) {
+      await this.planning.deleteForRemovedMembers(
+        manager,
+        project.companyId,
+        project.id,
+        idsToRemove,
+      );
       await relation.remove(idsToRemove);
     }
   }

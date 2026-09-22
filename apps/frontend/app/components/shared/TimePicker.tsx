@@ -12,6 +12,7 @@ type TimePickerProps = {
   onMinutesChange: (value: number) => void;
   className?: string;
   error?: boolean;
+  minuteStep?: number;
 };
 
 export function TimePicker({
@@ -21,6 +22,7 @@ export function TimePicker({
   onMinutesChange,
   className,
   error,
+  minuteStep = 5,
 }: TimePickerProps) {
   return (
     <div
@@ -49,7 +51,7 @@ export function TimePicker({
         value={minutes}
         min={0}
         max={59}
-        step={5}
+        step={minuteStep}
         wrapOnStep
         onChange={onMinutesChange}
       />

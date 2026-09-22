@@ -17,7 +17,7 @@ type TeamFiltersProps = {
   teamId?: string;
   projectId?: string;
   onTeamChange: (teamId?: string) => void;
-  onProjectChange: (projectId?: string) => void;
+  onProjectChange?: (projectId?: string) => void;
 };
 
 export function TeamFilters({
@@ -62,13 +62,15 @@ export function TeamFilters({
         onValueChange={(value) => onTeamChange(toFilterValue(value))}
       />
 
-      <FormSelect
-        label="Project"
-        className="sm:w-56"
-        value={projectId ?? ALL_OPTION}
-        options={projectOptions}
-        onValueChange={(value) => onProjectChange(toFilterValue(value))}
-      />
+      {onProjectChange && (
+        <FormSelect
+          label="Project"
+          className="sm:w-56"
+          value={projectId ?? ALL_OPTION}
+          options={projectOptions}
+          onValueChange={(value) => onProjectChange(toFilterValue(value))}
+        />
+      )}
     </FilterBar>
   );
 }

@@ -1,4 +1,5 @@
 import { Project } from "./Project";
+import { TeamSummaryUser } from "./Timelog";
 
 export interface PlanningEntry {
   id: string;
@@ -39,3 +40,34 @@ export interface PlanningQuery {
   page?: number;
   limit?: number;
 }
+
+// Mirrors the backend `PlanningWeekResponse` DTO.
+export type PlanningWeekQuery = {
+  date: string;
+  teamId?: string;
+};
+
+export interface PlanningProjectOption {
+  id: string;
+  name: string;
+}
+
+export interface PlanningWeekRow {
+  user: TeamSummaryUser;
+  plannedMinutes: number;
+  availableMinutes: number;
+  projects: PlanningProjectOption[];
+  entries: PlanningEntry[];
+}
+
+export interface PlanningWeek {
+  weekStart: string;
+  weekEnd: string;
+  dayLimitMinutes: number;
+  rows: PlanningWeekRow[];
+}
+
+export type PlanningRemovalCountQuery = {
+  projectIds: string[];
+  userIds: string[];
+};

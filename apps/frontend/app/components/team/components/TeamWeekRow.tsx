@@ -3,7 +3,7 @@ import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 
-import { Avatar } from "../../shared/Avatar";
+import { PersonLabel } from "../../shared/PersonLabel";
 import { Badge } from "@/components/ui/badge";
 
 type TeamWeekRowProps = {
@@ -42,19 +42,7 @@ export function TeamWeekRow({
           aria-label={`Open ${fullName(row.user)}'s entries`}
           className="flex w-full min-w-0 items-center gap-2.5 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
         >
-          <Avatar user={row.user} />
-
-          <span className="min-w-0">
-            <span className="block truncate text-sm font-medium text-foreground">
-              {fullName(row.user)}
-            </span>
-
-            {row.user.position && (
-              <span className="block truncate text-xs text-muted-foreground">
-                {row.user.position}
-              </span>
-            )}
-          </span>
+          <PersonLabel user={row.user} />
         </button>
       </th>
 

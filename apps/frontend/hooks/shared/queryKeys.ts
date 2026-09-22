@@ -111,6 +111,12 @@ export const queryKeys = {
       ["timelogs", "team-summary", params ?? {}] as const,
   },
 
+  planning: {
+    all: ["planning"] as const,
+
+    week: (params?: QueryParams) => ["planning", "week", params ?? {}] as const,
+  },
+
   projectActivities: {
     all: ["projectActivities"] as const,
     lists: () => ["projectActivities", "list"] as const,
