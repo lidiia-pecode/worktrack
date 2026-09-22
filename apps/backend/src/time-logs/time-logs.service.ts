@@ -27,6 +27,7 @@ import {
 } from './dtos/time-log-payload.dto';
 import { TimeLogsQuery } from './dtos/time-logs-query.dto';
 import { TeamSummaryQuery } from './dtos/team-summary-query.dto';
+import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 interface DailyMinutesRaw {
@@ -51,6 +52,7 @@ export interface TeamSummaryRow {
   minutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;
+  expectedMinutes: number;
   days: TeamSummaryDay[];
 }
 
@@ -72,6 +74,7 @@ export class TimeLogsService {
     private readonly projectActivityRepo: Repository<ProjectActivity>,
     private readonly reportingService: ReportingService,
     private readonly teamVisibility: TeamVisibilityService,
+    private readonly expectedHours: ExpectedHoursService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -173,6 +176,13 @@ export class TimeLogsService {
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
     const users = await this.findSummaryUsers(query, user, loggedUserIds);
 
+    const expected = await this.expectedHours.expectedMinutesFor(
+      user.companyId,
+      users.map((summaryUser) => summaryUser.id),
+      query.dateFrom,
+      query.dateTo,
+    );
+
     const rows = new Map<string, TeamSummaryRow>(
       users.map((summaryUser) => [
         summaryUser.id,
@@ -181,6 +191,7 @@ export class TimeLogsService {
           minutes: 0,
           billableMinutes: 0,
           nonBillableMinutes: 0,
+          expectedMinutes: expected.get(summaryUser.id) ?? 0,
           days: [],
         },
       ]),

@@ -6,6 +6,7 @@ import { CalendarOff, FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useAbsences } from "@/hooks/useAbsences";
+import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { Absence, TimeLog } from "@/types";
 import {
@@ -119,6 +120,13 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     refetch: refetchPicker,
   } = useAssignableActivities();
 
+  const {
+    expectedMinutes,
+    isLoading: isLoadingExpected,
+    isError: isExpectedError,
+    refetch: refetchExpected,
+  } = useExpectedHours({ dateFrom, dateTo });
+
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};
 
@@ -172,11 +180,6 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     };
   }, [timelogs]);
 
-  const weeklyTargetMinutes = useMemo(
-    () => dailyTargetMinutes * weekDates.filter((d) => !isWeekend(d)).length,
-    [dailyTargetMinutes, weekDates],
-  );
-
   const todayIso = todayISODate(timezone);
 
   const maxDailyMinutes = Math.max(
@@ -229,10 +232,15 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     void refetchPicker();
     void refetchSettings();
     void refetchAbsences();
+    void refetchExpected();
   };
 
   const hasError =
-    isLogsError || isPickerError || isSettingsError || isAbsencesError;
+    isLogsError ||
+    isPickerError ||
+    isSettingsError ||
+    isAbsencesError ||
+    isExpectedError;
 
   // Someone on no project can still be on holiday, so an absence is enough to
   // show the week rather than the "not on any projects" state.
@@ -243,7 +251,8 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isLoadingSettings ||
     isLoadingLogs ||
     isLoadingPicker ||
-    isLoadingAbsences
+    isLoadingAbsences ||
+    isLoadingExpected
   ) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
@@ -272,7 +281,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
               <span className="text-muted-foreground/50">/</span>
 
               <span className="text-muted-foreground">
-                {formatDuration(weeklyTargetMinutes)}
+                {formatDuration(expectedMinutes)}
               </span>
             </div>
           )}
@@ -297,7 +306,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
             <WeekProgressBar
               billableMinutes={billableMinutes}
               nonBillableMinutes={nonBillableMinutes}
-              plannedMinutes={weeklyTargetMinutes}
+              plannedMinutes={expectedMinutes}
             />
           </div>
         )}

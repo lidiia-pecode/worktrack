@@ -1,4 +1,5 @@
 export * from "./Absence";
+export * from "./Capacity";
 export * from "./Project";
 export * from "./Timelog";
 export * from "./User";

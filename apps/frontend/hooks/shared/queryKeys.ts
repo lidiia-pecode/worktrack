@@ -89,6 +89,13 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("absences", params),
   },
 
+  capacity: {
+    all: ["capacity"] as const,
+
+    expected: (params?: QueryParams) =>
+      ["capacity", "expected", params ?? {}] as const,
+  },
+
   timelogs: {
     all: ["timelogs"] as const,
     lists: () => ["timelogs", "list"] as const,

@@ -2,6 +2,7 @@ export * from "./absences.api";
 export * from "./activities.api";
 export * from "./activity-categories.api";
 export * from "./auth.api";
+export * from "./capacity.api";
 export * from "./project-activities.api";
 export * from "./projects.api";
 export * from "./time-logs.api";

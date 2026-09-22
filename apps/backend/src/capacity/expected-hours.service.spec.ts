@@ -9,6 +9,15 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
+import { ReportingService } from 'src/reporting/reporting.service';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { TimeLogsService } from 'src/time-logs/time-logs.service';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
+
 import { UserCapacity } from './entities/user-capacity.entity';
 import { CapacityService } from './capacity.service';
 import { ExpectedHoursService } from './expected-hours.service';
@@ -35,7 +44,10 @@ describe('ExpectedHoursService', () => {
   let service: ExpectedHoursService;
   let capacity: CapacityService;
 
+  let timeLogs: TimeLogsService;
+
   let companyId: string;
+  let owner: AuthUser;
   let fullTimer: string;
   let partTimer: string;
 
@@ -94,6 +106,23 @@ describe('ExpectedHoursService', () => {
       capacity,
     );
 
+    const teamVisibility = new TeamVisibilityService(
+      dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
+    );
+
+    timeLogs = new TimeLogsService(
+      dataSource.getRepository(TimeLog),
+      dataSource.getRepository(ProjectActivity),
+      new ReportingService(
+        dataSource.getRepository(ReportingPeriod),
+        teamVisibility,
+      ),
+      teamVisibility,
+      service,
+      dataSource,
+    );
+
     const company = await dataSource.getRepository(Company).save({
       companyName: SLUG,
       slug: SLUG,
@@ -103,6 +132,14 @@ describe('ExpectedHoursService', () => {
 
     fullTimer = await createUser('full');
     partTimer = await createUser('part');
+
+    const ownerId = await createUser('owner');
+    owner = {
+      id: ownerId,
+      email: `owner-${RUN}@capacity.test`,
+      companyId,
+      role: UserRole.OWNER,
+    };
   });
 
   beforeEach(async () => {
@@ -217,6 +254,39 @@ describe('ExpectedHoursService', () => {
       await setCapacity(fullTimer, 16 * 60, '2026-03-02');
 
       await expect(expectedFor(fullTimer)).resolves.toBe(before);
+    });
+  });
+
+  describe('the team summary and the timesheet agree', () => {
+    const summaryExpectedFor = async (userId: string) => {
+      const summary = await timeLogs.getTeamSummary(
+        { dateFrom: MONDAY, dateTo: SUNDAY },
+        owner,
+      );
+
+      return summary.rows.find((row) => row.user.id === userId)
+        ?.expectedMinutes;
+    };
+
+    it('reports the same figure for a full-timer', async () => {
+      expect(await summaryExpectedFor(fullTimer)).toBe(
+        await expectedFor(fullTimer),
+      );
+    });
+
+    it('reports the same figure for a part-timer', async () => {
+      expect(await summaryExpectedFor(partTimer)).toBe(
+        await expectedFor(partTimer),
+      );
+    });
+
+    it('reports the same figure for somebody who was away', async () => {
+      await setAbsence(partTimer, MONDAY, '2026-02-11');
+
+      const fromSummary = await summaryExpectedFor(partTimer);
+
+      expect(fromSummary).toBe(await expectedFor(partTimer));
+      expect(fromSummary).toBeLessThan(PART_WEEK);
     });
   });
 

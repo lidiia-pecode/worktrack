@@ -23,6 +23,9 @@ import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-stat
 import { ReportingService } from 'src/reporting/reporting.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
+import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Absence } from './entities/absence.entity';
@@ -141,6 +144,13 @@ describe('AbsencesService', () => {
       dataSource.getRepository(ProjectActivity),
       reporting,
       teamVisibility,
+      new ExpectedHoursService(
+        dataSource.getRepository(Absence),
+        new CapacityService(
+          dataSource.getRepository(UserCapacity),
+          dataSource.getRepository(Company),
+        ),
+      ),
       dataSource,
     );
 
