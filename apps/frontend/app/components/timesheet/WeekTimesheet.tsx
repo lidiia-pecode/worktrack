@@ -94,6 +94,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isPlaceholderData: isShowingPreviousWeek,
     refetch: refetchLogs,
   } = useTimelogs(1, {
+    userId,
     dateFrom,
     dateTo,
     pageSize: WEEK_PAGE_SIZE,
@@ -106,8 +107,6 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isError: isAbsencesError,
     refetch: refetchAbsences,
   } = useAbsences(1, {
-    // Own absences only. A manager may read their team's, and this is their
-    // own week — somebody else's holiday must not read as theirs.
     userId,
     dateFrom,
     dateTo,
