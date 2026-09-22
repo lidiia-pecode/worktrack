@@ -8,7 +8,8 @@ import { useTimelogs } from "@/hooks/useTimelogs";
 import { useAbsences } from "@/hooks/useAbsences";
 import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
-import { Absence, TimeLog } from "@/types";
+import { usePlanningEntries } from "@/hooks/usePlanning";
+import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
   formatDuration,
   getWeekDates,
@@ -127,6 +128,24 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isError: isExpectedError,
     refetch: refetchExpected,
   } = useExpectedHours({ dateFrom, dateTo });
+
+  // Context only: the timesheet works the same whether or not a plan loads.
+  const { items: plannedEntries } = usePlanningEntries({
+    userId,
+    dateFrom,
+    dateTo,
+    pageSize: WEEK_PAGE_SIZE,
+  });
+
+  const plannedByDate = useMemo(() => {
+    const map: Record<string, PlanningEntry[]> = {};
+
+    plannedEntries.forEach((entry) => {
+      (map[entry.date] ??= []).push(entry);
+    });
+
+    return map;
+  }, [plannedEntries]);
 
   const timelogsByDate = useMemo(() => {
     const map: Record<string, TimeLog[]> = {};
@@ -380,6 +399,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                       key={iso}
                       date={date}
                       timelogs={timelogsByDate[iso] ?? []}
+                      plannedEntries={plannedByDate[iso] ?? []}
                       absence={absencesByDate[iso]}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}

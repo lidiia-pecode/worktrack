@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CalendarClock } from "lucide-react";
 
-import { Absence, TimeLog } from "@/types";
+import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
@@ -19,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 type Props = {
   date: Date;
   timelogs: TimeLog[];
+  plannedEntries: PlanningEntry[];
   absence?: Absence;
   totalMinutes: number;
   pixelsPerMinute: number;
@@ -31,6 +33,7 @@ type Props = {
 export const DayColumn = ({
   date,
   timelogs,
+  plannedEntries,
   absence,
   totalMinutes,
   pixelsPerMinute,
@@ -105,8 +108,28 @@ export const DayColumn = ({
         </div>
       )}
 
+      {/* The plan is context for an empty day only: once any time is logged,
+          the record of what happened replaces it. */}
       {!absence && timelogs.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
+          {plannedEntries.length > 0 && (
+            <>
+              <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                <CalendarClock className="size-3" aria-hidden />
+                Planned
+              </span>
+
+              {plannedEntries.map((entry) => (
+                <span
+                  key={entry.id}
+                  className="max-w-full truncate text-xs text-muted-foreground"
+                >
+                  {entry.project.name} · {formatDuration(entry.plannedMinutes)}
+                </span>
+              ))}
+            </>
+          )}
+
           <span className="text-[11px] text-muted-foreground/60">
             Click to log time
           </span>

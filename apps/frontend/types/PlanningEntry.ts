@@ -1,3 +1,4 @@
+import { PaginationParams } from ".";
 import { Project } from "./Project";
 import { TeamSummaryUser } from "./Timelog";
 
@@ -31,15 +32,13 @@ export interface UpdatePlanningEntryPayload {
 }
 
 // Query (back PlanningQueryDto)
-export interface PlanningQuery {
+export type PlanningQuery = PaginationParams & {
   userId?: string;
   projectId?: string;
   date?: string;
   dateFrom?: string;
   dateTo?: string;
-  page?: number;
-  limit?: number;
-}
+};
 
 // Mirrors the backend `PlanningWeekResponse` DTO.
 export type PlanningWeekQuery = {

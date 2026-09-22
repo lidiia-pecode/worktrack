@@ -59,6 +59,12 @@ export const PlanningWeekRow = ({
     ]);
   });
 
+  const overMinutes = Math.max(0, row.plannedMinutes - row.availableMinutes);
+  const unplannedMinutes = Math.max(
+    0,
+    row.availableMinutes - row.plannedMinutes,
+  );
+
   return (
     <tr className="border-b border-border last:border-b-0">
       <th
@@ -121,8 +127,32 @@ export const PlanningWeekRow = ({
         );
       })}
 
-      <td className="p-3 text-right text-sm font-semibold whitespace-nowrap text-foreground tabular-nums">
-        {formatDuration(row.plannedMinutes)}
+      <td className="p-3 text-right text-sm whitespace-nowrap tabular-nums">
+        <div>
+          <span className="font-semibold text-foreground">
+            {formatDuration(row.plannedMinutes)}
+          </span>
+
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            / {formatDuration(row.availableMinutes)}
+          </span>
+        </div>
+
+        {overMinutes > 0 ? (
+          <Badge
+            variant="warning"
+            title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
+            className="mt-1 px-1.5 py-0.2 text-[10px] font-medium"
+          >
+            Over by {formatDuration(overMinutes)}
+          </Badge>
+        ) : (
+          unplannedMinutes > 0 && (
+            <span className="mt-1 block text-xs text-muted-foreground">
+              {formatDuration(unplannedMinutes)} free
+            </span>
+          )
+        )}
       </td>
     </tr>
   );

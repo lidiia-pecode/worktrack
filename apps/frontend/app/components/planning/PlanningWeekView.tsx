@@ -98,6 +98,10 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
   }, [rows]);
 
   const totalPlanned = rows.reduce((sum, row) => sum + row.plannedMinutes, 0);
+  const totalAvailable = rows.reduce(
+    (sum, row) => sum + row.availableMinutes,
+    0,
+  );
 
   // Looked up from the latest rows so the open day refreshes after each save.
   const openedRow = openedDay
@@ -135,6 +139,12 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
 
             <span className="font-medium text-foreground tabular-nums">
               {formatDuration(totalPlanned)}
+            </span>
+
+            <span className="text-muted-foreground/50">/</span>
+
+            <span className="text-muted-foreground tabular-nums">
+              {formatDuration(totalAvailable)} available
             </span>
           </div>
         )}
@@ -202,7 +212,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                 <col key={toISODate(date)} className="w-28" />
               ))}
 
-              <col className="w-28" />
+              <col className="w-36" />
             </colgroup>
 
             <thead>
@@ -232,7 +242,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                   scope="col"
                   className="p-2 text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
                 >
-                  Week planned
+                  Planned / available
                 </th>
               </tr>
             </thead>

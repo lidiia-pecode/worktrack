@@ -169,11 +169,17 @@ export class PlanningService {
     }
 
     const qb = this.buildBaseQuery();
-    this.applyVisibilityFilter(qb, user);
 
-    if (query.userId) {
-      await this.assertUserVisible(query.userId, user);
-      qb.andWhere('p.user_id = :userId', { userId: query.userId });
+    if (query.userId === user.id) {
+      this.applyTenantFilter(qb, user.companyId);
+      qb.andWhere('p.user_id = :userId', { userId: user.id });
+    } else {
+      this.applyVisibilityFilter(qb, user);
+
+      if (query.userId) {
+        await this.assertUserVisible(query.userId, user);
+        qb.andWhere('p.user_id = :userId', { userId: query.userId });
+      }
     }
 
     if (query.projectId) {

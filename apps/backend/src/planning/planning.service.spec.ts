@@ -34,6 +34,7 @@ import {
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { PlanningEntry } from './entities/planning-entry.entity';
+import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
 
 /**
@@ -76,6 +77,7 @@ describe('PlanningService', () => {
   let member: AuthUser; // in "Alpha"
   let colleague: AuthUser; // in "Alpha"
   let outsider: AuthUser; // in the company, on no team
+  let loneManager: AuthUser; // has the MANAGER role but leads no team
 
   let projectId: string;
   let otherProjectId: string;
@@ -224,6 +226,7 @@ describe('PlanningService', () => {
     member = await createUser('member', UserRole.EMPLOYEE);
     colleague = await createUser('colleague', UserRole.EMPLOYEE);
     outsider = await createUser('outsider', UserRole.EMPLOYEE);
+    loneManager = await createUser('lonemanager', UserRole.MANAGER);
 
     const team = await dataSource
       .getRepository(Team)
@@ -596,6 +599,36 @@ describe('PlanningService', () => {
           FRIDAY,
         ),
       ).toEqual(before);
+    });
+  });
+
+  describe('reading a plan', () => {
+    const listFor = (userId: string, by: AuthUser) =>
+      service.list(
+        Object.assign(new PlanningQueryDto(), {
+          userId,
+          dateFrom: MONDAY,
+          dateTo: FRIDAY,
+        }),
+        by,
+      );
+
+    it('lets an employee read their own plan and nobody else’s', async () => {
+      await existingEntry(member.id, MONDAY, HOUR);
+
+      expect((await listFor(member.id, member)).count).toBe(1);
+      await expect(listFor(colleague.id, member)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('lets a manager who leads no team read their own plan', async () => {
+      await existingEntry(loneManager.id, MONDAY, HOUR);
+
+      expect((await listFor(loneManager.id, loneManager)).count).toBe(1);
+      await expect(listFor(member.id, loneManager)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 

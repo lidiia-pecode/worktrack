@@ -5,6 +5,7 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   CreatePlanningEntryPayload,
   PlanningEntry,
+  PlanningQuery,
   PlanningWeekQuery,
   UpdatePlanningEntryPayload,
 } from "@/types";
@@ -31,6 +32,21 @@ export function usePlanningWeek(params: PlanningWeekQuery) {
     isPlaceholderData: query.isPlaceholderData,
     isError: query.isError,
     refetch: query.refetch,
+  };
+}
+
+/** Planning entries as a flat list, e.g. one person's week on their timesheet. */
+export function usePlanningEntries(params: PlanningQuery) {
+  const query = useQuery({
+    queryKey: queryKeys.planning.list({ ...params }),
+    queryFn: () => PlanningClientApi.getAll(params),
+    placeholderData: keepPreviousData,
+  });
+
+  return {
+    items: query.data?.results ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
   };
 }
 
