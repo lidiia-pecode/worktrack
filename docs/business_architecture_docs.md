@@ -19,8 +19,8 @@ genuinely open.
 when Phase 2 merged. Phases 0, 1 and 2 of the roadmap in §7 are delivered, as
 are Scopes C, D and E of [`permission-model.md`](./permission-model.md) §7 —
 Scope E closed the last of the authorization gaps in §6, and the permission
-model is complete. The next work is Phase 3, correct expected hours, and its
-business decisions are still open.
+model is complete. The next work is Phase 3, capacity and expected hours, whose
+business decisions were settled in September 2026 and are described in §7.
 
 ---
 
@@ -794,21 +794,50 @@ be right until absences are known.*
 
 ---
 
-**Phase 3 — Correct expected hours**
+**Phase 3 — Capacity and expected hours**
 
 Makes "is this person short of target?" actually true. Today the answer uses a
-company-wide 8-hour day for everyone.
+company-wide 8-hour day for everyone, so a person on holiday for a week reads as
+40 hours short and a part-timer is measured against hours nobody agreed with
+them.
 
-Three inputs must combine: `User.capacityHoursPerWeek` for part-time staff,
-`Company.standardWorkHoursPerDay` as the fallback, and absences from Phase 2
-reducing the days expected. A person on holiday for a week should be at target,
-not 40 hours short, and a 3-day-a-week employee should never be measured against
-5 days.
+It also settles a question the product had been carrying without an answer:
+**what capacity is, and how it differs from planning.** Capacity says how much of
+a person's week exists; planning says what a manager intends to fill it with.
+Four words are fixed and then used unchanged in the API, the documentation and
+the interface:
 
-One thing to settle first, and it is not only arithmetic: `capacityHoursPerWeek`
-exists on `User` with a default of 40, is writable through the API and is offered
-by no screen — so part-time capacity cannot be set by anybody using the
-application. Making the number true means exposing it as well as reading it.
+| Word | What it means to a person | How it is worked out |
+| :--- | :--- | :--- |
+| **Expected** | How much you were supposed to work | capacity, minus the days you were away |
+| **Planned** | What a manager has committed you to, by project | the planning entries for those days |
+| **Logged** | What actually happened | the time logs for those days |
+| **Behind** | You logged less than expected | logged < expected, over finished days only |
+
+**Expected never consults planning, and planning never changes expected.** That
+rule is what keeps the two ideas from contradicting each other, and it is what
+makes the phase safe to ship before a planning interface exists. An employee
+with no plan at all has exactly the same expectation as anybody else.
+
+Capacity becomes **effective-dated**: contracted minutes per week with the date
+they take effect, in their own small table, resolved as "the latest row on or
+before this date" and falling back to `Company.standardWorkHoursPerDay × 5`.
+A single mutable column on `User` cannot work, because changing it would
+recompute every week the person had already worked — the instability Q1 already
+rejected for absences. `User.capacityHoursPerWeek`, which no screen ever set, is
+removed with the same migration.
+
+The owner sets capacity, in the user form, beside position and role: contracted
+hours are an employment fact, and D10 keeps user administration with the owner.
+A capacity change may not be dated into a locked period, exactly as an absence
+may not.
+
+Two limitations are accepted rather than solved: capacity spreads evenly over
+Monday to Friday, so somebody who really works three days sees an even daily
+figure on days they do not work; and the company default is not versioned, so
+changing it does shift history for people who have no capacity row. Both are
+deliberate, and neither is a defect to be fixed without a decision to reverse
+them.
 
 *Depends on: Phases 1 and 2, both delivered. Blocks: Phase 5's utilisation
 figures.*
@@ -818,13 +847,26 @@ figures.*
 **Phase 4 — Planning interface**
 
 Surfaces the planning module that already exists. Managers assign future work per
-person, per project-activity, per day, over a week or longer view. Employees see
-their own plan **read-only** — as useful context for what they are expected to be
+person, **per project**, per day, over a week or longer view. Employees see their
+own plan **read-only** — as useful context for what they are expected to be
 working on, never as a constraint (D3).
+
+Phase 3 moves planning entries from project activity to project, so a row is one
+person, one project, one day — one cell of the grid this phase draws. The
+activity is chosen when the time is actually logged: planning says which project,
+the time log says what work.
+
+With capacity and planning both in place, two manager-only figures become
+possible and belong here rather than in Phase 3: **unplanned capacity** (expected
+minus planned — who is free next week) and **overbooked** (planned above
+expected). Neither is ever shown to an employee, and neither affects whether
+somebody is behind.
 
 One decision to settle: planning currently does not require the target user to be
 assigned to the project, while time logging does. Planning someone onto a project
 they cannot log against produces a plan that is impossible to fulfil. See §10 Q2.
+Planning somebody on a day they are already absent is the same shape of problem
+and gets the same answer — warn, do not block.
 
 *Depends on: Phase 1 for navigation and the team context. Blocks: the
 planned-vs-actual half of Phase 5.*
@@ -839,7 +881,10 @@ Turns the data into the answers the company actually needs:
 - **The billable split** — billable client work, non-billable client work, and
   internal work kept distinct (D2). This is the number the services business
   runs on.
-- **Utilisation**, once Phase 3 makes expected hours trustworthy.
+- **Utilisation**, once Phase 3 makes expected hours trustworthy: billable logged
+  hours over expected hours. A period where nothing was expected — somebody on
+  leave for the whole month — shows "—" rather than 0%, which would otherwise
+  read as an accusation.
 - **Planned vs actual**, once Phase 4 means there is a plan worth comparing to.
   The backend aggregation already exists.
 - **Export.** Because invoicing happens outside WorkTrack (D7), someone has to
@@ -880,7 +925,7 @@ Phase 1  Team time view                  (hours + billable
    │                                       reports & export
    ├── Phase 2  Absences                   can branch early)
    │      │                                       │
-   │   Phase 3  Expected hours ────────┐          │
+   │   Phase 3  Capacity + expected ───┐          │
    │                                   │          │
    └── Phase 4  Planning UI ───────────┤          │
                                        │          │
@@ -979,7 +1024,8 @@ produces invoices already works in a spreadsheet. Confirm the grouping with them
 before building; the wrong granularity makes the export useless.
 
 **Q5 — Should the app chase people who have not logged time?**
-The team view shows who is short, but somebody still has to look.
+The team view shows who is short, but somebody still has to look. Phase 3 makes
+"short" precise: logged below expected, over days that have finished.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to
