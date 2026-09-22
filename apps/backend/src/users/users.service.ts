@@ -367,9 +367,6 @@ export class UsersService {
         user.role = payload.role;
       }
       if (payload.position !== undefined) user.position = payload.position;
-      if (payload.capacityHoursPerWeek !== undefined) {
-        user.capacityHoursPerWeek = payload.capacityHoursPerWeek;
-      }
 
       return this.safeSave(repo, user);
     };

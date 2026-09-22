@@ -12,6 +12,9 @@ import { TeamRole } from 'src/teams/enums/team-role.enum';
 
 export const SEED_PASSWORD = 'Password123!';
 
+/** Early enough that every seeded week falls after it. */
+export const CAPACITY_VALID_FROM = '2020-01-01';
+
 export const COMPANY = {
   companyName: 'WorkTrack Demo',
   slug: 'worktrack-demo',

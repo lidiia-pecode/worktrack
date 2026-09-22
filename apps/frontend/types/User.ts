@@ -14,7 +14,6 @@ export interface User {
   email: string;
   googleLinked: boolean;
   hasPassword: boolean;
-  capacityHoursPerWeek: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -30,7 +29,6 @@ export interface CreateUserPayload {
   email: string;
   password: string;
   role?: UserRole;
-  capacityHoursPerWeek?: number;
 }
 
 export interface UpdateUserPayload {
@@ -38,7 +36,6 @@ export interface UpdateUserPayload {
   lastName?: string;
   role?: UserRole;
   position?: string;
-  capacityHoursPerWeek?: number;
 }
 
 export interface UpdateProfilePayload {
