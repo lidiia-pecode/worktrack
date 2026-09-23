@@ -19,10 +19,16 @@ import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { todayISODate } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { ReportingPeriod } from '../entities/reporting-period.entity';
 import { ReportingService } from '../reporting.service';
+import {
+  addMonths,
+  firstDayOfMonth,
+  lastDayOfMonth,
+} from '../reporting-months.util';
 import { UtilisationService } from './utilisation.service';
 
 /**
@@ -252,6 +258,22 @@ describe('UtilisationService', () => {
     expect(rows.map((row) => row.userId).sort()).toEqual(
       [manager.id, member, awayAllMonth].sort(),
     );
+  });
+
+  it('counts only days that have finished', async () => {
+    const nextMonth = addMonths(firstDayOfMonth(todayISODate('UTC')), 1);
+    const dateFrom = nextMonth;
+    const dateTo = lastDayOfMonth(nextMonth);
+
+    const { rows } = await service.getUtilisation(owner, { dateFrom, dateTo });
+    const row = rows.find((r) => r.userId === member);
+
+    expect(row).toMatchObject({
+      capacityMinutes: 0,
+      availableMinutes: 0,
+      billableUtilisation: null,
+      loggingCompleteness: null,
+    });
   });
 
   it('is final for a locked month', async () => {

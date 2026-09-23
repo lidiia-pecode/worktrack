@@ -16,10 +16,10 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 23 September 2026**, and reconciled again
-with Phase 4. Phases 0 to 4 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 5. Phases 0 to 5 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
-The next work is Phase 5, reporting and closing periods.
+The next work is Phase 6, hardening, with export as the final stage.
 
 ---
 
@@ -579,7 +579,8 @@ the gap is the main fact about the project's current state.
   difference rather than a score (D3). A third shows utilisation per person —
   billable utilisation, client share, non-billable client share and logging
   completeness, each labelled with what it is measured against and shown as
-  "—" when there is nothing to measure.
+  "—" when there is nothing to measure. Availability counts only days that have
+  finished.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -605,7 +606,8 @@ what a week consisted of, and that already exists. A team timesheet would need
 per-user-per-day-per-project data the summary endpoint does not return, and
 would be unreadable at company size. "Where did the time go" is answered by the
 project filter at team level and by the per-person panel for one person;
-cross-cutting hours by client and project belong to Phase 5.
+cross-cutting hours by client and project are the hours report, built in
+Phase 5.
 
 ### Scope C delivered
 
@@ -765,8 +767,8 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 4 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7, so Phase 5 is the
+not a task list. Phases 0 to 5 are delivered, and so is every permission
+scope in [`permission-model.md`](./permission-model.md) §7, so Phase 6 is the
 work now being planned.
 
 ---
@@ -942,44 +944,42 @@ planned-vs-actual half of Phase 5.*
 
 ---
 
-**Phase 5 — Reporting and closing periods**
+**Phase 5 — Reporting and closing periods — delivered**
 
-Turns the data into the answers the company actually needs, and makes D5's
-period locking something an owner can actually use.
+**Built in September 2026.** Period locking was enforced on every write but
+could not be switched on, and none of the data came back out as an answer. Now
+months close by themselves and owners and managers have a `/reports` page. §4
+and §5 describe what is in force; what follows is what settling it cost.
 
-- **Closing periods automatically.** A reporting period is a calendar month.
-  Each month stays editable for a 7-day grace period after it ends and locks on
-  the eighth day, in the company's time zone — January locks on 8 February.
-  The lock is worked out from the date when it is checked, so nobody has to
-  create or close a month by hand. Months never share a day; only the grace
-  window of one month runs alongside the start of the next. An owner can
-  **reopen** a locked month after a confirmation, and it stays open until they
-  close it again; nothing closes a month early. On rollout every month already
-  past its grace window locks at once.
-- **Hours by client, project, activity and person** over a date range.
-- **The billable split** — billable client work, non-billable client work, and
-  internal work kept distinct (D2). This is the number the services business
-  runs on.
-- **Planned vs actual**, for owners and managers. The backend aggregation
-  already exists and stays readable by employees for their own figures, but no
-  employee screen shows it.
-- **Utilisation**, as four figures per person: **billable utilisation**
-  (billable over available hours), **client share** (client hours over logged),
-  **non-billable client share** (unpaid client work over all client work) and
-  **logging completeness** (logged over expected — whether the other figures can
-  be trusted). Billable over *capacity* was left out: it falls whenever somebody
-  is on holiday, which is unfair per person. **Reporting reads capacity and time
-  off separately** rather than consuming `expectedMinutes`. Absence type is
-  preserved in the data, so sick leave can be treated differently from vacation
-  if that is ever wanted. A figure with nothing to measure — somebody on leave
-  for the whole month — shows "—" rather than 0%, which would otherwise read as
-  an accusation.
+**Periods became calendar months that lock by themselves.** Free-form named
+periods were dropped. A month stays editable for 7 days after it ends and locks
+on the 8th in the company's time zone, worked out from the date whenever it is
+checked — a scheduled job was rejected because the backend sleeps when idle. An
+owner can reopen a locked month and close it again; nothing closes a month
+early. Every month already past its grace window locked the day this shipped.
 
-Reports are for owners (the whole company) and managers (the teams they lead).
-Employees get no reports screen for now; a report of their own hours is a
-possible later addition, not part of this phase.
+**The hours report keeps D2's three categories apart under any grouping.**
+Rather than treating internal work as one group, every row splits into billable
+client work, non-billable client work and internal work, grouped by client,
+project, activity or person.
 
-*Depends on: Phases 3 and 4 for the utilisation and planned-vs-actual views.*
+**Utilisation settled on four figures** — billable utilisation, client share,
+non-billable client share and logging completeness — reading capacity and
+absences separately and counting availability only for days that have finished,
+so a month in progress is not measured against days still to come. Billable over
+*capacity* was left out as unfair per person.
+
+**Names keep their case.** Project, client, activity, category and team names
+are trimmed rather than lowercased; team names became unique regardless of case,
+like the others.
+
+Reports are for owners and managers only. Planned vs actual stays readable
+through the API by employees for their own figures, but no employee screen
+shows it; a report of an employee's own hours is a possible later addition.
+Export moved to the final stage of the roadmap. The limitations accepted along
+the way are listed in `known-issues.md` rather than repeated here.
+
+*Depended on: Phases 3 and 4.*
 
 ---
 
@@ -1025,7 +1025,7 @@ Phase 1  Team time view                  (hours + billable
    │                                   │          │
    └── Phase 4  Planning UI ───────────┤          │   (delivered)
                                        │          │
-                            Phase 5  Reporting ◄──┘
+                            Phase 5  Reporting ◄──┘   (delivered)
                                        │
                             Phase 6  Hardening
                                        │

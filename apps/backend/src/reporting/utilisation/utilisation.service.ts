@@ -83,8 +83,9 @@ const withRatios = (minutes: Minutes): UtilisationFigures => ({
 
 /**
  * Utilisation per person. Capacity and absences are read separately rather
- * than through the expected figure, and logged time comes from the hours
- * report, so the split into client and internal work matches it exactly.
+ * than through the expected figure, and only for days that have finished, so a
+ * month in progress is not measured against days still to come. Logged time
+ * comes from the hours report, so the client and internal split matches it.
  *
  * Lives beside ReportingService rather than in it because capacity already
  * depends on reporting for the period lock.
@@ -117,7 +118,7 @@ export class UtilisationService {
       includeUserIds: [...hoursByUser.keys()],
     });
 
-    const availability = await this.expectedHours.availabilityFor(
+    const availability = await this.expectedHours.availabilityToDateFor(
       user.companyId,
       people.map((person) => person.id),
       dateFrom,

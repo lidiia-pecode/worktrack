@@ -106,7 +106,10 @@ export const UtilisationTable = ({ rows, totals }: UtilisationTableProps) => (
             Person
           </th>
           <th scope="col" className={cn(HEADER_CELL_CLASS, "w-28 text-right")}>
-            Available
+            <span className="block">Available</span>
+            <span className="block font-normal normal-case tracking-normal">
+              finished days only
+            </span>
           </th>
           <th scope="col" className={cn(HEADER_CELL_CLASS, "w-28 text-right")}>
             Logged

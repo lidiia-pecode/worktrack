@@ -370,15 +370,17 @@ about a project, meant to soften what Scope E's scoped roster gave up.
 It was cancelled because WorkTrack has no concept of a project belonging to one
 person, and adding a field to invent one would have contradicted the model it
 was supposed to serve — see §3.6. The permission model ends at Scope E, and the
-product work carried on without it: Phases 2 to 4 — absences, capacity and
-planning — shipped in September 2026, and Phase 5 is next — see
+product work carried on without it: Phases 2 to 5 — absences, capacity,
+planning and reporting — shipped in September 2026, and Phase 6 is next — see
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7.
 
 ### Not in any of these
 
-Reporting (Phase 5), export, and the `Client` entity (D8). Absences, capacity
-and planning (Phases 2 to 4) were built afterwards and needed nothing new here:
-their write scopes reuse D9's people, through the same helpers.
+Export and the `Client` entity (D8). Absences, capacity, planning and reporting
+(Phases 2 to 5) were built afterwards and needed nothing new here: their scopes
+reuse D9's people through the same helpers, so a manager's reports cover the
+teams they lead and an owner's the whole company. Reopening a locked month is
+the Owner's alone.
 
 ---
 

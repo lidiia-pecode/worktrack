@@ -18,21 +18,24 @@ export interface ExpectedMinutes {
   toDate: number;
 }
 
-/** The two halves of Expected, kept apart for utilisation. */
+/**
+ * The two halves of Expected, kept apart for utilisation, over the days of the
+ * range that have finished.
+ */
 export interface Availability {
-  /** Contracted minutes over the range's working days, ignoring absences. */
+  /** Contracted minutes, ignoring absences. */
   capacityMinutes: number;
   /** The part of that capacity an absence covered. */
   absenceMinutes: number;
-  /** Capacity minus absences: the same figure as Expected's total. */
+  /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
 }
 
 /** Unrounded sums, so every figure is rounded once at the end. */
 interface ShareSums {
-  capacity: number;
   available: number;
   availableToDate: number;
+  capacityToDate: number;
 }
 
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0 };
@@ -79,8 +82,12 @@ export class ExpectedHoursService {
     return expected;
   }
 
-  /** Capacity and absences over a range, read separately. */
-  async availabilityFor(
+  /**
+   * Capacity and absences read separately, counting only days that have
+   * finished, so a month in progress is measured against the time that has
+   * actually passed.
+   */
+  async availabilityToDateFor(
     companyId: string,
     userIds: string[],
     from: string,
@@ -90,8 +97,8 @@ export class ExpectedHoursService {
     const availability = new Map<string, Availability>();
 
     sums.forEach((sum, userId) => {
-      const capacityMinutes = Math.round(sum.capacity);
-      const availableMinutes = Math.round(sum.available);
+      const capacityMinutes = Math.round(sum.capacityToDate);
+      const availableMinutes = Math.round(sum.availableToDate);
 
       availability.set(userId, {
         capacityMinutes,
@@ -130,14 +137,19 @@ export class ExpectedHoursService {
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
-      const sum: ShareSums = { capacity: 0, available: 0, availableToDate: 0 };
+      const sum: ShareSums = {
+        available: 0,
+        availableToDate: 0,
+        capacityToDate: 0,
+      };
 
       for (const date of eachDate(from, to)) {
         if (!isWorkingDay(date)) continue;
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
-        sum.capacity += share;
+        const hasFinished = date < today;
+        if (hasFinished) sum.capacityToDate += share;
 
         const isAbsent = absences.some(
           (a) => a.startDate <= date && a.endDate >= date,
@@ -145,7 +157,7 @@ export class ExpectedHoursService {
         if (isAbsent) continue;
 
         sum.available += share;
-        if (date < today) sum.availableToDate += share;
+        if (hasFinished) sum.availableToDate += share;
       }
 
       sums.set(userId, sum);

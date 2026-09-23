@@ -104,14 +104,17 @@ says why. A day is either worked or absent, never both.
 
 Expected hours are capacity minus absences, and owners and managers plan their
 people's week by project at `/planning`, against the hours each person has
-available. Not built yet: any frontend for the backend's `reporting` module,
-which is the next scope. The authorization gaps are all closed.
+available. Each month locks by itself a week after it ends, and an owner can
+reopen one at `/admin/periods`. Owners and managers read hours, planned vs
+actual and utilisation at `/reports`. The next work is hardening; export comes
+last. The authorization gaps are all closed.
 
-Test coverage has started but is narrow: nine suites and 178 tests, covering
-the role-visibility filters, the team route roles and membership rules, who may
-invite whom into which team, what accepting an invitation creates, the time-log
-write scope, the user-list scope, the project assignment scope and the absence
-rules — mostly against a real database. GitHub Actions runs them, along with lint, typecheck and build
+Test coverage is fifteen suites and 299 tests, covering the role-visibility
+filters, the team route roles and membership rules, who may invite whom into
+which team, what accepting an invitation creates, the time-log write scope, the
+user-list scope, the project assignment scope, the absence, capacity and
+planning rules, monthly locking and the reports — mostly against a real
+database. GitHub Actions runs them, along with lint, typecheck and build
 for both applications, on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
 built by its host.
