@@ -6,6 +6,7 @@ import { RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { ReportingController } from './reporting.controller';
+import { UtilisationController } from './utilisation/utilisation.controller';
 
 type Handler = keyof ReportingController;
 
@@ -48,5 +49,23 @@ describe('ReportingController route roles', () => {
 
   it.each(EVERY_ROLE)('allows an employee on %s', (handler) => {
     expect(allows(handler, UserRole.EMPLOYEE)).toBe(true);
+  });
+});
+
+describe('UtilisationController route roles', () => {
+  const guard = new RolesGuard(new Reflector());
+  const handler: keyof UtilisationController = 'getUtilisation';
+
+  const allows = (role: UserRole): boolean =>
+    guard.canActivate({
+      getHandler: () => UtilisationController.prototype[handler],
+      getClass: () => UtilisationController,
+      switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
+    } as unknown as ExecutionContext);
+
+  it('allows owners and managers, and refuses employees', () => {
+    expect(allows(UserRole.OWNER)).toBe(true);
+    expect(allows(UserRole.MANAGER)).toBe(true);
+    expect(allows(UserRole.EMPLOYEE)).toBe(false);
   });
 });

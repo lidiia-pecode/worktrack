@@ -7,6 +7,8 @@ import {
   PlannedVsActualReport,
   ReportingMonth,
   ReportingPeriodsQuery,
+  UtilisationQuery,
+  UtilisationReport,
 } from "@/types";
 
 import { buildQueryString, createClient } from "../core";
@@ -30,4 +32,7 @@ export const ReportingClientApi = {
     client.get<PlannedVsActualReport>(
       `/planned-vs-actual${buildQueryString(params)}`,
     ),
+
+  getUtilisation: (params: UtilisationQuery) =>
+    client.get<UtilisationReport>(`/utilisation${buildQueryString(params)}`),
 };

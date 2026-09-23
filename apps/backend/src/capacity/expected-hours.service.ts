@@ -18,6 +18,23 @@ export interface ExpectedMinutes {
   toDate: number;
 }
 
+/** The two halves of Expected, kept apart for utilisation. */
+export interface Availability {
+  /** Contracted minutes over the range's working days, ignoring absences. */
+  capacityMinutes: number;
+  /** The part of that capacity an absence covered. */
+  absenceMinutes: number;
+  /** Capacity minus absences: the same figure as Expected's total. */
+  availableMinutes: number;
+}
+
+/** Unrounded sums, so every figure is rounded once at the end. */
+interface ShareSums {
+  capacity: number;
+  available: number;
+  availableToDate: number;
+}
+
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0 };
 
 /**
@@ -49,12 +66,60 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ExpectedMinutes>> {
+    const sums = await this.sumSharesFor(companyId, userIds, from, to);
+    const expected = new Map<string, ExpectedMinutes>();
+
+    sums.forEach((sum, userId) => {
+      expected.set(userId, {
+        total: Math.round(sum.available),
+        toDate: Math.round(sum.availableToDate),
+      });
+    });
+
+    return expected;
+  }
+
+  /** Capacity and absences over a range, read separately. */
+  async availabilityFor(
+    companyId: string,
+    userIds: string[],
+    from: string,
+    to: string,
+  ): Promise<Map<string, Availability>> {
+    const sums = await this.sumSharesFor(companyId, userIds, from, to);
+    const availability = new Map<string, Availability>();
+
+    sums.forEach((sum, userId) => {
+      const capacityMinutes = Math.round(sum.capacity);
+      const availableMinutes = Math.round(sum.available);
+
+      availability.set(userId, {
+        capacityMinutes,
+        absenceMinutes: capacityMinutes - availableMinutes,
+        availableMinutes,
+      });
+    });
+
+    return availability;
+  }
+
+  /**
+   * Walks every working day in the range: each contributes a fifth of the
+   * capacity in force that day, and counts as available unless an absence
+   * covers it.
+   */
+  private async sumSharesFor(
+    companyId: string,
+    userIds: string[],
+    from: string,
+    to: string,
+  ): Promise<Map<string, ShareSums>> {
     if (from > to) {
       throw new BadRequestException('from cannot be after to');
     }
 
-    const expected = new Map<string, ExpectedMinutes>();
-    if (userIds.length === 0) return expected;
+    const sums = new Map<string, ShareSums>();
+    if (userIds.length === 0) return sums;
 
     const [timelines, absencesByUser, today] = await Promise.all([
       this.capacity.timelinesFor(companyId, userIds, to),
@@ -65,29 +130,28 @@ export class ExpectedHoursService {
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
-      let total = 0;
-      let toDate = 0;
+      const sum: ShareSums = { capacity: 0, available: 0, availableToDate: 0 };
 
       for (const date of eachDate(from, to)) {
         if (!isWorkingDay(date)) continue;
-        if (absences.some((a) => a.startDate <= date && a.endDate >= date)) {
-          continue;
-        }
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
+        sum.capacity += share;
 
-        total += share;
-        if (date < today) toDate += share;
+        const isAbsent = absences.some(
+          (a) => a.startDate <= date && a.endDate >= date,
+        );
+        if (isAbsent) continue;
+
+        sum.available += share;
+        if (date < today) sum.availableToDate += share;
       }
 
-      expected.set(userId, {
-        total: Math.round(total),
-        toDate: Math.round(toDate),
-      });
+      sums.set(userId, sum);
     }
 
-    return expected;
+    return sums;
   }
 
   private async absenceRangesFor(

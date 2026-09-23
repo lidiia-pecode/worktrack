@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarClock, FileBarChart } from "lucide-react";
+import { CalendarClock, FileBarChart, Gauge } from "lucide-react";
 
 import { getMonthRange, toMonthKey, todayISODate } from "@/lib/utils/date";
 import { HoursReportGroupBy } from "@/types/enums";
@@ -11,8 +11,9 @@ import { ResourceTabButton } from "../shared/resourse/ResourcePage";
 import { HoursReportSection } from "./components/HoursReportSection";
 import { PlannedVsActualSection } from "./components/PlannedVsActualSection";
 import { CUSTOM_RANGE, ReportFilters } from "./components/ReportFilters";
+import { UtilisationSection } from "./components/UtilisationSection";
 
-type ReportTab = "hours" | "planned-vs-actual";
+type ReportTab = "hours" | "planned-vs-actual" | "utilisation";
 
 export const ReportsView = () => {
   const [tab, setTab] = useState<ReportTab>("hours");
@@ -55,6 +56,13 @@ export const ReportsView = () => {
           label="Planned vs actual"
           onClick={() => setTab("planned-vs-actual")}
         />
+
+        <ResourceTabButton
+          active={tab === "utilisation"}
+          icon={<Gauge className="size-3.5" />}
+          label="Utilisation"
+          onClick={() => setTab("utilisation")}
+        />
       </div>
 
       <div className="border-b border-border">
@@ -76,6 +84,10 @@ export const ReportsView = () => {
 
       {isRangeValid && tab === "planned-vs-actual" && (
         <PlannedVsActualSection range={range} />
+      )}
+
+      {isRangeValid && tab === "utilisation" && (
+        <UtilisationSection range={range} />
       )}
     </Container>
   );

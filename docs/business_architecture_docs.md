@@ -576,7 +576,10 @@ the gap is the main fact about the project's current state.
   (D2). A range that includes a month still open to edits is marked
   provisional. Managers see only the teams they lead. A second tab compares
   planned with logged time per person for the same range, shown as a neutral
-  difference rather than a score (D3).
+  difference rather than a score (D3). A third shows utilisation per person —
+  billable utilisation, client share, non-billable client share and logging
+  completeness, each labelled with what it is measured against and shown as
+  "—" when there is nothing to measure.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
