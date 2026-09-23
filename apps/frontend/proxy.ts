@@ -75,6 +75,7 @@ function handleRouteGuards(
     pathname.startsWith("/admin") ||
     pathname.startsWith("/team") ||
     pathname.startsWith("/planning") ||
+    pathname.startsWith("/reports") ||
     pathname.startsWith("/timesheet") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/onboarding");

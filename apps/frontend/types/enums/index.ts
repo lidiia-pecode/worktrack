@@ -66,3 +66,10 @@ export enum ReportingMonthState {
   LOCKED = "LOCKED",
   REOPENED = "REOPENED",
 }
+
+export enum HoursReportGroupBy {
+  CLIENT = "client",
+  PROJECT = "project",
+  ACTIVITY = "activity",
+  PERSON = "person",
+}

@@ -140,6 +140,18 @@ export function toMonthKey(date: string): string {
   return date.slice(0, 7);
 }
 
+/** The first and last day of a YYYY-MM month, as YYYY-MM-DD dates. */
+export function getMonthRange(monthKey: string): {
+  dateFrom: string;
+  dateTo: string;
+} {
+  const firstDay = new Date(`${monthKey}-01T00:00:00`);
+  // Day 0 of the next month is the last day of this one.
+  const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0);
+
+  return { dateFrom: toISODate(firstDay), dateTo: toISODate(lastDay) };
+}
+
 /** e.g. "September 2026", from a YYYY-MM month key. */
 export function formatMonthLabel(monthKey: string): string {
   return MONTH_YEAR_LABEL.format(new Date(`${monthKey}-01T00:00:00`));

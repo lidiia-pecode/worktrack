@@ -570,6 +570,11 @@ the gap is the main fact about the project's current state.
   owner can reopen a locked month from `/admin/periods` and close it again. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
+- **Hours report** — owners and managers see logged time on `/reports` for a
+  month or a custom range, grouped by client, project, activity or person, and
+  split into billable client work, non-billable client work and internal work
+  (D2). A range that includes a month still open to edits is marked
+  provisional. Managers see only the teams they lead.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -578,7 +583,7 @@ the gap is the main fact about the project's current state.
 
 ### Backend-only, no user interface at all
 
-- **Reporting.** A planned-vs-actual aggregation. No screen exists.
+- **Planned vs actual.** The aggregation exists; no screen shows it yet.
 
 ### Phase 1 delivered
 

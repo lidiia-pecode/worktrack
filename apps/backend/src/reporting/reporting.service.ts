@@ -26,6 +26,8 @@ import {
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { GetReportQueryDto } from './dtos/report-query.dto';
 import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
+import { HoursReportQuery } from './dtos/hours-report-query.dto';
+import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
 interface PlannedRawResult {
@@ -46,6 +48,75 @@ export interface ReportingMonth {
   /** The last editable day while the month is open or in its grace window. */
   editableUntil: string | null;
 }
+
+export interface HoursSplit {
+  /** Client work marked billable. */
+  billableMinutes: number;
+  /** Client work not marked billable. */
+  nonBillableMinutes: number;
+  /** Work on projects with no client, whatever its billable flag. */
+  internalMinutes: number;
+  totalMinutes: number;
+}
+
+export interface HoursReportRow extends HoursSplit {
+  /** The project, activity or person id; null when grouped by client. */
+  id: string | null;
+  /** Null only for internal work when grouped by client. */
+  name: string | null;
+  /** The client for a project, the category for an activity, the position for a person. */
+  detail: string | null;
+}
+
+export interface HoursReport {
+  rows: HoursReportRow[];
+  totals: HoursSplit;
+  /** True while any month in the range can still be edited. */
+  isProvisional: boolean;
+}
+
+interface HoursReportRawRow {
+  id: string | null;
+  name: string | null;
+  detail: string | null;
+  billableMinutes: string;
+  nonBillableMinutes: string;
+  internalMinutes: string;
+  totalMinutes: string;
+}
+
+/** An empty client name counts as no client, which means internal work. */
+const CLIENT_NAME = `NULLIF(p.client_name, '')`;
+
+const HOURS_GROUPINGS: Record<
+  HoursReportGroupBy,
+  { id: string; name: string; detail: string; groupBy: string[] }
+> = {
+  [HoursReportGroupBy.CLIENT]: {
+    id: 'NULL',
+    name: CLIENT_NAME,
+    detail: 'NULL',
+    groupBy: [CLIENT_NAME],
+  },
+  [HoursReportGroupBy.PROJECT]: {
+    id: 'p.id',
+    name: 'p.name',
+    detail: CLIENT_NAME,
+    groupBy: ['p.id'],
+  },
+  [HoursReportGroupBy.ACTIVITY]: {
+    id: 'a.id',
+    name: 'a.name',
+    detail: 'c.name',
+    groupBy: ['a.id', 'c.name'],
+  },
+  [HoursReportGroupBy.PERSON]: {
+    id: 'u.id',
+    name: `u.first_name || ' ' || u.last_name`,
+    detail: 'u.position',
+    groupBy: ['u.id'],
+  },
+};
 
 const DEFAULT_MONTHS_LISTED = 12;
 const MAX_MONTHS_LISTED = 36;
@@ -237,6 +308,22 @@ export class ReportingService {
     return new Set(rows.map((row) => row.month));
   }
 
+  /** Whether any month touching the range is not locked yet. */
+  private async hasEditableMonth(
+    companyId: string,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<boolean> {
+    const today = await this.today(companyId);
+    const months = monthsBetween(dateFrom, dateTo);
+    const reopened = await this.findReopenedMonths(companyId, months);
+
+    return months.some(
+      (month) =>
+        this.stateOf(month, today, reopened) !== ReportingMonthState.LOCKED,
+    );
+  }
+
   /** Today where the company is, so a month locks at the company's midnight. */
   private async today(companyId: string): Promise<string> {
     const company = await this.companyRepo.findOne({
@@ -250,6 +337,93 @@ export class ReportingService {
   // ==========================================
   // ANALYTICS & REPORTS
   // ==========================================
+
+  /**
+   * Logged time over a date range, grouped one way and split into billable
+   * client work, non-billable client work and internal work (D2).
+   */
+  async getHoursReport(
+    user: AuthUser,
+    query: HoursReportQuery,
+  ): Promise<HoursReport> {
+    const { dateFrom, dateTo, groupBy } = query;
+
+    if (dateFrom > dateTo) {
+      throw new BadRequestException('dateFrom cannot be after dateTo');
+    }
+
+    const grouping = HOURS_GROUPINGS[groupBy];
+    const isClientWork = `${CLIENT_NAME} IS NOT NULL`;
+
+    const qb = this.periodRepo.manager
+      .createQueryBuilder()
+      .select(grouping.id, 'id')
+      .addSelect(grouping.name, 'name')
+      .addSelect(grouping.detail, 'detail')
+      .addSelect(
+        `SUM(CASE WHEN ${isClientWork} AND tl.is_billable THEN tl.minutes ELSE 0 END)`,
+        'billableMinutes',
+      )
+      .addSelect(
+        `SUM(CASE WHEN ${isClientWork} AND NOT tl.is_billable THEN tl.minutes ELSE 0 END)`,
+        'nonBillableMinutes',
+      )
+      .addSelect(
+        `SUM(CASE WHEN ${CLIENT_NAME} IS NULL THEN tl.minutes ELSE 0 END)`,
+        'internalMinutes',
+      )
+      .addSelect('SUM(tl.minutes)', 'totalMinutes')
+      .from('time_logs', 'tl')
+      .innerJoin('project_activities', 'pa', 'pa.id = tl.project_activity_id')
+      .innerJoin('projects', 'p', 'p.id = pa.project_id')
+      .innerJoin('activities', 'a', 'a.id = pa.activity_id')
+      .leftJoin('act_categories', 'c', 'c.id = a.category_id')
+      .innerJoin('users', 'u', 'u.id = tl.user_id')
+      .where('tl.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('tl.date BETWEEN :dateFrom AND :dateTo', { dateFrom, dateTo });
+
+    this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user);
+
+    const rawRows = await qb
+      .groupBy(grouping.groupBy.join(', '))
+      .orderBy('"totalMinutes"', 'DESC')
+      .getRawMany<HoursReportRawRow>();
+
+    const rows = rawRows.map((raw) => ({
+      id: raw.id,
+      name: raw.name,
+      detail: raw.detail,
+      billableMinutes: Number(raw.billableMinutes),
+      nonBillableMinutes: Number(raw.nonBillableMinutes),
+      internalMinutes: Number(raw.internalMinutes),
+      totalMinutes: Number(raw.totalMinutes),
+    }));
+
+    const totals = rows.reduce<HoursSplit>(
+      (sum, row) => ({
+        billableMinutes: sum.billableMinutes + row.billableMinutes,
+        nonBillableMinutes: sum.nonBillableMinutes + row.nonBillableMinutes,
+        internalMinutes: sum.internalMinutes + row.internalMinutes,
+        totalMinutes: sum.totalMinutes + row.totalMinutes,
+      }),
+      {
+        billableMinutes: 0,
+        nonBillableMinutes: 0,
+        internalMinutes: 0,
+        totalMinutes: 0,
+      },
+    );
+
+    return {
+      rows,
+      totals,
+      isProvisional: await this.hasEditableMonth(
+        user.companyId,
+        dateFrom,
+        dateTo,
+      ),
+    };
+  }
 
   async getPlannedVsActualReport(user: AuthUser, query: GetReportQueryDto) {
     const { companyId, role } = user;

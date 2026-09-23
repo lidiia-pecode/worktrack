@@ -5,6 +5,7 @@ import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { GetReportQueryDto } from './dtos/report-query.dto';
+import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import {
   ReportingMonthParam,
   ReportingPeriodsQuery,
@@ -49,6 +50,15 @@ export class ReportingController {
   // ==========================================
   // ANALYTICS & DASHBOARDS
   // ==========================================
+
+  @Get('hours')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  getHoursReport(
+    @CurrentUser() user: AuthUser,
+    @Query() query: HoursReportQuery,
+  ) {
+    return this.reportingService.getHoursReport(user, query);
+  }
 
   @Get('planned-vs-actual')
   getPlannedVsActual(

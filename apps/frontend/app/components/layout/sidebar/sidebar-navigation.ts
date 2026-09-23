@@ -5,6 +5,7 @@ import {
   CalendarRange,
   Clock3,
   FolderKanban,
+  FileBarChart,
   FolderTree,
   Users,
 } from "lucide-react";
@@ -21,6 +22,11 @@ export const managerNavigation: NavigationItem[] = [
     label: "Planning",
     href: "/planning",
     icon: CalendarClock,
+  },
+  {
+    label: "Reports",
+    href: "/reports",
+    icon: FileBarChart,
   },
   {
     label: "Timesheet",

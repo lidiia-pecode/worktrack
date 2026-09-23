@@ -9,9 +9,18 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { todayISODate } from 'src/capacity/working-days.util';
+import { Team } from 'src/teams/entities/team.entity';
+import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
+import { Activity } from 'src/activities/entities/activity.entity';
+import { Project } from 'src/projects/entities/project.entity';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
+import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { ReportingService } from './reporting.service';
 import {
   addMonths,
@@ -243,6 +252,191 @@ describe('ReportingService', () => {
     it('refuses a range that runs backwards', async () => {
       await expect(
         service.listMonths(companyId, { from: '2026-05', to: '2026-01' }),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('hours report', () => {
+    let owner: AuthUser;
+    let manager: AuthUser; // leads the team `member` is in
+    let member: string;
+    let outsider: string; // on no team
+
+    const lockedRange = {
+      dateFrom: lockedMonth,
+      dateTo: lastDayOfMonth(lockedMonth),
+    };
+
+    const createUser = async (name: string, role: UserRole) => {
+      const email = `${name}-${RUN}@reporting.test`;
+      const user = await dataSource.getRepository(User).save({
+        companyId,
+        role,
+        firstName: name,
+        lastName: 'Test',
+        email,
+      });
+
+      return { id: user.id, email, companyId, role };
+    };
+
+    const createProjectActivity = async (
+      projectName: string,
+      clientName: string | null,
+      activityId: string,
+    ) => {
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `${projectName} ${RUN}`, clientName });
+
+      const projectActivity = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: project.id, activityId });
+
+      return projectActivity.id;
+    };
+
+    const log = (
+      userId: string,
+      projectActivityId: string,
+      minutes: number,
+      isBillable: boolean,
+    ) =>
+      dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId,
+        projectActivityId,
+        date: lockedDate,
+        minutes,
+        isBillable,
+      });
+
+    const report = (user: AuthUser, groupBy: HoursReportGroupBy) =>
+      service.getHoursReport(user, { ...lockedRange, groupBy });
+
+    beforeAll(async () => {
+      owner = { id: ownerId, email: '', companyId, role: UserRole.OWNER };
+      manager = await createUser('Manager', UserRole.MANAGER);
+      member = (await createUser('Member', UserRole.EMPLOYEE)).id;
+      outsider = (await createUser('Outsider', UserRole.EMPLOYEE)).id;
+
+      const team = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Team ${RUN}` });
+
+      for (const [userId, roleInTeam] of [
+        [manager.id, TeamRole.MANAGER],
+        [member, TeamRole.MEMBER],
+      ] as const) {
+        await dataSource.getRepository(TeamMembership).save({
+          companyId,
+          teamId: team.id,
+          userId,
+          roleInTeam,
+          joinedAt: '2020-01-01',
+        });
+      }
+
+      const category = await dataSource
+        .getRepository(ActCategory)
+        .save({ companyId, name: `Engineering ${RUN}` });
+      const activity = await dataSource
+        .getRepository(Activity)
+        .save({ companyId, name: `Backend ${RUN}`, categoryId: category.id });
+
+      const clientWork = await createProjectActivity(
+        'CRM',
+        'Acme',
+        activity.id,
+      );
+      const internalWork = await createProjectActivity(
+        'Tooling',
+        null,
+        activity.id,
+      );
+
+      await log(member, clientWork, 300, true);
+      await log(member, clientWork, 60, false);
+      await log(member, internalWork, 120, true);
+      await log(outsider, clientWork, 240, true);
+    });
+
+    it('splits client work by billability and keeps internal work apart', async () => {
+      const { rows, totals } = await report(owner, HoursReportGroupBy.CLIENT);
+
+      expect(rows).toEqual([
+        expect.objectContaining({
+          name: 'Acme',
+          billableMinutes: 540,
+          nonBillableMinutes: 60,
+          internalMinutes: 0,
+          totalMinutes: 600,
+        }),
+        expect.objectContaining({
+          name: null,
+          billableMinutes: 0,
+          nonBillableMinutes: 0,
+          internalMinutes: 120,
+          totalMinutes: 120,
+        }),
+      ]);
+      expect(totals.totalMinutes).toBe(720);
+    });
+
+    it('adds up to the total on every row', async () => {
+      for (const groupBy of Object.values(HoursReportGroupBy)) {
+        const { rows } = await report(owner, groupBy);
+
+        for (const row of rows) {
+          expect(
+            row.billableMinutes + row.nonBillableMinutes + row.internalMinutes,
+          ).toBe(row.totalMinutes);
+        }
+      }
+    });
+
+    it('names people and projects, with their detail', async () => {
+      const people = await report(owner, HoursReportGroupBy.PERSON);
+      const projects = await report(owner, HoursReportGroupBy.PROJECT);
+
+      expect(people.rows.map((row) => row.name)).toEqual([
+        'Member Test',
+        'Outsider Test',
+      ]);
+      expect(projects.rows.map((row) => [row.name, row.detail])).toEqual([
+        [`CRM ${RUN}`, 'Acme'],
+        [`Tooling ${RUN}`, null],
+      ]);
+    });
+
+    it("shows a manager only their team's hours", async () => {
+      const { rows, totals } = await report(manager, HoursReportGroupBy.PERSON);
+
+      expect(rows.map((row) => row.id)).toEqual([member]);
+      expect(totals.totalMinutes).toBe(480);
+    });
+
+    it('is final for a locked month and provisional once it touches an open one', async () => {
+      await expect(
+        report(owner, HoursReportGroupBy.CLIENT),
+      ).resolves.toMatchObject({ isProvisional: false });
+
+      await expect(
+        service.getHoursReport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+          groupBy: HoursReportGroupBy.CLIENT,
+        }),
+      ).resolves.toMatchObject({ isProvisional: true });
+    });
+
+    it('refuses a range that runs backwards', async () => {
+      await expect(
+        service.getHoursReport(owner, {
+          dateFrom: today,
+          dateTo: lockedMonth,
+          groupBy: HoursReportGroupBy.CLIENT,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });

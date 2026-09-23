@@ -1,6 +1,11 @@
 "use client";
 
-import { ReportingMonth, ReportingPeriodsQuery } from "@/types";
+import {
+  HoursReport,
+  HoursReportQuery,
+  ReportingMonth,
+  ReportingPeriodsQuery,
+} from "@/types";
 
 import { buildQueryString, createClient } from "../core";
 
@@ -15,4 +20,7 @@ export const ReportingClientApi = {
 
   closePeriod: (month: string) =>
     client.post<ReportingMonth>(`/periods/${month}/close`),
+
+  getHoursReport: (params: HoursReportQuery) =>
+    client.get<HoursReport>(`/hours${buildQueryString(params)}`),
 };
