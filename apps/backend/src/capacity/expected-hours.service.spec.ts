@@ -15,6 +15,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { eachMonth } from 'src/reporting/reporting-months.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
@@ -25,6 +26,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { UserCapacity } from './entities/user-capacity.entity';
 import { CapacityService } from './capacity.service';
 import { ExpectedHoursService } from './expected-hours.service';
+import { todayISODate } from './working-days.util';
 
 /**
  * Runs against the development database, so it needs the Docker stack.
@@ -114,6 +116,7 @@ describe('ExpectedHoursService', () => {
 
     const reporting = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
+      dataSource.getRepository(Company),
       teamVisibility,
     );
 
@@ -161,13 +164,15 @@ describe('ExpectedHoursService', () => {
       .save({ companyName: OTHER_SLUG, slug: OTHER_SLUG });
     stranger = await createUser('stranger', otherCompany.id);
 
-    await dataSource.getRepository(ReportingPeriod).save({
-      companyId,
-      name: `Locked ${RUN}`,
-      startDate: LOCKED_DATE,
-      endDate: LOCKED_DATE,
-      status: ReportingPeriodStatus.LOCKED,
-    });
+    // Past months lock by themselves. Reopening everything from February on
+    // leaves January (LOCKED_DATE) as the newest locked month.
+    await dataSource.getRepository(ReportingPeriod).save(
+      eachMonth('2026-02-01', todayISODate()).map((month) => ({
+        companyId,
+        month,
+        status: ReportingPeriodStatus.OPEN,
+      })),
+    );
   });
 
   beforeEach(async () => {

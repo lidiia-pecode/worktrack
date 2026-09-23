@@ -3,20 +3,28 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
+import { Company } from 'src/companies/entities/company.entity';
+import { todayISODate } from 'src/capacity/working-days.util';
 import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
+import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import {
-  CreateReportingPeriodDto,
-  UpdateReportingPeriodDto,
-} from './dtos/reporting-period.dto';
+  addMonths,
+  eachMonth,
+  editableUntil,
+  isPastGrace,
+  lastDayOf,
+  latestAutoLockedMonth,
+  monthOf,
+} from './reporting-months.util';
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { GetReportQueryDto } from './dtos/report-query.dto';
+import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
 interface PlannedRawResult {
@@ -30,126 +38,205 @@ interface ActualRawResult {
   billableMinutes: string | number | null;
 }
 
+export interface ReportingMonth {
+  /** YYYY-MM */
+  month: string;
+  state: ReportingMonthState;
+  /** The last editable day while the month is open or in its grace window. */
+  editableUntil: string | null;
+}
+
+const DEFAULT_MONTHS_LISTED = 12;
+const MAX_MONTHS_LISTED = 36;
+
 @Injectable()
 export class ReportingService {
   constructor(
     @InjectRepository(ReportingPeriod)
     private readonly periodRepo: Repository<ReportingPeriod>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     private readonly teamVisibility: TeamVisibilityService,
   ) {}
 
   // ==========================================
-  // REPORTING PERIODS MANAGEMENT
+  // REPORTING PERIODS
   // ==========================================
 
-  async createPeriod(
+  async listMonths(
     companyId: string,
-    dto: CreateReportingPeriodDto,
-  ): Promise<ReportingPeriod> {
-    if (new Date(dto.startDate) > new Date(dto.endDate)) {
-      throw new BadRequestException('startDate cannot be after endDate');
+    query: ReportingPeriodsQuery,
+  ): Promise<ReportingMonth[]> {
+    const today = await this.today(companyId);
+    const to = monthOf(query.to ?? today);
+    const from = monthOf(
+      query.from ?? addMonths(to, -(DEFAULT_MONTHS_LISTED - 1)),
+    );
+
+    if (from > to) {
+      throw new BadRequestException('from cannot be after to');
     }
 
-    const existingName = await this.periodRepo.findOne({
-      where: { companyId, name: dto.name },
-    });
-    if (existingName) {
-      throw new ConflictException(
-        `Reporting period with name "${dto.name}" already exists`,
+    const months = eachMonth(from, to);
+    if (months.length > MAX_MONTHS_LISTED) {
+      throw new BadRequestException(
+        `At most ${MAX_MONTHS_LISTED} months can be listed at once`,
       );
     }
 
-    const period = this.periodRepo.create({
-      ...dto,
-      companyId,
-    });
+    const reopened = await this.reopenedMonths(companyId, months);
 
-    return this.periodRepo.save(period);
+    return months.reverse().map((month) => {
+      const state = this.stateOf(month, today, reopened);
+
+      return {
+        month: month.slice(0, 7),
+        state,
+        editableUntil:
+          state === ReportingMonthState.OPEN ||
+          state === ReportingMonthState.GRACE
+            ? editableUntil(month)
+            : null,
+      };
+    });
   }
 
-  async findAllPeriods(companyId: string): Promise<ReportingPeriod[]> {
-    return this.periodRepo.find({
-      where: { companyId },
-      order: { startDate: 'DESC' },
-    });
-  }
-
-  async updatePeriod(
+  async reopenMonth(
     companyId: string,
-    id: string,
-    dto: UpdateReportingPeriodDto,
-  ): Promise<ReportingPeriod> {
-    const period = await this.periodRepo.findOne({ where: { id, companyId } });
-    if (!period) {
-      throw new NotFoundException('Reporting period not found');
+    month: string,
+    actorId: string,
+  ): Promise<ReportingMonth> {
+    const start = monthOf(month);
+    const today = await this.today(companyId);
+
+    if (!isPastGrace(start, today)) {
+      throw new BadRequestException(
+        `${month} is not locked yet: it can be edited until ${editableUntil(start)}`,
+      );
     }
 
-    if (dto.name && dto.name !== period.name) {
-      const existingName = await this.periodRepo.findOne({
-        where: { companyId, name: dto.name },
-      });
-      if (existingName) {
-        throw new ConflictException(
-          `Reporting period with name "${dto.name}" already exists`,
-        );
-      }
+    const existing = await this.periodRepo.findOne({
+      where: { companyId, month: start },
+    });
+
+    if (existing?.status === ReportingPeriodStatus.OPEN) {
+      throw new ConflictException(`${month} is already reopened`);
     }
 
-    const startDate = dto.startDate ?? period.startDate;
-    const endDate = dto.endDate ?? period.endDate;
+    await this.periodRepo.save(
+      this.periodRepo.create({
+        ...existing,
+        companyId,
+        month: start,
+        status: ReportingPeriodStatus.OPEN,
+        changedById: actorId,
+      }),
+    );
 
-    if (new Date(startDate) > new Date(endDate)) {
-      throw new BadRequestException('startDate cannot be after endDate');
+    return { month, state: ReportingMonthState.REOPENED, editableUntil: null };
+  }
+
+  async closeMonth(
+    companyId: string,
+    month: string,
+    actorId: string,
+  ): Promise<ReportingMonth> {
+    const existing = await this.periodRepo.findOne({
+      where: { companyId, month: monthOf(month) },
+    });
+
+    if (existing?.status !== ReportingPeriodStatus.OPEN) {
+      throw new ConflictException(
+        `${month} was not reopened, so there is nothing to close`,
+      );
     }
 
-    Object.assign(period, dto);
-    return this.periodRepo.save(period);
+    existing.status = ReportingPeriodStatus.LOCKED;
+    existing.changedById = actorId;
+    await this.periodRepo.save(existing);
+
+    return { month, state: ReportingMonthState.LOCKED, editableUntil: null };
   }
 
   async isDateLocked(companyId: string, date: string): Promise<boolean> {
-    const lockedPeriod = await this.periodRepo
-      .createQueryBuilder('rp')
-      .where('rp.companyId = :companyId', { companyId })
-      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
-      .andWhere(':date BETWEEN rp.startDate AND rp.endDate', { date })
-      .getOne();
-
-    return !!lockedPeriod;
+    return this.isRangeLocked(companyId, date, date);
   }
 
   /**
-   * The last day covered by a LOCKED period, or null when nothing is locked.
-   * Anything effective on or before it would rewrite a closed month.
-   */
-  async latestLockedDate(companyId: string): Promise<string | null> {
-    const latest = await this.periodRepo
-      .createQueryBuilder('rp')
-      .select(`TO_CHAR(MAX(rp.end_date), 'YYYY-MM-DD')`, 'endDate')
-      .where('rp.companyId = :companyId', { companyId })
-      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
-      .getRawOne<{ endDate: string | null }>();
-
-    return latest?.endDate ?? null;
-  }
-
-  /**
-   * True when any day between the two dates falls in a LOCKED period. A record
-   * covering a range is frozen as soon as it touches one.
+   * True when any day between the two dates is locked. A record covering a
+   * range is frozen as soon as it touches one.
    */
   async isRangeLocked(
     companyId: string,
     startDate: string,
     endDate: string,
   ): Promise<boolean> {
-    const lockedPeriod = await this.periodRepo
-      .createQueryBuilder('rp')
-      .where('rp.companyId = :companyId', { companyId })
-      .andWhere('rp.status = :status', { status: ReportingPeriodStatus.LOCKED })
-      .andWhere('rp.startDate <= :endDate', { endDate })
-      .andWhere('rp.endDate >= :startDate', { startDate })
-      .getOne();
+    const today = await this.today(companyId);
+    const locked = eachMonth(startDate, endDate).filter((month) =>
+      isPastGrace(month, today),
+    );
 
-    return !!lockedPeriod;
+    if (locked.length === 0) return false;
+
+    const reopened = await this.reopenedMonths(companyId, locked);
+    return locked.some((month) => !reopened.has(month));
+  }
+
+  /**
+   * The last day of the newest locked month. Anything effective on or before
+   * it would rewrite a closed month.
+   */
+  async latestLockedDate(companyId: string): Promise<string> {
+    const today = await this.today(companyId);
+    const reopened = await this.reopenedMonths(companyId);
+
+    let month = latestAutoLockedMonth(today);
+    while (reopened.has(month)) month = addMonths(month, -1);
+
+    return lastDayOf(month);
+  }
+
+  private stateOf(
+    month: string,
+    today: string,
+    reopened: Set<string>,
+  ): ReportingMonthState {
+    if (!isPastGrace(month, today)) {
+      return today <= lastDayOf(month)
+        ? ReportingMonthState.OPEN
+        : ReportingMonthState.GRACE;
+    }
+
+    return reopened.has(month)
+      ? ReportingMonthState.REOPENED
+      : ReportingMonthState.LOCKED;
+  }
+
+  /** Months currently reopened, as first days, optionally limited to some. */
+  private async reopenedMonths(
+    companyId: string,
+    months?: string[],
+  ): Promise<Set<string>> {
+    const rows = await this.periodRepo.find({
+      where: {
+        companyId,
+        status: ReportingPeriodStatus.OPEN,
+        ...(months && { month: In(months) }),
+      },
+      select: ['month'],
+    });
+
+    return new Set(rows.map((row) => row.month));
+  }
+
+  /** Today where the company is, so a month locks at the company's midnight. */
+  private async today(companyId: string): Promise<string> {
+    const company = await this.companyRepo.findOne({
+      where: { id: companyId },
+      select: ['id', 'timezone'],
+    });
+
+    return todayISODate(company?.timezone);
   }
 
   // ==========================================

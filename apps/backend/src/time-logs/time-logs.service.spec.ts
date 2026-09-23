@@ -103,6 +103,7 @@ describe('TimeLogsService write scope', () => {
 
     const reporting = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
+      dataSource.getRepository(Company),
       teamVisibility,
     );
 
@@ -185,12 +186,12 @@ describe('TimeLogsService write scope', () => {
       );
     }
 
+    // Past months lock by themselves: February is reopened so tests can write
+    // to it, and March (LOCKED_DATE) stays locked.
     await dataSource.getRepository(ReportingPeriod).save({
       companyId,
-      name: `Locked ${RUN}`,
-      startDate: LOCKED_DATE,
-      endDate: LOCKED_DATE,
-      status: ReportingPeriodStatus.LOCKED,
+      month: '2026-02-01',
+      status: ReportingPeriodStatus.OPEN,
     });
   });
 

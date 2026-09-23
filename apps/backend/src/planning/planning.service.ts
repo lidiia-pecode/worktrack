@@ -32,7 +32,6 @@ import {
 } from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
-import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
   isWorkingDay,
@@ -119,10 +118,6 @@ export class PlanningService {
     });
   }
 
-  /**
-   * What a membership removal deletes: from today on, outside locked periods.
-   * Shared by the cascade and its count, so the two always agree.
-   */
   private applyRemovableFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     companyId: string,
@@ -145,15 +140,6 @@ export class PlanningService {
           SELECT 1 FROM project_users pu
           WHERE pu.project_id = p.project_id AND pu.user_id = p.user_id
         )`,
-      )
-      .andWhere(
-        `NOT EXISTS (
-          SELECT 1 FROM reporting_periods rp
-          WHERE rp.company_id = p.company_id
-            AND rp.status = :removableLocked
-            AND p.date BETWEEN rp.start_date AND rp.end_date
-        )`,
-        { removableLocked: ReportingPeriodStatus.LOCKED },
       );
   }
 

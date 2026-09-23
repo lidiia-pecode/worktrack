@@ -1,4 +1,5 @@
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -7,22 +8,17 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
-  Check,
 } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
+import { User } from 'src/users/entities/user.entity';
 import { ReportingPeriodStatus } from '../enums/reporting-period-status.enum';
 
 @Entity('reporting_periods')
-@Check(`"end_date" >= "start_date"`)
-@Index('UQ_reporting_periods_company_name', ['companyId', 'name'], {
+@Check(`EXTRACT(DAY FROM "month") = 1`)
+@Index('UQ_reporting_periods_company_month', ['companyId', 'month'], {
   unique: true,
 })
-@Index('IDX_reporting_periods_company_dates', [
-  'companyId',
-  'startDate',
-  'endDate',
-])
 export class ReportingPeriod {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -34,35 +30,24 @@ export class ReportingPeriod {
   })
   companyId!: string;
 
-  @Column({
-    type: 'varchar',
-    length: 100,
-    nullable: false,
-  })
-  name!: string;
-
-  @Column({
-    type: 'date',
-    name: 'start_date',
-    nullable: false,
-  })
-  startDate!: string;
-
-  @Column({
-    type: 'date',
-    name: 'end_date',
-    nullable: false,
-  })
-  endDate!: string;
+  /** The first day of the month. */
+  @Column({ type: 'date', nullable: false })
+  month!: string;
 
   @Column({
     type: 'enum',
     enum: ReportingPeriodStatus,
     enumName: 'reporting_period_status_enum',
-    default: ReportingPeriodStatus.OPEN,
     nullable: false,
   })
   status!: ReportingPeriodStatus;
+
+  @Column({
+    type: 'uuid',
+    name: 'changed_by_id',
+    nullable: true,
+  })
+  changedById?: string | null;
 
   @CreateDateColumn({
     type: 'timestamp with time zone',
@@ -86,4 +71,8 @@ export class ReportingPeriod {
   })
   @JoinColumn({ name: 'company_id' })
   company!: Company;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'changed_by_id' })
+  changedBy?: User | null;
 }
