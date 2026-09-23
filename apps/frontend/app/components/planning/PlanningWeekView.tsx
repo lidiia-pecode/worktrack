@@ -6,6 +6,7 @@ import { SearchX, UsersRound } from "lucide-react";
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import {
   formatDuration,
   getWeekDates,
@@ -82,6 +83,11 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
   const absencesByUser = useMemo(
     () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
     [absences, weekDates],
+  );
+
+  const isLocked = useLockedDates(
+    toISODate(weekDates[0]),
+    toISODate(weekDates[6]),
   );
 
   const dailyTotals = useMemo(() => {
@@ -234,6 +240,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                       date={date}
                       isToday={toISODate(date) === todayIso}
                       totalMinutes={dailyTotals[toISODate(date)] ?? 0}
+                      isLocked={isLocked(toISODate(date))}
                     />
                   </th>
                 ))}
@@ -254,6 +261,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                   row={row}
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
+                  isLocked={isLocked}
                   onOpenDay={(opened, date) =>
                     setOpenedDay({ userId: opened.user.id, date })
                   }

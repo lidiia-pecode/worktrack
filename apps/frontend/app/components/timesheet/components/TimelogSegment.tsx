@@ -7,7 +7,7 @@ import { getTimelogDisplay } from "@/lib/utils/timelog";
 
 type TimelogSegmentProps = {
   segment: Segment;
-  onClick: (timelog: TimeLog) => void;
+  onClick?: (timelog: TimeLog) => void;
   onHover: (timelog: TimeLog, target: HTMLElement) => void;
   onLeave: () => void;
 };
@@ -24,12 +24,12 @@ export const TimelogSegment = ({
 
   return (
     <div
-      role="button"
+      role={onClick ? "button" : undefined}
       tabIndex={0}
       aria-label={`${formatDuration(timelog.minutes)} — ${projectName} / ${activityName}`}
       onClick={(e) => {
         e.stopPropagation();
-        onClick(timelog);
+        onClick?.(timelog);
       }}
       onMouseEnter={(e) => onHover(timelog, e.currentTarget)}
       onMouseLeave={onLeave}

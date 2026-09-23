@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { TeamSummaryUser } from "@/types";
 import {
   formatDuration,
@@ -84,6 +85,11 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const absencesByUser = useMemo(
     () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
     [absences, weekDates],
+  );
+
+  const isLocked = useLockedDates(
+    toISODate(weekDates[0]),
+    toISODate(weekDates[6]),
   );
 
   const dailyTotals = useMemo(() => {
@@ -216,6 +222,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                       date={date}
                       isToday={toISODate(date) === todayIso}
                       totalMinutes={dailyTotals[toISODate(date)] ?? 0}
+                      isLocked={isLocked(toISODate(date))}
                     />
                   </th>
                 ))}
@@ -255,6 +262,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
           weekLabel={formatWeekRangeLabel(weekStart)}
           todayIso={todayIso}
           canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
+          isLocked={isLocked}
           onClose={() => setOpenedUser(null)}
         />
       )}

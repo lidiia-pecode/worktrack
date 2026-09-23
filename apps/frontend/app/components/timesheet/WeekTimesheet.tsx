@@ -2,16 +2,19 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { CalendarOff, FolderKanban } from "lucide-react";
+import { CalendarOff, Clock, FolderKanban } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
+import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
 import { useAbsences } from "@/hooks/useAbsences";
 import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
+  formatDayMonthLabel,
   formatDuration,
+  formatMonthLabel,
   getWeekDates,
   getWeekStart,
   isWeekend,
@@ -128,6 +131,9 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isError: isExpectedError,
     refetch: refetchExpected,
   } = useExpectedHours({ dateFrom, dateTo });
+
+  const isLocked = useLockedDates(dateFrom, dateTo);
+  const graceMonth = useGraceMonth();
 
   // Context only: the timesheet works the same whether or not a plan loads.
   const { items: plannedEntries } = usePlanningEntries({
@@ -320,7 +326,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
         </div>
 
         {!hasError && (
-          <div className="px-3 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3">
             <Button
               type="button"
               variant="outline"
@@ -330,6 +336,14 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
               <CalendarOff className="size-4" />
               Add absence
             </Button>
+
+            {graceMonth?.editableUntil && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Clock className="size-3.5 text-warning" aria-hidden />
+                {formatMonthLabel(graceMonth.month)} can still be edited until{" "}
+                {formatDayMonthLabel(graceMonth.editableUntil)}.
+              </p>
+            )}
           </div>
         )}
 
@@ -372,6 +386,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                 isToday={toISODate(date) === todayIso}
                 totalMinutes={dailyTotals[toISODate(date)] ?? 0}
                 targetMinutes={dailyTargetMinutes}
+                isLocked={isLocked(toISODate(date))}
               />
             ))}
           </div>
@@ -404,6 +419,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
                       expectedMinutes={dailyTargetMinutes}
+                      isLocked={isLocked(iso)}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}

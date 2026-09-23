@@ -1,9 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { ReportingPeriodsQuery } from "@/types";
+import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
@@ -20,6 +22,34 @@ export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
     isError: query.isError,
     refetch: query.refetch,
   };
+}
+
+/**
+ * Which days between two dates are locked. Until the months load nothing is
+ * shown as locked; the server still refuses a locked write on its own.
+ */
+export function useLockedDates(dateFrom: string, dateTo: string) {
+  const { months } = useReportingPeriods({
+    from: dateFrom.slice(0, 7),
+    to: dateTo.slice(0, 7),
+  });
+
+  return useMemo(() => {
+    const locked = new Set(
+      months
+        .filter((period) => period.state === ReportingMonthState.LOCKED)
+        .map((period) => period.month),
+    );
+
+    return (date: string) => locked.has(date.slice(0, 7));
+  }, [months]);
+}
+
+/** The month that is past its end but still editable, if there is one. */
+export function useGraceMonth() {
+  const { months } = useReportingPeriods();
+
+  return months.find((period) => period.state === ReportingMonthState.GRACE);
 }
 
 export function useReportingPeriodMutations() {

@@ -20,6 +20,7 @@ type PlanningWeekRowProps = {
   row: Row;
   weekDates: Date[];
   absencesByDate: Record<string, Absence>;
+  isLocked: (date: string) => boolean;
   onOpenDay: (row: Row, date: string) => void;
 };
 
@@ -48,6 +49,7 @@ export const PlanningWeekRow = ({
   row,
   weekDates,
   absencesByDate,
+  isLocked,
   onOpenDay,
 }: PlanningWeekRowProps) => {
   const entriesByDate = new Map<string, PlanningEntry[]>();
@@ -87,6 +89,30 @@ export const PlanningWeekRow = ({
               className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground/60"
             >
               -
+            </td>
+          );
+        }
+
+        if (isLocked(iso)) {
+          return (
+            <td
+              key={iso}
+              className={cn(
+                "border-r border-border/60 p-2 align-top",
+                absence ? "bg-brand-subtle" : "bg-muted/20",
+              )}
+            >
+              <div className="flex min-h-10 flex-col gap-1">
+                {absence && (
+                  <Badge variant="default" className="w-fit text-[10px]">
+                    {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
+                  </Badge>
+                )}
+
+                {entries.map((entry) => (
+                  <EntryLine key={entry.id} entry={entry} />
+                ))}
+              </div>
             </td>
           );
         }

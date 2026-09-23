@@ -1,3 +1,5 @@
+import { Lock } from "lucide-react";
+
 import {
   formatDuration,
   formatWeekdayLabel,
@@ -9,6 +11,7 @@ type WeekHeaderDayProps = {
   isToday: boolean;
   totalMinutes: number;
   targetMinutes?: number;
+  isLocked?: boolean;
 };
 
 export function WeekHeaderDay({
@@ -16,6 +19,7 @@ export function WeekHeaderDay({
   isToday: today,
   totalMinutes,
   targetMinutes,
+  isLocked = false,
 }: WeekHeaderDayProps) {
   const weekend = isWeekend(date);
   const isOverTarget =
@@ -42,6 +46,13 @@ export function WeekHeaderDay({
         >
           {date.getDate()}
         </p>
+
+        {isLocked && (
+          <Lock
+            className="size-3 self-center text-muted-foreground"
+            aria-label="Locked"
+          />
+        )}
       </div>
 
       <p
