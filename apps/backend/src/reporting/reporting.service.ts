@@ -80,6 +80,8 @@ export interface HoursReportRow extends HoursSplit {
 }
 
 export interface HoursReport {
+  /** The grouping these rows were built with. */
+  groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
   totals: HoursSplit;
   /** True while any month in the range can still be edited. */
@@ -99,15 +101,26 @@ interface HoursReportRawRow {
 /** An empty client name counts as no client, which means internal work. */
 const CLIENT_NAME = `NULLIF(p.client_name, '')`;
 
+/**
+ * Client names are free text and older ones were stored lowercase, so "Acme"
+ * and "acme" are grouped as one client, shown with a spelling that has
+ * capitals when there is one.
+ */
+const CLIENT_GROUP = `LOWER(${CLIENT_NAME})`;
+const CLIENT_DISPLAY_NAME = `COALESCE(
+  MAX(CASE WHEN ${CLIENT_NAME} <> LOWER(${CLIENT_NAME}) THEN ${CLIENT_NAME} END),
+  MIN(${CLIENT_NAME})
+)`;
+
 const HOURS_GROUPINGS: Record<
   HoursReportGroupBy,
   { id: string; name: string; detail: string; groupBy: string[] }
 > = {
   [HoursReportGroupBy.CLIENT]: {
     id: 'NULL',
-    name: CLIENT_NAME,
+    name: CLIENT_DISPLAY_NAME,
     detail: 'NULL',
-    groupBy: [CLIENT_NAME],
+    groupBy: [CLIENT_GROUP],
   },
   [HoursReportGroupBy.PROJECT]: {
     id: 'p.id',
@@ -320,7 +333,7 @@ export class ReportingService {
   }
 
   /** Whether any month touching the range is not locked yet. */
-  private async hasEditableMonth(
+  async hasEditableMonth(
     companyId: string,
     dateFrom: string,
     dateTo: string,
@@ -426,6 +439,7 @@ export class ReportingService {
     );
 
     return {
+      groupBy,
       rows,
       totals,
       isProvisional: await this.hasEditableMonth(

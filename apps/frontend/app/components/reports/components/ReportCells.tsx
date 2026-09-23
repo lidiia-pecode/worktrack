@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils/cn";
 export const HEADER_CELL_CLASS =
   "p-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground";
 
-/** A duration, or a muted dash for none. */
 export const Minutes = ({
   value,
   strong,

@@ -30,7 +30,6 @@ type ReportFiltersProps = {
   onCustomRangeChange: (range: DateRange) => void;
   groupBy: HoursReportGroupBy;
   onGroupByChange: (groupBy: HoursReportGroupBy) => void;
-  /** Only the hours report is grouped. */
   showGroupBy: boolean;
 };
 

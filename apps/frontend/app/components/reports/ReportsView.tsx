@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarClock, FileBarChart, Gauge } from "lucide-react";
 
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { getMonthRange, toMonthKey, todayISODate } from "@/lib/utils/date";
 import { HoursReportGroupBy } from "@/types/enums";
 
@@ -15,17 +16,28 @@ import { UtilisationSection } from "./components/UtilisationSection";
 
 type ReportTab = "hours" | "planned-vs-actual" | "utilisation";
 
+const EMPTY_RANGE = { dateFrom: "", dateTo: "" };
+
 export const ReportsView = () => {
+  const { timezone } = useWorkSettings();
+
   const [tab, setTab] = useState<ReportTab>("hours");
-  const [period, setPeriod] = useState(() => toMonthKey(todayISODate()));
-  const [customRange, setCustomRange] = useState(() =>
-    getMonthRange(toMonthKey(todayISODate())),
-  );
+  // Null until the viewer picks one: the company's current month, which is
+  // only known once the workspace time zone has loaded.
+  const [chosenPeriod, setChosenPeriod] = useState<string | null>(null);
+  const [customRange, setCustomRange] = useState(EMPTY_RANGE);
   const [groupBy, setGroupBy] = useState(HoursReportGroupBy.CLIENT);
 
+  const period = chosenPeriod ?? toMonthKey(todayISODate(timezone));
   const range = period === CUSTOM_RANGE ? customRange : getMonthRange(period);
-  const isRangeValid =
-    Boolean(range.dateFrom && range.dateTo) && range.dateFrom <= range.dateTo;
+  const hasBothDates = Boolean(range.dateFrom && range.dateTo);
+  const isRangeValid = hasBothDates && range.dateFrom <= range.dateTo;
+
+  const rangeError = isRangeValid
+    ? undefined
+    : hasBothDates
+      ? "Must be on or after From"
+      : "Pick both dates";
 
   // Switching to a custom range starts from the month that was showing.
   const changePeriod = (nextPeriod: string) => {
@@ -33,7 +45,7 @@ export const ReportsView = () => {
       setCustomRange(getMonthRange(period));
     }
 
-    setPeriod(nextPeriod);
+    setChosenPeriod(nextPeriod);
   };
 
   return (
@@ -69,7 +81,7 @@ export const ReportsView = () => {
         <ReportFilters
           period={period}
           customRange={customRange}
-          rangeError={isRangeValid ? undefined : "Must be on or after From"}
+          rangeError={rangeError}
           onPeriodChange={changePeriod}
           onCustomRangeChange={setCustomRange}
           groupBy={groupBy}

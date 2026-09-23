@@ -20,6 +20,8 @@ export interface HoursReportRow extends HoursSplit {
 }
 
 export interface HoursReport {
+  /** The grouping these rows were built with. */
+  groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
   totals: HoursSplit;
   /** True while any month in the range can still be edited. */

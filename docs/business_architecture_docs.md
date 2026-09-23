@@ -579,8 +579,8 @@ the gap is the main fact about the project's current state.
   difference rather than a score (D3). A third shows utilisation per person —
   billable utilisation, client share, non-billable client share and logging
   completeness, each labelled with what it is measured against and shown as
-  "—" when there is nothing to measure. Availability counts only days that have
-  finished.
+  "—" when there is nothing to measure. Availability and logged time both count
+  only days that have finished.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -961,12 +961,14 @@ early. Every month already past its grace window locked the day this shipped.
 **The hours report keeps D2's three categories apart under any grouping.**
 Rather than treating internal work as one group, every row splits into billable
 client work, non-billable client work and internal work, grouped by client,
-project, activity or person.
+project, activity or person. Client names that differ only in case count as one
+client.
 
 **Utilisation settled on four figures** — billable utilisation, client share,
 non-billable client share and logging completeness — reading capacity and
-absences separately and counting availability only for days that have finished,
-so a month in progress is not measured against days still to come. Billable over
+absences separately and counting availability and logged time only for days
+that have finished, so a month in progress is not measured against days still
+to come. Billable over
 *capacity* was left out as unfair per person.
 
 **Names keep their case.** Project, client, activity, category and team names

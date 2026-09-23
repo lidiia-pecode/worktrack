@@ -54,6 +54,7 @@ describe('UtilisationService', () => {
   let member: string; // full-time, two days off, logs time
   let awayAllMonth: string; // absent for the whole of March
   let partTimer: string; // on no team, 24 hours a week, logs nothing
+  let clientWorkId: string;
 
   const createUser = async (name: string, role: UserRole) => {
     const email = `${name}-${RUN}@utilisation.test`;
@@ -88,16 +89,22 @@ describe('UtilisationService', () => {
       dataSource.getRepository(Company),
       teamVisibility,
     );
+    const capacity = new CapacityService(
+      dataSource.getRepository(UserCapacity),
+      dataSource.getRepository(Company),
+      dataSource.getRepository(User),
+      reporting,
+    );
     const expectedHours = new ExpectedHoursService(
       dataSource.getRepository(Absence),
-      new CapacityService(
-        dataSource.getRepository(UserCapacity),
-        dataSource.getRepository(Company),
-        dataSource.getRepository(User),
-        reporting,
-      ),
+      capacity,
     );
-    service = new UtilisationService(reporting, expectedHours, teamVisibility);
+    service = new UtilisationService(
+      reporting,
+      expectedHours,
+      capacity,
+      teamVisibility,
+    );
 
     const company = await dataSource
       .getRepository(Company)
@@ -173,6 +180,7 @@ describe('UtilisationService', () => {
     };
 
     const clientWork = await projectActivityFor('CRM', 'Acme');
+    clientWorkId = clientWork;
     const internalWork = await projectActivityFor('Tooling', null);
 
     await dataSource.getRepository(TimeLog).save(
@@ -274,6 +282,27 @@ describe('UtilisationService', () => {
       billableUtilisation: null,
       loggingCompleteness: null,
     });
+  });
+
+  it('leaves out time logged today, like the availability it is measured against', async () => {
+    const today = todayISODate('UTC');
+    const thisMonth = firstDayOfMonth(today);
+    const log = await dataSource.getRepository(TimeLog).save({
+      companyId,
+      userId: partTimer,
+      projectActivityId: clientWorkId,
+      date: today,
+      minutes: 60,
+      isBillable: true,
+    });
+
+    const { rows } = await service.getUtilisation(owner, {
+      dateFrom: thisMonth,
+      dateTo: lastDayOfMonth(thisMonth),
+    });
+
+    expect(rows.find((r) => r.userId === partTimer)?.loggedMinutes).toBe(0);
+    await dataSource.getRepository(TimeLog).delete({ id: log.id });
   });
 
   it('is final for a locked month', async () => {

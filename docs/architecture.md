@@ -109,7 +109,7 @@ reopen one at `/admin/periods`. Owners and managers read hours, planned vs
 actual and utilisation at `/reports`. The next work is hardening; export comes
 last. The authorization gaps are all closed.
 
-Test coverage is fifteen suites and 299 tests, covering the role-visibility
+Test coverage is fifteen suites and 302 tests, covering the role-visibility
 filters, the team route roles and membership rules, who may invite whom into
 which team, what accepting an invitation creates, the time-log write scope, the
 user-list scope, the project assignment scope, the absence, capacity and

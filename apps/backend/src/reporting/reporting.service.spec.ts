@@ -267,6 +267,7 @@ describe('ReportingService', () => {
     let member: AuthUser;
     let outsider: string; // on no team
     let toolingProjectId: string;
+    let activityId: string;
 
     const lockedRange = {
       dateFrom: lockedMonth,
@@ -359,6 +360,7 @@ describe('ReportingService', () => {
         .getRepository(Activity)
         .save({ companyId, name: `Backend ${RUN}`, categoryId: category.id });
 
+      activityId = activity.id;
       const crm = await createProject('CRM', 'Acme', activity.id);
       const tooling = await createProject('Tooling', null, activity.id);
       toolingProjectId = tooling.projectId;
@@ -392,6 +394,29 @@ describe('ReportingService', () => {
         }),
       ]);
       expect(totals.totalMinutes).toBe(720);
+    });
+
+    it('groups client names that differ only in case, keeping the capitals', async () => {
+      const legacy = await createProject('Legacy', 'acme', activityId);
+      const legacyLog = await log(
+        member.id,
+        legacy.projectActivityId,
+        30,
+        true,
+      );
+
+      const { rows } = await report(owner, HoursReportGroupBy.CLIENT);
+      await dataSource.getRepository(TimeLog).delete({ id: legacyLog.id });
+
+      expect(rows.filter((row) => row.name !== null)).toEqual([
+        expect.objectContaining({ name: 'Acme', totalMinutes: 630 }),
+      ]);
+    });
+
+    it('returns the grouping it was built with', async () => {
+      await expect(
+        report(owner, HoursReportGroupBy.ACTIVITY),
+      ).resolves.toMatchObject({ groupBy: HoursReportGroupBy.ACTIVITY });
     });
 
     it('adds up to the total on every row', async () => {

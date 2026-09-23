@@ -112,7 +112,10 @@ export const UtilisationTable = ({ rows, totals }: UtilisationTableProps) => (
             </span>
           </th>
           <th scope="col" className={cn(HEADER_CELL_CLASS, "w-28 text-right")}>
-            Logged
+            <span className="block">Logged</span>
+            <span className="block font-normal normal-case tracking-normal">
+              finished days only
+            </span>
           </th>
           {FIGURE_COLUMNS.map((column) => (
             <th

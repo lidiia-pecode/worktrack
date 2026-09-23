@@ -31,8 +31,10 @@ export const HoursReportSection = ({
       onRetry={refetch}
     >
       {report && (
+        // The rows' own grouping, not the selected one: while the next
+        // grouping loads, the previous rows stay on screen.
         <HoursReportTable
-          groupBy={groupBy}
+          groupBy={report.groupBy}
           rows={report.rows}
           totals={report.totals}
         />

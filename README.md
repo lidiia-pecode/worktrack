@@ -173,7 +173,7 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting and admin CRUD
 for users, teams, projects, activities and categories are implemented. Test
-coverage is fifteen backend suites and 299 tests, covering who may see and
+coverage is fifteen backend suites and 302 tests, covering who may see and
 change whose data and the business rules behind each feature.
 
 Reporting was the most recent piece of work: months lock by themselves a week
