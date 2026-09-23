@@ -54,6 +54,14 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
+/** e.g. "+1h 30m" or "−2h"; zero has no sign. */
+export function formatSignedDuration(minutes: number): string {
+  if (minutes === 0) return formatDuration(0);
+
+  const sign = minutes > 0 ? "+" : "−";
+  return `${sign}${formatDuration(Math.abs(minutes))}`;
+}
+
 export function getWeekStart(
   date: Date,
   weekStartDay: WeekDay = WeekDay.MONDAY,
@@ -72,6 +80,11 @@ export function addDays(date: Date, amount: number): Date {
 
 export function addWeeks(date: Date, amount: number): Date {
   return addDays(date, amount * 7);
+}
+
+/** The last day of the week beginning at weekStart. */
+export function getWeekEnd(weekStart: Date): Date {
+  return addDays(weekStart, 6);
 }
 
 /** Returns the 7 dates of the week beginning at weekStart. */
@@ -125,7 +138,38 @@ export function formatLongDayLabel(date: Date): string {
   return LONG_DAY_LABEL.format(date);
 }
 
-/** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
+const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
+  month: "long",
+  year: "numeric",
+});
+
+/** The YYYY-MM month key of a YYYY-MM-DD date. */
+export function toMonthKey(date: string): string {
+  return date.slice(0, 7);
+}
+
+/** The first and last day of a YYYY-MM month, as YYYY-MM-DD dates. */
+export function getMonthRange(monthKey: string): {
+  dateFrom: string;
+  dateTo: string;
+} {
+  const firstDay = new Date(`${monthKey}-01T00:00:00`);
+  // Day 0 of the next month is the last day of this one.
+  const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0);
+
+  return { dateFrom: toISODate(firstDay), dateTo: toISODate(lastDay) };
+}
+
+/** e.g. "September 2026", from a YYYY-MM month key. */
+export function formatMonthLabel(monthKey: string): string {
+  return MONTH_YEAR_LABEL.format(new Date(`${monthKey}-01T00:00:00`));
+}
+
+/** e.g. "7 Oct", from a YYYY-MM-DD date. */
+export function formatDayMonthLabel(date: string): string {
+  return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
+}
+
 /**
  * Returns a 6-week (42 day) grid covering the given month, including the
  * leading/trailing days from adjacent months — the classic calendar-popover
@@ -144,8 +188,9 @@ export function getMonthGridDates(
   return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 }
 
+/** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 export function formatWeekRangeLabel(weekStart: Date): string {
-  const weekEnd = addDays(weekStart, 6);
+  const weekEnd = getWeekEnd(weekStart);
   const sameYear = weekStart.getFullYear() === new Date().getFullYear();
 
   const start = DAY_MONTH_LABEL.format(weekStart);

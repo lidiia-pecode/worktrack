@@ -14,7 +14,9 @@ import { TeamMembership } from './team-membership.entity';
 import { TeamStatus } from '../enums/team-status.enum';
 
 @Entity({ name: 'teams' })
-@Index('UQ_teams_company_name', ['companyId', 'name'], { unique: true })
+@Index('UQ_teams_company_name_lower', {
+  synchronize: false,
+})
 export class Team {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

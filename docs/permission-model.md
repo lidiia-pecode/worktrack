@@ -194,6 +194,13 @@ company, a manager for people in teams they lead, an employee for themselves.
 This model does not change the rule; it changes what it takes to *become* the
 manager of a person, which is what makes the rule trustworthy.
 
+**Planning follows the same people.** An Owner plans for any active user, a
+manager for themselves and people in teams they lead, and an employee for
+nobody — not even themselves. Everyone can read their own plan, including a
+manager who leads no team. Removing somebody from a project deletes their plans
+for it from today on, and since a save only removes people the caller was shown
+(§3.5), a manager can never clear plans for someone outside their teams.
+
 ### 3.8 Delegation summary
 
 The Owner keeps: structure, role grants, moving people, and everything a manager
@@ -250,6 +257,7 @@ table is kept as the record of which rule is answered where.
 | §3.5 Managers may be project members | **Already enforced** — the client no longer strips them, and a manager's own timesheet can reach their projects | — |
 | §3.6 A project has no owner | **Already true** — no such field exists, and none is planned | — |
 | §3.7 Time-log access | **Already enforced** (D9, D10) | — |
+| §3.7 Planning access | **Already enforced** — writes go through `assertCanPlanForUser`, and the removal count uses the same people filter as the save | — |
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
 membership dates, and it does not need to be while §3.3 holds (P4). Projects are
@@ -362,16 +370,17 @@ about a project, meant to soften what Scope E's scoped roster gave up.
 It was cancelled because WorkTrack has no concept of a project belonging to one
 person, and adding a field to invent one would have contradicted the model it
 was supposed to serve — see §3.6. The permission model ends at Scope E, and the
-product work carried on without it: Phase 2, absences, shipped in September 2026,
-and Phase 3 is next — see
+product work carried on without it: Phases 2 to 5 — absences, capacity,
+planning and reporting — shipped in September 2026, and Phase 6 is next — see
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7.
 
 ### Not in any of these
 
-Correct expected hours (Phase 3), the planning interface (Phase 4), reporting and
-export (Phase 5), and the `Client` entity (D8). Absences (Phase 2) were built
-afterwards and needed nothing new here: their write scope is D9's, reached
-through the same helper.
+Export and the `Client` entity (D8). Absences, capacity, planning and reporting
+(Phases 2 to 5) were built afterwards and needed nothing new here: their scopes
+reuse D9's people through the same helpers, so a manager's reports cover the
+teams they lead and an owner's the whole company. Reopening a locked month is
+the Owner's alone.
 
 ---
 

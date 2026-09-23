@@ -5,7 +5,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimAndLowercase } from 'src/lib/decorators';
 
 export class UpdateProfilePayload {
   @IsOptional()
@@ -20,7 +20,7 @@ export class UpdateProfilePayload {
   @MaxLength(50)
   lastName?: string;
 
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsOptional()
   @IsString()
   @MinLength(3)

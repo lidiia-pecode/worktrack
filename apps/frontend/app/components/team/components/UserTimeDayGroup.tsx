@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 
 import { TimeLog } from "@/types";
 import {
@@ -20,6 +20,7 @@ const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
 type UserTimeDayGroupProps = {
   date: Date;
   isToday: boolean;
+  isLocked: boolean;
   timelogs: TimeLog[];
   onAdd?: (date: string) => void;
   onEdit?: (timelog: TimeLog) => void;
@@ -28,6 +29,7 @@ type UserTimeDayGroupProps = {
 export const UserTimeDayGroup = ({
   date,
   isToday,
+  isLocked,
   timelogs,
   onAdd,
   onEdit,
@@ -54,6 +56,13 @@ export const UserTimeDayGroup = ({
           >
             {DAY_LABEL.format(date)}
           </span>
+
+          {isLocked && (
+            <Lock
+              className="size-3 self-center text-muted-foreground"
+              aria-label="Locked"
+            />
+          )}
         </h3>
 
         <div className="flex items-center gap-2">

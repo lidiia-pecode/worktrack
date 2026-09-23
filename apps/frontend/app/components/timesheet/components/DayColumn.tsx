@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock } from "lucide-react";
+import { CalendarClock, Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
+import { cn } from "@/lib/utils/cn";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
@@ -25,6 +26,7 @@ type Props = {
   totalMinutes: number;
   pixelsPerMinute: number;
   expectedMinutes: number;
+  isLocked: boolean;
   onAddClick: (date: Date) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
@@ -38,6 +40,7 @@ export const DayColumn = ({
   totalMinutes,
   pixelsPerMinute,
   expectedMinutes,
+  isLocked,
   onAddClick,
   onAbsenceClick,
   onEntryClick,
@@ -76,23 +79,26 @@ export const DayColumn = ({
 
   return (
     <div
-      role="button"
-      tabIndex={0}
+      role={isLocked ? undefined : "button"}
+      tabIndex={isLocked ? undefined : 0}
       aria-label={
-        absence ? `Edit the absence covering ${toISODate(date)}` : undefined
+        absence && !isLocked
+          ? `Edit the absence covering ${toISODate(date)}`
+          : undefined
       }
-      onClick={openDay}
+      onClick={isLocked ? undefined : openDay}
       onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
+        if (!isLocked && (e.key === "Enter" || e.key === " ")) {
           openDay();
         }
       }}
-      className={`
-        ${DAY_COLUMN_CLASS}
-        ${absence ? ABSENCE_PATTERN : ""}
-        ${!absence && weekend ? WEEKEND_PATTERN : ""}
-        ${!absence && !weekend ? "bg-card" : ""}
-      `}
+      className={cn(
+        DAY_COLUMN_CLASS,
+        !isLocked && "cursor-pointer hover:bg-muted/20",
+        absence && ABSENCE_PATTERN,
+        !absence && weekend && WEEKEND_PATTERN,
+        !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
+      )}
     >
       {absence && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
@@ -129,8 +135,15 @@ export const DayColumn = ({
             </>
           )}
 
-          <span className="text-[11px] text-muted-foreground/60">
-            Click to log time
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+            {isLocked ? (
+              <>
+                <Lock className="size-3" aria-hidden />
+                Locked
+              </>
+            ) : (
+              "Click to log time"
+            )}
           </span>
         </div>
       )}
@@ -167,7 +180,7 @@ export const DayColumn = ({
           <TimelogSegment
             key={segment.timelog.id}
             segment={segment}
-            onClick={onEntryClick}
+            onClick={isLocked ? undefined : onEntryClick}
             onHover={showPopover}
             onLeave={hidePopover}
           />

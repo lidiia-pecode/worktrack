@@ -242,7 +242,7 @@ interface ResourceTabButtonProps {
   onClick: () => void;
 }
 
-function ResourceTabButton({
+export function ResourceTabButton({
   active,
   label,
   icon,
@@ -255,7 +255,6 @@ function ResourceTabButton({
       type="button"
       role="tab"
       aria-selected={active}
-      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={[
         "group relative flex items-center gap-2",

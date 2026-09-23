@@ -6,9 +6,11 @@ import { SearchX, UsersRound } from "lucide-react";
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import {
   formatDuration,
   getWeekDates,
+  getWeekEnd,
   getWeekStart,
   toISODate,
   todayISODate,
@@ -58,6 +60,8 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
   );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+  const dateFrom = toISODate(weekStart);
+  const dateTo = toISODate(getWeekEnd(weekStart));
 
   const {
     week,
@@ -74,8 +78,8 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     isError: isAbsencesError,
     refetch: refetchAbsences,
   } = useAbsencesQuery(1, {
-    dateFrom: toISODate(weekDates[0]),
-    dateTo: toISODate(weekDates[6]),
+    dateFrom,
+    dateTo,
     pageSize: WEEK_PAGE_SIZE,
   });
 
@@ -83,6 +87,8 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     () => mapAbsencesByUserAndDate(absences, weekDates.map(toISODate)),
     [absences, weekDates],
   );
+
+  const isLocked = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
@@ -234,6 +240,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                       date={date}
                       isToday={toISODate(date) === todayIso}
                       totalMinutes={dailyTotals[toISODate(date)] ?? 0}
+                      isLocked={isLocked(toISODate(date))}
                     />
                   </th>
                 ))}
@@ -254,6 +261,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                   row={row}
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
+                  isLocked={isLocked}
                   onOpenDay={(opened, date) =>
                     setOpenedDay({ userId: opened.user.id, date })
                   }

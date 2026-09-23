@@ -7,4 +7,4 @@ export const ABSENCE_PATTERN = "bg-stripes-brand";
 export const OVERTIME_SEGMENT_PATTERN = "bg-stripes-overlay";
 
 export const DAY_COLUMN_CLASS =
-  "relative h-full border-r border-border last:border-r-0 overflow-hidden cursor-pointer transition-colors hover:bg-muted/20";
+  "relative h-full border-r border-border last:border-r-0 overflow-hidden transition-colors";

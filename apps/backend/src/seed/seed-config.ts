@@ -324,24 +324,3 @@ export function dayOfWeek(index: number): string {
 
   return date.toISOString().slice(0, 10);
 }
-
-/**
- * Quarters of the current year. Quarters that have already ended are locked,
- * which is what makes the date-lock rule visible when testing.
- */
-export function reportingPeriods() {
-  const year = new Date().getUTCFullYear();
-  const today = new Date().toISOString().slice(0, 10);
-
-  return [
-    { quarter: 1, startDate: `${year}-01-01`, endDate: `${year}-03-31` },
-    { quarter: 2, startDate: `${year}-04-01`, endDate: `${year}-06-30` },
-    { quarter: 3, startDate: `${year}-07-01`, endDate: `${year}-09-30` },
-    { quarter: 4, startDate: `${year}-10-01`, endDate: `${year}-12-31` },
-  ].map((period) => ({
-    name: `Q${period.quarter} ${year}`,
-    startDate: period.startDate,
-    endDate: period.endDate,
-    isPast: period.endDate < today,
-  }));
-}

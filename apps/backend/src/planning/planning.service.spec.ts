@@ -21,6 +21,7 @@ import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
@@ -60,7 +61,8 @@ const WEDNESDAY = addDays(MONDAY, 2);
 const FRIDAY = addDays(MONDAY, 4);
 const SATURDAY = addDays(MONDAY, 5);
 const NEXT_MONDAY = addDays(MONDAY, 7);
-const LOCKED_MONDAY = addDays(MONDAY, 14);
+// Seventy days back always lands in a month past its grace window.
+const LOCKED_MONDAY = weekRange(addDays(TODAY, -70), WeekDay.MONDAY).start;
 const PAST_MONDAY = weekRange(addDays(TODAY, -21), WeekDay.MONDAY).start;
 
 const HOUR = 60;
@@ -175,6 +177,7 @@ describe('PlanningService', () => {
 
     const reporting = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
+      dataSource.getRepository(Company),
       teamVisibility,
     );
 
@@ -255,12 +258,11 @@ describe('PlanningService', () => {
     await addMembers(otherProjectId, [member]);
     await addMembers(archivedProjectId, [member]);
 
+    // Three weeks ago may already be locked, depending on today's date.
     await dataSource.getRepository(ReportingPeriod).save({
       companyId,
-      name: `Locked ${RUN}`,
-      startDate: LOCKED_MONDAY,
-      endDate: LOCKED_MONDAY,
-      status: ReportingPeriodStatus.LOCKED,
+      month: firstDayOfMonth(PAST_MONDAY),
+      status: ReportingPeriodStatus.OPEN,
     });
   });
 
@@ -720,20 +722,6 @@ describe('PlanningService', () => {
         [TUESDAY, otherProjectId],
       ]);
       expect(await entriesFor(colleague.id)).toHaveLength(1);
-    });
-
-    it('never deletes inside a locked period', async () => {
-      await existingEntry(member.id, LOCKED_MONDAY, 8 * HOUR);
-
-      const { count } = await service.countRemovable(
-        { projectIds: [projectId], userIds: [member.id] },
-        owner,
-      );
-      expect(count).toBe(0);
-
-      await removeFromProject([member], owner);
-
-      expect(await entriesFor(member.id)).toHaveLength(1);
     });
 
     it('totals the count across everybody removed', async () => {

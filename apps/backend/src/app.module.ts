@@ -21,6 +21,7 @@ import { InvitationsModule } from './invitations/invitations.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { AbsencesModule } from './absences/absences.module';
 import { CapacityModule } from './capacity/capacity.module';
+import { UtilisationModule } from './reporting/utilisation/utilisation.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { CapacityModule } from './capacity/capacity.module';
     OnboardingModule,
     AbsencesModule,
     CapacityModule,
+    UtilisationModule,
   ],
 
   providers: [

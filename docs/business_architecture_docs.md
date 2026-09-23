@@ -16,10 +16,10 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 23 September 2026**, and reconciled again
-with Phase 4. Phases 0 to 4 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 5. Phases 0 to 5 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
-The next work is Phase 5, reporting and export.
+The next work is Phase 6, hardening, with export as the final stage.
 
 ---
 
@@ -137,8 +137,9 @@ inside a locked period.
 underneath those numbers. This gives the stability an approval workflow would
 otherwise provide, at a fraction of the cost.
 
-*Consequence.* `ReportingPeriod` with status `OPEN | LOCKED` is the mechanism.
-It is already implemented and enforced on every time-log write. Note the flow:
+*Consequence.* A period is a calendar month, and it locks by itself 7 days
+after it ends; an owner can reopen one. It is enforced on every write. Note the
+flow:
 **log time → no approval → period closes → history is immutable.**
 
 ### D6 — Absences are not time entries
@@ -171,7 +172,7 @@ information into the app.
 
 *Consequence.* `Company.currency` has no consumer and should not acquire one.
 Reporting deals in hours. The handoff to invoicing is an **export of hours**, not
-a monetary figure (see §7 Phase 5).
+a monetary figure (see §7, Final stage — Export).
 
 ### D8 — Clients stay a text field, for now
 
@@ -289,7 +290,8 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
 ├── PlanningEntry   user + project + date + plannedMinutes + createdBy
-└── ReportingPeriod name + startDate + endDate + status (OPEN | LOCKED)
+└── ReportingPeriod month + status (OPEN | LOCKED) + changedBy
+                    only for months an owner has reopened
 ```
 
 **The pivotal join is `ProjectActivity`.** Time is never logged against a
@@ -453,9 +455,17 @@ expected inside a month already signed off.
 
 ### Period locking
 
-`ReportingPeriod` rows are named date ranges with `OPEN | LOCKED` status, unique
-by name per company, with `endDate >= startDate` enforced. Only an OWNER creates
-or updates them. `isDateLocked` backs the check in rule 1 above.
+A reporting period is a calendar month. It stays editable for 7 days after it
+ends and **locks by itself on the 8th day**, in the company's time zone —
+January locks on 8 February. The lock is worked out from the date whenever it is
+checked, so nothing has to run on schedule and nobody creates periods. Months
+never share a day.
+
+An OWNER can **reopen** a locked month, and it stays open until they close it
+again; a month still inside its grace window cannot be reopened or closed. Each
+reopened month is one `ReportingPeriod` row — `OPEN` while reopened, `LOCKED`
+once closed again, with who changed it last. No row means the automatic rule.
+`isDateLocked` backs the check in rule 1 above.
 
 **Planning follows locked periods like time logs**, so a plan stays
 correctable until its period is locked, and planned-vs-actual becomes final on
@@ -504,7 +514,7 @@ another OWNER or grant the OWNER role.
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
-| Reporting periods | create + update | read | read |
+| Reporting periods | reopen + close | read | read |
 
 This matrix is what the code does today. The intended model —
 Owner-owned structure, manager-operated teams — is in
@@ -556,6 +566,21 @@ the gap is the main fact about the project's current state.
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
   day.
+- **Closing periods** — each month locks by itself 7 days after it ends, and an
+  owner can reopen a locked month from `/admin/periods` and close it again. The
+  timesheet, team grid and planning grid show locked days as read-only, and
+  during the grace week the timesheet says until when last month can be edited.
+- **Hours report** — owners and managers see logged time on `/reports` for a
+  month or a custom range, grouped by client, project, activity or person, and
+  split into billable client work, non-billable client work and internal work
+  (D2). A range that includes a month still open to edits is marked
+  provisional. Managers see only the teams they lead. A second tab compares
+  planned with logged time per person for the same range, shown as a neutral
+  difference rather than a score (D3). A third shows utilisation per person —
+  billable utilisation, client share, non-billable client share and logging
+  completeness, each labelled with what it is measured against and shown as
+  "—" when there is nothing to measure. Availability and logged time both count
+  only days that have finished.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -564,9 +589,6 @@ the gap is the main fact about the project's current state.
 
 ### Backend-only, no user interface at all
 
-- **Reporting.** Period lifecycle and a planned-vs-actual aggregation. No screen
-  exists — including no way for an owner to actually lock a period, despite
-  locking being enforced everywhere.
 
 ### Phase 1 delivered
 
@@ -584,7 +606,8 @@ what a week consisted of, and that already exists. A team timesheet would need
 per-user-per-day-per-project data the summary endpoint does not return, and
 would be unreadable at company size. "Where did the time go" is answered by the
 project filter at team level and by the per-person panel for one person;
-cross-cutting hours by client and project belong to Phase 5.
+cross-cutting hours by client and project are the hours report, built in
+Phase 5.
 
 ### Scope C delivered
 
@@ -744,8 +767,8 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 4 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7, so Phase 5 is the
+not a task list. Phases 0 to 5 are delivered, and so is every permission
+scope in [`permission-model.md`](./permission-model.md) §7, so Phase 6 is the
 work now being planned.
 
 ---
@@ -921,37 +944,44 @@ planned-vs-actual half of Phase 5.*
 
 ---
 
-**Phase 5 — Reporting and export**
+**Phase 5 — Reporting and closing periods — delivered**
 
-Turns the data into the answers the company actually needs:
+**Built in September 2026.** Period locking was enforced on every write but
+could not be switched on, and none of the data came back out as an answer. Now
+months close by themselves and owners and managers have a `/reports` page. §4
+and §5 describe what is in force; what follows is what settling it cost.
 
-- **Hours by client, project and activity** over a date range.
-- **The billable split** — billable client work, non-billable client work, and
-  internal work kept distinct (D2). This is the number the services business
-  runs on.
-- **Utilisation.** There are two standard definitions and they differ only in the
-  denominator: billable over **available** hours (capacity less time off — how
-  well the time someone had was used) and billable over **capacity** (how much
-  the company got for what it pays for). Both are legitimate and answer different
-  questions, so **reporting reads capacity and time off separately** rather than
-  consuming `expectedMinutes`, which would silently pick the first and make the
-  second look like rework. Absence type is preserved in the data, so sick leave
-  can be treated differently from vacation if that is ever wanted. A period where
-  nothing was expected — somebody on leave for the whole month — shows "—" rather
-  than 0%, which would otherwise read as an accusation.
-- **Planned vs actual**, once Phase 4 means there is a plan worth comparing to.
-  The backend aggregation already exists.
-- **Export.** Because invoicing happens outside WorkTrack (D7), someone has to
-  get hours *out*. This is a functional requirement, not a nice-to-have — without
-  it the billable/non-billable distinction has no consumer. Format is open
-  (§10 Q4).
+**Periods became calendar months that lock by themselves.** Free-form named
+periods were dropped. A month stays editable for 7 days after it ends and locks
+on the 8th in the company's time zone, worked out from the date whenever it is
+checked — a scheduled job was rejected because the backend sleeps when idle. An
+owner can reopen a locked month and close it again; nothing closes a month
+early. Every month already past its grace window locked the day this shipped.
 
-Also needs the **period-closing interface**: locking is enforced everywhere but
-an owner has no way to actually lock anything today.
+**The hours report keeps D2's three categories apart under any grouping.**
+Rather than treating internal work as one group, every row splits into billable
+client work, non-billable client work and internal work, grouped by client,
+project, activity or person. Client names that differ only in case count as one
+client.
 
-*Depends on: Phases 3 and 4 for the utilisation and planned-vs-actual views. The
-hours and billable reports plus export depend only on Phase 0 and could ship
-earlier if invoicing needs them sooner.*
+**Utilisation settled on four figures** — billable utilisation, client share,
+non-billable client share and logging completeness — reading capacity and
+absences separately and counting availability and logged time only for days
+that have finished, so a month in progress is not measured against days still
+to come. Billable over
+*capacity* was left out as unfair per person.
+
+**Names keep their case.** Project, client, activity, category and team names
+are trimmed rather than lowercased; team names became unique regardless of case,
+like the others.
+
+Reports are for owners and managers only. Planned vs actual stays readable
+through the API by employees for their own figures, but no employee screen
+shows it; a report of an employee's own hours is a possible later addition.
+Export moved to the final stage of the roadmap. The limitations accepted along
+the way are listed in `known-issues.md` rather than repeated here.
+
+*Depended on: Phases 3 and 4.*
 
 ---
 
@@ -968,6 +998,20 @@ both pulled forward and are done.
 
 ---
 
+**Final stage — Export**
+
+Because invoicing happens outside WorkTrack (D7), someone has to get hours
+*out*. This is a functional requirement, not a nice-to-have — without it the
+billable/non-billable distinction has no consumer. It is deliberately built
+last, once the product itself is finished and polished, so the file reflects
+screens and figures that have stopped changing.
+
+Anybody who can see a report may export exactly the data they can see — an
+owner the whole company, a manager the teams they lead. Format is open
+(§10 Q4).
+
+---
+
 ### Dependency summary
 
 ```text
@@ -976,16 +1020,18 @@ Phase 0  Authorization + first tests
    ├──────────────────────────────────────────┐
    │                                          │
 Phase 1  Team time view                  (hours + billable
-   │                                       reports & export
-   ├── Phase 2  Absences                   can branch early)
+   │                                       reports could
+   ├── Phase 2  Absences                   branch early)
    │      │                                       │
    │   Phase 3  Capacity + expected ───┐          │   (delivered)
    │                                   │          │
    └── Phase 4  Planning UI ───────────┤          │   (delivered)
                                        │          │
-                            Phase 5  Reporting ◄──┘
+                            Phase 5  Reporting ◄──┘   (delivered)
                                        │
                             Phase 6  Hardening
+                                       │
+                            Final stage  Export
 ```
 
 ---
@@ -1068,7 +1114,9 @@ lookup tables any manager can still edit or archive across the whole company.
 ever disagree about the catalogue.
 
 **Q4 — What form should the hours export take?**
-Required by Phase 5, since invoicing is external (D7).
+Required before the product is complete, since invoicing is external (D7), but
+deliberately built last — see §7, Final stage. Who may export is settled:
+anybody who can see a report, for exactly what they can see.
 *Recommendation: start with CSV* — one row per person per project per day, or
 per person per project per period, with billable and client columns. Whoever
 produces invoices already works in a spreadsheet. Confirm the grouping with them

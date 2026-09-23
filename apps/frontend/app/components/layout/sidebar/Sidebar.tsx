@@ -9,6 +9,7 @@ import { Logo } from "../../shared/Logo";
 import { SidebarNavigation } from "./SidebarNavigation";
 import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
 import { User } from "@/types";
+import { UserRole } from "@/types/enums";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { CloseButton } from "../../shared/buttons/CloseButton";
 
@@ -20,7 +21,10 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const canManage = hasManagerAccess(user?.role);
-  const navlist = canManage ? managerNavigation : employeeNavigation;
+  const isOwner = user?.role === UserRole.OWNER;
+  const navlist = (canManage ? managerNavigation : employeeNavigation).filter(
+    (item) => isOwner || !item.ownerOnly,
+  );
 
   return (
     <>

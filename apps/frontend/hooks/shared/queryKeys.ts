@@ -119,6 +119,22 @@ export const queryKeys = {
     list: (params?: QueryParams) => ["planning", "list", params ?? {}] as const,
   },
 
+  reporting: {
+    all: ["reporting"] as const,
+
+    periods: (params?: QueryParams) =>
+      ["reporting", "periods", params ?? {}] as const,
+
+    hours: (params?: QueryParams) =>
+      ["reporting", "hours", params ?? {}] as const,
+
+    plannedVsActual: (params?: QueryParams) =>
+      ["reporting", "planned-vs-actual", params ?? {}] as const,
+
+    utilisation: (params?: QueryParams) =>
+      ["reporting", "utilisation", params ?? {}] as const,
+  },
+
   projectActivities: {
     all: ["projectActivities"] as const,
     lists: () => ["projectActivities", "list"] as const,

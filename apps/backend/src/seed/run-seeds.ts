@@ -12,7 +12,6 @@ import { seedTeams } from './seed-teams';
 import { seedPlanning } from './seed-planning';
 import { seedTimeLogs } from './seed-time-logs';
 import { seedAbsences } from './seed-absences';
-import { seedReportingPeriods } from './seed-reporting-periods';
 import { writeCredentialsFile } from './write-credentials';
 
 async function run() {
@@ -31,7 +30,6 @@ async function run() {
     await seedPlanning(AppDataSource, companyId);
     await seedTimeLogs(AppDataSource, companyId);
     await seedAbsences(AppDataSource, companyId);
-    await seedReportingPeriods(AppDataSource, companyId);
 
     const file = writeCredentialsFile();
 

@@ -30,6 +30,9 @@ export const todayISODate = (timeZone?: string): string => {
   }
 };
 
+export const addDays = (date: string, days: number): string =>
+  toISODate(toUtc(date) + days * MS_PER_DAY);
+
 export const isWorkingDay = (date: string): boolean => {
   const day = new Date(toUtc(date)).getUTCDay();
   return day >= 1 && day <= 5;

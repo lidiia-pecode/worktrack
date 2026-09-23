@@ -1,23 +1,15 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Patch,
-  Post,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 
 import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
+import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
+import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import {
-  CreateReportingPeriodDto,
-  UpdateReportingPeriodDto,
-} from './dtos/reporting-period.dto';
-import { GetReportQueryDto } from './dtos/report-query.dto';
+  ReportingMonthParam,
+  ReportingPeriodsQuery,
+} from './dtos/reporting-month.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('reporting')
@@ -26,41 +18,52 @@ export class ReportingController {
   constructor(private readonly reportingService: ReportingService) {}
 
   // ==========================================
-  // PERIODS CONTROL (OWNER ONLY)
+  // PERIODS
   // ==========================================
 
-  @Post('periods')
-  @Role(UserRole.OWNER)
-  createPeriod(
-    @CurrentUser() user: AuthUser,
-    @Body() dto: CreateReportingPeriodDto,
-  ) {
-    return this.reportingService.createPeriod(user.companyId, dto);
-  }
-
   @Get('periods')
-  findAllPeriods(@CurrentUser() user: AuthUser) {
-    return this.reportingService.findAllPeriods(user.companyId);
+  listPeriods(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ReportingPeriodsQuery,
+  ) {
+    return this.reportingService.listMonths(user.companyId, query);
   }
 
-  @Patch('periods/:id')
+  @Post('periods/:month/reopen')
   @Role(UserRole.OWNER)
-  updatePeriod(
+  reopenPeriod(
     @CurrentUser() user: AuthUser,
-    @Param('id') id: string,
-    @Body() dto: UpdateReportingPeriodDto,
+    @Param() { month }: ReportingMonthParam,
   ) {
-    return this.reportingService.updatePeriod(user.companyId, id, dto);
+    return this.reportingService.reopenMonth(user.companyId, month, user.id);
+  }
+
+  @Post('periods/:month/close')
+  @Role(UserRole.OWNER)
+  closePeriod(
+    @CurrentUser() user: AuthUser,
+    @Param() { month }: ReportingMonthParam,
+  ) {
+    return this.reportingService.closeMonth(user.companyId, month, user.id);
   }
 
   // ==========================================
   // ANALYTICS & DASHBOARDS
   // ==========================================
 
-  @Get('planned-vs-actual')
-  getPlannedVsActual(
+  @Get('hours')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  getHoursReport(
     @CurrentUser() user: AuthUser,
-    @Query() query: GetReportQueryDto,
+    @Query() query: HoursReportQuery,
+  ) {
+    return this.reportingService.getHoursReport(user, query);
+  }
+
+  @Get('planned-vs-actual')
+  getPlannedVsActualReport(
+    @CurrentUser() user: AuthUser,
+    @Query() query: PlannedVsActualQuery,
   ) {
     return this.reportingService.getPlannedVsActualReport(user, query);
   }

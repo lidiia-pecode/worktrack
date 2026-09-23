@@ -1,8 +1,8 @@
 import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimString } from 'src/lib/decorators';
 
 export class ActivityCategoryPayload {
-  @NormalizeString()
+  @TrimString()
   @IsNotEmpty()
   @IsString()
   @MinLength(2)

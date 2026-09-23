@@ -10,24 +10,24 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimString } from 'src/lib/decorators';
 
 export class ProjectPayload {
-  @NormalizeString()
+  @TrimString()
   @IsNotEmpty()
   @IsString()
   @MinLength(2)
   @MaxLength(255)
   name!: string;
 
-  @NormalizeString()
+  @TrimString()
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
   @MaxLength(255)
   clientName?: string | null;
 
-  @NormalizeString()
+  @TrimString()
   @IsOptional()
   @IsString()
   @MaxLength(1000)
