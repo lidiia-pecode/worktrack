@@ -3,6 +3,8 @@
 import {
   HoursReport,
   HoursReportQuery,
+  PlannedVsActualQuery,
+  PlannedVsActualReport,
   ReportingMonth,
   ReportingPeriodsQuery,
 } from "@/types";
@@ -23,4 +25,9 @@ export const ReportingClientApi = {
 
   getHoursReport: (params: HoursReportQuery) =>
     client.get<HoursReport>(`/hours${buildQueryString(params)}`),
+
+  getPlannedVsActual: (params: PlannedVsActualQuery) =>
+    client.get<PlannedVsActualReport>(
+      `/planned-vs-actual${buildQueryString(params)}`,
+    ),
 };

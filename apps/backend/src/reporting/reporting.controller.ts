@@ -4,7 +4,7 @@ import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
-import { GetReportQueryDto } from './dtos/report-query.dto';
+import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import {
   ReportingMonthParam,
@@ -61,9 +61,9 @@ export class ReportingController {
   }
 
   @Get('planned-vs-actual')
-  getPlannedVsActual(
+  getPlannedVsActualReport(
     @CurrentUser() user: AuthUser,
-    @Query() query: GetReportQueryDto,
+    @Query() query: PlannedVsActualQuery,
   ) {
     return this.reportingService.getPlannedVsActualReport(user, query);
   }

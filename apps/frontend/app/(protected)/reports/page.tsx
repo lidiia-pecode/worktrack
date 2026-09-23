@@ -1,6 +1,6 @@
 import { requireManagerAccess } from "@/lib/api/server/auth";
 import { PageHeader } from "@/app/components/shared/PageHeader";
-import { HoursReportView } from "@/app/components/reports/HoursReportView";
+import { ReportsView } from "@/app/components/reports/ReportsView";
 
 export default async function ReportsPage() {
   await requireManagerAccess();
@@ -9,10 +9,10 @@ export default async function ReportsPage() {
     <section className="flex min-h-full w-full flex-col p-6">
       <PageHeader
         title="Reports"
-        description="Where logged time went, split into billable client work, non-billable client work and internal work."
+        description="Where logged time went, and how it compares with the plan."
       />
 
-      <HoursReportView />
+      <ReportsView />
     </section>
   );
 }

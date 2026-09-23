@@ -54,6 +54,14 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
+/** e.g. "+1h 30m" or "−2h"; zero has no sign. */
+export function formatSignedDuration(minutes: number): string {
+  if (minutes === 0) return formatDuration(0);
+
+  const sign = minutes > 0 ? "+" : "−";
+  return `${sign}${formatDuration(Math.abs(minutes))}`;
+}
+
 export function getWeekStart(
   date: Date,
   weekStartDay: WeekDay = WeekDay.MONDAY,

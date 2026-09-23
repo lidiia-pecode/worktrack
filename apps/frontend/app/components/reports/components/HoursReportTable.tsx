@@ -1,7 +1,8 @@
 import { HoursReportRow, HoursSplit } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
-import { formatDuration } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
+
+import { HEADER_CELL_CLASS, Minutes } from "./ReportCells";
 
 type HoursReportTableProps = {
   groupBy: HoursReportGroupBy;
@@ -23,9 +24,6 @@ const SPLIT_COLUMNS: { key: keyof HoursSplit; label: string }[] = [
   { key: "totalMinutes", label: "Total" },
 ];
 
-const HEADER_CELL_CLASS =
-  "p-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground";
-
 // Projects have no client when the work is internal, so say so rather than
 // leaving the detail blank.
 const describeRow = (groupBy: HoursReportGroupBy, row: HoursReportRow) => {
@@ -39,15 +37,6 @@ const describeRow = (groupBy: HoursReportGroupBy, row: HoursReportRow) => {
 
   return { name: row.name, detail: row.detail };
 };
-
-const Minutes = ({ value, strong }: { value: number; strong?: boolean }) =>
-  value > 0 ? (
-    <span className={cn(strong && "font-semibold text-foreground")}>
-      {formatDuration(value)}
-    </span>
-  ) : (
-    <span className="text-muted-foreground/60">-</span>
-  );
 
 export const HoursReportTable = ({
   groupBy,

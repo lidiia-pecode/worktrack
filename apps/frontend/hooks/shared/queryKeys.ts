@@ -127,6 +127,9 @@ export const queryKeys = {
 
     hours: (params?: QueryParams) =>
       ["reporting", "hours", params ?? {}] as const,
+
+    plannedVsActual: (params?: QueryParams) =>
+      ["reporting", "planned-vs-actual", params ?? {}] as const,
   },
 
   projectActivities: {

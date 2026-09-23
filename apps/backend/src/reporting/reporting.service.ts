@@ -5,7 +5,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { Company } from 'src/companies/entities/company.entity';
@@ -24,21 +24,32 @@ import {
   toMonthKey,
 } from './reporting-months.util';
 import { AuthUser } from 'src/auth/auth-strategies/types';
-import { GetReportQueryDto } from './dtos/report-query.dto';
+import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
-interface PlannedRawResult {
+export interface PlannedVsActualRow {
   userId: string;
-  totalPlannedMinutes: string | number | null;
+  name: string;
+  position: string | null;
+  plannedMinutes: number;
+  loggedMinutes: number;
 }
 
-interface ActualRawResult {
+export interface PlannedVsActualReport {
+  rows: PlannedVsActualRow[];
+  totals: { plannedMinutes: number; loggedMinutes: number };
+  /** True while any month in the range can still be edited. */
+  isProvisional: boolean;
+}
+
+interface PersonMinutesRawRow {
   userId: string;
-  totalActualMinutes: string | number | null;
-  billableMinutes: string | number | null;
+  name: string;
+  position: string | null;
+  minutes: string;
 }
 
 export interface ReportingMonth {
@@ -425,19 +436,25 @@ export class ReportingService {
     };
   }
 
-  async getPlannedVsActualReport(user: AuthUser, query: GetReportQueryDto) {
-    const { companyId, role } = user;
-    const { startDate, endDate, userId, projectId } = query;
+  /**
+   * Planned against logged minutes per person over a date range. Employees
+   * are pinned to their own figures; nobody sees anyone outside their scope.
+   */
+  async getPlannedVsActualReport(
+    user: AuthUser,
+    query: PlannedVsActualQuery,
+  ): Promise<PlannedVsActualReport> {
+    const { dateFrom, dateTo, userId, projectId } = query;
 
-    if (new Date(startDate) > new Date(endDate)) {
-      throw new BadRequestException('startDate cannot be after endDate');
+    if (dateFrom > dateTo) {
+      throw new BadRequestException('dateFrom cannot be after dateTo');
     }
 
     let targetUserId = userId;
 
-    if (role === UserRole.EMPLOYEE) {
-      targetUserId = user.id; // Employee sees only own analytics
-    } else if (role === UserRole.MANAGER && userId) {
+    if (user.role === UserRole.EMPLOYEE) {
+      targetUserId = user.id;
+    } else if (user.role === UserRole.MANAGER && userId) {
       const visible = await this.teamVisibility.isUserInManagedTeams(
         userId,
         user,
@@ -450,101 +467,107 @@ export class ReportingService {
       }
     }
 
-    // 1. Aggregate Planned Minutes
-    const plannedQuery = this.periodRepo.manager
-      .createQueryBuilder()
-      .select('pe.user_id', 'userId')
-      .addSelect('SUM(pe.planned_minutes)', 'totalPlannedMinutes')
-      .from('planning_entries', 'pe')
-      .where('pe.company_id = :companyId', { companyId })
-      .andWhere('pe.date BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      });
+    const filters = { dateFrom, dateTo, targetUserId, projectId };
+    const manager = this.periodRepo.manager;
 
-    this.teamVisibility.applyUserVisibility(plannedQuery, 'pe.user_id', user);
+    const planned = await this.sumMinutesPerPerson(
+      manager
+        .createQueryBuilder()
+        .from('planning_entries', 'e')
+        .select('SUM(e.planned_minutes)', 'minutes'),
+      'e.project_id',
+      user,
+      filters,
+    );
 
-    if (targetUserId)
-      plannedQuery.andWhere('pe.user_id = :targetUserId', { targetUserId });
-    if (projectId)
-      plannedQuery.andWhere('pe.project_id = :projectId', { projectId });
+    const logged = await this.sumMinutesPerPerson(
+      manager
+        .createQueryBuilder()
+        .from('time_logs', 'e')
+        .innerJoin('project_activities', 'pa', 'pa.id = e.project_activity_id')
+        .select('SUM(e.minutes)', 'minutes'),
+      'pa.project_id',
+      user,
+      filters,
+    );
 
-    const plannedResult = await plannedQuery
-      .groupBy('pe.user_id')
-      .getRawMany<PlannedRawResult>();
-
-    // 2. Aggregate Actual Logged Minutes
-    const actualQuery = this.periodRepo.manager
-      .createQueryBuilder()
-      .select('tl.user_id', 'userId')
-      .addSelect('SUM(tl.minutes)', 'totalActualMinutes')
-      .addSelect(
-        'SUM(CASE WHEN tl.is_billable = true THEN tl.minutes ELSE 0 END)',
-        'billableMinutes',
-      )
-      .from('time_logs', 'tl')
-      .innerJoin('project_activities', 'pa', 'pa.id = tl.project_activity_id')
-      .where('tl.company_id = :companyId', { companyId })
-      .andWhere('tl.date BETWEEN :startDate AND :endDate', {
-        startDate,
-        endDate,
-      });
-
-    this.teamVisibility.applyUserVisibility(actualQuery, 'tl.user_id', user);
-
-    if (targetUserId)
-      actualQuery.andWhere('tl.user_id = :targetUserId', { targetUserId });
-    if (projectId)
-      actualQuery.andWhere('pa.project_id = :projectId', { projectId });
-
-    const actualResult = await actualQuery
-      .groupBy('tl.user_id')
-      .getRawMany<ActualRawResult>();
-
-    // 3. Merge Datasets
-    const map = new Map<
-      string,
-      {
-        userId: string;
-        plannedMinutes: number;
-        actualMinutes: number;
-        billableMinutes: number;
-      }
-    >();
-
-    plannedResult.forEach((p) => {
-      map.set(p.userId, {
-        userId: p.userId,
-        plannedMinutes: Number(p.totalPlannedMinutes) || 0,
-        actualMinutes: 0,
-        billableMinutes: 0,
-      });
-    });
-
-    actualResult.forEach((a) => {
-      const existing = map.get(a.userId) || {
-        userId: a.userId,
+    const rowsByUser = new Map<string, PlannedVsActualRow>();
+    const rowFor = (person: PersonMinutesRawRow) => {
+      const row = rowsByUser.get(person.userId) ?? {
+        userId: person.userId,
+        name: person.name,
+        position: person.position,
         plannedMinutes: 0,
-        actualMinutes: 0,
-        billableMinutes: 0,
+        loggedMinutes: 0,
       };
-      existing.actualMinutes = Number(a.totalActualMinutes) || 0;
-      existing.billableMinutes = Number(a.billableMinutes) || 0;
-      map.set(a.userId, existing);
+      rowsByUser.set(person.userId, row);
+      return row;
+    };
+
+    planned.forEach((person) => {
+      rowFor(person).plannedMinutes = Number(person.minutes);
+    });
+    logged.forEach((person) => {
+      rowFor(person).loggedMinutes = Number(person.minutes);
     });
 
-    return Array.from(map.values()).map((row) => ({
-      ...row,
-      plannedHours: Number((row.plannedMinutes / 60).toFixed(2)),
-      actualHours: Number((row.actualMinutes / 60).toFixed(2)),
-      billableHours: Number((row.billableMinutes / 60).toFixed(2)),
-      billableRatio:
-        row.actualMinutes > 0
-          ? Number(((row.billableMinutes / row.actualMinutes) * 100).toFixed(1))
-          : 0,
-      varianceHours: Number(
-        ((row.actualMinutes - row.plannedMinutes) / 60).toFixed(2),
+    const rows = [...rowsByUser.values()].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+
+    return {
+      rows,
+      totals: {
+        plannedMinutes: rows.reduce((sum, row) => sum + row.plannedMinutes, 0),
+        loggedMinutes: rows.reduce((sum, row) => sum + row.loggedMinutes, 0),
+      },
+      isProvisional: await this.hasEditableMonth(
+        user.companyId,
+        dateFrom,
+        dateTo,
       ),
-    }));
+    };
+  }
+
+  /**
+   * Sums minutes per person over a query whose source table is aliased `e`
+   * and has `company_id`, `user_id` and `date`.
+   */
+  private sumMinutesPerPerson(
+    qb: SelectQueryBuilder<ObjectLiteral>,
+    projectColumn: string,
+    user: AuthUser,
+    filters: {
+      dateFrom: string;
+      dateTo: string;
+      targetUserId?: string;
+      projectId?: string;
+    },
+  ): Promise<PersonMinutesRawRow[]> {
+    qb.innerJoin('users', 'u', 'u.id = e.user_id')
+      .addSelect('u.id', 'userId')
+      .addSelect(`u.first_name || ' ' || u.last_name`, 'name')
+      .addSelect('u.position', 'position')
+      .where('e.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('e.date BETWEEN :dateFrom AND :dateTo', {
+        dateFrom: filters.dateFrom,
+        dateTo: filters.dateTo,
+      });
+
+    this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user);
+
+    if (filters.targetUserId) {
+      qb.andWhere('e.user_id = :targetUserId', {
+        targetUserId: filters.targetUserId,
+      });
+    }
+
+    if (filters.projectId) {
+      qb.andWhere(`${projectColumn} = :projectId`, {
+        projectId: filters.projectId,
+      });
+    }
+
+    return qb.groupBy('u.id').getRawMany<PersonMinutesRawRow>();
   }
 }

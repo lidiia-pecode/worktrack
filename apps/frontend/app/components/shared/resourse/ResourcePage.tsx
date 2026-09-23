@@ -242,7 +242,7 @@ interface ResourceTabButtonProps {
   onClick: () => void;
 }
 
-function ResourceTabButton({
+export function ResourceTabButton({
   active,
   label,
   icon,

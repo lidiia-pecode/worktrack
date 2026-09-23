@@ -12,6 +12,8 @@ import { DateInput } from "../../shared/inputs";
 
 export const CUSTOM_RANGE = "custom";
 
+export type DateRange = { dateFrom: string; dateTo: string };
+
 const GROUP_BY_OPTIONS = [
   { value: HoursReportGroupBy.CLIENT, label: "Client" },
   { value: HoursReportGroupBy.PROJECT, label: "Project" },
@@ -19,28 +21,29 @@ const GROUP_BY_OPTIONS = [
   { value: HoursReportGroupBy.PERSON, label: "Person" },
 ];
 
-type DateRange = { dateFrom: string; dateTo: string };
-
-type HoursReportFiltersProps = {
+type ReportFiltersProps = {
   /** A YYYY-MM month key, or CUSTOM_RANGE. */
   period: string;
   customRange: DateRange;
   rangeError?: string;
-  groupBy: HoursReportGroupBy;
   onPeriodChange: (period: string) => void;
   onCustomRangeChange: (range: DateRange) => void;
+  groupBy: HoursReportGroupBy;
   onGroupByChange: (groupBy: HoursReportGroupBy) => void;
+  /** Only the hours report is grouped. */
+  showGroupBy: boolean;
 };
 
-export const HoursReportFilters = ({
+export const ReportFilters = ({
   period,
   customRange,
   rangeError,
-  groupBy,
   onPeriodChange,
   onCustomRangeChange,
+  groupBy,
   onGroupByChange,
-}: HoursReportFiltersProps) => {
+  showGroupBy,
+}: ReportFiltersProps) => {
   const { months } = useReportingPeriods();
 
   const periodOptions = useMemo(
@@ -93,13 +96,17 @@ export const HoursReportFilters = ({
         </>
       )}
 
-      <FormSelect
-        label="Group by"
-        className="sm:w-44"
-        value={groupBy}
-        options={GROUP_BY_OPTIONS}
-        onValueChange={(value) => onGroupByChange(value as HoursReportGroupBy)}
-      />
+      {showGroupBy && (
+        <FormSelect
+          label="Group by"
+          className="sm:w-44"
+          value={groupBy}
+          options={GROUP_BY_OPTIONS}
+          onValueChange={(value) =>
+            onGroupByChange(value as HoursReportGroupBy)
+          }
+        />
+      )}
     </FilterBar>
   );
 };

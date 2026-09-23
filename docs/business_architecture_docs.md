@@ -574,7 +574,9 @@ the gap is the main fact about the project's current state.
   month or a custom range, grouped by client, project, activity or person, and
   split into billable client work, non-billable client work and internal work
   (D2). A range that includes a month still open to edits is marked
-  provisional. Managers see only the teams they lead.
+  provisional. Managers see only the teams they lead. A second tab compares
+  planned with logged time per person for the same range, shown as a neutral
+  difference rather than a score (D3).
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -583,7 +585,6 @@ the gap is the main fact about the project's current state.
 
 ### Backend-only, no user interface at all
 
-- **Planned vs actual.** The aggregation exists; no screen shows it yet.
 
 ### Phase 1 delivered
 

@@ -9,6 +9,7 @@ export * from "./ProjectActivities";
 export * from "./PlanningEntry";
 export * from "./ReportingPeriod";
 export * from "./HoursReport";
+export * from "./PlannedVsActual";
 
 export interface PaginationParams {
   page?: number;

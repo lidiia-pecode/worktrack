@@ -11,6 +11,8 @@ type Handler = keyof ReportingController;
 
 const OWNER_ONLY: Handler[] = ['reopenPeriod', 'closePeriod'];
 const OWNER_AND_MANAGER: Handler[] = ['getHoursReport'];
+// Employees read their own figures here; no employee screen shows them.
+const EVERY_ROLE: Handler[] = ['listPeriods', 'getPlannedVsActualReport'];
 
 describe('ReportingController route roles', () => {
   const guard = new RolesGuard(new Reflector());
@@ -43,4 +45,8 @@ describe('ReportingController route roles', () => {
       expect(allows(handler, UserRole.EMPLOYEE)).toBe(false);
     },
   );
+
+  it.each(EVERY_ROLE)('allows an employee on %s', (handler) => {
+    expect(allows(handler, UserRole.EMPLOYEE)).toBe(true);
+  });
 });

@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -16,6 +20,7 @@ import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { ReportingPeriod } from './entities/reporting-period.entity';
@@ -256,11 +261,12 @@ describe('ReportingService', () => {
     });
   });
 
-  describe('hours report', () => {
+  describe('reports over a locked month', () => {
     let owner: AuthUser;
     let manager: AuthUser; // leads the team `member` is in
-    let member: string;
+    let member: AuthUser;
     let outsider: string; // on no team
+    let toolingProjectId: string;
 
     const lockedRange = {
       dateFrom: lockedMonth,
@@ -280,7 +286,7 @@ describe('ReportingService', () => {
       return { id: user.id, email, companyId, role };
     };
 
-    const createProjectActivity = async (
+    const createProject = async (
       projectName: string,
       clientName: string | null,
       activityId: string,
@@ -293,8 +299,17 @@ describe('ReportingService', () => {
         .getRepository(ProjectActivity)
         .save({ companyId, projectId: project.id, activityId });
 
-      return projectActivity.id;
+      return { projectId: project.id, projectActivityId: projectActivity.id };
     };
+
+    const plan = (userId: string, projectId: string, plannedMinutes: number) =>
+      dataSource.getRepository(PlanningEntry).save({
+        companyId,
+        userId,
+        projectId,
+        date: lockedDate,
+        plannedMinutes,
+      });
 
     const log = (
       userId: string,
@@ -317,7 +332,7 @@ describe('ReportingService', () => {
     beforeAll(async () => {
       owner = { id: ownerId, email: '', companyId, role: UserRole.OWNER };
       manager = await createUser('Manager', UserRole.MANAGER);
-      member = (await createUser('Member', UserRole.EMPLOYEE)).id;
+      member = await createUser('Member', UserRole.EMPLOYEE);
       outsider = (await createUser('Outsider', UserRole.EMPLOYEE)).id;
 
       const team = await dataSource
@@ -326,7 +341,7 @@ describe('ReportingService', () => {
 
       for (const [userId, roleInTeam] of [
         [manager.id, TeamRole.MANAGER],
-        [member, TeamRole.MEMBER],
+        [member.id, TeamRole.MEMBER],
       ] as const) {
         await dataSource.getRepository(TeamMembership).save({
           companyId,
@@ -344,21 +359,17 @@ describe('ReportingService', () => {
         .getRepository(Activity)
         .save({ companyId, name: `Backend ${RUN}`, categoryId: category.id });
 
-      const clientWork = await createProjectActivity(
-        'CRM',
-        'Acme',
-        activity.id,
-      );
-      const internalWork = await createProjectActivity(
-        'Tooling',
-        null,
-        activity.id,
-      );
+      const crm = await createProject('CRM', 'Acme', activity.id);
+      const tooling = await createProject('Tooling', null, activity.id);
+      toolingProjectId = tooling.projectId;
 
-      await log(member, clientWork, 300, true);
-      await log(member, clientWork, 60, false);
-      await log(member, internalWork, 120, true);
-      await log(outsider, clientWork, 240, true);
+      await log(member.id, crm.projectActivityId, 300, true);
+      await log(member.id, crm.projectActivityId, 60, false);
+      await log(member.id, tooling.projectActivityId, 120, true);
+      await log(outsider, crm.projectActivityId, 240, true);
+
+      await plan(member.id, crm.projectId, 480);
+      await plan(manager.id, crm.projectId, 60);
     });
 
     it('splits client work by billability and keeps internal work apart', async () => {
@@ -412,7 +423,7 @@ describe('ReportingService', () => {
     it("shows a manager only their team's hours", async () => {
       const { rows, totals } = await report(manager, HoursReportGroupBy.PERSON);
 
-      expect(rows.map((row) => row.id)).toEqual([member]);
+      expect(rows.map((row) => row.id)).toEqual([member.id]);
       expect(totals.totalMinutes).toBe(480);
     });
 
@@ -438,6 +449,59 @@ describe('ReportingService', () => {
           groupBy: HoursReportGroupBy.CLIENT,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    describe('planned vs actual', () => {
+      const plannedVsActual = (
+        user: AuthUser,
+        filters: { userId?: string; projectId?: string } = {},
+      ) =>
+        service.getPlannedVsActualReport(user, { ...lockedRange, ...filters });
+
+      const figures = (
+        rows: { name: string; plannedMinutes: number; loggedMinutes: number }[],
+      ) => rows.map((row) => [row.name, row.plannedMinutes, row.loggedMinutes]);
+
+      it('shows planned and logged time per person, by name', async () => {
+        const { rows, totals, isProvisional } = await plannedVsActual(owner);
+
+        expect(figures(rows)).toEqual([
+          ['Manager Test', 60, 0],
+          ['Member Test', 480, 480],
+          ['Outsider Test', 0, 240],
+        ]);
+        expect(totals).toEqual({ plannedMinutes: 540, loggedMinutes: 720 });
+        expect(isProvisional).toBe(false);
+      });
+
+      it("shows a manager only their team's people", async () => {
+        const { rows } = await plannedVsActual(manager);
+
+        expect(rows.map((row) => row.name)).toEqual([
+          'Manager Test',
+          'Member Test',
+        ]);
+      });
+
+      it('narrows to one project', async () => {
+        const { rows } = await plannedVsActual(owner, {
+          projectId: toolingProjectId,
+        });
+
+        expect(figures(rows)).toEqual([['Member Test', 0, 120]]);
+      });
+
+      it('pins an employee to their own figures', async () => {
+        const { rows } = await plannedVsActual(member, { userId: outsider });
+
+        expect(rows.map((row) => row.userId)).toEqual([member.id]);
+      });
+
+      it('refuses a manager asking about someone outside their teams', async () => {
+        await expect(
+          plannedVsActual(manager, { userId: outsider }),
+        ).rejects.toThrow(ForbiddenException);
+      });
     });
   });
 });
