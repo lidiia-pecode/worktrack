@@ -21,6 +21,7 @@ import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
@@ -260,7 +261,7 @@ describe('PlanningService', () => {
     // Three weeks ago may already be locked, depending on today's date.
     await dataSource.getRepository(ReportingPeriod).save({
       companyId,
-      month: `${PAST_MONDAY.slice(0, 7)}-01`,
+      month: firstDayOfMonth(PAST_MONDAY),
       status: ReportingPeriodStatus.OPEN,
     });
   });

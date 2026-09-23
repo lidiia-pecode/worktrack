@@ -15,7 +15,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
-import { eachMonth } from 'src/reporting/reporting-months.util';
+import { monthsBetween } from 'src/reporting/reporting-months.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
@@ -167,7 +167,7 @@ describe('ExpectedHoursService', () => {
     // Past months lock by themselves. Reopening everything from February on
     // leaves January (LOCKED_DATE) as the newest locked month.
     await dataSource.getRepository(ReportingPeriod).save(
-      eachMonth('2026-02-01', todayISODate()).map((month) => ({
+      monthsBetween('2026-02-01', todayISODate()).map((month) => ({
         companyId,
         month,
         status: ReportingPeriodStatus.OPEN,

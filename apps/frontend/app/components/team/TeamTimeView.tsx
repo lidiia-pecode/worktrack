@@ -11,6 +11,7 @@ import {
   formatDuration,
   formatWeekRangeLabel,
   getWeekDates,
+  getWeekEnd,
   getWeekStart,
   toISODate,
   todayISODate,
@@ -56,6 +57,8 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+  const dateFrom = toISODate(weekStart);
+  const dateTo = toISODate(getWeekEnd(weekStart));
 
   const {
     rows,
@@ -65,8 +68,8 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     isError: isSummaryError,
     refetch: refetchSummary,
   } = useTeamTimeSummary({
-    dateFrom: toISODate(weekDates[0]),
-    dateTo: toISODate(weekDates[6]),
+    dateFrom,
+    dateTo,
     teamId,
     projectId,
   });
@@ -77,8 +80,8 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     isError: isAbsencesError,
     refetch: refetchAbsences,
   } = useAbsencesQuery(1, {
-    dateFrom: toISODate(weekDates[0]),
-    dateTo: toISODate(weekDates[6]),
+    dateFrom,
+    dateTo,
     pageSize: WEEK_PAGE_SIZE,
   });
 
@@ -87,10 +90,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     [absences, weekDates],
   );
 
-  const isLocked = useLockedDates(
-    toISODate(weekDates[0]),
-    toISODate(weekDates[6]),
-  );
+  const isLocked = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};

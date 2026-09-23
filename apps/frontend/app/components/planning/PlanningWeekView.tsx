@@ -10,6 +10,7 @@ import { useLockedDates } from "@/hooks/useReportingPeriods";
 import {
   formatDuration,
   getWeekDates,
+  getWeekEnd,
   getWeekStart,
   toISODate,
   todayISODate,
@@ -59,6 +60,8 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
   );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+  const dateFrom = toISODate(weekStart);
+  const dateTo = toISODate(getWeekEnd(weekStart));
 
   const {
     week,
@@ -75,8 +78,8 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     isError: isAbsencesError,
     refetch: refetchAbsences,
   } = useAbsencesQuery(1, {
-    dateFrom: toISODate(weekDates[0]),
-    dateTo: toISODate(weekDates[6]),
+    dateFrom,
+    dateTo,
     pageSize: WEEK_PAGE_SIZE,
   });
 
@@ -85,10 +88,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     [absences, weekDates],
   );
 
-  const isLocked = useLockedDates(
-    toISODate(weekDates[0]),
-    toISODate(weekDates[6]),
-  );
+  const isLocked = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};

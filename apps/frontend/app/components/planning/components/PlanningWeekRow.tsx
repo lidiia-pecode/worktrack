@@ -45,6 +45,26 @@ const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
   );
 };
 
+const DayEntries = ({
+  absence,
+  entries,
+}: {
+  absence?: Absence;
+  entries: PlanningEntry[];
+}) => (
+  <>
+    {absence && (
+      <Badge variant="default" className="w-fit text-[10px]">
+        {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
+      </Badge>
+    )}
+
+    {entries.map((entry) => (
+      <EntryLine key={entry.id} entry={entry} />
+    ))}
+  </>
+);
+
 export const PlanningWeekRow = ({
   row,
   weekDates,
@@ -103,15 +123,7 @@ export const PlanningWeekRow = ({
               )}
             >
               <div className="flex min-h-10 flex-col gap-1">
-                {absence && (
-                  <Badge variant="default" className="w-fit text-[10px]">
-                    {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
-                  </Badge>
-                )}
-
-                {entries.map((entry) => (
-                  <EntryLine key={entry.id} entry={entry} />
-                ))}
+                <DayEntries absence={absence} entries={entries} />
               </div>
             </td>
           );
@@ -131,15 +143,7 @@ export const PlanningWeekRow = ({
               aria-label={`Plan ${fullName(row.user)} on ${formatLongDayLabel(date)}`}
               className="group flex h-full min-h-14 w-full flex-col gap-1 p-2 text-left hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
             >
-              {absence && (
-                <Badge variant="default" className="w-fit text-[10px]">
-                  {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
-                </Badge>
-              )}
-
-              {entries.map((entry) => (
-                <EntryLine key={entry.id} entry={entry} />
-              ))}
+              <DayEntries absence={absence} entries={entries} />
 
               {entries.length === 0 && (
                 <Plus

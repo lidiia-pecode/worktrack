@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
+import { toMonthKey } from "@/lib/utils/date";
 
 import { queryKeys } from "./shared/queryKeys";
 
@@ -30,18 +31,18 @@ export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
  */
 export function useLockedDates(dateFrom: string, dateTo: string) {
   const { months } = useReportingPeriods({
-    from: dateFrom.slice(0, 7),
-    to: dateTo.slice(0, 7),
+    from: toMonthKey(dateFrom),
+    to: toMonthKey(dateTo),
   });
 
   return useMemo(() => {
-    const locked = new Set(
+    const lockedMonthKeys = new Set(
       months
         .filter((period) => period.state === ReportingMonthState.LOCKED)
         .map((period) => period.month),
     );
 
-    return (date: string) => locked.has(date.slice(0, 7));
+    return (date: string) => lockedMonthKeys.has(toMonthKey(date));
   }, [months]);
 }
 

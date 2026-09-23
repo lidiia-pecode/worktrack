@@ -16,6 +16,7 @@ import {
   formatDuration,
   formatMonthLabel,
   getWeekDates,
+  getWeekEnd,
   getWeekStart,
   isWeekend,
   toISODate,
@@ -87,8 +88,8 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
-  const dateFrom = toISODate(weekDates[0]);
-  const dateTo = toISODate(weekDates[6]);
+  const dateFrom = toISODate(weekStart);
+  const dateTo = toISODate(getWeekEnd(weekStart));
 
   const {
     items: timelogs,

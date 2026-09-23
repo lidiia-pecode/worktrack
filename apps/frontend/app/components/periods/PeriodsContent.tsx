@@ -16,7 +16,7 @@ import { PeriodRow } from "./components/PeriodRow";
 export const PeriodsContent = () => {
   const { months, isLoading, isError, refetch } = useReportingPeriods();
   const { reopen, close } = useReportingPeriodMutations();
-  const [reopening, setReopening] = useState<string | null>(null);
+  const [monthToReopen, setMonthToReopen] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -37,9 +37,9 @@ export const PeriodsContent = () => {
   }
 
   const confirmReopen = () => {
-    if (!reopening) return;
+    if (!monthToReopen) return;
 
-    reopen.mutate(reopening, { onSettled: () => setReopening(null) });
+    reopen.mutate(monthToReopen, { onSettled: () => setMonthToReopen(null) });
   };
 
   return (
@@ -49,7 +49,7 @@ export const PeriodsContent = () => {
           <PeriodRow
             key={period.month}
             period={period}
-            onReopen={setReopening}
+            onReopen={setMonthToReopen}
             onClose={(month) => close.mutate(month)}
             isClosing={close.isPending && close.variables === period.month}
           />
@@ -57,12 +57,14 @@ export const PeriodsContent = () => {
       </ul>
 
       <ConfirmModal
-        isOpen={Boolean(reopening)}
-        title={reopening ? `Reopen ${formatMonthLabel(reopening)}?` : ""}
+        isOpen={Boolean(monthToReopen)}
+        title={
+          monthToReopen ? `Reopen ${formatMonthLabel(monthToReopen)}?` : ""
+        }
         message="Time logs, absences, capacity changes and plans in this month become editable again for everyone who could edit them before. It stays open until you close it."
         confirmText="Reopen"
         onConfirm={confirmReopen}
-        onClose={() => setReopening(null)}
+        onClose={() => setMonthToReopen(null)}
         loading={reopen.isPending}
       />
     </>

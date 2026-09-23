@@ -15,12 +15,13 @@ import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import {
   addMonths,
-  eachMonth,
   editableUntil,
-  isPastGrace,
-  lastDayOf,
+  firstDayOfMonth,
+  isAutoLocked,
+  lastDayOfMonth,
   latestAutoLockedMonth,
-  monthOf,
+  monthsBetween,
+  toMonthKey,
 } from './reporting-months.util';
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { GetReportQueryDto } from './dtos/report-query.dto';
@@ -63,99 +64,101 @@ export class ReportingService {
   // REPORTING PERIODS
   // ==========================================
 
+  /** Months from `from` to `to` (YYYY-MM), newest first, with their state. */
   async listMonths(
     companyId: string,
     query: ReportingPeriodsQuery,
   ): Promise<ReportingMonth[]> {
     const today = await this.today(companyId);
-    const to = monthOf(query.to ?? today);
-    const from = monthOf(
-      query.from ?? addMonths(to, -(DEFAULT_MONTHS_LISTED - 1)),
-    );
+    const lastMonth = firstDayOfMonth(query.to ?? today);
+    const firstMonth = query.from
+      ? firstDayOfMonth(query.from)
+      : addMonths(lastMonth, -(DEFAULT_MONTHS_LISTED - 1));
 
-    if (from > to) {
+    if (firstMonth > lastMonth) {
       throw new BadRequestException('from cannot be after to');
     }
 
-    const months = eachMonth(from, to);
+    const months = monthsBetween(firstMonth, lastMonth);
     if (months.length > MAX_MONTHS_LISTED) {
       throw new BadRequestException(
         `At most ${MAX_MONTHS_LISTED} months can be listed at once`,
       );
     }
 
-    const reopened = await this.reopenedMonths(companyId, months);
+    const reopened = await this.findReopenedMonths(companyId, months);
 
     return months.reverse().map((month) => {
       const state = this.stateOf(month, today, reopened);
+      const isEditable =
+        state === ReportingMonthState.OPEN ||
+        state === ReportingMonthState.GRACE;
 
       return {
-        month: month.slice(0, 7),
+        month: toMonthKey(month),
         state,
-        editableUntil:
-          state === ReportingMonthState.OPEN ||
-          state === ReportingMonthState.GRACE
-            ? editableUntil(month)
-            : null,
+        editableUntil: isEditable ? editableUntil(month) : null,
       };
     });
   }
 
   async reopenMonth(
     companyId: string,
-    month: string,
+    monthKey: string,
     actorId: string,
   ): Promise<ReportingMonth> {
-    const start = monthOf(month);
+    const month = firstDayOfMonth(monthKey);
     const today = await this.today(companyId);
 
-    if (!isPastGrace(start, today)) {
+    if (!isAutoLocked(month, today)) {
       throw new BadRequestException(
-        `${month} is not locked yet: it can be edited until ${editableUntil(start)}`,
+        `${monthKey} is not locked yet: it can be edited until ${editableUntil(month)}`,
       );
     }
 
-    const existing = await this.periodRepo.findOne({
-      where: { companyId, month: start },
-    });
+    const period =
+      (await this.periodRepo.findOne({ where: { companyId, month } })) ??
+      this.periodRepo.create({ companyId, month });
 
-    if (existing?.status === ReportingPeriodStatus.OPEN) {
-      throw new ConflictException(`${month} is already reopened`);
+    if (period.status === ReportingPeriodStatus.OPEN) {
+      throw new ConflictException(`${monthKey} is already reopened`);
     }
 
-    await this.periodRepo.save(
-      this.periodRepo.create({
-        ...existing,
-        companyId,
-        month: start,
-        status: ReportingPeriodStatus.OPEN,
-        changedById: actorId,
-      }),
-    );
+    period.status = ReportingPeriodStatus.OPEN;
+    period.changedById = actorId;
+    await this.periodRepo.save(period);
 
-    return { month, state: ReportingMonthState.REOPENED, editableUntil: null };
+    return {
+      month: monthKey,
+      state: ReportingMonthState.REOPENED,
+      editableUntil: null,
+    };
   }
 
   async closeMonth(
     companyId: string,
-    month: string,
+    monthKey: string,
     actorId: string,
   ): Promise<ReportingMonth> {
-    const existing = await this.periodRepo.findOne({
-      where: { companyId, month: monthOf(month) },
+    const period = await this.periodRepo.findOne({
+      where: { companyId, month: firstDayOfMonth(monthKey) },
     });
 
-    if (existing?.status !== ReportingPeriodStatus.OPEN) {
+    if (period?.status !== ReportingPeriodStatus.OPEN) {
       throw new ConflictException(
-        `${month} was not reopened, so there is nothing to close`,
+        `${monthKey} was not reopened, so there is nothing to close`,
       );
     }
 
-    existing.status = ReportingPeriodStatus.LOCKED;
-    existing.changedById = actorId;
-    await this.periodRepo.save(existing);
+    period.status = ReportingPeriodStatus.LOCKED;
+    period.changedById = actorId;
+    await this.periodRepo.save(period);
 
-    return { month, state: ReportingMonthState.LOCKED, editableUntil: null };
+    return {
+      month: monthKey,
+      state: ReportingMonthState.LOCKED,
+      editableUntil: null,
+    };
   }
 
   async isDateLocked(companyId: string, date: string): Promise<boolean> {
@@ -172,14 +175,14 @@ export class ReportingService {
     endDate: string,
   ): Promise<boolean> {
     const today = await this.today(companyId);
-    const locked = eachMonth(startDate, endDate).filter((month) =>
-      isPastGrace(month, today),
+    const autoLocked = monthsBetween(startDate, endDate).filter((month) =>
+      isAutoLocked(month, today),
     );
 
-    if (locked.length === 0) return false;
+    if (autoLocked.length === 0) return false;
 
-    const reopened = await this.reopenedMonths(companyId, locked);
-    return locked.some((month) => !reopened.has(month));
+    const reopened = await this.findReopenedMonths(companyId, autoLocked);
+    return autoLocked.some((month) => !reopened.has(month));
   }
 
   /**
@@ -188,12 +191,14 @@ export class ReportingService {
    */
   async latestLockedDate(companyId: string): Promise<string> {
     const today = await this.today(companyId);
-    const reopened = await this.reopenedMonths(companyId);
+    const reopened = await this.findReopenedMonths(companyId);
 
     let month = latestAutoLockedMonth(today);
-    while (reopened.has(month)) month = addMonths(month, -1);
+    while (reopened.has(month)) {
+      month = addMonths(month, -1);
+    }
 
-    return lastDayOf(month);
+    return lastDayOfMonth(month);
   }
 
   private stateOf(
@@ -201,8 +206,8 @@ export class ReportingService {
     today: string,
     reopened: Set<string>,
   ): ReportingMonthState {
-    if (!isPastGrace(month, today)) {
-      return today <= lastDayOf(month)
+    if (!isAutoLocked(month, today)) {
+      return today <= lastDayOfMonth(month)
         ? ReportingMonthState.OPEN
         : ReportingMonthState.GRACE;
     }
@@ -212,16 +217,19 @@ export class ReportingService {
       : ReportingMonthState.LOCKED;
   }
 
-  /** Months currently reopened, as first days, optionally limited to some. */
-  private async reopenedMonths(
+  /**
+   * The first days of the months an owner has reopened, optionally only among
+   * the given ones.
+   */
+  private async findReopenedMonths(
     companyId: string,
-    months?: string[],
+    among?: string[],
   ): Promise<Set<string>> {
     const rows = await this.periodRepo.find({
       where: {
         companyId,
         status: ReportingPeriodStatus.OPEN,
-        ...(months && { month: In(months) }),
+        ...(among && { month: In(among) }),
       },
       select: ['month'],
     });

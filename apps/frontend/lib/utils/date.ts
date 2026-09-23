@@ -74,6 +74,11 @@ export function addWeeks(date: Date, amount: number): Date {
   return addDays(date, amount * 7);
 }
 
+/** The last day of the week beginning at weekStart. */
+export function getWeekEnd(weekStart: Date): Date {
+  return addDays(weekStart, 6);
+}
+
 /** Returns the 7 dates of the week beginning at weekStart. */
 export function getWeekDates(weekStart: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
@@ -130,9 +135,14 @@ const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
-/** e.g. "September 2026", from a YYYY-MM month. */
-export function formatMonthLabel(month: string): string {
-  return MONTH_YEAR_LABEL.format(new Date(`${month}-01T00:00:00`));
+/** The YYYY-MM month key of a YYYY-MM-DD date. */
+export function toMonthKey(date: string): string {
+  return date.slice(0, 7);
+}
+
+/** e.g. "September 2026", from a YYYY-MM month key. */
+export function formatMonthLabel(monthKey: string): string {
+  return MONTH_YEAR_LABEL.format(new Date(`${monthKey}-01T00:00:00`));
 }
 
 /** e.g. "7 Oct", from a YYYY-MM-DD date. */
@@ -140,7 +150,6 @@ export function formatDayMonthLabel(date: string): string {
   return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
 }
 
-/** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 /**
  * Returns a 6-week (42 day) grid covering the given month, including the
  * leading/trailing days from adjacent months — the classic calendar-popover
@@ -159,8 +168,9 @@ export function getMonthGridDates(
   return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 }
 
+/** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 export function formatWeekRangeLabel(weekStart: Date): string {
-  const weekEnd = addDays(weekStart, 6);
+  const weekEnd = getWeekEnd(weekStart);
   const sameYear = weekStart.getFullYear() === new Date().getFullYear();
 
   const start = DAY_MONTH_LABEL.format(weekStart);

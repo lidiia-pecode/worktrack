@@ -22,7 +22,7 @@ const STATE_BADGE: Record<
   [ReportingMonthState.REOPENED]: { label: "Reopened", variant: "warning" },
 };
 
-const describe = ({ state, editableUntil }: ReportingMonth): string => {
+const describeState = ({ state, editableUntil }: ReportingMonth): string => {
   switch (state) {
     case ReportingMonthState.OPEN:
       return "Current month";
@@ -55,7 +55,7 @@ export const PeriodRow = ({
           {formatMonthLabel(period.month)}
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {describe(period)}
+          {describeState(period)}
         </p>
       </div>
 
