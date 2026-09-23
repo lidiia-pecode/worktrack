@@ -1,34 +1,16 @@
-import { ReportingPeriodStatus } from "./enums";
-import { Company } from "./Company";
+import { ReportingMonthState } from "./enums";
 
-export interface ReportingPeriod {
-  id: string;
-  companyId: string;
-  name: string;
-  startDate: string; // ISO date string
-  endDate: string; // ISO date string
-  status: ReportingPeriodStatus;
-  createdAt: string;
-  updatedAt: string;
-  company?: Company;
+export interface ReportingMonth {
+  /** YYYY-MM */
+  month: string;
+  state: ReportingMonthState;
+  /** The last editable day while the month is open or in its grace window. */
+  editableUntil: string | null;
 }
 
-//(back CreateReportingPeriodDto)
-export interface CreateReportingPeriodPayload {
-  name: string;
-  startDate: string;
-  endDate: string;
-  status?: ReportingPeriodStatus;
-}
-
-//  (back UpdateReportingPeriodDto)
-export type UpdateReportingPeriodPayload =
-  Partial<CreateReportingPeriodPayload>;
-
-// Query (back GetReportQueryDto)
-export interface ReportQuery {
-  startDate: string;
-  endDate: string;
-  userId?: string;
-  projectId?: string;
+export interface ReportingPeriodsQuery {
+  /** YYYY-MM */
+  from?: string;
+  /** YYYY-MM */
+  to?: string;
 }

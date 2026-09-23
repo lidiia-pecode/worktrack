@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { BACKEND_URL } from "@/lib/constants/backend-url";
 import { User } from "@/types";
+import { UserRole } from "@/types/enums";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { getCookieHeader } from "./cookie-helper";
 
@@ -34,6 +35,16 @@ export async function requireManagerAccess(): Promise<User> {
   const user = await getCurrentUser();
 
   if (!user || !hasManagerAccess(user.role)) {
+    redirect("/");
+  }
+
+  return user;
+}
+
+export async function requireOwnerAccess(): Promise<User> {
+  const user = await getCurrentUser();
+
+  if (!user || user.role !== UserRole.OWNER) {
     redirect("/");
   }
 

@@ -7,6 +7,7 @@ export type NavigationItem = {
   label: string;
   href: string;
   icon: LucideIcon;
+  ownerOnly?: boolean;
 };
 
 type NavigationProps = {

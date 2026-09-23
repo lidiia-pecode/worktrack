@@ -566,6 +566,8 @@ the gap is the main fact about the project's current state.
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
   day.
+- **Closing periods** — each month locks by itself 7 days after it ends, and an
+  owner can reopen a locked month from `/admin/periods` and close it again.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -574,9 +576,7 @@ the gap is the main fact about the project's current state.
 
 ### Backend-only, no user interface at all
 
-- **Reporting.** Automatic monthly locking with owner reopen, and a
-  planned-vs-actual aggregation. No screen exists — months lock on their own,
-  but reopening one needs the API.
+- **Reporting.** A planned-vs-actual aggregation. No screen exists.
 
 ### Phase 1 delivered
 

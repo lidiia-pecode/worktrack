@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarCheck,
   CalendarClock,
   CalendarRange,
   Clock3,
@@ -8,7 +9,9 @@ import {
   Users,
 } from "lucide-react";
 
-export const managerNavigation = [
+import { NavigationItem } from "./SidebarNavigation";
+
+export const managerNavigation: NavigationItem[] = [
   {
     label: "Team time",
     href: "/team",
@@ -51,9 +54,15 @@ export const managerNavigation = [
     href: "/admin/categories",
     icon: FolderTree,
   },
+  {
+    label: "Periods",
+    href: "/admin/periods",
+    icon: CalendarCheck,
+    ownerOnly: true,
+  },
 ];
 
-export const employeeNavigation = [
+export const employeeNavigation: NavigationItem[] = [
   {
     label: "Timesheet",
     href: "/timesheet",

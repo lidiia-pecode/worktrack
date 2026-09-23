@@ -60,7 +60,9 @@ export enum AbsenceType {
   PUBLIC_HOLIDAY = "PUBLIC_HOLIDAY",
 }
 
-export enum ReportingPeriodStatus {
+export enum ReportingMonthState {
   OPEN = "OPEN",
+  GRACE = "GRACE",
   LOCKED = "LOCKED",
+  REOPENED = "REOPENED",
 }

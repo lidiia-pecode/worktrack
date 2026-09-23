@@ -125,6 +125,21 @@ export function formatLongDayLabel(date: Date): string {
   return LONG_DAY_LABEL.format(date);
 }
 
+const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
+  month: "long",
+  year: "numeric",
+});
+
+/** e.g. "September 2026", from a YYYY-MM month. */
+export function formatMonthLabel(month: string): string {
+  return MONTH_YEAR_LABEL.format(new Date(`${month}-01T00:00:00`));
+}
+
+/** e.g. "7 Oct", from a YYYY-MM-DD date. */
+export function formatDayMonthLabel(date: string): string {
+  return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
+}
+
 /** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
 /**
  * Returns a 6-week (42 day) grid covering the given month, including the
