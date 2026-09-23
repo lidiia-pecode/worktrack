@@ -38,6 +38,9 @@ const useProjectsMutations = createEntityMutations<
 >({
   queryKey: queryKeys.projects.all,
 
+  // Removing somebody from a project deletes their future plans for it.
+  alsoInvalidate: [queryKeys.planning.all],
+
   api: {
     create: ProjectsClientApi.create,
     update: ProjectsClientApi.update,

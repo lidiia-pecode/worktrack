@@ -16,8 +16,10 @@ import {
 import { TimeLog } from './entities/time-log.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserStatus } from 'src/users/enums/user-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import {
+  TeamVisibilityService,
+  VisibleUser,
+} from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
@@ -45,10 +47,7 @@ export interface TeamSummaryDay {
 }
 
 export interface TeamSummaryRow {
-  user: Pick<
-    User,
-    'id' | 'firstName' | 'lastName' | 'email' | 'position' | 'avatarUrl'
-  >;
+  user: VisibleUser;
   minutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;
@@ -175,7 +174,11 @@ export class TimeLogsService {
     const dailyTotals = await this.aggregateDailyMinutes(query, user);
 
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
-    const users = await this.findSummaryUsers(query, user, loggedUserIds);
+    const users = await this.teamVisibility.findVisibleUsers(user, {
+      teamId: query.teamId,
+      projectId: query.projectId,
+      includeUserIds: loggedUserIds,
+    });
 
     const expected = await this.expectedHours.expectedFor(
       user.companyId,
@@ -404,66 +407,6 @@ export class TimeLogsService {
       .addGroupBy('t.date')
       .orderBy('t.date', 'ASC')
       .getRawMany<DailyMinutesRaw>();
-  }
-
-  /**
-   * The people the summary has a row for: everyone active the caller may see,
-   * plus anyone who logged time in the range but has since been deactivated.
-   * Filters narrow the rows too, so a filtered view is not mostly empty rows.
-   */
-  private async findSummaryUsers(
-    query: TeamSummaryQuery,
-    user: AuthUser,
-    loggedUserIds: string[],
-  ): Promise<TeamSummaryRow['user'][]> {
-    const qb = this.dataSource
-      .getRepository(User)
-      .createQueryBuilder('u')
-      .select([
-        'u.id',
-        'u.firstName',
-        'u.lastName',
-        'u.email',
-        'u.position',
-        'u.avatarUrl',
-      ])
-      .where('u.company_id = :companyId', { companyId: user.companyId });
-
-    this.teamVisibility.applyUserVisibility(qb, 'u.id', user);
-    this.teamVisibility.applyTeamMembershipFilter(
-      qb,
-      'u.id',
-      query.teamId,
-      user,
-    );
-
-    if (query.projectId) {
-      qb.andWhere(
-        `EXISTS (
-          SELECT 1
-          FROM project_users pu
-          WHERE pu.project_id = :summaryProjectId
-            AND pu.user_id = u.id
-        )`,
-        { summaryProjectId: query.projectId },
-      );
-    }
-
-    if (loggedUserIds.length > 0) {
-      qb.andWhere('(u.status = :activeStatus OR u.id IN (:...loggedUserIds))', {
-        activeStatus: UserStatus.ACTIVE,
-        loggedUserIds,
-      });
-    } else {
-      qb.andWhere('u.status = :activeStatus', {
-        activeStatus: UserStatus.ACTIVE,
-      });
-    }
-
-    return qb
-      .orderBy('u.firstName', 'ASC')
-      .addOrderBy('u.lastName', 'ASC')
-      .getMany();
   }
 
   /**

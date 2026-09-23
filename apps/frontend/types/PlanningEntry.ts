@@ -1,4 +1,6 @@
+import { PaginationParams } from ".";
 import { Project } from "./Project";
+import { TeamSummaryUser } from "./Timelog";
 
 export interface PlanningEntry {
   id: string;
@@ -26,16 +28,45 @@ export interface UpdatePlanningEntryPayload {
   projectId?: string;
   date?: string;
   plannedMinutes?: number;
-  note?: string;
+  note?: string | null;
 }
 
 // Query (back PlanningQueryDto)
-export interface PlanningQuery {
+export type PlanningQuery = PaginationParams & {
   userId?: string;
   projectId?: string;
   date?: string;
   dateFrom?: string;
   dateTo?: string;
-  page?: number;
-  limit?: number;
+};
+
+export type PlanningWeekQuery = {
+  date: string;
+  teamId?: string;
+};
+
+// Mirrors the backend `PlanningWeekResponse` DTO.
+export interface PlanningProjectOption {
+  id: string;
+  name: string;
 }
+
+export interface PlanningWeekRow {
+  user: TeamSummaryUser;
+  plannedMinutes: number;
+  availableMinutes: number;
+  projects: PlanningProjectOption[];
+  entries: PlanningEntry[];
+}
+
+export interface PlanningWeek {
+  weekStart: string;
+  weekEnd: string;
+  dayLimitMinutes: number;
+  rows: PlanningWeekRow[];
+}
+
+export type PlanningRemovalCountQuery = {
+  projectIds: string[];
+  userIds: string[];
+};

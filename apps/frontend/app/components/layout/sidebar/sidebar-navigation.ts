@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarClock,
   CalendarRange,
   Clock3,
   FolderKanban,
@@ -12,6 +13,11 @@ export const managerNavigation = [
     label: "Team time",
     href: "/team",
     icon: CalendarRange,
+  },
+  {
+    label: "Planning",
+    href: "/planning",
+    icon: CalendarClock,
   },
   {
     label: "Timesheet",

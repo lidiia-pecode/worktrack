@@ -9,13 +9,25 @@ import { IsNull, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 /** Wording for the refusal, e.g. `{ action: 'view', subject: 'time logs' }`. */
 export interface UserScopeWording {
   action: string;
   subject: string;
+}
+
+export type VisibleUser = Pick<
+  User,
+  'id' | 'firstName' | 'lastName' | 'email' | 'position' | 'avatarUrl'
+>;
+
+export interface VisibleUsersFilter {
+  teamId?: string;
+  projectId?: string;
+  /** Deactivated people who still belong in the view, e.g. they have data in it. */
+  includeUserIds?: string[];
 }
 
 interface VisibilityOptions {
@@ -157,6 +169,61 @@ export class TeamVisibilityService {
         `You can only ${wording.action} your own ${wording.subject}`,
       );
     }
+  }
+
+  /**
+   * The people a week view lists: everyone the caller may see who is active,
+   * plus the deactivated ones named in `includeUserIds`.
+   */
+  async findVisibleUsers(
+    user: AuthUser,
+    filter: VisibleUsersFilter = {},
+  ): Promise<VisibleUser[]> {
+    const qb = this.userRepo
+      .createQueryBuilder('u')
+      .select([
+        'u.id',
+        'u.firstName',
+        'u.lastName',
+        'u.email',
+        'u.position',
+        'u.avatarUrl',
+      ])
+      .where('u.company_id = :companyId', { companyId: user.companyId });
+
+    this.applyUserVisibility(qb, 'u.id', user);
+    this.applyTeamMembershipFilter(qb, 'u.id', filter.teamId, user);
+
+    if (filter.projectId) {
+      qb.andWhere(
+        `EXISTS (
+          SELECT 1
+          FROM project_users pu
+          WHERE pu.project_id = :visibleProjectId
+            AND pu.user_id = u.id
+        )`,
+        { visibleProjectId: filter.projectId },
+      );
+    }
+
+    if (filter.includeUserIds?.length) {
+      qb.andWhere(
+        '(u.status = :activeStatus OR u.id IN (:...includeUserIds))',
+        {
+          activeStatus: UserStatus.ACTIVE,
+          includeUserIds: filter.includeUserIds,
+        },
+      );
+    } else {
+      qb.andWhere('u.status = :activeStatus', {
+        activeStatus: UserStatus.ACTIVE,
+      });
+    }
+
+    return qb
+      .orderBy('u.firstName', 'ASC')
+      .addOrderBy('u.lastName', 'ASC')
+      .getMany();
   }
 
   /**

@@ -1,3 +1,5 @@
+import { WeekDay } from 'src/companies/enums/week-day.enum';
+
 /**
  * Working days are Monday to Friday. `Company.weekStartDay` decides which day a
  * week grid starts on, not which days are worked.
@@ -39,3 +41,17 @@ export function* eachDate(from: string, to: string): Generator<string> {
     yield toISODate(at);
   }
 }
+
+export const weekRange = (
+  date: string,
+  weekStartDay: WeekDay,
+): { start: string; end: string } => {
+  const startIndex = weekStartDay === WeekDay.SUNDAY ? 0 : 1;
+  const offset = (new Date(toUtc(date)).getUTCDay() - startIndex + 7) % 7;
+  const start = toUtc(date) - offset * MS_PER_DAY;
+
+  return {
+    start: toISODate(start),
+    end: toISODate(start + 6 * MS_PER_DAY),
+  };
+};

@@ -15,12 +15,11 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 21 September 2026**, and reconciled again
-when Phase 2 merged. Phases 0, 1 and 2 of the roadmap in §7 are delivered, as
-are Scopes C, D and E of [`permission-model.md`](./permission-model.md) §7 —
-Scope E closed the last of the authorization gaps in §6, and the permission
-model is complete. The next work is Phase 3, capacity and expected hours, whose
-business decisions were settled in September 2026 and are described in §7.
+**Last verified against the code: 23 September 2026**, and reconciled again
+with Phase 4. Phases 0 to 4 of the roadmap in §7 are delivered, as are Scopes C,
+D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
+the last of the authorization gaps in §6, and the permission model is complete.
+The next work is Phase 5, reporting and export.
 
 ---
 
@@ -268,7 +267,9 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── User            role: OWNER | MANAGER | EMPLOYEE
 │                   status: ACTIVE | DEACTIVATED
-│                   capacityHoursPerWeek (default 40)
+│
+├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
+│                   contracted hours, effective from a date
 │
 ├── Team ──< TeamMembership >── User
 │                   roleInTeam: MEMBER | MANAGER
@@ -287,7 +288,7 @@ Company  (tenant root — everything below carries companyId)
 │                   type: VACATION | SICK_LEAVE | PUBLIC_HOLIDAY
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
-├── PlanningEntry   user + projectActivity + date + plannedMinutes + createdBy
+├── PlanningEntry   user + project + date + plannedMinutes + createdBy
 └── ReportingPeriod name + startDate + endDate + status (OPEN | LOCKED)
 ```
 
@@ -295,6 +296,10 @@ Company  (tenant root — everything below carries companyId)
 project or an activity alone — always against a specific *activity enabled on a
 specific project*. This is what makes "Development on Client X's redesign"
 distinguishable from "Development on our internal tooling".
+
+**Planning is the exception, deliberately.** A `PlanningEntry` names a project
+and nothing finer: the activity is chosen when the time is actually logged.
+Planning says which project, the time log says what work.
 
 **A user belongs to exactly one company.** Email and `googleId` are globally
 unique. The same person working at two companies would need two accounts with
@@ -377,28 +382,74 @@ person, or someone answerable for them, says this work happened".
 
 ### Planning
 
-A `PlanningEntry` is company + target user + project activity + date + planned
+A `PlanningEntry` is company + target user + **project** + date + planned
 minutes, recording who created it. Unique on
-`(companyId, userId, projectActivityId, date)`. Same 1440 min/day ceiling and
-the same pessimistic user-row lock as time logs.
+`(companyId, userId, projectId, date)` — one row is one person, one project, one
+day, so one day can hold several projects. Writes take the same pessimistic
+user-row lock as time logs.
 
 An OWNER may plan for any ACTIVE user in the company; a MANAGER for themselves
-and users in teams they manage. Employees cannot write planning at all.
+and users in teams they manage. Employees cannot write planning at all. Everyone
+can read their own plan.
 
-Planning does **not** create time logs, does not restrict them, and does not
-compute analytics (D3).
+Every write is checked on the server:
 
-### Expected hours
+1. The person must be a member of the project.
+2. Only Monday to Friday can be planned.
+3. Nothing inside a LOCKED period can be created, changed or deleted.
+4. An entry on an archived project can only be deleted.
+5. A day may not rise above `Company.standardWorkHoursPerDay`, and a week — as
+   set by `Company.weekStartDay` — above the person's **available** hours
+   (capacity minus absences). Both refuse only a write that *raises* a total, so
+   a week left over budget by a later absence or capacity change can always be
+   reduced.
 
-Currently derived entirely from `Company.standardWorkHoursPerDay` (default 8):
-the weekly target is that value multiplied by the number of weekdays in the
-week. Weekends are Saturday and Sunday.
+An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
+minutes. An absence never blocks planning and never changes a plan.
 
-**`User.capacityHoursPerWeek` is stored but read by nothing, and no screen sets
-it.** It is writable through the users API and returned in the response, yet the
-admin user form offers only position and role — so a part-time employee is
-measured against the full-time target and there is no way to say otherwise. This
-is a correctness gap, not a design decision — see §7 Phase 3.
+**Removing somebody from a project deletes their plans for it from today
+onwards**, in the company's time zone, never on a locked date; past plans stay
+for planned-vs-actual. Both membership screens confirm first, naming the count
+from `GET /planning/removal-count`, which uses the same condition as the delete.
+Archiving a project deletes nothing.
+
+Planning does **not** create time logs, does not restrict them, and never
+changes expected hours (D3).
+
+### Capacity and expected hours
+
+Four words carry this, and they mean the same thing in the API, the interface
+and this document:
+
+| Word | What it means | How it is worked out |
+| :--- | :--- | :--- |
+| **Expected** | How much somebody was supposed to work | capacity, minus the days they were away |
+| **Planned** | What a manager committed them to, by project | the planning entries for those days |
+| **Logged** | What actually happened | the time logs for those days |
+| **Behind** | They logged less than expected | logged < expected, over finished days only |
+
+**Capacity** is a `UserCapacity` row: contracted minutes per week with the date
+it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
+a date is the last one starting on or before it; with no row at all, the company
+default `standardWorkHoursPerDay × 5` applies, so an ordinary full-time company
+keeps an empty table. A change is a new row rather than an edit, which is what
+stops a contract change rewriting weeks somebody has already worked.
+
+**Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
+Friday day in the range that no absence covers, each contributing a fifth of the
+capacity in force that day, summed and rounded once at the end. Rounding once is
+what keeps a full week away at exactly zero and a full week present at exactly
+that person's capacity, for a part-timer as well as a full-timer. It returns two
+figures — `total` for the whole range, and `toDate` counting only days that have
+finished in the company's timezone, which is what **behind** is measured against.
+
+**Expected never consults planning, and planning never changes expected** (D3).
+Somebody with no plan at all has the same expectation as anybody else.
+
+An OWNER sets capacity from the user form. A change may not take effect on or
+before the last locked day — both dating one inside a LOCKED period and
+backdating one to before it are refused, since either would alter what was
+expected inside a month already signed off.
 
 ### Period locking
 
@@ -406,9 +457,9 @@ is a correctness gap, not a design decision — see §7 Phase 3.
 by name per company, with `endDate >= startDate` enforced. Only an OWNER creates
 or updates them. `isDateLocked` backs the check in rule 1 above.
 
-**Planning entries are not period-locked** — `PlanningService` never calls
-`isDateLocked`. This is reasonable, since planning concerns the future and
-carries no invoicing weight, but it is currently implicit. See §10 Q1.
+**Planning follows locked periods like time logs**, so a plan stays
+correctable until its period is locked, and planned-vs-actual becomes final on
+both sides at the same moment.
 
 ### Company settings and lifecycle
 
@@ -451,7 +502,7 @@ another OWNER or grant the OWNER role.
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
-| Planning — read | whole company | users in teams they manage | own only |
+| Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | create + update | read | read |
 
@@ -498,6 +549,13 @@ the gap is the main fact about the project's current state.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet; the timesheet and the team grid mark those days, so
   an empty week explains itself. A day is either worked or absent, never both.
+- **Capacity and expected hours** — an owner sets somebody's contracted hours
+  from a date; both week views read one backend figure for what was expected,
+  absences reduce it, and a person is marked behind once a day has finished.
+- **Planning** — owners and managers plan their people's week by project on
+  `/planning`, see planned against available hours and which weeks no longer
+  fit; everyone sees their own plan on the timesheet until they log time that
+  day.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -506,7 +564,6 @@ the gap is the main fact about the project's current state.
 
 ### Backend-only, no user interface at all
 
-- **Planning.** Full CRUD with role-scoped write access. No screen exists.
 - **Reporting.** Period lifecycle and a planned-vs-actual aggregation. No screen
   exists — including no way for an owner to actually lock a period, despite
   locking being enforced everywhere.
@@ -575,7 +632,6 @@ plus themselves.
 
 | Field | Status |
 | :--- | :--- |
-| `User.capacityHoursPerWeek` | Read by no logic, and set by no screen. Part-time staff measured wrongly. Phase 3. |
 | `Company.currency` | Read by no logic. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
 
@@ -688,8 +744,8 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0, 1 and 2 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7, so Phase 3 is the
+not a task list. Phases 0 to 4 are delivered, and so is every permission
+scope in [`permission-model.md`](./permission-model.md) §7, so Phase 5 is the
 work now being planned.
 
 ---
@@ -794,81 +850,73 @@ be right until absences are known.*
 
 ---
 
-**Phase 3 — Capacity and expected hours**
+**Phase 3 — Capacity and expected hours — delivered**
 
-Makes "is this person short of target?" actually true. Today the answer uses a
-company-wide 8-hour day for everyone, so a person on holiday for a week reads as
-40 hours short and a part-timer is measured against hours nobody agreed with
-them.
+**Built in September 2026.** The expected figure on both week views was
+`standardWorkHoursPerDay` times every weekday, so part-time staff were measured
+against hours nobody agreed with them and a week of holiday read as forty hours
+short. It is now capacity minus absences, computed once in the backend. §4
+describes the rules that are in force; what follows is what settling them cost.
 
-It also settles a question the product had been carrying without an answer:
-**what capacity is, and how it differs from planning.** Capacity says how much of
-a person's week exists; planning says what a manager intends to fill it with.
-Four words are fixed and then used unchanged in the API, the documentation and
-the interface:
+**Capacity became a record rather than a column.** `UserCapacity` carries
+contracted minutes per week with the date they take effect, and the row in force
+on a date is the last one starting on or before it. A single mutable number on
+`User` could not work: editing it would recompute every week the person had
+already worked, which is the instability Q1 rejected for absences.
+`User.capacityHoursPerWeek`, which no screen ever set, was removed with the same
+migration and its value carried into a row where it was not the default.
 
-| Word | What it means to a person | How it is worked out |
-| :--- | :--- | :--- |
-| **Expected** | How much you were supposed to work | capacity, minus the days you were away |
-| **Planned** | What a manager has committed you to, by project | the planning entries for those days |
-| **Logged** | What actually happened | the time logs for those days |
-| **Behind** | You logged less than expected | logged < expected, over finished days only |
+**The vocabulary was the other half of the work.** Expected, Planned, Logged and
+Behind now mean one thing each, everywhere, and the interface says *Expected*
+where it used to say *Target*. One progress bar shows one comparison; Expected
+and Planned never share a bar, and Planned is not shown to employees at all.
 
-**Expected never consults planning, and planning never changes expected.** That
-rule is what keeps the two ideas from contradicting each other, and it is what
-makes the phase safe to ship before a planning interface exists. An employee
-with no plan at all has exactly the same expectation as anybody else.
+**Planning entries moved from a project activity to a project**, which is what
+makes one row one project in one person's day on the grid Phase 4 draws.
 
-Capacity becomes **effective-dated**: contracted minutes per week with the date
-they take effect, in their own small table, resolved as "the latest row on or
-before this date" and falling back to `Company.standardWorkHoursPerDay × 5`.
-A single mutable column on `User` cannot work, because changing it would
-recompute every week the person had already worked — the instability Q1 already
-rejected for absences. `User.capacityHoursPerWeek`, which no screen ever set, is
-removed with the same migration.
+Five decisions came out of building it, and they are the rules now in force:
 
-The owner sets capacity, in the user form, beside position and role: contracted
-hours are an employment fact, and D10 keeps user administration with the owner.
-A capacity change may not be dated into a locked period, exactly as an absence
-may not.
+- **Capacity is set by the OWNER**, in the user form — contracted hours are an
+  employment fact, and D10 keeps user administration with the owner.
+- **A capacity change may not take effect on or before the last locked day.**
+  Dating one inside a LOCKED period is refused, and so is backdating one to
+  before it, since either would alter what was expected in a closed month.
+- **Expected never consults planning** (D3), so the phase was safe to ship
+  before a planning interface existed.
+- **Behind counts only days that have finished**, in the company's timezone.
+- **A public holiday reduces the expectation only for whoever recorded one**,
+  following Phase 2.
 
-Two limitations are accepted rather than solved: capacity spreads evenly over
-Monday to Friday, so somebody who really works three days sees an even daily
-figure on days they do not work; and the company default is not versioned, so
-changing it does shift history for people who have no capacity row. Both are
-deliberate, and neither is a defect to be fixed without a decision to reverse
-them.
+Four limitations were accepted rather than solved, and they are listed in
+`known-issues.md` rather than repeated here: the evenly-spread working week, the
+hardcoded Monday-to-Friday days, the unversioned company default, and the loss
+of billable forecasting on planned work.
 
-*Depends on: Phases 1 and 2, both delivered. Blocks: Phase 5's utilisation
-figures.*
+*Depended on: Phases 1 and 2. Blocks: Phase 5's utilisation figures.*
 
 ---
 
-**Phase 4 — Planning interface**
+**Phase 4 — Planning interface — delivered**
 
-Surfaces the planning module that already exists. Managers assign future work per
-person, **per project**, per day, over a week or longer view. Employees see their
-own plan **read-only** — as useful context for what they are expected to be
-working on, never as a constraint (D3).
+**Built in September 2026.** The planning module had full CRUD since Phase 0 and
+no screen. Managers now plan per person, **per project**, per weekday, one week
+at a time, and employees see their own plan read-only as context (D3). §4
+describes the rules in force.
 
-Phase 3 moves planning entries from project activity to project, so a row is one
-person, one project, one day — one cell of the grid this phase draws. The
-activity is chosen when the time is actually logged: planning says which project,
-the time log says what work.
+**What settling them cost.** Three earlier assumptions were reversed. Planning
+now requires project membership (§10 Q2, answered: block). The weekly budget is
+*available* hours rather than contracted capacity, so a holiday booked in advance
+is caught at planning time. And past plans follow locked periods rather than
+freezing at today, so a plan can be corrected after a late sick day until the
+month is closed. The limits refuse only increases, because an absence recorded
+after the plan was made would otherwise leave a week nobody could reduce.
 
-With capacity and planning both in place, two manager-only figures become
-possible and belong here rather than in Phase 3: **unplanned capacity** (expected
-minus planned — who is free next week) and **overbooked** (planned above
-expected). Neither is ever shown to an employee, and neither affects whether
-somebody is behind.
+Two manager-only figures came with it: **unplanned capacity** (available minus
+planned) and **no longer fits** (planned above available, flagged and never
+fixed automatically). Neither is shown to an employee, and neither affects
+whether somebody is behind.
 
-One decision to settle: planning currently does not require the target user to be
-assigned to the project, while time logging does. Planning someone onto a project
-they cannot log against produces a plan that is impossible to fulfil. See §10 Q2.
-Planning somebody on a day they are already absent is the same shape of problem
-and gets the same answer — warn, do not block.
-
-*Depends on: Phase 1 for navigation and the team context. Blocks: the
+*Depended on: Phase 1 for navigation and the team context. Blocks: the
 planned-vs-actual half of Phase 5.*
 
 ---
@@ -881,10 +929,16 @@ Turns the data into the answers the company actually needs:
 - **The billable split** — billable client work, non-billable client work, and
   internal work kept distinct (D2). This is the number the services business
   runs on.
-- **Utilisation**, once Phase 3 makes expected hours trustworthy: billable logged
-  hours over expected hours. A period where nothing was expected — somebody on
-  leave for the whole month — shows "—" rather than 0%, which would otherwise
-  read as an accusation.
+- **Utilisation.** There are two standard definitions and they differ only in the
+  denominator: billable over **available** hours (capacity less time off — how
+  well the time someone had was used) and billable over **capacity** (how much
+  the company got for what it pays for). Both are legitimate and answer different
+  questions, so **reporting reads capacity and time off separately** rather than
+  consuming `expectedMinutes`, which would silently pick the first and make the
+  second look like rework. Absence type is preserved in the data, so sick leave
+  can be treated differently from vacation if that is ever wanted. A period where
+  nothing was expected — somebody on leave for the whole month — shows "—" rather
+  than 0%, which would otherwise read as an accusation.
 - **Planned vs actual**, once Phase 4 means there is a plan worth comparing to.
   The backend aggregation already exists.
 - **Export.** Because invoicing happens outside WorkTrack (D7), someone has to
@@ -925,9 +979,9 @@ Phase 1  Team time view                  (hours + billable
    │                                       reports & export
    ├── Phase 2  Absences                   can branch early)
    │      │                                       │
-   │   Phase 3  Capacity + expected ───┐          │
+   │   Phase 3  Capacity + expected ───┐          │   (delivered)
    │                                   │          │
-   └── Phase 4  Planning UI ───────────┤          │
+   └── Phase 4  Planning UI ───────────┤          │   (delivered)
                                        │          │
                             Phase 5  Reporting ◄──┘
                                        │
@@ -996,13 +1050,10 @@ The reasoning was that Phase 3 makes absence an input to expected hours, so
 editing one in a closed month would silently change whether somebody was short
 that month — exactly the instability D5 exists to prevent.
 
-**Q2 — Should planning require project membership?**
-Time logging requires a `project_users` row; planning does not. A manager can
-therefore plan someone onto a project that person cannot log against.
-*Recommendation: warn, do not block.* Planning ahead of assignment is legitimate
-— you plan the quarter, then staff it. Blocking would make planning restrictive
-in the wrong direction. But the planning UI should flag the mismatch, and ideally
-offer to assign the person to the project.
+**Q2 — Should planning require project membership? — answered.**
+Yes, block. Confirmed in September 2026 for Phase 4. Time logging requires a
+`project_users` row, and a plan for a project the person cannot log against is
+impossible to fulfil. Staffing comes first, then planning.
 
 **Q3 — Should managers administer company-wide resources? — answered for teams,
 still open for the rest.**
@@ -1024,7 +1075,7 @@ produces invoices already works in a spreadsheet. Confirm the grouping with them
 before building; the wrong granularity makes the export useless.
 
 **Q5 — Should the app chase people who have not logged time?**
-The team view shows who is short, but somebody still has to look. Phase 3 makes
+The team view shows who is short, but somebody still has to look. Phase 3 made
 "short" precise: logged below expected, over days that have finished.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete

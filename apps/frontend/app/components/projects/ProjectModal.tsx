@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { useProjectDetails, useProjects } from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
+import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 
 import { Project } from "@/types";
 import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
@@ -18,6 +19,7 @@ import { fullName, initials, isArchivedUser } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
@@ -71,6 +73,9 @@ export function ProjectModal({
   const {
     actions: { create, update, archive, unarchive },
   } = useProjects();
+
+  const { confirmRemoval, isChecking, confirmProps } =
+    usePlanningRemovalGuard();
 
   const {
     items: rawUsers,
@@ -151,7 +156,22 @@ export function ProjectModal({
     };
 
     if (project) {
-      update.mutate({ id: project.id, data: payload }, { onSuccess: onClose });
+      const removedIds = savedUserIds.filter(
+        (id) => !selectedUserIds.includes(id),
+      );
+
+      void confirmRemoval({
+        projectIds: [project.id],
+        userIds: removedIds,
+        title: `Remove ${removedIds.length} ${
+          removedIds.length === 1 ? "person" : "people"
+        } from ${project.name}?`,
+        proceed: () =>
+          update.mutate(
+            { id: project.id, data: payload },
+            { onSuccess: onClose },
+          ),
+      });
       return;
     }
 
@@ -213,155 +233,159 @@ export function ProjectModal({
           : "Create a project to organize work and manage access.";
 
   return (
-    <ResourceFormModal
-      open={open}
-      onClose={handleClose}
-      size="lg"
-      bodyPadding={!isPicking}
-      title={title}
-      description={description}
-      icon={isPicking ? undefined : <FolderKanban className="size-5" />}
-      footer={
-        isPicking ? (
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => setView("form")}
-              className="gap-1.5"
-            >
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-
-            <Button type="button" size="sm" onClick={handleApplyPicker}>
-              Apply
-              {view === "members" && selectedUserIds.length > 0
-                ? ` (${selectedUserIds.length})`
-                : ""}
-              {view === "activities" && selectedActivityIds.length > 0
-                ? ` (${selectedActivityIds.length})`
-                : ""}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex w-full items-center justify-between gap-3">
-            {project ? (
-              <Button
-                type="button"
-                variant={isArchived ? "success" : "destructive"}
-                size="sm"
-                className="gap-1.5"
-                onClick={isArchived ? handleUnarchive : handleArchive}
-                isLoading={archive.isPending || unarchive.isPending}
-              >
-                {isArchived ? (
-                  <ArchiveRestore className="size-4" />
-                ) : (
-                  <Archive className="size-4" />
-                )}
-                {isArchived ? "Unarchive" : "Archive"}
-              </Button>
-            ) : (
-              <span />
-            )}
-
-            <div className="flex items-center gap-2">
+    <>
+      <ResourceFormModal
+        open={open}
+        onClose={handleClose}
+        size="lg"
+        bodyPadding={!isPicking}
+        title={title}
+        description={description}
+        icon={isPicking ? undefined : <FolderKanban className="size-5" />}
+        footer={
+          isPicking ? (
+            <div className="flex items-center justify-between gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={handleClose}
+                onClick={() => setView("form")}
+                className="gap-1.5"
               >
-                Cancel
+                <ArrowLeft className="size-4" />
+                Back
               </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSubmitting}
-                disabled={isMembersLoading}
-              >
-                {project ? "Save changes" : "Create project"}
+              <Button type="button" size="sm" onClick={handleApplyPicker}>
+                Apply
+                {view === "members" && selectedUserIds.length > 0
+                  ? ` (${selectedUserIds.length})`
+                  : ""}
+                {view === "activities" && selectedActivityIds.length > 0
+                  ? ` (${selectedActivityIds.length})`
+                  : ""}
               </Button>
             </div>
+          ) : (
+            <div className="flex w-full items-center justify-between gap-3">
+              {project ? (
+                <Button
+                  type="button"
+                  variant={isArchived ? "success" : "destructive"}
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={isArchived ? handleUnarchive : handleArchive}
+                  isLoading={archive.isPending || unarchive.isPending}
+                >
+                  {isArchived ? (
+                    <ArchiveRestore className="size-4" />
+                  ) : (
+                    <Archive className="size-4" />
+                  )}
+                  {isArchived ? "Unarchive" : "Archive"}
+                </Button>
+              ) : (
+                <span />
+              )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClose}
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  isLoading={isSubmitting || isChecking}
+                  disabled={isMembersLoading}
+                >
+                  {project ? "Save changes" : "Create project"}
+                </Button>
+              </div>
+            </div>
+          )
+        }
+      >
+        <div className={view === "activities" ? "px-6 py-5" : "hidden"}>
+          <EntityPicker
+            items={activities}
+            selectedIds={selectedActivityIds}
+            onToggle={handleToggleActivity}
+            getId={(activity) => activity.id}
+            getLabel={(activity) => activity.name}
+            getSubtitle={(activity) => activity.category?.name}
+            isLoading={isActivitiesLoading}
+            hasNextPage={activitiesPagination.hasNextPage}
+            isFetchingNextPage={activitiesPagination.isFetchingNextPage}
+            onFetchNextPage={activitiesPagination.fetchNextPage}
+            emptyMessage="No activities found."
+            searchPlaceholder="Search activities..."
+          />
+        </div>
+
+        <div className={view === "members" ? "px-6 py-5" : "hidden"}>
+          <EntityPicker
+            items={users}
+            selectedIds={selectedUserIds}
+            onToggle={handleToggleUser}
+            getId={(user) => user.id}
+            getLabel={fullName}
+            getSubtitle={(user) =>
+              isArchivedUser(user) ? `${user.email} · Archived` : user.email
+            }
+            getAvatarText={initials}
+            isLoading={isUsersLoading}
+            hasNextPage={usersPagination.hasNextPage}
+            isFetchingNextPage={usersPagination.isFetchingNextPage}
+            onFetchNextPage={usersPagination.fetchNextPage}
+            emptyMessage="No available users found."
+            searchPlaceholder="Search people..."
+          />
+        </div>
+
+        <div className={view === "form" ? "space-y-6" : "hidden"}>
+          <ProjectForm
+            formId={FORM_ID}
+            mode={project ? "edit" : "create"}
+            defaultValues={{
+              name: project?.name ?? "",
+              description: project?.description ?? "",
+            }}
+            membersCount={selectedUsers.length + hiddenMembersCount}
+            activitiesCount={selectedActivities.length}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+          />
+
+          <div className="border-t border-border pt-6">
+            <ProjectMembersSection
+              members={selectedUsers}
+              hiddenCount={hiddenMembersCount}
+              isLoading={isMembersLoading}
+              isCreateMode={!project}
+              onOpenAddMembers={() => setView("members")}
+              onRemoveMember={handleRemoveUser}
+            />
           </div>
-        )
-      }
-    >
-      <div className={view === "activities" ? "px-6 py-5" : "hidden"}>
-        <EntityPicker
-          items={activities}
-          selectedIds={selectedActivityIds}
-          onToggle={handleToggleActivity}
-          getId={(activity) => activity.id}
-          getLabel={(activity) => activity.name}
-          getSubtitle={(activity) => activity.category?.name}
-          isLoading={isActivitiesLoading}
-          hasNextPage={activitiesPagination.hasNextPage}
-          isFetchingNextPage={activitiesPagination.isFetchingNextPage}
-          onFetchNextPage={activitiesPagination.fetchNextPage}
-          emptyMessage="No activities found."
-          searchPlaceholder="Search activities..."
-        />
-      </div>
 
-      <div className={view === "members" ? "px-6 py-5" : "hidden"}>
-        <EntityPicker
-          items={users}
-          selectedIds={selectedUserIds}
-          onToggle={handleToggleUser}
-          getId={(user) => user.id}
-          getLabel={fullName}
-          getSubtitle={(user) =>
-            isArchivedUser(user) ? `${user.email} · Archived` : user.email
-          }
-          getAvatarText={initials}
-          isLoading={isUsersLoading}
-          hasNextPage={usersPagination.hasNextPage}
-          isFetchingNextPage={usersPagination.isFetchingNextPage}
-          onFetchNextPage={usersPagination.fetchNextPage}
-          emptyMessage="No available users found."
-          searchPlaceholder="Search people..."
-        />
-      </div>
-
-      <div className={view === "form" ? "space-y-6" : "hidden"}>
-        <ProjectForm
-          formId={FORM_ID}
-          mode={project ? "edit" : "create"}
-          defaultValues={{
-            name: project?.name ?? "",
-            description: project?.description ?? "",
-          }}
-          membersCount={selectedUsers.length + hiddenMembersCount}
-          activitiesCount={selectedActivities.length}
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
-
-        <div className="border-t border-border pt-6">
-          <ProjectMembersSection
-            members={selectedUsers}
-            hiddenCount={hiddenMembersCount}
-            isLoading={isMembersLoading}
-            isCreateMode={!project}
-            onOpenAddMembers={() => setView("members")}
-            onRemoveMember={handleRemoveUser}
-          />
+          <div className="border-t border-border pt-6">
+            <ProjectActivitiesSection
+              activities={selectedActivities}
+              isCreateMode={!project}
+              onOpenAddActivities={() => setView("activities")}
+              onRemoveActivity={handleRemoveActivity}
+            />
+          </div>
         </div>
+      </ResourceFormModal>
 
-        <div className="border-t border-border pt-6">
-          <ProjectActivitiesSection
-            activities={selectedActivities}
-            isCreateMode={!project}
-            onOpenAddActivities={() => setView("activities")}
-            onRemoveActivity={handleRemoveActivity}
-          />
-        </div>
-      </div>
-    </ResourceFormModal>
+      <ConfirmModal {...confirmProps} />
+    </>
   );
 }

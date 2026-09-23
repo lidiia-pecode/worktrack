@@ -15,6 +15,7 @@ import { User } from "@/types";
 import { useUserDetails, useUsers } from "@/hooks/useUsers";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import { useProjects, useProjectsInfiniteQuery } from "@/hooks/useProjects";
+import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 import { ProjectsClientApi } from "@/lib/api/resources";
 
 import { initials } from "@/lib/utils/user";
@@ -26,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm, UserFormData } from "./UserForm";
 import { ProjectStatus, UserStatus } from "@/types/enums";
 
@@ -65,6 +67,9 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     status: ProjectStatus.ACTIVE,
   });
 
+  const { confirmRemoval, isChecking, confirmProps } =
+    usePlanningRemovalGuard();
+
   const fullName = `${user.firstName} ${user.lastName}`;
 
   const projectIds = userDetails?.projects.map((project) => project.id) ?? [];
@@ -72,6 +77,10 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   const assignedProjects = allProjects.filter((project) =>
     projectIds.includes(project.id),
   );
+
+  const projectName = (projectId: string) =>
+    allProjects.find((project) => project.id === projectId)?.name ??
+    "this project";
 
   const handleSave = async (data: UserFormData) => {
     const { capacityHoursPerWeek, capacityValidFrom, ...userData } = data;
@@ -126,16 +135,28 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     const toAdd = pendingProjectIds.filter((id) => !projectIds.includes(id));
     const toRemove = projectIds.filter((id) => !pendingProjectIds.includes(id));
 
-    setIsSavingProjects(true);
-    try {
-      await Promise.all([
-        ...toAdd.map((id) => applyProjectMembership(id, true)),
-        ...toRemove.map((id) => applyProjectMembership(id, false)),
-      ]);
-      setView("form");
-    } finally {
-      setIsSavingProjects(false);
-    }
+    const apply = async () => {
+      setIsSavingProjects(true);
+      try {
+        await Promise.all([
+          ...toAdd.map((id) => applyProjectMembership(id, true)),
+          ...toRemove.map((id) => applyProjectMembership(id, false)),
+        ]);
+        setView("form");
+      } finally {
+        setIsSavingProjects(false);
+      }
+    };
+
+    await confirmRemoval({
+      projectIds: toRemove,
+      userIds: [user.id],
+      title:
+        toRemove.length === 1
+          ? `Remove ${user.firstName} from ${projectName(toRemove[0])}?`
+          : `Remove ${user.firstName} from ${toRemove.length} projects?`,
+      proceed: apply,
+    });
   };
 
   const handleCloseModal = () => {
@@ -144,7 +165,12 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   };
 
   const removeProject = (projectId: string) => {
-    applyProjectMembership(projectId, false);
+    void confirmRemoval({
+      projectIds: [projectId],
+      userIds: [user.id],
+      title: `Remove ${user.firstName} from ${projectName(projectId)}?`,
+      proceed: () => applyProjectMembership(projectId, false),
+    });
   };
 
   const isPicking = view === "projects";
@@ -187,7 +213,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                 type="button"
                 size="sm"
                 onClick={handleApplyProjects}
-                isLoading={isSavingProjects}
+                isLoading={isSavingProjects || isChecking}
               >
                 Apply{pendingCount > 0 ? ` (${pendingCount})` : ""}
               </Button>
@@ -334,7 +360,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                       size="iconSm"
                       aria-label={`Remove ${project.name}`}
                       onClick={() => removeProject(project.id)}
-                      disabled={updateProject.isPending}
+                      disabled={updateProject.isPending || isChecking}
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -346,6 +372,8 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
           </div>
         )}
       </ResourceFormModal>
+
+      <ConfirmModal {...confirmProps} />
     </>
   );
 };

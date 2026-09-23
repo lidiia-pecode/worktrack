@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   EntityManager,
+  In,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
@@ -19,13 +20,61 @@ import {
   UpdatePlanningEntryDto,
 } from './dtos/planning-entry-payload.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
+import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
+import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
+import { Company } from 'src/companies/entities/company.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import {
+  TeamVisibilityService,
+  VisibleUser,
+} from 'src/teams/team-visibility.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { ReportingService } from 'src/reporting/reporting.service';
+import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
+import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import {
+  isWorkingDay,
+  todayISODate,
+  weekRange,
+} from 'src/capacity/working-days.util';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+
+type PlanningCompany = Pick<
+  Company,
+  'id' | 'timezone' | 'weekStartDay' | 'standardWorkHoursPerDay'
+>;
+
+interface PlannedSlot {
+  date: string;
+  minutes: number;
+}
+
+export interface PlanningWeekRow {
+  user: VisibleUser;
+  plannedMinutes: number;
+  availableMinutes: number;
+  projects: Pick<Project, 'id' | 'name'>[];
+  entries: PlanningEntry[];
+}
+
+export interface PlanningWeek {
+  weekStart: string;
+  weekEnd: string;
+  dayLimitMinutes: number;
+  rows: PlanningWeekRow[];
+}
+
+const formatMinutes = (minutes: number): string => {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours}h ${rest}m` : `${hours}h`;
+};
+
+const dayLimitMinutes = (company: PlanningCompany): number =>
+  Math.round(Number(company.standardWorkHoursPerDay) * 60);
 
 @Injectable()
 export class PlanningService {
@@ -37,6 +86,8 @@ export class PlanningService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
+    private readonly reportingService: ReportingService,
+    private readonly expectedHours: ExpectedHoursService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -57,12 +108,53 @@ export class PlanningService {
     qb.andWhere('p.company_id = :companyId', { companyId });
   }
 
+  // Everyone may read their own plan, including a manager who leads no team.
   private applyVisibilityFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     user: AuthUser,
   ): void {
     this.applyTenantFilter(qb, user.companyId);
-    this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user, {
+      includeSelf: true,
+    });
+  }
+
+  /**
+   * What a membership removal deletes: from today on, outside locked periods.
+   * Shared by the cascade and its count, so the two always agree.
+   */
+  private applyRemovableFilter(
+    qb: SelectQueryBuilder<PlanningEntry>,
+    companyId: string,
+    projectIds: string[],
+    userIds: string[],
+    today: string,
+  ): void {
+    qb.andWhere('p.company_id = :removableCompanyId', {
+      removableCompanyId: companyId,
+    })
+      .andWhere('p.project_id IN (:...removableProjectIds)', {
+        removableProjectIds: projectIds,
+      })
+      .andWhere('p.user_id IN (:...removableUserIds)', {
+        removableUserIds: userIds,
+      })
+      .andWhere('p.date >= :removableFrom', { removableFrom: today })
+      .andWhere(
+        `EXISTS (
+          SELECT 1 FROM project_users pu
+          WHERE pu.project_id = p.project_id AND pu.user_id = p.user_id
+        )`,
+      )
+      .andWhere(
+        `NOT EXISTS (
+          SELECT 1 FROM reporting_periods rp
+          WHERE rp.company_id = p.company_id
+            AND rp.status = :removableLocked
+            AND p.date BETWEEN rp.start_date AND rp.end_date
+        )`,
+        { removableLocked: ReportingPeriodStatus.LOCKED },
+      );
   }
 
   // ==========================================
@@ -81,7 +173,9 @@ export class PlanningService {
     this.applyVisibilityFilter(qb, user);
 
     if (query.userId) {
-      await this.assertUserVisible(query.userId, user);
+      if (query.userId !== user.id) {
+        await this.assertUserVisible(query.userId, user);
+      }
       qb.andWhere('p.user_id = :userId', { userId: query.userId });
     }
 
@@ -108,6 +202,75 @@ export class PlanningService {
       .getManyAndCount();
 
     return { results, count };
+  }
+
+  async getWeek(
+    query: PlanningWeekQuery,
+    user: AuthUser,
+  ): Promise<PlanningWeek> {
+    const company = await this.getCompany(user.companyId);
+    const { start, end } = weekRange(query.date, company.weekStartDay);
+
+    const entriesQb = this.buildBaseQuery()
+      .andWhere('p.date BETWEEN :start AND :end', { start, end })
+      .orderBy('project.name', 'ASC');
+    this.applyVisibilityFilter(entriesQb, user);
+    const entries = await entriesQb.getMany();
+
+    const users = await this.teamVisibility.findVisibleUsers(user, {
+      teamId: query.teamId,
+      includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
+    });
+    const userIds = users.map((row) => row.id);
+
+    const [available, projectsByUser] = await Promise.all([
+      this.expectedHours.expectedFor(user.companyId, userIds, start, end),
+      this.activeProjectsFor(user.companyId, userIds),
+    ]);
+
+    const rows = users.map((rowUser): PlanningWeekRow => {
+      const own = entries.filter((entry) => entry.userId === rowUser.id);
+
+      return {
+        user: rowUser,
+        plannedMinutes: own.reduce((sum, e) => sum + e.plannedMinutes, 0),
+        availableMinutes: available.get(rowUser.id)?.total ?? 0,
+        projects: projectsByUser.get(rowUser.id) ?? [],
+        entries: own,
+      };
+    });
+
+    return {
+      weekStart: start,
+      weekEnd: end,
+      dayLimitMinutes: dayLimitMinutes(company),
+      rows,
+    };
+  }
+
+  async countRemovable(
+    query: PlanningRemovalCountQuery,
+    user: AuthUser,
+  ): Promise<{ count: number }> {
+    // The same people the membership update is allowed to remove.
+    const removable = await this.teamVisibility.filterVisibleUserIds(
+      query.userIds,
+      user,
+      { includeSelf: true },
+    );
+    if (removable.size === 0) return { count: 0 };
+
+    const company = await this.getCompany(user.companyId);
+    const qb = this.repo.createQueryBuilder('p');
+    this.applyRemovableFilter(
+      qb,
+      user.companyId,
+      query.projectIds,
+      [...removable],
+      todayISODate(company.timezone),
+    );
+
+    return { count: await qb.getCount() };
   }
 
   async getById(id: string, user: AuthUser): Promise<PlanningEntry> {
@@ -138,19 +301,21 @@ export class PlanningService {
 
       await this.assertCanPlanForUser(targetUser, user);
 
+      this.assertWorkingDay(payload.date);
+      await this.assertDateNotLocked(user.companyId, payload.date);
+
       const project = await this.resolveProject(
         payload.projectId,
         user.companyId,
         manager,
       );
+      await this.assertProjectMember(manager, project.id, payload.userId);
 
-      await this.assertDailyLimit(
-        manager,
-        payload.userId,
-        user.companyId,
-        payload.date,
-        payload.plannedMinutes,
-      );
+      const company = await this.getCompany(user.companyId, manager);
+      await this.assertWithinLimits(manager, company, payload.userId, {
+        date: payload.date,
+        minutes: payload.plannedMinutes,
+      });
 
       const entity = manager.create(PlanningEntry, {
         companyId: user.companyId,
@@ -192,28 +357,62 @@ export class PlanningService {
 
       await this.lockUser(manager, entry.userId, user.companyId);
 
-      if (payload.projectId !== undefined) {
-        entry.project = await this.resolveProject(
-          payload.projectId,
-          user.companyId,
-          manager,
+      await this.assertDateNotLocked(user.companyId, entry.date);
+
+      const current = await manager.findOne(Project, {
+        where: { id: entry.projectId, companyId: user.companyId },
+      });
+      if (current?.status !== ProjectStatus.ACTIVE) {
+        throw new BadRequestException(
+          'This entry is on an archived project and can only be deleted',
         );
       }
 
-      if (payload.plannedMinutes !== undefined) {
-        entry.plannedMinutes = payload.plannedMinutes;
-      }
-      if (payload.note !== undefined) entry.note = payload.note;
-      if (payload.date !== undefined) entry.date = payload.date;
+      const previous: PlannedSlot = {
+        date: entry.date,
+        minutes: entry.plannedMinutes,
+      };
 
-      await this.assertDailyLimit(
-        manager,
-        entry.userId,
-        user.companyId,
-        entry.date,
-        entry.plannedMinutes,
-        id,
-      );
+      const movesDate =
+        payload.date !== undefined && payload.date !== entry.date;
+      const movesProject =
+        payload.projectId !== undefined &&
+        payload.projectId !== entry.projectId;
+      const changesMinutes =
+        payload.plannedMinutes !== undefined &&
+        payload.plannedMinutes !== entry.plannedMinutes;
+
+      if (movesDate) {
+        entry.date = payload.date!;
+        await this.assertDateNotLocked(user.companyId, entry.date);
+      }
+
+      if (movesProject) {
+        const project = await this.resolveProject(
+          payload.projectId!,
+          user.companyId,
+          manager,
+        );
+        entry.project = project;
+        entry.projectId = project.id;
+      }
+
+      if (changesMinutes) entry.plannedMinutes = payload.plannedMinutes!;
+      if (payload.note !== undefined) entry.note = payload.note;
+
+      if (movesDate || movesProject || changesMinutes) {
+        this.assertWorkingDay(entry.date);
+        await this.assertProjectMember(manager, entry.projectId, entry.userId);
+
+        const company = await this.getCompany(user.companyId, manager);
+        await this.assertWithinLimits(
+          manager,
+          company,
+          entry.userId,
+          { date: entry.date, minutes: entry.plannedMinutes },
+          { excludeId: id, previous },
+        );
+      }
 
       try {
         return await manager.save(PlanningEntry, entry);
@@ -232,17 +431,47 @@ export class PlanningService {
     await this.dataSource.transaction(async (manager) => {
       const entry = await this.getEntryForUpdate(id, user, manager);
 
-      const targetUser = await this.getActiveUser(
-        entry.userId,
-        user.companyId,
-        manager,
-      );
+      // A deactivated person's leftover plans can still be cleared.
+      const targetUser = await manager.findOne(User, {
+        where: { id: entry.userId, companyId: user.companyId },
+      });
+      if (!targetUser) throw new NotFoundException('User not found');
+
       await this.assertCanPlanForUser(targetUser, user);
+      await this.assertDateNotLocked(user.companyId, entry.date);
 
       await manager.remove(PlanningEntry, entry);
     });
 
     return { success: true };
+  }
+
+  /** Runs inside the membership transaction, before the `project_users` rows go. */
+  async deleteForRemovedMembers(
+    manager: EntityManager,
+    companyId: string,
+    projectId: string,
+    userIds: string[],
+  ): Promise<void> {
+    if (userIds.length === 0) return;
+
+    const company = await this.getCompany(companyId, manager);
+    const qb = manager
+      .getRepository(PlanningEntry)
+      .createQueryBuilder('p')
+      .select('p.id');
+    this.applyRemovableFilter(
+      qb,
+      companyId,
+      [projectId],
+      userIds,
+      todayISODate(company.timezone),
+    );
+
+    const ids = (await qb.getMany()).map((entry) => entry.id);
+    if (ids.length > 0) {
+      await manager.delete(PlanningEntry, { id: In(ids) });
+    }
   }
 
   // ==========================================
@@ -254,6 +483,10 @@ export class PlanningService {
     user: AuthUser,
   ): Promise<void> {
     if (user.role === UserRole.OWNER) return;
+
+    if (user.role === UserRole.EMPLOYEE) {
+      throw new ForbiddenException('Employees cannot change planning');
+    }
 
     if (targetUser.id === user.id) return;
 
@@ -317,6 +550,48 @@ export class PlanningService {
     return entry;
   }
 
+  private async getCompany(
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<PlanningCompany> {
+    const repo = (manager ?? this.dataSource.manager).getRepository(Company);
+    const company = await repo.findOne({
+      where: { id: companyId },
+      select: ['id', 'timezone', 'weekStartDay', 'standardWorkHoursPerDay'],
+    });
+
+    if (!company) throw new NotFoundException('Company not found');
+    return company;
+  }
+
+  private async activeProjectsFor(
+    companyId: string,
+    userIds: string[],
+  ): Promise<Map<string, Pick<Project, 'id' | 'name'>[]>> {
+    const byUser = new Map<string, Pick<Project, 'id' | 'name'>[]>();
+    if (userIds.length === 0) return byUser;
+
+    const rows = await this.projectRepo
+      .createQueryBuilder('project')
+      .innerJoin('project_users', 'pu', 'pu.project_id = project.id')
+      .select('pu.user_id', 'userId')
+      .addSelect('project.id', 'id')
+      .addSelect('project.name', 'name')
+      .where('project.company_id = :companyId', { companyId })
+      .andWhere('project.status = :status', { status: ProjectStatus.ACTIVE })
+      .andWhere('pu.user_id IN (:...userIds)', { userIds })
+      .orderBy('project.name', 'ASC')
+      .getRawMany<{ userId: string; id: string; name: string }>();
+
+    for (const { userId, id, name } of rows) {
+      const existing = byUser.get(userId);
+      if (existing) existing.push({ id, name });
+      else byUser.set(userId, [{ id, name }]);
+    }
+
+    return byUser;
+  }
+
   private async resolveProject(
     projectId: string,
     companyId: string,
@@ -335,6 +610,42 @@ export class PlanningService {
     }
 
     return project;
+  }
+
+  private async assertProjectMember(
+    manager: EntityManager,
+    projectId: string,
+    userId: string,
+  ): Promise<void> {
+    const rows: unknown[] = await manager.query(
+      'SELECT 1 FROM project_users WHERE project_id = $1 AND user_id = $2',
+      [projectId, userId],
+    );
+
+    if (rows.length === 0) {
+      throw new BadRequestException(
+        'This person is not a member of the project. Add them to it before planning.',
+      );
+    }
+  }
+
+  private assertWorkingDay(date: string): void {
+    if (!isWorkingDay(date)) {
+      throw new BadRequestException(
+        'Planning is only possible Monday to Friday',
+      );
+    }
+  }
+
+  private async assertDateNotLocked(
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    if (await this.reportingService.isDateLocked(companyId, date)) {
+      throw new ForbiddenException(
+        `Cannot change planning for ${date} because it belongs to a LOCKED reporting period.`,
+      );
+    }
   }
 
   private async getActiveUser(
@@ -371,31 +682,90 @@ export class PlanningService {
     if (!user) throw new NotFoundException('User not found');
   }
 
-  private async assertDailyLimit(
+  private async plannedMinutesBetween(
     manager: EntityManager,
     userId: string,
     companyId: string,
-    date: string,
-    minutes: number,
+    from: string,
+    to: string,
     excludeId?: string,
-  ): Promise<void> {
+  ): Promise<number> {
     const qb = manager
       .createQueryBuilder(PlanningEntry, 'p')
       .select('COALESCE(SUM(p.planned_minutes), 0)', 'total')
       .where('p.user_id = :userId', { userId })
       .andWhere('p.company_id = :companyId', { companyId })
-      .andWhere('p.date = :date', { date });
+      .andWhere('p.date BETWEEN :from AND :to', { from, to });
 
     if (excludeId) {
       qb.andWhere('p.id != :excludeId', { excludeId });
     }
 
     const result = await qb.getRawOne<{ total: string | number }>();
-    const total = Number(result?.total ?? 0);
+    return Number(result?.total ?? 0);
+  }
 
-    if (total + minutes > 1440) {
+  /**
+   * Refuses only a write that raises the day or the week past its limit, so a
+   * week left over budget by an absence or a capacity change can be reduced.
+   */
+  private async assertWithinLimits(
+    manager: EntityManager,
+    company: PlanningCompany,
+    userId: string,
+    next: PlannedSlot,
+    options: { excludeId?: string; previous?: PlannedSlot } = {},
+  ): Promise<void> {
+    const { excludeId, previous } = options;
+    const week = weekRange(next.date, company.weekStartDay);
+
+    const previousIn = (from: string, to: string): number =>
+      previous && previous.date >= from && previous.date <= to
+        ? previous.minutes
+        : 0;
+
+    const otherDay = await this.plannedMinutesBetween(
+      manager,
+      userId,
+      company.id,
+      next.date,
+      next.date,
+      excludeId,
+    );
+    const dayLimit = dayLimitMinutes(company);
+    const nextDay = otherDay + next.minutes;
+
+    if (
+      nextDay > dayLimit &&
+      nextDay > otherDay + previousIn(next.date, next.date)
+    ) {
       throw new BadRequestException(
-        'Daily planning limit exceeded (maximum 24 hours)',
+        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${next.date} of a ${formatMinutes(dayLimit)} working day.`,
+      );
+    }
+
+    const otherWeek = await this.plannedMinutesBetween(
+      manager,
+      userId,
+      company.id,
+      week.start,
+      week.end,
+      excludeId,
+    );
+    const nextWeek = otherWeek + next.minutes;
+
+    if (nextWeek <= otherWeek + previousIn(week.start, week.end)) return;
+
+    const { total: available } = await this.expectedHours.expectedForUser(
+      company.id,
+      userId,
+      week.start,
+      week.end,
+    );
+
+    if (nextWeek > available) {
+      throw new BadRequestException(
+        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${week.start}.`,
       );
     }
   }

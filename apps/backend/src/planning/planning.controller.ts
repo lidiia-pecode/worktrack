@@ -18,6 +18,9 @@ import {
   UpdatePlanningEntryDto,
 } from './dtos/planning-entry-payload.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
+import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
+import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
+import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
@@ -36,6 +39,22 @@ export class PlanningController {
   @SerializeList(PlanningEntryResponse)
   list(@Query() query: PlanningQueryDto, @CurrentUser() user: AuthUser) {
     return this.service.list(query, user);
+  }
+
+  @Get('week')
+  @Serialize(PlanningWeekResponse)
+  getWeek(@Query() query: PlanningWeekQuery, @CurrentUser() user: AuthUser) {
+    return this.service.getWeek(query, user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
+  @Get('removal-count')
+  countRemovable(
+    @Query() query: PlanningRemovalCountQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.countRemovable(query, user);
   }
 
   @Get(':id')
