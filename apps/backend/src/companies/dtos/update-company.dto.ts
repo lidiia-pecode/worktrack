@@ -11,7 +11,7 @@ import {
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { WeekDay } from '../enums/week-day.enum';
-import { TrimString } from 'src/lib/decorators/trim-string.decorator';
+import { TrimString } from 'src/lib/decorators';
 
 export class UpdateCompanyDto {
   @IsOptional()

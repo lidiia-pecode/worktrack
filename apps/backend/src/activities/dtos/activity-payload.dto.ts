@@ -8,10 +8,10 @@ import {
   MinLength,
 } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimString } from 'src/lib/decorators';
 
 export class ActivityPayload {
-  @NormalizeString()
+  @TrimString()
   @IsNotEmpty()
   @IsString()
   @MinLength(2)

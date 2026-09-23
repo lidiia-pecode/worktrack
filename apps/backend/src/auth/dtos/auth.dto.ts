@@ -8,7 +8,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimAndLowercase } from 'src/lib/decorators';
 import { AuthContext } from '../auth-strategies/types';
 import { TrimString } from 'src/lib/decorators/trim-string.decorator';
 
@@ -36,7 +36,7 @@ export class SignUpPayload {
   })
   companyName!: string;
 
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsEmail()
   email!: string;
 
@@ -50,7 +50,7 @@ export class SignUpPayload {
 }
 
 export class SignInPayload {
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsEmail()
   email!: string;
 
@@ -70,7 +70,7 @@ export class GoogleUserPayload {
   @IsString()
   lastName!: string;
 
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsEmail()
   email!: string;
 

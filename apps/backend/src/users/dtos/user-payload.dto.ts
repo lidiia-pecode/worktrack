@@ -9,7 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimAndLowercase } from 'src/lib/decorators';
 
 export class CreateUserPayload {
   @IsNotEmpty()
@@ -24,7 +24,7 @@ export class CreateUserPayload {
   @MaxLength(50)
   lastName!: string;
 
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsOptional()
   @IsString()
   @MinLength(3)
@@ -34,7 +34,7 @@ export class CreateUserPayload {
   })
   username?: string;
 
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsNotEmpty()
   @IsEmail()
   @MaxLength(100)

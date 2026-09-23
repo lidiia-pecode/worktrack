@@ -1,10 +1,10 @@
 import { IsEmail, IsEnum, IsOptional, IsUUID } from 'class-validator';
-import { NormalizeString } from 'src/lib/decorators';
+import { TrimAndLowercase } from 'src/lib/decorators';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 export class CreateInvitationPayload {
-  @NormalizeString()
+  @TrimAndLowercase()
   @IsEmail()
   email!: string;
 

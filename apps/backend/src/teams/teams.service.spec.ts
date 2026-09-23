@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -214,6 +218,24 @@ describe('TeamsService', () => {
 
       expect(readded.leftAt).toBeNull();
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
+    });
+  });
+
+  describe('team names', () => {
+    it('keeps the case it was given', async () => {
+      const team = await service.createTeam(companyId, {
+        name: `Delivery ${RUN}`,
+      });
+
+      expect(team.name).toBe(`Delivery ${RUN}`);
+    });
+
+    it('refuses a name that differs from an existing one only in case', async () => {
+      await service.createTeam(companyId, { name: `Platform ${RUN}` });
+
+      await expect(
+        service.createTeam(companyId, { name: `PLATFORM ${RUN}` }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });
