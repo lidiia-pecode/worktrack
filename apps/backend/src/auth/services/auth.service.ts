@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -11,6 +10,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { createValidationException } from 'src/lib/utils/validation-exception.util';
 
 import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';
 import { SignInPayload, SignUpPayload } from '../dtos/auth.dto';
@@ -252,7 +252,9 @@ export class AuthService {
 
     if (user.passwordHash) {
       if (!payload.currentPassword) {
-        throw new BadRequestException('Current password is required');
+        throw createValidationException({
+          currentPassword: ['Enter your current password'],
+        });
       }
 
       const isCurrentPasswordValid = await this.passwordService.verify(
@@ -261,7 +263,9 @@ export class AuthService {
       );
 
       if (!isCurrentPasswordValid) {
-        throw new BadRequestException('Current password is incorrect');
+        throw createValidationException({
+          currentPassword: ['Current password is incorrect'],
+        });
       }
 
       const isSamePassword = await this.passwordService.verify(
@@ -270,9 +274,9 @@ export class AuthService {
       );
 
       if (isSamePassword) {
-        throw new BadRequestException(
-          'New password must be different from the current password',
-        );
+        throw createValidationException({
+          newPassword: ['Choose a password different from your current one'],
+        });
       }
     }
 

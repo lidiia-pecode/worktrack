@@ -252,6 +252,24 @@ describe('AuthService refresh', () => {
         .update(user.id, { passwordHash: await hashPassword(PASSWORD) });
     });
 
+    it('a wrong current password is reported on that field and ends nothing', async () => {
+      const current = await signIn();
+      const other = await signIn();
+
+      await expect(
+        service.changePassword(user.id, companyId, current.sessionId, {
+          currentPassword: 'not-the-password',
+          newPassword: 'changed-password-1',
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          errors: { currentPassword: ['Current password is incorrect'] },
+        },
+      });
+
+      expect(await findSession(other.sessionId)).not.toBeNull();
+    });
+
     it('a reset ends every session', async () => {
       const first = await signIn();
       const second = await signIn();

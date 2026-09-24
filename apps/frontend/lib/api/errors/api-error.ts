@@ -38,6 +38,10 @@ export function getErrorMessage(error: unknown): string {
     return error.message;
   }
 
+  if (isApiMessageError(error) && error.statusCode === 429) {
+    return "Too many attempts. Please wait a minute and try again.";
+  }
+
   if (isApiValidationError(error) && error.errors) {
     const firstField = Object.values(error.errors)[0];
     if (firstField?.[0]) return firstField[0];
