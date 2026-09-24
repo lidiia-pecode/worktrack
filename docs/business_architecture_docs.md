@@ -19,7 +19,7 @@ genuinely open.
 with Phase 8. Phases 0 to 8 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
-The remaining work was re-planned after Phase 5 into Phases 6–12 and a final
+The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
 production launch stage (§7); the next is Phase 9, engineering quality and
 tooling.
 
@@ -174,7 +174,7 @@ information into the app.
 
 *Consequence.* `Company.currency` has no consumer and should not acquire one.
 Reporting deals in hours. The handoff to invoicing is an **export of hours**, not
-a monetary figure (see §7 Phase 12).
+a monetary figure (see §7 Phase 13).
 
 ### D8 — Clients stay a text field, for now
 
@@ -781,7 +781,7 @@ For the company using it:
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
 not a task list. Phases 0 to 8 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–12 and the
+scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–13 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
 ---
@@ -991,7 +991,7 @@ like the others.
 Reports are for owners and managers only. Planned vs actual stays readable
 through the API by employees for their own figures, but no employee screen
 shows it; a report of an employee's own hours is a possible later addition.
-Export moved behind the polish phases (Phase 12). The limitations accepted
+Export moved behind the polish phases (Phase 13). The limitations accepted
 along the way: a fixed seven-day grace period, no closing a month early, client
 names that stay free text, and names saved before Phase 5 staying lowercase
 until edited.
@@ -1012,7 +1012,7 @@ tests for what it changes — there is no separate "write the tests later" phase
 cannot wait for real use: people losing their session, a password that cannot
 be changed, an invitation that blocks its own retry. Then the limits that keep
 figures right as data grows, then the tooling that protects everything after
-it. Visual polish and accessibility come once the behaviour underneath has
+it and a development environment that can be trusted. Visual polish and accessibility come once the behaviour underneath has
 stopped moving. Export stays after them by decision, so the file reflects
 settled screens; production launch closes the roadmap because it depends on
 decisions about hosting and domain rather than on code.
@@ -1136,25 +1136,42 @@ request per 100 rows.
 **Phase 9 — Engineering quality and tooling**
 
 The codebase stays safe to change: stricter CI, a frontend test harness, and
-the duplications and gaps found during Phases 3–5 closed.
+the duplications and gaps found during Phases 3–8 closed.
 
 - **CI enforces formatting and zero lint warnings**, after the remaining warnings
   are fixed.
 - **The frontend gets a test harness** and first tests for the date, month and
-  lock helpers the week views and reports depend on.
+  lock logic the week views and reports depend on.
 - **Locking is tested outside UTC** and end to end through each write path.
 - **One source for the company's today**, replacing the copies in capacity,
-  reporting and team membership.
-- **Local development is trustworthy**: dev containers that pick up file changes,
-  a verified bootstrap from a clean clone, and an explicit `sslmode` for the
-  hosted database.
+  reporting and team membership, and the unused token constants removed.
+- **Every load-more list keeps a fixed order.** The users list, the assignable
+  users and a project's members can tie on creation time or name, so paging
+  through them could repeat or skip somebody.
 
-*Depends on: Phases 6–8 landing first is sensible but not required. No
-business questions.*
+*Depends on: nothing. No business questions.*
 
 ---
 
-**Phase 10 — Week views and reports polish**
+**Phase 10 — Development environment**
+
+The local stack and the shared development stand can be trusted: what a
+developer sees is what the code says.
+
+- **Dev containers pick up file changes** — new, renamed and deleted files reach
+  the backend and frontend watchers, and a stale Next.js cache no longer
+  survives a restart unnoticed.
+- **Setup is verified from a clean clone**, using only the README and the
+  `.env.sample` files.
+- **The hosted database URL says `sslmode=verify-full`** explicitly, instead of
+  relying on how `pg` reads `require` today.
+
+*Depends on: nothing; after Phase 9 so its CI is in place. No business
+questions.*
+
+---
+
+**Phase 11 — Week views and reports polish**
 
 The screens built in Phases 1–5 behave smoothly and consistently.
 
@@ -1173,7 +1190,7 @@ questions.*
 
 ---
 
-**Phase 11 — Accessibility**
+**Phase 12 — Accessibility**
 
 WorkTrack is usable by keyboard and screen reader and meets AA contrast.
 
@@ -1184,12 +1201,12 @@ WorkTrack is usable by keyboard and screen reader and meets AA contrast.
 - **Tab lists follow the keyboard pattern people expect** — arrow keys move
   between tabs on the reports and admin pages, not only Tab.
 
-*Depends on: Phase 10, so the screens are settled first. No business
+*Depends on: Phase 11, so the screens are settled first. No business
 questions.*
 
 ---
 
-**Phase 12 — Export**
+**Phase 13 — Export**
 
 Because invoicing happens outside WorkTrack (D7), someone has to get hours
 *out*. This is a functional requirement, not a nice-to-have — without it the
@@ -1200,7 +1217,7 @@ changing.
 Anybody who can see a report may export exactly the data they can see — an
 owner the whole company, a manager the teams they lead.
 
-*Depends on: Phases 5 and 10. Open: §10 Q4 (format and grouping).*
+*Depends on: Phases 5 and 11. Open: §10 Q4 (format and grouping).*
 
 ---
 
@@ -1217,7 +1234,7 @@ development stand.
 - **A release checklist**: environment variables, rollback, and the first
   deployment verified the way the stand's were.
 
-*Depends on: Phase 12, and on §10 Q9 (hosting, domain and timing), which is a
+*Depends on: Phase 13, and on §10 Q9 (hosting, domain and timing), which is a
 business decision rather than code.*
 
 ---
@@ -1238,11 +1255,13 @@ Phases 0–8  delivered
    │
    ├── Phase 9   Engineering quality and tooling ────────┐
    │                                                     │
-   ├── Phase 10  Week views and reports polish           │
+   ├── Phase 10  Development environment                 │
+   │                                                     │
+   ├── Phase 11  Week views and reports polish           │
    │      │                                              │
-   │   Phase 11  Accessibility                           │
+   │   Phase 12  Accessibility                           │
    │      │                                              │
-   └── Phase 12  Export  ◄───────────────────────────────┘
+   └── Phase 13  Export  ◄───────────────────────────────┘
           │
    Final stage   Production launch
 ```
@@ -1328,7 +1347,7 @@ ever disagree about the catalogue.
 
 **Q4 — What form should the hours export take?**
 Required before the product is complete, since invoicing is external (D7), but
-deliberately built after the polish phases — see §7 Phase 12. Who may export is
+deliberately built after the polish phases — see §7 Phase 13. Who may export is
 settled:
 anybody who can see a report, for exactly what they can see.
 *Recommendation: start with CSV* — one row per person per project per day, or
@@ -1366,5 +1385,5 @@ holds. Revisit only if the signup model changes.
 Blocks the final stage only. Production needs paid plans (Vercel's free plan is
 non-commercial, and the free backend sleeps), a domain from the company, and
 Google sign-in URLs registered for it.
-*Recommendation:* decide once Phase 12 is in sight; nothing before then depends
+*Recommendation:* decide once Phase 13 is in sight; nothing before then depends
 on it.

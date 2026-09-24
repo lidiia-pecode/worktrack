@@ -106,8 +106,8 @@ Expected hours are capacity minus absences, and owners and managers plan their
 people's week by project at `/planning`, against the hours each person has
 available. Each month locks by itself a week after it ends, and an owner can
 reopen one at `/admin/periods`. Owners and managers read hours, planned vs
-actual and utilisation at `/reports`. The remaining work is Phases 6–12 and a
-production launch, starting with sign-in and sessions. The authorization gaps
+actual and utilisation at `/reports`. The remaining work is Phases 9–13 and a
+production launch, starting with engineering quality and tooling. The authorization gaps
 are all closed.
 
 Test coverage is fifteen suites and 302 tests, covering the role-visibility
