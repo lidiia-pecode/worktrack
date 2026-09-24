@@ -9,11 +9,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   EntityManager,
-  ILike,
   Not,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
+import { sameName } from 'src/lib/utils/same-name.util';
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
@@ -60,7 +60,7 @@ export class ProjectsService {
     const exists = await repo.exists({
       where: {
         companyId,
-        name: ILike(name.trim()),
+        name: sameName(name),
         ...(excludeId && { id: Not(excludeId) }),
       },
     });

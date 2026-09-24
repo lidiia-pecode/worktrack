@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, Not, Repository } from 'typeorm';
+import { sameName } from 'src/lib/utils/same-name.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ActCategory } from './entities/activities-category.entity';
 import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
@@ -28,7 +29,7 @@ export class ActCategoriesService {
     const exists = await this.repo.exists({
       where: {
         companyId,
-        name: ILike(name.trim()),
+        name: sameName(name),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });

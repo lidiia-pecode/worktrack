@@ -1,6 +1,10 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -640,6 +644,30 @@ describe('ProjectsService membership scope', () => {
       );
 
       await expect(memberIds(project.id)).resolves.toEqual(sorted(alphaMember));
+    });
+  });
+
+  describe('names', () => {
+    it('treats _ and % as plain characters, not wildcards', async () => {
+      await service.create({ name: `Axb ${RUN}` }, alphaManager);
+
+      await expect(
+        service.create({ name: `A_b ${RUN}` }, alphaManager),
+      ).resolves.toBeDefined();
+      await expect(
+        service.create({ name: `A%b ${RUN}` }, alphaManager),
+      ).resolves.toBeDefined();
+    });
+
+    it('still refuses the same name in another case or with spaces', async () => {
+      await service.create({ name: `Alpha name ${RUN}` }, alphaManager);
+
+      await expect(
+        service.create({ name: `alpha NAME ${RUN}` }, alphaManager),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.create({ name: `  Alpha name ${RUN}  ` }, alphaManager),
+      ).rejects.toThrow(ConflictException);
     });
   });
 });

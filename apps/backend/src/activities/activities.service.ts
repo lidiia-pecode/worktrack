@@ -5,7 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, ILike, In, Not, Repository } from 'typeorm';
+import { FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import { sameName } from 'src/lib/utils/same-name.util';
 import { Activity } from './entities/activity.entity';
 import {
   ActivityPayload,
@@ -34,7 +35,7 @@ export class ActivitiesService {
     const exists = await repo.exists({
       where: {
         companyId,
-        name: ILike(name.trim()),
+        name: sameName(name),
         ...(excludeId ? { id: Not(excludeId) } : {}),
       },
     });
