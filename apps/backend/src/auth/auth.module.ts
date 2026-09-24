@@ -69,6 +69,7 @@ import { MailModule } from 'src/mail/mail.module';
   ],
   exports: [
     AuthService,
+    AuthPolicyService,
     PasswordService,
     SessionService,
     TokenService,
