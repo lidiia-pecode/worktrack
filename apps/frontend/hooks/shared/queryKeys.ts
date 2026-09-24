@@ -150,6 +150,8 @@ export const queryKeys = {
   invitations: {
     all: ["invitations"] as const,
 
+    pending: () => ["invitations", "pending"] as const,
+
     validate: (token: string) => ["invitations", "validate", token] as const,
   },
 };

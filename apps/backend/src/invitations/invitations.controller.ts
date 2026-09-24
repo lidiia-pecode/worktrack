@@ -4,6 +4,9 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Res,
@@ -18,7 +21,12 @@ import {
 } from 'src/auth/guards';
 
 import { CookieService } from 'src/auth/services/cookie.service';
+import {
+  INVITATION_EMAILS_PER_MINUTE,
+  LimitPerSession,
+} from 'src/auth/rate-limit/rate-limit.decorators';
 import { CurrentUser, Role } from 'src/lib/decorators';
+import { Serialize } from 'src/lib/interceptors';
 import { InvitationToken } from 'src/lib/decorators/invitation-token.decorator';
 import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
 
@@ -30,6 +38,7 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { CompleteInvitationDto } from './dtos/complete-invitation.dto';
+import { PendingInvitationResponse } from './dtos/invitation-response.dto';
 import { InvitationsService } from './invitations.service';
 
 @Controller('invitations')
@@ -39,6 +48,15 @@ export class InvitationsController {
     private readonly cookieService: CookieService,
   ) {}
 
+  @Get()
+  @UseGuards(AccessGuard, RolesGuard)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Serialize(PendingInvitationResponse)
+  async listPending(@CurrentUser() user: AuthUser) {
+    return this.invitationsService.listPending(user);
+  }
+
+  @LimitPerSession(INVITATION_EMAILS_PER_MINUTE)
   @Post()
   @UseGuards(AccessGuard, RolesGuard)
   @Role(UserRole.OWNER, UserRole.MANAGER)
@@ -47,6 +65,35 @@ export class InvitationsController {
     @Body() payload: CreateInvitationPayload,
   ) {
     await this.invitationsService.create(user.companyId, payload, user);
+
+    return {
+      success: true,
+    };
+  }
+
+  @LimitPerSession(INVITATION_EMAILS_PER_MINUTE)
+  @Post(':id/resend')
+  @UseGuards(AccessGuard, RolesGuard)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  async resend(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.invitationsService.resend(id, user);
+
+    return {
+      success: true,
+    };
+  }
+
+  @Patch(':id/revoke')
+  @UseGuards(AccessGuard, RolesGuard)
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  async revoke(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    await this.invitationsService.revoke(id, user);
 
     return {
       success: true,

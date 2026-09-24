@@ -15,6 +15,11 @@ import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { Team } from 'src/teams/entities/team.entity';
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
+import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
+import { todayISODate } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -321,22 +326,80 @@ export class UsersService {
     payload: CreateUserPayload,
     manager?: EntityManager,
   ): Promise<User> {
+    const { teamId, ...userFields } = payload;
+    const role = userFields.role ?? UserRole.EMPLOYEE;
+
+    if (role === UserRole.EMPLOYEE && !teamId) {
+      throw new BadRequestException('An employee must be created in a team');
+    }
+
+    if (role !== UserRole.EMPLOYEE && teamId) {
+      throw new BadRequestException(
+        'Only an employee can be created in a team',
+      );
+    }
+
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
-      const passwordHash = await hashPassword(payload.password);
+      const passwordHash = await hashPassword(userFields.password);
 
       const user = repo.create({
-        ...payload,
-        email: payload.email?.toLowerCase().trim(),
+        ...userFields,
+        role,
+        email: userFields.email?.toLowerCase().trim(),
         companyId,
         passwordHash,
         status: UserStatus.ACTIVE,
       });
 
-      return this.safeSave(repo, user, payload.email, payload.username);
+      const saved = await this.safeSave(
+        repo,
+        user,
+        userFields.email,
+        userFields.username,
+      );
+
+      if (teamId) {
+        await this.addToActiveTeam(man, companyId, teamId, saved.id);
+      }
+
+      return saved;
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);
+  }
+
+  // TODO: the same team lookup lives in InvitationsService and
+  // TeamsService.addMember; Phase 7 step 8 merges them into one helper.
+  private async addToActiveTeam(
+    manager: EntityManager,
+    companyId: string,
+    teamId: string,
+    userId: string,
+  ): Promise<void> {
+    const team = await manager.getRepository(Team).findOne({
+      where: { id: teamId, companyId },
+      select: ['id', 'status'],
+    });
+
+    if (!team) {
+      throw new NotFoundException(
+        `Team with id ${teamId} not found in this company`,
+      );
+    }
+
+    if (team.status === TeamStatus.ARCHIVED) {
+      throw new BadRequestException('Cannot add a user to an archived team');
+    }
+
+    await manager.getRepository(TeamMembership).save({
+      companyId,
+      teamId,
+      userId,
+      roleInTeam: TeamRole.MEMBER,
+      joinedAt: todayISODate(),
+      leftAt: null,
+    });
   }
 
   async updateUser(

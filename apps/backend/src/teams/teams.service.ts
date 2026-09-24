@@ -20,6 +20,8 @@ import {
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
+import { Invitation } from 'src/invitations/entities/invitation.entity';
+import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -179,15 +181,30 @@ export class TeamsService {
     }
   }
 
-  async archiveTeam(id: string, companyId: string): Promise<Team> {
+  /** Nobody can join an archived team, so its pending invitations are revoked. */
+  async archiveTeam(
+    id: string,
+    companyId: string,
+  ): Promise<Team & { revokedInvitationCount: number }> {
     const team = await this.getTeamById(id, companyId, true);
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('Team is already archived');
     }
 
-    team.status = TeamStatus.ARCHIVED;
-    return this.teamRepo.save(team);
+    return this.dataSource.transaction(async (manager) => {
+      team.status = TeamStatus.ARCHIVED;
+      const archived = await manager.getRepository(Team).save(team);
+
+      const { affected } = await manager
+        .getRepository(Invitation)
+        .update(
+          { teamId: id, companyId, status: InvitationStatus.PENDING },
+          { status: InvitationStatus.REVOKED, revokedAt: new Date() },
+        );
+
+      return { ...archived, revokedInvitationCount: affected ?? 0 };
+    });
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {

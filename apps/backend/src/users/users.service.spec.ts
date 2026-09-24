@@ -1,12 +1,13 @@
 import 'reflect-metadata';
-import { NotFoundException } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { DataSource, In, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -34,6 +35,7 @@ describe('UsersService scope', () => {
   let member: AuthUser; // in "Alpha"
   let outsider: AuthUser; // in the company, on no team of the manager's
   let leadNothing: AuthUser; // a manager who leads no team
+  let alphaId: string;
 
   const createUser = async (
     name: string,
@@ -86,6 +88,7 @@ describe('UsersService scope', () => {
     const team = await dataSource
       .getRepository(Team)
       .save({ companyId, name: `Alpha ${RUN}` });
+    alphaId = team.id;
 
     for (const [user, roleInTeam] of [
       [manager, TeamRole.MANAGER],
@@ -192,6 +195,69 @@ describe('UsersService scope', () => {
       await expect(
         service.getUserDetailsById(outsider.id, companyId, manager),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('createUser', () => {
+    const payload = (name: string) => ({
+      firstName: name,
+      lastName: 'Created',
+      email: `${name}-${RUN}@userscope.test`,
+      password: 'Password123',
+    });
+
+    it('creates an employee straight into the team', async () => {
+      const user = await service.createUser(companyId, {
+        ...payload('created'),
+        teamId: alphaId,
+      });
+
+      const memberships = await dataSource
+        .getRepository(TeamMembership)
+        .find({ where: { userId: user.id, leftAt: IsNull() } });
+
+      expect(user.role).toBe(UserRole.EMPLOYEE);
+      expect(memberships).toHaveLength(1);
+      expect(memberships[0]).toMatchObject({
+        teamId: alphaId,
+        roleInTeam: TeamRole.MEMBER,
+      });
+    });
+
+    it('refuses an employee with no team', async () => {
+      await expect(
+        service.createUser(companyId, payload('noteam')),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses a team on a manager', async () => {
+      await expect(
+        service.createUser(companyId, {
+          ...payload('teammanager'),
+          role: UserRole.MANAGER,
+          teamId: alphaId,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('creates nobody when the team is archived', async () => {
+      const archived = await dataSource.getRepository(Team).save({
+        companyId,
+        name: `Archived ${RUN}`,
+        status: TeamStatus.ARCHIVED,
+      });
+      const { email } = payload('archivedteam');
+
+      await expect(
+        service.createUser(companyId, {
+          ...payload('archivedteam'),
+          teamId: archived.id,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        dataSource.getRepository(User).existsBy({ email }),
+      ).resolves.toBe(false);
     });
   });
 });

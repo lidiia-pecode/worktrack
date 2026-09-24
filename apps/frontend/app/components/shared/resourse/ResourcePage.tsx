@@ -43,6 +43,8 @@ interface ResourcePageProps<T> {
   onFetchNextPage?: () => void;
 
   renderItem: (item: T) => ReactNode;
+  /** Shown above the search and the items, e.g. a related list. */
+  topContent?: ReactNode;
   showArchived?: boolean;
   tab?: ResourceTab;
   onTabChange?: (tab: ResourceTab) => void;
@@ -75,6 +77,7 @@ export function ResourcePage<T>({
   onFetchNextPage,
 
   renderItem,
+  topContent,
 
   showArchived = true,
   tab = "active",
@@ -171,6 +174,8 @@ export function ResourcePage<T>({
           />
         </div>
       )}
+
+      {topContent}
 
       {/* Search */}
       {!isLoading && !isError && hasItems && hasSearch && (

@@ -489,9 +489,16 @@ its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
-lead. Accepting an invitation that carries a team creates the team membership,
-always as a `MEMBER`, in the same transaction that creates the user. Invitation
-tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
+lead. An employee invitation always names a team, and creating an employee
+directly does too. Accepting an invitation that carries a team creates the team
+membership, always as a `MEMBER`, in the same transaction that creates the user.
+Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
+
+A failed invitation email leaves no invitation behind. Pending invitations can be
+listed, resent and revoked — by the owner for the whole company, by a manager for
+those into the teams they lead. A resend issues a new link and the old one stops
+working, and sending is limited per session. Archiving a team revokes its pending
+invitations.
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -508,7 +515,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create, any role; a team only on an employee invitation | create, EMPLOYEE only, always into a team they lead | — |
+| Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
 | Activities, Categories | full CRUD | full CRUD | read |
@@ -1057,18 +1064,23 @@ what happened.
   saved before the email is sent, and the address cannot be invited again until
   it expires.
 - **Pending invitations can be seen, resent and revoked** — owners for the whole
-  company, managers for the invitations they sent, following D10.
-- **Somebody can be removed from a team and added back the same day.** Decide
-  whether `leftAt` is the last day of a membership or the day it ended, and make
-  the overlap check follow it.
+  company, managers for invitations into the teams they lead, following D10. A
+  resend issues a new link and the old one stops working; sending is limited per
+  session.
+- **Every employee joins into a team.** An employee invitation, from the owner
+  too, names an active team, and so does creating an employee directly;
+  archiving a team revokes its pending invitations. An employee can still be
+  left without a team after removal from their last one, and only the owner sees
+  and places them.
+- **Somebody can be removed from a team and added back the same day.** `leftAt`
+  is the day a membership ended, not its last day.
 - **Membership dates use the company's today**, not the server's UTC date.
-- **An invitee sees the team they are joining**, the owner is told when an
-  invitee landed in no team because the team was archived, and the invite form
-  explains the case where every team is archived.
+- **An invitee sees the team they are joining**, and the invite form explains
+  the case where every team is archived.
 - **Invitation errors reveal nothing about teams outside a manager's scope**, and
   the manager onboarding check counts only the manager's own teams.
 
-*Depends on: nothing. No business questions.*
+*Depends on: nothing. Its business questions were answered in September 2026.*
 
 ---
 

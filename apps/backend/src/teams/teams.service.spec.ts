@@ -15,6 +15,9 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
+import { Invitation } from 'src/invitations/entities/invitation.entity';
+import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
+
 import { TeamVisibilityService } from './team-visibility.service';
 import { TeamsService } from './teams.service';
 
@@ -218,6 +221,50 @@ describe('TeamsService', () => {
 
       expect(readded.leftAt).toBeNull();
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
+    });
+  });
+
+  describe('archiveTeam', () => {
+    const createInvitation = (
+      teamId: string,
+      name: string,
+      expiresAt = new Date(Date.now() + 3_600_000),
+    ) =>
+      dataSource.getRepository(Invitation).save({
+        companyId,
+        teamId,
+        invitedById: owner.id,
+        email: `${name}-${RUN}@teams-service.test`,
+        role: UserRole.EMPLOYEE,
+        status: InvitationStatus.PENDING,
+        tokenHash: `${name}-${RUN}`,
+        expiresAt,
+      });
+
+    const statusOf = async (id: string) =>
+      (await dataSource.getRepository(Invitation).findOneByOrFail({ id }))
+        .status;
+
+    it('revokes the team pending invitations and says how many', async () => {
+      const teamId = await createTeam('Archived with invitations');
+      const first = await createInvitation(teamId, 'archive-first');
+      const second = await createInvitation(teamId, 'archive-second');
+
+      const archived = await service.archiveTeam(teamId, companyId);
+
+      expect(archived.revokedInvitationCount).toBe(2);
+      await expect(statusOf(first.id)).resolves.toBe(InvitationStatus.REVOKED);
+      await expect(statusOf(second.id)).resolves.toBe(InvitationStatus.REVOKED);
+    });
+
+    it('leaves invitations into other teams alone', async () => {
+      const teamId = await createTeam('Archived alone');
+      const other = await createInvitation(beta, 'archive-other');
+
+      const archived = await service.archiveTeam(teamId, companyId);
+
+      expect(archived.revokedInvitationCount).toBe(0);
+      await expect(statusOf(other.id)).resolves.toBe(InvitationStatus.PENDING);
     });
   });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -13,13 +13,11 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { FormSelect } from "../shared/FormSelect";
 
 import {
-  createInviteUserSchema,
+  inviteUserSchema,
   InviteUserFormData,
 } from "@/lib/forms/schemas/invite-user.schema";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamOptions } from "@/hooks/useTeams";
-
-const NO_TEAM = "none";
 
 interface InviteUserFormProps {
   formId?: string;
@@ -57,8 +55,6 @@ export function InviteUserForm({
 
   const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
 
-  const schema = useMemo(() => createInviteUserSchema(!isOwner), [isOwner]);
-
   const {
     register,
     control,
@@ -66,7 +62,7 @@ export function InviteUserForm({
     handleSubmit,
     formState: { errors },
   } = useForm<InviteUserFormData>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(inviteUserSchema),
     defaultValues: {
       email: "",
       role: defaultRole,
@@ -79,13 +75,18 @@ export function InviteUserForm({
   // can be invited straight into a team.
   const showTeamField = role === UserRole.EMPLOYEE;
 
-  const leadsNoTeam = !isOwner && !isLoadingTeams && teamOptions.length === 0;
+  const hasNoTeams = !isLoadingTeams && teamOptions.length === 0;
+  const cannotInviteIntoTeam = showTeamField && hasNoTeams;
+
+  const noTeamsMessage = isOwner
+    ? "Create a team first. An employee always joins into a team."
+    : "You do not lead any team yet. An owner adds you to one.";
 
   useEffect(() => {
-    if (!isOwner && teamOptions.length === 1) {
+    if (teamOptions.length === 1) {
       setValue("teamId", teamOptions[0].value);
     }
-  }, [isOwner, teamOptions, setValue]);
+  }, [teamOptions, setValue]);
 
   const submit = (data: InviteUserFormData) =>
     onSubmit(showTeamField ? data : { ...data, teamId: undefined });
@@ -126,24 +127,14 @@ export function InviteUserForm({
           render={({ field, fieldState }) => (
             <FormSelect
               id="invite-user-team"
-              label={isOwner ? "Team (optional)" : "Team"}
-              value={field.value ?? (isOwner ? NO_TEAM : undefined)}
-              onValueChange={(value) =>
-                field.onChange(value === NO_TEAM ? undefined : value)
-              }
-              options={
-                isOwner
-                  ? [{ value: NO_TEAM, label: "No team" }, ...teamOptions]
-                  : teamOptions
-              }
+              label="Team"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={teamOptions}
               placeholder="Select a team"
-              description={
-                leadsNoTeam
-                  ? "You do not lead any team yet. An owner adds you to one."
-                  : undefined
-              }
+              description={hasNoTeams ? noTeamsMessage : undefined}
               error={fieldState.error?.message}
-              disabled={isSubmitting || isLoadingTeams || leadsNoTeam}
+              disabled={isSubmitting || isLoadingTeams || hasNoTeams}
             />
           )}
         />
@@ -151,7 +142,7 @@ export function InviteUserForm({
 
       <Button
         type="submit"
-        disabled={isSubmitting || leadsNoTeam}
+        disabled={isSubmitting || cannotInviteIntoTeam}
         className="w-full"
       >
         Send invitation

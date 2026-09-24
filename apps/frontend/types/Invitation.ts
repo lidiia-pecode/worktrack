@@ -6,6 +6,16 @@ export interface CreateInvitationPayload {
   teamId?: string;
 }
 
+export interface PendingInvitation {
+  id: string;
+  email: string;
+  role: UserRole;
+  team: { id: string; name: string } | null;
+  invitedBy: { id: string; firstName: string; lastName: string } | null;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface InvitationValidation {
   email: string;
   role: UserRole;

@@ -9,6 +9,7 @@ export const REFRESHES_PER_MINUTE = 20;
 // Kept above the per-account limit: people in one office share an address.
 export const CLIENT_AUTH_ATTEMPTS_PER_MINUTE = 20;
 export const ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE = 5;
+export const INVITATION_EMAILS_PER_MINUTE = 20;
 
 export const ACCOUNT_THROTTLER = 'account';
 export const ACCOUNT_LIMITED = 'rate-limit:account-limited';

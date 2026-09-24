@@ -9,11 +9,13 @@ import {
 } from '@nestjs/throttler';
 
 import { AuthController } from '../auth.controller';
+import { InvitationsController } from 'src/invitations/invitations.controller';
 import { AuthPolicyService } from '../services/auth-policy.service';
 import { TokenService } from '../services/token.service';
 import {
   ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE,
   CLIENT_AUTH_ATTEMPTS_PER_MINUTE,
+  INVITATION_EMAILS_PER_MINUTE,
   REFRESHES_PER_MINUTE,
 } from './rate-limit.decorators';
 import { createRateLimitOptions } from './rate-limit.options';
@@ -26,6 +28,7 @@ const CONFIG: Record<string, string> = {
 };
 
 type Route = keyof AuthController;
+type InvitationRoute = keyof InvitationsController;
 
 interface FakeRequest {
   ip: string;
@@ -42,10 +45,14 @@ describe('Rate limits', () => {
   let guard: ThrottlerGuard;
   let storage: ThrottlerStorageService;
 
-  const contextFor = (route: Route, req: FakeRequest): ExecutionContext =>
+  const contextFor = (
+    handler: (...args: never[]) => unknown,
+    controller: object,
+    req: FakeRequest,
+  ): ExecutionContext =>
     ({
-      getClass: () => AuthController,
-      getHandler: () => AuthController.prototype[route],
+      getClass: () => controller,
+      getHandler: () => handler,
       switchToHttp: () => ({
         getRequest: () => req,
         getResponse: () => ({ header: jest.fn() }),
@@ -85,7 +92,18 @@ describe('Rate limits', () => {
     });
 
   const hit = (route: Route, req: FakeRequest) =>
-    guard.canActivate(contextFor(route, req));
+    guard.canActivate(
+      contextFor(AuthController.prototype[route], AuthController, req),
+    );
+
+  const hitInvitations = (route: InvitationRoute, req: FakeRequest) =>
+    guard.canActivate(
+      contextFor(
+        InvitationsController.prototype[route],
+        InvitationsController,
+        req,
+      ),
+    );
 
   const hitTimes = async (times: number, route: Route, req: FakeRequest) => {
     for (let i = 0; i < times; i++) {
@@ -218,6 +236,24 @@ describe('Rate limits', () => {
         hit('changePassword', signedIn('session-other', 'someone-else')),
       ).resolves.toBe(true);
     });
+  });
+
+  describe('invitation emails', () => {
+    it.each(['create', 'resend'] as const)(
+      'limits %s per session',
+      async (route) => {
+        for (let i = 0; i < INVITATION_EMAILS_PER_MINUTE; i++) {
+          await hitInvitations(route, signedIn('inviter'));
+        }
+
+        await expect(
+          hitInvitations(route, signedIn('inviter')),
+        ).rejects.toThrow(ThrottlerException);
+        await expect(
+          hitInvitations(route, signedIn('another-session')),
+        ).resolves.toBe(true);
+      },
+    );
   });
 
   it('does not add an account limit to other routes', async () => {

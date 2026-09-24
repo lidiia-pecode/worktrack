@@ -9,6 +9,7 @@ import { User } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
+import { PendingInvitations } from "./PendingInvitations";
 import { UserCard } from "./UserCard";
 
 type UserTab = "active" | "archived";
@@ -76,6 +77,7 @@ export function UsersContent() {
         tab={tab}
         onTabChange={handleTabChange}
         renderItem={(user) => <UserCard key={user.id} user={user} />}
+        topContent={canManage && tab === "active" && <PendingInvitations />}
       />{" "}
       <InviteUserModal
         open={inviteOpen}

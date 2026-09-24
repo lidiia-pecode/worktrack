@@ -72,3 +72,9 @@ export class TeamResponse {
   @Expose()
   updatedAt!: Date;
 }
+
+@Exclude()
+export class ArchivedTeamResponse extends TeamResponse {
+  @Expose()
+  revokedInvitationCount!: number;
+}

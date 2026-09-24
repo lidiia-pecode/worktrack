@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, MoreThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, MoreThan, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -94,14 +94,6 @@ export class InvitationsService {
       await this.invitationRepository.save(existingInvitation);
     }
 
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = this.hashToken(rawToken);
-
-    const expiresAt = new Date(
-      Date.now() +
-        this.configService.getOrThrow<number>('auth.invitation.expiresInMs'),
-    );
-
     const invitation = this.invitationRepository.create({
       companyId,
       teamId,
@@ -109,28 +101,43 @@ export class InvitationsService {
       email,
       role: payload.role,
       status: InvitationStatus.PENDING,
-      tokenHash,
-      expiresAt,
     });
 
-    await this.invitationRepository.save(invitation);
-
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-
-    const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
-
-    await this.mailService.sendInvitationEmail(email, inviteUrl);
+    await this.saveWithNewLinkAndSend(invitation);
   }
 
-  async listPendingByCompany(companyId: string): Promise<Invitation[]> {
+  async listPending(user: AuthUser): Promise<Invitation[]> {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds?.length === 0) {
+      return [];
+    }
+
     return this.invitationRepository.find({
       where: {
-        companyId,
+        companyId: user.companyId,
         status: InvitationStatus.PENDING,
         expiresAt: MoreThan(new Date()),
+        ...(visibleTeamIds ? { teamId: In(visibleTeamIds) } : {}),
       },
+      relations: { team: true, invitedBy: true },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async resend(id: string, user: AuthUser): Promise<void> {
+    const invitation = await this.findPendingInScope(id, user);
+
+    await this.saveWithNewLinkAndSend(invitation);
+  }
+
+  async revoke(id: string, user: AuthUser): Promise<void> {
+    const invitation = await this.findPendingInScope(id, user);
+
+    invitation.status = InvitationStatus.REVOKED;
+    invitation.revokedAt = new Date();
+
+    await this.invitationRepository.save(invitation);
   }
 
   async findByToken(token: string): Promise<Invitation> {
@@ -263,6 +270,56 @@ export class InvitationsService {
     return this.sessionService.createSession(user, metadata);
   }
 
+  /**
+   * Every send gets a fresh link, so only the latest email works. The email
+   * goes out before the save is committed, so a failed send changes nothing.
+   */
+  private async saveWithNewLinkAndSend(invitation: Invitation): Promise<void> {
+    const rawToken = randomBytes(32).toString('hex');
+
+    invitation.tokenHash = this.hashToken(rawToken);
+    invitation.expiresAt = new Date(
+      Date.now() +
+        this.configService.getOrThrow<number>('auth.invitation.expiresInMs'),
+    );
+
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.getRepository(Invitation).save(invitation);
+
+      await this.mailService.sendInvitationEmail(invitation.email, inviteUrl);
+    });
+  }
+
+  /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
+  private async findPendingInScope(
+    id: string,
+    user: AuthUser,
+  ): Promise<Invitation> {
+    const invitation = await this.invitationRepository.findOne({
+      where: {
+        id,
+        companyId: user.companyId,
+        status: InvitationStatus.PENDING,
+      },
+    });
+
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    const isInScope =
+      !visibleTeamIds ||
+      (invitation?.teamId != null &&
+        visibleTeamIds.includes(invitation.teamId));
+
+    if (!invitation || !isInScope) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    return invitation;
+  }
+
   private async findValidInvitation(
     token: string,
     repository: Repository<Invitation>,
@@ -305,8 +362,8 @@ export class InvitationsService {
   }
 
   /**
-   * A manager may only staff a team they lead, and only with someone new to
-   * the company, so the invitation has to carry the team from the start.
+   * An employee always joins into a team, and a manager may only staff a team
+   * they lead, so the invitation has to carry the team from the start.
    */
   private async resolveInvitationTeamId(
     companyId: string,
@@ -315,22 +372,20 @@ export class InvitationsService {
   ): Promise<string | null> {
     const { teamId } = payload;
 
-    if (!teamId) {
-      if (user.role === UserRole.OWNER) {
-        return null;
-      }
-
-      throw new BadRequestException(
-        'A team is required when a manager sends an invitation',
-      );
-    }
-
     // Accepting always creates a plain member, so a manager invited into a
     // team would not lead it. The owner assigns them afterwards instead.
     if (payload.role !== UserRole.EMPLOYEE) {
-      throw new BadRequestException(
-        'Only an employee can be invited into a team',
-      );
+      if (teamId) {
+        throw new BadRequestException(
+          'Only an employee can be invited into a team',
+        );
+      }
+
+      return null;
+    }
+
+    if (!teamId) {
+      throw new BadRequestException('An employee must be invited into a team');
     }
 
     // TODO: this lookup also exists in TeamsService.addMember. Move it onto
