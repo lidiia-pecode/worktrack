@@ -16,12 +16,12 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 24 September 2026**, and reconciled again
-with Phase 7. Phases 0 to 7 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 8. Phases 0 to 8 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–12 and a final
-production launch stage (§7); the next is Phase 8, data limits and
-robustness.
+production launch stage (§7); the next is Phase 9, engineering quality and
+tooling.
 
 ---
 
@@ -584,7 +584,7 @@ the gap is the main fact about the project's current state.
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
 - **Hours report** — owners and managers see logged time on `/reports` for a
-  month or a custom range, grouped by client, project, activity or person, and
+  month or a custom range of up to 366 days, grouped by client, project, activity or person, and
   split into billable client work, non-billable client work and internal work
   (D2). A range that includes a month still open to edits is marked
   provisional. Managers see only the teams they lead. A second tab compares
@@ -735,10 +735,11 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Backend test coverage is nineteen suites and 322 tests, covering the
+Backend test coverage is twenty-five suites and 384 tests, covering the
 role-visibility filters, team and invitation rules, time-log, absence, capacity
-and planning rules, monthly locking, the three reports, and session refresh,
-rate limits and token clean-up — most against a real
+and planning rules, monthly locking, the three reports, page and date-range
+limits, name checks, and session refresh, rate limits and token clean-up — most
+against a real
 database. The frontend has no tests. GitHub Actions runs the backend suites,
 lint, typecheck and build for both applications on every pull request, but does
 not check formatting and allows lint warnings. The nightly clean-up of
@@ -750,8 +751,9 @@ built by its host. A shared development stand runs on Vercel, Render and Neon on
 free plans, with migrations applied by hand; there is no production environment
 yet.
 
-Access tokens live fifteen minutes and refresh tokens thirty days. Several views request up to 500 rows and show whatever comes
-back, and the backend does not cap page sizes.
+Access tokens live fifteen minutes and refresh tokens thirty days. A page holds
+at most 100 rows and a larger request is refused; views that need a whole list
+fetch it page by page.
 
 ---
 
@@ -778,7 +780,7 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 6 are delivered, and so is every permission
+not a task list. Phases 0 to 8 are delivered, and so is every permission
 scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–12 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
@@ -1095,25 +1097,39 @@ employee left without a team is not flagged.
 
 ---
 
-**Phase 8 — Data limits and robustness**
+**Phase 8 — Data limits and robustness — delivered**
 
-Lists and reports stay correct as data grows, and edge-case input cannot
-produce a wrong answer.
+**Built in September 2026.** Lists and reports worked on small data but gave
+wrong answers at the edges: several views asked for 500 rows and showed whatever
+came back, the backend accepted any page size and any date range, and a name
+containing `_` or `%` could be refused as a duplicate of a different name. Now
+every list and report stays correct as data grows. No permission changed and no
+feature was added.
 
-- **No list is silently cut off.** Several views ask for 500 rows and show
-  whatever comes back, and the backend accepts any page size. A page will hold
-  at most 100 rows and a larger request will be refused rather than shortened;
-  a view that needs everything fetches page after page.
-- **Reports refuse unreasonable ranges** — at most 12 months (366 days), on the
-  server and in the custom range picker, which today accepts a five-digit year.
-  Expected hours and the team week summary get the same limit.
-- **Name checks cannot match the wrong name.** Duplicate-name checks treat `_`
-  and `%` as wildcards.
-- **No unusable pagination links.** List responses carry links built from the
-  backend's own host, which nothing reads; they will be dropped, leaving the rows
-  and their total.
+**No list is cut off.** A page holds at most 100 rows, and a request for more,
+or for a page or page size below 1, is refused rather than shortened. Every view
+that needs a whole list — the timesheet, the team grid and its person panel, the
+planning grid, the activity picker, team options and the team filters' projects —
+fetches it page by page, and the lists they page through keep a fixed order, so
+no row is repeated or skipped. List responses carry the rows and their total;
+the pagination links, built from the backend's own host and read by nothing,
+are gone.
 
-*Depends on: nothing. Its decisions were settled while planning it.*
+**Date ranges are bounded.** The hours, planned vs actual and utilisation
+reports, expected hours and the team week summary cover at most 366 days,
+counting both ends. The custom range picker on the reports page applies the same
+limit and refuses a year that is not four digits, with a message under the field
+instead of a request.
+
+**Names are compared exactly.** The duplicate-name checks for projects,
+activities and categories compare names the way the database's unique indexes
+do, ignoring case and surrounding spaces, so `_` and `%` are plain characters.
+Activity names stay unique across the company.
+
+The limitation accepted along the way: a view that needs a whole list makes one
+request per 100 rows.
+
+*Depended on: nothing. Its decisions were settled while planning it.*
 
 ---
 
@@ -1218,11 +1234,9 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–7  delivered
+Phases 0–8  delivered
    │
-   ├── Phase 8   Data limits and robustness ─────────────┐  correctness
-   │                                                     │  and security
-   ├── Phase 9   Engineering quality and tooling         │
+   ├── Phase 9   Engineering quality and tooling ────────┐
    │                                                     │
    ├── Phase 10  Week views and reports polish           │
    │      │                                              │
