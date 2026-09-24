@@ -371,7 +371,8 @@ It was cancelled because WorkTrack has no concept of a project belonging to one
 person, and adding a field to invent one would have contradicted the model it
 was supposed to serve — see §3.6. The permission model ends at Scope E, and the
 product work carried on without it: Phases 2 to 5 — absences, capacity,
-planning and reporting — shipped in September 2026, and Phase 6 is next — see
+planning and reporting — shipped in September 2026, and the remaining phases
+start with Phase 6, sign-in and sessions — see
 [`business_architecture_docs.md`](./business_architecture_docs.md) §7.
 
 ### Not in any of these

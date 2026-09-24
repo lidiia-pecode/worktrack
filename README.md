@@ -178,8 +178,9 @@ change whose data and the business rules behind each feature.
 
 Reporting was the most recent piece of work: months lock by themselves a week
 after they end, and owners and managers read hours, planned vs actual and
-utilisation at `/reports`. The next work is hardening, with the hours export
-built last.
+utilisation at `/reports`. The remaining work is planned as focused phases —
+sign-in and sessions first, then invitations, robustness, tooling, polish and
+accessibility — followed by the hours export and a production launch.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions

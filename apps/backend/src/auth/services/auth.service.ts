@@ -77,7 +77,7 @@ export class AuthService {
     refreshToken: string,
     auth: AuthContext,
     metadata?: SessionMetadata,
-  ) {
+  ): Promise<{ access_token: string; refresh_token?: string }> {
     const session = await this.sessionService.findById(auth.sessionId);
 
     if (!session) {
@@ -162,33 +162,18 @@ export class AuthService {
         incomingRefreshHash === previousHash &&
         Date.now() - rotatedAt.getTime() <= graceWindowMs;
 
+      // A concurrent refresh already rotated the token and set the new refresh
+      // cookie, so this one only gets an access token and the session is left alone.
       if (rotatedRecently) {
-        const isReRotated = await this.sessionService.rotateRefreshHash(
-          session.id,
-          currentSession.refreshHash,
-          newRefreshHash,
-          newExpiresAt,
-          metadata,
-        );
-
-        if (isReRotated) {
-          const accessToken = this.tokenService.createAccessToken({
+        return {
+          access_token: this.tokenService.createAccessToken({
             id: user.id,
             email: user.email,
             companyId: user.companyId,
             role: user.role,
             sessionId: session.id,
-          });
-
-          return {
-            access_token: accessToken,
-            refresh_token: newRefreshToken,
-          };
-        }
-
-        throw new UnauthorizedException(
-          'Session is being refreshed concurrently',
-        );
+          }),
+        };
       }
 
       await this.sessionService.delete(session.id);

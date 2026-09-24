@@ -26,19 +26,21 @@ export class CookieService {
     accessToken: string,
     refreshToken: string,
   ): void {
-    const options = this.getCookieOptions();
-
-    res.cookie(CookieService.ACCESS_TOKEN_COOKIE, accessToken, {
-      ...options,
-      maxAge: this.configService.getOrThrow<number>(
-        'auth.accessToken.maxAgeMs',
-      ),
-    });
+    this.setAccessTokenCookie(res, accessToken);
 
     res.cookie(CookieService.REFRESH_TOKEN_COOKIE, refreshToken, {
-      ...options,
+      ...this.getCookieOptions(),
       maxAge: this.configService.getOrThrow<number>(
         'auth.refreshToken.maxAgeMs',
+      ),
+    });
+  }
+
+  setAccessTokenCookie(res: Response, accessToken: string): void {
+    res.cookie(CookieService.ACCESS_TOKEN_COOKIE, accessToken, {
+      ...this.getCookieOptions(),
+      maxAge: this.configService.getOrThrow<number>(
+        'auth.accessToken.maxAgeMs',
       ),
     });
   }

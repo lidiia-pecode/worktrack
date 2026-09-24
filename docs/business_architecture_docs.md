@@ -19,7 +19,9 @@ genuinely open.
 with Phase 5. Phases 0 to 5 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
-The next work is Phase 6, hardening, with export as the final stage.
+The remaining work was re-planned after Phase 5 into Phases 6–12 and a final
+production launch stage (§7); the next is Phase 6, sign-in, sessions and account
+security.
 
 ---
 
@@ -172,7 +174,7 @@ information into the app.
 
 *Consequence.* `Company.currency` has no consumer and should not acquire one.
 Reporting deals in hours. The handoff to invoicing is an **export of hours**, not
-a monetary figure (see §7, Final stage — Export).
+a monetary figure (see §7 Phase 12).
 
 ### D8 — Clients stay a text field, for now
 
@@ -587,9 +589,6 @@ the gap is the main fact about the project's current state.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
-### Backend-only, no user interface at all
-
-
 ### Phase 1 delivered
 
 Owners and managers land on `/team` and see their people's week as a grid,
@@ -725,22 +724,21 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Test coverage has started but is thin: eight suites and 139 tests, covering the
-role-visibility filters, the team route roles and membership rules, who may
-invite whom into which team, what accepting an invitation creates, the time-log
-write scope, the user-list scope, and the project assignment, disclosure and archiving
-rules. Most run against a real database; the team
-route suite runs the real guard, and the invitation authorisation suite is pure
-logic. Nothing else is covered, but GitHub Actions runs them on every
-pull request, alongside lint, typecheck and build for both applications.
+Backend test coverage is fifteen suites and 302 tests, covering the
+role-visibility filters, team and invitation rules, time-log, absence, capacity
+and planning rules, monthly locking and the three reports — most against a real
+database. The frontend has no tests. GitHub Actions runs the backend suites,
+lint, typecheck and build for both applications on every pull request, but does
+not check formatting and allows lint warnings.
 
-The backend has a production image (`apps/backend/Dockerfile`) and migrations
-run as a deployment step. The frontend has no image on purpose — it is built by
-its host. A shared development stand is deployed on Vercel, Render and Neon; there
-is no production environment yet.
+The backend has a production image (`apps/backend/Dockerfile`); the frontend is
+built by its host. A shared development stand runs on Vercel, Render and Neon on
+free plans, with migrations applied by hand; there is no production environment
+yet.
 
 Access tokens live one minute, so sessions drop during ordinary use even though
-refresh works.
+refresh works. Several views request up to 500 rows and show whatever comes
+back, and the backend does not cap page sizes.
 
 ---
 
@@ -768,8 +766,8 @@ For the company using it:
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
 not a task list. Phases 0 to 5 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7, so Phase 6 is the
-work now being planned.
+scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–12 and the
+final stage were re-planned in September 2026, after Phase 5 closed.
 
 ---
 
@@ -978,60 +976,217 @@ like the others.
 Reports are for owners and managers only. Planned vs actual stays readable
 through the API by employees for their own figures, but no employee screen
 shows it; a report of an employee's own hours is a possible later addition.
-Export moved to the final stage of the roadmap. The limitations accepted along
-the way are listed in `known-issues.md` rather than repeated here.
+Export moved behind the polish phases (Phase 12). The limitations accepted
+along the way: a fixed seven-day grace period, no closing a month early, client
+names that stay free text, and names saved before Phase 5 staying lowercase
+until edited.
 
 *Depended on: Phases 3 and 4.*
 
 ---
 
-**Phase 6 — Hardening**
+**What comes after Phase 5.** Everything the product was meant to do is now
+built except export. What remains is making it correct, safe and pleasant to
+rely on, then getting hours out, then going live. The old single "hardening"
+phase mixed bugs, security, tests, polish and accessibility; it is split below
+by area, so that each phase is one branch and one pull request, can be reviewed
+on its own, and ships something a person would notice. Every phase adds the
+tests for what it changes — there is no separate "write the tests later" phase.
 
-Not last in importance, only in sequence — parts of it should be pulled forward
-whenever the pain justifies it.
-
-Meaningful test coverage beyond Phase 0's start; a sane access-token lifetime
-(one minute drops sessions during ordinary use); reminders for people who have
-not logged their week, if wanted (§10 Q5); and the accessibility items listed as
-TODOs in the frontend documentation. CI and the frontend admin role check were
-both pulled forward and are done.
+**Ordering.** Correctness and security first, because they are the things that
+cannot wait for real use: people losing their session, a password that cannot
+be changed, an invitation that blocks its own retry. Then the limits that keep
+figures right as data grows, then the tooling that protects everything after
+it. Visual polish and accessibility come once the behaviour underneath has
+stopped moving. Export stays after them by decision, so the file reflects
+settled screens; production launch closes the roadmap because it depends on
+decisions about hosting and domain rather than on code.
 
 ---
 
-**Final stage — Export**
+**Phase 6 — Sign-in, sessions and account security**
+
+Signing in, staying signed in and managing your own credentials work correctly
+and safely.
+
+- **Sessions stop dropping.** Two faults end sessions during ordinary use.
+  Several refreshes arriving together — page prefetches, a second tab — make
+  the backend treat the third as a stolen token and delete the session; and the
+  refresh limit is one bucket shared by every user, because refreshes reach the
+  backend from the frontend server. The access token also moves from one minute
+  to fifteen (Q7).
+- **Rate limiting counts people, not the proxy.** The global limit is written
+  in the wrong unit and does nothing; sign-in and password limits are shared by
+  everybody behind the proxy. Limit signed-in traffic per session and sign-in
+  per client and per account.
+- **Changing your own password works.** The form's submit button sits outside
+  the form, so the button does nothing.
+- **Housekeeping:** used one-time tokens are cleaned up, dead token code goes,
+  and the shared Google callbacks are documented as intended — reviewed while
+  planning, the outcome depends on the account, not the button pressed.
+
+*Depends on: nothing. Q7 and Q8 are answered.*
+
+---
+
+**Phase 7 — Invitations and team membership**
+
+Adding people to the company and to teams is reliable, recoverable and says
+what happened.
+
+- **A failed invitation email no longer blocks a retry.** Today the invitation is
+  saved before the email is sent, and the address cannot be invited again until
+  it expires.
+- **Pending invitations can be seen, resent and revoked** — owners for the whole
+  company, managers for the invitations they sent, following D10.
+- **Somebody can be removed from a team and added back the same day.** Decide
+  whether `leftAt` is the last day of a membership or the day it ended, and make
+  the overlap check follow it.
+- **Membership dates use the company's today**, not the server's UTC date.
+- **An invitee sees the team they are joining**, the owner is told when an
+  invitee landed in no team because the team was archived, and the invite form
+  explains the case where every team is archived.
+- **Invitation errors reveal nothing about teams outside a manager's scope**, and
+  the manager onboarding check counts only the manager's own teams.
+
+*Depends on: nothing; can run alongside Phase 6. No business questions.*
+
+---
+
+**Phase 8 — Data limits and robustness**
+
+Lists and reports stay correct as data grows, and edge-case input cannot
+produce a wrong answer.
+
+- **No list is silently cut off.** Several views ask for 500 rows and show
+  whatever comes back, and the backend accepts any page size; cap it on the
+  server and fetch properly where a view needs everything.
+- **Reports refuse unreasonable ranges**, on the server and in the custom range
+  picker, which today accepts a five-digit year.
+- **Name checks cannot match the wrong name.** Duplicate-name checks treat `_`
+  and `%` as wildcards.
+- **Pagination links are addressable** from the browser, not built from the
+  backend's own host.
+
+*Depends on: nothing. No business questions.*
+
+---
+
+**Phase 9 — Engineering quality and tooling**
+
+The codebase stays safe to change: stricter CI, a frontend test harness, and
+the duplications and gaps found during Phases 3–5 closed.
+
+- **CI enforces formatting and zero lint warnings**, after the remaining warnings
+  are fixed.
+- **The frontend gets a test harness** and first tests for the date, month and
+  lock helpers the week views and reports depend on.
+- **Locking is tested outside UTC** and end to end through each write path.
+- **One source for the company's today**, and duplicated team lookups merged.
+- **Local development is trustworthy**: dev containers that pick up file changes,
+  a verified bootstrap from a clean clone, and an explicit `sslmode` for the
+  hosted database.
+
+*Depends on: Phases 6–8 landing first is sensible but not required. No
+business questions.*
+
+---
+
+**Phase 10 — Week views and reports polish**
+
+The screens built in Phases 1–5 behave smoothly and consistently.
+
+- **A manager who leads no team sees their own row** on the planning grid.
+- **Locked days never look editable**, not even while the week is loading, and an
+  absence that touches a locked month does not open for editing.
+- **Owners can reach any month to reopen**, not only the last twelve.
+- **Durations read naturally** ("30m", "−30m"), and the report filters keep their
+  layout when a date is invalid.
+- **Small inconsistencies are gone**: the product is spelled WorkTrack everywhere,
+  an invalid spacing class is replaced, unused requests are dropped, and the
+  user modal refreshes its project list after a change.
+
+*Depends on: Phase 9's test harness is useful but not required. No business
+questions.*
+
+---
+
+**Phase 11 — Accessibility**
+
+WorkTrack is usable by keyboard and screen reader and meets AA contrast.
+
+- **Every control has a name and state**: the week navigation arrows, the
+  calendar toggle, and focusable entries on locked days.
+- **Contrast meets AA** for the neutral badge and warning text on tinted
+  backgrounds, fixed in the visual foundation rather than per component.
+- **Tab lists follow the keyboard pattern people expect** — arrow keys move
+  between tabs on the reports and admin pages, not only Tab.
+
+*Depends on: Phase 10, so the screens are settled first. No business
+questions.*
+
+---
+
+**Phase 12 — Export**
 
 Because invoicing happens outside WorkTrack (D7), someone has to get hours
 *out*. This is a functional requirement, not a nice-to-have — without it the
-billable/non-billable distinction has no consumer. It is deliberately built
-last, once the product itself is finished and polished, so the file reflects
-screens and figures that have stopped changing.
+billable/non-billable distinction has no consumer. It comes after the polish
+phases by decision, so the file reflects screens and figures that have stopped
+changing.
 
 Anybody who can see a report may export exactly the data they can see — an
-owner the whole company, a manager the teams they lead. Format is open
-(§10 Q4).
+owner the whole company, a manager the teams they lead.
+
+*Depends on: Phases 5 and 10. Open: §10 Q4 (format and grouping).*
+
+---
+
+**Final stage — Production launch**
+
+WorkTrack runs as a real production service, separate from the shared
+development stand.
+
+- **A production environment** — a second copy of the frontend and backend on
+  paid plans, a fresh database, and the company's own domain with its Google
+  sign-in URLs registered. Nothing is copied from the stand.
+- **Migrations as a real release step**, replacing the hand-run step from a
+  laptop, which the free tier forces today.
+- **A release checklist**: environment variables, rollback, and the first
+  deployment verified the way the stand's were.
+
+*Depends on: Phase 12, and on §10 Q9 (hosting, domain and timing), which is a
+business decision rather than code.*
+
+---
+
+**Deferred on purpose.** Not scheduled, each waiting for a decision or a real
+need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a report
+of an employee's own hours; a dark theme; per-person working patterns, a
+configurable working week, a versioned company default capacity, a configurable
+grace period and closing a month early; and the permission questions in
+[`permission-model.md`](./permission-model.md) §6.
 
 ---
 
 ### Dependency summary
 
 ```text
-Phase 0  Authorization + first tests
+Phases 0–5  delivered
    │
-   ├──────────────────────────────────────────┐
-   │                                          │
-Phase 1  Team time view                  (hours + billable
-   │                                       reports could
-   ├── Phase 2  Absences                   branch early)
-   │      │                                       │
-   │   Phase 3  Capacity + expected ───┐          │   (delivered)
-   │                                   │          │
-   └── Phase 4  Planning UI ───────────┤          │   (delivered)
-                                       │          │
-                            Phase 5  Reporting ◄──┘   (delivered)
-                                       │
-                            Phase 6  Hardening
-                                       │
-                            Final stage  Export
+   ├── Phase 6   Sign-in, sessions and account security ─┐  correctness
+   ├── Phase 7   Invitations and team membership ────────┤  and security
+   │                                                     │
+   ├── Phase 8   Data limits and robustness              │
+   ├── Phase 9   Engineering quality and tooling         │
+   │                                                     │
+   ├── Phase 10  Week views and reports polish           │
+   │      │                                              │
+   │   Phase 11  Accessibility                           │
+   │      │                                              │
+   └── Phase 12  Export  ◄───────────────────────────────┘
+          │
+   Final stage   Production launch
 ```
 
 ---
@@ -1115,7 +1270,8 @@ ever disagree about the catalogue.
 
 **Q4 — What form should the hours export take?**
 Required before the product is complete, since invoicing is external (D7), but
-deliberately built last — see §7, Final stage. Who may export is settled:
+deliberately built after the polish phases — see §7 Phase 12. Who may export is
+settled:
 anybody who can see a report, for exactly what they can see.
 *Recommendation: start with CSV* — one row per person per project per day, or
 per person per project per period, with billable and client columns. Whoever
@@ -1136,3 +1292,21 @@ Both are columns with no behaviour. `currency` should stay unused under D7.
 *Recommendation: leave both alone and revisit only if a real need appears.*
 Removing columns costs a migration for no user-visible gain; the risk is someone
 later assuming they work.
+
+**Q7 — How long should somebody stay signed in? — answered.**
+A fifteen-minute access token with the existing thirty-day rolling refresh, and
+no "remember me" choice. Confirmed in September 2026 for Phase 6: people stay
+signed in on their own device, and a stolen access token is useful for minutes.
+
+**Q8 — Is email verification needed? — answered: not now.**
+Only a company's first owner signs up with an email address and password;
+everybody else joins through an emailed invitation, which already proves the
+address. Confirmed in September 2026: no separate verification flow while that
+holds. Revisit only if the signup model changes.
+
+**Q9 — When, where and on what budget does WorkTrack go to production?**
+Blocks the final stage only. Production needs paid plans (Vercel's free plan is
+non-commercial, and the free backend sleeps), a domain from the company, and
+Google sign-in URLs registered for it.
+*Recommendation:* decide once Phase 12 is in sight; nothing before then depends
+on it.

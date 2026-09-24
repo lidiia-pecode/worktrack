@@ -265,11 +265,15 @@ export class AuthController {
       metadata,
     );
 
-    this.cookieService.setAuthCookies(
-      res,
-      tokens.access_token,
-      tokens.refresh_token,
-    );
+    if (tokens.refresh_token) {
+      this.cookieService.setAuthCookies(
+        res,
+        tokens.access_token,
+        tokens.refresh_token,
+      );
+    } else {
+      this.cookieService.setAccessTokenCookie(res, tokens.access_token);
+    }
 
     return {
       access_token: tokens.access_token,
