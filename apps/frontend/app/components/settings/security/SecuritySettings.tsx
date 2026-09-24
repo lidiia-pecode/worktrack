@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils/cn";
 import {
   SecurityFormValues,
   createSecuritySchema,
@@ -169,16 +168,11 @@ export const SecuritySettings = () => {
             </div>
           </div>
 
-          <SettingsActions
-            className={cn(
-              "items-center gap-4",
-              hasPassword && "justify-between",
-            )}
-          >
+          <SettingsActions className="flex-wrap items-center gap-4">
             {hasPassword && (
               <Link
                 href="/forgot-password"
-                className="text-sm text-blue-400 hover:underline"
+                className="mr-auto text-sm whitespace-nowrap text-blue-400 hover:underline"
               >
                 Forgot your password?
               </Link>

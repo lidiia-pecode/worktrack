@@ -15,13 +15,13 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 23 September 2026**, and reconciled again
-with Phase 5. Phases 0 to 5 of the roadmap in §7 are delivered, as are Scopes C,
+**Last verified against the code: 24 September 2026**, and reconciled again
+with Phase 6. Phases 0 to 6 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–12 and a final
-production launch stage (§7); the next is Phase 6, sign-in, sessions and account
-security.
+production launch stage (§7); the next is Phase 7, invitations and team
+membership.
 
 ---
 
@@ -549,7 +549,9 @@ the gap is the main fact about the project's current state.
 ### Working end to end
 
 - **Authentication and sessions** — email/password and Google, HTTP-only
-  cookies, rotating refresh tokens, password reset, invitation-based signup.
+  cookies, rotating refresh tokens that survive concurrent refreshes, password
+  reset, changing or setting your own password, invitation-based signup. Rate
+  limits count signed-in traffic per session and sign-in attempts per account.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
@@ -724,12 +726,15 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Backend test coverage is fifteen suites and 302 tests, covering the
+Backend test coverage is nineteen suites and 322 tests, covering the
 role-visibility filters, team and invitation rules, time-log, absence, capacity
-and planning rules, monthly locking and the three reports — most against a real
+and planning rules, monthly locking, the three reports, and session refresh,
+rate limits and token clean-up — most against a real
 database. The frontend has no tests. GitHub Actions runs the backend suites,
 lint, typecheck and build for both applications on every pull request, but does
-not check formatting and allows lint warnings.
+not check formatting and allows lint warnings. The nightly clean-up of
+expired sessions and used one-time tokens runs only while the backend is awake,
+which on the free development stand is not every night.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on
@@ -764,7 +769,7 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 5 are delivered, and so is every permission
+not a task list. Phases 0 to 6 are delivered, and so is every permission
 scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–12 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
@@ -1003,28 +1008,43 @@ decisions about hosting and domain rather than on code.
 
 ---
 
-**Phase 6 — Sign-in, sessions and account security**
+**Phase 6 — Sign-in, sessions and account security — delivered**
 
-Signing in, staying signed in and managing your own credentials work correctly
-and safely.
+**Built in September 2026.** People were signed out during ordinary use, the
+password form did nothing, and the rate limits either limited nothing or limited
+everybody at once. Now a session lasts as long as it should, the limits count
+people, and a person can change their own password. No permission changed and no
+feature was added.
 
-- **Sessions stop dropping.** Two faults end sessions during ordinary use.
-  Several refreshes arriving together — page prefetches, a second tab — make
-  the backend treat the third as a stolen token and delete the session; and the
-  refresh limit is one bucket shared by every user, because refreshes reach the
-  backend from the frontend server. The access token also moves from one minute
-  to fifteen (Q7).
-- **Rate limiting counts people, not the proxy.** The global limit is written
-  in the wrong unit and does nothing; sign-in and password limits are shared by
-  everybody behind the proxy. Limit signed-in traffic per session and sign-in
-  per client and per account.
-- **Changing your own password works.** The form's submit button sits outside
-  the form, so the button does nothing.
-- **Housekeeping:** used one-time tokens are cleaned up, dead token code goes,
-  and the shared Google callbacks are documented as intended — reviewed while
-  planning, the outcome depends on the account, not the button pressed.
+**Sessions stopped dropping.** Refreshes arriving together — a navigation and
+its prefetches, a second tab — made the backend treat the third as a stolen
+token and delete the session. A refresh that brings the token rotated away in
+the last thirty seconds now gets a new access token and leaves the session
+alone; any other reuse still ends it. The access token lives fifteen minutes
+(Q7).
 
-*Depends on: nothing. Q7 and Q8 are answered.*
+**Limits count people, not the proxy.** The global limit is a real per-minute
+limit. Signed-in traffic is counted per session, read from a verified token, so
+the frontend's server counts as the many people it carries. Sign-in, sign-up and
+the password routes are also limited per account, from any address. Measured on
+the development stand, the address the backend sees for a client is a
+Cloudflare server rather than the person, so `TRUST_PROXY_HOPS` stayed at one
+and the per-account limit is what protects an account.
+
+**Changing your own password works**, both "Change password" and "Set password"
+for an account created with Google. Mistakes show on the field they belong to,
+and a change signs out the person's other devices.
+
+**Housekeeping.** The nightly clean-up also deletes used or expired one-time
+tokens, dead token code went, and the shared Google callbacks are recorded as
+intended: the outcome depends on the account, not on the button pressed.
+
+The limitations accepted along the way: the per-client sign-in limit is shared
+by everyone behind the same Cloudflare server, a throttled refresh still signs
+the person out, the clean-up runs only while the backend is awake, and there is
+still no list of your own sessions.
+
+*Depended on: nothing. Q7 and Q8 were answered while planning it.*
 
 ---
 
@@ -1048,7 +1068,7 @@ what happened.
 - **Invitation errors reveal nothing about teams outside a manager's scope**, and
   the manager onboarding check counts only the manager's own teams.
 
-*Depends on: nothing; can run alongside Phase 6. No business questions.*
+*Depends on: nothing. No business questions.*
 
 ---
 
@@ -1171,11 +1191,10 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–5  delivered
+Phases 0–6  delivered
    │
-   ├── Phase 6   Sign-in, sessions and account security ─┐  correctness
-   ├── Phase 7   Invitations and team membership ────────┤  and security
-   │                                                     │
+   ├── Phase 7   Invitations and team membership ────────┐  correctness
+   │                                                     │  and security
    ├── Phase 8   Data limits and robustness              │
    ├── Phase 9   Engineering quality and tooling         │
    │                                                     │
