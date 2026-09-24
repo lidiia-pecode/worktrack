@@ -143,6 +143,22 @@ const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
+/** The longest report range, both ends counted. The server refuses longer. */
+export const MAX_REPORT_RANGE_DAYS = 366;
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Whether a date field holds a whole YYYY-MM-DD date, with a four-digit year. */
+export function isISODate(value: string): boolean {
+  return ISO_DATE.test(value);
+}
+
+/** The last day a report starting on dateFrom may end on. */
+export function lastDayOfReportRange(dateFrom: string): string {
+  const firstDay = new Date(`${dateFrom}T00:00:00`);
+  return toISODate(addDays(firstDay, MAX_REPORT_RANGE_DAYS - 1));
+}
+
 /** The YYYY-MM month key of a YYYY-MM-DD date. */
 export function toMonthKey(date: string): string {
   return date.slice(0, 7);
