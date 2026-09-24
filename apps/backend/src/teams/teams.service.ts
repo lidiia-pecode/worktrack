@@ -20,6 +20,10 @@ import {
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
+import { findActiveTeam } from './find-active-team.util';
+import { findCompanyToday } from 'src/companies/company-today.util';
+import { Invitation } from 'src/invitations/entities/invitation.entity';
+import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -40,6 +44,21 @@ export class TeamsService {
   // ==========================================
   private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
     return new Date(leftAt).getTime() < new Date(joinedAt).getTime();
+  }
+
+  /**
+   * `leftAt` is the day a membership ended, not its last day, so a membership
+   * that ends on a day and one that starts on that day do not overlap.
+   */
+  private overlapsPeriod(joinedAt: string, leftAt: string | null) {
+    return {
+      joinedAt: Raw((alias) => `(${alias} < :leftAt OR :leftAt IS NULL)`, {
+        leftAt,
+      }),
+      leftAt: Raw((alias) => `(${alias} IS NULL OR ${alias} > :joinedAt)`, {
+        joinedAt,
+      }),
+    };
   }
 
   /** An owner acts on any team, a manager only on one they actively lead. */
@@ -179,15 +198,30 @@ export class TeamsService {
     }
   }
 
-  async archiveTeam(id: string, companyId: string): Promise<Team> {
+  /** Nobody can join an archived team, so its pending invitations are revoked. */
+  async archiveTeam(
+    id: string,
+    companyId: string,
+  ): Promise<Team & { revokedInvitationCount: number }> {
     const team = await this.getTeamById(id, companyId, true);
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('Team is already archived');
     }
 
-    team.status = TeamStatus.ARCHIVED;
-    return this.teamRepo.save(team);
+    return this.dataSource.transaction(async (manager) => {
+      team.status = TeamStatus.ARCHIVED;
+      const archived = await manager.getRepository(Team).save(team);
+
+      const { affected } = await manager
+        .getRepository(Invitation)
+        .update(
+          { teamId: id, companyId, status: InvitationStatus.PENDING },
+          { status: InvitationStatus.REVOKED, revokedAt: new Date() },
+        );
+
+      return { ...archived, revokedInvitationCount: affected ?? 0 };
+    });
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {
@@ -210,20 +244,12 @@ export class TeamsService {
     companyId: string,
     dto: AddTeamMemberDto,
   ): Promise<TeamMembership> {
-    const team = await this.teamRepo.findOne({
-      where: { id: teamId, companyId },
-      select: ['id', 'status'],
-    });
-
-    if (!team) {
-      throw new NotFoundException(
-        `Team with id ${teamId} not found in this company`,
-      );
-    }
-
-    if (team.status === TeamStatus.ARCHIVED) {
-      throw new BadRequestException('Cannot add members to an archived team');
-    }
+    await findActiveTeam(
+      this.teamRepo,
+      teamId,
+      companyId,
+      'Cannot add members to an archived team',
+    );
 
     const user = await this.userRepo.findOne({
       where: { id: dto.userId, companyId },
@@ -247,14 +273,7 @@ export class TeamsService {
         where: {
           teamId,
           userId: dto.userId,
-          joinedAt: Raw(
-            (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-            { newLeftAt },
-          ),
-          leftAt: Raw(
-            (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-            { newJoinedAt: dto.joinedAt },
-          ),
+          ...this.overlapsPeriod(dto.joinedAt, newLeftAt),
         },
       });
 
@@ -329,14 +348,7 @@ export class TeamsService {
             teamId: membership.teamId,
             userId: membership.userId,
             id: Not(membershipId),
-            joinedAt: Raw(
-              (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-              { newLeftAt },
-            ),
-            leftAt: Raw(
-              (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-              { newJoinedAt },
-            ),
+            ...this.overlapsPeriod(newJoinedAt, newLeftAt),
           },
         });
 
@@ -395,7 +407,7 @@ export class TeamsService {
       throw new BadRequestException('This membership is already closed');
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = await findCompanyToday(this.dataSource.manager, companyId);
 
     // A membership that has not started yet closes on its start date, so the
     // stored range stays valid.

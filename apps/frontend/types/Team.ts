@@ -35,6 +35,10 @@ export interface Team {
   company: Company;
 }
 
+export interface ArchivedTeam extends Team {
+  revokedInvitationCount: number;
+}
+
 // Payloads
 export interface CreateTeamPayload {
   name: string;

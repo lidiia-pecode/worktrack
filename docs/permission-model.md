@@ -281,9 +281,11 @@ Visible, deliberately unanswered, and none of them block the roadmap in §7.
 - **P5 — Should an employee see their own team and teammates?** Today they see
   neither.
 - **P6 — What happens to an invitation whose target team is archived before it
-  is accepted?** *Answered by Scope D:* the user is created, the membership is
-  skipped, and the Owner places them. A signup must not fail over an
-  administrative action taken after the invitation was sent.
+  is accepted?** *Answered by Scope D, changed in Phase 7:* archiving a team
+  revokes its pending invitations and tells the owner how many, so the link stops
+  working. Only if the team is archived while someone is accepting is the user
+  created without a membership, and the Owner places them — a signup must not
+  fail over an administrative action.
 - **P7 — What happens to a team when its only manager leaves?** Still open. Scope
   D settled the neighbouring case only: an invitation sent by a manager who has
   since stopped leading the team still creates the membership.

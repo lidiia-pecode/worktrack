@@ -13,24 +13,57 @@ import { toast } from "sonner";
 export const useInvitations = () => {
   const queryClient = useQueryClient();
 
+  const invalidateInvitations = () =>
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.invitations.all,
+    });
+
   const create = useMutation({
     mutationFn: InvitationsClientApi.create,
 
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.invitations.all,
-      });
+      invalidateInvitations();
 
       toast.success("Invitation sent successfully");
+    },
+  });
+
+  const resend = useMutation({
+    mutationFn: InvitationsClientApi.resend,
+
+    onSuccess: () => {
+      invalidateInvitations();
+
+      toast.success(
+        "Invitation sent again. The previous link no longer works.",
+      );
+    },
+  });
+
+  const revoke = useMutation({
+    mutationFn: InvitationsClientApi.revoke,
+
+    onSuccess: () => {
+      invalidateInvitations();
+
+      toast.success("Invitation revoked");
     },
   });
 
   return {
     actions: {
       create,
+      resend,
+      revoke,
     },
   };
 };
+
+export const usePendingInvitations = () =>
+  useQuery({
+    queryKey: queryKeys.invitations.pending(),
+    queryFn: InvitationsClientApi.listPending,
+  });
 
 export const useCompleteInvitation = () => {
   const router = useRouter();

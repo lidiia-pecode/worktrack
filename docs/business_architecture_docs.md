@@ -16,12 +16,12 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 24 September 2026**, and reconciled again
-with Phase 6. Phases 0 to 6 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 7. Phases 0 to 7 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–12 and a final
-production launch stage (§7); the next is Phase 7, invitations and team
-membership.
+production launch stage (§7); the next is Phase 8, data limits and
+robustness.
 
 ---
 
@@ -312,7 +312,9 @@ consistent with §1's position on multi-company.
 
 **Team membership is historical, not current-state.** Rows are closed with
 `leftAt` rather than deleted, so "who was on this team in March" remains
-answerable. Managership is derived from membership: a manager sees people who
+answerable. `leftAt` is the day a membership ended, not its last day, so somebody
+can leave a team and rejoin it on the same day, and membership dates are the
+company's dates, from its time zone. Managership is derived from membership: a manager sees people who
 share an active team with an active `roleInTeam = MANAGER` membership of theirs.
 
 ---
@@ -489,9 +491,16 @@ its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
-lead. Accepting an invitation that carries a team creates the team membership,
-always as a `MEMBER`, in the same transaction that creates the user. Invitation
-tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
+lead. An employee invitation always names a team, and creating an employee
+directly does too. Accepting an invitation that carries a team creates the team
+membership, always as a `MEMBER`, in the same transaction that creates the user.
+Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
+
+A failed invitation email leaves no invitation behind. Pending invitations can be
+listed, resent and revoked — by the owner for the whole company, by a manager for
+those into the teams they lead. A resend issues a new link and the old one stops
+working, and sending and resending are each limited per session. Archiving a team
+revokes its pending invitations.
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -508,7 +517,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | whole company | — |
-| Invitations | create, any role; a team only on an employee invitation | create, EMPLOYEE only, always into a team they lead | — |
+| Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
 | Activities, Categories | full CRUD | full CRUD | read |
@@ -1048,27 +1057,41 @@ still no list of your own sessions.
 
 ---
 
-**Phase 7 — Invitations and team membership**
+**Phase 7 — Invitations and team membership — delivered**
 
-Adding people to the company and to teams is reliable, recoverable and says
-what happened.
+**Built in September 2026.** Adding people mostly worked but failed at the
+edges: a failed email blocked the address for a day, a sent invitation could not
+be followed up, an employee could join with no team, and membership dates
+followed the server's clock. Now inviting and staffing is reliable, recoverable
+and says what happened. No permission changed.
 
-- **A failed invitation email no longer blocks a retry.** Today the invitation is
-  saved before the email is sent, and the address cannot be invited again until
-  it expires.
-- **Pending invitations can be seen, resent and revoked** — owners for the whole
-  company, managers for the invitations they sent, following D10.
-- **Somebody can be removed from a team and added back the same day.** Decide
-  whether `leftAt` is the last day of a membership or the day it ended, and make
-  the overlap check follow it.
-- **Membership dates use the company's today**, not the server's UTC date.
-- **An invitee sees the team they are joining**, the owner is told when an
-  invitee landed in no team because the team was archived, and the invite form
-  explains the case where every team is archived.
-- **Invitation errors reveal nothing about teams outside a manager's scope**, and
-  the manager onboarding check counts only the manager's own teams.
+**Invitations can be recovered.** A failed invitation email leaves nothing
+behind, so the address can be invited again at once. Pending invitations are
+listed on the users page with resend and revoke — the owner sees all of them, a
+manager those into the teams they lead, including ones the owner sent there
+(D10). A resend issues a new link and expiry, and the old link stops working.
+Sending and resending are each limited to 20 a minute per session.
 
-*Depends on: nothing. No business questions.*
+**Every employee joins into a team.** An employee invitation names an active
+team, from the owner too, and so does creating an employee directly. Archiving a
+team revokes its pending invitations and tells the owner how many. An employee
+can still be left without a team after removal from their last one; only the
+owner sees and places them.
+
+**Membership dates are right.** `leftAt` is the day a membership ended, not its
+last day, so somebody can be removed and added back the same day. Membership
+dates come from the company's time zone, not the server's.
+
+**The flow says what happened.** The invitation page names the team, and a
+manager whose teams are all archived is told so. A team outside a manager's
+scope gets the same error whatever its state, and the manager onboarding check
+counts only the manager's own teams.
+
+The limitations accepted along the way: invitations sent without a team before
+this phase are accepted as they are and the owner places the person, and an
+employee left without a team is not flagged.
+
+*Depended on: nothing. Its business questions were answered while planning it.*
 
 ---
 
@@ -1191,11 +1214,10 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–6  delivered
+Phases 0–7  delivered
    │
-   ├── Phase 7   Invitations and team membership ────────┐  correctness
+   ├── Phase 8   Data limits and robustness ─────────────┐  correctness
    │                                                     │  and security
-   ├── Phase 8   Data limits and robustness              │
    ├── Phase 9   Engineering quality and tooling         │
    │                                                     │
    ├── Phase 10  Week views and reports polish           │

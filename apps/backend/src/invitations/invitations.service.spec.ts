@@ -59,12 +59,14 @@ describe('InvitationsService.create', () => {
     sendInvitationEmail = jest.fn().mockResolvedValue(undefined);
     createInvitation = jest.fn((entity: unknown) => entity);
 
+    const invitationRepository = {
+      findOne: jest.fn().mockResolvedValue(null),
+      create: createInvitation,
+      save: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new InvitationsService(
-      stub({
-        findOne: jest.fn().mockResolvedValue(null),
-        create: createInvitation,
-        save: jest.fn().mockResolvedValue(undefined),
-      }),
+      stub(invitationRepository),
       stub({ findByEmailWithCompany: jest.fn().mockResolvedValue(null) }),
       stub({ sendInvitationEmail }),
       stub({}),
@@ -73,7 +75,10 @@ describe('InvitationsService.create', () => {
         getOrThrow: (key: string) =>
           key === 'auth.invitation.expiresInMs' ? 3_600_000 : 'http://app.test',
       }),
-      stub({}),
+      stub({
+        transaction: (work: (manager: unknown) => Promise<unknown>) =>
+          work({ getRepository: () => invitationRepository }),
+      }),
       stub({
         getVisibleTeamIds: jest.fn((user: AuthUser) =>
           Promise.resolve(user.role === UserRole.OWNER ? null : [LED_TEAM_ID]),
@@ -96,7 +101,7 @@ describe('InvitationsService.create', () => {
     });
 
     it('lets an owner invite an employee', async () => {
-      await invite(UserRole.OWNER, UserRole.EMPLOYEE);
+      await invite(UserRole.OWNER, UserRole.EMPLOYEE, OTHER_TEAM_ID);
 
       expect(sendInvitationEmail).toHaveBeenCalled();
     });
@@ -141,11 +146,31 @@ describe('InvitationsService.create', () => {
       expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
 
-    it('lets an owner invite with no team at all', async () => {
-      await invite(UserRole.OWNER, UserRole.EMPLOYEE);
+    it('refuses an owner inviting an employee with no team', async () => {
+      await expect(invite(UserRole.OWNER, UserRole.EMPLOYEE)).rejects.toThrow(
+        BadRequestException,
+      );
+
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
+    });
+
+    it('invites a manager without a team', async () => {
+      await invite(UserRole.OWNER, UserRole.MANAGER);
 
       expect(createInvitation).toHaveBeenCalledWith(
         expect.objectContaining({ teamId: null }),
+      );
+    });
+
+    it.each([
+      ['another manager', OTHER_TEAM_ID],
+      ['an archived team', ARCHIVED_TEAM_ID],
+      ['no such team', MISSING_TEAM_ID],
+    ])('gives a manager the same answer for %s', async (_case, teamId) => {
+      await expect(
+        invite(UserRole.MANAGER, UserRole.EMPLOYEE, teamId),
+      ).rejects.toThrow(
+        new ForbiddenException('You can only invite into teams you lead'),
       );
     });
 

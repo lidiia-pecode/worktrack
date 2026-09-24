@@ -8,6 +8,7 @@ import { TeamStatus } from "@/types/enums";
 
 import {
   AddTeamMemberPayload,
+  ArchivedTeam,
   CreateTeamPayload,
   Team,
   TeamsQuery,
@@ -55,11 +56,24 @@ export function useTeamOptions() {
   return { options, isLoading };
 }
 
+/**
+ * Whether the caller can see an archived team. For a manager with no active
+ * team, this tells "leads nothing" apart from "every team they lead is archived".
+ */
+export function useHasArchivedTeams() {
+  const { items, isLoading } = useTeamsQuery(1, {
+    status: TeamStatus.ARCHIVED,
+    pageSize: 1,
+  });
+
+  return { hasArchivedTeams: items.length > 0, isLoading };
+}
+
 const useTeamsMutations = createEntityMutations<
   Team,
   CreateTeamPayload,
   UpdateTeamPayload,
-  Team,
+  ArchivedTeam,
   Team
 >({
   queryKey: queryKeys.teams.all,
@@ -74,7 +88,10 @@ const useTeamsMutations = createEntityMutations<
   messages: {
     create: "Team created successfully!",
     update: "Team updated successfully!",
-    archive: "Team archived successfully!",
+    archive: ({ revokedInvitationCount }) =>
+      revokedInvitationCount === 0
+        ? "Team archived successfully!"
+        : `Team archived. Pending invitations revoked: ${revokedInvitationCount}.`,
     unarchive: "Team restored successfully!",
   },
 });

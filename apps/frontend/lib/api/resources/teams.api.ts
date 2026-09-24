@@ -2,6 +2,7 @@
 
 import {
   AddTeamMemberPayload,
+  ArchivedTeam,
   CreateTeamPayload,
   Team,
   TeamListResponse,
@@ -42,7 +43,7 @@ export const TeamsClientApi = {
   removeMember: (teamId: string, membershipId: string) =>
     client.delete<void>(`/${teamId}/members/${membershipId}`),
 
-  archive: (id: string) => client.archive<Team>(`/${id}/archive`),
+  archive: (id: string) => client.archive<ArchivedTeam>(`/${id}/archive`),
 
   unarchive: (id: string) => client.patch<Team>(`/${id}/unarchive`),
 };

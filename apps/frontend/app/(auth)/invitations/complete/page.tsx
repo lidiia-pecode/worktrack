@@ -29,7 +29,11 @@ export default function InvitationCompletePage() {
     <AuthFormWrapper
       badge="You're invited"
       title="Join your workspace."
-      description="Complete your account setup and start working with your team on Worktrack."
+      description={
+        invitation.teamName
+          ? `You're joining ${invitation.teamName}. Complete your account setup to start working with your team on Worktrack.`
+          : "Complete your account setup and start working with your team on Worktrack."
+      }
     >
       <AuthForm
         mode="invitation"

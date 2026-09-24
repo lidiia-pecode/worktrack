@@ -52,9 +52,13 @@ export function createEntityQuery<
     };
   };
 
-  const useEntityInfiniteQuery = (params?: TParams) => {
+  const useEntityInfiniteQuery = (
+    params?: TParams,
+    options: { enabled?: boolean } = {},
+  ) => {
     const query = useInfiniteQuery({
       queryKey: config.queryKey.infinite(params),
+      enabled: options.enabled,
       queryFn: ({ pageParam }) =>
         config.api.getAll({
           ...params,

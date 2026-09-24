@@ -9,11 +9,11 @@ import {
 
 import { toast } from "sonner";
 
-type MutationMessages = {
+type MutationMessages<TDeleteResult> = {
   create?: string;
   update?: string;
   delete?: string;
-  archive?: string;
+  archive?: string | ((result: TDeleteResult) => string);
   unarchive?: string;
 };
 
@@ -52,7 +52,7 @@ type CreateEntityMutationsConfig<
     TRestoreResult
   >;
 
-  messages?: MutationMessages;
+  messages?: MutationMessages<TDeleteResult>;
 };
 
 export type EntityMutations<
@@ -147,11 +147,15 @@ export function createEntityMutations<
         (() => {
           throw new Error("Archive is not supported.");
         }),
-      onSuccess: () => {
+      onSuccess: (result) => {
         invalidate();
 
-        if (config.messages?.archive) {
-          toast.success(config.messages.archive);
+        const message = config.messages?.archive;
+
+        if (message) {
+          toast.success(
+            typeof message === "function" ? message(result) : message,
+          );
         }
       },
     });
