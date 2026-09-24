@@ -9,6 +9,9 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { TeamsService } from 'src/teams/teams.service';
+import { todayISODate } from 'src/capacity/working-days.util';
+import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { User } from './entities/user.entity';
@@ -24,6 +27,7 @@ import { UsersService } from './users.service';
 const RUN = Date.now();
 const SLUG = `users-scope-test-${RUN}`;
 const PAGE = { offset: 0, limit: 50 } as never;
+const TIME_ZONE = timeZoneOnAnotherDay();
 
 describe('UsersService scope', () => {
   let dataSource: DataSource;
@@ -76,7 +80,7 @@ describe('UsersService scope', () => {
 
     const company = await dataSource
       .getRepository(Company)
-      .save({ companyName: SLUG, slug: SLUG });
+      .save({ companyName: SLUG, slug: SLUG, timezone: TIME_ZONE });
     companyId = company.id;
 
     owner = await createUser('owner', UserRole.OWNER);
@@ -221,6 +225,7 @@ describe('UsersService scope', () => {
       expect(memberships[0]).toMatchObject({
         teamId: alphaId,
         roleInTeam: TeamRole.MEMBER,
+        joinedAt: todayISODate(TIME_ZONE),
       });
     });
 
@@ -258,6 +263,61 @@ describe('UsersService scope', () => {
       await expect(
         dataSource.getRepository(User).existsBy({ email }),
       ).resolves.toBe(false);
+    });
+  });
+
+  describe('an employee removed from their last team', () => {
+    let teams: TeamsService;
+    let leaver: AuthUser;
+
+    beforeAll(async () => {
+      const teamVisibility = new TeamVisibilityService(
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+      );
+      teams = new TeamsService(
+        dataSource.getRepository(Team),
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+        teamVisibility,
+        dataSource,
+      );
+
+      leaver = await createUser('leaver', UserRole.EMPLOYEE);
+      const membership = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alphaId,
+        userId: leaver.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+
+      await teams.removeMember(membership.id, companyId, alphaId, manager);
+    });
+
+    it('stays in the owner lists', async () => {
+      await expect(listedIds(owner)).resolves.toContain(leaver.id);
+
+      const { results } = await service.listAssignable(companyId, PAGE, owner);
+      expect(results.map((user) => user.id)).toContain(leaver.id);
+    });
+
+    it('is gone from the manager of their old team', async () => {
+      await expect(listedIds(manager)).resolves.not.toContain(leaver.id);
+
+      await expect(
+        service.getUserDetailsById(leaver.id, companyId, manager),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('can be placed again by the owner the same day', async () => {
+      await teams.addMember(alphaId, companyId, {
+        userId: leaver.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: todayISODate(TIME_ZONE),
+      });
+
+      await expect(listedIds(manager)).resolves.toContain(leaver.id);
     });
   });
 });

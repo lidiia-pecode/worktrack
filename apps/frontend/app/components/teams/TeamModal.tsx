@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeams, useTeamMembers } from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { todayISODate } from "@/lib/utils/date";
 
 import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
@@ -37,6 +39,7 @@ export function TeamModal({
 }: TeamModalProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { timezone } = useWorkSettings();
 
   const [view, setView] = useState<View>("form");
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
@@ -149,7 +152,7 @@ export function TeamModal({
     setIsAddingMembers(true);
 
     try {
-      const joinedAt = new Date().toISOString().slice(0, 10);
+      const joinedAt = todayISODate(timezone);
 
       await Promise.all(
         selectedUserIds.map((userId) =>

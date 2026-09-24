@@ -3,6 +3,8 @@ import { createHash, randomBytes } from 'crypto';
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { todayISODate } from 'src/capacity/working-days.util';
+import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -27,7 +29,8 @@ import { InvitationsService } from './invitations.service';
 const RUN = Date.now();
 const SLUG = `invitations-accept-test-${RUN}`;
 const JOINED_AT = '2025-12-31';
-const TODAY = new Date().toISOString().slice(0, 10);
+const TIME_ZONE = timeZoneOnAnotherDay();
+const TODAY = todayISODate(TIME_ZONE);
 
 const stub = <T>(value: unknown): T => value as T;
 
@@ -124,7 +127,7 @@ describe('InvitationsService acceptance', () => {
 
     const company = await dataSource
       .getRepository(Company)
-      .save({ companyName: SLUG, slug: SLUG });
+      .save({ companyName: SLUG, slug: SLUG, timezone: TIME_ZONE });
     companyId = company.id;
 
     teamVisibility = new TeamVisibilityService(

@@ -20,6 +20,7 @@ import {
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -42,6 +43,21 @@ export class TeamsService {
   // ==========================================
   private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
     return new Date(leftAt).getTime() < new Date(joinedAt).getTime();
+  }
+
+  /**
+   * `leftAt` is the day a membership ended, not its last day, so a membership
+   * that ends on a day and one that starts on that day do not overlap.
+   */
+  private overlapsPeriod(joinedAt: string, leftAt: string | null) {
+    return {
+      joinedAt: Raw((alias) => `(${alias} < :leftAt OR :leftAt IS NULL)`, {
+        leftAt,
+      }),
+      leftAt: Raw((alias) => `(${alias} IS NULL OR ${alias} > :joinedAt)`, {
+        joinedAt,
+      }),
+    };
   }
 
   /** An owner acts on any team, a manager only on one they actively lead. */
@@ -264,14 +280,7 @@ export class TeamsService {
         where: {
           teamId,
           userId: dto.userId,
-          joinedAt: Raw(
-            (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-            { newLeftAt },
-          ),
-          leftAt: Raw(
-            (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-            { newJoinedAt: dto.joinedAt },
-          ),
+          ...this.overlapsPeriod(dto.joinedAt, newLeftAt),
         },
       });
 
@@ -346,14 +355,7 @@ export class TeamsService {
             teamId: membership.teamId,
             userId: membership.userId,
             id: Not(membershipId),
-            joinedAt: Raw(
-              (alias) => `(${alias} <= :newLeftAt OR :newLeftAt IS NULL)`,
-              { newLeftAt },
-            ),
-            leftAt: Raw(
-              (alias) => `(${alias} >= :newJoinedAt OR ${alias} IS NULL)`,
-              { newJoinedAt },
-            ),
+            ...this.overlapsPeriod(newJoinedAt, newLeftAt),
           },
         });
 
@@ -412,7 +414,7 @@ export class TeamsService {
       throw new BadRequestException('This membership is already closed');
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = await findCompanyToday(this.dataSource.manager, companyId);
 
     // A membership that has not started yet closes on its start date, so the
     // stored range stays valid.

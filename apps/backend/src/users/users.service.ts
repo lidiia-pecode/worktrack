@@ -19,7 +19,7 @@ import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -397,7 +397,7 @@ export class UsersService {
       teamId,
       userId,
       roleInTeam: TeamRole.MEMBER,
-      joinedAt: todayISODate(),
+      joinedAt: await findCompanyToday(manager, companyId),
       leftAt: null,
     });
   }

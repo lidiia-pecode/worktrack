@@ -312,7 +312,9 @@ consistent with §1's position on multi-company.
 
 **Team membership is historical, not current-state.** Rows are closed with
 `leftAt` rather than deleted, so "who was on this team in March" remains
-answerable. Managership is derived from membership: a manager sees people who
+answerable. `leftAt` is the day a membership ended, not its last day, so somebody
+can leave a team and rejoin it on the same day, and membership dates are the
+company's dates, from its time zone. Managership is derived from membership: a manager sees people who
 share an active team with an active `roleInTeam = MANAGER` membership of theirs.
 
 ---

@@ -7,6 +7,8 @@ import {
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
+import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -31,8 +33,10 @@ const RUN = Date.now();
 const SLUG = `teams-service-test-${RUN}`;
 const JOINED_AT = '2025-12-31';
 
-const TODAY = new Date().toISOString().slice(0, 10);
-const TOMORROW = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+const TIME_ZONE = timeZoneOnAnotherDay();
+const TODAY = todayISODate(TIME_ZONE);
+const TOMORROW = addDays(TODAY, 1);
+const YESTERDAY = addDays(TODAY, -1);
 
 describe('TeamsService', () => {
   let dataSource: DataSource;
@@ -107,7 +111,7 @@ describe('TeamsService', () => {
 
     const company = await dataSource
       .getRepository(Company)
-      .save({ companyName: SLUG, slug: SLUG });
+      .save({ companyName: SLUG, slug: SLUG, timezone: TIME_ZONE });
     companyId = company.id;
 
     service = new TeamsService(
@@ -186,7 +190,7 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(beta)).resolves.not.toContain(employee.id);
     });
 
-    it('closes leftAt and keeps the row', async () => {
+    it('closes leftAt on the company today and keeps the row', async () => {
       const membershipId = await addToTeam(alpha, employee);
 
       await service.removeMember(membershipId, companyId, alpha, alphaManager);
@@ -209,6 +213,20 @@ describe('TeamsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('lets an owner add the person back the same day', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+      await service.removeMember(membershipId, companyId, alpha, alphaManager);
+
+      const readded = await service.addMember(alpha, companyId, {
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: TODAY,
+      });
+
+      expect(readded.leftAt).toBeNull();
+      await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
+    });
+
     it('lets an owner add the person back afterwards', async () => {
       const membershipId = await addToTeam(alpha, employee);
       await service.removeMember(membershipId, companyId, alpha, alphaManager);
@@ -221,6 +239,53 @@ describe('TeamsService', () => {
 
       expect(readded.leftAt).toBeNull();
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
+    });
+  });
+
+  describe('overlapping memberships', () => {
+    const closedMembership = (joinedAt: string, leftAt: string) =>
+      dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alpha,
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt,
+        leftAt,
+      });
+
+    it('still refuses a membership that starts before another ended', async () => {
+      await closedMembership(JOINED_AT, TODAY);
+
+      await expect(
+        service.addMember(alpha, companyId, {
+          userId: employee.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: YESTERDAY,
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('refuses moving a closed membership over another', async () => {
+      const earlier = await closedMembership(JOINED_AT, YESTERDAY);
+      await closedMembership(YESTERDAY, TODAY);
+
+      await expect(
+        service.updateMember(earlier.id, companyId, { leftAt: TODAY }, alpha),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('lets a closed membership end the day the next one starts', async () => {
+      const earlier = await closedMembership(JOINED_AT, YESTERDAY);
+      await closedMembership(TODAY, TOMORROW);
+
+      const updated = await service.updateMember(
+        earlier.id,
+        companyId,
+        { leftAt: TODAY },
+        alpha,
+      );
+
+      expect(updated.leftAt).toBe(TODAY);
     });
   });
 

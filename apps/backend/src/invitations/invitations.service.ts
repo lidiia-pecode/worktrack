@@ -23,6 +23,7 @@ import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 import type { GoogleUserPayload } from 'src/auth/dtos/auth.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -448,7 +449,7 @@ export class InvitationsService {
       // Never taken from the invitation: accepting must not become a second
       // route to a manager membership.
       roleInTeam: TeamRole.MEMBER,
-      joinedAt: new Date().toISOString().slice(0, 10),
+      joinedAt: await findCompanyToday(manager, invitation.companyId),
       leftAt: null,
     });
 
