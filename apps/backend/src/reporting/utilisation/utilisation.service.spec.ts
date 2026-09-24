@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { BadRequestException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -309,5 +310,20 @@ describe('UtilisationService', () => {
     await expect(service.getUtilisation(owner, MARCH)).resolves.toMatchObject({
       isProvisional: false,
     });
+  });
+
+  it('covers at most 366 days', async () => {
+    await expect(
+      service.getUtilisation(owner, {
+        dateFrom: '2025-01-01',
+        dateTo: '2026-01-01',
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      service.getUtilisation(owner, {
+        dateFrom: '2025-01-01',
+        dateTo: '2026-01-02',
+      }),
+    ).rejects.toThrow(BadRequestException);
   });
 });

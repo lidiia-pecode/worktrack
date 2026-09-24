@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -393,6 +397,23 @@ describe('TimeLogsService write scope', () => {
         .reverse();
       expect(pagedIds).toEqual(expectedIds);
       expect(pages[0].count).toBe(5);
+    });
+  });
+
+  describe('team summary', () => {
+    it('covers at most 366 days', async () => {
+      await expect(
+        service.getTeamSummary(
+          { dateFrom: '2025-01-01', dateTo: '2026-01-01' },
+          owner,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getTeamSummary(
+          { dateFrom: '2025-01-01', dateTo: '2026-01-02' },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

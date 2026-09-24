@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { Absence } from 'src/absences/entities/absence.entity';
+import { assertDateRange } from 'src/reporting/date-range.util';
 
 import { CapacityService } from './capacity.service';
 import {
@@ -121,9 +122,7 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ShareSums>> {
-    if (from > to) {
-      throw new BadRequestException('from cannot be after to');
-    }
+    assertDateRange(from, to);
 
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;

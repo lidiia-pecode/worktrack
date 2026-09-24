@@ -476,6 +476,26 @@ describe('ReportingService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('covers at most 366 days, in hours and in planned vs actual', async () => {
+      const fullYear = { dateFrom: '2025-01-01', dateTo: '2026-01-01' };
+      const tooLong = { dateFrom: '2025-01-01', dateTo: '2026-01-02' };
+      const groupBy = HoursReportGroupBy.CLIENT;
+
+      await expect(
+        service.getHoursReport(owner, { ...fullYear, groupBy }),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getHoursReport(owner, { ...tooLong, groupBy }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        service.getPlannedVsActualReport(owner, fullYear),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getPlannedVsActualReport(owner, tooLong),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     describe('planned vs actual', () => {
       const plannedVsActual = (
         user: AuthUser,

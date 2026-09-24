@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
@@ -9,6 +9,7 @@ import { CapacityService } from 'src/capacity/capacity.service';
 import { addDays } from 'src/capacity/working-days.util';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
+import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import { HoursReportRow, ReportingService } from '../reporting.service';
 import { UtilisationQuery } from './dtos/utilisation-query.dto';
@@ -108,9 +109,7 @@ export class UtilisationService {
   ): Promise<UtilisationReport> {
     const { dateFrom, dateTo } = query;
 
-    if (dateFrom > dateTo) {
-      throw new BadRequestException('dateFrom cannot be after dateTo');
-    }
+    assertDateRange(dateFrom, dateTo);
 
     const hoursRows = await this.loggedHoursPerPerson(user, dateFrom, dateTo);
     const hoursByUser = new Map(hoursRows.map((row) => [row.id!, row]));
