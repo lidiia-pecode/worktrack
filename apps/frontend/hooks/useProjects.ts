@@ -27,6 +27,8 @@ const projectsQueries = createEntityQuery<Project, ProjectQueryParams>({
 
 export const useProjectsQuery = projectsQueries.useQuery;
 
+export const useAllProjectsQuery = projectsQueries.useAllPagesQuery;
+
 export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 
 const useProjectsMutations = createEntityMutations<

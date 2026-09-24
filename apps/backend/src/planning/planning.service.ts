@@ -183,6 +183,7 @@ export class PlanningService {
     const [results, count] = await qb
       .orderBy('p.date', 'DESC')
       .addOrderBy('p.createdAt', 'DESC')
+      .addOrderBy('p.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();

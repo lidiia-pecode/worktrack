@@ -24,7 +24,7 @@ const absencesQueries = createEntityQuery<Absence, AbsenceQueryParams>({
   keepPreviousData: true,
 });
 
-export const useAbsencesQuery = absencesQueries.useQuery;
+export const useAllAbsencesQuery = absencesQueries.useAllPagesQuery;
 
 const useAbsencesMutations = createEntityMutations<
   Absence,
@@ -51,8 +51,8 @@ const useAbsencesMutations = createEntityMutations<
   },
 });
 
-export function useAbsences(page = 1, params?: AbsenceQueryParams) {
-  const query = useAbsencesQuery(page, params);
+export function useAbsences(params?: AbsenceQueryParams) {
+  const query = useAllAbsencesQuery(params);
   const actions = useAbsencesMutations();
 
   return {

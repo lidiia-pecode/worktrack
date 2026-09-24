@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { useProjectsQuery } from "@/hooks/useProjects";
+import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useTeamOptions } from "@/hooks/useTeams";
 import { ProjectStatus } from "@/types/enums";
 
@@ -10,8 +10,6 @@ import { FilterBar } from "../../shared/FilterBar";
 import { FormSelect } from "../../shared/FormSelect";
 
 export const ALL_OPTION = "all";
-
-const FILTER_PAGE_SIZE = 200;
 
 type TeamFiltersProps = {
   teamId?: string;
@@ -28,9 +26,8 @@ export function TeamFilters({
 }: TeamFiltersProps) {
   const { options: activeTeamOptions } = useTeamOptions();
 
-  const { items: projects } = useProjectsQuery(1, {
+  const { items: projects } = useAllProjectsQuery({
     status: ProjectStatus.ACTIVE,
-    pageSize: FILTER_PAGE_SIZE,
   });
 
   const teamOptions = useMemo(

@@ -23,6 +23,7 @@ import {
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { assertDateRange } from 'src/reporting/date-range.util';
 import {
   TimeLogPayload,
   UpdateTimeLogPayload,
@@ -143,6 +144,7 @@ export class TimeLogsService {
     const [results, count] = await qb
       .orderBy('t.date', 'DESC')
       .addOrderBy('t.createdAt', 'DESC')
+      .addOrderBy('t.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
@@ -167,9 +169,7 @@ export class TimeLogsService {
     query: TeamSummaryQuery,
     user: AuthUser,
   ): Promise<TeamSummary> {
-    if (query.dateFrom > query.dateTo) {
-      throw new BadRequestException('dateFrom cannot be after dateTo');
-    }
+    assertDateRange(query.dateFrom, query.dateTo);
 
     const dailyTotals = await this.aggregateDailyMinutes(query, user);
 

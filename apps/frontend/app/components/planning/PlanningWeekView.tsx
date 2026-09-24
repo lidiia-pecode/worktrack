@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { SearchX, UsersRound } from "lucide-react";
 
 import { usePlanningWeek } from "@/hooks/usePlanning";
-import { useAbsencesQuery } from "@/hooks/useAbsences";
+import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import {
@@ -29,8 +29,6 @@ import { WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { PlanningDayModal } from "./components/PlanningDayModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
-
-const WEEK_PAGE_SIZE = 500;
 
 type OpenedDay = {
   userId: string;
@@ -77,10 +75,9 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     isLoading: isLoadingAbsences,
     isError: isAbsencesError,
     refetch: refetchAbsences,
-  } = useAbsencesQuery(1, {
+  } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
-    pageSize: WEEK_PAGE_SIZE,
   });
 
   const absencesByUser = useMemo(

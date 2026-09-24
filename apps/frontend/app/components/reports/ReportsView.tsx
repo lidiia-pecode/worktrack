@@ -4,19 +4,43 @@ import { useState } from "react";
 import { CalendarClock, FileBarChart, Gauge } from "lucide-react";
 
 import { useWorkSettings } from "@/hooks/useWorkSettings";
-import { getMonthRange, toMonthKey, todayISODate } from "@/lib/utils/date";
+import {
+  getMonthRange,
+  isISODate,
+  lastDayOfReportRange,
+  MAX_REPORT_RANGE_DAYS,
+  toMonthKey,
+  todayISODate,
+} from "@/lib/utils/date";
 import { HoursReportGroupBy } from "@/types/enums";
 
 import Container from "../layout/Container";
 import { ResourceTabButton } from "../shared/resourse/ResourcePage";
 import { HoursReportSection } from "./components/HoursReportSection";
 import { PlannedVsActualSection } from "./components/PlannedVsActualSection";
-import { CUSTOM_RANGE, ReportFilters } from "./components/ReportFilters";
+import {
+  CUSTOM_RANGE,
+  DateRange,
+  ReportFilters,
+} from "./components/ReportFilters";
 import { UtilisationSection } from "./components/UtilisationSection";
 
 type ReportTab = "hours" | "planned-vs-actual" | "utilisation";
 
 const EMPTY_RANGE = { dateFrom: "", dateTo: "" };
+
+// Caught here so a range the server would refuse is never sent.
+const getRangeError = ({ dateFrom, dateTo }: DateRange) => {
+  if (!dateFrom || !dateTo) return "Pick both dates";
+  if (!isISODate(dateFrom) || !isISODate(dateTo)) {
+    return "Use a four-digit year";
+  }
+  if (dateFrom > dateTo) return "Must be on or after From";
+  if (dateTo > lastDayOfReportRange(dateFrom)) {
+    return `At most ${MAX_REPORT_RANGE_DAYS} days`;
+  }
+  return undefined;
+};
 
 export const ReportsView = () => {
   const { timezone } = useWorkSettings();
@@ -30,14 +54,8 @@ export const ReportsView = () => {
 
   const period = chosenPeriod ?? toMonthKey(todayISODate(timezone));
   const range = period === CUSTOM_RANGE ? customRange : getMonthRange(period);
-  const hasBothDates = Boolean(range.dateFrom && range.dateTo);
-  const isRangeValid = hasBothDates && range.dateFrom <= range.dateTo;
-
-  const rangeError = isRangeValid
-    ? undefined
-    : hasBothDates
-      ? "Must be on or after From"
-      : "Pick both dates";
+  const rangeError = getRangeError(range);
+  const isRangeValid = !rangeError;
 
   // Switching to a custom range starts from the month that was showing.
   const changePeriod = (nextPeriod: string) => {

@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -24,6 +28,7 @@ import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { TimeLog } from './entities/time-log.entity';
+import { TimeLogsQuery } from './dtos/time-logs-query.dto';
 import { TimeLogsService } from './time-logs.service';
 
 /**
@@ -353,6 +358,62 @@ describe('TimeLogsService write scope', () => {
           owner,
         ),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('list', () => {
+    it('pages through entries saved together once each, in a fixed order', async () => {
+      // One transaction gives every row the same date and created_at.
+      const saved = await dataSource.transaction((manager) =>
+        manager.getRepository(TimeLog).save(
+          Array.from({ length: 5 }, () => ({
+            ...logFor(member.id),
+            companyId,
+            isBillable: true,
+          })),
+        ),
+      );
+      const createdAt = new Set(saved.map((log) => log.createdAt.getTime()));
+      expect(createdAt.size).toBe(1);
+
+      const pageOf = (page: number) =>
+        service.list(
+          Object.assign(new TimeLogsQuery(), {
+            userId: member.id,
+            page,
+            pageSize: 2,
+          }),
+          owner,
+        );
+
+      const pages = await Promise.all([1, 2, 3].map(pageOf));
+      const pagedIds = pages.flatMap((page) =>
+        page.results.map((log) => log.id),
+      );
+
+      const expectedIds = saved
+        .map((log) => log.id)
+        .sort()
+        .reverse();
+      expect(pagedIds).toEqual(expectedIds);
+      expect(pages[0].count).toBe(5);
+    });
+  });
+
+  describe('team summary', () => {
+    it('covers at most 366 days', async () => {
+      await expect(
+        service.getTeamSummary(
+          { dateFrom: '2025-01-01', dateTo: '2026-01-01' },
+          owner,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getTeamSummary(
+          { dateFrom: '2025-01-01', dateTo: '2026-01-02' },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

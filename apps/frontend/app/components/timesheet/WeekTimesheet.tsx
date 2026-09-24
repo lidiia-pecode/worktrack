@@ -51,7 +51,6 @@ type AbsenceModalState = {
 
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
-const WEEK_PAGE_SIZE = 500;
 
 const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   weekday: "long",
@@ -98,11 +97,10 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isError: isLogsError,
     isPlaceholderData: isShowingPreviousWeek,
     refetch: refetchLogs,
-  } = useTimelogs(1, {
+  } = useTimelogs({
     userId,
     dateFrom,
     dateTo,
-    pageSize: WEEK_PAGE_SIZE,
   });
 
   const {
@@ -111,11 +109,10 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isLoading: isLoadingAbsences,
     isError: isAbsencesError,
     refetch: refetchAbsences,
-  } = useAbsences(1, {
+  } = useAbsences({
     userId,
     dateFrom,
     dateTo,
-    pageSize: WEEK_PAGE_SIZE,
   });
 
   const {
@@ -141,7 +138,6 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     userId,
     dateFrom,
     dateTo,
-    pageSize: WEEK_PAGE_SIZE,
   });
 
   const plannedByDate = useMemo(() => {

@@ -23,6 +23,7 @@ import {
   monthsBetween,
   toMonthKey,
 } from './reporting-months.util';
+import { assertDateRange } from './date-range.util';
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
@@ -372,9 +373,7 @@ export class ReportingService {
   ): Promise<HoursReport> {
     const { dateFrom, dateTo, groupBy } = query;
 
-    if (dateFrom > dateTo) {
-      throw new BadRequestException('dateFrom cannot be after dateTo');
-    }
+    assertDateRange(dateFrom, dateTo);
 
     const grouping = HOURS_GROUPINGS[groupBy];
     const isClientWork = `${CLIENT_NAME} IS NOT NULL`;
@@ -460,9 +459,7 @@ export class ReportingService {
   ): Promise<PlannedVsActualReport> {
     const { dateFrom, dateTo, userId, projectId } = query;
 
-    if (dateFrom > dateTo) {
-      throw new BadRequestException('dateFrom cannot be after dateTo');
-    }
+    assertDateRange(dateFrom, dateTo);
 
     let targetUserId = userId;
 

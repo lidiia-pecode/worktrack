@@ -34,18 +34,13 @@ export const useTeamsQuery = teamsQueries.useQuery;
 
 export const useTeamsInfiniteQuery = teamsQueries.useInfiniteQuery;
 
-// TODO: a single large page, as elsewhere in the app. See known-issues.md
-// "page sizes of 500 truncate silently instead of paginating".
-const TEAM_OPTIONS_PAGE_SIZE = 200;
-
 /**
  * Active teams as select options. `GET /teams` is already narrowed to the teams
  * a manager leads, so a manager only ever sees their own.
  */
 export function useTeamOptions() {
-  const { items, isLoading } = useTeamsQuery(1, {
+  const { items, isLoading } = teamsQueries.useAllPagesQuery({
     status: TeamStatus.ACTIVE,
-    pageSize: TEAM_OPTIONS_PAGE_SIZE,
   });
 
   const options = useMemo(

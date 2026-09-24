@@ -573,6 +573,15 @@ describe('ExpectedHoursService', () => {
       );
     });
 
+    it('walks at most 366 days', async () => {
+      await expect(
+        expectedFor(fullTimer, '2025-01-01', '2026-01-01'),
+      ).resolves.toBeGreaterThan(0);
+      await expect(
+        expectedFor(fullTimer, '2025-01-01', '2026-01-02'),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('answers for several people in one call', async () => {
       const expected = await service.expectedFor(
         companyId,

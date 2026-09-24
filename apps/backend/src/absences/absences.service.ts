@@ -73,6 +73,7 @@ export class AbsencesService {
     const [results, count] = await qb
       .orderBy('a.startDate', 'DESC')
       .addOrderBy('a.createdAt', 'DESC')
+      .addOrderBy('a.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
