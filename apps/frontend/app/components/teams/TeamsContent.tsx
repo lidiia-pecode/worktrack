@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useTeamsInfiniteQuery } from "@/hooks/useTeams";
+import { useHasArchivedTeams, useTeamsInfiniteQuery } from "@/hooks/useTeams";
+import { managerWithoutActiveTeamMessage } from "@/lib/constants";
 
 import { hasManagerAccess } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
@@ -38,6 +39,7 @@ export function TeamsContent() {
 
   const canRead = hasManagerAccess(user?.role);
   const isOwner = user?.role === UserRole.OWNER;
+  const { hasArchivedTeams } = useHasArchivedTeams();
 
   const editingTeam = useMemo(
     () => teams.find((team) => team.id === editingTeamId),
@@ -64,7 +66,7 @@ export function TeamsContent() {
         emptyDescription={
           isOwner
             ? "Create your first team to organize your workspace."
-            : "You do not lead any team yet. An owner adds you to one."
+            : managerWithoutActiveTeamMessage(hasArchivedTeams)
         }
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Create team"

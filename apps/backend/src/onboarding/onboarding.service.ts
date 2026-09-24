@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { In, IsNull, MoreThan, Repository } from 'typeorm';
 
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -117,7 +117,7 @@ export class OnboardingService {
       createProject,
     ] = await Promise.all([
       this.hasPendingOrAcceptedEmployeeInvitation(companyId),
-      this.hasActiveEmployee(companyId),
+      this.hasActiveEmployeeInTeams(companyId, teamIds),
       this.hasTeamMember(companyId, teamIds),
       this.hasActiveActivity(companyId),
       this.hasActiveCategory(companyId),
@@ -273,12 +273,21 @@ export class OnboardingService {
   // MANAGER — EMPLOYEES
   // ===========================================================================
 
-  private async hasActiveEmployee(companyId: string): Promise<boolean> {
-    return this.userRepo.exists({
+  /** Only the manager's own teams count: people outside them are not theirs to see. */
+  private async hasActiveEmployeeInTeams(
+    companyId: string,
+    teamIds: string[],
+  ): Promise<boolean> {
+    return this.membershipRepo.exists({
       where: {
         companyId,
-        role: UserRole.EMPLOYEE,
-        status: UserStatus.ACTIVE,
+        teamId: In(teamIds),
+        leftAt: IsNull(),
+        user: {
+          companyId,
+          role: UserRole.EMPLOYEE,
+          status: UserStatus.ACTIVE,
+        },
       },
     });
   }

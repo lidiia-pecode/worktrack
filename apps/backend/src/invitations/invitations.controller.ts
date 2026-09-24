@@ -107,6 +107,7 @@ export class InvitationsController {
     return {
       email: invitation.email,
       role: invitation.role,
+      teamName: invitation.team?.name ?? null,
       expiresAt: invitation.expiresAt,
     };
   }

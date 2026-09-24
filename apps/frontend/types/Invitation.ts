@@ -19,6 +19,7 @@ export interface PendingInvitation {
 export interface InvitationValidation {
   email: string;
   role: UserRole;
+  teamName: string | null;
   expiresAt: string;
 }
 

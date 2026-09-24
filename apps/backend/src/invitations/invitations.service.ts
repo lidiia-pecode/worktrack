@@ -335,6 +335,7 @@ export class InvitationsService {
 
     const invitation = await repository.findOne({
       where: { tokenHash },
+      relations: { team: true },
     });
 
     if (!invitation) {
@@ -389,8 +390,16 @@ export class InvitationsService {
       throw new BadRequestException('An employee must be invited into a team');
     }
 
-    // TODO: this lookup also exists in TeamsService.addMember. Move it onto
-    // TeamsService as a public helper once a third caller needs it.
+    // Checked before the team itself, so a manager gets the same answer for
+    // any team they do not lead, whether it exists, is archived or not.
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+
+    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
+      throw new ForbiddenException('You can only invite into teams you lead');
+    }
+
+    // TODO: this lookup also exists in TeamsService.addMember and
+    // UsersService.createUser; Phase 7 step 8 merges them into one helper.
     const team = await this.teamRepository.findOne({
       where: { id: teamId, companyId },
       select: ['id', 'status'],
@@ -404,12 +413,6 @@ export class InvitationsService {
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('Cannot invite into an archived team');
-    }
-
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
-
-    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
-      throw new ForbiddenException('You can only invite into teams you lead');
     }
 
     return teamId;

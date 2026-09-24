@@ -162,6 +162,18 @@ describe('InvitationsService.create', () => {
       );
     });
 
+    it.each([
+      ['another manager', OTHER_TEAM_ID],
+      ['an archived team', ARCHIVED_TEAM_ID],
+      ['no such team', MISSING_TEAM_ID],
+    ])('gives a manager the same answer for %s', async (_case, teamId) => {
+      await expect(
+        invite(UserRole.MANAGER, UserRole.EMPLOYEE, teamId),
+      ).rejects.toThrow(
+        new ForbiddenException('You can only invite into teams you lead'),
+      );
+    });
+
     it('lets an owner invite into any active team', async () => {
       await invite(UserRole.OWNER, UserRole.EMPLOYEE, OTHER_TEAM_ID);
 

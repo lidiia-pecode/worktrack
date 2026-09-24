@@ -337,6 +337,16 @@ describe('InvitationsService pending invitations', () => {
     });
   });
 
+  describe('findByToken', () => {
+    it('names the team the invitee is joining', async () => {
+      await invite(owner, nextEmail(), alpha);
+
+      const invitation = await service.findByToken(lastSentToken());
+
+      expect(invitation.team?.name).toBe(`Alpha ${RUN}`);
+    });
+  });
+
   describe('revoke', () => {
     it('stops the link working', async () => {
       const email = nextEmail();
