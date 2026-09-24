@@ -27,6 +27,8 @@ import { SessionService } from './session.service';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashToken } from 'src/lib/utils/hash-token.util';
 
+const MAX_TOKEN_ATTEMPTS = 3;
+
 @Injectable()
 export class GoogleAuthService {
   constructor(
@@ -83,34 +85,49 @@ export class GoogleAuthService {
     };
   }
 
-  async createGoogleSignupToken(payload: GoogleUserPayload): Promise<string> {
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = hashToken(rawToken);
-    const expiresAt = new Date(
+  private getGoogleTokenExpiresAt(): Date {
+    return new Date(
       Date.now() +
         this.configService.getOrThrow<number>('auth.google.tokenExpiresInMs'),
     );
+  }
 
-    const token = this.googleSignupTokenRepository.create({
-      tokenHash,
-      email: this.authPolicyService.normalizeEmail(payload.email),
-      firstName: payload.firstName.trim(),
-      lastName: payload.lastName.trim(),
-      googleId: payload.googleId,
-      expiresAt,
-      usedAt: null,
-    });
+  // A clash of two random 32-byte tokens is practically impossible, so a few
+  // attempts are plenty; the limit only stops a broken constraint looping forever.
+  private async saveWithUniqueToken(
+    save: (tokenHash: string) => Promise<unknown>,
+  ): Promise<string> {
+    for (let attempt = 1; ; attempt++) {
+      const rawToken = randomBytes(32).toString('hex');
 
-    try {
-      await this.googleSignupTokenRepository.save(token);
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        return this.createGoogleSignupToken(payload);
+      try {
+        await save(hashToken(rawToken));
+        return rawToken;
+      } catch (error: unknown) {
+        const canRetry =
+          isDatabaseConflictError(error) && attempt < MAX_TOKEN_ATTEMPTS;
+
+        if (!canRetry) throw error;
       }
-      throw error;
     }
+  }
 
-    return rawToken;
+  async createGoogleSignupToken(payload: GoogleUserPayload): Promise<string> {
+    const expiresAt = this.getGoogleTokenExpiresAt();
+
+    return this.saveWithUniqueToken((tokenHash) =>
+      this.googleSignupTokenRepository.save(
+        this.googleSignupTokenRepository.create({
+          tokenHash,
+          email: this.authPolicyService.normalizeEmail(payload.email),
+          firstName: payload.firstName.trim(),
+          lastName: payload.lastName.trim(),
+          googleId: payload.googleId,
+          expiresAt,
+          usedAt: null,
+        }),
+      ),
+    );
   }
 
   async validateGoogleLogin(
@@ -154,31 +171,19 @@ export class GoogleAuthService {
     userId: string,
     googleId: string,
   ): Promise<string> {
-    const rawToken = randomBytes(32).toString('hex');
-    const tokenHash = hashToken(rawToken);
-    const expiresAt = new Date(
-      Date.now() +
-        this.configService.getOrThrow<number>('auth.google.tokenExpiresInMs'),
+    const expiresAt = this.getGoogleTokenExpiresAt();
+
+    return this.saveWithUniqueToken((tokenHash) =>
+      this.googleLinkTokenRepository.save(
+        this.googleLinkTokenRepository.create({
+          tokenHash,
+          userId,
+          googleId,
+          expiresAt,
+          usedAt: null,
+        }),
+      ),
     );
-
-    const tokenRecord = this.googleLinkTokenRepository.create({
-      tokenHash,
-      userId,
-      googleId,
-      expiresAt,
-      usedAt: null,
-    });
-
-    try {
-      await this.googleLinkTokenRepository.save(tokenRecord);
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        return this.createGoogleLinkToken(userId, googleId);
-      }
-      throw error;
-    }
-
-    return rawToken;
   }
 
   private async consumeGoogleLinkToken(

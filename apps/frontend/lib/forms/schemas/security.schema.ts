@@ -1,22 +1,29 @@
 import { z } from "zod";
 
-export const securitySchema = z
-  .object({
-    currentPassword: z.string().optional(),
+import { newPasswordSchema } from "./password.schema";
 
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(100, "Password must be maximum 100 characters")
-      .regex(/[A-Z]/, "Password must contain an uppercase letter")
-      .regex(/[a-z]/, "Password must contain a lowercase letter")
-      .regex(/[0-9]/, "Password must contain a number"),
+// An account created with Google has no password yet, so it has no current one to enter.
+export const createSecuritySchema = (hasPassword: boolean) =>
+  z
+    .object({
+      currentPassword: hasPassword
+        ? z.string().min(1, "Enter your current password")
+        : z.string(),
+      newPassword: newPasswordSchema,
+      confirmPassword: z.string().min(1, "Please confirm your password"),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    })
+    .refine(
+      (data) => !hasPassword || data.newPassword !== data.currentPassword,
+      {
+        message: "Choose a password different from your current one",
+        path: ["newPassword"],
+      },
+    );
 
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-export type SecurityFormValues = z.infer<typeof securitySchema>;
+export type SecurityFormValues = z.infer<
+  ReturnType<typeof createSecuritySchema>
+>;

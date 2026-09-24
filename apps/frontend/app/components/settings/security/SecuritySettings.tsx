@@ -3,12 +3,16 @@
 import { KeyRound, Link2, ShieldCheck } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import {
   SecurityFormValues,
-  securitySchema,
+  createSecuritySchema,
 } from "@/lib/forms/schemas/security.schema";
+import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
+import { applyServerErrors } from "@/lib/forms/utils/apply-server-errors";
+import { isApiValidationError } from "@/lib/api/errors";
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
@@ -20,7 +24,6 @@ import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { GOOGLE_LINK_URL } from "@/lib/constants";
-import Link from "next/link";
 
 export const SecuritySettings = () => {
   const { user } = useAuth();
@@ -37,10 +40,13 @@ export const SecuritySettings = () => {
     register,
     handleSubmit,
     reset,
-    formState: { errors, isValid },
+    setError,
+    trigger,
+    getValues,
+    formState: { errors, isDirty },
   } = useForm<SecurityFormValues>({
-    resolver: zodResolver(securitySchema),
-    mode: "onChange",
+    resolver: zodResolver(createSecuritySchema(!!hasPassword)),
+    mode: "onTouched",
     defaultValues: {
       currentPassword: "",
       newPassword: "",
@@ -49,14 +55,24 @@ export const SecuritySettings = () => {
   });
 
   const onSubmit = async (data: SecurityFormValues) => {
-    await actions.changePassword.mutateAsync({
-      ...(hasPassword && {
-        currentPassword: data.currentPassword,
-      }),
-      newPassword: data.newPassword,
-    });
+    try {
+      await actions.changePassword.mutateAsync({
+        ...(hasPassword && { currentPassword: data.currentPassword }),
+        newPassword: data.newPassword,
+      });
 
-    reset();
+      reset();
+    } catch (error: unknown) {
+      if (isApiValidationError(error)) {
+        applyServerErrors(error, setError);
+      }
+    }
+  };
+
+  const revalidateConfirmation = () => {
+    if (getValues("confirmPassword")) {
+      trigger("confirmPassword");
+    }
   };
 
   return (
@@ -101,67 +117,77 @@ export const SecuritySettings = () => {
           title="Password"
           description={
             hasPassword
-              ? "Update your password to keep your account secure."
-              : "You currently sign in with Google. Set a password to also sign in with your email and password."
+              ? "Change the password you use to sign in. This signs you out on your other devices."
+              : "You sign in with Google. Set a password to also sign in with your email."
           }
         />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 p-6">
-          {hasPassword && (
-            <PasswordInput
-              label="Current password"
-              type="password"
-              placeholder="Enter your current password"
-              {...register("currentPassword")}
-              error={errors.currentPassword?.message}
-              className={settingsInputClassName}
-              labelClassname={settingsLabelClassName}
-            />
-          )}
-
-          <PasswordInput
-            label={hasPassword ? "New password" : "Set password"}
-            type="password"
-            placeholder="Enter a new password"
-            {...register("newPassword")}
-            error={errors.newPassword?.message}
-            className={settingsInputClassName}
-            labelClassname={settingsLabelClassName}
+        <form onSubmit={handleSubmit(onSubmit)} className="p-6" noValidate>
+          {/* Lets password managers save the new password against the right account. */}
+          <input
+            type="email"
+            autoComplete="username"
+            value={user?.email ?? ""}
+            readOnly
+            hidden
           />
 
-          <PasswordInput
-            label={hasPassword ? "Confirm new password" : "Confirm password"}
-            type="password"
-            placeholder="Repeat your new password"
-            {...register("confirmPassword")}
-            error={errors.confirmPassword?.message}
-            className={settingsInputClassName}
-            labelClassname={settingsLabelClassName}
-          />
-        </form>
+          <div className="space-y-6">
+            {hasPassword && (
+              <PasswordInput
+                label="Current password"
+                autoComplete="current-password"
+                {...register("currentPassword")}
+                error={errors.currentPassword?.message}
+                className={settingsInputClassName}
+                labelClassname={settingsLabelClassName}
+              />
+            )}
 
-        <SettingsActions className="justify-between">
-          {hasPassword && (
-            <Link
-              href="/forgot-password"
-              className="text-sm text-blue-400 hover:underline"
+            <div className="grid items-start gap-6 sm:grid-cols-2">
+              <PasswordInput
+                label="New password"
+                autoComplete="new-password"
+                description={PASSWORD_RULES_HINT}
+                {...register("newPassword", {
+                  onChange: revalidateConfirmation,
+                })}
+                error={errors.newPassword?.message}
+                className={settingsInputClassName}
+                labelClassname={settingsLabelClassName}
+              />
+
+              <PasswordInput
+                label="Confirm new password"
+                autoComplete="new-password"
+                {...register("confirmPassword")}
+                error={errors.confirmPassword?.message}
+                className={settingsInputClassName}
+                labelClassname={settingsLabelClassName}
+              />
+            </div>
+          </div>
+
+          <SettingsActions className="flex-wrap items-center gap-4">
+            {hasPassword && (
+              <Link
+                href="/forgot-password"
+                className="mr-auto text-sm whitespace-nowrap text-blue-400 hover:underline"
+              >
+                Forgot your password?
+              </Link>
+            )}
+
+            <Button
+              type="submit"
+              variant="primary"
+              disabled={!isDirty}
+              isLoading={actions.changePassword.isPending}
             >
-              Forgot your password?
-            </Link>
-          )}
-
-          <Button
-            type="submit"
-            variant="primary"
-            disabled={!isValid || actions.changePassword.isPending}
-          >
-            {actions.changePassword.isPending
-              ? "Saving..."
-              : hasPassword
-                ? "Change password"
-                : "Set password"}
-          </Button>
-        </SettingsActions>
+              {hasPassword ? "Change password" : "Set password"}
+            </Button>
+          </SettingsActions>
+        </form>
       </SettingsSection>
 
       <SettingsSection>

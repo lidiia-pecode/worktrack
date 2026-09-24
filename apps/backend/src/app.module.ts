@@ -5,7 +5,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ProjectsModule } from './projects/projects.module';
 import { TimeLogsModule } from './time-logs/time-logs.module';
 import { AuthModule } from './auth/auth.module';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, Reflector } from '@nestjs/core';
 import { ActivitiesModule } from './activities/activities.module';
 import { ActCategoriesModule } from './activity-categories/activity-categories.module';
 import { PlanningModule } from './planning/planning.module';
@@ -22,6 +22,9 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { AbsencesModule } from './absences/absences.module';
 import { CapacityModule } from './capacity/capacity.module';
 import { UtilisationModule } from './reporting/utilisation/utilisation.module';
+import { createRateLimitOptions } from './auth/rate-limit/rate-limit.options';
+import { AuthPolicyService } from './auth/services/auth-policy.service';
+import { TokenService } from './auth/services/token.service';
 
 @Module({
   imports: [
@@ -35,12 +38,11 @@ import { UtilisationModule } from './reporting/utilisation/utilisation.module';
       },
     }),
 
-    ThrottlerModule.forRoot([
-      {
-        ttl: 60,
-        limit: 100,
-      },
-    ]),
+    ThrottlerModule.forRootAsync({
+      imports: [AuthModule],
+      inject: [TokenService, AuthPolicyService, Reflector],
+      useFactory: createRateLimitOptions,
+    }),
 
     ScheduleModule.forRoot(),
 

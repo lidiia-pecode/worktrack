@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 import { JwtService as NestJwtService } from '@nestjs/jwt';
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import type { StringValue } from 'ms';
 import { JwtAccessPayload, JwtRefreshPayload } from '../auth-strategies/types';
 
@@ -51,18 +51,5 @@ export class TokenService {
     return createHmac('sha256', `${pepper}:${sessionId}`)
       .update(token)
       .digest('base64url');
-  }
-
-  compareRefreshToken(
-    token: string,
-    storedHash: string,
-    sessionId: string,
-  ): boolean {
-    const computed = this.hashRefreshToken(token, sessionId);
-
-    const a = Buffer.from(computed);
-    const b = Buffer.from(storedHash);
-
-    return a.length === b.length && timingSafeEqual(a, b);
   }
 }

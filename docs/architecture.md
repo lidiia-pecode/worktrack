@@ -48,7 +48,7 @@ Browser
                                                                       · business rules
 ```
 
-Auth state lives in HTTP-only cookies. Access tokens are short-lived (1 minute
+Auth state lives in HTTP-only cookies. Access tokens are short-lived (15 minutes
 by default) and refreshed by rotation; refresh tokens are stored only as
 session-bound HMAC hashes.
 
@@ -106,8 +106,9 @@ Expected hours are capacity minus absences, and owners and managers plan their
 people's week by project at `/planning`, against the hours each person has
 available. Each month locks by itself a week after it ends, and an owner can
 reopen one at `/admin/periods`. Owners and managers read hours, planned vs
-actual and utilisation at `/reports`. The next work is hardening; export comes
-last. The authorization gaps are all closed.
+actual and utilisation at `/reports`. The remaining work is Phases 6–12 and a
+production launch, starting with sign-in and sessions. The authorization gaps
+are all closed.
 
 Test coverage is fifteen suites and 302 tests, covering the role-visibility
 filters, the team route roles and membership rules, who may invite whom into

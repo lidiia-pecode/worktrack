@@ -12,6 +12,7 @@ type Props = React.InputHTMLAttributes<HTMLInputElement> & {
   className?: string;
   label?: string;
   labelClassname?: string;
+  description?: string;
 };
 
 export const PasswordInput = ({

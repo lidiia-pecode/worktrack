@@ -14,7 +14,7 @@ import { LocalStrategy } from './auth-strategies/local';
 import { AccessStrategy } from './auth-strategies/access';
 import { RefreshStrategy } from './auth-strategies/refresh';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { SessionCleanupService } from './services/session-cleanup.service';
+import { AuthCleanupService } from './services/auth-cleanup.service';
 import { CompaniesModule } from 'src/companies/companies.module';
 import {
   GoogleInvitationStrategy,
@@ -50,7 +50,7 @@ import { MailModule } from 'src/mail/mail.module';
   ],
   controllers: [AuthController],
   providers: [
-    SessionCleanupService,
+    AuthCleanupService,
     AuthService,
     PasswordService,
     SessionService,
@@ -69,6 +69,7 @@ import { MailModule } from 'src/mail/mail.module';
   ],
   exports: [
     AuthService,
+    AuthPolicyService,
     PasswordService,
     SessionService,
     TokenService,

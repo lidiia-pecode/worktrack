@@ -27,7 +27,14 @@ import {
 import { CurrentAuth } from 'src/lib/decorators/current-auth.decorator';
 import { RefreshToken } from 'src/lib/decorators/refresh-token.decorator';
 import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
-import { Throttle } from '@nestjs/throttler';
+import {
+  ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE,
+  CLIENT_AUTH_ATTEMPTS_PER_MINUTE,
+  LimitPerAccount,
+  LimitPerClient,
+  LimitPerSession,
+  REFRESHES_PER_MINUTE,
+} from './rate-limit/rate-limit.decorators';
 import { SuccessResponse, TokenResponse } from './dtos/auth-responses.dto';
 import {
   CompleteGoogleSignupDto,
@@ -204,7 +211,8 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Post('signup')
   @Serialize(TokenResponse)
   async signup(
@@ -227,7 +235,8 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Post('signin')
   @Serialize(TokenResponse)
   @UseGuards(LocalAuthGuard)
@@ -249,7 +258,7 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @LimitPerSession(REFRESHES_PER_MINUTE)
   @Post('refresh')
   @Serialize(TokenResponse)
   @UseGuards(RefreshGuard)
@@ -265,11 +274,15 @@ export class AuthController {
       metadata,
     );
 
-    this.cookieService.setAuthCookies(
-      res,
-      tokens.access_token,
-      tokens.refresh_token,
-    );
+    if (tokens.refresh_token) {
+      this.cookieService.setAuthCookies(
+        res,
+        tokens.access_token,
+        tokens.refresh_token,
+      );
+    } else {
+      this.cookieService.setAccessTokenCookie(res, tokens.access_token);
+    }
 
     return {
       access_token: tokens.access_token,
@@ -306,7 +319,8 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @LimitPerSession(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Patch('password')
   @Serialize(SuccessResponse)
   @UseGuards(AccessGuard)
@@ -327,7 +341,8 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Post('forgot-password')
   @Serialize(SuccessResponse)
   async forgotPassword(
@@ -340,7 +355,7 @@ export class AuthController {
     };
   }
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @Post('reset-password')
   @Serialize(TokenResponse)
   async resetPassword(

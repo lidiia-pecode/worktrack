@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   UnauthorizedException,
@@ -11,6 +10,7 @@ import { User } from 'src/users/entities/user.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { createValidationException } from 'src/lib/utils/validation-exception.util';
 
 import { ChangePasswordPayload } from '../dtos/change-password-payload.dto';
 import { SignInPayload, SignUpPayload } from '../dtos/auth.dto';
@@ -77,7 +77,7 @@ export class AuthService {
     refreshToken: string,
     auth: AuthContext,
     metadata?: SessionMetadata,
-  ) {
+  ): Promise<{ access_token: string; refresh_token?: string }> {
     const session = await this.sessionService.findById(auth.sessionId);
 
     if (!session) {
@@ -162,33 +162,18 @@ export class AuthService {
         incomingRefreshHash === previousHash &&
         Date.now() - rotatedAt.getTime() <= graceWindowMs;
 
+      // A concurrent refresh already rotated the token and set the new refresh
+      // cookie, so this one only gets an access token and the session is left alone.
       if (rotatedRecently) {
-        const isReRotated = await this.sessionService.rotateRefreshHash(
-          session.id,
-          currentSession.refreshHash,
-          newRefreshHash,
-          newExpiresAt,
-          metadata,
-        );
-
-        if (isReRotated) {
-          const accessToken = this.tokenService.createAccessToken({
+        return {
+          access_token: this.tokenService.createAccessToken({
             id: user.id,
             email: user.email,
             companyId: user.companyId,
             role: user.role,
             sessionId: session.id,
-          });
-
-          return {
-            access_token: accessToken,
-            refresh_token: newRefreshToken,
-          };
-        }
-
-        throw new UnauthorizedException(
-          'Session is being refreshed concurrently',
-        );
+          }),
+        };
       }
 
       await this.sessionService.delete(session.id);
@@ -267,7 +252,9 @@ export class AuthService {
 
     if (user.passwordHash) {
       if (!payload.currentPassword) {
-        throw new BadRequestException('Current password is required');
+        throw createValidationException({
+          currentPassword: ['Enter your current password'],
+        });
       }
 
       const isCurrentPasswordValid = await this.passwordService.verify(
@@ -276,7 +263,9 @@ export class AuthService {
       );
 
       if (!isCurrentPasswordValid) {
-        throw new BadRequestException('Current password is incorrect');
+        throw createValidationException({
+          currentPassword: ['Current password is incorrect'],
+        });
       }
 
       const isSamePassword = await this.passwordService.verify(
@@ -285,9 +274,9 @@ export class AuthService {
       );
 
       if (isSamePassword) {
-        throw new BadRequestException(
-          'New password must be different from the current password',
-        );
+        throw createValidationException({
+          newPassword: ['Choose a password different from your current one'],
+        });
       }
     }
 
