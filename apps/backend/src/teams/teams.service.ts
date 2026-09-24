@@ -20,6 +20,7 @@ import {
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
+import { findActiveTeam } from './find-active-team.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
@@ -243,20 +244,12 @@ export class TeamsService {
     companyId: string,
     dto: AddTeamMemberDto,
   ): Promise<TeamMembership> {
-    const team = await this.teamRepo.findOne({
-      where: { id: teamId, companyId },
-      select: ['id', 'status'],
-    });
-
-    if (!team) {
-      throw new NotFoundException(
-        `Team with id ${teamId} not found in this company`,
-      );
-    }
-
-    if (team.status === TeamStatus.ARCHIVED) {
-      throw new BadRequestException('Cannot add members to an archived team');
-    }
+    await findActiveTeam(
+      this.teamRepo,
+      teamId,
+      companyId,
+      'Cannot add members to an archived team',
+    );
 
     const user = await this.userRepo.findOne({
       where: { id: dto.userId, companyId },

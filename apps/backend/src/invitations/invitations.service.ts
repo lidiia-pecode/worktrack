@@ -19,6 +19,7 @@ import { MailService } from 'src/mail/mail.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { PasswordService } from 'src/auth/services/password.service';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { findActiveTeam } from 'src/teams/find-active-team.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -398,22 +399,12 @@ export class InvitationsService {
       throw new ForbiddenException('You can only invite into teams you lead');
     }
 
-    // TODO: this lookup also exists in TeamsService.addMember and
-    // UsersService.createUser; Phase 7 step 8 merges them into one helper.
-    const team = await this.teamRepository.findOne({
-      where: { id: teamId, companyId },
-      select: ['id', 'status'],
-    });
-
-    if (!team) {
-      throw new NotFoundException(
-        `Team with id ${teamId} not found in this company`,
-      );
-    }
-
-    if (team.status === TeamStatus.ARCHIVED) {
-      throw new BadRequestException('Cannot invite into an archived team');
-    }
+    await findActiveTeam(
+      this.teamRepository,
+      teamId,
+      companyId,
+      'Cannot invite into an archived team',
+    );
 
     return teamId;
   }

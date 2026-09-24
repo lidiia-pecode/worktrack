@@ -18,7 +18,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
-import { TeamStatus } from 'src/teams/enums/team-status.enum';
+import { findActiveTeam } from 'src/teams/find-active-team.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -369,28 +369,18 @@ export class UsersService {
     return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
-  // TODO: the same team lookup lives in InvitationsService and
-  // TeamsService.addMember; Phase 7 step 8 merges them into one helper.
   private async addToActiveTeam(
     manager: EntityManager,
     companyId: string,
     teamId: string,
     userId: string,
   ): Promise<void> {
-    const team = await manager.getRepository(Team).findOne({
-      where: { id: teamId, companyId },
-      select: ['id', 'status'],
-    });
-
-    if (!team) {
-      throw new NotFoundException(
-        `Team with id ${teamId} not found in this company`,
-      );
-    }
-
-    if (team.status === TeamStatus.ARCHIVED) {
-      throw new BadRequestException('Cannot add a user to an archived team');
-    }
+    await findActiveTeam(
+      manager.getRepository(Team),
+      teamId,
+      companyId,
+      'Cannot add a user to an archived team',
+    );
 
     await manager.getRepository(TeamMembership).save({
       companyId,

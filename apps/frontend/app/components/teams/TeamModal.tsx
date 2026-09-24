@@ -54,13 +54,17 @@ export function TeamModal({
 
   const { addMember } = useTeamMembers(team?.id ?? "");
 
+  const isOwner = user?.role === UserRole.OWNER;
+
+  // Only an owner adds members, so nobody else needs the company-wide list.
   const {
     items: allUsers,
     isLoading: isUsersLoading,
     pagination,
-  } = useAssignableUsersInfiniteQuery({
-    status: UserStatus.ACTIVE,
-  });
+  } = useAssignableUsersInfiniteQuery(
+    { status: UserStatus.ACTIVE },
+    { enabled: isOwner },
+  );
 
   const isEditMode = Boolean(team);
   const isArchived = team?.status === TeamStatus.ARCHIVED;
@@ -68,8 +72,6 @@ export function TeamModal({
 
   const isSubmitting = create.isPending || update.isPending;
   const isArchiving = archive.isPending || unarchive.isPending;
-
-  const isOwner = user?.role === UserRole.OWNER;
 
   const assignRole = assignRoleOverride ?? TeamRole.MANAGER;
 
