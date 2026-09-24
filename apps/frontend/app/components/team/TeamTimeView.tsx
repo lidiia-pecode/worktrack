@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
-import { useAbsencesQuery } from "@/hooks/useAbsences";
+import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { TeamSummaryUser } from "@/types";
@@ -29,8 +29,6 @@ import { TeamEmptyState } from "./components/TeamEmptyState";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
-
-const WEEK_PAGE_SIZE = 500;
 
 type TeamTimeViewProps = {
   role: UserRole;
@@ -79,10 +77,9 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     isLoading: isLoadingAbsences,
     isError: isAbsencesError,
     refetch: refetchAbsences,
-  } = useAbsencesQuery(1, {
+  } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
-    pageSize: WEEK_PAGE_SIZE,
   });
 
   const absencesByUser = useMemo(

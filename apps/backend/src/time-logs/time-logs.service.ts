@@ -143,6 +143,7 @@ export class TimeLogsService {
     const [results, count] = await qb
       .orderBy('t.date', 'DESC')
       .addOrderBy('t.createdAt', 'DESC')
+      .addOrderBy('t.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();

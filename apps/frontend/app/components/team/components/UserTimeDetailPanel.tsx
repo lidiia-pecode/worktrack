@@ -15,9 +15,6 @@ import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
 import { TimeLogFormModal } from "../../timesheet/components/TimeLogFormModal";
 import { UserTimeDayGroup } from "./UserTimeDayGroup";
 
-// Matches the timesheet: a week never comes close to it, so it never paginates.
-const RANGE_PAGE_SIZE = 500;
-
 type FormState = {
   date: string;
   timelog?: TimeLog;
@@ -55,11 +52,10 @@ export const UserTimeDetailPanel = ({
     isLoading: isLoadingLogs,
     isError: isLogsError,
     refetch: refetchLogs,
-  } = useTimelogs(1, {
+  } = useTimelogs({
     userId: user.id,
     dateFrom: toISODate(weekDates[0]),
     dateTo: toISODate(weekDates[6]),
-    pageSize: RANGE_PAGE_SIZE,
   });
 
   // Only needed to fill the form, so a read-only panel does not ask for it.

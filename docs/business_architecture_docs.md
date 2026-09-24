@@ -1101,16 +1101,19 @@ Lists and reports stay correct as data grows, and edge-case input cannot
 produce a wrong answer.
 
 - **No list is silently cut off.** Several views ask for 500 rows and show
-  whatever comes back, and the backend accepts any page size; cap it on the
-  server and fetch properly where a view needs everything.
-- **Reports refuse unreasonable ranges**, on the server and in the custom range
-  picker, which today accepts a five-digit year.
+  whatever comes back, and the backend accepts any page size. A page will hold
+  at most 100 rows and a larger request will be refused rather than shortened;
+  a view that needs everything fetches page after page.
+- **Reports refuse unreasonable ranges** — at most 12 months (366 days), on the
+  server and in the custom range picker, which today accepts a five-digit year.
+  Expected hours and the team week summary get the same limit.
 - **Name checks cannot match the wrong name.** Duplicate-name checks treat `_`
   and `%` as wildcards.
-- **Pagination links are addressable** from the browser, not built from the
-  backend's own host.
+- **No unusable pagination links.** List responses carry links built from the
+  backend's own host, which nothing reads; they will be dropped, leaving the rows
+  and their total.
 
-*Depends on: nothing. No business questions.*
+*Depends on: nothing. Its decisions were settled while planning it.*
 
 ---
 
@@ -1124,7 +1127,8 @@ the duplications and gaps found during Phases 3–5 closed.
 - **The frontend gets a test harness** and first tests for the date, month and
   lock helpers the week views and reports depend on.
 - **Locking is tested outside UTC** and end to end through each write path.
-- **One source for the company's today**, and duplicated team lookups merged.
+- **One source for the company's today**, replacing the copies in capacity,
+  reporting and team membership.
 - **Local development is trustworthy**: dev containers that pick up file changes,
   a verified bootstrap from a clean clone, and an explicit `sslmode` for the
   hosted database.

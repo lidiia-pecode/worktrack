@@ -6,6 +6,9 @@ const createListKey = (entity: string, page: number, params?: QueryParams) =>
 const createInfiniteKey = (entity: string, params?: QueryParams) =>
   [entity, "infinite", params ?? {}] as const;
 
+const createAllPagesKey = (entity: string, params?: QueryParams) =>
+  [entity, "all-pages", params ?? {}] as const;
+
 export const queryKeys = {
   company: {
     current: ["company"] as const,
@@ -24,6 +27,8 @@ export const queryKeys = {
       createListKey("teams", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("teams", params),
+
+    allPages: (params?: QueryParams) => createAllPagesKey("teams", params),
   },
 
   projects: {
@@ -34,6 +39,8 @@ export const queryKeys = {
       createListKey("projects", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("projects", params),
+
+    allPages: (params?: QueryParams) => createAllPagesKey("projects", params),
 
     detail: (id: string) => ["projects", "detail", id] as const,
   },
@@ -46,6 +53,8 @@ export const queryKeys = {
       createListKey("activities", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("activities", params),
+
+    allPages: (params?: QueryParams) => createAllPagesKey("activities", params),
   },
 
   activityCategories: {
@@ -57,6 +66,9 @@ export const queryKeys = {
 
     infinite: (params?: QueryParams) =>
       createInfiniteKey("activityCategories", params),
+
+    allPages: (params?: QueryParams) =>
+      createAllPagesKey("activityCategories", params),
   },
 
   users: {
@@ -68,6 +80,8 @@ export const queryKeys = {
 
     infinite: (params?: QueryParams) => createInfiniteKey("users", params),
 
+    allPages: (params?: QueryParams) => createAllPagesKey("users", params),
+
     detail: (id: string) => ["users", "detail", id] as const,
 
     assignable: {
@@ -76,6 +90,9 @@ export const queryKeys = {
 
       infinite: (params?: QueryParams) =>
         createInfiniteKey("users-assignable", params),
+
+      allPages: (params?: QueryParams) =>
+        createAllPagesKey("users-assignable", params),
     },
   },
 
@@ -87,6 +104,8 @@ export const queryKeys = {
       createListKey("absences", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("absences", params),
+
+    allPages: (params?: QueryParams) => createAllPagesKey("absences", params),
   },
 
   capacity: {
@@ -106,6 +125,8 @@ export const queryKeys = {
       createListKey("timelogs", page, params),
 
     infinite: (params?: QueryParams) => createInfiniteKey("timelogs", params),
+
+    allPages: (params?: QueryParams) => createAllPagesKey("timelogs", params),
 
     teamSummary: (params?: QueryParams) =>
       ["timelogs", "team-summary", params ?? {}] as const,

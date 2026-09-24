@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { ProjectActivitiesClientApi } from "@/lib/api/resources";
 
+import { fetchAllPages } from "./shared/fetchAllPages";
 import { queryKeys } from "./shared/queryKeys";
 
 export type PickerProjectActivity = {
@@ -14,8 +15,6 @@ export type PickerProjectActivity = {
   activityId: string;
   activityName: string;
 };
-
-const ASSIGNABLE_PAGE_SIZE = 500;
 
 /**
  * The project/activity options someone may log time against, flattened for the
@@ -27,10 +26,9 @@ export function useAssignableActivities(userId?: string, enabled = true) {
   const query = useQuery({
     queryKey: queryKeys.projectActivities.assignable({ userId }),
     queryFn: () =>
-      ProjectActivitiesClientApi.getAssignable({
-        pageSize: ASSIGNABLE_PAGE_SIZE,
-        userId,
-      }),
+      fetchAllPages((page, pageSize) =>
+        ProjectActivitiesClientApi.getAssignable({ page, pageSize, userId }),
+      ),
     enabled,
   });
 

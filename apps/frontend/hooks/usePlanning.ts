@@ -12,6 +12,7 @@ import {
 import { PlanningClientApi } from "@/lib/api/resources";
 
 import { createEntityMutations } from "./shared/createEntityMutations";
+import { fetchAllPages } from "./shared/fetchAllPages";
 import { queryKeys } from "./shared/queryKeys";
 
 /** Keeps the previous week on screen while the next one loads. */
@@ -35,7 +36,10 @@ export function usePlanningWeek(params: PlanningWeekQuery) {
 export function usePlanningEntries(params: PlanningQuery) {
   const query = useQuery({
     queryKey: queryKeys.planning.list({ ...params }),
-    queryFn: () => PlanningClientApi.getAll(params),
+    queryFn: () =>
+      fetchAllPages((page, pageSize) =>
+        PlanningClientApi.getAll({ ...params, page, pageSize }),
+      ),
     placeholderData: keepPreviousData,
   });
 

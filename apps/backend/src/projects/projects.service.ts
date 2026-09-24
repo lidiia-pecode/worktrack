@@ -317,6 +317,7 @@ export class ProjectsService {
 
     const [results, count] = await qb
       .orderBy('project.createdAt', 'DESC')
+      .addOrderBy('project.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
