@@ -736,8 +736,7 @@ built by its host. A shared development stand runs on Vercel, Render and Neon on
 free plans, with migrations applied by hand; there is no production environment
 yet.
 
-Access tokens live one minute, so sessions drop during ordinary use even though
-refresh works. Several views request up to 500 rows and show whatever comes
+Access tokens live fifteen minutes and refresh tokens thirty days. Several views request up to 500 rows and show whatever comes
 back, and the backend does not cap page sizes.
 
 ---
