@@ -16,12 +16,11 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 25 September 2026**, and reconciled again
-with Phase 10. Phases 0 to 10 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 11. Phases 0 to 11 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); the next is Phase 11, week views and reports
-polish.
+production launch stage (§7); the next is Phase 12, accessibility.
 
 ---
 
@@ -533,7 +532,8 @@ Owner-owned structure, manager-operated teams — is in
 
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
 leads no team sees nobody else, and under D9 may therefore edit nobody's time but
-their own. Their own time logs, absences, plan and hours they always read. Scope is computed from active `TeamMembership` rows with
+their own; like everyone, they can always read their own time logs, absences,
+plan and hours. Scope is computed from active `TeamMembership` rows with
 `roleInTeam = MANAGER`, so it follows team changes automatically and respects
 membership history.
 
@@ -1185,25 +1185,33 @@ documented.
 
 ---
 
-**Phase 11 — Week views and reports polish**
+**Phase 11 — Week views and reports polish — delivered**
 
-The screens built in Phases 1–5 behave smoothly and consistently.
+**Built in September 2026.** The screens built in Phases 1–5 had rough edges;
+this phase smoothed them out without adding a feature. One bug touched
+permissions and was fixed as a bug, not as a new rule.
 
-- **A manager who leads no team sees their own row** on the planning grid, the
-  Team week view and the utilisation report.
-- **Locked days never look editable**, not even while the week is loading, and an
-  absence that touches a locked month does not open for editing.
-- **Owners can reach any month to reopen**, not only the last twelve, with no
-  lower bound, so a company can backfill history from before it signed up.
-- **Durations read naturally** ("30m", "−30m"), and the report filters keep their
-  layout when a date is invalid.
-- **Small inconsistencies are gone**: the product is spelled WorkTrack everywhere,
-  an invalid spacing class is replaced, unused requests are dropped, and the
-  user modal refreshes its project list after a change.
-- **Settings matches the light theme**, and so do the forgot- and
-  reset-password pages that share its styles.
+**A manager who leads no team sees and reads their own data.** They get their
+own row in the planning grid, the Team week view and the utilisation report, and
+can read their own time logs, absences and hours. Before, their own timesheet
+was refused, although they could log time. The user and team lists still show
+them nobody (D10).
 
-*Depends on: nothing. Its four decisions are confirmed in
+**Locks are never misrepresented.** No day can be edited until its lock state
+has loaded, and an absence that touches a locked month cannot be opened from any
+of its days, matching the server, which freezes the whole range.
+
+**Owners can reach any month to reopen.** The Periods page loads older months
+twelve at a time with no lower bound, so a company can backfill history from
+before it signed up.
+
+**The screens read as one product.** Durations read "30m" and "−30m", the report
+filters keep their layout when a date is invalid, the product is spelled
+WorkTrack everywhere, and Settings and the password-reset pages use the light
+theme. An invalid spacing class and three unused list requests are gone, and the
+user modal refreshes its project list after a change.
+
+*Depended on: nothing. Its five decisions were confirmed in
 [`current-scope.md`](./current-scope.md) §0.*
 
 ---
@@ -1269,12 +1277,10 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–10 delivered
+Phases 0–11 delivered
    │
-   ├── Phase 11  Week views and reports polish
-   │      │
-   │   Phase 12  Accessibility
-   │      │
+   ├── Phase 12  Accessibility
+   │
    └── Phase 13  Export
           │
    Final stage   Production launch

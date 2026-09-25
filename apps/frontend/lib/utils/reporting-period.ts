@@ -38,8 +38,9 @@ export function isRangeLocked(
 
 /**
  * The dates to ask lock states for: a week, widened to cover the absences it
- * shows. Only past months can lock, so absences never widen it past today, and
- * it stays within what one request may cover.
+ * shows. Only past months can lock, so absences never widen it past today. One
+ * request may cover only so many months, so what the absences add is trimmed
+ * first and the week itself always stays covered.
  */
 export function lockLookupRange(
   weekStart: string,
@@ -55,17 +56,23 @@ export function lockLookupRange(
     .map((absence) => (absence.endDate < today ? absence.endDate : today))
     .reduce((latest, date) => (date > latest ? date : latest), weekEnd);
 
-  const earliestAllowedMonth = addMonthsToKey(
-    toMonthKey(latestPastAbsenceEnd),
-    -(MAX_PERIOD_MONTHS_PER_REQUEST - 1),
-  );
-  const earliestAllowedDate = getMonthRange(earliestAllowedMonth).dateFrom;
+  const monthsAfterFirst = MAX_PERIOD_MONTHS_PER_REQUEST - 1;
 
-  return {
-    dateFrom:
-      earliestAbsenceStart < earliestAllowedDate
-        ? earliestAllowedDate
-        : earliestAbsenceStart,
-    dateTo: latestPastAbsenceEnd,
-  };
+  const earliestAllowedDate = getMonthRange(
+    addMonthsToKey(toMonthKey(weekEnd), -monthsAfterFirst),
+  ).dateFrom;
+  const dateFrom =
+    earliestAbsenceStart < earliestAllowedDate
+      ? earliestAllowedDate
+      : earliestAbsenceStart;
+
+  const latestAllowedDate = getMonthRange(
+    addMonthsToKey(toMonthKey(dateFrom), monthsAfterFirst),
+  ).dateTo;
+  const dateTo =
+    latestPastAbsenceEnd > latestAllowedDate
+      ? latestAllowedDate
+      : latestPastAbsenceEnd;
+
+  return { dateFrom, dateTo };
 }

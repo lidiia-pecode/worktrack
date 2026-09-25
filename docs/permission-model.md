@@ -201,9 +201,9 @@ nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
 (`GET /planning/week`), the Team week view and the utilisation report. The
 removal count (`GET /planning/removal-count`) counts the same people a save may
-remove. Removing somebody from a project deletes their plans
-for it from today on, and since a save only removes people the caller was shown
-(§3.5), a manager can never clear plans for someone outside their teams.
+remove. Removing somebody from a project deletes their plans for it from today
+on, and since a save only removes people the caller was shown (§3.5), a manager
+can never clear plans for someone outside their teams.
 
 ### 3.8 Delegation summary
 

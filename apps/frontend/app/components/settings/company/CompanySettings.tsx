@@ -24,11 +24,7 @@ import {
 } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
-
-const TIMEZONE_OPTIONS = [
-  { value: "UTC", label: "UTC" },
-  { value: "Europe/Kyiv", label: "Europe/Kyiv" },
-];
+import { TIMEZONE_OPTIONS } from "@/lib/constants";
 
 const CURRENCY_OPTIONS = [
   { value: CompanyCurrency.USD, label: "USD" },

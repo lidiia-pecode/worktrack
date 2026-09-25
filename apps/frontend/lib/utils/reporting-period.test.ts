@@ -103,4 +103,15 @@ describe("lockLookupRange", () => {
       ),
     ).toEqual({ dateFrom: "2023-10-01", dateTo: "2026-09-13" });
   });
+
+  it("keeps an old week covered when a long absence runs to recent months", () => {
+    expect(
+      lockLookupRange(
+        "2020-03-02",
+        "2020-03-08",
+        [absence("2020-02-20", "2026-09-08")],
+        TODAY,
+      ),
+    ).toEqual({ dateFrom: "2020-02-20", dateTo: "2023-01-31" });
+  });
 });
