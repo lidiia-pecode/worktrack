@@ -250,7 +250,8 @@ export class ProjectsService {
       .where('pu.project_id = :projectId', { projectId })
       .andWhere('u.companyId = :companyId', { companyId: user.companyId })
       .orderBy('u.firstName', 'ASC')
-      .addOrderBy('u.lastName', 'ASC');
+      .addOrderBy('u.lastName', 'ASC')
+      .addOrderBy('u.id', 'ASC');
 
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
       includeSelf: true,
