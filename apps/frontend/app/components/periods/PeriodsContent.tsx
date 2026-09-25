@@ -3,9 +3,10 @@
 import { useState } from "react";
 
 import {
+  useReportingPeriodHistory,
   useReportingPeriodMutations,
-  useReportingPeriods,
 } from "@/hooks/useReportingPeriods";
+import { Button } from "@/components/ui/button";
 import { formatMonthLabel } from "@/lib/utils/date";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -14,7 +15,8 @@ import { LoadingState } from "../shared/LoadingState";
 import { PeriodRow } from "./components/PeriodRow";
 
 export const PeriodsContent = () => {
-  const { months, isLoading, isError, refetch } = useReportingPeriods();
+  const { months, isLoading, isError, refetch, loadOlder, isLoadingOlder } =
+    useReportingPeriodHistory();
   const { reopen, close } = useReportingPeriodMutations();
   const [monthToReopen, setMonthToReopen] = useState<string | null>(null);
 
@@ -55,6 +57,18 @@ export const PeriodsContent = () => {
           />
         ))}
       </ul>
+
+      <div className="mt-6 flex max-w-3xl justify-center">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => loadOlder()}
+          disabled={isLoadingOlder}
+          className="min-w-28"
+        >
+          {isLoadingOlder ? "Loading..." : "Show older"}
+        </Button>
+      </div>
 
       <ConfirmModal
         isOpen={Boolean(monthToReopen)}
