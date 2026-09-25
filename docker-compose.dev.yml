@@ -39,7 +39,7 @@ services:
     env_file:
       - ./apps/frontend/.env
 
-    # Polls for file changes for the same reason as the backend.
+    # Both watchers poll: colima does not reliably pass file events from macOS.
     environment:
       NODE_ENV: development
       BACKEND_URL: http://backend:3001

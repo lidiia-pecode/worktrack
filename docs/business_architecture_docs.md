@@ -16,12 +16,12 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 25 September 2026**, and reconciled again
-with Phase 9. Phases 0 to 9 of the roadmap in §7 are delivered, as are Scopes C,
+with Phase 10. Phases 0 to 10 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); the next is Phase 10, the development
-environment.
+production launch stage (§7); the next is Phase 11, week views and reports
+polish.
 
 ---
 
@@ -1160,25 +1160,28 @@ constants are removed.
 
 ---
 
-**Phase 10 — Development environment**
+**Phase 10 — Development environment — delivered**
 
-The local stack and the shared development stand can be trusted: what a
-developer sees is what the code says.
+**Built in September 2026.** The local stack could serve stale code, setup from
+a clean clone had never been checked, and the hosted database's SSL mode was
+implicit. No product behaviour, permission or business rule changed.
 
-- **Dev containers pick up file changes** — new, renamed and deleted files reach
-  the backend and frontend watchers, a stale Next.js cache no longer survives a
-  restart unnoticed, and dependency changes reach the containers. Development
-  stays in the containers; the apps do not move onto the host.
-- **Setup is verified from a clean clone**, using only the README and the
-  `.env.sample` files, as a separate Docker project beside the real stack.
-- **The hosted database URL says `sslmode=verify-full`** explicitly, instead of
-  relying on how `pg` reads `require` today.
-- **How the specs share the local database is documented.** They keep using the
-  development database, each inside its own throwaway company; there is no
-  separate test database.
+**What runs locally is what is on disk.** colima does not reliably pass file
+events from macOS into the containers, so both watchers poll; the frontend
+container runs `next dev` with webpack, because Turbopack's polling misses
+changes. Every `make up` recreates `node_modules` and the Next.js cache from the
+new images, so dependency changes and a stale cache never survive it. Only the
+database is kept.
 
-*Depends on: nothing; after Phase 9 so its CI is in place. No business
-questions.*
+**A new developer can start from the README.** Setup was run from an empty
+folder as a separate Docker project, using only the README and the samples, and
+the README was fixed where it was wrong.
+
+**The hosted database asks for full certificate checks by name**
+(`sslmode=verify-full`), and how the backend specs share the local database is
+documented.
+
+*Depended on: nothing. No business questions.*
 
 ---
 
@@ -1262,9 +1265,7 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–9  delivered
-   │
-   ├── Phase 10  Development environment
+Phases 0–10 delivered
    │
    ├── Phase 11  Week views and reports polish
    │      │
