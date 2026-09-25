@@ -15,13 +15,13 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 24 September 2026**, and reconciled again
-with Phase 8. Phases 0 to 8 of the roadmap in §7 are delivered, as are Scopes C,
+**Last verified against the code: 25 September 2026**, and reconciled again
+with Phase 9. Phases 0 to 9 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); the next is Phase 9, engineering quality and
-tooling.
+production launch stage (§7); the next is Phase 10, the development
+environment.
 
 ---
 
@@ -781,7 +781,7 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 8 are delivered, and so is every permission
+not a task list. Phases 0 to 9 are delivered, and so is every permission
 scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–13 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
@@ -1134,23 +1134,29 @@ request per 100 rows.
 
 ---
 
-**Phase 9 — Engineering quality and tooling**
+**Phase 9 — Engineering quality and tooling — delivered**
 
-The codebase stays safe to change: stricter CI, a frontend test harness, and
-the duplications and gaps found during Phases 3–8 closed.
+**Built in September 2026.** The product worked, but the codebase was not safe
+to change quickly: CI let formatting drift and lint warnings through, the
+frontend had no tests, and locking was only tested in UTC. No product
+behaviour, permission or business rule changed.
 
-- **CI enforces formatting and zero lint warnings**, after the remaining warnings
-  are fixed.
-- **The frontend gets a test harness** and first tests for the date, month and
-  lock logic the week views and reports depend on.
-- **Locking is tested outside UTC** and end to end through each write path.
-- **One source for the company's today**, replacing the copies in capacity,
-  reporting and team membership, and the unused token constants removed.
-- **Every load-more list keeps a fixed order.** The users list, the assignable
-  users and a project's members can tie on creation time or name, so paging
-  through them could repeat or skip somebody.
+**CI refuses what used to slip through.** Both applications are checked for
+formatting, lint fails on any warning, and the frontend's tests run on every
+pull request alongside the backend's.
 
-*Depends on: nothing. No business questions.*
+**The logic the screens rely on is tested.** The frontend has Vitest tests for
+its date, month, absence, lock and paging helpers and the report range check.
+Backend specs in a time zone far from UTC prove that a month locks at the
+company's midnight on the 8th, and that time logs, absences, planning and
+capacity are refused from that moment.
+
+**Small debt is gone.** The users list, the assignable users and a project's
+members end their sort with `id`, so paging through them never repeats or
+skips somebody; the company's today comes from one helper; and the unused token
+constants are removed.
+
+*Depended on: nothing. No business questions.*
 
 ---
 
@@ -1160,12 +1166,16 @@ The local stack and the shared development stand can be trusted: what a
 developer sees is what the code says.
 
 - **Dev containers pick up file changes** — new, renamed and deleted files reach
-  the backend and frontend watchers, and a stale Next.js cache no longer
-  survives a restart unnoticed.
+  the backend and frontend watchers, a stale Next.js cache no longer survives a
+  restart unnoticed, and dependency changes reach the containers. Development
+  stays in the containers; the apps do not move onto the host.
 - **Setup is verified from a clean clone**, using only the README and the
-  `.env.sample` files.
+  `.env.sample` files, as a separate Docker project beside the real stack.
 - **The hosted database URL says `sslmode=verify-full`** explicitly, instead of
   relying on how `pg` reads `require` today.
+- **How the specs share the local database is documented.** They keep using the
+  development database, each inside its own throwaway company; there is no
+  separate test database.
 
 *Depends on: nothing; after Phase 9 so its CI is in place. No business
 questions.*
@@ -1252,17 +1262,15 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–8  delivered
+Phases 0–9  delivered
    │
-   ├── Phase 9   Engineering quality and tooling ────────┐
-   │                                                     │
-   ├── Phase 10  Development environment                 │
-   │                                                     │
-   ├── Phase 11  Week views and reports polish           │
-   │      │                                              │
-   │   Phase 12  Accessibility                           │
-   │      │                                              │
-   └── Phase 13  Export  ◄───────────────────────────────┘
+   ├── Phase 10  Development environment
+   │
+   ├── Phase 11  Week views and reports polish
+   │      │
+   │   Phase 12  Accessibility
+   │      │
+   └── Phase 13  Export
           │
    Final stage   Production launch
 ```

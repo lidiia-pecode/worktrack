@@ -174,14 +174,15 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting and admin CRUD
 for users, teams, projects, activities and categories are implemented. Test
-coverage is fifteen backend suites and 302 tests, covering who may see and
-change whose data and the business rules behind each feature.
+coverage is twenty-five backend suites and 397 tests, covering who may see and
+change whose data and the business rules behind each feature, plus frontend
+tests for the date, lock and paging logic the screens rely on.
 
-Reporting was the most recent piece of work: months lock by themselves a week
-after they end, and owners and managers read hours, planned vs actual and
-utilisation at `/reports`. The remaining work is planned as focused phases —
-sign-in and sessions first, then invitations, robustness, tooling, polish and
-accessibility — followed by the hours export and a production launch.
+The most recent work made the codebase safer to change: CI now checks
+formatting, refuses lint warnings and runs the frontend tests. The remaining
+work is planned as focused phases — the development environment next, then
+polish and accessibility — followed by the hours export and a production
+launch.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
