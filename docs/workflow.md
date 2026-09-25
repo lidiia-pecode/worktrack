@@ -42,6 +42,21 @@ the change, and merge with **Squash and merge** — the only option enabled.
 One PR becomes one commit on `main`, which keeps the history readable and makes
 `git revert` a single reliable operation.
 
+### Backend tests and the dev database
+
+`make test` runs against the same local database you use in the browser; there
+is no separate test database. That is safe because every spec that touches the
+database creates its own throwaway company, works only inside it, and deletes it
+at the end.
+
+The one spec that reaches outside its company is the auth clean-up spec. It
+runs the real nightly job, which deletes expired sessions and used or expired
+one-time tokens across the whole database — what the job does at 03:00 anyway.
+
+A run that is interrupted can leave a test company behind. It is invisible to
+the seeded users and harmless; `make down-hard && make setup` clears it along
+with everything else.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on every push to
@@ -244,8 +259,9 @@ application never creates or drops anything on its own.
 #### Running a migration against Neon
 
 Neon's credentials live in `apps/backend/.env.neon`, which is gitignored and
-holds `DATABASE_URL` and `DATABASE_SSL=true`. Render has its own copy in its
-dashboard; the file is for running migrations from a laptop.
+holds `DATABASE_URL` (ending in `sslmode=verify-full`) and `DATABASE_SSL=true`.
+Render has its own copy in its dashboard; the file is for running migrations
+from a laptop.
 
 Node 22 reads an env file without the shell touching it, which is what these
 commands rely on:
@@ -376,15 +392,6 @@ What was done instead:
    the twelve activity rows intact, and absences created, edited and deleted
    through the deployed UI with no `5xx` anywhere.
 
-A local footnote worth knowing: after a column is dropped, a *running* dev
-backend keeps its old compiled entity and fails with `column ... does not exist`
-until the container is restarted. That is staleness, not a broken migration.
-
-One warning surfaced that is worth acting on before a `pg` upgrade: `pg` now
-reports that `sslmode=require` is treated as `verify-full`, and that this
-changes in pg v9 / pg-connection-string v3. Make the Neon URL say
-`sslmode=verify-full` explicitly before then.
-
 ### Environment variables
 
 Set in each host's dashboard. Nothing secret lives in the repository; the
@@ -398,6 +405,10 @@ Render needs everything marked required in `apps/backend/.env.sample`, plus
 `DATABASE_URL`, `DATABASE_SSL=true`, `NODE_ENV=production` and
 `AUTH_COOKIE_SECURE=true`. Its secrets differ from the local ones deliberately: a
 token from one environment must not be valid in another.
+
+Neon's URL comes with `sslmode=require`; change it to `sslmode=verify-full`,
+here and in `.env.neon`. `pg` treats `require` as a full certificate check today
+but will weaken it in pg v9, and warns about it on every connection.
 
 ### Rollback
 

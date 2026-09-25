@@ -13,4 +13,6 @@ EXPOSE 3000
 
 WORKDIR /app/apps/frontend
 
-CMD ["npm", "run", "dev", "--", "--hostname", "0.0.0.0"]
+# Webpack instead of Turbopack: Turbopack's polling misses file changes in the
+# container (Next 16.2.1). Production builds still use Turbopack.
+CMD ["npm", "run", "dev", "--", "--webpack", "--hostname", "0.0.0.0"]

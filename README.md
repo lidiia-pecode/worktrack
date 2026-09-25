@@ -42,7 +42,7 @@ worktrack/
 
 ### Prerequisites
 
-- Node.js
+- Node.js 22 (see `.nvmrc`)
 - Docker & Docker Compose
 - npm
 
@@ -54,10 +54,18 @@ Install dependencies:
 npm install
 ```
 
-> Stop the containers before installing on your machine. `npm install` and
-> `npm ci` replace `node_modules`, which the running containers mount, and that
-> leaves them without dependencies. If you install while the stack is up, run
-> `make down && make up` afterwards.
+> The containers keep their own `node_modules`, so installing on your machine
+> does not affect them. After a change to `package.json` or `package-lock.json`,
+> run `make up` to give the containers the new dependencies.
+
+Create the env files from the samples. The sample values work as they are for
+local development; [Environment Variables](#environment-variables) explains them:
+
+```bash
+cp .env.sample .env                          # Postgres credentials for Docker
+cp apps/backend/.env.sample apps/backend/.env
+cp apps/frontend/.env.sample apps/frontend/.env
+```
 
 Start the development environment:
 
@@ -72,14 +80,20 @@ This command will:
 - start the backend;
 - start the frontend.
 
-For the first project setup (or after resetting the database), initialize the database:
+Every `make up` (and `make dev`) starts the apps fresh: `node_modules` and the
+Next.js cache are recreated from the new images, which takes about half a minute.
+Only the database is kept. Both watchers poll for file changes, because file
+events from macOS do not reliably reach the containers.
+
+For the first project setup (or after resetting the database), run this instead
+of `make dev`:
 
 ```bash
 make setup
 ```
 
-This command runs all database migrations and seeds one test company with users,
-projects, activities, teams, planning and time logs.
+This command starts the stack, runs all database migrations and seeds one test
+company with users, projects, activities, teams, planning and time logs.
 
 `make seed` creates the **WorkTrack Demo** company with five test users — an
 owner, a manager and three employees. The logins are written to
@@ -90,7 +104,7 @@ re-run `make seed`.
 ## Available Commands
 
 ```bash
-make up         # Start development containers
+make up         # Rebuild images and start fresh app containers; keeps the database
 make down       # Stop containers
 make down-hard  # Stop containers and remove database volumes
 make migrate    # Run database migrations
@@ -102,39 +116,43 @@ make dev        # Start development environment
 ```
 
 The same checks CI runs are available from the repository root. Each fans out
-across both applications, skipping any that does not define the script. The
-backend tests need the stack running; the frontend tests do not:
+across both applications, skipping any that does not define the script:
 
 ```bash
 npm run format:check
 npm run lint
 npm run typecheck
 npm run build
-npm test
+```
+
+The backend tests run inside the container against the dev database, so they
+need the stack running. Each spec keeps to its own throwaway company, so your
+data is safe; [`docs/workflow.md`](docs/workflow.md) has the details. The
+frontend tests run anywhere:
+
+```bash
+make test                          # backend
+npm run test -w apps/frontend      # frontend
 ```
 
 ## Environment Variables
 
-Each application manages its own environment configuration. Copy each sample
-and fill it in:
+Each application manages its own environment configuration, copied from its
+sample during setup. The samples list every variable, marked required or
+optional, and are the contract for what a deployment needs. The backend
+validates them at startup and refuses to boot if a required one is missing.
 
-```bash
-cp .env.sample .env                          # Postgres credentials for Docker
-cp apps/backend/.env.sample apps/backend/.env
-cp apps/frontend/.env.sample apps/frontend/.env
-```
-
-The samples list every variable, marked required or optional, and are the
-contract for what a deployment needs. The backend validates them at startup and
-refuses to boot if a required one is missing.
-
-Two things worth knowing:
+Worth knowing:
 
 - The root `.env` sets the Postgres container's credentials. They must match
   `DB_USERNAME`, `DB_PASSWORD` and `DB_NAME` in `apps/backend/.env`.
 - Hosted databases hand out a single connection URL instead of separate values.
   Set `DATABASE_URL` (and `DATABASE_SSL=true`) and the discrete `DB_*` variables
   are ignored.
+- The Google and Resend values in the sample are placeholders. They let the
+  backend start, and signing in with a password works, but signing in with
+  Google and sending email (invitations, password reset) fail until you put in
+  your own keys.
 
 ## Contributing
 
@@ -174,14 +192,14 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting and admin CRUD
 for users, teams, projects, activities and categories are implemented. Test
-coverage is fifteen backend suites and 302 tests, covering who may see and
-change whose data and the business rules behind each feature.
+coverage is twenty-five backend suites and 397 tests, covering who may see and
+change whose data and the business rules behind each feature, plus frontend
+tests for the date, lock and paging logic the screens rely on.
 
-Reporting was the most recent piece of work: months lock by themselves a week
-after they end, and owners and managers read hours, planned vs actual and
-utilisation at `/reports`. The remaining work is planned as focused phases —
-sign-in and sessions first, then invitations, robustness, tooling, polish and
-accessibility — followed by the hours export and a production launch.
+The most recent work made the local development environment reliable: the
+containers always run what is on disk, and setup is verified from a clean clone.
+The remaining work is planned as focused phases — polish and accessibility —
+followed by the hours export and a production launch.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
