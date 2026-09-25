@@ -55,10 +55,12 @@ export class AbsencesService {
     this.applyVisibilityFilter(qb, user);
 
     if (query.userId) {
-      await this.teamVisibility.assertCanActForUser(query.userId, user, {
-        action: 'view',
-        subject: 'absences',
-      });
+      if (query.userId !== user.id) {
+        await this.teamVisibility.assertCanActForUser(query.userId, user, {
+          action: 'view',
+          subject: 'absences',
+        });
+      }
       qb.andWhere('a.userId = :userId', { userId: query.userId });
     }
 
@@ -196,7 +198,9 @@ export class AbsencesService {
     user: AuthUser,
   ): void {
     qb.andWhere('a.companyId = :companyId', { companyId: user.companyId });
-    this.teamVisibility.applyUserVisibility(qb, 'a.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 'a.user_id', user, {
+      includeSelf: true,
+    });
   }
 
   private assertRangeOrder(startDate: string, endDate: string): void {

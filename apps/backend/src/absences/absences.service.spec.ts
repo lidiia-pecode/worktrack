@@ -63,6 +63,7 @@ describe('AbsencesService', () => {
   let member: AuthUser; // in "Alpha"
   let outsider: AuthUser; // in the company, on no team
   let stranger: AuthUser; // a different company entirely
+  let loneManager: AuthUser; // has the MANAGER role but leads no team
 
   let projectActivityId: string;
 
@@ -171,6 +172,7 @@ describe('AbsencesService', () => {
     manager = await createUser('manager', UserRole.MANAGER);
     member = await createUser('member', UserRole.EMPLOYEE);
     outsider = await createUser('outsider', UserRole.EMPLOYEE);
+    loneManager = await createUser('lonemanager', UserRole.MANAGER);
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -523,6 +525,24 @@ describe('AbsencesService', () => {
       const { results } = await service.list(query(), owner);
 
       expect(results).toHaveLength(2);
+    });
+
+    it('lets a manager who leads no team read their own', async () => {
+      await service.create(absenceFor(loneManager.id), loneManager);
+      await service.create(absenceFor(member.id), member);
+
+      const own = await service.list(
+        query({ userId: loneManager.id }),
+        loneManager,
+      );
+      const all = await service.list(query(), loneManager);
+
+      expect(own.results.map((absence) => absence.userId)).toEqual([
+        loneManager.id,
+      ]);
+      expect(all.results.map((absence) => absence.userId)).toEqual([
+        loneManager.id,
+      ]);
     });
 
     it('refuses a userId filter the caller may not see', async () => {

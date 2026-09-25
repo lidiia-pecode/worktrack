@@ -521,7 +521,7 @@ another OWNER or grant the OWNER role.
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
 | Activities, Categories | full CRUD | full CRUD | read |
-| Time logs — read | whole company | users in teams they manage | own only |
+| Time logs — read | whole company | own, plus users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
@@ -532,8 +532,8 @@ Owner-owned structure, manager-operated teams — is in
 [`permission-model.md`](./permission-model.md) §3.
 
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
-leads no team sees nobody, and under D9 may therefore edit nobody's time but
-their own. Scope is computed from active `TeamMembership` rows with
+leads no team sees nobody else, and under D9 may therefore edit nobody's time but
+their own. Their own time logs, absences, plan and hours they always read. Scope is computed from active `TeamMembership` rows with
 `roleInTeam = MANAGER`, so it follows team changes automatically and respects
 membership history.
 
@@ -1189,18 +1189,22 @@ documented.
 
 The screens built in Phases 1–5 behave smoothly and consistently.
 
-- **A manager who leads no team sees their own row** on the planning grid.
+- **A manager who leads no team sees their own row** on the planning grid, the
+  Team week view and the utilisation report.
 - **Locked days never look editable**, not even while the week is loading, and an
   absence that touches a locked month does not open for editing.
-- **Owners can reach any month to reopen**, not only the last twelve.
+- **Owners can reach any month to reopen**, not only the last twelve, with no
+  lower bound, so a company can backfill history from before it signed up.
 - **Durations read naturally** ("30m", "−30m"), and the report filters keep their
   layout when a date is invalid.
 - **Small inconsistencies are gone**: the product is spelled WorkTrack everywhere,
   an invalid spacing class is replaced, unused requests are dropped, and the
   user modal refreshes its project list after a change.
+- **Settings matches the light theme**, and so do the forgot- and
+  reset-password pages that share its styles.
 
-*Depends on: Phase 9's test harness is useful but not required. No business
-questions.*
+*Depends on: nothing. Its four decisions are confirmed in
+[`current-scope.md`](./current-scope.md) §0.*
 
 ---
 

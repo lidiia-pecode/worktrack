@@ -204,10 +204,14 @@ export class PlanningService {
     this.applyVisibilityFilter(entriesQb, user);
     const entries = await entriesQb.getMany();
 
-    const users = await this.teamVisibility.findVisibleUsers(user, {
-      teamId: query.teamId,
-      includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
-    });
+    const users = await this.teamVisibility.findVisibleUsers(
+      user,
+      {
+        teamId: query.teamId,
+        includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
+      },
+      { includeSelf: true },
+    );
     const userIds = users.map((row) => row.id);
 
     const [available, projectsByUser] = await Promise.all([

@@ -103,7 +103,9 @@ export class TimeLogsService {
     user: AuthUser,
   ): void {
     this.applyTenantFilter(qb, user.companyId);
-    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
+      includeSelf: true,
+    });
   }
 
   // ==========================================
@@ -174,11 +176,15 @@ export class TimeLogsService {
     const dailyTotals = await this.aggregateDailyMinutes(query, user);
 
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
-    const users = await this.teamVisibility.findVisibleUsers(user, {
-      teamId: query.teamId,
-      projectId: query.projectId,
-      includeUserIds: loggedUserIds,
-    });
+    const users = await this.teamVisibility.findVisibleUsers(
+      user,
+      {
+        teamId: query.teamId,
+        projectId: query.projectId,
+        includeUserIds: loggedUserIds,
+      },
+      { includeSelf: true },
+    );
 
     const expected = await this.expectedHours.expectedFor(
       user.companyId,
@@ -386,7 +392,9 @@ export class TimeLogsService {
         dateTo: query.dateTo,
       });
 
-    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
+      includeSelf: true,
+    });
     this.teamVisibility.applyTeamMembershipFilter(
       qb,
       't.user_id',
@@ -598,6 +606,8 @@ export class TimeLogsService {
 
   /** Verifies the caller may filter by a specific user id. */
   private assertUserVisible(userId: string, user: AuthUser): Promise<void> {
+    if (userId === user.id) return Promise.resolve();
+
     return this.teamVisibility.assertCanActForUser(userId, user, {
       action: 'view',
       subject: 'time logs',

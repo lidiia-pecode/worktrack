@@ -395,7 +395,9 @@ export class ReportingService {
       .where('tl.company_id = :companyId', { companyId: user.companyId })
       .andWhere('tl.date BETWEEN :dateFrom AND :dateTo', { dateFrom, dateTo });
 
-    this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
+      includeSelf: true,
+    });
 
     const rawRows = await qb
       .groupBy(grouping.groupBy.join(', '))
@@ -455,7 +457,7 @@ export class ReportingService {
 
     if (user.role === UserRole.EMPLOYEE) {
       targetUserId = user.id;
-    } else if (user.role === UserRole.MANAGER && userId) {
+    } else if (user.role === UserRole.MANAGER && userId && userId !== user.id) {
       const visible = await this.teamVisibility.isUserInManagedTeams(
         userId,
         user,
@@ -555,7 +557,9 @@ export class ReportingService {
         dateTo: filters.dateTo,
       });
 
-    this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user);
+    this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
+      includeSelf: true,
+    });
 
     if (filters.targetUserId) {
       qb.andWhere('e.user_id = :targetUserId', {

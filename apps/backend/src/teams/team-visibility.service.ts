@@ -32,8 +32,8 @@ export interface VisibleUsersFilter {
 
 interface VisibilityOptions {
   /**
-   * Also let the caller through for themselves. Assignment needs this: a
-   * manager who leads no team sees nobody, but may always pick themselves.
+   * Also let the caller through for themselves, so a manager who leads no
+   * team can still read their own data and pick themselves.
    */
   includeSelf?: boolean;
 }
@@ -178,6 +178,7 @@ export class TeamVisibilityService {
   async findVisibleUsers(
     user: AuthUser,
     filter: VisibleUsersFilter = {},
+    options: VisibilityOptions = {},
   ): Promise<VisibleUser[]> {
     const qb = this.userRepo
       .createQueryBuilder('u')
@@ -191,7 +192,7 @@ export class TeamVisibilityService {
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
 
-    this.applyUserVisibility(qb, 'u.id', user);
+    this.applyUserVisibility(qb, 'u.id', user, options);
     this.applyTeamMembershipFilter(qb, 'u.id', filter.teamId, user);
 
     if (filter.projectId) {

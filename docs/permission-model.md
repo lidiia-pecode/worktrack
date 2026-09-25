@@ -192,12 +192,16 @@ decision, not a field waiting to be filled in.
 Unchanged from D9 and D10 in the business reference: an Owner for anyone in the
 company, a manager for people in teams they lead, an employee for themselves.
 This model does not change the rule; it changes what it takes to *become* the
-manager of a person, which is what makes the rule trustworthy.
+manager of a person, which is what makes the rule trustworthy. Everyone reads
+their own time logs, absences and hours, including a manager who leads no team.
 
 **Planning follows the same people.** An Owner plans for any active user, a
 manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
-manager who leads no team. Removing somebody from a project deletes their plans
+manager who leads no team, and sees their own row in the planning grid
+(`GET /planning/week`), the Team week view and the utilisation report. The
+removal count (`GET /planning/removal-count`) counts the same people a save may
+remove. Removing somebody from a project deletes their plans
 for it from today on, and since a save only removes people the caller was shown
 (§3.5), a manager can never clear plans for someone outside their teams.
 
