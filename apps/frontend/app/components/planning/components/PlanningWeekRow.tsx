@@ -21,6 +21,7 @@ type PlanningWeekRowProps = {
   weekDates: Date[];
   absencesByDate: Record<string, Absence>;
   isLocked: (date: string) => boolean;
+  isEditable: (date: string) => boolean;
   onOpenDay: (row: Row, date: string) => void;
 };
 
@@ -70,6 +71,7 @@ export const PlanningWeekRow = ({
   weekDates,
   absencesByDate,
   isLocked,
+  isEditable,
   onOpenDay,
 }: PlanningWeekRowProps) => {
   const entriesByDate = new Map<string, PlanningEntry[]>();
@@ -113,13 +115,13 @@ export const PlanningWeekRow = ({
           );
         }
 
-        if (isLocked(iso)) {
+        if (!isEditable(iso)) {
           return (
             <td
               key={iso}
               className={cn(
                 "border-r border-border/60 p-2 align-top",
-                absence ? "bg-brand-subtle" : "bg-muted/20",
+                absence ? "bg-brand-subtle" : isLocked(iso) && "bg-muted/20",
               )}
             >
               <div className="flex min-h-10 flex-col gap-1">

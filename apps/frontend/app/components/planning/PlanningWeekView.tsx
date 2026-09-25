@@ -85,7 +85,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     [absences, weekDates],
   );
 
-  const isLocked = useLockedDates(dateFrom, dateTo);
+  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
@@ -259,6 +259,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
+                  isEditable={isEditable}
                   onOpenDay={(opened, date) =>
                     setOpenedDay({ userId: opened.user.id, date })
                   }

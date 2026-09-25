@@ -27,6 +27,7 @@ type Props = {
   pixelsPerMinute: number;
   expectedMinutes: number;
   isLocked: boolean;
+  isEditable: boolean;
   onAddClick: (date: Date) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
@@ -41,6 +42,7 @@ export const DayColumn = ({
   pixelsPerMinute,
   expectedMinutes,
   isLocked,
+  isEditable,
   onAddClick,
   onAbsenceClick,
   onEntryClick,
@@ -79,22 +81,22 @@ export const DayColumn = ({
 
   return (
     <div
-      role={isLocked ? undefined : "button"}
-      tabIndex={isLocked ? undefined : 0}
+      role={isEditable ? "button" : undefined}
+      tabIndex={isEditable ? 0 : undefined}
       aria-label={
-        absence && !isLocked
+        absence && isEditable
           ? `Edit the absence covering ${toISODate(date)}`
           : undefined
       }
-      onClick={isLocked ? undefined : openDay}
+      onClick={isEditable ? openDay : undefined}
       onKeyDown={(e) => {
-        if (!isLocked && (e.key === "Enter" || e.key === " ")) {
+        if (isEditable && (e.key === "Enter" || e.key === " ")) {
           openDay();
         }
       }}
       className={cn(
         DAY_COLUMN_CLASS,
-        !isLocked && "cursor-pointer hover:bg-muted/20",
+        isEditable && "cursor-pointer hover:bg-muted/20",
         absence && ABSENCE_PATTERN,
         !absence && weekend && WEEKEND_PATTERN,
         !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
@@ -136,14 +138,13 @@ export const DayColumn = ({
           )}
 
           <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
-            {isLocked ? (
+            {isLocked && (
               <>
                 <Lock className="size-3" aria-hidden />
                 Locked
               </>
-            ) : (
-              "Click to log time"
             )}
+            {isEditable && "Click to log time"}
           </span>
         </div>
       )}
@@ -180,7 +181,7 @@ export const DayColumn = ({
           <TimelogSegment
             key={segment.timelog.id}
             segment={segment}
-            onClick={isLocked ? undefined : onEntryClick}
+            onClick={isEditable ? onEntryClick : undefined}
             onHover={showPopover}
             onLeave={hidePopover}
           />

@@ -130,7 +130,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     refetch: refetchExpected,
   } = useExpectedHours({ dateFrom, dateTo });
 
-  const isLocked = useLockedDates(dateFrom, dateTo);
+  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
   const graceMonth = useGraceMonth();
 
   // Context only: the timesheet works the same whether or not a plan loads.
@@ -417,6 +417,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                       pixelsPerMinute={PX_PER_MINUTE}
                       expectedMinutes={dailyTargetMinutes}
                       isLocked={isLocked(iso)}
+                      isEditable={isEditable(iso)}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}
