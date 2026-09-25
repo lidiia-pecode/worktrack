@@ -30,7 +30,8 @@ git checkout -b feat/team-week-grid
 
 make dev                              # stack up, work as usual
 make test                             # backend suite, needs the stack running
-npm run lint && npm run typecheck     # from the repo root, both apps
+npm run test -w apps/frontend         # frontend suite, no stack needed
+npm run format:check && npm run lint && npm run typecheck   # repo root, both apps
 
 git push -u origin feat/team-week-grid
 gh pr create                          # the PR template asks for what changed and why
@@ -48,8 +49,11 @@ One PR becomes one commit on `main`, which keeps the history readable and makes
 
 | Check | Runs |
 | :--- | :--- |
-| **Frontend** | `npm ci` → lint → build → typecheck |
-| **Backend** | `npm ci` → lint → typecheck → build → migrations → test |
+| **Frontend** | `npm ci` → format check → lint → build → typecheck → test |
+| **Backend** | `npm ci` → format check → lint → typecheck → build → migrations → test |
+
+Lint fails on any warning (`--max-warnings=0` in each app's `lint` script), and
+the format check is `prettier --check`; `npm run format` in an app fixes it.
 
 Both are required to pass before a PR can merge, along with Vercel's own
 **Vercel** check, and a branch has to be up to date with `main` — if `main` moves

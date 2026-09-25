@@ -30,7 +30,7 @@ type ReportTab = "hours" | "planned-vs-actual" | "utilisation";
 const EMPTY_RANGE = { dateFrom: "", dateTo: "" };
 
 // Caught here so a range the server would refuse is never sent.
-const getRangeError = ({ dateFrom, dateTo }: DateRange) => {
+export const getRangeError = ({ dateFrom, dateTo }: DateRange) => {
   if (!dateFrom || !dateTo) return "Pick both dates";
   if (!isISODate(dateFrom) || !isISODate(dateTo)) {
     return "Use a four-digit year";

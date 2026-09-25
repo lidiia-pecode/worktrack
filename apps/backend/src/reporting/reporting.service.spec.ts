@@ -13,6 +13,11 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { todayISODate } from 'src/capacity/working-days.util';
+import {
+  freezeAtFirstLockedSecond,
+  freezeAtLastGraceSecond,
+  timeZoneOnAnotherDay,
+} from 'src/lib/testing/time-zones';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
@@ -258,6 +263,53 @@ describe('ReportingService', () => {
       await expect(
         service.listMonths(companyId, { from: '2026-05', to: '2026-01' }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("locking on the company's clock", () => {
+    const TIME_ZONE = timeZoneOnAnotherDay();
+    const MONTH = '2026-01-01';
+
+    const stateOfMonth = async () => {
+      const [month] = await service.listMonths(companyId, {
+        from: '2026-01',
+        to: '2026-01',
+      });
+      return month.state;
+    };
+
+    beforeAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: TIME_ZONE });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    afterAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: 'UTC' });
+    });
+
+    it("keeps a month in grace until the company's midnight on the 8th", async () => {
+      freezeAtLastGraceSecond(MONTH, TIME_ZONE);
+
+      await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.GRACE);
+      await expect(service.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
+        false,
+      );
+    });
+
+    it('locks it from that midnight', async () => {
+      freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
+
+      await expect(stateOfMonth()).resolves.toBe(ReportingMonthState.LOCKED);
+      await expect(service.isDateLocked(companyId, '2026-01-31')).resolves.toBe(
+        true,
+      );
     });
   });
 

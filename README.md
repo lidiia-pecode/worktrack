@@ -102,10 +102,11 @@ make dev        # Start development environment
 ```
 
 The same checks CI runs are available from the repository root. Each fans out
-across both applications, skipping any that does not define the script — only
-the backend has tests today:
+across both applications, skipping any that does not define the script. The
+backend tests need the stack running; the frontend tests do not:
 
 ```bash
+npm run format:check
 npm run lint
 npm run typecheck
 npm run build

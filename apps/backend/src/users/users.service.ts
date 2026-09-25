@@ -149,6 +149,7 @@ export class UsersService {
 
     const [results, count] = await qb
       .orderBy('u.created_at', 'DESC')
+      .addOrderBy('u.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
@@ -178,6 +179,7 @@ export class UsersService {
     const [results, count] = await qb
       .orderBy('u.first_name', 'ASC')
       .addOrderBy('u.last_name', 'ASC')
+      .addOrderBy('u.id', 'ASC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();

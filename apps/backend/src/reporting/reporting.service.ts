@@ -9,7 +9,7 @@ import { In, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { Company } from 'src/companies/entities/company.entity';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
@@ -165,7 +165,7 @@ export class ReportingService {
     companyId: string,
     query: ReportingPeriodsQuery,
   ): Promise<ReportingMonth[]> {
-    const today = await this.today(companyId);
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const lastMonth = firstDayOfMonth(query.to ?? today);
     const firstMonth = query.from
       ? firstDayOfMonth(query.from)
@@ -204,7 +204,7 @@ export class ReportingService {
     actorId: string,
   ): Promise<ReportingMonth> {
     const month = firstDayOfMonth(monthKey);
-    const today = await this.today(companyId);
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
 
     if (!isAutoLocked(month, today)) {
       throw new BadRequestException(
@@ -270,7 +270,7 @@ export class ReportingService {
     startDate: string,
     endDate: string,
   ): Promise<boolean> {
-    const today = await this.today(companyId);
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const autoLocked = monthsBetween(startDate, endDate).filter((month) =>
       isAutoLocked(month, today),
     );
@@ -286,7 +286,7 @@ export class ReportingService {
    * it would rewrite a closed month.
    */
   async latestLockedDate(companyId: string): Promise<string> {
-    const today = await this.today(companyId);
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const reopened = await this.findReopenedMonths(companyId);
 
     let month = latestAutoLockedMonth(today);
@@ -339,7 +339,7 @@ export class ReportingService {
     dateFrom: string,
     dateTo: string,
   ): Promise<boolean> {
-    const today = await this.today(companyId);
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const months = monthsBetween(dateFrom, dateTo);
     const reopened = await this.findReopenedMonths(companyId, months);
 
@@ -347,16 +347,6 @@ export class ReportingService {
       (month) =>
         this.stateOf(month, today, reopened) !== ReportingMonthState.LOCKED,
     );
-  }
-
-  /** Today where the company is, so a month locks at the company's midnight. */
-  private async today(companyId: string): Promise<string> {
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-      select: ['id', 'timezone'],
-    });
-
-    return todayISODate(company?.timezone);
   }
 
   // ==========================================

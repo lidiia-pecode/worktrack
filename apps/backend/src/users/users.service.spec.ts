@@ -3,6 +3,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DataSource, In, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -318,6 +319,73 @@ describe('UsersService scope', () => {
       });
 
       await expect(listedIds(manager)).resolves.toContain(leaver.id);
+    });
+  });
+
+  describe('paging through people who tie', () => {
+    const PAGE_SIZE = 2;
+    let tiedIds: string[];
+
+    const pagedIds = async (
+      fetchPage: (
+        page: PaginationQuery,
+      ) => Promise<{ results: User[]; count: number }>,
+    ) => {
+      const ids: string[] = [];
+      let count = Infinity;
+
+      for (let offset = 0; offset < count; offset += PAGE_SIZE) {
+        const page = await fetchPage({
+          offset,
+          limit: PAGE_SIZE,
+        } as PaginationQuery);
+        count = page.count;
+        ids.push(...page.results.map((user) => user.id));
+      }
+
+      return { ids, count };
+    };
+
+    beforeAll(async () => {
+      // One transaction gives every row the same created_at, and they share a name.
+      const tied = await dataSource.transaction((manager) =>
+        manager.getRepository(User).save(
+          Array.from({ length: 5 }, (_, index) => ({
+            companyId,
+            role: UserRole.EMPLOYEE,
+            firstName: 'tied',
+            lastName: 'Test',
+            email: `tied-${index}-${RUN}@userscope.test`,
+            status: UserStatus.ACTIVE,
+          })),
+        ),
+      );
+      tiedIds = tied.map((user) => user.id);
+
+      const createdAt = new Set(tied.map((user) => user.createdAt.getTime()));
+      expect(createdAt.size).toBe(1);
+    });
+
+    it('lists users created together once each, in a fixed order', async () => {
+      const { ids, count } = await pagedIds((page) =>
+        service.list(companyId, page, owner),
+      );
+
+      expect(new Set(ids).size).toBe(count);
+      expect(ids.filter((id) => tiedIds.includes(id))).toEqual(
+        [...tiedIds].sort().reverse(),
+      );
+    });
+
+    it('lists assignable people who share a name once each, in a fixed order', async () => {
+      const { ids, count } = await pagedIds((page) =>
+        service.listAssignable(companyId, page, owner),
+      );
+
+      expect(new Set(ids).size).toBe(count);
+      expect(ids.filter((id) => tiedIds.includes(id))).toEqual(
+        [...tiedIds].sort(),
+      );
     });
   });
 });

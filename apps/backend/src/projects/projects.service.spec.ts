@@ -472,6 +472,33 @@ describe('ProjectsService membership scope', () => {
         service.listUsers(randomUUID(), PAGE, owner),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('pages through members who share a name once each, in a fixed order', async () => {
+      const namesakes = await dataSource.getRepository(User).save(
+        Array.from({ length: 5 }, (_, index) => ({
+          companyId,
+          role: UserRole.EMPLOYEE,
+          firstName: 'namesake',
+          lastName: 'Test',
+          email: `namesake-${index}-${RUN}@projects-scope.test`,
+          status: UserStatus.ACTIVE,
+        })),
+      );
+      const projectId = await createProject('list namesakes', namesakes);
+
+      const pages = await Promise.all(
+        [0, 2, 4].map((offset) =>
+          service.listUsers(
+            projectId,
+            { offset, limit: 2 } as PaginationQuery,
+            owner,
+          ),
+        ),
+      );
+      const pagedIds = pages.flatMap((page) => page.results.map((u) => u.id));
+
+      expect(pagedIds).toEqual(namesakes.map((user) => user.id).sort());
+    });
   });
 
   describe('a manager as a project member', () => {

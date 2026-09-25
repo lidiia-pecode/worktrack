@@ -7,11 +7,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, Repository } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import { User } from 'src/users/entities/user.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 
 import { UserCapacity } from './entities/user-capacity.entity';
-import { WORKING_DAYS_PER_WEEK, todayISODate } from './working-days.util';
+import { WORKING_DAYS_PER_WEEK } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
@@ -106,13 +107,8 @@ export class CapacityService {
   }
 
   /** Today where the company is, so every view agrees on which day it is. */
-  async today(companyId: string): Promise<string> {
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-      select: ['id', 'timezone'],
-    });
-
-    return todayISODate(company?.timezone);
+  today(companyId: string): Promise<string> {
+    return findCompanyToday(this.companyRepo.manager, companyId);
   }
 
   /** What the form shows: the row in force today, or the company default. */

@@ -33,6 +33,11 @@ import {
   weekRange,
 } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import {
+  freezeAtFirstLockedSecond,
+  freezeAtLastGraceSecond,
+  timeZoneOnAnotherDay,
+} from 'src/lib/testing/time-zones';
 
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
@@ -749,6 +754,44 @@ describe('PlanningService', () => {
       await removeFromProject([outsider], manager);
 
       expect(await entriesFor(outsider.id)).toHaveLength(1);
+    });
+  });
+
+  describe("locking on the company's clock", () => {
+    const TIME_ZONE = timeZoneOnAnotherDay();
+    const MONTH = '2026-01-01';
+    const DATE_IN_MONTH = '2026-01-13';
+
+    beforeAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: TIME_ZONE });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    afterAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: 'UTC' });
+    });
+
+    it('accepts a plan on the last day of the grace window', async () => {
+      freezeAtLastGraceSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        service.create(plan(member.id, DATE_IN_MONTH, HOUR), manager),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuses a plan from the first locked day', async () => {
+      freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        service.create(plan(member.id, DATE_IN_MONTH, HOUR), manager),
+      ).rejects.toThrow(/LOCKED/);
     });
   });
 });

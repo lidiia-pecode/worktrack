@@ -26,4 +26,3 @@ export const canWriteTimeLogsFor = (
   viewerId: string,
   targetUserId: string,
 ) => hasManagerAccess(role) || viewerId === targetUserId;
-
