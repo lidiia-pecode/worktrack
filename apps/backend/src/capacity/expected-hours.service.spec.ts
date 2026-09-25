@@ -22,6 +22,11 @@ import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import {
+  freezeAtFirstLockedSecond,
+  freezeAtLastGraceSecond,
+  timeZoneOnAnotherDay,
+} from 'src/lib/testing/time-zones';
 
 import { UserCapacity } from './entities/user-capacity.entity';
 import { CapacityService } from './capacity.service';
@@ -592,6 +597,56 @@ describe('ExpectedHoursService', () => {
 
       expect(expected.get(fullTimer)?.total).toBe(FULL_WEEK);
       expect(expected.get(partTimer)?.total).toBe(PART_WEEK);
+    });
+  });
+
+  describe("locking on the company's clock", () => {
+    const TIME_ZONE = timeZoneOnAnotherDay();
+    const MONTH = '2026-01-01';
+    const VALID_FROM = '2026-01-12';
+
+    beforeAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: TIME_ZONE });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    afterAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: 'UTC' });
+    });
+
+    it('accepts a capacity change on the last day of the grace window', async () => {
+      freezeAtLastGraceSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          fullTimer,
+          32 * 60,
+          VALID_FROM,
+          owner.id,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuses a capacity change from the first locked day', async () => {
+      freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          fullTimer,
+          32 * 60,
+          VALID_FROM,
+          owner.id,
+        ),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

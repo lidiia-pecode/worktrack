@@ -26,6 +26,11 @@ import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import {
+  freezeAtFirstLockedSecond,
+  freezeAtLastGraceSecond,
+  timeZoneOnAnotherDay,
+} from 'src/lib/testing/time-zones';
 
 import { TimeLog } from './entities/time-log.entity';
 import { TimeLogsQuery } from './dtos/time-logs-query.dto';
@@ -414,6 +419,44 @@ describe('TimeLogsService write scope', () => {
           owner,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("locking on the company's clock", () => {
+    const TIME_ZONE = timeZoneOnAnotherDay();
+    const MONTH = '2026-01-01';
+    const DATE_IN_MONTH = '2026-01-13';
+
+    beforeAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: TIME_ZONE });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    afterAll(async () => {
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { timezone: 'UTC' });
+    });
+
+    it('accepts an entry on the last day of the grace window', async () => {
+      freezeAtLastGraceSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        service.create(logFor(member.id, DATE_IN_MONTH), owner),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuses an entry from the first locked day', async () => {
+      freezeAtFirstLockedSecond(MONTH, TIME_ZONE);
+
+      await expect(
+        service.create(logFor(member.id, DATE_IN_MONTH), owner),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 });

@@ -30,6 +30,7 @@ git checkout -b feat/team-week-grid
 
 make dev                              # stack up, work as usual
 make test                             # backend suite, needs the stack running
+npm run test -w apps/frontend         # frontend suite, no stack needed
 npm run lint && npm run typecheck     # from the repo root, both apps
 
 git push -u origin feat/team-week-grid

@@ -8,6 +8,7 @@ import { ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
 import { toMonthKey } from "@/lib/utils/date";
+import { lockedDateLookup } from "@/lib/utils/reporting-period";
 
 import { queryKeys } from "./shared/queryKeys";
 
@@ -35,15 +36,7 @@ export function useLockedDates(dateFrom: string, dateTo: string) {
     to: toMonthKey(dateTo),
   });
 
-  return useMemo(() => {
-    const lockedMonthKeys = new Set(
-      months
-        .filter((period) => period.state === ReportingMonthState.LOCKED)
-        .map((period) => period.month),
-    );
-
-    return (date: string) => lockedMonthKeys.has(toMonthKey(date));
-  }, [months]);
+  return useMemo(() => lockedDateLookup(months), [months]);
 }
 
 /** The month that is past its end but still editable, if there is one. */

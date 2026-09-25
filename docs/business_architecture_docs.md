@@ -735,12 +735,13 @@ of rendering an admin screen the backend would refuse to fill.
 
 ### Engineering state
 
-Backend test coverage is twenty-five suites and 384 tests, covering the
+Backend test coverage is twenty-five suites and 397 tests, covering the
 role-visibility filters, team and invitation rules, time-log, absence, capacity
-and planning rules, monthly locking, the three reports, page and date-range
+and planning rules, monthly locking in and outside UTC, the three reports, page and date-range
 limits, name checks, and session refresh, rate limits and token clean-up — most
 against a real
-database. The frontend has no tests. GitHub Actions runs the backend suites,
+database. The frontend has Vitest tests for its date, month, absence, lock and
+paging helpers, which CI does not run yet. GitHub Actions runs the backend suites,
 lint, typecheck and build for both applications on every pull request, but does
 not check formatting and allows lint warnings. The nightly clean-up of
 expired sessions and used one-time tokens runs only while the backend is awake,
