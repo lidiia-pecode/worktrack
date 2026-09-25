@@ -60,10 +60,8 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
               className={cn(
                 "group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
                 "border border-transparent transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50",
-                active
-                  ? "border-blue-500/20 bg-blue-500/10 text-blue-400"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-slate-200",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                active ? "border-border bg-brand-subtle" : "hover:bg-muted/30",
               )}
             >
               <div
@@ -71,8 +69,8 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
                   "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
                   "border transition-colors",
                   active
-                    ? "border-blue-500/30 bg-blue-500/20 text-blue-300"
-                    : "border-white/5 bg-white/[0.04] text-slate-400 group-hover:text-slate-300",
+                    ? "border-border bg-card text-brand"
+                    : "border-border bg-card text-muted-foreground group-hover:text-foreground",
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -82,13 +80,13 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
                 <div
                   className={cn(
                     "text-sm font-medium",
-                    active ? "text-blue-300" : "text-slate-200",
+                    active ? "text-foreground" : "text-muted-foreground",
                   )}
                 >
                   {item.label}
                 </div>
 
-                <div className="mt-0.5 truncate text-xs text-slate-400">
+                <div className="mt-0.5 truncate text-xs text-muted-foreground">
                   {item.description}
                 </div>
               </div>

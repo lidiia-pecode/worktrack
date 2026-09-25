@@ -85,6 +85,7 @@ describe('PlanningService', () => {
   let colleague: AuthUser; // in "Alpha"
   let outsider: AuthUser; // in the company, on no team
   let loneManager: AuthUser; // has the MANAGER role but leads no team
+  let alphaTeamId: string;
 
   let projectId: string;
   let otherProjectId: string;
@@ -239,6 +240,7 @@ describe('PlanningService', () => {
     const team = await dataSource
       .getRepository(Team)
       .save({ companyId, name: `Alpha ${RUN}` });
+    alphaTeamId = team.id;
 
     for (const [user, roleInTeam] of [
       [manager, TeamRole.MANAGER],
@@ -259,7 +261,13 @@ describe('PlanningService', () => {
     archivedProjectId = await createProject('Legacy');
     unstaffedProjectId = await createProject('Unstaffed');
 
-    await addMembers(projectId, [manager, member, colleague, outsider]);
+    await addMembers(projectId, [
+      manager,
+      member,
+      colleague,
+      outsider,
+      loneManager,
+    ]);
     await addMembers(otherProjectId, [member]);
     await addMembers(archivedProjectId, [member]);
 
@@ -650,6 +658,27 @@ describe('PlanningService', () => {
       expect(ids).toEqual([manager.id, member.id, colleague.id].sort());
     });
 
+    it('gives a manager who leads no team their own row, which they can plan', async () => {
+      await existingEntry(loneManager.id, MONDAY, HOUR);
+
+      const week = await service.getWeek({ date: WEDNESDAY }, loneManager);
+
+      expect(week.rows.map((row) => row.user.id)).toEqual([loneManager.id]);
+      expect(week.rows[0].entries).toHaveLength(1);
+      await expect(
+        service.create(plan(loneManager.id, TUESDAY, HOUR), loneManager),
+      ).resolves.toBeDefined();
+    });
+
+    it('leaves them out of a team they are not in', async () => {
+      const week = await service.getWeek(
+        { date: WEDNESDAY, teamId: alphaTeamId },
+        loneManager,
+      );
+
+      expect(week.rows).toEqual([]);
+    });
+
     it('gives each row its entries, planned and available minutes', async () => {
       await absentOn(member.id, FRIDAY);
       await existingEntry(member.id, MONDAY, 3 * HOUR);
@@ -703,7 +732,13 @@ describe('PlanningService', () => {
         'DELETE FROM project_users WHERE project_id = $1',
         [projectId],
       );
-      await addMembers(projectId, [manager, member, colleague, outsider]);
+      await addMembers(projectId, [
+        manager,
+        member,
+        colleague,
+        outsider,
+        loneManager,
+      ]);
     });
 
     it('deletes future plans on that project and keeps the past', async () => {

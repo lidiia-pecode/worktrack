@@ -49,7 +49,7 @@ const assignableUsersQueries = createEntityQuery<
 export const useAssignableUsersInfiniteQuery =
   assignableUsersQueries.useInfiniteQuery;
 
-const useUsersMutations = createEntityMutations<
+export const useUsersMutations = createEntityMutations<
   User,
   CreateUserPayload,
   UpdateUserPayload,
@@ -72,17 +72,6 @@ const useUsersMutations = createEntityMutations<
     unarchive: "User restored successfully",
   },
 });
-
-export function useUsers(page = 1, params?: UserQueryParams) {
-  const query = useUsersQuery(page, params);
-
-  const actions = useUsersMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
 
 export const useUserDetails = (id: string) =>
   useQuery({

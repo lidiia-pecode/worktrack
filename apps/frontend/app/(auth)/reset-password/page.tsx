@@ -10,10 +10,7 @@ import {
   resetPasswordSchema,
 } from "@/lib/forms/schemas/reset-password.schema";
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
-import {
-  settingsInputClassName,
-  settingsLabelClassName,
-} from "@/app/components/settings/styles/settings-styles";
+import { settingsLabelClassName } from "@/app/components/settings/styles/settings-styles";
 import {
   PasswordInput,
   ResetPasswordPageLayout,
@@ -84,7 +81,6 @@ export default function ResetPasswordPage() {
           placeholder="Enter a new password"
           {...register("newPassword")}
           error={errors.newPassword?.message}
-          className={settingsInputClassName}
           labelClassname={settingsLabelClassName}
         />
 
@@ -94,7 +90,6 @@ export default function ResetPasswordPage() {
           placeholder="Repeat your new password"
           {...register("confirmPassword")}
           error={errors.confirmPassword?.message}
-          className={settingsInputClassName}
           labelClassname={settingsLabelClassName}
         />
 

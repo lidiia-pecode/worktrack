@@ -87,7 +87,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     [absences, weekDates],
   );
 
-  const isLocked = useLockedDates(dateFrom, dateTo);
+  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
@@ -260,6 +260,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
           todayIso={todayIso}
           canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
           isLocked={isLocked}
+          isEditable={isEditable}
           onClose={() => setOpenedUser(null)}
         />
       )}

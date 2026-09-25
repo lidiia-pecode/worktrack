@@ -55,6 +55,7 @@ describe('UtilisationService', () => {
   let member: string; // full-time, two days off, logs time
   let awayAllMonth: string; // absent for the whole of March
   let partTimer: string; // on no team, 24 hours a week, logs nothing
+  let loneManager: AuthUser; // has the MANAGER role but leads no team
   let clientWorkId: string;
 
   const createUser = async (name: string, role: UserRole) => {
@@ -117,6 +118,7 @@ describe('UtilisationService', () => {
     member = (await createUser('Member', UserRole.EMPLOYEE)).id;
     awayAllMonth = (await createUser('Away', UserRole.EMPLOYEE)).id;
     partTimer = (await createUser('Parttimer', UserRole.EMPLOYEE)).id;
+    loneManager = await createUser('Lonemanager', UserRole.MANAGER);
 
     const team = await dataSource
       .getRepository(Team)
@@ -267,6 +269,23 @@ describe('UtilisationService', () => {
     expect(rows.map((row) => row.userId).sort()).toEqual(
       [manager.id, member, awayAllMonth].sort(),
     );
+  });
+
+  it('gives a manager who leads no team their own row with their hours', async () => {
+    const log = await dataSource.getRepository(TimeLog).save({
+      companyId,
+      userId: loneManager.id,
+      projectActivityId: clientWorkId,
+      date: '2026-03-16',
+      minutes: 120,
+      isBillable: true,
+    });
+
+    const { rows } = await service.getUtilisation(loneManager, MARCH);
+
+    expect(rows.map((row) => row.userId)).toEqual([loneManager.id]);
+    expect(rows[0].loggedMinutes).toBe(120);
+    await dataSource.getRepository(TimeLog).delete({ id: log.id });
   });
 
   it('counts only days that have finished', async () => {

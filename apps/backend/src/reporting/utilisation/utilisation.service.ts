@@ -116,9 +116,11 @@ export class UtilisationService {
 
     // The same people the team grid lists, plus deactivated people who
     // logged time in the range.
-    const people = await this.teamVisibility.findVisibleUsers(user, {
-      includeUserIds: [...hoursByUser.keys()],
-    });
+    const people = await this.teamVisibility.findVisibleUsers(
+      user,
+      { includeUserIds: [...hoursByUser.keys()] },
+      { includeSelf: true },
+    );
 
     const availability = await this.expectedHours.availabilityToDateFor(
       user.companyId,

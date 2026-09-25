@@ -43,6 +43,7 @@ export function todayISODate(timeZone?: string): string {
   }
 }
 
+/** e.g. "1h 30m", "2h" or "45m"; zero reads "0h". */
 export function formatDuration(minutes: number): string {
   const hours = Math.floor(minutes / 60);
   const mins = minutes % 60;
@@ -51,10 +52,14 @@ export function formatDuration(minutes: number): string {
     return `${hours}h`;
   }
 
+  if (hours === 0) {
+    return `${mins}m`;
+  }
+
   return `${hours}h ${mins}m`;
 }
 
-/** e.g. "+1h 30m" or "−2h"; zero has no sign. */
+/** e.g. "+1h 30m", "−2h" or "−30m"; zero has no sign. */
 export function formatSignedDuration(minutes: number): string {
   if (minutes === 0) return formatDuration(0);
 
@@ -162,6 +167,18 @@ export function lastDayOfReportRange(dateFrom: string): string {
 /** The YYYY-MM month key of a YYYY-MM-DD date. */
 export function toMonthKey(date: string): string {
   return date.slice(0, 7);
+}
+
+/** The YYYY-MM month key the given number of months after (or before) another. */
+export function addMonthsToKey(monthKey: string, amount: number): string {
+  const firstDay = new Date(`${monthKey}-01T00:00:00`);
+  const shifted = new Date(
+    firstDay.getFullYear(),
+    firstDay.getMonth() + amount,
+    1,
+  );
+
+  return toMonthKey(toISODate(shifted));
 }
 
 /** The first and last day of a YYYY-MM month, as YYYY-MM-DD dates. */

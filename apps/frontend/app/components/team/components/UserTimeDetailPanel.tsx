@@ -27,6 +27,7 @@ type UserTimeDetailPanelProps = {
   todayIso: string;
   canWrite: boolean;
   isLocked: (date: string) => boolean;
+  isEditable: (date: string) => boolean;
   onClose: () => void;
 };
 
@@ -42,6 +43,7 @@ export const UserTimeDetailPanel = ({
   todayIso,
   canWrite,
   isLocked,
+  isEditable,
   onClose,
 }: UserTimeDetailPanelProps) => {
   const [formState, setFormState] = useState<FormState | null>(null);
@@ -134,15 +136,14 @@ export const UserTimeDetailPanel = ({
           <div>
             {weekDates.map((date) => {
               const iso = toISODate(date);
-              const locked = isLocked(iso);
-              const canWriteDay = canWrite && !locked;
+              const canWriteDay = canWrite && isEditable(iso);
 
               return (
                 <UserTimeDayGroup
                   key={iso}
                   date={date}
                   isToday={iso === todayIso}
-                  isLocked={locked}
+                  isLocked={isLocked(iso)}
                   timelogs={timelogsByDate[iso] ?? []}
                   onAdd={
                     canWriteDay

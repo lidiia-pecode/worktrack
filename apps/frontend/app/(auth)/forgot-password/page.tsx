@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Mail } from "lucide-react";
 
-import { settingsInputClassName } from "@/app/components/settings/styles/settings-styles";
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -47,7 +46,6 @@ export default function ForgotPasswordPage() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             required
-            className={settingsInputClassName}
           />
 
           <Button
@@ -61,12 +59,12 @@ export default function ForgotPasswordPage() {
         </form>
       ) : (
         <div className="space-y-5">
-          <p className="text-sm leading-relaxed text-slate-300">
+          <p className="text-sm leading-relaxed text-muted-foreground">
             Please check your inbox and follow the link to reset your password.
           </p>
 
           <div className="space-y-3">
-            <p className="text-center text-sm text-slate-500">
+            <p className="text-center text-sm text-muted-foreground">
               Didn&apos;t receive the email?
             </p>
 

@@ -15,10 +15,7 @@ import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import Input from "../../../../components/ui/input";
 import { SettingsActions } from "../components/SettingsActions";
-import {
-  settingsInputClassName,
-  settingsLabelClassName,
-} from "../styles/settings-styles";
+import { settingsLabelClassName } from "../styles/settings-styles";
 import { useProfile } from "@/hooks/auth/useProfile";
 
 interface ProfileSettingsProps {
@@ -74,7 +71,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
               label="First name"
               {...register("firstName")}
               error={errors.firstName?.message}
-              className={settingsInputClassName}
               labelClassname={settingsLabelClassName}
             />
 
@@ -82,7 +78,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
               label="Last name"
               {...register("lastName")}
               error={errors.lastName?.message}
-              className={settingsInputClassName}
               labelClassname={settingsLabelClassName}
             />
           </div>
@@ -91,7 +86,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
             label="Username"
             {...register("username")}
             error={errors.username?.message}
-            className={settingsInputClassName}
             labelClassname={settingsLabelClassName}
           />
 
@@ -99,7 +93,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
             label="Email"
             value={user?.email ?? ""}
             disabled
-            className={settingsInputClassName}
             labelClassname={settingsLabelClassName}
           />
         </div>

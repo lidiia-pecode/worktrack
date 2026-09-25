@@ -190,10 +190,7 @@ export const WeekProgressBar = ({
           </span>
 
           {isOverExpected && (
-            <Badge
-              variant="warning"
-              className="px-1.5 py-0.2 text-[10px] font-medium"
-            >
+            <Badge variant="warning" className="px-1.5 text-[10px] font-medium">
               +{formatDuration(overMinutes)}
             </Badge>
           )}

@@ -4,6 +4,7 @@ import { WeekDay } from "@/types/enums";
 
 import {
   addDays,
+  addMonthsToKey,
   formatDuration,
   formatSignedDuration,
   getMonthGridDates,
@@ -140,16 +141,29 @@ describe("report ranges", () => {
 });
 
 describe("durations", () => {
-  it("shows hours, and minutes only when there are some", () => {
+  it("leaves out a zero part, but still reads zero as 0h", () => {
     expect(formatDuration(0)).toBe("0h");
     expect(formatDuration(120)).toBe("2h");
     expect(formatDuration(90)).toBe("1h 30m");
-    expect(formatDuration(45)).toBe("0h 45m");
+    expect(formatDuration(45)).toBe("45m");
+    expect(formatDuration(1)).toBe("1m");
+    expect(formatDuration(60)).toBe("1h");
+    expect(formatDuration(61)).toBe("1h 1m");
   });
 
   it("signs a difference, but not zero", () => {
     expect(formatSignedDuration(90)).toBe("+1h 30m");
     expect(formatSignedDuration(-120)).toBe("−2h");
+    expect(formatSignedDuration(-30)).toBe("−30m");
+    expect(formatSignedDuration(45)).toBe("+45m");
     expect(formatSignedDuration(0)).toBe("0h");
+  });
+});
+
+describe("addMonthsToKey", () => {
+  it("moves forward and back across a year boundary", () => {
+    expect(addMonthsToKey("2026-01", -1)).toBe("2025-12");
+    expect(addMonthsToKey("2025-12", 1)).toBe("2026-01");
+    expect(addMonthsToKey("2026-09", -35)).toBe("2023-10");
   });
 });

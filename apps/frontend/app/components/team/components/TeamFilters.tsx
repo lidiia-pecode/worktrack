@@ -26,9 +26,10 @@ export function TeamFilters({
 }: TeamFiltersProps) {
   const { options: activeTeamOptions } = useTeamOptions();
 
-  const { items: projects } = useAllProjectsQuery({
-    status: ProjectStatus.ACTIVE,
-  });
+  const { items: projects } = useAllProjectsQuery(
+    { status: ProjectStatus.ACTIVE },
+    { enabled: Boolean(onProjectChange) },
+  );
 
   const teamOptions = useMemo(
     () => [{ value: ALL_OPTION, label: "All teams" }, ...activeTeamOptions],

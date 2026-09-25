@@ -1,13 +1,18 @@
 "use client";
 
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
-import { toMonthKey } from "@/lib/utils/date";
+import { addMonthsToKey, toMonthKey } from "@/lib/utils/date";
 import { lockedDateLookup } from "@/lib/utils/reporting-period";
 
 import { queryKeys } from "./shared/queryKeys";
@@ -26,17 +31,55 @@ export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
   };
 }
 
+const MONTHS_PER_PAGE = 12;
+
 /**
- * Which days between two dates are locked. Until the months load nothing is
- * shown as locked; the server still refuses a locked write on its own.
+ * Every month from the current one back, twelve at a time. There is no lower
+ * bound: time can be logged on any past date, so any month may need reopening.
+ */
+export function useReportingPeriodHistory() {
+  const query = useInfiniteQuery({
+    queryKey: queryKeys.reporting.periodHistory(),
+    queryFn: ({ pageParam }) => ReportingClientApi.getPeriods(pageParam),
+    // The first page is the server's default: the last twelve months.
+    initialPageParam: {} as ReportingPeriodsQuery,
+    getNextPageParam: (lastPage): ReportingPeriodsQuery | undefined => {
+      const oldestLoadedMonth = lastPage.at(-1)?.month;
+      if (!oldestLoadedMonth) return undefined;
+
+      const to = addMonthsToKey(oldestLoadedMonth, -1);
+      const from = addMonthsToKey(to, -(MONTHS_PER_PAGE - 1));
+
+      return { from, to };
+    },
+  });
+
+  return {
+    months: query.data?.pages.flat() ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+    loadOlder: query.fetchNextPage,
+    isLoadingOlder: query.isFetchingNextPage,
+  };
+}
+
+/**
+ * Which days between two dates are locked, and which can be edited. Until the
+ * months load no day is editable, but none is shown as locked either.
  */
 export function useLockedDates(dateFrom: string, dateTo: string) {
-  const { months } = useReportingPeriods({
+  const { months, isLoading } = useReportingPeriods({
     from: toMonthKey(dateFrom),
     to: toMonthKey(dateTo),
   });
 
-  return useMemo(() => lockedDateLookup(months), [months]);
+  return useMemo(() => {
+    const isLocked = lockedDateLookup(months);
+    const isEditable = (date: string) => !isLoading && !isLocked(date);
+
+    return { isLocked, isEditable };
+  }, [months, isLoading]);
 }
 
 /** The month that is past its end but still editable, if there is one. */

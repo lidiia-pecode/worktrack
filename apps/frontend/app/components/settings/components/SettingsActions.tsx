@@ -12,7 +12,7 @@ export const SettingsActions = ({
   return (
     <div
       className={cn(
-        "mt-8 flex justify-end border-t border-blue-400/20 px-6 py-4",
+        "mt-8 flex justify-end border-t border-border px-6 py-4",
         className,
       )}
     >

@@ -49,7 +49,7 @@ export const USERS: SeedUser[] = [
     email: OWNER_EMAIL,
     username: 'owner',
     firstName: 'Owner',
-    lastName: 'Worktrack',
+    lastName: 'WorkTrack',
     role: UserRole.OWNER,
     position: 'Owner',
     capacityHoursPerWeek: 40,

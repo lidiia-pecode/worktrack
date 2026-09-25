@@ -12,9 +12,12 @@ import {
 
 import { User } from "@/types";
 
-import { useUserDetails, useUsers } from "@/hooks/useUsers";
+import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
-import { useProjects, useProjectsInfiniteQuery } from "@/hooks/useProjects";
+import {
+  useProjectsInfiniteQuery,
+  useProjectsMutations,
+} from "@/hooks/useProjects";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 import { ProjectsClientApi } from "@/lib/api/resources";
 
@@ -48,16 +51,12 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     user.id,
   );
 
-  const {
-    actions: { update, archive, unarchive },
-  } = useUsers();
+  const { update, archive, unarchive } = useUsersMutations();
 
   const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(user.id);
   const setCapacity = useSetCapacity();
 
-  const {
-    actions: { update: updateProject },
-  } = useProjects();
+  const { update: updateProject } = useProjectsMutations();
 
   const {
     items: allProjects,

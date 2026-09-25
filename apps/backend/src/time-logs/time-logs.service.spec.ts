@@ -60,7 +60,9 @@ describe('TimeLogsService write scope', () => {
   let outsider: AuthUser; // in the company, on no team, assigned to the project
   let unassigned: AuthUser; // in "Alpha" but not on the project
   let stranger: AuthUser; // a different company entirely
+  let loneManager: AuthUser; // has the MANAGER role but leads no team
 
+  let teamId: string;
   let projectActivityId: string;
 
   const createUser = async (
@@ -144,6 +146,7 @@ describe('TimeLogsService write scope', () => {
     member = await createUser('member', UserRole.EMPLOYEE);
     outsider = await createUser('outsider', UserRole.EMPLOYEE);
     unassigned = await createUser('unassigned', UserRole.EMPLOYEE);
+    loneManager = await createUser('lonemanager', UserRole.MANAGER);
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -153,6 +156,7 @@ describe('TimeLogsService write scope', () => {
     const team = await dataSource
       .getRepository(Team)
       .save({ companyId, name: `Alpha ${RUN}` });
+    teamId = team.id;
 
     for (const [user, roleInTeam] of [
       [manager, TeamRole.MANAGER],
@@ -189,7 +193,7 @@ describe('TimeLogsService write scope', () => {
     projectActivityId = projectActivity.id;
 
     // Everyone but `unassigned` can log against the project.
-    for (const user of [owner, manager, member, outsider]) {
+    for (const user of [owner, manager, member, outsider, loneManager]) {
       await dataSource.query(
         'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
         [project.id, user.id],
@@ -403,6 +407,19 @@ describe('TimeLogsService write scope', () => {
       expect(pagedIds).toEqual(expectedIds);
       expect(pages[0].count).toBe(5);
     });
+
+    it('lets a manager who leads no team read their own entries', async () => {
+      const id = await existingLogFor(loneManager.id);
+      const listFor = (userId: string) =>
+        service.list(
+          Object.assign(new TimeLogsQuery(), { userId }),
+          loneManager,
+        );
+
+      expect((await listFor(loneManager.id)).count).toBe(1);
+      expect((await service.getById(id, loneManager)).id).toBe(id);
+      await expect(listFor(member.id)).rejects.toThrow(ForbiddenException);
+    });
   });
 
   describe('team summary', () => {
@@ -419,6 +436,35 @@ describe('TimeLogsService write scope', () => {
           owner,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    const weekOf = (by: AuthUser, filter: { teamId?: string } = {}) =>
+      service.getTeamSummary({ dateFrom: DATE, dateTo: DATE, ...filter }, by);
+
+    it('gives a manager who leads no team their own row with their time', async () => {
+      await existingLogFor(loneManager.id);
+      await existingLogFor(member.id);
+
+      const { rows } = await weekOf(loneManager);
+
+      expect(rows.map((row) => row.user.id)).toEqual([loneManager.id]);
+      expect(rows[0].minutes).toBe(60);
+    });
+
+    it('leaves them out of a team they are not in', async () => {
+      await existingLogFor(loneManager.id);
+
+      const { rows } = await weekOf(loneManager, { teamId });
+
+      expect(rows).toEqual([]);
+    });
+
+    it('lists a manager who leads a team once', async () => {
+      const { rows } = await weekOf(manager);
+      const ids = rows.map((row) => row.user.id);
+
+      expect(ids.filter((id) => id === manager.id)).toHaveLength(1);
+      expect(ids.sort()).toEqual([manager.id, member.id, unassigned.id].sort());
     });
   });
 

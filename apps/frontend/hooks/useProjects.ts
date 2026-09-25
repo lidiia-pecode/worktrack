@@ -31,7 +31,7 @@ export const useAllProjectsQuery = projectsQueries.useAllPagesQuery;
 
 export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 
-const useProjectsMutations = createEntityMutations<
+export const useProjectsMutations = createEntityMutations<
   Project,
   ProjectPayload,
   UpdateProjectPayload,
@@ -40,8 +40,9 @@ const useProjectsMutations = createEntityMutations<
 >({
   queryKey: queryKeys.projects.all,
 
-  // Removing somebody from a project deletes their future plans for it.
-  alsoInvalidate: [queryKeys.planning.all],
+  // Removing somebody from a project deletes their future plans for it, and a
+  // person's details list the projects they are on.
+  alsoInvalidate: [queryKeys.planning.all, queryKeys.users.all],
 
   api: {
     create: ProjectsClientApi.create,
@@ -64,14 +65,3 @@ export const useProjectDetails = (id?: string) =>
     queryFn: () => ProjectsClientApi.getById(id!),
     enabled: Boolean(id),
   });
-
-export function useProjects(page = 1, params?: ProjectQueryParams) {
-  const query = useProjectsQuery(page, params);
-
-  const actions = useProjectsMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}

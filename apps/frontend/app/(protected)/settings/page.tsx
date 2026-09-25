@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Settings2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { UserRole } from "@/types/enums";
@@ -9,7 +8,7 @@ import { SettingsSidebar } from "@/app/components/settings/SettingsSidebar";
 import { ProfileSettings } from "@/app/components/settings/profile/ProfileSettings";
 import { SecuritySettings } from "@/app/components/settings/security/SecuritySettings";
 import { CompanySettings } from "@/app/components/settings/company/CompanySettings";
-import { GlowBackground } from "@/components/ui/glow-background";
+import { PageHeader } from "@/app/components/shared/PageHeader";
 import { useGoogleLinkResult } from "@/hooks/auth/useGoogleLinkResult";
 
 type SettingsTab = "profile" | "security" | "company";
@@ -24,44 +23,27 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <GlowBackground />
+    <section className="flex min-h-full w-full flex-col p-6">
+      <PageHeader
+        title="Settings"
+        description="Manage your profile, security, and workspace."
+      />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl px-6 pb-12 pt-8 lg:px-8">
-        <header className="mb-8 flex justify-end">
-          <div className="flex flex-col gap-1 ">
-            <div className="flex gap-4 items-center justify-end">
-              <h1 className="text-2xl text-blue-400 font-semibold tracking-tight ">
-                Settings
-              </h1>
+      <div className="flex max-w-6xl flex-col gap-10 md:flex-row md:items-start">
+        <SettingsSidebar
+          activeTab={activeTab}
+          isOwner={isOwner}
+          onChange={setActiveTab}
+        />
 
-              <div className="flex h-7 w-7 items-center justify-center rounded border border-white/10 bg-white/[0.04] text-blue-400">
-                <Settings2 className="h-5 w-5" />
-              </div>
-            </div>
+        <div className="min-w-0 max-w-180 flex-1">
+          {activeTab === "profile" && <ProfileSettings user={user} />}
 
-            <p className="text-sm text-slate-400">
-              Manage your profile, security, and workspace.
-            </p>
-          </div>
-        </header>
+          {activeTab === "security" && <SecuritySettings />}
 
-        <div className="flex flex-col gap-10 justify-between md:flex-row md:items-start">
-          <SettingsSidebar
-            activeTab={activeTab}
-            isOwner={isOwner}
-            onChange={setActiveTab}
-          />
-
-          <main className="min-w-0 flex-1 max-w-180">
-            {activeTab === "profile" && <ProfileSettings user={user} />}
-
-            {activeTab === "security" && <SecuritySettings />}
-
-            {activeTab === "company" && isOwner && <CompanySettings />}
-          </main>
+          {activeTab === "company" && isOwner && <CompanySettings />}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -9,7 +9,7 @@ export const Logo = () => (
     </div>
 
     <span className="bg-brand bg-clip-text text-xl font-semibold tracking-tight text-transparent">
-      Worktrack
+      WorkTrack
     </span>
   </Link>
 );

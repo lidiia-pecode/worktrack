@@ -10,31 +10,33 @@ import {
   CompanyFormValues,
   companySchema,
 } from "@/lib/forms/schemas/company.schema";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
-import { SettingsField } from "../components/SettingsField";
 import Input from "../../../../components/ui/input";
+import { FormSelect } from "../../shared/FormSelect";
 
 import { CompanyCurrency, WeekDay } from "@/types/enums";
 import {
-  settingsFieldClassName,
-  settingsInputClassName,
   settingsLabelClassName,
   settingsNumberInputClassName,
-  settingsSelectContentClassName,
-  settingsSelectItemClassName,
 } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
+import { TIMEZONE_OPTIONS } from "@/lib/constants";
+
+const CURRENCY_OPTIONS = [
+  { value: CompanyCurrency.USD, label: "USD" },
+  { value: CompanyCurrency.EUR, label: "EUR" },
+  { value: CompanyCurrency.UAH, label: "UAH" },
+  { value: CompanyCurrency.GBP, label: "GBP" },
+];
+
+const WEEK_START_OPTIONS = [
+  { value: WeekDay.MONDAY, label: "Monday" },
+  { value: WeekDay.SUNDAY, label: "Sunday" },
+];
 
 export const CompanySettings = () => {
   const { company, actions } = useCompany();
@@ -101,18 +103,19 @@ export const CompanySettings = () => {
               placeholder="Your company name"
               {...register("companyName")}
               error={errors.companyName?.message}
-              className={settingsInputClassName}
               labelClassname={settingsLabelClassName}
             />
           </div>
         </section>
 
-        <div className="border-t border-blue-400/20" />
+        <div className="border-t border-border" />
 
         <section>
-          <h3 className="font-semibold text-slate-400">Regional preferences</h3>
+          <h3 className="font-semibold text-foreground">
+            Regional preferences
+          </h3>
 
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-muted-foreground">
             Configure how dates, times, and currency are handled.
           </p>
 
@@ -121,37 +124,15 @@ export const CompanySettings = () => {
               name="timezone"
               control={control}
               render={({ field }) => (
-                <SettingsField
+                <FormSelect
+                  id="timezone"
                   label="Timezone"
-                  htmlFor="timezone"
+                  placeholder="Select timezone"
+                  value={field.value}
+                  options={TIMEZONE_OPTIONS}
                   error={errors.timezone?.message}
-                >
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id="timezone"
-                      className={settingsFieldClassName}
-                      aria-invalid={!!errors.timezone}
-                    >
-                      <SelectValue placeholder="Select timezone" />
-                    </SelectTrigger>
-
-                    <SelectContent className={settingsSelectContentClassName}>
-                      <SelectItem
-                        value="UTC"
-                        className={settingsSelectItemClassName}
-                      >
-                        UTC
-                      </SelectItem>
-
-                      <SelectItem
-                        value="Europe/Kyiv"
-                        className={settingsSelectItemClassName}
-                      >
-                        Europe/Kyiv
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </SettingsField>
+                  onValueChange={field.onChange}
+                />
               )}
             />
 
@@ -159,48 +140,15 @@ export const CompanySettings = () => {
               name="currency"
               control={control}
               render={({ field }) => (
-                <SettingsField
+                <FormSelect
+                  id="currency"
                   label="Currency"
-                  htmlFor="currency"
+                  placeholder="Select currency"
+                  value={field.value}
+                  options={CURRENCY_OPTIONS}
                   error={errors.currency?.message}
-                >
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id="currency"
-                      className={settingsFieldClassName}
-                      aria-invalid={!!errors.currency}
-                    >
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-
-                    <SelectContent className={settingsSelectContentClassName}>
-                      <SelectItem
-                        value={CompanyCurrency.USD}
-                        className={settingsSelectItemClassName}
-                      >
-                        USD
-                      </SelectItem>
-                      <SelectItem
-                        value={CompanyCurrency.EUR}
-                        className={settingsSelectItemClassName}
-                      >
-                        EUR
-                      </SelectItem>
-                      <SelectItem
-                        value={CompanyCurrency.UAH}
-                        className={settingsSelectItemClassName}
-                      >
-                        UAH
-                      </SelectItem>
-                      <SelectItem
-                        value={CompanyCurrency.GBP}
-                        className={settingsSelectItemClassName}
-                      >
-                        GBP
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </SettingsField>
+                  onValueChange={field.onChange}
+                />
               )}
             />
 
@@ -208,36 +156,15 @@ export const CompanySettings = () => {
               name="weekStartDay"
               control={control}
               render={({ field }) => (
-                <SettingsField
+                <FormSelect
+                  id="weekStartDay"
                   label="Week starts on"
-                  htmlFor="weekStartDay"
+                  placeholder="Select day"
+                  value={field.value}
+                  options={WEEK_START_OPTIONS}
                   error={errors.weekStartDay?.message}
-                >
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger
-                      id="weekStartDay"
-                      className={settingsFieldClassName}
-                      aria-invalid={!!errors.weekStartDay}
-                    >
-                      <SelectValue placeholder="Select day" />
-                    </SelectTrigger>
-
-                    <SelectContent className={settingsSelectContentClassName}>
-                      <SelectItem
-                        value={WeekDay.MONDAY}
-                        className={settingsSelectItemClassName}
-                      >
-                        Monday
-                      </SelectItem>
-                      <SelectItem
-                        value={WeekDay.SUNDAY}
-                        className={settingsSelectItemClassName}
-                      >
-                        Sunday
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </SettingsField>
+                  onValueChange={field.onChange}
+                />
               )}
             />
 
