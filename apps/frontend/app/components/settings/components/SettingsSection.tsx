@@ -12,10 +12,7 @@ export const SettingsSection = ({
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-2xl",
-        "border border-blue-500/20",
-        "bg-blue-500/[0.08]",
-        "shadow-[0_8px_40px_rgba(0,0,0,0.12)]",
+        "overflow-hidden rounded-2xl border border-border bg-card shadow-sm",
         className,
       )}
     >

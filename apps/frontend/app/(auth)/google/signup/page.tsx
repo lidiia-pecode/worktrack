@@ -59,7 +59,7 @@ export default function GoogleSignupPage() {
     <AuthFormWrapper
       badge="Almost there"
       title="Create your workspace."
-      description="Just add your company name to finish creating your Worktrack workspace."
+      description="Just add your company name to finish creating your WorkTrack workspace."
     >
       <form
         onSubmit={handleSubmit(onSubmit)}

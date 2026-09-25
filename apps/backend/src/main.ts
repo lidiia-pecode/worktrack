@@ -76,7 +76,7 @@ async function bootstrap() {
 
   if (enableSwagger) {
     const config = new DocumentBuilder()
-      .setTitle('Worktrack API')
+      .setTitle('WorkTrack API')
       .setVersion('1.0')
       .addCookieAuth('access_token')
       .build();

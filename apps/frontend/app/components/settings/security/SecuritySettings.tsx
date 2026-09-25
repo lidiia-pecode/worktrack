@@ -16,10 +16,7 @@ import { isApiValidationError } from "@/lib/api/errors";
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
-import {
-  settingsInputClassName,
-  settingsLabelClassName,
-} from "../styles/settings-styles";
+import { settingsLabelClassName } from "../styles/settings-styles";
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -86,14 +83,14 @@ export const SecuritySettings = () => {
           />
 
           <div className="p-6">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-blue-400/20 bg-blue-500/5 p-4">
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-slate-100">
+                  <h3 className="text-sm font-semibold text-foreground">
                     Google
                   </h3>
 
-                  <p className="mt-1 text-sm text-slate-400">
+                  <p className="mt-1 text-sm text-muted-foreground">
                     Use your Google account to sign in.
                   </p>
                 </div>
@@ -139,7 +136,6 @@ export const SecuritySettings = () => {
                 autoComplete="current-password"
                 {...register("currentPassword")}
                 error={errors.currentPassword?.message}
-                className={settingsInputClassName}
                 labelClassname={settingsLabelClassName}
               />
             )}
@@ -153,7 +149,6 @@ export const SecuritySettings = () => {
                   onChange: revalidateConfirmation,
                 })}
                 error={errors.newPassword?.message}
-                className={settingsInputClassName}
                 labelClassname={settingsLabelClassName}
               />
 
@@ -162,7 +157,6 @@ export const SecuritySettings = () => {
                 autoComplete="new-password"
                 {...register("confirmPassword")}
                 error={errors.confirmPassword?.message}
-                className={settingsInputClassName}
                 labelClassname={settingsLabelClassName}
               />
             </div>
@@ -172,7 +166,7 @@ export const SecuritySettings = () => {
             {hasPassword && (
               <Link
                 href="/forgot-password"
-                className="mr-auto text-sm whitespace-nowrap text-blue-400 hover:underline"
+                className="mr-auto text-sm whitespace-nowrap text-brand hover:underline"
               >
                 Forgot your password?
               </Link>
@@ -191,17 +185,17 @@ export const SecuritySettings = () => {
       </SettingsSection>
 
       <SettingsSection>
-        <div className="flex items-start gap-3 rounded-lg border border-blue-400/20 bg-blue-500/5 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/10 text-blue-300">
+        <div className="flex items-start gap-3 p-6">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-brand-subtle text-brand">
             <ShieldCheck className="h-5 w-5" />
           </div>
 
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-slate-100">
+            <h3 className="text-sm font-semibold text-foreground">
               Account security
             </h3>
 
-            <p className="mt-1 text-sm leading-relaxed text-slate-400">
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
               Your account is protected with secure authentication and encrypted
               sessions.
             </p>

@@ -8,7 +8,7 @@ import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
-import { useProjectDetails, useProjects } from "@/hooks/useProjects";
+import { useProjectDetails, useProjectsMutations } from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 
@@ -70,9 +70,7 @@ export function ProjectModal({
         .filter((id): id is string => Boolean(id)) ?? [],
   );
 
-  const {
-    actions: { create, update, archive, unarchive },
-  } = useProjects();
+  const { create, update, archive, unarchive } = useProjectsMutations();
 
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();

@@ -31,8 +31,8 @@ export default function InvitationCompletePage() {
       title="Join your workspace."
       description={
         invitation.teamName
-          ? `You're joining ${invitation.teamName}. Complete your account setup to start working with your team on Worktrack.`
-          : "Complete your account setup and start working with your team on Worktrack."
+          ? `You're joining ${invitation.teamName}. Complete your account setup to start working with your team on WorkTrack.`
+          : "Complete your account setup and start working with your team on WorkTrack."
       }
     >
       <AuthForm

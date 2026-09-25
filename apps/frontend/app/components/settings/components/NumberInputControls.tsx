@@ -21,10 +21,10 @@ export const NumberInputControls = ({
   const buttonStyles = cn(
     "flex items-center justify-center",
     "h-2.5 w-6 rounded-xs",
-    "bg-blue-600/60 text-white/60",
+    "bg-muted/60 text-muted-foreground",
     "transition-colors",
-    "hover:bg-blue-400 hover:text-white",
-    "active:bg-blue-300",
+    "hover:bg-accent hover:text-accent-foreground",
+    "active:bg-brand-muted",
     "disabled:pointer-events-none disabled:opacity-40",
     "md:cursor-pointer",
     buttonClassName,

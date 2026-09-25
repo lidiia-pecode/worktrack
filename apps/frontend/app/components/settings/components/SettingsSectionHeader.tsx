@@ -12,18 +12,18 @@ export const SettingsSectionHeader = ({
   description,
 }: SettingsSectionHeaderProps) => {
   return (
-    <div className="border-b border-blue-400/50 px-6 py-5">
+    <div className="border-b border-border px-6 py-5">
       <div className="flex items-start gap-3">
         {Icon && (
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/10 text-blue-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-brand-subtle text-brand">
             <Icon className="h-5 w-5" />
           </div>
         )}
 
         <div className="min-w-0">
-          <h2 className="text-lg font-semibold text-slate-100">{title}</h2>
+          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
 
-          <p className="text-sm text-slate-300">{description}</p>
+          <p className="text-sm text-muted-foreground">{description}</p>
         </div>
       </div>
     </div>

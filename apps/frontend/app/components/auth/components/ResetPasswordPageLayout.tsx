@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
 
-import { GlowBackground } from "@/components/ui/glow-background";
-
 interface ResetPasswordPageLayoutProps {
   children: ReactNode;
 }
@@ -10,10 +8,8 @@ export const ResetPasswordPageLayout = ({
   children,
 }: ResetPasswordPageLayoutProps) => {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 px-6 text-white">
-      <GlowBackground variant="auth" />
-
-      <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-white/[0.04] p-8 pb-10 backdrop-blur-xl">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 pb-10 shadow-sm">
         {children}
       </div>
     </div>

@@ -13,7 +13,7 @@ export function FilterBar({ children, className }: FilterBarProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 sm:flex-row sm:items-end sm:flex-wrap",
+        "flex flex-col gap-3 sm:flex-row sm:items-start sm:flex-wrap",
         className,
       )}
     >

@@ -6,7 +6,7 @@ import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useTeams, useTeamMembers } from "@/hooks/useTeams";
+import { useTeamMembers, useTeamsMutations } from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { todayISODate } from "@/lib/utils/date";
@@ -48,9 +48,7 @@ export function TeamModal({
     null,
   );
 
-  const {
-    actions: { create, update, archive, unarchive },
-  } = useTeams();
+  const { create, update, archive, unarchive } = useTeamsMutations();
 
   const { addMember } = useTeamMembers(team?.id ?? "");
 

@@ -173,7 +173,7 @@ export const PlanningWeekRow = ({
           <Badge
             variant="warning"
             title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
-            className="mt-1 px-1.5 py-0.2 text-[10px] font-medium"
+            className="mt-1 px-1.5 text-[10px] font-medium"
           >
             Over by {formatDuration(overMinutes)}
           </Badge>

@@ -60,9 +60,13 @@ export function createEntityQuery<
     return toListResult(query);
   };
 
-  const useEntityAllPagesQuery = (params?: TParams) => {
+  const useEntityAllPagesQuery = (
+    params?: TParams,
+    options: { enabled?: boolean } = {},
+  ) => {
     const query = useQuery({
       queryKey: config.queryKey.allPages(params),
+      enabled: options.enabled,
       queryFn: () =>
         fetchAllPages((page, pageSize) =>
           config.api.getAll({

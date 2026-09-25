@@ -147,7 +147,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           {isLogin
             ? "Enter your credentials to access your workspace."
             : isSignup
-              ? "Set up your account and get started with Worktrack."
+              ? "Set up your account and get started with WorkTrack."
               : "Create your account to join this workspace."}
         </p>
       </div>

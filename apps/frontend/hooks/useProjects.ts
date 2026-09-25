@@ -31,7 +31,7 @@ export const useAllProjectsQuery = projectsQueries.useAllPagesQuery;
 
 export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 
-const useProjectsMutations = createEntityMutations<
+export const useProjectsMutations = createEntityMutations<
   Project,
   ProjectPayload,
   UpdateProjectPayload,
@@ -65,14 +65,3 @@ export const useProjectDetails = (id?: string) =>
     queryFn: () => ProjectsClientApi.getById(id!),
     enabled: Boolean(id),
   });
-
-export function useProjects(page = 1, params?: ProjectQueryParams) {
-  const query = useProjectsQuery(page, params);
-
-  const actions = useProjectsMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}

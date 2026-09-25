@@ -64,7 +64,7 @@ export function useHasArchivedTeams() {
   return { hasArchivedTeams: items.length > 0, isLoading };
 }
 
-const useTeamsMutations = createEntityMutations<
+export const useTeamsMutations = createEntityMutations<
   Team,
   CreateTeamPayload,
   UpdateTeamPayload,
@@ -90,17 +90,6 @@ const useTeamsMutations = createEntityMutations<
     unarchive: "Team restored successfully!",
   },
 });
-
-export function useTeams(page = 1, params?: TeamQueryParams) {
-  const query = useTeamsQuery(page, params);
-
-  const actions = useTeamsMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
 
 export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();

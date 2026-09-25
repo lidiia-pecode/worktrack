@@ -318,7 +318,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                 <Badge
                   variant="warning"
                   title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
-                  className="px-1.5 py-0.2 text-[10px] font-medium"
+                  className="px-1.5 text-[10px] font-medium"
                 >
                   −{formatDuration(behindMinutes)}
                 </Badge>
