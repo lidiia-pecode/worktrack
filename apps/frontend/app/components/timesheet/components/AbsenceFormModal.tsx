@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarOff, Trash2 } from "lucide-react";
@@ -79,7 +79,6 @@ export const AbsenceFormModal = ({
     register,
     handleSubmit,
     control,
-    watch,
     getValues,
     setValue,
     reset,
@@ -94,7 +93,7 @@ export const AbsenceFormModal = ({
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const startDate = watch("startDate");
+  const startDate = useWatch({ control, name: "startDate" });
 
   // Moving the first day past the last is almost always a longer absence, not
   // a shorter one, so the last day follows rather than becoming invalid.

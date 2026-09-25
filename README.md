@@ -106,6 +106,7 @@ across both applications, skipping any that does not define the script. The
 backend tests need the stack running; the frontend tests do not:
 
 ```bash
+npm run format:check
 npm run lint
 npm run typecheck
 npm run build

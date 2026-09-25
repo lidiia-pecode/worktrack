@@ -79,7 +79,9 @@ export function ProjectMembersSection({
           emptyMessage="No members yet. Click 'Add members' to get started."
           renderTrailing={(user) => (
             <div className="flex items-center gap-2">
-              {isArchivedUser(user) && <Badge variant="neutral">Archived</Badge>}
+              {isArchivedUser(user) && (
+                <Badge variant="neutral">Archived</Badge>
+              )}
 
               <Button
                 type="button"

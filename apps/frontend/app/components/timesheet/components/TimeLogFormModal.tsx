@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Calendar, Trash2 } from "lucide-react";
@@ -100,7 +100,6 @@ export const TimeLogFormModal = ({
     register,
     handleSubmit,
     control,
-    watch,
     getValues,
     setValue,
     setError,
@@ -124,9 +123,10 @@ export const TimeLogFormModal = ({
 
   const hasNoOptions = projectOptions.length === 0;
 
-  const selectedProjectId = watch("projectId");
-  const hours = watch("hours");
-  const minutes = watch("minutes");
+  const [selectedProjectId, hours, minutes] = useWatch({
+    control,
+    name: ["projectId", "hours", "minutes"],
+  });
 
   const activityOptions = useMemo(
     () =>

@@ -741,9 +741,9 @@ and planning rules, monthly locking in and outside UTC, the three reports, page 
 limits, name checks, and session refresh, rate limits and token clean-up — most
 against a real
 database. The frontend has Vitest tests for its date, month, absence, lock and
-paging helpers, which CI does not run yet. GitHub Actions runs the backend suites,
-lint, typecheck and build for both applications on every pull request, but does
-not check formatting and allows lint warnings. The nightly clean-up of
+paging helpers. GitHub Actions runs the formatting check, lint with no warnings
+allowed, typecheck, build and tests for both applications on every pull
+request. The nightly clean-up of
 expired sessions and used one-time tokens runs only while the backend is awake,
 which on the free development stand is not every night.
 
