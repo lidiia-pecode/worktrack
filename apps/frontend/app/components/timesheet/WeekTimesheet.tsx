@@ -24,6 +24,7 @@ import {
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { mapAbsencesByDate } from "@/lib/utils/absence";
+import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 
 import Container from "../layout/Container";
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -89,6 +90,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
 
   const dateFrom = toISODate(weekStart);
   const dateTo = toISODate(getWeekEnd(weekStart));
+  const todayIso = todayISODate(timezone);
 
   const {
     items: timelogs,
@@ -130,7 +132,12 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     refetch: refetchExpected,
   } = useExpectedHours({ dateFrom, dateTo });
 
-  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
+  // An absence is frozen whole once any of its days locks, so its months count.
+  const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
+  const { isLocked, isEditable } = useLockedDates(
+    lockRange.dateFrom,
+    lockRange.dateTo,
+  );
   const graceMonth = useGraceMonth();
 
   // Context only: the timesheet works the same whether or not a plan loads.
@@ -202,8 +209,6 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
       nonBillableMinutes: nonBillable,
     };
   }, [timelogs]);
-
-  const todayIso = todayISODate(timezone);
 
   const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
 
@@ -405,6 +410,10 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
               <div className="grid h-full grid-cols-7">
                 {weekDates.map((date) => {
                   const iso = toISODate(date);
+                  const absence = absencesByDate[iso];
+                  const isAbsenceLocked =
+                    !!absence &&
+                    isRangeLocked(isLocked, absence.startDate, absence.endDate);
 
                   return (
                     <DayColumn
@@ -412,12 +421,13 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                       date={date}
                       timelogs={timelogsByDate[iso] ?? []}
                       plannedEntries={plannedByDate[iso] ?? []}
-                      absence={absencesByDate[iso]}
+                      absence={absence}
+                      isAbsenceLocked={isAbsenceLocked}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
                       expectedMinutes={dailyTargetMinutes}
                       isLocked={isLocked(iso)}
-                      isEditable={isEditable(iso)}
+                      isEditable={isEditable(iso) && !isAbsenceLocked}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}

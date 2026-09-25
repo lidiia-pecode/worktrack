@@ -164,6 +164,18 @@ export function toMonthKey(date: string): string {
   return date.slice(0, 7);
 }
 
+/** The YYYY-MM month key the given number of months after (or before) another. */
+export function addMonthsToKey(monthKey: string, amount: number): string {
+  const firstDay = new Date(`${monthKey}-01T00:00:00`);
+  const shifted = new Date(
+    firstDay.getFullYear(),
+    firstDay.getMonth() + amount,
+    1,
+  );
+
+  return toMonthKey(toISODate(shifted));
+}
+
 /** The first and last day of a YYYY-MM month, as YYYY-MM-DD dates. */
 export function getMonthRange(monthKey: string): {
   dateFrom: string;

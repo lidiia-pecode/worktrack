@@ -23,6 +23,7 @@ type Props = {
   timelogs: TimeLog[];
   plannedEntries: PlanningEntry[];
   absence?: Absence;
+  isAbsenceLocked: boolean;
   totalMinutes: number;
   pixelsPerMinute: number;
   expectedMinutes: number;
@@ -38,6 +39,7 @@ export const DayColumn = ({
   timelogs,
   plannedEntries,
   absence,
+  isAbsenceLocked,
   totalMinutes,
   pixelsPerMinute,
   expectedMinutes,
@@ -111,6 +113,13 @@ export const DayColumn = ({
           {absence.note && (
             <span className="line-clamp-2 text-[11px] text-muted-foreground">
               {absence.note}
+            </span>
+          )}
+
+          {isAbsenceLocked && !isLocked && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+              <Lock className="size-3" aria-hidden />
+              Part of it is in a locked month
             </span>
           )}
         </div>
