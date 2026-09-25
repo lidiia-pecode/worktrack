@@ -54,10 +54,9 @@ Install dependencies:
 npm install
 ```
 
-> Stop the containers before installing on your machine. `npm install` and
-> `npm ci` replace `node_modules`, which the running containers mount, and that
-> leaves them without dependencies. If you install while the stack is up, run
-> `make down && make up` afterwards.
+> The containers keep their own `node_modules`, so installing on your machine
+> does not affect them. After a change to `package.json` or `package-lock.json`,
+> run `make up` to give the containers the new dependencies.
 
 Start the development environment:
 
@@ -71,6 +70,14 @@ This command will:
 - start PostgreSQL;
 - start the backend;
 - start the frontend.
+
+Every `make up` (and `make dev`) starts the apps fresh: `node_modules` and the
+Next.js cache are recreated from the new images, which takes about half a minute.
+Only the database is kept. Both watchers poll for file changes, because file
+events from macOS do not reliably reach the containers.
+
+Avoid running the backend's `npm run build` on your machine while the stack is
+up: it rewrites `apps/backend/dist`, which the backend container also uses.
 
 For the first project setup (or after resetting the database), initialize the database:
 
@@ -90,7 +97,7 @@ re-run `make seed`.
 ## Available Commands
 
 ```bash
-make up         # Start development containers
+make up         # Rebuild images and start fresh app containers; keeps the database
 make down       # Stop containers
 make down-hard  # Stop containers and remove database volumes
 make migrate    # Run database migrations
