@@ -6,27 +6,26 @@ import { refreshSession } from "./refresh-session";
 
 let refreshPromise: Promise<boolean> | null = null;
 
+const readError = (res: Response) => res.json().catch(() => ({}));
+
 export async function basicClient<T>(
   request: () => Promise<Response>,
 ): Promise<T> {
   const res = await request();
   if (res.ok) return parseJsonSafe<T>(res);
-  const errorData = await res.json().catch(() => ({}));
-  throw errorData;
+  throw await readError(res);
 }
 
-export async function apiClient<T>(
+/** The OK response, after refreshing the session once if it had expired. */
+export async function authorizedFetch(
   request: () => Promise<Response>,
-): Promise<T> {
+): Promise<Response> {
   const res = await request();
 
-  if (res.ok) {
-    return parseJsonSafe<T>(res);
-  }
+  if (res.ok) return res;
 
   if (res.status !== 401) {
-    const errorData = await res.json().catch(() => ({}));
-    throw errorData;
+    throw await readError(res);
   }
 
   if (!refreshPromise) {
@@ -44,15 +43,18 @@ export async function apiClient<T>(
 
   const retry = await request();
 
-  if (retry.ok) {
-    return parseJsonSafe<T>(retry);
-  }
+  if (retry.ok) return retry;
 
   if (retry.status === 401) {
     handleSessionExpired();
     throw new Error("SESSION_EXPIRED");
   }
 
-  const errorData = await retry.json().catch(() => ({}));
-  throw errorData;
+  throw await readError(retry);
+}
+
+export async function apiClient<T>(
+  request: () => Promise<Response>,
+): Promise<T> {
+  return parseJsonSafe<T>(await authorizedFetch(request));
 }

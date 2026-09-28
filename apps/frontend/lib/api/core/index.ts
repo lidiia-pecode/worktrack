@@ -1,6 +1,7 @@
 export * from "./build-query-string";
 export * from "./create-client";
 export * from "./create-crud-client";
+export * from "./downloaded-file";
 export * from "./handle-session-expired";
 export * from "./http-client";
 export * from "./parse-json-safe";

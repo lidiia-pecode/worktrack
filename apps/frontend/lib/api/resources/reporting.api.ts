@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  HoursExportQuery,
   HoursReport,
   HoursReportQuery,
   PlannedVsActualQuery,
@@ -27,6 +28,9 @@ export const ReportingClientApi = {
 
   getHoursReport: (params: HoursReportQuery) =>
     client.get<HoursReport>(`/hours${buildQueryString(params)}`),
+
+  exportHours: (params: HoursExportQuery) =>
+    client.download(`/hours/export${buildQueryString(params)}`),
 
   getPlannedVsActual: (params: PlannedVsActualQuery) =>
     client.get<PlannedVsActualReport>(

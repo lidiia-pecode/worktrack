@@ -1,6 +1,7 @@
 // core/create-client.ts
 import { API_PROXY_URL } from "@/lib/constants";
-import { apiClient, basicClient } from "./http-client";
+import { readDownloadedFile } from "./downloaded-file";
+import { apiClient, authorizedFetch, basicClient } from "./http-client";
 
 export type Client = typeof apiClient | typeof basicClient;
 
@@ -21,6 +22,15 @@ export function createClient({
         fetch(`${baseUrl}${path}`, {
           credentials: "include",
         }),
+      ),
+
+    download: async (path = "") =>
+      readDownloadedFile(
+        await authorizedFetch(() =>
+          fetch(`${baseUrl}${path}`, {
+            credentials: "include",
+          }),
+        ),
       ),
 
     post: <T>(path = "", body?: unknown) =>

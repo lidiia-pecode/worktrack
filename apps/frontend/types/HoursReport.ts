@@ -28,6 +28,11 @@ export interface HoursReport {
   isProvisional: boolean;
 }
 
+export interface HoursExportQuery {
+  dateFrom: string;
+  dateTo: string;
+}
+
 export interface HoursReportQuery {
   dateFrom: string;
   dateTo: string;

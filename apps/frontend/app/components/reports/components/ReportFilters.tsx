@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { ReactNode, useMemo } from "react";
 
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { formatMonthLabel } from "@/lib/utils/date";
@@ -31,6 +31,8 @@ type ReportFiltersProps = {
   groupBy: HoursReportGroupBy;
   onGroupByChange: (groupBy: HoursReportGroupBy) => void;
   showGroupBy: boolean;
+  /** Shown at the end of the bar, such as an export button. */
+  actions?: ReactNode;
 };
 
 export const ReportFilters = ({
@@ -42,6 +44,7 @@ export const ReportFilters = ({
   groupBy,
   onGroupByChange,
   showGroupBy,
+  actions,
 }: ReportFiltersProps) => {
   const { months } = useReportingPeriods();
 
@@ -106,6 +109,8 @@ export const ReportFilters = ({
           }
         />
       )}
+
+      {actions}
     </FilterBar>
   );
 };
