@@ -144,7 +144,7 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
               {formatDuration(totalPlanned)}
             </span>
 
-            <span className="text-muted-foreground/50">/</span>
+            <span className="text-muted-foreground">/</span>
 
             <span className="text-muted-foreground tabular-nums">
               {formatDuration(totalAvailable)} available

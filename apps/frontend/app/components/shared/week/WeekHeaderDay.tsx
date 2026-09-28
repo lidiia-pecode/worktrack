@@ -58,7 +58,7 @@ export function WeekHeaderDay({
       <p
         className={`
           text-xs font-medium
-          ${isOverTarget ? "text-warning" : "text-muted-foreground"}
+          ${isOverTarget ? "text-warning-text" : "text-muted-foreground"}
         `}
       >
         {totalMinutes > 0 ? formatDuration(totalMinutes) : "-"}

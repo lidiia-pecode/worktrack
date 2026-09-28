@@ -108,7 +108,7 @@ export const PlanningWeekRow = ({
           return (
             <td
               key={iso}
-              className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground/60"
+              className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground"
             >
               -
             </td>
@@ -143,7 +143,7 @@ export const PlanningWeekRow = ({
               type="button"
               onClick={() => onOpenDay(row, iso)}
               aria-label={`Plan ${fullName(row.user)} on ${formatLongDayLabel(date)}`}
-              className="group flex h-full min-h-14 w-full flex-col gap-1 p-2 text-left hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+              className="group flex h-full min-h-14 w-full flex-col gap-1 p-2 text-left hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <DayEntries absence={absence} entries={entries} />
 

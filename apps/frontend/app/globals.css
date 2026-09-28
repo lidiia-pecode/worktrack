@@ -7,13 +7,12 @@
 /* ==========================================================================
    WORKTRACK — Design Tokens
 
-   ПРАВИЛО КОНТРАСТУ (важливо, бо саме тут була помилка раніше):
-   --brand-foreground порахований від РЕАЛЬНОЇ яскравості --brand:
-   кобальт і індиго тут — насичені, доволі темні кольори (L 0.50-0.58),
-   тож --brand-foreground = майже білий (перевірено: контраст 4.8-4.9:1,
-   проходить WCAG AA). Якщо колись зробите --brand світлим/пастельним —
-   --brand-foreground треба буде замінити на темне чорнило й перевірити
-   контраст заново тим самим способом.
+   ПРАВИЛО КОНТРАСТУ (WCAG AA, 4.5:1 для тексту):
+   --brand (L 0.51) з --brand-foreground дає 5.3:1, а текст кольору бренду
+   на картці й на --brand-muted — щонайменше 4.5:1. Текст попередження,
+   успіху й помилки пишеться кольорами *-text: заливки --warning, --success
+   і --destructive для тексту на світлому фоні заслабкі. Після зміни
+   будь-якого базового кольору контраст треба перевірити заново.
 
    ПРАВИЛО ЄДИНОГО ДЖЕРЕЛА ПРАВДИ:
    Редагуйте лише --background, --foreground, --brand, --brand-secondary,
@@ -40,7 +39,7 @@
 
   /* Warm stone */
   --muted: oklch(0.81 0.018 95);
-  --muted-foreground: oklch(0.48 0.018 205);
+  --muted-foreground: oklch(0.42 0.018 205);
 
   --secondary: oklch(0.81 0.018 95);
   --secondary-foreground: oklch(0.29 0.018 195);
@@ -58,10 +57,19 @@
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
 
-  --brand: oklch(0.62 0.07 205);
+  --brand: oklch(0.51 0.07 205);
   --brand-secondary: oklch(0.51 0.055 230);
 
   --brand-foreground: oklch(0.98 0.006 200);
+
+  --brand-hover: color-mix(in oklch, var(--brand) 88%, black);
+  --brand-secondary-hover: color-mix(
+    in oklch,
+    var(--brand-secondary) 88%,
+    black
+  );
+
+  --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
@@ -82,14 +90,17 @@
      Semantic states
      ------------------------------------------------------------------------ */
 
-  --destructive: oklch(0.58 0.17 25);
+  --destructive: oklch(0.56 0.17 25);
   --destructive-foreground: oklch(0.98 0.01 25);
+  --destructive-text: color-mix(in oklch, var(--destructive) 76%, black);
 
   --success: oklch(0.58 0.105 155);
-  --success-foreground: oklch(0.2 0.025 155);
+  --success-foreground: oklch(0.17 0.025 155);
+  --success-text: color-mix(in oklch, var(--success) 76%, black);
 
   --warning: oklch(0.68 0.12 78);
   --warning-foreground: oklch(0.23 0.025 78);
+  --warning-text: color-mix(in oklch, var(--warning) 76%, black);
 
   /* ------------------------------------------------------------------------
      Form
@@ -176,6 +187,9 @@
   --color-brand: var(--brand);
   --color-brand-secondary: var(--brand-secondary);
   --color-brand-foreground: var(--brand-foreground);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-on-dark: var(--brand-on-dark);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
@@ -183,12 +197,15 @@
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-text: var(--destructive-text);
 
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
 
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
+  --color-warning-text: var(--warning-text);
 
   --color-input: var(--input);
   --color-input-foreground: var(--input-foreground);
@@ -281,7 +298,7 @@ body {
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
 
   body {

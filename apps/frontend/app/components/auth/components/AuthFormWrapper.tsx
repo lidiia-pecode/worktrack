@@ -22,7 +22,7 @@ export const AuthFormWrapper = ({
         <GlowBackground variant="auth" />
 
         <div className="relative z-10">
-          <Logo />
+          <Logo onDark />
         </div>
 
         <div className="relative z-10 my-auto -translate-y-10 max-w-xl py-20 xl:-translate-y-14">

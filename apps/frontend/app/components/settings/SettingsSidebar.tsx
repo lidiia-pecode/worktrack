@@ -60,7 +60,7 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
               className={cn(
                 "group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
                 "border border-transparent transition-all duration-200",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "border-border bg-brand-subtle" : "hover:bg-muted/30",
               )}
             >

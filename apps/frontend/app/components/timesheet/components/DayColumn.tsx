@@ -1,11 +1,15 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { CalendarClock, Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
-import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  isWeekend,
+} from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
@@ -49,6 +53,7 @@ export const DayColumn = ({
   onAbsenceClick,
   onEntryClick,
 }: Props) => {
+  const plannedId = useId();
   const [hovered, setHovered] = useState<{
     timelog: TimeLog;
     anchor: DOMRect;
@@ -59,6 +64,9 @@ export const DayColumn = ({
   const isOverTarget = overTargetMinutes > 0;
 
   const targetLineOffset = expectedMinutes * pixelsPerMinute;
+
+  const showsPlan =
+    !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
     () => buildSegments(timelogs, expectedMinutes, pixelsPerMinute),
@@ -86,19 +94,24 @@ export const DayColumn = ({
       role={isEditable ? "button" : undefined}
       tabIndex={isEditable ? 0 : undefined}
       aria-label={
-        absence && isEditable
-          ? `Edit the absence covering ${toISODate(date)}`
+        isEditable
+          ? absence
+            ? `Edit the absence on ${formatLongDayLabel(date)}`
+            : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
+      aria-describedby={isEditable && showsPlan ? plannedId : undefined}
       onClick={isEditable ? openDay : undefined}
       onKeyDown={(e) => {
         if (isEditable && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
           openDay();
         }
       }}
       className={cn(
         DAY_COLUMN_CLASS,
-        isEditable && "cursor-pointer hover:bg-muted/20",
+        isEditable &&
+          "cursor-pointer hover:bg-muted/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
         absence && ABSENCE_PATTERN,
         !absence && weekend && WEEKEND_PATTERN,
         !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
@@ -117,7 +130,7 @@ export const DayColumn = ({
           )}
 
           {isAbsenceLocked && !isLocked && (
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <Lock className="size-3" aria-hidden />
               Part of it is in a locked month
             </span>
@@ -128,8 +141,11 @@ export const DayColumn = ({
       {/* Once any time is logged, the record replaces the plan. */}
       {!absence && timelogs.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          {plannedEntries.length > 0 && (
-            <>
+          {showsPlan && (
+            <div
+              id={plannedId}
+              className="flex max-w-full flex-col items-center gap-1"
+            >
               <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <CalendarClock className="size-3" aria-hidden />
                 Planned
@@ -143,10 +159,10 @@ export const DayColumn = ({
                   {entry.project.name} · {formatDuration(entry.plannedMinutes)}
                 </span>
               ))}
-            </>
+            </div>
           )}
 
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             {isLocked && (
               <>
                 <Lock className="size-3" aria-hidden />
@@ -177,7 +193,7 @@ export const DayColumn = ({
 
           <Badge
             variant="warning"
-            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold opacity-60 shadow-sm"
+            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}

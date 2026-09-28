@@ -34,7 +34,7 @@ export function ErrorState({
       )}
     >
       <div className="mb-6 rounded-full border border-destructive/20 bg-destructive/10 p-5">
-        <AlertTriangle className="h-8 w-8 text-destructive" />
+        <AlertTriangle className="h-8 w-8 text-destructive-text" />
       </div>
 
       <h2 className="text-xl font-semibold tracking-tight">{title}</h2>

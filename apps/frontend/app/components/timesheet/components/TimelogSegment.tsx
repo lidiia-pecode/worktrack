@@ -22,12 +22,22 @@ export const TimelogSegment = ({
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
 
+  // A read-only entry stays focusable so its details can still be shown by
+  // keyboard.
   return (
     <div
-      role={onClick ? "button" : undefined}
+      role="button"
       tabIndex={0}
       aria-label={`${formatDuration(timelog.minutes)} — ${projectName} / ${activityName}`}
+      aria-disabled={!onClick}
       onClick={(e) => {
+        e.stopPropagation();
+        onClick?.(timelog);
+      }}
+      onKeyDown={(e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+
+        e.preventDefault();
         e.stopPropagation();
         onClick?.(timelog);
       }}
@@ -48,6 +58,9 @@ export const TimelogSegment = ({
         ring-1
         ring-foreground/5
         overflow-hidden
+        focus-visible:outline-2
+        focus-visible:-outline-offset-2
+        focus-visible:outline-ring
         hover:ring-foreground/15
         hover:brightness-105
         transition-all
@@ -66,7 +79,7 @@ export const TimelogSegment = ({
           {formatDuration(timelog.minutes)}
         </span>
 
-        <span className="truncate text-[10px] leading-tight text-foreground/70">
+        <span className="truncate text-[10px] leading-tight text-foreground/80">
           {projectName} · {activityName}
         </span>
       </div>

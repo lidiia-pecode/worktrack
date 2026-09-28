@@ -72,7 +72,7 @@ export const LandingPage = () => {
 
               <Link
                 href="/register"
-                className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand/90"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
               >
                 Sign up free
               </Link>
@@ -105,7 +105,7 @@ export const LandingPage = () => {
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand/90"
+                className="inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
               >
                 Start free
               </Link>
@@ -117,7 +117,7 @@ export const LandingPage = () => {
               </a>
             </div>
 
-            <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground/70">
+            <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
               No credit card · cancel anytime
             </p>
           </motion.div>
@@ -136,7 +136,7 @@ export const LandingPage = () => {
                 <span className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
                   This week&apos;s board
                 </span>
-                <span className="font-mono text-xs text-muted-foreground/70">
+                <span className="font-mono text-xs text-muted-foreground">
                   48 tasks · 6 people
                 </span>
               </div>
@@ -158,7 +158,7 @@ export const LandingPage = () => {
                       <span className="text-xs font-semibold text-foreground">
                         {stage.name}
                       </span>
-                      <span className="ml-auto font-mono text-[11px] text-muted-foreground/70">
+                      <span className="ml-auto font-mono text-[11px] text-muted-foreground">
                         {stage.count}
                       </span>
                     </div>
@@ -210,7 +210,7 @@ export const LandingPage = () => {
                 viewport={{ once: true, amount: 0.5 }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
               >
-                <span className="font-mono text-sm text-brand-secondary/70">
+                <span className="font-mono text-sm text-brand-secondary">
                   {step.number}
                 </span>
                 <h3 className="mt-2 text-xl font-semibold text-foreground">

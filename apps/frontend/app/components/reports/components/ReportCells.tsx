@@ -16,13 +16,13 @@ export const Minutes = ({
       {formatDuration(value)}
     </span>
   ) : (
-    <span className="text-muted-foreground/60">-</span>
+    <span className="text-muted-foreground">-</span>
   );
 
 /** A share as a whole percentage, or "—" when there was nothing to measure. */
 export const Percent = ({ value }: { value: number | null }) =>
   value === null ? (
-    <span className="text-muted-foreground/60">—</span>
+    <span className="text-muted-foreground">—</span>
   ) : (
     <span className="font-medium text-foreground">
       {Math.round(value * 100)}%

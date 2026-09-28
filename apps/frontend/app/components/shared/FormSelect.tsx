@@ -121,7 +121,7 @@ export function FormSelect({
         <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>
       )}
 
-      {error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-destructive-text">{error}</p>}
     </div>
   );
 }

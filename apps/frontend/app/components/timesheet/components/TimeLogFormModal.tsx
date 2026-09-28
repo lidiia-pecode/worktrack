@@ -254,7 +254,9 @@ export const TimeLogFormModal = ({
             />
 
             {errors.hours && (
-              <p className="text-xs text-destructive">{errors.hours.message}</p>
+              <p className="text-xs text-destructive-text">
+                {errors.hours.message}
+              </p>
             )}
           </FormSection>
 
@@ -314,7 +316,7 @@ export const TimeLogFormModal = ({
             <input
               type="checkbox"
               {...register("isBillable")}
-              className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring/20"
+              className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
             />
             <span className="text-sm text-foreground">Billable</span>
           </label>

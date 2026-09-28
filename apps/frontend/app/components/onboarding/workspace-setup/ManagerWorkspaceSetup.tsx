@@ -195,7 +195,7 @@ export function ManagerWorkspaceSetup() {
                   className={[
                     "flex size-10 shrink-0 items-center justify-center rounded-xl",
                     step.completed
-                      ? "bg-success/10 text-success"
+                      ? "bg-success/10 text-success-text"
                       : step.locked
                         ? "bg-muted text-muted-foreground"
                         : "bg-brand-subtle text-brand",

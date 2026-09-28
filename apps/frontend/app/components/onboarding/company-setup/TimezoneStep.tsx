@@ -74,7 +74,7 @@ export function TimezoneStep({ onContinue, onBack, onSkip }: StepProps) {
           </select>
 
           {errors.timezone && (
-            <p className="text-xs font-medium text-destructive">
+            <p className="text-xs font-medium text-destructive-text">
               {errors.timezone.message}
             </p>
           )}

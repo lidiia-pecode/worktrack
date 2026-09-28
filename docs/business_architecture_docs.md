@@ -16,11 +16,11 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 25 September 2026**, and reconciled again
-with Phase 11. Phases 0 to 11 of the roadmap in §7 are delivered, as are Scopes C,
+with Phases 11 and 12. Phases 0 to 12 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); the next is Phase 12, accessibility.
+production launch stage (§7); the next is Phase 13, export.
 
 ---
 
@@ -741,7 +741,7 @@ and planning rules, monthly locking in and outside UTC, the three reports, page 
 limits, name checks, and session refresh, rate limits and token clean-up — most
 against a real
 database. The frontend has Vitest tests for its date, month, absence, lock and
-paging helpers. GitHub Actions runs the formatting check, lint with no warnings
+paging helpers and the tab keyboard navigation. GitHub Actions runs the formatting check, lint with no warnings
 allowed, typecheck, build and tests for both applications on every pull
 request. The nightly clean-up of
 expired sessions and used one-time tokens runs only while the backend is awake,
@@ -1211,24 +1211,38 @@ WorkTrack everywhere, and Settings and the password-reset pages use the light
 theme. An invalid spacing class and three unused list requests are gone, and the
 user modal refreshes its project list after a change.
 
-*Depended on: nothing. Its five decisions were confirmed in
-[`current-scope.md`](./current-scope.md) §0.*
+*Depended on: nothing. Its five decisions were confirmed while planning it.*
 
 ---
 
-**Phase 12 — Accessibility**
+**Phase 12 — Accessibility — delivered**
 
-WorkTrack is usable by keyboard and screen reader and meets AA contrast.
+**Built in September 2026.** WorkTrack worked with a mouse but not well by
+keyboard or screen reader, and much of its text was below AA contrast. No
+product behaviour or business rule changed.
 
-- **Every control has a name and state**: the week navigation arrows, the
-  calendar toggle, and focusable entries on locked days.
-- **Contrast meets AA** for the neutral badge and warning text on tinted
-  backgrounds, fixed in the visual foundation rather than per component.
-- **Tab lists follow the keyboard pattern people expect** — arrow keys move
-  between tabs on the reports and admin pages, not only Tab.
+**Every control has a name and state.** The week and calendar arrows are named,
+the calendar toggle says whether it is open, each calendar day reads its full
+date, and focus moves into the calendar and back. Focus is always clearly
+visible.
 
-*Depends on: Phase 11, so the screens are settled first. No business
-questions.*
+**Time entries work by keyboard.** An open entry opens with Enter and Space, an
+open day is named for what it does, and a locked entry can still be focused to
+show its details but is announced as unavailable.
+
+**Tabs follow the keyboard pattern.** On the reports and admin pages only the
+selected tab is in the Tab order; arrow keys, Home and End move between tabs and
+select them, and each tab points to its panel.
+
+**All text meets AA contrast**, fixed in the visual foundation rather than per
+component. The brand colour and muted text are darker, warning, success and
+destructive text use their own darker shades, and faded text is gone.
+
+Nested buttons in the timesheet's day column stay for later, by decision
+([`known-issues.md`](./known-issues.md)).
+
+*Depended on: Phase 11. Its three design decisions were confirmed while
+planning it.*
 
 ---
 
@@ -1277,9 +1291,7 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–11 delivered
-   │
-   ├── Phase 12  Accessibility
+Phases 0–12 delivered
    │
    └── Phase 13  Export
           │
