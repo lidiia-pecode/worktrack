@@ -1222,8 +1222,9 @@ keyboard or screen reader, and much of its text was below AA contrast. No
 product behaviour or business rule changed.
 
 **Every control has a name and state.** The week and calendar arrows are named,
-the calendar toggle says whether it is open, and each calendar day reads its
-full date.
+the calendar toggle says whether it is open, each calendar day reads its full
+date, and focus moves into the calendar and back. Focus is always clearly
+visible.
 
 **Time entries work by keyboard.** An open entry opens with Enter and Space, an
 open day is named for what it does, and a locked entry can still be focused to

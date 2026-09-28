@@ -13,7 +13,7 @@ const buttonVariants = cva(
     "text-sm font-semibold whitespace-nowrap",
     "transition-all duration-200",
     "outline-none select-none",
-    "focus-visible:ring-2 focus-visible:ring-ring/50",
+    "focus-visible:ring-2 focus-visible:ring-ring",
     "active:scale-[0.98] lg:cursor-pointer",
     "disabled:pointer-events-none disabled:opacity-50",
     "[&_svg]:pointer-events-none [&_svg]:shrink-0",

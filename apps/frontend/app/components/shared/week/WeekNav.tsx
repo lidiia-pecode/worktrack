@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import {
   addWeeks,
@@ -20,12 +20,18 @@ type Props = {
 
 export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarToggleRef = useRef<HTMLButtonElement>(null);
   const { weekStartDay } = useWorkSettings();
 
   const isCurrentWeek = isSameDay(
     weekStart,
     getWeekStart(new Date(), weekStartDay),
   );
+
+  const closeCalendar = () => {
+    setCalendarOpen(false);
+    calendarToggleRef.current?.focus();
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -52,6 +58,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
 
       <div className="relative">
         <button
+          ref={calendarToggleRef}
           type="button"
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
@@ -70,7 +77,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           <WeekCalendarPopover
             weekStart={weekStart}
             onSelectWeek={onWeekChange}
-            onClose={() => setCalendarOpen(false)}
+            onClose={closeCalendar}
           />
         )}
       </div>

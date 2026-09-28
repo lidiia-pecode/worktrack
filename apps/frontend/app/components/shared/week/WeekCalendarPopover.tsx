@@ -105,8 +105,13 @@ export const WeekCalendarPopover = ({
             <button
               type="button"
               key={day.toISOString()}
-              aria-label={formatLongDayLabel(day)}
+              aria-label={
+                inSelectedWeek
+                  ? `${formatLongDayLabel(day)}, selected week`
+                  : formatLongDayLabel(day)
+              }
               aria-current={today ? "date" : undefined}
+              autoFocus={isSameDay(day, weekStart)}
               onClick={() => {
                 onSelectWeek(day);
                 onClose();

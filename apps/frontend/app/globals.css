@@ -69,6 +69,8 @@
     black
   );
 
+  --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
+
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
   --brand-strong: color-mix(in oklch, var(--brand) 24%, transparent);
@@ -187,6 +189,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
   --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-on-dark: var(--brand-on-dark);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
@@ -295,7 +298,7 @@ body {
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
   }
 
   body {

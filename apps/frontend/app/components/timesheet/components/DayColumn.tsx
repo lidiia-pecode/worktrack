@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { CalendarClock, Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
@@ -53,6 +53,7 @@ export const DayColumn = ({
   onAbsenceClick,
   onEntryClick,
 }: Props) => {
+  const plannedId = useId();
   const [hovered, setHovered] = useState<{
     timelog: TimeLog;
     anchor: DOMRect;
@@ -63,6 +64,9 @@ export const DayColumn = ({
   const isOverTarget = overTargetMinutes > 0;
 
   const targetLineOffset = expectedMinutes * pixelsPerMinute;
+
+  const showsPlan =
+    !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
     () => buildSegments(timelogs, expectedMinutes, pixelsPerMinute),
@@ -96,6 +100,7 @@ export const DayColumn = ({
             : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
+      aria-describedby={isEditable && showsPlan ? plannedId : undefined}
       onClick={isEditable ? openDay : undefined}
       onKeyDown={(e) => {
         if (isEditable && (e.key === "Enter" || e.key === " ")) {
@@ -105,7 +110,8 @@ export const DayColumn = ({
       }}
       className={cn(
         DAY_COLUMN_CLASS,
-        isEditable && "cursor-pointer hover:bg-muted/20",
+        isEditable &&
+          "cursor-pointer hover:bg-muted/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
         absence && ABSENCE_PATTERN,
         !absence && weekend && WEEKEND_PATTERN,
         !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
@@ -135,8 +141,11 @@ export const DayColumn = ({
       {/* Once any time is logged, the record replaces the plan. */}
       {!absence && timelogs.length === 0 && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          {plannedEntries.length > 0 && (
-            <>
+          {showsPlan && (
+            <div
+              id={plannedId}
+              className="flex max-w-full flex-col items-center gap-1"
+            >
               <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
                 <CalendarClock className="size-3" aria-hidden />
                 Planned
@@ -150,7 +159,7 @@ export const DayColumn = ({
                   {entry.project.name} · {formatDuration(entry.plannedMinutes)}
                 </span>
               ))}
-            </>
+            </div>
           )}
 
           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">

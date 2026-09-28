@@ -72,7 +72,7 @@ export const LandingPage = () => {
 
               <Link
                 href="/register"
-                className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand/90"
+                className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
               >
                 Sign up free
               </Link>
@@ -105,7 +105,7 @@ export const LandingPage = () => {
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand/90"
+                className="inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
               >
                 Start free
               </Link>

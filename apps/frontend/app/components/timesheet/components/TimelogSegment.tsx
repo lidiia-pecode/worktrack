@@ -58,6 +58,9 @@ export const TimelogSegment = ({
         ring-1
         ring-foreground/5
         overflow-hidden
+        focus-visible:outline-2
+        focus-visible:-outline-offset-2
+        focus-visible:outline-ring
         hover:ring-foreground/15
         hover:brightness-105
         transition-all
@@ -76,7 +79,7 @@ export const TimelogSegment = ({
           {formatDuration(timelog.minutes)}
         </span>
 
-        <span className="truncate text-[10px] leading-tight text-foreground/70">
+        <span className="truncate text-[10px] leading-tight text-foreground/80">
           {projectName} · {activityName}
         </span>
       </div>

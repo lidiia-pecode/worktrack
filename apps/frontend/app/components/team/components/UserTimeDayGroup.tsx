@@ -75,7 +75,7 @@ export const UserTimeDayGroup = ({
               type="button"
               onClick={() => onAdd(iso)}
               aria-label={`Log time on ${DAY_LABEL.format(date)}`}
-              className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              className="flex size-6 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <Plus className="size-4" />
             </button>

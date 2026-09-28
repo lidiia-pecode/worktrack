@@ -40,7 +40,7 @@ export function TeamWeekRow({
             onOpen(row);
           }}
           aria-label={`Open ${fullName(row.user)}'s entries`}
-          className="flex w-full min-w-0 items-center gap-2.5 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/40"
+          className="flex w-full min-w-0 items-center gap-2.5 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <PersonLabel user={row.user} />
         </button>
