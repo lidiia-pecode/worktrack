@@ -1,9 +1,10 @@
 "use client";
 
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 
 import { HoursReportQuery } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
+import { saveFile } from "@/lib/utils/save-file";
 
 import { queryKeys } from "./shared/queryKeys";
 
@@ -21,4 +22,12 @@ export function useHoursReport(params: HoursReportQuery) {
     isError: query.isError,
     refetch: query.refetch,
   };
+}
+
+/** Downloads the hours behind the report as an Excel file. */
+export function useHoursExport() {
+  return useMutation({
+    mutationFn: ReportingClientApi.exportHours,
+    onSuccess: saveFile,
+  });
 }

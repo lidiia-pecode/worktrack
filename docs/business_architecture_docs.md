@@ -16,11 +16,11 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 25 September 2026**, and reconciled again
-with Phases 11 and 12. Phases 0 to 12 of the roadmap in §7 are delivered, as are Scopes C,
+with Phases 11, 12 and 13. Phases 0 to 13 of the roadmap in §7 are delivered, as are Scopes C,
 D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
 the last of the authorization gaps in §6, and the permission model is complete.
 The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); the next is Phase 13, export.
+production launch stage (§7); only the production launch remains.
 
 ---
 
@@ -525,6 +525,7 @@ another OWNER or grant the OWNER role.
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
+| Hours report and export | whole company | own, plus users in teams they manage | — |
 
 This matrix is what the code does today. The intended model —
 Owner-owned structure, manager-operated teams — is in
@@ -594,6 +595,12 @@ the gap is the main fact about the project's current state.
   completeness, each labelled with what it is measured against and shown as
   "—" when there is nothing to measure. Availability and logged time both count
   only days that have finished.
+- **Hours export** — from the Hours tab, owners and managers download the
+  selected range as an Excel file for invoicing (D7): one row per person, day,
+  project, activity and billing type, in hours and minutes, with no notes. The
+  people and totals are the Hours report's, one spelling is used per client, and
+  a `Period` column says whether each row's month is still open to edits. Names
+  are written as text, so a name starting with `=` is never run as a formula.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -773,7 +780,8 @@ For the company using it:
   without that plan constraining anyone.
 - **The owner** sees the same across the company, closes periods once hours have
   been used for invoicing, and can export hours — split by client, project, and
-  billable/non-billable — to hand to whoever produces the invoices.
+  billable/non-billable — to hand to whoever produces the invoices. A manager
+  can export the same for the teams they lead.
 - **Nobody** approves anybody's timesheet. Someone else's time can be corrected
   by their manager or by the owner, inside an open period, and never by anyone
   else (D9).
@@ -781,7 +789,7 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 9 are delivered, and so is every permission
+not a task list. Phases 0 to 13 are delivered, and so is every permission
 scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–13 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
@@ -1246,18 +1254,26 @@ planning it.*
 
 ---
 
-**Phase 13 — Export**
+**Phase 13 — Export — delivered**
 
-Because invoicing happens outside WorkTrack (D7), someone has to get hours
-*out*. This is a functional requirement, not a nice-to-have — without it the
-billable/non-billable distinction has no consumer. It comes after the polish
-phases by decision, so the file reflects screens and figures that have stopped
-changing.
+**Built in September 2026.** Invoicing happens outside WorkTrack (D7), so hours
+had to get *out*; without that the billable split had no consumer. It came after
+the polish phases by decision, so the file reflects settled screens.
 
-Anybody who can see a report may export exactly the data they can see — an
-owner the whole company, a manager the teams they lead.
+**Anybody who can see the Hours report exports exactly what it shows** — an
+owner the whole company, a manager the teams they lead and themselves — through
+the same query rules, so the file's totals equal the report's.
 
-*Depends on: Phases 5 and 11. Open: §10 Q4 (format and grouping).*
+**An Excel file, built for invoicing (§10 Q4).** One row per person, day,
+project, activity and billing type, with real dates and decimal hours next to
+the minutes. Notes are left out. Open months can be exported and are marked
+open, since hours are usually handed over before a month is closed. The format
+was first built as CSV and changed to Excel while the phase was in progress.
+
+A manager's file follows current team membership, like every report (P4).
+
+*Depended on: Phases 5 and 11. Its four decisions were confirmed while planning
+it.*
 
 ---
 
@@ -1291,11 +1307,9 @@ grace period and closing a month early; and the permission questions in
 ### Dependency summary
 
 ```text
-Phases 0–12 delivered
+Phases 0–13 delivered
    │
-   └── Phase 13  Export
-          │
-   Final stage   Production launch
+   └── Final stage   Production launch
 ```
 
 ---
@@ -1377,15 +1391,13 @@ lookup tables any manager can still edit or archive across the whole company.
 *Recommendation: leave them company-wide for now* and revisit if two managers
 ever disagree about the catalogue.
 
-**Q4 — What form should the hours export take?**
-Required before the product is complete, since invoicing is external (D7), but
-deliberately built after the polish phases — see §7 Phase 13. Who may export is
-settled:
-anybody who can see a report, for exactly what they can see.
-*Recommendation: start with CSV* — one row per person per project per day, or
-per person per project per period, with billable and client columns. Whoever
-produces invoices already works in a spreadsheet. Confirm the grouping with them
-before building; the wrong granularity makes the export useless.
+**Q4 — What form should the hours export take? — answered.**
+An Excel (`.xlsx`) file, confirmed in September 2026 for Phase 13. Who may export: anybody who can
+see a report, for exactly what they can see. Each row is one person, day,
+project, activity and billing type (billable, non-billable or internal), in
+decimal hours. Notes are left out, and a `Period` column marks months that can
+still change, so hours can be exported before a
+month is closed. Whoever produces invoices already works in a spreadsheet.
 
 **Q5 — Should the app chase people who have not logged time?**
 The team view shows who is short, but somebody still has to look. Phase 3 made
@@ -1417,5 +1429,5 @@ holds. Revisit only if the signup model changes.
 Blocks the final stage only. Production needs paid plans (Vercel's free plan is
 non-commercial, and the free backend sleeps), a domain from the company, and
 Google sign-in URLs registered for it.
-*Recommendation:* decide once Phase 13 is in sight; nothing before then depends
-on it.
+*Recommendation:* decide it next. Phase 13 is delivered, so the production
+launch is the only work left, and it waits on this.

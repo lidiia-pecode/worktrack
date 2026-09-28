@@ -19,6 +19,7 @@ import {
   ResourceTabButton,
   ResourceTabList,
 } from "../shared/resourse/ResourcePage";
+import { HoursExportButton } from "./components/HoursExportButton";
 import { HoursReportSection } from "./components/HoursReportSection";
 import { PlannedVsActualSection } from "./components/PlannedVsActualSection";
 import {
@@ -118,6 +119,11 @@ export const ReportsView = () => {
             groupBy={groupBy}
             onGroupByChange={setGroupBy}
             showGroupBy={tab === "hours"}
+            actions={
+              tab === "hours" && (
+                <HoursExportButton range={range} disabled={!isRangeValid} />
+              )
+            }
           />
         </div>
 

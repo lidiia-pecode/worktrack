@@ -190,16 +190,16 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 ## Current Status
 
 Under active development. The employee timesheet, the owner/manager team time
-view, absences, capacity and expected hours, planning, reporting and admin CRUD
-for users, teams, projects, activities and categories are implemented. Test
-coverage is twenty-five backend suites and 397 tests, covering who may see and
-change whose data and the business rules behind each feature, plus frontend
-tests for the date, lock and paging logic the screens rely on.
+view, absences, capacity and expected hours, planning, reporting with an Excel
+export of hours, and admin CRUD for users, teams, projects, activities and
+categories are implemented. Test coverage is twenty-six backend suites and 420
+tests, covering who may see and change whose data and the business rules behind
+each feature, plus frontend tests for the date, lock and paging logic the
+screens rely on.
 
-The most recent work made the local development environment reliable: the
-containers always run what is on disk, and setup is verified from a clean clone.
-The remaining work is planned as focused phases — polish and accessibility —
-followed by the hours export and a production launch.
+The planned phases are complete, the most recent being keyboard and
+screen-reader access and the hours export. What remains is the production
+launch.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions

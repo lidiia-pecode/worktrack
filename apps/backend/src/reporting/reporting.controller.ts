@@ -1,4 +1,12 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
 
 import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
@@ -6,6 +14,12 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
+import { HoursExportQuery } from './dtos/hours-export-query.dto';
+import {
+  buildHoursExportWorkbook,
+  hoursExportFileName,
+  XLSX_CONTENT_TYPE,
+} from './hours-export.workbook';
 import {
   ReportingMonthParam,
   ReportingPeriodsQuery,
@@ -58,6 +72,20 @@ export class ReportingController {
     @Query() query: HoursReportQuery,
   ) {
     return this.reportingService.getHoursReport(user, query);
+  }
+
+  @Get('hours/export')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  async exportHours(
+    @CurrentUser() user: AuthUser,
+    @Query() query: HoursExportQuery,
+  ) {
+    const rows = await this.reportingService.getHoursExport(user, query);
+
+    return new StreamableFile(await buildHoursExportWorkbook(rows), {
+      type: XLSX_CONTENT_TYPE,
+      disposition: `attachment; filename="${hoursExportFileName(query)}"`,
+    });
   }
 
   @Get('planned-vs-actual')

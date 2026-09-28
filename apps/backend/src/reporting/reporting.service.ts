@@ -29,6 +29,8 @@ import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
+import { HoursExportQuery } from './dtos/hours-export-query.dto';
+import { HoursBilling } from './enums/hours-billing.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
 export interface PlannedVsActualRow {
@@ -99,6 +101,31 @@ interface HoursReportRawRow {
   totalMinutes: string;
 }
 
+/** One row of the hours export: a person's time on one day, project, activity and billing. */
+export interface HoursExportRow {
+  date: string;
+  person: string;
+  client: string | null;
+  project: string;
+  activity: string;
+  category: string | null;
+  billing: HoursBilling;
+  minutes: number;
+  /** False while the month can still be edited, so the figure may change. */
+  isPeriodClosed: boolean;
+}
+
+interface HoursExportRawRow {
+  date: string;
+  person: string;
+  client: string | null;
+  project: string;
+  activity: string;
+  category: string | null;
+  billing: HoursBilling;
+  minutes: string;
+}
+
 /** An empty client name counts as no client, which means internal work. */
 const CLIENT_NAME = `NULLIF(p.client_name, '')`;
 
@@ -112,6 +139,22 @@ const CLIENT_DISPLAY_NAME = `COALESCE(
   MAX(CASE WHEN ${CLIENT_NAME} <> LOWER(${CLIENT_NAME}) THEN ${CLIENT_NAME} END),
   MIN(${CLIENT_NAME})
 )`;
+
+/**
+ * The same spelling rule as `CLIENT_DISPLAY_NAME`, applied across every row of
+ * the export, so one client never appears under two spellings.
+ */
+const CLIENT_EXPORT_NAME = `COALESCE(
+  MAX(CASE WHEN ${CLIENT_NAME} <> LOWER(${CLIENT_NAME}) THEN ${CLIENT_NAME} END)
+    OVER (PARTITION BY ${CLIENT_GROUP}),
+  MIN(${CLIENT_NAME}) OVER (PARTITION BY ${CLIENT_GROUP})
+)`;
+
+const BILLING = `CASE
+  WHEN ${CLIENT_NAME} IS NULL THEN '${HoursBilling.INTERNAL}'
+  WHEN tl.is_billable THEN '${HoursBilling.BILLABLE}'
+  ELSE '${HoursBilling.NON_BILLABLE}'
+END`;
 
 const HOURS_GROUPINGS: Record<
   HoursReportGroupBy,
@@ -339,13 +382,26 @@ export class ReportingService {
     dateFrom: string,
     dateTo: string,
   ): Promise<boolean> {
+    const locked = await this.findLockedMonths(companyId, dateFrom, dateTo);
+
+    return monthsBetween(dateFrom, dateTo).some((month) => !locked.has(month));
+  }
+
+  /** The first days of the locked months touching the range. */
+  private async findLockedMonths(
+    companyId: string,
+    dateFrom: string,
+    dateTo: string,
+  ): Promise<Set<string>> {
     const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const months = monthsBetween(dateFrom, dateTo);
     const reopened = await this.findReopenedMonths(companyId, months);
 
-    return months.some(
-      (month) =>
-        this.stateOf(month, today, reopened) !== ReportingMonthState.LOCKED,
+    return new Set(
+      months.filter(
+        (month) =>
+          this.stateOf(month, today, reopened) === ReportingMonthState.LOCKED,
+      ),
     );
   }
 
@@ -439,6 +495,63 @@ export class ReportingService {
         dateTo,
       ),
     };
+  }
+
+  /**
+   * The Hours report's time, for the same people, one row per person, day,
+   * project, activity and billing.
+   */
+  async getHoursExport(
+    user: AuthUser,
+    query: HoursExportQuery,
+  ): Promise<HoursExportRow[]> {
+    const { dateFrom, dateTo } = query;
+
+    assertDateRange(dateFrom, dateTo);
+
+    const qb = this.periodRepo.manager
+      .createQueryBuilder()
+      .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
+      .addSelect(`u.first_name || ' ' || u.last_name`, 'person')
+      .addSelect(CLIENT_EXPORT_NAME, 'client')
+      .addSelect('p.name', 'project')
+      .addSelect('a.name', 'activity')
+      .addSelect('c.name', 'category')
+      .addSelect(BILLING, 'billing')
+      .addSelect('SUM(tl.minutes)', 'minutes')
+      .from('time_logs', 'tl')
+      .innerJoin('project_activities', 'pa', 'pa.id = tl.project_activity_id')
+      .innerJoin('projects', 'p', 'p.id = pa.project_id')
+      .innerJoin('activities', 'a', 'a.id = pa.activity_id')
+      .leftJoin('act_categories', 'c', 'c.id = a.category_id')
+      .innerJoin('users', 'u', 'u.id = tl.user_id')
+      .where('tl.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('tl.date BETWEEN :dateFrom AND :dateTo', { dateFrom, dateTo });
+
+    this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
+      includeSelf: true,
+    });
+
+    const [rawRows, lockedMonths] = await Promise.all([
+      qb
+        .groupBy(
+          ['tl.date', 'u.id', 'p.id', 'a.id', 'c.id', BILLING].join(', '),
+        )
+        .orderBy('tl.date')
+        .addOrderBy('person')
+        .addOrderBy('u.id')
+        .addOrderBy('project')
+        .addOrderBy('activity')
+        .addOrderBy('billing')
+        .getRawMany<HoursExportRawRow>(),
+      this.findLockedMonths(user.companyId, dateFrom, dateTo),
+    ]);
+
+    return rawRows.map((raw) => ({
+      ...raw,
+      minutes: Number(raw.minutes),
+      isPeriodClosed: lockedMonths.has(firstDayOfMonth(raw.date)),
+    }));
   }
 
   /**
