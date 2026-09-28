@@ -1,11 +1,11 @@
 # WorkTrack — Target permission model
 
 **Status: delivered.** This document describes how responsibility and access
-work. Nothing here is implemented unless
-[`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 says so
-— those sections remain the record of current behaviour. §5 is the crosswalk
-from each rule to what stands in its way, and §7 is the order it was built in:
-Scopes C, D and E are delivered, and the model is complete.
+work. Every rule in it is enforced today except two in §3.2 — the team-manager role
+rule and archived teams — confirmed in September 2026 and enforced from the
+company-setup work of the improvement roadmap.
+[`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 remain
+the record of current behaviour; §6 below lists the questions still open.
 
 It exists because the permission rules outgrew a decision entry. They span
 company membership, invitations, teams, projects and time data at once, and
@@ -69,9 +69,10 @@ project's membership are checked against the caller.
 
 ### 3.1 Company membership and invitations — delivered
 
-Shipped in Scope C (the role rule) and Scope D (the team rule). Struck from this
-model per §8; the behaviour is now recorded as current in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §4 and §5.
+An owner may invite a manager or an employee, a manager only an employee into a
+team they lead, and an employee invitation always names a team. The details are
+in [`business_architecture_docs.md`](./business_architecture_docs.md) §4
+"Access".
 
 The principle it rested on still governs the rest of this document: appointing a
 manager is the Owner's act of delegation and cannot be self-propagating.
@@ -82,14 +83,36 @@ Owner only. Creating a team, renaming it, archiving it, and setting anyone's
 `roleInTeam` are all Owner actions. A manager cannot create the structure they
 operate in.
 
+**Only a Manager can manage a team** — confirmed in September 2026, not yet
+enforced. A team's manager must be a user whose company role is MANAGER; an
+EMPLOYEE cannot be made one, and neither can the Owner, who already sees and
+acts for everyone. To give an employee a team, the Owner first changes their
+company role to MANAGER, then makes them the team's manager. The API refuses
+`roleInTeam = MANAGER` for anyone else, on adding and on changing a membership.
+A Manager who manages no team may be changed back to Employee; one who manages a
+team may not, and the refusal names the teams — memberships never change as a
+side effect. Today the member list and the API accept any member as team
+manager, and a demotion is not checked.
+
+**Archiving a team closes it** — confirmed in September 2026, not yet enforced.
+A team holds no data of its own, so archiving it ends a unit of responsibility
+rather than any work. Archiving ends every open membership, manager and member
+alike, on the company's today, so the team grants nothing afterwards and its
+history stays in the membership dates. The Owner sees who is affected before
+confirming, and people left without a team are the Owner's to place. An
+archived team is read-only. Restoring it brings it back with no members; the
+Owner adds people again under the current rules, so a restore never hands reach
+back by itself. An archived team therefore never blocks demoting its former
+manager. Today archiving leaves memberships open and no visibility check looks
+at a team's status, so an archived team's manager keeps full reach.
+
 ### 3.3 Team membership
 
-Adding a newly invited person and removing someone from a team a manager leads
-are **delivered** — Scope C and Scope D — and struck from the model per §8. See
-[`business_architecture_docs.md`](./business_architecture_docs.md) §5 and §6.
+A manager gains people by inviting them into a team they lead, and may remove
+someone from such a team; the Owner adds and moves everyone else. See
+[`business_architecture_docs.md`](./business_architecture_docs.md) §5.
 
-What remains here is the guarantee those scopes were built to preserve, because
-it constrains everything after them:
+The guarantee this rests on constrains everything else:
 
 A manager may **not** add an existing company user to their team. That is the
 move that would hand them another manager's person — and with it that person's
@@ -239,38 +262,22 @@ project staffed from both teams.
 
 ## 5. How today differs
 
-The gaps themselves are current-state facts and are recorded where current state
-belongs — [`business_architecture_docs.md`](./business_architecture_docs.md) §6
-"Authorization gaps". This table is only the crosswalk from a rule above to what
-stands in its way.
-
-The §3.1 and §3.3 rows are gone: those rules shipped in Scopes C and D and were
-struck from §3, so there is nothing left to cross-walk.
-
-**Nothing differs any more.** Every row below is enforced or already true. The
-table is kept as the record of which rule is answered where.
-
-| Rule | Today | Detail |
-| :--- | :--- | :--- |
-| §3.2 The Owner owns structure | **Already enforced** — the six team write routes are Owner-only | — |
-| §3.4 One level of visibility | **Already enforced** — the project's member list is scoped to the caller and narrowed to identity fields | — |
-| §3.5 Projects stay company-wide | **Already true** | — |
-| §3.5 Assign only people you can see, plus yourself | **Already enforced** — `syncProjectUsers` takes the caller, and `/users/assignable` is narrowed to the same set | — |
-| §3.5 A manager changes only what they were shown | **Already enforced** — the diff only adds and removes inside the caller's scope | — |
-| §3.5 Active status gates joining, not staying | **Already enforced** — only an addition is checked for active status | — |
-| §3.5 Managers may be project members | **Already enforced** — the client no longer strips them, and a manager's own timesheet can reach their projects | — |
-| §3.6 A project has no owner | **Already true** — no such field exists, and none is planned | — |
-| §3.7 Time-log access | **Already enforced** (D9, D10) | — |
-| §3.7 Planning access | **Already enforced** — writes go through `assertCanPlanForUser`, and the removal count uses the same people filter as the save | — |
+**Nothing differs.** Every rule in §3 is enforced in the services — team
+structure by Owner-only routes, people visibility and staffing by
+`TeamVisibilityService`, time logs and planning by their own scope checks that
+call it.
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
 membership dates, and it does not need to be while §3.3 holds (P4). Projects are
 company-wide for managers, which is the target rather than a defect.
 
+---
 
 ## 6. Open decisions
 
-Visible, deliberately unanswered, and none of them block the roadmap in §7.
+Visible and deliberately unanswered. P5 is part of the improvement roadmap in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §7; the
+others wait for a real need.
 
 - **P1 — Multi-team membership.** For now one person belongs to one team.
   Allowing several raises: do both managers see them, and who may edit their
@@ -278,116 +285,46 @@ Visible, deliberately unanswered, and none of them block the roadmap in §7.
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*
-- **P3 — Must the responsible person be a project member?** *Moot.* There is
-  no responsible person, and there will not be one — §3.6 records why.
 - **P4 — Should time visibility be bounded by membership dates?** Recommend no
   while §3.3 holds; revisit if transfers become common.
 - **P5 — Should an employee see their own team and teammates?** Today they see
-  neither.
-- **P6 — What happens to an invitation whose target team is archived before it
-  is accepted?** *Answered by Scope D, changed in Phase 7:* archiving a team
-  revokes its pending invitations and tells the owner how many, so the link stops
-  working. Only if the team is archived while someone is accepting is the user
-  created without a membership, and the Owner places them — a signup must not
-  fail over an administrative action.
+  neither — not their team's name, its members, nor what projects anyone else is
+  on. Whether they should, and how much, is open.
 - **P7 — What happens to a team when its only manager leaves?** Still open. Scope
   D settled the neighbouring case only: an invitation sent by a manager who has
   since stopped leading the team still creates the membership.
 - **P8 — Should project visibility ever narrow?** Not at this company size, and
   note the distinction §3.4 now rests on: the **project** is visible to every
   owner and manager, its **roster** is not.
+- **P9 — What does an archived team mean for access?** *Answered in September
+  2026:* archiving closes the team and restoring brings it back empty — §3.2.
+  Suspending the team and merely hiding it were considered and set aside.
 
 Open questions about absences, planning, export and notifications stay in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §10.
 
 ---
 
-## 7. Implementation roadmap
+## 7. How the model was built
 
-Three scopes, in dependency order. Each became the active scope document in its
-turn, and each was independently shippable. **All three are delivered, and the permission
-axis is closed.**
+In September 2026, three permission scopes were built between Phases 1 and 2 of
+the product roadmap. Scope C made team structure the Owner's and closed the
+route by which a manager could widen their own reach. Scope D let a manager
+invite an employee straight into a team they lead. Scope E scoped project
+staffing and rosters to the caller and let managers and owners be project
+members. A fourth, Scope F, would have named one responsible person per project;
+it was cancelled before any code was written, for the reason in §3.6.
 
-They sat **between Phase 1 and Phase 2** of the product roadmap in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §7. They are a
-different axis — that roadmap sequences product capability, this one sequenced
-permission correctness — and Scope C was the reason not to start Phase 2 first.
+Two questions settled along the way. An invitation whose team is archived is
+revoked with it, and if the team is archived while someone is accepting, the
+person is still created and the Owner places them (formerly P6). There is no
+responsible person on a project, so whether they must be a member is moot
+(formerly P3).
 
-### Scope C — Close the escalation — **delivered**
-
-Backend and tests only; no migration, no UI.
-
-- Pass the caller into the team write paths.
-- Team create, rename, archive and any `roleInTeam` change become OWNER-only.
-- **Adding** a member became OWNER-only too, until Scope D gave managers the
-  safe route. "May add" is only safe once it means "may add someone new", and
-  that needed the invitation to carry a team.
-- **Removing** a member is scoped to teams the manager leads. Removal narrows
-  their own reach, so it grants nothing and is safe to delegate now.
-- `removeMember` closes `leftAt` instead of deleting.
-- Invitation role restricted by the caller's role.
-
-Closed the first two gaps in business §6 and the hard delete. **This was the
-security fix and was deployed before anything else in this list.** It left
-managers unable to add anyone to their team, which Scope D then closed — the two
-are best read together.
-
-### Scope D — A manager hires into their own team — **delivered**
-
-- `Invitation` gains `teamId` and `invitedById`. *(migration)*
-- A manager may invite an EMPLOYEE into a team they lead; accepting the
-  invitation creates the membership, always as a `MEMBER`.
-- Invite UI for managers.
-
-Closes business §6 gap 3. Depends on C.
-
-### Scope E — Project assignment and disclosure — **delivered**
-
-- ~~Enforce assignment scope in `syncProjectUsers`, and narrow
-  `GET /users/assignable` to the caller's people plus themselves — the two must
-  land together, and the save becomes a diff bounded by that scope.~~
-  **Delivered.** `TeamVisibilityService` now owns the whole owner/manager/employee
-  decision, so time logs, projects and the user lists share one copy of it — and
-  absences joined them in Phase 2 by calling the same helper rather than
-  restating the rule.
-- ~~Scope the project's member list to the caller, and narrow the member DTO. One
-  shape for every role; only the rows differ.~~ **Delivered.** `ProjectResponse`
-  also carries the project's true `membersCount`, so a scoped list never makes a
-  staffed project look empty.
-- ~~Allow managers and owners to be project members; drop the client-side
-  stripping.~~ **Delivered.** The server always stored whatever it was given,
-  so this was deletion: the picker's role filter and `getNonAdminMemberIds`
-  are both gone.
-- ~~Separate "may be newly assigned" from "may remain assigned", so archiving
-  neither errors nor removes.~~ **Delivered.** Only the ids being added are
-  checked for active status; an existing member never is.
-
-Closed gaps 4, 5 and 6 in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §6, which
-were the last three open. Depended on C. Its business rules were settled on 21
-September 2026 and are reflected in §3.4 and §3.5 above.
-
-### Scope F — Project responsibility — **cancelled**
-
-A fourth scope was planned and then struck in September 2026, before any code
-was written: a nullable `Project.responsibleUserId` naming one person to ask
-about a project, meant to soften what Scope E's scoped roster gave up.
-
-It was cancelled because WorkTrack has no concept of a project belonging to one
-person, and adding a field to invent one would have contradicted the model it
-was supposed to serve — see §3.6. The permission model ends at Scope E, and the
-product work carried on without it: Phases 2 to 5 — absences, capacity,
-planning and reporting — shipped in September 2026, and the remaining phases
-start with Phase 6, sign-in and sessions — see
-[`business_architecture_docs.md`](./business_architecture_docs.md) §7.
-
-### Not in any of these
-
-The `Client` entity (D8). Absences, capacity, planning, reporting (Phases 2 to
-5) and the hours export (Phase 13) were built afterwards and needed nothing new
-here: their scopes reuse D9's people through the same helpers, so a manager's
-reports and exports cover the teams they lead and an owner's the whole company. Reopening a locked month is
-the Owner's alone.
+Everything built afterwards — absences, capacity, planning, reporting and the
+hours export — needed nothing new here: it reuses D9's people through the same
+helpers, so a manager's figures cover the teams they lead and an owner's the
+whole company. Reopening a locked month is the Owner's alone.
 
 ---
 
@@ -403,5 +340,5 @@ routes and data model are covered by working documents that are deliberately
 kept outside version control. They are not linked here because they exist only
 in a local checkout.
 
-When a scope in §7 ships, move its rules into the business reference as current
-behaviour and strike them from here.
+When a permission rule changes, record the new rule in §3 and in the business
+reference's §4–§5 in the same change.

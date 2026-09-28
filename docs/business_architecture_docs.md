@@ -16,11 +16,10 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 25 September 2026**, and reconciled again
-with Phases 11, 12 and 13. Phases 0 to 13 of the roadmap in §7 are delivered, as are Scopes C,
-D and E of [`permission-model.md`](./permission-model.md) §7 — Scope E closed
-the last of the authorization gaps in §6, and the permission model is complete.
-The remaining work was re-planned after Phase 5 into Phases 6–13 and a final
-production launch stage (§7); only the production launch remains.
+with Phases 11, 12 and 13. Phases 0 to 13 of the roadmap in §7 are delivered,
+and so is the permission model. The work ahead was re-planned on 28 September
+2026 as a high-level improvement roadmap (§7); the production
+launch is a final stage that starts only once the product is judged ready.
 
 ---
 
@@ -157,10 +156,9 @@ representation, separate from `TimeLog`, supporting **date ranges** so a
 two-week holiday is recorded once rather than fourteen times. It exists so that
 a person and a future report can see *why* no time was logged.
 
-**Built in September 2026 as Phase 2.** `Absence` is its own table with a date
-range, a fixed type and an owner; an `Activity.isAbsence` flag that contradicted
-this decision was removed with it. The rules that came out of building it are in
-§7 Phase 2.
+**Built in Phase 2.** `Absence` is its own table with a date range, a fixed type
+and an owner; an `Activity.isAbsence` flag that contradicted this decision was
+removed with it. The rules are in §4.
 
 ### D7 — No money in WorkTrack
 
@@ -173,7 +171,7 @@ information into the app.
 
 *Consequence.* `Company.currency` has no consumer and should not acquire one.
 Reporting deals in hours. The handoff to invoicing is an **export of hours**, not
-a monetary figure (see §7 Phase 13).
+a monetary figure — the Excel export described in §6.
 
 ### D8 — Clients stay a text field, for now
 
@@ -225,17 +223,14 @@ An OWNER has company-wide visibility: every team, every person. A MANAGER sees
 the teams they actively manage and the people in them — and that limit applies
 to every list, not only to time data.
 
-*Why.* The rule already holds for time logs, planning and reporting, but
-`GET /users` and `GET /teams` still hand a manager the whole company. A manager
-who may not read someone's time can still read their profile and pick them out
-of a filter, which makes the boundary look arbitrary and exposes the full
-roster.
+*Why.* The rule held for time logs, planning and reporting, but `GET /users`
+and `GET /teams` used to hand a manager the whole company. A manager who may not
+read someone's time could still read their profile and pick them out of a
+filter, which made the boundary look arbitrary and exposed the full roster.
 
-*Consequence.* The user and team list endpoints have to be narrowed for
-managers. Together with D9 this makes one rule cover both halves: a manager reads
-and writes within their own teams. It settles the read half of §10 Q3; whether
-managers should also administer company-wide teams and projects is still open
-there.
+*Consequence.* The user and team list endpoints are narrowed for managers.
+Together with D9 this makes one rule cover both halves: a manager reads and
+writes within their own teams. It settles the read half of §10 Q3.
 
 *Staffing was not covered by this decision.* `GET /users` used to answer two
 questions at once — who a manager's people are, and who they may add to a team
@@ -329,8 +324,10 @@ Every write passes four checks, in this order:
 1. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
    update, both the old and the new date are checked, so an entry cannot be
    moved into or out of a locked period.
-2. **Ownership** — the entry is matched on `userId` **and** `companyId`. No role
-   can edit another person's entry.
+2. **Write scope** — the caller must be allowed to act for the entry's owner
+   (D9), through `assertCanActForUser`: an owner for anyone in the company, a
+   manager for the people in the teams they lead, an employee for themselves.
+   The entry is always matched on `companyId` too.
 3. **Project-activity validity** — the `ProjectActivity` must belong to the
    caller's company, be active, and sit on an ACTIVE project with an ACTIVE
    activity.
@@ -366,6 +363,11 @@ The rule runs both ways: time logging is refused on a day an absence covers.
 Each service reads the other's table directly rather than depending on it, and
 both check inside the transaction that locks the owner's user row, which is what
 stops two concurrent writes from each seeing a free day.
+
+Absences are **whole days only** — no half-days or hours — and there are three
+fixed types, a database enum rather than a per-company list. The cost of "a day
+is either worked or absent", accepted deliberately: *worked half a day, then went
+home sick* cannot be recorded without deleting the time log.
 
 A range is refused whole rather than partially, and the refusal names the
 conflicting dates. The database backs the range up with a check constraint that
@@ -411,6 +413,11 @@ Every write is checked on the server:
 
 An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
 minutes. An absence never blocks planning and never changes a plan.
+
+The planning grid shows managers two figures of their own: **unplanned** hours
+(available minus planned) and **no longer fits** (planned above available,
+flagged and never fixed automatically). Neither is shown to an employee, who
+sees only their own plan, and neither affects whether somebody is behind.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -480,6 +487,10 @@ The company holds `timezone`, `currency`, `weekStartDay` and
 `standardWorkHoursPerDay`. The timesheet reads all except currency rather than
 hardcoding calendar assumptions. Slugs are unique and regenerated on rename.
 
+Project, client, activity, category and team names are trimmed and keep their
+case. Project, activity, category and team names are unique regardless of case;
+client names are free text (D8).
+
 A `SUSPENDED` company cannot be updated and cannot authenticate.
 `Company.deletedAt` exists as a column with no soft-delete behaviour behind it.
 
@@ -515,7 +526,7 @@ another OWNER or grant the OWNER role.
 | :--- | :--- | :--- | :--- |
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
-| Users — assignment list | whole company | whole company | — |
+| Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
@@ -553,8 +564,10 @@ company-wide — not restricted to their own teams. See §10 Q3.
 
 ## 6. Where the product actually stands
 
-An honest assessment. The backend is substantially ahead of the frontend, and
-the gap is the main fact about the project's current state.
+Every feature in the original plan is built, and the authorization gaps found
+early on are all closed. What the product lacks now is polish and breadth: how
+easy it is to use, how the reports present their answers, what employees can
+see, and how a new company gets started. §7 plans that work.
 
 ### Working end to end
 
@@ -607,66 +620,21 @@ the gap is the main fact about the project's current state.
 - **Onboarding** — setup-state endpoints tell a new workspace what it still has
   to configure, and a wizard renders from them.
 
-### Phase 1 delivered
+### Decided while building, and still in force
 
-Owners and managers land on `/team` and see their people's week as a grid,
-filterable by team and project, and can open a row to read and correct that
-person's entries. A manager's user, team and time lists all narrow to the teams
-they actively lead; Scope E narrowed the staffing list the same way, plus the
-manager themselves.
-
-**Decided while building it: `/team` stays a summary grid.** Whether it should
-become a full team timesheet — entries or per-project rows inside the cells —
-was raised and rejected. The grid and the timesheet answer different questions:
-the grid is for scanning who logged and how much, the timesheet for inspecting
-what a week consisted of, and that already exists. A team timesheet would need
-per-user-per-day-per-project data the summary endpoint does not return, and
-would be unreadable at company size. "Where did the time go" is answered by the
-project filter at team level and by the per-person panel for one person;
-cross-cutting hours by client and project are the hours report, built in
-Phase 5.
-
-### Scope C delivered
-
-Team structure became the Owner's alone: creating, renaming and archiving a team,
-adding a member and setting anyone's `roleInTeam` are Owner actions, and a
-manager may only remove someone from a team they lead. Removal closes `leftAt`
-instead of deleting the row, so past time data stays explicable. An invitation's
-role now follows the caller, so a manager cannot appoint another manager. The
-teams screen offers a manager only what still works.
-
-**This closes the escalation**, so D10 is a boundary rather than a route-level
-narrowing. It also left a deliberate gap — a manager could not put anyone on
-their team at all — which Scope D then closed.
-
-### Scope D delivered
-
-`Invitation` carries `teamId` and `invitedById`. A manager must invite into a
-team they actively lead; an owner may name any active team, or none. A team can
-only be attached to an EMPLOYEE invitation. Accepting the invitation creates the
-membership as a `MEMBER`, in the same transaction that creates the user, so a
-new hire is inside their inviter's scope from the moment they join. If the team
-was archived in the meantime, the person is still created and the Owner places
-them.
-
-**A manager still only ever gains people who are new to the company.** There is
-no route to adding an existing user to a team, which is what kept Scope C's
-guarantee intact.
-
-### Scope E delivered
-
-`syncProjectUsers` takes the caller and refuses anyone outside the people they
-manage, `GET /users/assignable` returns that same set plus the caller
-themselves, and a manager's save only adds and removes inside it. A project's
-member list is scoped the same way and narrowed to identity fields, while the
-project still reports its true size, so a scoped list does not make a staffed
-project look empty. Managers and owners may be project members, so a manager
-finally has something to log against. And active status gates joining rather
-than staying, so archiving a person neither errors nor drops their membership.
-
-**This closed the last of the authorization gaps in §6.** What a manager may
-see and change is now one rule everywhere: the people in the teams they lead,
-plus themselves.
+- **`/team` stays a summary grid**, not a team timesheet. The grid is for
+  scanning who logged and how much, the timesheet for what one person's week
+  consisted of. "Where did the time go" is answered by the project filter, the
+  per-person panel and the hours report.
+- **Reports are for owners and managers.** Planned vs actual is readable
+  through the API by an employee for their own figures, but no employee screen
+  shows it.
+- **Utilisation has four figures** — billable utilisation, client share,
+  non-billable client share and logging completeness. Billable hours over
+  *capacity* was left out as unfair per person.
+- **Periods are calendar months that lock by themselves**, worked out from the
+  date on every check, because a scheduled job would miss days while the
+  backend sleeps.
 
 ### Fields that exist but do nothing
 
@@ -675,93 +643,36 @@ plus themselves.
 | `Company.currency` | Read by no logic. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
 
-### Authorization gaps
+### Authorization
 
-Current-state facts, kept numbered so other documents can point at them. Closed
-items stay on the list with their resolution rather than disappearing. The rules
-meant to replace the open ones are in
-[`permission-model.md`](./permission-model.md), and the order they are fixed in
-is §7 of that document.
-
-1. **A manager can widen their own visibility — closed.** Creating, renaming
-   and archiving a team, adding a member and setting `roleInTeam` are now Owner
-   actions at the route level, so a manager can no longer build a team around
-   themselves to reach another person's time. **D10 is a boundary rather than a
-   route-level narrowing.** The teams screen offers a manager only what still
-   works: reading the teams they lead and removing someone from them.
-
-2. **A manager can invite another manager — closed.**
-   `validateInvitationRole` now takes the caller's role: an owner may invite a
-   manager or an employee, a manager only an employee.
-
-3. **An invitation cannot place anyone in a team — closed.** `Invitation` now
-   carries `teamId` and `invitedById`. A manager must name a team they lead, and
-   accepting the invitation creates the membership, so a new hire is inside
-   their inviter's scope from the moment they join.
-
-4. **Project membership is assigned without a visibility check — closed.**
-   `syncProjectUsers` takes the caller and refuses anyone outside the people
-   they manage, and the diff only removes inside that set, so a manager cannot
-   drop someone else's person by submitting a list that never contained them.
-   "May be newly assigned" and "may remain assigned" are now separate checks:
-   only an addition is tested for active status, so archiving a person neither
-   errors nor drops their membership.
-
-5. **`GET /projects/:id` disclosed every member's name and email — closed.**
-   Both member routes are now scoped to the caller and serialize through
-   `AssignableUserResponse`, so a manager reads nobody from another team and
-   capacity and credential flags never leave a project route. The project still
-   reports its true member count, so a scoped list does not make a staffed
-   project look empty. D10 has no way around it left.
-
-6. **Managers and owners cannot be project members — closed.** The client used
-   to filter them out of the picker and strip them again on submit; both are
-   gone, and the server always stored whatever it was given. A manager can now
-   put themselves on a project and log against it, including a manager who
-   leads no team.
-
-7. **Manager scope in planned-vs-actual — closed.** Both aggregates in
-   `ReportingService.getPlannedVsActualReport` now run through
-   `applyUserVisibility`, so a manager who omits `userId` gets their own teams
-   rather than the whole company, and an employee is pinned to themselves.
-   Naming a `userId` outside a manager's teams is still refused with 403.
-
-`GET /users` and `GET /teams` were two earlier gaps and are closed at the route
-level.
-
-**Every gap on this list is closed.** Scope E closed the last three.
-
-**Closed since this section was written.** The project read routes
-(`GET /projects`, `GET /projects/:id`, `GET /projects/:id/users`) used to filter
-on `companyId` only, letting any employee enumerate every project with its full
-roster. They now carry an OWNER/MANAGER role guard. `/admin/*` was added to the
-middleware's guarded prefix list, so an unauthenticated visitor is redirected to
-login, and every `/admin/*` page and `/team` now calls `requireManagerAccess()`,
-so an employee who navigates there is sent back to their own timesheet instead
-of rendering an admin screen the backend would refuse to fill.
+Every gap found in the original review is closed: managers cannot widen their
+own reach, invitations place people in the inviter's team, project rosters and
+staffing are scoped to the caller, and project and admin routes are guarded by
+role on the server and in the pages. What a manager may see and change is one
+rule everywhere — the people in the teams they lead, plus themselves.
+[`permission-model.md`](./permission-model.md) describes the model.
 
 ### Engineering state
 
-Backend test coverage is twenty-five suites and 397 tests, covering the
+Backend test coverage is twenty-six suites and 420 tests, covering the
 role-visibility filters, team and invitation rules, time-log, absence, capacity
-and planning rules, monthly locking in and outside UTC, the three reports, page and date-range
-limits, name checks, and session refresh, rate limits and token clean-up — most
-against a real
-database. The frontend has Vitest tests for its date, month, absence, lock and
-paging helpers and the tab keyboard navigation. GitHub Actions runs the formatting check, lint with no warnings
+and planning rules, monthly locking in and outside UTC, the reports and the
+export, page and date-range limits, name checks, and session refresh, rate
+limits and token clean-up — most against a real database. The frontend has
+Vitest tests for its date, month, absence, lock and paging helpers, the report
+range check, tab keyboard navigation and download file names; no component is
+tested. GitHub Actions runs the formatting check, lint with no warnings
 allowed, typecheck, build and tests for both applications on every pull
-request. The nightly clean-up of
-expired sessions and used one-time tokens runs only while the backend is awake,
-which on the free development stand is not every night.
+request.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on
-free plans, with migrations applied by hand; there is no production environment
-yet.
+free plans, with migrations applied by hand; there is no production environment,
+by decision, until the product is ready (§7).
 
 Access tokens live fifteen minutes and refresh tokens thirty days. A page holds
 at most 100 rows and a larger request is refused; views that need a whole list
-fetch it page by page.
+fetch it page by page. Reports and date-range figures cover at most 366 days.
 
 ---
 
@@ -786,531 +697,158 @@ For the company using it:
   by their manager or by the owner, inside an open period, and never by anyone
   else (D9).
 
-### Roadmap
+The features behind all four are built. What is not there yet is the quality
+that makes people want to use them: fast entry, screens that behave the same
+way, reports that answer questions at a glance, and a company that can get
+itself started without help.
 
-High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 13 are delivered, and so is every permission
-scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–13 and the
-final stage were re-planned in September 2026, after Phase 5 closed.
+### Delivered
 
----
+Built from August to September 2026, one branch and one pull request per phase.
+The rules each one settled are in §2 and §4–§6; the detail of how each was built
+is in its pull request.
 
-**Phase 0 — Close the authorization gaps — delivered**
+| Phase | What it delivered |
+| :--- | :--- |
+| 0 | Authorization gaps in project routes and planned vs actual closed; first tests |
+| 1 | Team time view at `/team`, with a per-person panel owners and managers edit through |
+| Scopes C–E | The permission model — see [`permission-model.md`](./permission-model.md) §7 |
+| 2 | Absences as date ranges, separate from time (D6) |
+| 3 | Capacity from a date, and one Expected figure: capacity minus absences |
+| 4 | Planning by project per person per weekday |
+| 5 | Months that lock by themselves, and the `/reports` page |
+| 6 | Sessions that stay up, per-person rate limits, changing your own password |
+| 7 | Recoverable invitations, and every employee joining into a team |
+| 8 | Page and date-range limits, exact name checks |
+| 9 | CI that checks formatting and lint strictly; frontend tests |
+| 10 | A local environment that runs what is on disk, checked from a clean clone |
+| 11 | Week views and reports polish |
+| 12 | Keyboard and screen-reader access, AA contrast |
+| 13 | Excel export of hours |
 
-Two gaps leaked data across roles: the project read routes exposed the company
-roster with email addresses to every employee, and planned-vs-actual handed
-managers company-wide figures. Everything later builds on these code paths, so
-they were fixed first.
+### Improvement roadmap — high level, flexible
 
-Delivered: OWNER/MANAGER role guards on the project read routes, the member
-roster trimmed out of the project list response, `applyUserVisibility` on both
-planned-vs-actual aggregates, and `/admin/*` guarded on the middleware and in
-every page through `requireManagerAccess()`.
+Planned on 28 September 2026 after a review of the code, the screens and the
+documentation. WorkTrack is not considered ready for production yet, and this
+stage is what makes it a better product first.
 
-It was also where the **first tests** landed. The role-visibility filters were
-the highest-value thing to test in the codebase — security logic, about to gain
-a second consumer, and pure query construction that tests well.
+**How to read it.** The roadmap names the broad areas to improve and what each
+covers. It deliberately settles no business decision and no implementation
+detail: an area gets a detailed scope, with its own decisions, only when it is
+picked up. Areas can grow, shrink, split into several phases or change as the
+work teaches us something. Each phase that ships is still one area, one branch
+and one pull request, numbered from Phase 14 on. The defects found so far are
+listed against their area in the local known-issues document.
 
-*Depended on: nothing. Blocked: everything, in practice.*
+**UI/UX runs through every area.** Each area reviews and improves all of its
+important pages and flows, for every role that uses them — Owner, Manager and
+Employee — and not only its functional problems:
 
----
+- usability and ease of use, and interactions that are confusing or awkward;
+- page structure, navigation and visual hierarchy;
+- consistency with similar screens elsewhere in the product;
+- forms, tables, filters, dialogs and actions;
+- responsive and mobile behaviour where the page is likely to be used on a
+  phone;
+- a modern, clean appearance built from the visual foundation in `globals.css`;
+- anything that makes the product feel unfinished.
 
-**Phase 1 — Manager and owner team time view — delivered**
+Every area also keeps accessibility at the level Phase 12 set, adds the tests
+for what it changes, and updates the documentation it affects.
 
-The largest missing piece of product value, and the cheapest large feature
-available, because the authorization work already existed.
+**Area 1 — First run and onboarding** *(first)*. Everything a new company and a
+new person meet before WorkTrack is useful to them: sign-up, the company setup
+wizard and the owner's and manager's checklists, inviting people and joining,
+the first screen each role sees, empty states, and explaining WorkTrack's
+concepts — teams, projects, activities, categories, billable work, capacity and
+periods — where they are first met. Setup should end with a company in which
+people can actually log time, which also means setting up projects and
+activities properly, clients and billable defaults included. The public landing
+and sign-in pages, the invitation email and the Google sign-in paths belong
+here, as do the basics of a person's own account settings.
 
-Owners and managers now land on `/team` and read a team week: people down the
-side, days across the top, totals in the cells, filterable by team and project,
-with a drill-down into one person's entries, editable by the owner and by the
-manager of that person's team (D9).
+**Area 2 — Application shell and shared UI.** The frame every page sits in and
+the parts every page is built from: navigation per role, the sidebar, header and
+user menu, page layout and headers, and one version each of the table, card,
+form field, select, dialog, confirmation, loading, empty and error patterns,
+all built from the tokens in `globals.css`. It sets the standard the other areas
+apply to their pages, so it may run alongside Area 1 or straight after it, and
+it includes what the frontend needs to test components rather than only helpers.
 
-**Expected hours are shown as neutral context, not as a warning.** Nothing is
-styled as under target, because the figure is not yet true: it counts every
-weekday against a company-wide 8-hour day, so the signal would fire on part-time
-staff and on anyone who was away. Absences arrived with Phase 2 but do not yet
-reduce the expectation; Phase 3 is what makes it trustworthy.
+**Area 3 — Everyday time entry.** The employee's timesheet and absences, the
+screen people use most. Logging should be fast, with the plan, recent work and
+common durations doing much of the typing; a week should say clearly when it is
+complete; the figures it shows — billable, internal, expected — should mean the
+same as everywhere else and start when the person started; and it should work
+on a phone.
 
-Three constraints that mattered more than the UI, and still hold:
+**Area 4 — Team oversight and planning.** The manager's and owner's week views:
+the team grid, the per-person panel and the planning grid. Finding who is behind
+and why, correcting somebody's week including their absences, planning more than
+one cell at a time, and grids that draw days, absences and locks the same way.
 
-- **The summary must reuse the existing visibility filter.** A hand-written
-  second copy of the manager/team SQL is exactly how authorization bugs get
-  introduced. The summary and the list must never be able to disagree about who
-  a manager may see.
-- **Aggregate in the database, not the browser.** Summing raw logs client-side
-  works for one person's week and will not survive the whole company.
-- **Editing someone else's time is a server-side permission.** The check belongs
-  in the time-log service, next to the period lock and the ownership match, and
-  the same visibility source has to decide it. A hidden edit button is not a
-  permission.
+**Area 5 — Administration and settings.** The owner's and manager's admin
+screens — people, teams, projects, activities, categories, periods and company
+settings. Lists that scale past a few dozen items with search that covers
+everything, confirmations before anything is archived, forms and dialogs that
+behave the same on every screen, and settings that say what a change will do.
 
-It also closed the blank home page, added the missing timesheet link for
-managers, and narrowed the user and team lists to a manager's own teams (D10).
-Assignment kept its own company-wide list until Scope E narrowed that too.
+**Area 6 — Reporting and insights.** What owners and managers learn from
+`/reports` and the export. Which questions each role actually brings, and how
+the answers are best shown — charts, drill-down from a client to its projects and
+people, trends over months, a team view for the owner, sensible date presets —
+together with the figures that can mislead today. To be reviewed with the people
+who use the reports before it is scoped.
 
-*Depended on: Phase 0. Blocks: Phases 3 and 5 have their natural home here.*
+**Area 7 — The employee's own view.** What an employee can see beyond one week:
+a report of their own hours, how their time and plan compare over longer
+periods, and what they may see of their own team and manager
+([`permission-model.md`](./permission-model.md) P5). Any change to who may see
+what is a permission decision and is settled as one.
 
----
+**Area 8 — Whole-product review and finish.** A last pass over every page and
+flow in the product, role by role and on a phone, for consistency, wording and
+the details the earlier areas left: the point at which the product is judged
+ready, or not, for the final stage.
 
-> Before Phase 2, the permission scopes in
-> [`permission-model.md`](./permission-model.md) §7 closed the authorization gaps
-> listed in §6. Scopes C, D and E are delivered and §6 has no open gaps left. A
-> fourth scope, project responsibility, was cancelled rather than built.
-
-**Phase 2 — Absences — delivered**
-
-Implements D6. `Absence` is its own table, separate from `TimeLog`, covering a
-**date range** with a type, so a two-week holiday is one row rather than
-fourteen. A person records their own from the timesheet; the timesheet and the
-team week grid mark the days, so a week with no logged time reads as "on
-holiday" rather than "did not log". `Activity.isAbsence` was removed with it.
-
-Six business decisions were settled while building it, and they are the rules
-now in force:
-
-- **Who may record for whom** follows the time-log scope exactly (D9), through
-  the same `assertCanActForUser` helper rather than a second copy of the rule.
-- **Absences respect period locking** across their whole range (§10 Q1).
-- **Three fixed types** — vacation, sick leave, public holiday — as a database
-  enum, not a per-company lookup table.
-- **A public holiday is personal.** It belongs to one person like any other
-  absence, because a holiday is not automatically a day off and somebody may
-  work it. There is therefore **no company holiday calendar**, and nothing tells
-  a person which days those are.
-- **Whole days only.** No half-days, no hours.
-- **A day is either worked or absent, never both.** An absence touching a day
-  with logged time is refused, and logged time on a covered day is refused;
-  two absences may never overlap. The cost, accepted deliberately: *worked half
-  a day, then went home sick* cannot be recorded without deleting the time log.
-
-Deliberately excluded, and still excluded: requests, approvals, balances,
-accrual. Leave management lives elsewhere (§1). WorkTrack records that the
-absence happened.
-
-Not built, and known: a manager cannot record an absence for someone in their
-team through the UI, though the API allows it and enforces the scope.
-
-*Depended on: Phase 1 for the surfaces. Blocks: Phase 3 — expected hours cannot
-be right until absences are known.*
-
----
-
-**Phase 3 — Capacity and expected hours — delivered**
-
-**Built in September 2026.** The expected figure on both week views was
-`standardWorkHoursPerDay` times every weekday, so part-time staff were measured
-against hours nobody agreed with them and a week of holiday read as forty hours
-short. It is now capacity minus absences, computed once in the backend. §4
-describes the rules that are in force; what follows is what settling them cost.
-
-**Capacity became a record rather than a column.** `UserCapacity` carries
-contracted minutes per week with the date they take effect, and the row in force
-on a date is the last one starting on or before it. A single mutable number on
-`User` could not work: editing it would recompute every week the person had
-already worked, which is the instability Q1 rejected for absences.
-`User.capacityHoursPerWeek`, which no screen ever set, was removed with the same
-migration and its value carried into a row where it was not the default.
-
-**The vocabulary was the other half of the work.** Expected, Planned, Logged and
-Behind now mean one thing each, everywhere, and the interface says *Expected*
-where it used to say *Target*. One progress bar shows one comparison; Expected
-and Planned never share a bar, and Planned is not shown to employees at all.
-
-**Planning entries moved from a project activity to a project**, which is what
-makes one row one project in one person's day on the grid Phase 4 draws.
-
-Five decisions came out of building it, and they are the rules now in force:
-
-- **Capacity is set by the OWNER**, in the user form — contracted hours are an
-  employment fact, and D10 keeps user administration with the owner.
-- **A capacity change may not take effect on or before the last locked day.**
-  Dating one inside a LOCKED period is refused, and so is backdating one to
-  before it, since either would alter what was expected in a closed month.
-- **Expected never consults planning** (D3), so the phase was safe to ship
-  before a planning interface existed.
-- **Behind counts only days that have finished**, in the company's timezone.
-- **A public holiday reduces the expectation only for whoever recorded one**,
-  following Phase 2.
-
-Four limitations were accepted rather than solved, and they are listed in
-`known-issues.md` rather than repeated here: the evenly-spread working week, the
-hardcoded Monday-to-Friday days, the unversioned company default, and the loss
-of billable forecasting on planned work.
-
-*Depended on: Phases 1 and 2. Blocks: Phase 5's utilisation figures.*
+**Order.** Area 1 first, by decision. Area 2 early, because every later area
+reuses what it settles. Areas 3 to 7 follow roughly in the order people meet
+them day to day, and can be reordered; Area 6 and Area 7 need the most
+discussion before they are scoped. Area 8 closes the stage. A defect that
+distorts figures can be pulled into whichever scope comes first.
 
 ---
 
-**Phase 4 — Planning interface — delivered**
-
-**Built in September 2026.** The planning module had full CRUD since Phase 0 and
-no screen. Managers now plan per person, **per project**, per weekday, one week
-at a time, and employees see their own plan read-only as context (D3). §4
-describes the rules in force.
-
-**What settling them cost.** Three earlier assumptions were reversed. Planning
-now requires project membership (§10 Q2, answered: block). The weekly budget is
-*available* hours rather than contracted capacity, so a holiday booked in advance
-is caught at planning time. And past plans follow locked periods rather than
-freezing at today, so a plan can be corrected after a late sick day until the
-month is closed. The limits refuse only increases, because an absence recorded
-after the plan was made would otherwise leave a week nobody could reduce.
-
-Two manager-only figures came with it: **unplanned capacity** (available minus
-planned) and **no longer fits** (planned above available, flagged and never
-fixed automatically). Neither is shown to an employee, and neither affects
-whether somebody is behind.
-
-*Depended on: Phase 1 for navigation and the team context. Blocks: the
-planned-vs-actual half of Phase 5.*
-
----
-
-**Phase 5 — Reporting and closing periods — delivered**
-
-**Built in September 2026.** Period locking was enforced on every write but
-could not be switched on, and none of the data came back out as an answer. Now
-months close by themselves and owners and managers have a `/reports` page. §4
-and §5 describe what is in force; what follows is what settling it cost.
-
-**Periods became calendar months that lock by themselves.** Free-form named
-periods were dropped. A month stays editable for 7 days after it ends and locks
-on the 8th in the company's time zone, worked out from the date whenever it is
-checked — a scheduled job was rejected because the backend sleeps when idle. An
-owner can reopen a locked month and close it again; nothing closes a month
-early. Every month already past its grace window locked the day this shipped.
-
-**The hours report keeps D2's three categories apart under any grouping.**
-Rather than treating internal work as one group, every row splits into billable
-client work, non-billable client work and internal work, grouped by client,
-project, activity or person. Client names that differ only in case count as one
-client.
-
-**Utilisation settled on four figures** — billable utilisation, client share,
-non-billable client share and logging completeness — reading capacity and
-absences separately and counting availability and logged time only for days
-that have finished, so a month in progress is not measured against days still
-to come. Billable over
-*capacity* was left out as unfair per person.
-
-**Names keep their case.** Project, client, activity, category and team names
-are trimmed rather than lowercased; team names became unique regardless of case,
-like the others.
-
-Reports are for owners and managers only. Planned vs actual stays readable
-through the API by employees for their own figures, but no employee screen
-shows it; a report of an employee's own hours is a possible later addition.
-Export moved behind the polish phases (Phase 13). The limitations accepted
-along the way: a fixed seven-day grace period, no closing a month early, client
-names that stay free text, and names saved before Phase 5 staying lowercase
-until edited.
-
-*Depended on: Phases 3 and 4.*
-
----
-
-**What comes after Phase 5.** Everything the product was meant to do is now
-built except export. What remains is making it correct, safe and pleasant to
-rely on, then getting hours out, then going live. The old single "hardening"
-phase mixed bugs, security, tests, polish and accessibility; it is split below
-by area, so that each phase is one branch and one pull request, can be reviewed
-on its own, and ships something a person would notice. Every phase adds the
-tests for what it changes — there is no separate "write the tests later" phase.
-
-**Ordering.** Correctness and security first, because they are the things that
-cannot wait for real use: people losing their session, a password that cannot
-be changed, an invitation that blocks its own retry. Then the limits that keep
-figures right as data grows, then the tooling that protects everything after
-it and a development environment that can be trusted. Visual polish and accessibility come once the behaviour underneath has
-stopped moving. Export stays after them by decision, so the file reflects
-settled screens; production launch closes the roadmap because it depends on
-decisions about hosting and domain rather than on code.
-
----
-
-**Phase 6 — Sign-in, sessions and account security — delivered**
-
-**Built in September 2026.** People were signed out during ordinary use, the
-password form did nothing, and the rate limits either limited nothing or limited
-everybody at once. Now a session lasts as long as it should, the limits count
-people, and a person can change their own password. No permission changed and no
-feature was added.
-
-**Sessions stopped dropping.** Refreshes arriving together — a navigation and
-its prefetches, a second tab — made the backend treat the third as a stolen
-token and delete the session. A refresh that brings the token rotated away in
-the last thirty seconds now gets a new access token and leaves the session
-alone; any other reuse still ends it. The access token lives fifteen minutes
-(Q7).
-
-**Limits count people, not the proxy.** The global limit is a real per-minute
-limit. Signed-in traffic is counted per session, read from a verified token, so
-the frontend's server counts as the many people it carries. Sign-in, sign-up and
-the password routes are also limited per account, from any address. Measured on
-the development stand, the address the backend sees for a client is a
-Cloudflare server rather than the person, so `TRUST_PROXY_HOPS` stayed at one
-and the per-account limit is what protects an account.
-
-**Changing your own password works**, both "Change password" and "Set password"
-for an account created with Google. Mistakes show on the field they belong to,
-and a change signs out the person's other devices.
-
-**Housekeeping.** The nightly clean-up also deletes used or expired one-time
-tokens, dead token code went, and the shared Google callbacks are recorded as
-intended: the outcome depends on the account, not on the button pressed.
-
-The limitations accepted along the way: the per-client sign-in limit is shared
-by everyone behind the same Cloudflare server, a throttled refresh still signs
-the person out, the clean-up runs only while the backend is awake, and there is
-still no list of your own sessions.
-
-*Depended on: nothing. Q7 and Q8 were answered while planning it.*
-
----
-
-**Phase 7 — Invitations and team membership — delivered**
-
-**Built in September 2026.** Adding people mostly worked but failed at the
-edges: a failed email blocked the address for a day, a sent invitation could not
-be followed up, an employee could join with no team, and membership dates
-followed the server's clock. Now inviting and staffing is reliable, recoverable
-and says what happened. No permission changed.
-
-**Invitations can be recovered.** A failed invitation email leaves nothing
-behind, so the address can be invited again at once. Pending invitations are
-listed on the users page with resend and revoke — the owner sees all of them, a
-manager those into the teams they lead, including ones the owner sent there
-(D10). A resend issues a new link and expiry, and the old link stops working.
-Sending and resending are each limited to 20 a minute per session.
-
-**Every employee joins into a team.** An employee invitation names an active
-team, from the owner too, and so does creating an employee directly. Archiving a
-team revokes its pending invitations and tells the owner how many. An employee
-can still be left without a team after removal from their last one; only the
-owner sees and places them.
-
-**Membership dates are right.** `leftAt` is the day a membership ended, not its
-last day, so somebody can be removed and added back the same day. Membership
-dates come from the company's time zone, not the server's.
-
-**The flow says what happened.** The invitation page names the team, and a
-manager whose teams are all archived is told so. A team outside a manager's
-scope gets the same error whatever its state, and the manager onboarding check
-counts only the manager's own teams.
-
-The limitations accepted along the way: invitations sent without a team before
-this phase are accepted as they are and the owner places the person, and an
-employee left without a team is not flagged.
-
-*Depended on: nothing. Its business questions were answered while planning it.*
-
----
-
-**Phase 8 — Data limits and robustness — delivered**
-
-**Built in September 2026.** Lists and reports worked on small data but gave
-wrong answers at the edges: several views asked for 500 rows and showed whatever
-came back, the backend accepted any page size and any date range, and a name
-containing `_` or `%` could be refused as a duplicate of a different name. Now
-every list and report stays correct as data grows. No permission changed and no
-feature was added.
-
-**No list is cut off.** A page holds at most 100 rows, and a request for more,
-or for a page or page size below 1, is refused rather than shortened. Every view
-that needs a whole list — the timesheet, the team grid and its person panel, the
-planning grid, the activity picker, team options and the team filters' projects —
-fetches it page by page, and the lists they page through keep a fixed order, so
-no row is repeated or skipped. List responses carry the rows and their total;
-the pagination links, built from the backend's own host and read by nothing,
-are gone.
-
-**Date ranges are bounded.** The hours, planned vs actual and utilisation
-reports, expected hours and the team week summary cover at most 366 days,
-counting both ends. The custom range picker on the reports page applies the same
-limit and refuses a year that is not four digits, with a message under the field
-instead of a request.
-
-**Names are compared exactly.** The duplicate-name checks for projects,
-activities and categories compare names the way the database's unique indexes
-do, ignoring case and surrounding spaces, so `_` and `%` are plain characters.
-Activity names stay unique across the company.
-
-The limitation accepted along the way: a view that needs a whole list makes one
-request per 100 rows.
-
-*Depended on: nothing. Its decisions were settled while planning it.*
-
----
-
-**Phase 9 — Engineering quality and tooling — delivered**
-
-**Built in September 2026.** The product worked, but the codebase was not safe
-to change quickly: CI let formatting drift and lint warnings through, the
-frontend had no tests, and locking was only tested in UTC. No product
-behaviour, permission or business rule changed.
-
-**CI refuses what used to slip through.** Both applications are checked for
-formatting, lint fails on any warning, and the frontend's tests run on every
-pull request alongside the backend's.
-
-**The logic the screens rely on is tested.** The frontend has Vitest tests for
-its date, month, absence, lock and paging helpers and the report range check.
-Backend specs in a time zone far from UTC prove that a month locks at the
-company's midnight on the 8th, and that time logs, absences, planning and
-capacity are refused from that moment.
-
-**Small debt is gone.** The users list, the assignable users and a project's
-members end their sort with `id`, so paging through them never repeats or
-skips somebody; the company's today comes from one helper; and the unused token
-constants are removed.
-
-*Depended on: nothing. No business questions.*
-
----
-
-**Phase 10 — Development environment — delivered**
-
-**Built in September 2026.** The local stack could serve stale code, setup from
-a clean clone had never been checked, and the hosted database's SSL mode was
-implicit. No product behaviour, permission or business rule changed.
-
-**What runs locally is what is on disk.** colima does not reliably pass file
-events from macOS into the containers, so both watchers poll; the frontend
-container runs `next dev` with webpack, because Turbopack's polling misses
-changes. Every `make up` recreates `node_modules` and the Next.js cache from the
-new images, so dependency changes and a stale cache never survive it. Only the
-database is kept.
-
-**A new developer can start from the README.** Setup was run from an empty
-folder as a separate Docker project, using only the README and the samples, and
-the README was fixed where it was wrong.
-
-**The hosted database asks for full certificate checks by name**
-(`sslmode=verify-full`), and how the backend specs share the local database is
-documented.
-
-*Depended on: nothing. No business questions.*
-
----
-
-**Phase 11 — Week views and reports polish — delivered**
-
-**Built in September 2026.** The screens built in Phases 1–5 had rough edges;
-this phase smoothed them out without adding a feature. One bug touched
-permissions and was fixed as a bug, not as a new rule.
-
-**A manager who leads no team sees and reads their own data.** They get their
-own row in the planning grid, the Team week view and the utilisation report, and
-can read their own time logs, absences and hours. Before, their own timesheet
-was refused, although they could log time. The user and team lists still show
-them nobody (D10).
-
-**Locks are never misrepresented.** No day can be edited until its lock state
-has loaded, and an absence that touches a locked month cannot be opened from any
-of its days, matching the server, which freezes the whole range.
-
-**Owners can reach any month to reopen.** The Periods page loads older months
-twelve at a time with no lower bound, so a company can backfill history from
-before it signed up.
-
-**The screens read as one product.** Durations read "30m" and "−30m", the report
-filters keep their layout when a date is invalid, the product is spelled
-WorkTrack everywhere, and Settings and the password-reset pages use the light
-theme. An invalid spacing class and three unused list requests are gone, and the
-user modal refreshes its project list after a change.
-
-*Depended on: nothing. Its five decisions were confirmed while planning it.*
-
----
-
-**Phase 12 — Accessibility — delivered**
-
-**Built in September 2026.** WorkTrack worked with a mouse but not well by
-keyboard or screen reader, and much of its text was below AA contrast. No
-product behaviour or business rule changed.
-
-**Every control has a name and state.** The week and calendar arrows are named,
-the calendar toggle says whether it is open, each calendar day reads its full
-date, and focus moves into the calendar and back. Focus is always clearly
-visible.
-
-**Time entries work by keyboard.** An open entry opens with Enter and Space, an
-open day is named for what it does, and a locked entry can still be focused to
-show its details but is announced as unavailable.
-
-**Tabs follow the keyboard pattern.** On the reports and admin pages only the
-selected tab is in the Tab order; arrow keys, Home and End move between tabs and
-select them, and each tab points to its panel.
-
-**All text meets AA contrast**, fixed in the visual foundation rather than per
-component. The brand colour and muted text are darker, warning, success and
-destructive text use their own darker shades, and faded text is gone.
-
-Nested buttons in the timesheet's day column stay for later, by decision
-([`known-issues.md`](./known-issues.md)).
-
-*Depended on: Phase 11. Its three design decisions were confirmed while
-planning it.*
-
----
-
-**Phase 13 — Export — delivered**
-
-**Built in September 2026.** Invoicing happens outside WorkTrack (D7), so hours
-had to get *out*; without that the billable split had no consumer. It came after
-the polish phases by decision, so the file reflects settled screens.
-
-**Anybody who can see the Hours report exports exactly what it shows** — an
-owner the whole company, a manager the teams they lead and themselves — through
-the same query rules, so the file's totals equal the report's.
-
-**An Excel file, built for invoicing (§10 Q4).** One row per person, day,
-project, activity and billing type, with real dates and decimal hours next to
-the minutes. Notes are left out. Open months can be exported and are marked
-open, since hours are usually handed over before a month is closed. The format
-was first built as CSV and changed to Excel while the phase was in progress.
-
-A manager's file follows current team membership, like every report (P4).
-
-*Depended on: Phases 5 and 11. Its four decisions were confirmed while planning
-it.*
-
----
-
-**Final stage — Production launch**
-
-WorkTrack runs as a real production service, separate from the shared
-development stand.
+**Final stage — Production launch — deferred until the product is ready**
+
+Not scheduled. It starts only when the product has been reviewed and is judged
+ready to use for real; until then there is no production environment by
+decision, and the free development stand is enough.
 
 - **A production environment** — a second copy of the frontend and backend on
   paid plans, a fresh database, and the company's own domain with its Google
   sign-in URLs registered. Nothing is copied from the stand.
 - **Migrations as a real release step**, replacing the hand-run step from a
   laptop, which the free tier forces today.
+- **Session handling at the edge** — the `/login` lockout after a deleted
+  session, a throttled refresh signing people out, and the per-client sign-in
+  limit that counts Cloudflare rather than the person are all fixed or settled
+  against the production host.
 - **A release checklist**: environment variables, rollback, and the first
   deployment verified the way the stand's were.
 
-*Depends on: Phase 13, and on §10 Q9 (hosting, domain and timing), which is a
-business decision rather than code.*
+*Depends on: the product being judged ready, and on §10 Q9 (hosting, domain and
+timing), which is a business decision rather than code.*
 
 ---
 
 **Deferred on purpose.** Not scheduled, each waiting for a decision or a real
-need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a report
-of an employee's own hours; a dark theme; per-person working patterns, a
-configurable working week, a versioned company default capacity, a configurable
-grace period and closing a month early; and the permission questions in
-[`permission-model.md`](./permission-model.md) §6.
-
----
-
-### Dependency summary
-
-```text
-Phases 0–13 delivered
-   │
-   └── Final stage   Production launch
-```
+need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a dark
+theme, which Area 2 unblocks; per-person working patterns, a configurable
+working week, a versioned company default capacity, a configurable grace period
+and closing a month early; your own list of sessions and two-factor sign-in;
+and the permission questions in [`permission-model.md`](./permission-model.md)
+§6 other than P5.
 
 ---
 
@@ -1345,7 +883,7 @@ Short list. These are the things that would be expensive or dangerous to break.
 | Document | Covers |
 | :--- | :--- |
 | **This document** | Product definition, business rules, decisions, roadmap |
-| [`permission-model.md`](./permission-model.md) | The permission model and the scopes that delivered it; §5 says which parts are built |
+| [`permission-model.md`](./permission-model.md) | The permission model, all of it enforced, and its open questions |
 | [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
 | [`workflow.md`](./workflow.md) | Branching, pull requests, CI, migrations, deployment |
 | [`README.md`](../README.md) | Setup, commands, environment |
@@ -1361,23 +899,12 @@ they are not part of the published documentation.
 ## 10. Open decisions
 
 Questions about the permission model — team membership, invitations, team
-structure — live in [`permission-model.md`](./permission-model.md) §6, alongside
-the model they belong to. The ones below are about the rest of the product.
+structure, what employees see of their team — live in
+[`permission-model.md`](./permission-model.md) §6, alongside the model they
+belong to. The ones below are about the rest of the product.
 
 Genuinely undecided. Each includes a recommendation, but none should be treated
-as settled until confirmed.
-
-**Q1 — Do absences respect period locking? — answered.**
-Yes. Confirmed in September 2026 and built with Phase 2: an absence cannot be
-created, changed or deleted once any day of its range falls in a locked period.
-The reasoning was that Phase 3 makes absence an input to expected hours, so
-editing one in a closed month would silently change whether somebody was short
-that month — exactly the instability D5 exists to prevent.
-
-**Q2 — Should planning require project membership? — answered.**
-Yes, block. Confirmed in September 2026 for Phase 4. Time logging requires a
-`project_users` row, and a plan for a project the person cannot log against is
-impossible to fulfil. Staffing comes first, then planning.
+as settled until confirmed. Answered questions are summarised at the end.
 
 **Q3 — Should managers administer company-wide resources? — answered for teams,
 still open for the rest.**
@@ -1391,14 +918,6 @@ lookup tables any manager can still edit or archive across the whole company.
 *Recommendation: leave them company-wide for now* and revisit if two managers
 ever disagree about the catalogue.
 
-**Q4 — What form should the hours export take? — answered.**
-An Excel (`.xlsx`) file, confirmed in September 2026 for Phase 13. Who may export: anybody who can
-see a report, for exactly what they can see. Each row is one person, day,
-project, activity and billing type (billable, non-billable or internal), in
-decimal hours. Notes are left out, and a `Period` column marks months that can
-still change, so hours can be exported before a
-month is closed. Whoever produces invoices already works in a spreadsheet.
-
 **Q5 — Should the app chase people who have not logged time?**
 The team view shows who is short, but somebody still has to look. Phase 3 made
 "short" precise: logged below expected, over days that have finished.
@@ -1411,23 +930,79 @@ remove once people rely on them.
 Both are columns with no behaviour. `currency` should stay unused under D7.
 `deletedAt` implies a soft-delete story nobody has written.
 *Recommendation: leave both alone and revisit only if a real need appears.*
+Area 1 removes currency from the screens and keeps the column; dropping it is a
+later decision.
 Removing columns costs a migration for no user-visible gain; the risk is someone
 later assuming they work.
-
-**Q7 — How long should somebody stay signed in? — answered.**
-A fifteen-minute access token with the existing thirty-day rolling refresh, and
-no "remember me" choice. Confirmed in September 2026 for Phase 6: people stay
-signed in on their own device, and a stolen access token is useful for minutes.
-
-**Q8 — Is email verification needed? — answered: not now.**
-Only a company's first owner signs up with an email address and password;
-everybody else joins through an emailed invitation, which already proves the
-address. Confirmed in September 2026: no separate verification flow while that
-holds. Revisit only if the signup model changes.
 
 **Q9 — When, where and on what budget does WorkTrack go to production?**
 Blocks the final stage only. Production needs paid plans (Vercel's free plan is
 non-commercial, and the free backend sleeps), a domain from the company, and
 Google sign-in URLs registered for it.
-*Recommendation:* decide it next. Phase 13 is delivered, so the production
-launch is the only work left, and it waits on this.
+*Deferred by decision:* it is taken only once the product has been reviewed and
+judged ready (§7, final stage). Nothing in the improvement roadmap depends on
+it.
+
+**Q10 — What should the reports answer, and should they show charts?**
+Belongs to Area 6. Today every report is a table; there is no chart library, no
+drill-down from a client to its projects and people, no comparison with earlier
+months and no breakdown by team.
+*Recommendation:* review the three tabs with the people who use them before
+changing anything, and write down the three or four questions each role brings
+to `/reports`. The likely additions are hours per month over time, the billable
+split as a chart, a team breakdown for the owner and drill-down from a row, using
+one small chart library styled from the existing `--chart-*` tokens.
+*Alternative:* keep tables only and add drill-down, presets and trends as table
+columns.
+
+**Q11 — Should employees get a report of their own hours?**
+Belongs to Area 7. An employee sees one week at a time. The API already returns
+their own planned vs actual, week summaries and expected hours; the hours report
+and utilisation would each need their route opened to employees, pinned to
+themselves by the visibility filter they already use.
+*Recommendation:* yes — hours by project and activity, logged against expected
+by week and month, and absences taken, for the employee alone. Opening the two
+routes is a change to the §5 matrix and would be recorded as one.
+*Alternative:* build it only from the routes already open to employees, with no
+permission change and no billable split by project.
+
+**Q14 — When does somebody's Expected start?**
+Belongs to Area 3. With no capacity row, the company default applies to
+every date, so a person who joined on Thursday is behind for Monday to Wednesday.
+*Recommendation:* the day their account was created, in the company's time zone,
+with no new field.
+*Alternative:* an explicit start date on the person, set when they are invited
+or created and editable by the owner — right for a company that backfills
+history from before it started using WorkTrack, but a migration and a form
+field.
+
+**Q15 — Is time on a project with no client ever billable?**
+Belongs to Area 3. The reports count all time on a project with no client
+as internal, whatever its billable flag (D2), but the timesheet's progress bar
+and the week summary use the flag itself, so the same hours read "billable" on
+the timesheet and "internal" in the report.
+*Recommendation:* no — the time form does not offer "billable" on a project with
+no client, and the timesheet shows the same three-way split as the reports.
+*Alternative:* keep the flag free on every project and only relabel the
+timesheet's bar.
+
+### Answered
+
+- **Q1** — Absences respect period locking across their whole range (Phase 2).
+- **Q2** — Planning requires project membership (Phase 4).
+- **Q4** — The hours export is an Excel file, one row per person, day,
+  project, activity and billing type, with no notes and a `Period` column
+  (Phase 13).
+- **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
+  no "remember me" (Phase 6).
+- **Q8** — No email verification while only a company's first owner signs up
+  directly; everybody else joins through an invitation that proves the address.
+- **Q12** — Sign-up stays open for starting a company, behind a short, honest
+  entry page; a Google sign-in from an unknown account is refused on the
+  sign-in path and pointed to the invitation (Area 1).
+- **Q13** — The owner does not lead teams; setup accepts an owner who manages
+  everyone directly, with the manager steps optional (Area 1). Only a user with
+  the Manager role can be a team's manager; the owner changes an employee's
+  role to Manager first. Recorded in
+  [`permission-model.md`](./permission-model.md) §3.2 and enforced from Area 1's
+  first phase; §4 and §5 change when it ships.

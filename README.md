@@ -197,9 +197,10 @@ tests, covering who may see and change whose data and the business rules behind
 each feature, plus frontend tests for the date, lock and paging logic the
 screens rely on.
 
-The planned phases are complete, the most recent being keyboard and
-screen-reader access and the hours export. What remains is the production
-launch.
+The original feature plan is complete, the most recent additions being keyboard
+and screen-reader access and the hours export. The work ahead improves the
+product itself — ease of use, visual consistency, reporting, what employees can
+see, and onboarding. A production launch comes last, once the product is ready.
 
 The backend has a production Docker image (`apps/backend/Dockerfile`) and
 migrations run as a deployment step. Pull requests are checked by GitHub Actions
