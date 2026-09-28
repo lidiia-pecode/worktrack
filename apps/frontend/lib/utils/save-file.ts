@@ -9,5 +9,7 @@ export const saveFile = ({ blob, fileName }: DownloadedFile) => {
   link.download = fileName;
   link.click();
 
-  URL.revokeObjectURL(url);
+  // Freed after the click has been handled: Safari cancels the download if
+  // the link is freed straight away.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 };
