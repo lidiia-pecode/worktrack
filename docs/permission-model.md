@@ -383,10 +383,10 @@ start with Phase 6, sign-in and sessions — see
 
 ### Not in any of these
 
-Export and the `Client` entity (D8). Absences, capacity, planning and reporting
-(Phases 2 to 5) were built afterwards and needed nothing new here: their scopes
-reuse D9's people through the same helpers, so a manager's reports cover the
-teams they lead and an owner's the whole company. Reopening a locked month is
+The `Client` entity (D8). Absences, capacity, planning, reporting (Phases 2 to
+5) and the hours export (Phase 13) were built afterwards and needed nothing new
+here: their scopes reuse D9's people through the same helpers, so a manager's
+reports and exports cover the teams they lead and an owner's the whole company. Reopening a locked month is
 the Owner's alone.
 
 ---
