@@ -773,7 +773,8 @@ For the company using it:
   without that plan constraining anyone.
 - **The owner** sees the same across the company, closes periods once hours have
   been used for invoicing, and can export hours — split by client, project, and
-  billable/non-billable — to hand to whoever produces the invoices.
+  billable/non-billable — to hand to whoever produces the invoices. A manager
+  can export the same for the teams they lead.
 - **Nobody** approves anybody's timesheet. Someone else's time can be corrected
   by their manager or by the owner, inside an open period, and never by anyone
   else (D9).
@@ -781,7 +782,7 @@ For the company using it:
 ### Roadmap
 
 High-level and ordered by dependency. Each phase is a coherent product increment,
-not a task list. Phases 0 to 9 are delivered, and so is every permission
+not a task list. Phases 0 to 12 are delivered, and so is every permission
 scope in [`permission-model.md`](./permission-model.md) §7. Phases 6–13 and the
 final stage were re-planned in September 2026, after Phase 5 closed.
 
@@ -1257,7 +1258,11 @@ changing.
 Anybody who can see a report may export exactly the data they can see — an
 owner the whole company, a manager the teams they lead.
 
-*Depends on: Phases 5 and 11. Open: §10 Q4 (format and grouping).*
+**The format is settled (§10 Q4).** An Excel file of the Hours report's
+figures, one row per person, day, project, activity and billing type, with no
+notes. Months that are still open can be exported and are marked as open.
+
+*Depends on: Phases 5 and 11.*
 
 ---
 
@@ -1377,15 +1382,13 @@ lookup tables any manager can still edit or archive across the whole company.
 *Recommendation: leave them company-wide for now* and revisit if two managers
 ever disagree about the catalogue.
 
-**Q4 — What form should the hours export take?**
-Required before the product is complete, since invoicing is external (D7), but
-deliberately built after the polish phases — see §7 Phase 13. Who may export is
-settled:
-anybody who can see a report, for exactly what they can see.
-*Recommendation: start with CSV* — one row per person per project per day, or
-per person per project per period, with billable and client columns. Whoever
-produces invoices already works in a spreadsheet. Confirm the grouping with them
-before building; the wrong granularity makes the export useless.
+**Q4 — What form should the hours export take? — answered.**
+An Excel (`.xlsx`) file, confirmed in September 2026 for Phase 13. Who may export: anybody who can
+see a report, for exactly what they can see. Each row is one person, day,
+project, activity and billing type (billable, non-billable or internal), in
+decimal hours. Notes are left out, and a `Period` column marks months that can
+still change, so hours can be exported before a
+month is closed. Whoever produces invoices already works in a spreadsheet.
 
 **Q5 — Should the app chase people who have not logged time?**
 The team view shows who is short, but somebody still has to look. Phase 3 made

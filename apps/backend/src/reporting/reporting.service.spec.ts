@@ -31,6 +31,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
+import { HoursBilling } from './enums/hours-billing.enum';
 import { ReportingService } from './reporting.service';
 import {
   addMonths,
@@ -546,6 +547,116 @@ describe('ReportingService', () => {
       await expect(
         service.getPlannedVsActualReport(owner, tooLong),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    describe('hours export', () => {
+      const exportRows = (user: AuthUser) =>
+        service.getHoursExport(user, lockedRange);
+
+      it('has one row per person, day, project, activity and billing', async () => {
+        const rows = await exportRows(owner);
+
+        expect(
+          rows.map((row) => [
+            row.person,
+            row.project,
+            row.billing,
+            row.minutes,
+          ]),
+        ).toEqual([
+          ['Member Test', `CRM ${RUN}`, HoursBilling.BILLABLE, 300],
+          ['Member Test', `CRM ${RUN}`, HoursBilling.NON_BILLABLE, 60],
+          ['Member Test', `Tooling ${RUN}`, HoursBilling.INTERNAL, 120],
+          ['Outsider Test', `CRM ${RUN}`, HoursBilling.BILLABLE, 240],
+        ]);
+        expect(rows[0]).toMatchObject({
+          date: lockedDate,
+          client: 'Acme',
+          activity: `Backend ${RUN}`,
+          category: `Engineering ${RUN}`,
+        });
+      });
+
+      it('adds up to the Hours report for the same people', async () => {
+        for (const user of [owner, manager]) {
+          const rows = await exportRows(user);
+          const { totals } = await report(user, HoursReportGroupBy.CLIENT);
+
+          expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
+            totals.totalMinutes,
+          );
+        }
+      });
+
+      it("shows a manager only their team's hours", async () => {
+        const rows = await exportRows(manager);
+
+        expect(new Set(rows.map((row) => row.person))).toEqual(
+          new Set(['Member Test']),
+        );
+      });
+
+      it('spells a client the same way on every row', async () => {
+        const legacy = await createProject('Old CRM', 'acme', activityId);
+        const legacyLog = await log(
+          member.id,
+          legacy.projectActivityId,
+          30,
+          true,
+        );
+
+        const rows = await exportRows(owner);
+        await dataSource.getRepository(TimeLog).delete({ id: legacyLog.id });
+
+        expect(rows.filter((row) => row.project === `Old CRM ${RUN}`)).toEqual([
+          expect.objectContaining({ client: 'Acme' }),
+        ]);
+      });
+
+      it('marks each row closed or open by its month', async () => {
+        const [crm] = await dataSource
+          .getRepository(ProjectActivity)
+          .find({ where: { companyId, activityId }, take: 1 });
+        const openLog = await dataSource.getRepository(TimeLog).save({
+          companyId,
+          userId: member.id,
+          projectActivityId: crm.id,
+          date: today,
+          minutes: 45,
+          isBillable: true,
+        });
+
+        const rows = await service.getHoursExport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+        });
+        await dataSource.getRepository(TimeLog).delete({ id: openLog.id });
+
+        expect(
+          rows
+            .filter((row) => row.date === lockedDate)
+            .map((row) => row.isPeriodClosed),
+        ).not.toContain(false);
+        expect(rows.find((row) => row.date === today)).toMatchObject({
+          minutes: 45,
+          isPeriodClosed: false,
+        });
+      });
+
+      it('refuses a range that runs backwards or is too long', async () => {
+        await expect(
+          service.getHoursExport(owner, {
+            dateFrom: today,
+            dateTo: lockedMonth,
+          }),
+        ).rejects.toThrow(BadRequestException);
+        await expect(
+          service.getHoursExport(owner, {
+            dateFrom: '2025-01-01',
+            dateTo: '2026-01-02',
+          }),
+        ).rejects.toThrow(BadRequestException);
+      });
     });
 
     describe('planned vs actual', () => {

@@ -11,7 +11,7 @@ import { UtilisationController } from './utilisation/utilisation.controller';
 type Handler = keyof ReportingController;
 
 const OWNER_ONLY: Handler[] = ['reopenPeriod', 'closePeriod'];
-const OWNER_AND_MANAGER: Handler[] = ['getHoursReport'];
+const OWNER_AND_MANAGER: Handler[] = ['getHoursReport', 'exportHours'];
 // Employees read their own figures here; no employee screen shows them.
 const EVERY_ROLE: Handler[] = ['listPeriods', 'getPlannedVsActualReport'];
 
