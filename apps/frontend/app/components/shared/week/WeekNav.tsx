@@ -34,27 +34,35 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           variant="ghost"
           size="iconSm"
           className="rounded-none w-9"
+          aria-label="Previous week"
           onClick={() => onWeekChange(addWeeks(weekStart, -1))}
         >
-          <ChevronLeft size={16} />
+          <ChevronLeft size={16} aria-hidden />
         </Button>
         <Button
           variant="ghost"
           size="iconSm"
           className="rounded-none w-9 border-x border-border"
+          aria-label="Next week"
           onClick={() => onWeekChange(addWeeks(weekStart, 1))}
         >
-          <ChevronRight size={16} />
+          <ChevronRight size={16} aria-hidden />
         </Button>
       </div>
 
       <div className="relative">
         <button
           type="button"
+          aria-haspopup="dialog"
+          aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
           className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition"
         >
-          <CalendarDays size={15} className="text-muted-foreground" />
+          <CalendarDays
+            size={15}
+            className="text-muted-foreground"
+            aria-hidden
+          />
           {formatWeekRangeLabel(weekStart)}
         </button>
 

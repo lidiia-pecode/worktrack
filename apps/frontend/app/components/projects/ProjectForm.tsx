@@ -90,7 +90,7 @@ export function ProjectForm({
         />
 
         {errors.description?.message && (
-          <p className="mt-1.5 text-xs text-destructive">
+          <p className="mt-1.5 text-xs text-destructive-text">
             {errors.description.message}
           </p>
         )}

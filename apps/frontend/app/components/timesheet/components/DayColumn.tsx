@@ -5,7 +5,11 @@ import { CalendarClock, Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
-import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  isWeekend,
+} from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import { buildSegments } from "../helpers/build-segments";
@@ -86,13 +90,16 @@ export const DayColumn = ({
       role={isEditable ? "button" : undefined}
       tabIndex={isEditable ? 0 : undefined}
       aria-label={
-        absence && isEditable
-          ? `Edit the absence covering ${toISODate(date)}`
+        isEditable
+          ? absence
+            ? `Edit the absence on ${formatLongDayLabel(date)}`
+            : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
       onClick={isEditable ? openDay : undefined}
       onKeyDown={(e) => {
         if (isEditable && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
           openDay();
         }
       }}
@@ -117,7 +124,7 @@ export const DayColumn = ({
           )}
 
           {isAbsenceLocked && !isLocked && (
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
               <Lock className="size-3" aria-hidden />
               Part of it is in a locked month
             </span>
@@ -146,7 +153,7 @@ export const DayColumn = ({
             </>
           )}
 
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground/60">
+          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
             {isLocked && (
               <>
                 <Lock className="size-3" aria-hidden />
@@ -177,7 +184,7 @@ export const DayColumn = ({
 
           <Badge
             variant="warning"
-            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold opacity-60 shadow-sm"
+            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}

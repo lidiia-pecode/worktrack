@@ -254,7 +254,9 @@ export const TimeLogFormModal = ({
             />
 
             {errors.hours && (
-              <p className="text-xs text-destructive">{errors.hours.message}</p>
+              <p className="text-xs text-destructive-text">
+                {errors.hours.message}
+              </p>
             )}
           </FormSection>
 

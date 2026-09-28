@@ -25,13 +25,13 @@ const buttonVariants = cva(
         primary: [
           "bg-brand text-brand-foreground",
           "shadow-lg shadow-glow-primary",
-          "hover:bg-brand/90",
+          "hover:bg-brand-hover",
         ],
 
         complete: [
           "bg-brand-secondary text-brand-foreground",
           "shadow-lg shadow-glow-secondary",
-          "hover:bg-brand-secondary/90",
+          "hover:bg-brand-secondary-hover",
         ],
 
         secondary: [
@@ -53,19 +53,19 @@ const buttonVariants = cva(
 
         destructive: [
           "border border-destructive/20",
-          "bg-destructive/10 text-destructive",
+          "bg-destructive/10 text-destructive-text",
           "hover:bg-destructive/20",
         ],
 
         success: [
           "border border-success/20",
-          "bg-success/10 text-success",
+          "bg-success/10 text-success-text",
           "hover:bg-success/20",
         ],
 
         warning: [
           "border border-warning/20",
-          "bg-warning/10 text-warning",
+          "bg-warning/10 text-warning-text",
           "hover:bg-warning/20",
         ],
 
@@ -73,13 +73,10 @@ const buttonVariants = cva(
           "bg-gradient-to-r from-brand to-brand-secondary",
           "text-brand-foreground",
           "shadow-lg shadow-glow-primary",
-          "hover:from-brand/90 hover:to-brand-secondary/90",
+          "hover:from-brand-hover hover:to-brand-secondary-hover",
         ],
 
-        link: [
-          "h-auto bg-transparent p-0 text-primary",
-          "hover:text-primary/80 hover:underline",
-        ],
+        link: ["h-auto bg-transparent p-0 text-primary", "hover:underline"],
 
         neutral: [
           "border border-neutral-300",

@@ -108,7 +108,7 @@ export const PlanningWeekRow = ({
           return (
             <td
               key={iso}
-              className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground/60"
+              className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground"
             >
               -
             </td>

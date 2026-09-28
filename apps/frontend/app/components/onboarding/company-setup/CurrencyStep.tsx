@@ -81,7 +81,7 @@ export function CurrencyStep({ onContinue, onBack, onSkip }: StepProps) {
           </select>
 
           {errors.currency && (
-            <p className="text-xs font-medium text-destructive">
+            <p className="text-xs font-medium text-destructive-text">
               {errors.currency.message}
             </p>
           )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { KeyboardEvent, ReactNode, useId, useMemo, useState } from "react";
 
 import {
   AlertCircle,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { getNextTabIndex } from "@/lib/utils/tabs";
 
 import { EmptyState } from "../EmptyState";
 import { SearchInput } from "../inputs/SearchInput";
@@ -87,6 +88,7 @@ export function ResourcePage<T>({
   archivedCount,
 }: ResourcePageProps<T>) {
   const [search, setSearch] = useState("");
+  const tabsId = useId();
 
   const isArchived = tab === "archived";
   const hasSearch = Boolean(getSearchValue);
@@ -151,12 +153,10 @@ export function ResourcePage<T>({
 
       {/* Tabs */}
       {showArchived && (
-        <div
-          role="tablist"
-          aria-label={`${title} status`}
-          className="mb-5 flex items-center gap-1 border-b border-border"
-        >
+        <ResourceTabList label={`${title} status`} className="mb-5">
           <ResourceTabButton
+            id={`${tabsId}-active`}
+            controls={`${tabsId}-panel`}
             active={tab === "active"}
             icon={<ArchiveRestore className="size-3.5" />}
             label="Active"
@@ -165,101 +165,148 @@ export function ResourcePage<T>({
           />
 
           <ResourceTabButton
+            id={`${tabsId}-archived`}
+            controls={`${tabsId}-panel`}
             active={tab === "archived"}
             icon={<Archive className="size-3.5" />}
             label="Archived"
             count={archivedCount}
             onClick={() => handleTabChange("archived")}
-            muted
           />
-        </div>
+        </ResourceTabList>
       )}
 
-      {topContent}
+      <div
+        role={showArchived ? "tabpanel" : undefined}
+        id={`${tabsId}-panel`}
+        aria-labelledby={showArchived ? `${tabsId}-${tab}` : undefined}
+        className="flex flex-1 flex-col"
+      >
+        {topContent}
 
-      {/* Search */}
-      {!isLoading && !isError && hasItems && hasSearch && (
-        <div className="mb-5 w-full max-w-sm">
-          <SearchInput
-            value={search}
-            onChange={setSearch}
-            placeholder={searchPlaceholder}
-          />
-        </div>
-      )}
-
-      {/* Loading */}
-      {isLoading && <ResourcePageSkeleton />}
-
-      {/* Error */}
-      {!isLoading && isError && (
-        <ResourcePageError title={title} onRetry={onRetry} />
-      )}
-
-      {/* Empty */}
-      {!isLoading && !isError && filteredItems.length === 0 && (
-        <EmptyState
-          title={emptyStateTitle}
-          description={emptyStateDescription}
-          icon={isArchived ? <Archive className="size-6" /> : emptyIcon}
-        />
-      )}
-
-      {/* Content */}
-      {!isLoading && !isError && filteredItems.length > 0 && (
-        <>
-          <div
-            className={[
-              "grid gap-4 md:grid-cols-2 xl:grid-cols-3",
-              isArchived && "opacity-[0.82]",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-          >
-            {filteredItems.map(renderItem)}
+        {/* Search */}
+        {!isLoading && !isError && hasItems && hasSearch && (
+          <div className="mb-5 w-full max-w-sm">
+            <SearchInput
+              value={search}
+              onChange={setSearch}
+              placeholder={searchPlaceholder}
+            />
           </div>
+        )}
 
-          {hasNextPage && onFetchNextPage && (
-            <div className="mt-6 flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onFetchNextPage}
-                disabled={isFetchingNextPage}
-                className="min-w-28"
-              >
-                {isFetchingNextPage ? "Loading..." : "Load more"}
-              </Button>
+        {/* Loading */}
+        {isLoading && <ResourcePageSkeleton />}
+
+        {/* Error */}
+        {!isLoading && isError && (
+          <ResourcePageError title={title} onRetry={onRetry} />
+        )}
+
+        {/* Empty */}
+        {!isLoading && !isError && filteredItems.length === 0 && (
+          <EmptyState
+            title={emptyStateTitle}
+            description={emptyStateDescription}
+            icon={isArchived ? <Archive className="size-6" /> : emptyIcon}
+          />
+        )}
+
+        {/* Content */}
+        {!isLoading && !isError && filteredItems.length > 0 && (
+          <>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredItems.map(renderItem)}
             </div>
-          )}
-        </>
-      )}
+
+            {hasNextPage && onFetchNextPage && (
+              <div className="mt-6 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onFetchNextPage}
+                  disabled={isFetchingNextPage}
+                  className="min-w-28"
+                >
+                  {isFetchingNextPage ? "Loading..." : "Load more"}
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
 
+interface ResourceTabListProps {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}
+
+export function ResourceTabList({
+  label,
+  className,
+  children,
+}: ResourceTabListProps) {
+  // Arrow keys select the tab they move to, like a click.
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const tabs = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
+    );
+    const currentIndex = tabs.findIndex((tab) => tab === event.target);
+    if (currentIndex === -1) return;
+
+    const nextIndex = getNextTabIndex(event.key, currentIndex, tabs.length);
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    tabs[nextIndex].focus();
+    tabs[nextIndex].click();
+  };
+
+  return (
+    <div
+      role="tablist"
+      aria-label={label}
+      onKeyDown={handleKeyDown}
+      className={["flex items-center gap-1 border-b border-border", className]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      {children}
+    </div>
+  );
+}
+
 interface ResourceTabButtonProps {
+  id: string;
+  controls: string;
   active: boolean;
   label: string;
   icon: ReactNode;
   count?: number;
-  muted?: boolean;
   onClick: () => void;
 }
 
 export function ResourceTabButton({
+  id,
+  controls,
   active,
   label,
   icon,
   count,
-  muted = false,
   onClick,
 }: ResourceTabButtonProps) {
   return (
     <button
       type="button"
+      id={id}
       role="tab"
       aria-selected={active}
+      aria-controls={controls}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={[
         "group relative flex items-center gap-2",
@@ -272,20 +319,14 @@ export function ResourceTabButton({
         "focus-visible:ring-offset-2",
         active
           ? "text-foreground"
-          : muted
-            ? "text-muted-foreground/65 hover:text-muted-foreground"
-            : "text-muted-foreground hover:text-foreground",
+          : "text-muted-foreground hover:text-foreground",
       ].join(" ")}
     >
       <span
         aria-hidden="true"
         className={[
           "transition-colors",
-          active
-            ? "text-brand"
-            : muted
-              ? "text-muted-foreground/50 group-hover:text-muted-foreground"
-              : "text-muted-foreground",
+          active ? "text-brand" : "text-muted-foreground",
         ].join(" ")}
       >
         {icon}
@@ -300,7 +341,7 @@ export function ResourceTabButton({
             "text-center text-[11px] font-medium",
             active
               ? "bg-brand-subtle text-brand"
-              : "bg-muted/50 text-muted-foreground/70",
+              : "bg-muted/50 text-muted-foreground",
           ].join(" ")}
         >
           {count}
@@ -342,7 +383,7 @@ function ResourcePageError({ title, onRetry }: ResourcePageErrorProps) {
           flex size-12 items-center justify-center
           rounded-2xl
           bg-destructive/10
-          text-destructive
+          text-destructive-text
         "
       >
         <AlertCircle className="size-6" />

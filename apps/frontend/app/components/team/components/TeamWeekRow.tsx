@@ -69,7 +69,7 @@ export function TeamWeekRow({
                 {formatDuration(minutes)}
               </span>
             ) : (
-              <span className="text-muted-foreground/60">-</span>
+              <span className="text-muted-foreground">-</span>
             )}
           </td>
         );

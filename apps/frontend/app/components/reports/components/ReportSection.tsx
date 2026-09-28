@@ -68,7 +68,7 @@ export const ReportSection = ({
     >
       {isProvisional && (
         <p className="flex items-center gap-1.5 px-3 py-3 text-xs text-muted-foreground">
-          <Clock className="size-3.5 text-warning" aria-hidden />
+          <Clock className="size-3.5 text-warning-text" aria-hidden />
           Provisional: some days in this range can still be edited, so these
           figures may change.
         </p>

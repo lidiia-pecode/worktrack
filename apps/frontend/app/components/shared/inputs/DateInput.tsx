@@ -66,7 +66,7 @@ export const DateInput = forwardRef<HTMLInputElement, DateInputProps>(
         {error && (
           <p
             id={`${inputId}-error`}
-            className="mt-1.5 text-xs text-destructive"
+            className="mt-1.5 text-xs text-destructive-text"
           >
             {error}
           </p>

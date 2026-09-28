@@ -308,7 +308,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                 {formatDuration(totalMinutes)}
               </span>
 
-              <span className="text-muted-foreground/50">/</span>
+              <span className="text-muted-foreground">/</span>
 
               <span className="text-muted-foreground">
                 {formatDuration(expectedMinutes)}
@@ -341,7 +341,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
 
             {graceMonth?.editableUntil && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="size-3.5 text-warning" aria-hidden />
+                <Clock className="size-3.5 text-warning-text" aria-hidden />
                 {formatMonthLabel(graceMonth.month)} can still be edited until{" "}
                 {formatDayMonthLabel(graceMonth.editableUntil)}.
               </p>

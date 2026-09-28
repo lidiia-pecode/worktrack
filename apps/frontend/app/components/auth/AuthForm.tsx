@@ -194,7 +194,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           <div className="-mt-1 flex justify-end">
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-brand transition-colors hover:text-brand/80 hover:underline"
+              className="text-xs font-medium text-brand hover:underline"
             >
               Forgot your password?
             </Link>
@@ -309,7 +309,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           />
 
           {invitationActions.password.isError && (
-            <p className="text-sm text-destructive">
+            <p className="text-sm text-destructive-text">
               {getErrorMessage(invitationActions.password.error)}
             </p>
           )}
@@ -345,7 +345,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
 
           <Link
             href={isLogin ? "/register" : "/login"}
-            className="ml-1 font-medium text-brand transition-colors hover:text-brand/80 hover:underline"
+            className="ml-1 font-medium text-brand hover:underline"
           >
             {isLogin ? "Sign up" : "Sign in"}
           </Link>

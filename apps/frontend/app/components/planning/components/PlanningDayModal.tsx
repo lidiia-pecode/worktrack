@@ -345,7 +345,7 @@ export const PlanningDayModal = ({
             </div>
 
             {errors.hours && (
-              <p className="-mt-4 text-xs text-destructive">
+              <p className="-mt-4 text-xs text-destructive-text">
                 {errors.hours.message}
               </p>
             )}
@@ -367,7 +367,7 @@ export const PlanningDayModal = ({
               />
 
               {errors.note && (
-                <p className="text-xs text-destructive">
+                <p className="text-xs text-destructive-text">
                   {errors.note.message}
                 </p>
               )}

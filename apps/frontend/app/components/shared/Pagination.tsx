@@ -59,7 +59,7 @@ const Pagination: React.FC<PaginationProps> = ({
         page === "ellipsis" ? (
           <span
             key={`ellipsis-${idx}`}
-            className="px-1 text-zinc-300 select-none"
+            className="px-1 text-muted-foreground select-none"
           >
             ...
           </span>
