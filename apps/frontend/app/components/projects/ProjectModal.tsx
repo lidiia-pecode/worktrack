@@ -153,7 +153,7 @@ export function ProjectModal({
   };
 
   const handleSaved = () => {
-    onClose();
+    handleClose();
 
     if (isOnboarding) {
       router.push("/");

@@ -15,6 +15,7 @@ import {
 } from "@/lib/forms/schemas/company.schema";
 import { browserTimeZone, toListedTimeZone } from "@/lib/utils/time-zones";
 
+import { ErrorState } from "../../shared/ErrorState";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 import { OnboardingProgress } from "./OnboardingProgress";
@@ -57,7 +58,9 @@ const STEPS = [
 
 export const CompanySetupWizard = () => {
   const router = useRouter();
-  const { company, query, actions } = useCompany();
+  const { company, query, actions } = useCompany({
+    showsSaveErrorInline: true,
+  });
   const [currentStep, setCurrentStep] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -124,11 +127,21 @@ export const CompanySetupWizard = () => {
     );
   }
 
+  if (query.isError || !company) {
+    return (
+      <ErrorState
+        title="Your company could not be loaded"
+        description="We couldn't load your company's settings. Try again in a moment."
+        onRetry={() => query.refetch()}
+      />
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Set up {company?.companyName ?? "your company"}
+          Set up {company.companyName}
         </h1>
 
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
@@ -147,7 +160,7 @@ export const CompanySetupWizard = () => {
           event.preventDefault();
           void continueOrFinish();
         }}
-        className="mt-8 space-y-6 rounded-2xl border border-border/80 bg-card/90 p-7 shadow-[0_24px_70px_-35px_rgba(0,0,0,0.25)] backdrop-blur-xl sm:p-8"
+        className="mt-8 space-y-6 rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-8"
       >
         <OnboardingStepHeader
           title={step.title}
@@ -197,6 +210,7 @@ export const CompanySetupWizard = () => {
             step={0.5}
             {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
             error={errors.standardWorkHoursPerDay?.message}
+            labelClassname="mb-1.5"
             disabled={isSaving}
           />
         )}

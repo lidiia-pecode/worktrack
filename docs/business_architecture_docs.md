@@ -570,8 +570,8 @@ from a team they lead, because removal only narrows their own reach.
 
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
-a Manager. A Manager who leads a team cannot be changed to Employee until they no
-longer lead it, and the refusal names the teams. Archiving a team ends every open
+a Manager. A Manager who leads a team cannot be changed to another role until
+they no longer lead it, and the refusal names the teams. Archiving a team ends every open
 membership on the company's today, so its former manager loses reach from that
 day; an archived team is read-only, and restoring it brings it back with no
 members.

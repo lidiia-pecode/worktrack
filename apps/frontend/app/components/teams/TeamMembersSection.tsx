@@ -132,6 +132,7 @@ export function TeamMembersSection({
                   type="button"
                   variant="outline"
                   size="xs"
+                  aria-label={`Make ${membership.user.firstName} a Manager`}
                   onClick={() => setPersonToPromote(membership.user)}
                 >
                   Make Manager

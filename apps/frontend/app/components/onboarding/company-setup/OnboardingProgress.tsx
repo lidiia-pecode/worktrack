@@ -8,13 +8,17 @@ export function OnboardingProgress({
   currentStep,
 }: OnboardingProgressProps) {
   return (
-    <div className="flex items-start">
+    <ol className="flex items-start">
       {steps.map((step, index) => {
         const isCompleted = index < currentStep;
         const isCurrent = index === currentStep;
 
         return (
-          <div key={step} className="flex flex-1 items-start last:flex-none">
+          <li
+            key={step}
+            aria-current={isCurrent ? "step" : undefined}
+            className="flex flex-1 items-start last:flex-none"
+          >
             <div className="flex min-w-0 flex-col items-center">
               <div
                 className={[
@@ -35,6 +39,7 @@ export function OnboardingProgress({
                 ].join(" ")}
               >
                 {step}
+                {isCompleted && <span className="sr-only"> (done)</span>}
               </span>
             </div>
 
@@ -46,9 +51,9 @@ export function OnboardingProgress({
                 ].join(" ")}
               />
             )}
-          </div>
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }

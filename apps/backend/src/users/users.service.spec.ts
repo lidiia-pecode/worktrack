@@ -396,6 +396,20 @@ describe('UsersService scope', () => {
       });
     });
 
+    it('is refused for making a team manager an Owner too', async () => {
+      const leader = await createUser('ownerbound', UserRole.MANAGER);
+      await leadTeam(leader, 'Theta');
+
+      await expect(
+        service.updateUser(
+          leader.id,
+          companyId,
+          { role: UserRole.OWNER },
+          UserRole.OWNER,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('is not blocked by an archived team', async () => {
       const archivedLeader = await createUser(
         'archivedleader',

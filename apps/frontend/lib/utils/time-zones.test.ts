@@ -52,6 +52,7 @@ describe("toListedTimeZone", () => {
   it("turns old names into the current zone", () => {
     expect(toListedTimeZone("Europe/Kiev")).toBe("Europe/Kyiv");
     expect(toListedTimeZone("Asia/Calcutta")).toBe("Asia/Kolkata");
+    expect(toListedTimeZone("Etc/UTC")).toBe("UTC");
   });
 
   it("keeps a searchable zone as it is", () => {

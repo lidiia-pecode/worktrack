@@ -9,9 +9,9 @@ export function OnboardingStepHeader({
 }: OnboardingStepHeaderProps) {
   return (
     <div>
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">
+      <h2 className="text-2xl font-bold tracking-tight text-foreground">
         {title}
-      </h1>
+      </h2>
 
       <p className="mt-2 text-sm leading-6 text-muted-foreground">
         {description}

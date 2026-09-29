@@ -24,10 +24,10 @@ export default async function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl justify-center px-6 py-10">
         <WorkspaceSetup />
       </div>
-    </main>
+    </div>
   );
 }

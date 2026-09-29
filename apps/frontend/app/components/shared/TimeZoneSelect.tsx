@@ -83,6 +83,13 @@ export const TimeZoneSelect = ({
             id={inputId}
             placeholder="Search by country or city"
             aria-invalid={!!error}
+            aria-describedby={
+              error
+                ? `${inputId}-error`
+                : description
+                  ? `${inputId}-description`
+                  : undefined
+            }
             className={cn(
               "h-11 w-full rounded-lg border border-input-placeholder/50 bg-input px-3.5 pr-10 text-sm text-input-foreground outline-none transition",
               "placeholder:text-input-placeholder hover:bg-input/80",
@@ -138,10 +145,22 @@ export const TimeZoneSelect = ({
       </Combobox.Root>
 
       {description && !error && (
-        <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>
+        <p
+          id={`${inputId}-description`}
+          className="mt-1.5 text-xs text-muted-foreground"
+        >
+          {description}
+        </p>
       )}
 
-      {error && <p className="mt-1.5 text-xs text-destructive-text">{error}</p>}
+      {error && (
+        <p
+          id={`${inputId}-error`}
+          className="mt-1.5 text-xs text-destructive-text"
+        >
+          {error}
+        </p>
+      )}
     </div>
   );
 };

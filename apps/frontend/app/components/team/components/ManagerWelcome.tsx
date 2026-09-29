@@ -14,14 +14,36 @@ interface ManagerWelcomeProps {
   firstName: string;
 }
 
-const MANAGER_CAN = [
-  { text: "See and correct your team's time, here on Team time." },
-  { text: "Plan their week by project.", href: "/planning", label: "Planning" },
-  { text: "Report on their hours.", href: "/reports", label: "Reports" },
+interface CapabilityItem {
+  text: string;
+  href?: string;
+  label?: string;
+  /** Shown only once they lead a team. */
+  needsTeam?: boolean;
+}
+
+const MANAGER_CAN: CapabilityItem[] = [
+  {
+    text: "See and correct your team's time, here on Team time.",
+    needsTeam: true,
+  },
+  {
+    text: "Plan their week by project.",
+    href: "/planning",
+    label: "Planning",
+    needsTeam: true,
+  },
+  {
+    text: "Report on their hours.",
+    href: "/reports",
+    label: "Reports",
+    needsTeam: true,
+  },
   {
     text: "Invite employees into your teams.",
     href: "/admin/users",
     label: "Users",
+    needsTeam: true,
   },
   {
     text: "Create projects and activities, and put your people and yourself on projects.",
@@ -47,6 +69,11 @@ export const ManagerWelcome = ({ userId, firstName }: ManagerWelcomeProps) => {
 
   if (isDismissed) return null;
 
+  const leadsTeam = teams.length > 0;
+  const capabilities = MANAGER_CAN.filter(
+    (item) => leadsTeam || !item.needsTeam,
+  );
+
   return (
     <section
       aria-labelledby="manager-welcome-title"
@@ -68,7 +95,7 @@ export const ManagerWelcome = ({ userId, firstName }: ManagerWelcomeProps) => {
           <p className="mt-1 text-sm text-muted-foreground">
             {isLoading
               ? "Checking which teams you lead..."
-              : teams.length > 0
+              : leadsTeam
                 ? `You lead ${teamNames(teams.map((team) => team.label))}. You see and act for the people in ${teams.length === 1 ? "it" : "them"}.`
                 : "You don't lead a team yet. Once the owner makes you a team's manager, its people appear here."}
           </p>
@@ -84,7 +111,7 @@ export const ManagerWelcome = ({ userId, firstName }: ManagerWelcomeProps) => {
           </h3>
 
           <ul className="mt-2 space-y-1.5 text-sm text-muted-foreground">
-            {MANAGER_CAN.map((item) => (
+            {capabilities.map((item) => (
               <li key={item.text}>
                 {item.text}
                 {item.href && (

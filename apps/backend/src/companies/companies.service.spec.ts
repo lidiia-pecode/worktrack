@@ -53,4 +53,18 @@ describe('CompaniesService update', () => {
     });
     expect(Number(updated.standardWorkHoursPerDay)).toBe(7.5);
   });
+
+  it('saves the other fields sent together with a new name', async () => {
+    const dto = plainToInstance(UpdateCompanyDto, {
+      companyName: `${SLUG} renamed`,
+      timezone: 'Europe/Kyiv',
+    });
+
+    const updated = await service.update(companyId, dto);
+
+    expect(updated).toMatchObject({
+      companyName: `${SLUG} renamed`,
+      timezone: 'Europe/Kyiv',
+    });
+  });
 });

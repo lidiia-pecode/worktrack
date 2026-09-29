@@ -53,7 +53,7 @@ const requiredSteps = ({
       id: "company",
       title: "Company details",
       description:
-        "Time zone, week start and working day, set when you created the company.",
+        "Time zone, week start and working day. Change them any time under Settings → Company.",
       icon: Building2,
       completed: true,
       keepsActionWhenDone: true,
@@ -297,11 +297,7 @@ export function WorkspaceSetup() {
 
         <ol className="divide-y divide-border">
           {optional.map((step) => (
-            <SetupStepRow
-              key={step.id}
-              step={step}
-              isCurrent={step.id === currentStepId}
-            />
+            <SetupStepRow key={step.id} step={step} isCurrent={false} />
           ))}
         </ol>
       </div>

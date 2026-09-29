@@ -11,7 +11,7 @@ import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Team } from './entities/team.entity';
@@ -293,6 +293,23 @@ describe('TeamsService', () => {
           alpha,
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses reopening a manager membership for someone who is no longer a Manager', async () => {
+      const closed = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alpha,
+        userId: employee.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: '2026-01-01',
+        leftAt: '2026-02-01',
+      });
+
+      await expect(
+        service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
+      ).rejects.toThrow(BadRequestException);
+
+      await dataSource.getRepository(TeamMembership).delete({ id: closed.id });
     });
 
     it('lets a Manager member be made the team manager', async () => {
@@ -598,6 +615,19 @@ describe('TeamsService', () => {
       expect(impact.peopleLeftWithoutTeam.map((user) => user.id)).toEqual([
         person.id,
       ]);
+    });
+
+    it('leaves out people who are archived', async () => {
+      const teamId = await createTeam('impact deactivated');
+      const gone = await createUser('impact-gone', UserRole.EMPLOYEE);
+      await addToTeam(teamId, gone);
+      await dataSource
+        .getRepository(User)
+        .update(gone.id, { status: UserStatus.DEACTIVATED });
+
+      const impact = await service.getArchiveImpact(teamId, companyId);
+
+      expect(impact.peopleLeftWithoutTeam).toEqual([]);
     });
 
     it('refuses a team that is already archived', async () => {

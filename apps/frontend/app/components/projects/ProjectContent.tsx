@@ -5,7 +5,10 @@ import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
+import {
+  useProjectDetails,
+  useProjectsInfiniteQuery,
+} from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
@@ -36,10 +39,16 @@ export function ProjectsContent() {
     status,
   });
 
-  const editingProject = useMemo(
+  const listedProject = useMemo(
     () => projects.find((project) => project.id === editingProjectId),
     [projects, editingProjectId],
   );
+
+  // A project opened from a setup link may not be on the loaded page.
+  const { data: fetchedProject } = useProjectDetails(
+    listedProject ? undefined : (editingProjectId ?? undefined),
+  );
+  const editingProject = listedProject ?? fetchedProject;
 
   const handleTabChange = (tab: "active" | "archived") => {
     setEditingProjectId(null);

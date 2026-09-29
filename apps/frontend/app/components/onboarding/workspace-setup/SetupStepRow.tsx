@@ -24,8 +24,10 @@ interface SetupStepRowProps {
 
 export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
   const Icon = step.icon;
+  // A step done earlier stays done even if what it waited on changed since.
+  const isLocked = Boolean(step.locked) && !step.completed;
   const hasActions =
-    !step.locked &&
+    !isLocked &&
     (!step.completed || step.keepsActionWhenDone) &&
     Boolean(step.link || step.extraAction);
 
@@ -33,7 +35,7 @@ export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
     <li
       className={cn(
         "flex flex-col gap-4 px-6 py-5 sm:flex-row sm:items-center",
-        step.locked && "opacity-60",
+        isLocked && "opacity-60",
       )}
     >
       <div className="flex min-w-0 flex-1 items-start gap-4">
@@ -42,14 +44,14 @@ export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
             "flex size-10 shrink-0 items-center justify-center rounded-xl",
             step.completed
               ? "bg-success/10 text-success-text"
-              : step.locked
+              : isLocked
                 ? "bg-muted text-muted-foreground"
                 : "bg-brand-subtle text-brand",
           )}
         >
           {step.completed ? (
             <Check className="size-4.5" aria-hidden="true" />
-          ) : step.locked ? (
+          ) : isLocked ? (
             <Lock className="size-4" aria-hidden="true" />
           ) : (
             <Icon className="size-4.5" aria-hidden="true" />
@@ -65,7 +67,7 @@ export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
           >
             {step.title}
             <span className="sr-only">
-              {step.completed ? " (done)" : step.locked ? " (not yet)" : ""}
+              {step.completed ? " (done)" : isLocked ? " (not yet)" : ""}
             </span>
           </h3>
 

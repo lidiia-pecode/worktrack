@@ -10,7 +10,7 @@ import { DataSource, In, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import {
   AddTeamMemberDto,
   CreateTeamDto,
@@ -82,13 +82,9 @@ export class TeamsService {
   private async assertTeamIsActive(
     teamId: string,
     companyId: string,
+    archivedMessage = 'An archived team cannot be changed',
   ): Promise<void> {
-    await findActiveTeam(
-      this.teamRepo,
-      teamId,
-      companyId,
-      'An archived team cannot be changed',
-    );
+    await findActiveTeam(this.teamRepo, teamId, companyId, archivedMessage);
   }
 
   /** An owner acts on any team, a manager only on one they actively lead. */
@@ -287,12 +283,17 @@ export class TeamsService {
     id: string,
     companyId: string,
   ): Promise<{ managers: User[]; peopleLeftWithoutTeam: User[] }> {
-    await this.assertTeamIsActive(id, companyId);
+    await this.assertTeamIsActive(id, companyId, 'Team is already archived');
 
     const today = await findCompanyToday(this.dataSource.manager, companyId);
 
     const memberships = await this.membershipRepo.find({
-      where: { teamId: id, companyId, leftAt: this.stillInEffect(today) },
+      where: {
+        teamId: id,
+        companyId,
+        leftAt: this.stillInEffect(today),
+        user: { status: UserStatus.ACTIVE },
+      },
       relations: ['user'],
       order: { user: { firstName: 'ASC', lastName: 'ASC' } },
     });
@@ -443,11 +444,16 @@ export class TeamsService {
         );
       }
 
-      this.assertCanLeadTeam(membership.user, dto.roleInTeam);
-
       const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
       const newLeftAt =
         dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
+
+      if (newLeftAt === null) {
+        this.assertCanLeadTeam(
+          membership.user,
+          dto.roleInTeam ?? membership.roleInTeam,
+        );
+      }
 
       if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
         throw new BadRequestException('leftAt cannot be earlier than joinedAt');

@@ -220,7 +220,7 @@ export function TeamModal({
     }
 
     if (isArchived) {
-      unarchive.mutate(team.id, { onSuccess: onClose });
+      unarchive.mutate(team.id, { onSuccess: handleCloseModal });
       return;
     }
 
@@ -233,7 +233,7 @@ export function TeamModal({
     archive.mutate(team.id, {
       onSuccess: () => {
         setIsConfirmingArchive(false);
-        onClose();
+        handleCloseModal();
       },
     });
   };

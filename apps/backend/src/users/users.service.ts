@@ -420,9 +420,10 @@ export class UsersService {
             'Only Company OWNER can assign the OWNER role',
           );
         }
+
         if (
-          payload.role === UserRole.EMPLOYEE &&
-          user.role === UserRole.MANAGER
+          user.role === UserRole.MANAGER &&
+          payload.role !== UserRole.MANAGER
         ) {
           await this.assertManagesNoTeam(user, man);
         }
@@ -458,7 +459,7 @@ export class UsersService {
         .map((membership) => membership.team.name)
         .join(', ');
       throw new BadRequestException(
-        `This person manages ${teamNames}. Remove them as manager before making them an Employee.`,
+        `This person manages ${teamNames}. Remove them as manager before changing their role.`,
       );
     }
   }

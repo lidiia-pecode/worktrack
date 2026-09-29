@@ -177,16 +177,20 @@ const options = zoneRows
     const name = countryName(country);
     const label =
       defaultLabels.get(zone) ??
-      (cityOf(zone) === name ? name : `${name} - ${cityOf(zone)}`);
+      (cityOf(zone) === name ? name : `${name} — ${cityOf(zone)}`);
 
     return { value: zone, label, isDefault: defaultLabels.has(zone) };
   });
 
-const optionValues = new Set(options.map((option) => option.value));
+const optionValues = new Set(["UTC", ...options.map((option) => option.value)]);
+
+// IANA makes "UTC" a name for Etc/UTC; the list offers it as "UTC".
+const listedZone = (zone) => (zone === "Etc/UTC" ? "UTC" : zone);
 
 // Old names such as Europe/Kiev, which browsers still report.
 const aliases = Object.fromEntries(
-  links
+  [...links, { target: "Etc/UTC", name: "Etc/UTC" }]
+    .map(({ target, name }) => ({ target: listedZone(target), name }))
     .filter(
       ({ target, name }) => optionValues.has(target) && !optionValues.has(name),
     )

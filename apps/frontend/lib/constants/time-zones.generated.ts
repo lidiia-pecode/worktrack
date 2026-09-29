@@ -13,7 +13,8 @@ export const TIME_ZONE_OPTIONS: TimeZoneOption[] = [
     value: "UTC",
     label: "UTC",
     isDefault: true,
-    searchText: "utc utc",
+    searchText:
+      "utc utc etc/uct etc/universal etc/utc etc/zulu uct universal zulu",
   },
   {
     value: "Asia/Kabul",
@@ -2490,6 +2491,10 @@ export const TIME_ZONE_ALIASES: Record<string, string> = {
   Eire: "Europe/Dublin",
   EST: "America/Panama",
   EST5EDT: "America/New_York",
+  "Etc/UCT": "UTC",
+  "Etc/Universal": "UTC",
+  "Etc/UTC": "UTC",
+  "Etc/Zulu": "UTC",
   "Europe/Belfast": "Europe/London",
   "Europe/Kiev": "Europe/Kyiv",
   "Europe/Nicosia": "Asia/Nicosia",
@@ -2530,6 +2535,8 @@ export const TIME_ZONE_ALIASES: Record<string, string> = {
   ROK: "Asia/Seoul",
   Singapore: "Asia/Singapore",
   Turkey: "Europe/Istanbul",
+  UCT: "UTC",
+  Universal: "UTC",
   "US/Alaska": "America/Anchorage",
   "US/Aleutian": "America/Adak",
   "US/Arizona": "America/Phoenix",
@@ -2543,4 +2550,5 @@ export const TIME_ZONE_ALIASES: Record<string, string> = {
   "US/Pacific": "America/Los_Angeles",
   "US/Samoa": "Pacific/Pago_Pago",
   WET: "Europe/Lisbon",
+  Zulu: "UTC",
 };

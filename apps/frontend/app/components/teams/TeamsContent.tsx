@@ -90,6 +90,7 @@ export function TeamsContent() {
       />
 
       <TeamModal
+        key={editingTeam?.id ?? "edit"}
         isOnboarding={isOnboarding}
         team={editingTeam}
         open={Boolean(editingTeam)}
