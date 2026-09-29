@@ -242,6 +242,72 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('who can manage a team', () => {
+    afterEach(async () => {
+      await dataSource
+        .getRepository(TeamMembership)
+        .delete({ userId: loneManager.id });
+    });
+
+    const addAs = (user: AuthUser, roleInTeam: TeamRole) =>
+      service.addMember(alpha, companyId, {
+        userId: user.id,
+        roleInTeam,
+        joinedAt: TODAY,
+      });
+
+    it('lets a Manager be added as the team manager', async () => {
+      const membership = await addAs(loneManager, TeamRole.MANAGER);
+
+      expect(membership.roleInTeam).toBe(TeamRole.MANAGER);
+    });
+
+    it('refuses adding an employee as the team manager', async () => {
+      await expect(addAs(employee, TeamRole.MANAGER)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+    });
+
+    it('refuses adding the owner as the team manager', async () => {
+      await expect(addAs(owner, TeamRole.MANAGER)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('still adds an employee as a member', async () => {
+      const membership = await addAs(employee, TeamRole.MEMBER);
+
+      expect(membership.roleInTeam).toBe(TeamRole.MEMBER);
+    });
+
+    it('refuses making an employee the team manager', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.updateMember(
+          membershipId,
+          companyId,
+          { roleInTeam: TeamRole.MANAGER },
+          alpha,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lets a Manager member be made the team manager', async () => {
+      const membershipId = await addToTeam(alpha, loneManager);
+
+      const updated = await service.updateMember(
+        membershipId,
+        companyId,
+        { roleInTeam: TeamRole.MANAGER },
+        alpha,
+      );
+
+      expect(updated.roleInTeam).toBe(TeamRole.MANAGER);
+    });
+  });
+
   describe('overlapping memberships', () => {
     const closedMembership = (joinedAt: string, leftAt: string) =>
       dataSource.getRepository(TeamMembership).save({

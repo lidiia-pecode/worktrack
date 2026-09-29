@@ -10,6 +10,7 @@ import { DataSource, In, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import {
   AddTeamMemberDto,
   CreateTeamDto,
@@ -21,6 +22,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
 import { findActiveTeam } from './find-active-team.util';
+import { TeamRole } from './enums/team-role.enum';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
@@ -71,6 +73,15 @@ export class TeamsService {
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
       throw new ForbiddenException(
         'You can only change the membership of teams you lead',
+      );
+    }
+  }
+
+  /** The Owner already acts for everyone, so only a Manager leads a team. */
+  private assertCanLeadTeam(user: User, roleInTeam?: TeamRole): void {
+    if (roleInTeam === TeamRole.MANAGER && user.role !== UserRole.MANAGER) {
+      throw new BadRequestException(
+        'Only a user with the Manager role can manage a team',
       );
     }
   }
@@ -261,6 +272,8 @@ export class TeamsService {
       );
     }
 
+    this.assertCanLeadTeam(user, dto.roleInTeam);
+
     const newLeftAt = dto.leftAt ?? null;
     if (newLeftAt && this.isInvalidDateRange(dto.joinedAt, newLeftAt)) {
       throw new BadRequestException('leftAt cannot be earlier than joinedAt');
@@ -333,6 +346,8 @@ export class TeamsService {
           `Team membership with id ${membershipId} not found in this team`,
         );
       }
+
+      this.assertCanLeadTeam(membership.user, dto.roleInTeam);
 
       const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
       const newLeftAt =
