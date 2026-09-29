@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
 import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -156,7 +158,7 @@ export function ProjectModal({
     handleClose();
 
     if (isOnboarding) {
-      router.push("/");
+      router.push(GETTING_STARTED_PATH);
     }
   };
 

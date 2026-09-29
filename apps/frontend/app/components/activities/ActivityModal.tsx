@@ -15,6 +15,8 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { useRouter } from "next/navigation";
 
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
 interface ActivityModalProps {
   open: boolean;
   onClose: () => void;
@@ -66,7 +68,7 @@ export function ActivityModal({
         onClose();
 
         if (isOnboarding) {
-          router.push("/");
+          router.push(GETTING_STARTED_PATH);
         }
       },
     });

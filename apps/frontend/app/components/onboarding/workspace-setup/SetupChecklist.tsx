@@ -1,7 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
-import { useRouter } from "next/navigation";
+import { ReactNode, useState } from "react";
 import {
   Activity,
   Building2,
@@ -18,16 +17,15 @@ import {
   useInvitations,
   usePendingInvitations,
 } from "@/hooks/auth/useInvitation";
-import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
+import { useSkipOwnerSetup } from "@/hooks/auth/useOnboarding";
 import { setupLink } from "@/hooks/useSetupLink";
 import { OwnerSetupState } from "@/types/Onboarding";
 import { PendingInvitation } from "@/types/Invitation";
 import { UserRole } from "@/types/enums";
 
-import { ErrorState } from "../../shared/ErrorState";
-import { useSetupCompleteRedirect } from "./useSetupCompleteRedirect";
-import { SetupSkeleton } from "./SetupSkeleton";
+import { ConfirmModal } from "../../shared/ConfirmModal";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
+import { TOPIC_TEXT } from "./setup-topics";
 
 const EXPIRY_LABEL = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
@@ -38,22 +36,16 @@ const requiredSteps = ({
   steps,
   setupProjectId,
 }: OwnerSetupState): SetupStepItem[] => {
-  const projectLink = setupProjectId
-    ? {
-        label: "Open project",
-        href: setupLink("/admin/projects", { projectId: setupProjectId }),
-      }
-    : {
-        label: "Create project",
-        href: setupLink("/admin/projects", { create: true }),
-      };
+  const openSetupProject = (label: string) => ({
+    label,
+    href: setupLink("/admin/projects", { projectId: setupProjectId }),
+  });
 
   return [
     {
       id: "company",
       title: "Company details",
-      description:
-        "Time zone, week start and working day. Change them any time under Settings → Company.",
+      description: TOPIC_TEXT.company,
       icon: Building2,
       completed: true,
       keepsActionWhenDone: true,
@@ -62,8 +54,7 @@ const requiredSteps = ({
     {
       id: "team",
       title: "Create a team",
-      description:
-        "A team is a group of people whose time one manager reviews. People join one when they are invited.",
+      description: TOPIC_TEXT.team,
       icon: UsersRound,
       completed: steps.createTeam,
       link: {
@@ -74,8 +65,7 @@ const requiredSteps = ({
     {
       id: "category",
       title: "Create a category",
-      description:
-        "Categories group the kinds of work, such as Development or Meetings.",
+      description: TOPIC_TEXT.category,
       icon: Tags,
       completed: steps.createCategory,
       link: {
@@ -86,8 +76,7 @@ const requiredSteps = ({
     {
       id: "activity",
       title: "Create activities",
-      description:
-        "Activities are what people log time against, such as Coding or Code review.",
+      description: TOPIC_TEXT.activity,
       icon: Activity,
       completed: steps.createActivity,
       locked: !steps.createCategory,
@@ -99,22 +88,25 @@ const requiredSteps = ({
     {
       id: "projectActivities",
       title: "Add activities to a project",
-      description:
-        "A project is the work time goes to, for a client or internal. People pick from its activities.",
+      description: `${TOPIC_TEXT.project} In the project, choose Add activities and save.`,
       icon: FolderKanban,
       completed: steps.addProjectActivities,
       locked: !steps.createActivity,
-      link: projectLink,
+      link: setupProjectId
+        ? openSetupProject("Add activities to project")
+        : {
+            label: "Create project",
+            href: setupLink("/admin/projects", { create: true }),
+          },
     },
     {
       id: "projectPeople",
       title: "Put people on the project",
-      description:
-        "Only people on a project can log time to it. Add yourself if you log time too.",
+      description: `${TOPIC_TEXT.projectPeople} In the project, choose Add members and save.`,
       icon: UserCheck,
       completed: steps.addProjectPeople,
       locked: !steps.addProjectActivities,
-      link: projectLink,
+      link: openSetupProject("Add people to project"),
     },
   ];
 };
@@ -162,35 +154,18 @@ const managerSteps = (
 const firstOpenStepId = (steps: SetupStepItem[]) =>
   steps.find((step) => !step.completed && !step.locked)?.id;
 
-export function WorkspaceSetup() {
-  const router = useRouter();
-  const { data, isLoading, isError, refetch } = useOwnerSetupState();
+interface SetupChecklistProps {
+  state: OwnerSetupState;
+}
+
+/** The one-time setup flow, shown on Getting started until setup is finished. */
+export function SetupChecklist({ state }: SetupChecklistProps) {
+  const skipSetup = useSkipOwnerSetup();
+  const [isConfirmingSkip, setIsConfirmingSkip] = useState(false);
   const { data: invitations = [] } = usePendingInvitations();
   const {
     actions: { resend },
   } = useInvitations();
-
-  useSetupCompleteRedirect(data?.setupComplete);
-
-  if (isLoading) {
-    return <SetupSkeleton />;
-  }
-
-  if (isError || !data) {
-    return (
-      <ErrorState
-        title="Setup could not be loaded"
-        description="We couldn't check what is already set up. Try again in a moment."
-        onRetry={() => refetch()}
-        className="w-full max-w-3xl"
-      />
-    );
-  }
-
-  // The redirect to /team is already in flight; do not flash an empty page.
-  if (data.setupComplete) {
-    return <SetupSkeleton />;
-  }
 
   const managerInvitation = invitations.find(
     (invitation) =>
@@ -211,8 +186,8 @@ export function WorkspaceSetup() {
     </Button>
   );
 
-  const required = requiredSteps(data);
-  const optional = managerSteps(data, managerInvitation, resendAction);
+  const required = requiredSteps(state);
+  const optional = managerSteps(state, managerInvitation, resendAction);
   const doneCount = required.filter((step) => step.completed).length;
   const currentStepId = firstOpenStepId(required);
 
@@ -220,10 +195,6 @@ export function WorkspaceSetup() {
     <section className="w-full max-w-3xl">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="mb-2 text-sm font-semibold text-brand">
-            Getting started
-          </p>
-
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Get your company ready to log time
           </h1>
@@ -238,11 +209,21 @@ export function WorkspaceSetup() {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => router.push("/team")}
+          onClick={() => setIsConfirmingSkip(true)}
         >
-          Finish later
+          Skip setup
         </Button>
       </header>
+
+      <ConfirmModal
+        isOpen={isConfirmingSkip}
+        title="Skip setup?"
+        message="This checklist won't start again. Getting started stays in the menu as a guide to how WorkTrack fits together."
+        confirmText="Skip setup"
+        onConfirm={() => skipSetup.mutate()}
+        onClose={() => setIsConfirmingSkip(false)}
+        loading={skipSetup.isPending}
+      />
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between gap-6 border-b border-border px-6 py-4">
@@ -290,8 +271,7 @@ export function WorkspaceSetup() {
           </h2>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            A manager reviews and corrects their team&apos;s time. Skip this if
-            you look after everyone yourself.
+            {TOPIC_TEXT.manager} Skip this if you look after everyone yourself.
           </p>
         </div>
 

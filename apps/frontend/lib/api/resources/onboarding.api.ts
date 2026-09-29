@@ -8,4 +8,6 @@ const client = createClient({
 
 export const OnboardingClientApi = {
   getOwnerSetupState: () => client.get<OwnerSetupState>("/owner/setup-state"),
+
+  skipOwnerSetup: () => client.post<OwnerSetupState>("/owner/skip"),
 };

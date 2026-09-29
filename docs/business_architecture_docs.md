@@ -495,8 +495,13 @@ A new company's owner answers three questions in the setup wizard — time zone,
 week start and working day — then follows a checklist whose steps end with
 somebody able to log time: a team, a category and activities, a project with
 activities, and at least one person on it, the owner included. Inviting a
-manager is optional, so an owner who manages everyone can finish. A manager gets
-a welcome on Team time instead of a checklist.
+manager is optional, so an owner who manages everyone can finish. Setup is a
+one-time flow: once it is completed, or the owner skips it, it never starts
+again, and changes to teams or projects later do not reopen it
+(`Company.setupFinishedAt`). "Getting started" stays in the owner's menu: the
+checklist while setup is open, and afterwards a guide to how WorkTrack fits
+together. A manager gets a welcome on Team time instead of a
+checklist.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;

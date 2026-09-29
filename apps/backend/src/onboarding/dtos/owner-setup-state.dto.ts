@@ -46,6 +46,7 @@ export class OwnerSetupStateDto {
   @Expose()
   setupProjectId!: string | null;
 
+  /** Completed or skipped; once true it stays true. */
   @Expose()
-  setupComplete!: boolean;
+  setupFinished!: boolean;
 }

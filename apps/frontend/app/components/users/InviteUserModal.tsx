@@ -6,6 +6,8 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
 import { useRouter } from "next/navigation";
+
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { useInvitations } from "@/hooks/auth/useInvitation";
 
 interface InviteUserModalProps {
@@ -31,7 +33,7 @@ export function InviteUserModal({
         onClose();
 
         if (isOnboarding) {
-          router.push("/");
+          router.push(GETTING_STARTED_PATH);
         }
       },
     });

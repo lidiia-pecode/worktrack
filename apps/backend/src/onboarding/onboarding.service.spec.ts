@@ -97,6 +97,7 @@ describe('OnboardingService', () => {
       dataSource.getRepository(Activity),
       dataSource.getRepository(ActCategory),
       dataSource.getRepository(Project),
+      dataSource.getRepository(Company),
     );
   });
 
@@ -147,7 +148,7 @@ describe('OnboardingService', () => {
         assignManager: false,
       });
       expect(state.setupProjectId).toBeNull();
-      expect(state.setupComplete).toBe(false);
+      expect(state.setupFinished).toBe(false);
     });
 
     it('counts an active team', async () => {
@@ -250,11 +251,11 @@ describe('OnboardingService', () => {
       const state = await ownerState();
 
       expect(state.steps.addProjectPeople).toBe(true);
-      expect(state.setupComplete).toBe(true);
+      expect(state.setupFinished).toBe(true);
       expect(state.managerSteps.inviteManager).toBe(false);
     });
 
-    it('stops counting the project once it is archived', async () => {
+    it('stays finished when the project is archived later', async () => {
       await dataSource
         .getRepository(Project)
         .update(projectId, { status: ProjectStatus.ARCHIVED });
@@ -263,7 +264,7 @@ describe('OnboardingService', () => {
 
       expect(state.steps.addProjectActivities).toBe(false);
       expect(state.setupProjectId).toBeNull();
-      expect(state.setupComplete).toBe(false);
+      expect(state.setupFinished).toBe(true);
 
       await dataSource
         .getRepository(Project)
@@ -299,6 +300,29 @@ describe('OnboardingService', () => {
         managerJoined: true,
         assignManager: true,
       });
+    });
+  });
+
+  describe('skipping setup', () => {
+    let companyId: string;
+
+    beforeAll(async () => {
+      companyId = await createCompany('skip');
+    });
+
+    it('finishes setup for good with nothing done', async () => {
+      await expect(
+        service.getOwnerSetupState(companyId),
+      ).resolves.toMatchObject({ setupFinished: false });
+
+      await expect(service.skipOwnerSetup(companyId)).resolves.toMatchObject({
+        setupFinished: true,
+        steps: { createTeam: false },
+      });
+
+      await expect(
+        service.getOwnerSetupState(companyId),
+      ).resolves.toMatchObject({ setupFinished: true });
     });
   });
 });

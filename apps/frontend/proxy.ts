@@ -78,7 +78,8 @@ function handleRouteGuards(
     pathname.startsWith("/reports") ||
     pathname.startsWith("/timesheet") ||
     pathname.startsWith("/settings") ||
-    pathname.startsWith("/onboarding");
+    pathname.startsWith("/onboarding") ||
+    pathname.startsWith("/getting-started");
 
   if (isAuthenticated && isGuestRoute) {
     return NextResponse.redirect(new URL("/", req.url));

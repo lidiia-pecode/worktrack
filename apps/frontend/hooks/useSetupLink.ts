@@ -11,7 +11,7 @@ interface SetupLinkOptions {
 const CREATE = "create";
 const PROJECT = "project";
 
-/** A link from the setup checklist; the page it opens returns there once the step is done. */
+/** A link from the setup checklist; the page it opens returns to Getting started once the step is done. */
 export const setupLink = (path: string, options: SetupLinkOptions = {}) => {
   const params = new URLSearchParams({ onboarding: "true" });
 

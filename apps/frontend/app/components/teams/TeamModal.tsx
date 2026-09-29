@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -248,7 +250,7 @@ export function TeamModal({
 
     // Back to the checklist only once something was set up here.
     if (isOnboarding && hasCompletedStep) {
-      router.push("/");
+      router.push(GETTING_STARTED_PATH);
     }
   };
 

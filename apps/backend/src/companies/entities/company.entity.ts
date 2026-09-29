@@ -71,6 +71,14 @@ export class Company {
   })
   standardWorkHoursPerDay!: number;
 
+  /** When the owner's setup guide ended, completed or skipped. It never reopens by itself. */
+  @Column({
+    type: 'timestamp with time zone',
+    name: 'setup_finished_at',
+    nullable: true,
+  })
+  setupFinishedAt!: Date | null;
+
   @CreateDateColumn({
     type: 'timestamp with time zone',
     name: 'created_at',

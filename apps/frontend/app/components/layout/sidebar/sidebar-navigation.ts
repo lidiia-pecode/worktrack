@@ -11,16 +11,17 @@ import {
   Users,
 } from "lucide-react";
 
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
 import { NavigationItem } from "./SidebarNavigation";
 
-/** Shown to the owner until setup is complete. */
-export const gettingStartedNavigation: NavigationItem = {
-  label: "Getting started",
-  href: "/",
-  icon: ListChecks,
-};
-
 export const managerNavigation: NavigationItem[] = [
+  {
+    label: "Getting started",
+    href: GETTING_STARTED_PATH,
+    icon: ListChecks,
+    ownerOnly: true,
+  },
   {
     label: "Team time",
     href: "/team",

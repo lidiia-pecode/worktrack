@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, MoreThan, Repository } from 'typeorm';
 
+import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -46,6 +47,9 @@ export class OnboardingService {
 
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
+
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
   ) {}
 
   async getOwnerSetupState(companyId: string): Promise<OwnerSetupStateDto> {
@@ -88,8 +92,49 @@ export class OnboardingService {
         assignManager,
       },
       setupProjectId: projectWithActivitiesId ?? firstProjectId,
-      setupComplete: Object.values(steps).every(Boolean),
+      setupFinished: await this.finishIfDone(
+        companyId,
+        Object.values(steps).every(Boolean),
+      ),
     };
+  }
+
+  /** The owner leaves the guide for good; it does not come back by itself. */
+  async skipOwnerSetup(companyId: string): Promise<OwnerSetupStateDto> {
+    await this.markSetupFinished(companyId);
+
+    return this.getOwnerSetupState(companyId);
+  }
+
+  // ===========================================================================
+  // SETUP FINISHED
+  // ===========================================================================
+
+  /**
+   * Setup counts as finished once it has been completed or skipped, so a team
+   * or project archived later never reopens the guide.
+   */
+  private async finishIfDone(
+    companyId: string,
+    stepsDone: boolean,
+  ): Promise<boolean> {
+    const company = await this.companyRepo.findOneOrFail({
+      where: { id: companyId },
+      select: { id: true, setupFinishedAt: true },
+    });
+
+    if (company.setupFinishedAt) return true;
+    if (!stepsDone) return false;
+
+    await this.markSetupFinished(companyId);
+    return true;
+  }
+
+  private async markSetupFinished(companyId: string): Promise<void> {
+    await this.companyRepo.update(
+      { id: companyId, setupFinishedAt: IsNull() },
+      { setupFinishedAt: new Date() },
+    );
   }
 
   // ===========================================================================

@@ -17,5 +17,6 @@ export interface OwnerSetupState {
   steps: OwnerSetupSteps;
   managerSteps: OwnerManagerSteps;
   setupProjectId: string | null;
-  setupComplete: boolean;
+  /** Completed or skipped; once true it stays true. */
+  setupFinished: boolean;
 }
