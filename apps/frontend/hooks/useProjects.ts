@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 
 import {
@@ -28,6 +29,23 @@ const projectsQueries = createEntityQuery<Project, ProjectQueryParams>({
 export const useProjectsQuery = projectsQueries.useQuery;
 
 export const useAllProjectsQuery = projectsQueries.useAllPagesQuery;
+
+/** The client names already used on projects, archived ones included. */
+export function useClientNameSuggestions() {
+  const { items } = useAllProjectsQuery();
+
+  return useMemo(
+    () =>
+      Array.from(
+        new Set(
+          items
+            .map((project) => project.clientName)
+            .filter((clientName): clientName is string => Boolean(clientName)),
+        ),
+      ).sort((a, b) => a.localeCompare(b)),
+    [items],
+  );
+}
 
 export const useProjectsInfiniteQuery = projectsQueries.useInfiniteQuery;
 

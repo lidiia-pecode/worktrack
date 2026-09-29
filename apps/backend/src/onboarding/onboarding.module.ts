@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -22,6 +23,7 @@ import { Project } from 'src/projects/entities/project.entity';
       Activity,
       ActCategory,
       Project,
+      Company,
     ]),
   ],
   controllers: [OnboardingController],

@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -8,7 +8,6 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { OnboardingService } from './onboarding.service';
 import { OwnerSetupStateDto } from './dtos/owner-setup-state.dto';
-import { ManagerSetupStateDto } from './dtos/manager-setup-state.dto';
 
 @Controller('onboarding')
 @UseGuards(AccessGuard, RolesGuard)
@@ -24,15 +23,12 @@ export class OnboardingController {
     return this.onboardingService.getOwnerSetupState(authUser.companyId);
   }
 
-  @Role(UserRole.MANAGER)
-  @Get('manager/setup-state')
-  @Serialize(ManagerSetupStateDto)
-  async getManagerSetupState(
+  @Role(UserRole.OWNER)
+  @Post('owner/skip')
+  @Serialize(OwnerSetupStateDto)
+  async skipOwnerSetup(
     @CurrentUser() authUser: AuthUser,
-  ): Promise<ManagerSetupStateDto> {
-    return this.onboardingService.getManagerSetupState(
-      authUser.companyId,
-      authUser.id,
-    );
+  ): Promise<OwnerSetupStateDto> {
+    return this.onboardingService.skipOwnerSetup(authUser.companyId);
   }
 }

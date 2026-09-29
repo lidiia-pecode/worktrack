@@ -10,8 +10,8 @@ const activityCategoryFormSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(3, "Category name must be at least 3 characters")
-    .max(100, "Category name must be less than 100 characters"),
+    .min(2, "Category name must be at least 2 characters")
+    .max(100, "Category name must be at most 100 characters"),
 });
 
 export type ActivityCategoryFormData = z.infer<

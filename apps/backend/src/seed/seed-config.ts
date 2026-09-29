@@ -136,7 +136,7 @@ export const ACTIVITIES = [
 export const PROJECTS = [
   {
     name: 'WorkTrack',
-    clientName: 'Internal Product',
+    clientName: null,
     description: 'Internal time tracking app',
     members: [DEV_EMAIL, DESIGNER_EMAIL],
     activities: [

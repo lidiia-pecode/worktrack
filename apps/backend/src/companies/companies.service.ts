@@ -184,10 +184,20 @@ export class CompaniesService {
       throw new ForbiddenException('Cannot update suspended company.');
     }
 
-    const trimmedName = dto.companyName?.trim();
+    const { companyName, ...settings } = dto;
+
+    // Fields left out of the request are undefined on the DTO; copying them
+    // would blank the company that is returned.
+    Object.assign(
+      company,
+      Object.fromEntries(
+        Object.entries(settings).filter(([, value]) => value !== undefined),
+      ),
+    );
+
+    const trimmedName = companyName?.trim();
 
     if (trimmedName === undefined || trimmedName === company.companyName) {
-      Object.assign(company, dto);
       return repo.save(company);
     }
 

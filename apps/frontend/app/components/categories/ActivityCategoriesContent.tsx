@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { Tags } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 import { hasManagerAccess } from "@/lib/utils/user";
 
@@ -16,16 +16,14 @@ import { ActivityCategoryModal } from "./ActivityCategoryModal";
 import { ActCategoryStatus } from "@/types/enums";
 
 export function ActivityCategoriesContent() {
-  const [createOpen, setCreateOpen] = useState(false);
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
+  const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
   const [status, setStatus] = useState<ActCategoryStatus>(
     ActCategoryStatus.ACTIVE,
   );
-
-  const searchParams = useSearchParams();
-  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);

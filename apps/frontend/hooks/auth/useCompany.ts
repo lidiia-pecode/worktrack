@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { CompaniesClientApi } from "@/lib/api/resources";
 import { queryKeys } from "../shared/queryKeys";
 
-export function useCompany() {
+interface UseCompanyOptions {
+  /** For a form that shows a failed save itself, instead of the global toast. */
+  showsSaveErrorInline?: boolean;
+}
+
+export function useCompany({
+  showsSaveErrorInline = false,
+}: UseCompanyOptions = {}) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
@@ -23,6 +30,8 @@ export function useCompany() {
 
       toast.success("Workspace settings updated");
     },
+
+    ...(showsSaveErrorInline && { onError: () => {} }),
   });
 
   return {

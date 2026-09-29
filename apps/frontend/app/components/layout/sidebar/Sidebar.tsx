@@ -26,6 +26,9 @@ export function Sidebar({ user }: SidebarProps) {
     (item) => isOwner || !item.ownerOnly,
   );
 
+  // The company wizard runs on its own, before the app is set up.
+  if (pathname.startsWith("/onboarding")) return null;
+
   return (
     <>
       {/* Mobile */}

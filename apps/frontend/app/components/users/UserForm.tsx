@@ -16,7 +16,11 @@ import { FormSelect } from "../shared/FormSelect";
 import { DateInput } from "../shared/inputs";
 
 const userSchema = z.object({
-  position: z.string().trim().max(100).optional(),
+  position: z
+    .string()
+    .trim()
+    .max(255, "Position must be at most 255 characters")
+    .optional(),
   role: z.enum(UserRole),
   capacityHoursPerWeek: z
     .number({ error: "Enter the contracted hours per week" })

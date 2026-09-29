@@ -1,65 +1,6 @@
+# Only Postgres runs in Docker. The backend and frontend run on the host with
+# `make dev`, which is much faster and lighter than running them in the VM.
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: ./apps/backend/Dockerfile.dev
-
-    ports:
-      - "3001:3001"
-
-    env_file:
-      - ./apps/backend/.env
-
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      TSC_WATCHFILE: DynamicPriorityPolling
-      TSC_WATCHDIRECTORY: RecursiveDirectoryUsingDynamicPriorityPolling
-
-    # Anonymous volumes keep dependencies apart from the host; `make up`
-    # recreates them from the image every time.
-    volumes:
-      - ./apps/backend:/app
-      - /app/node_modules
-
-    depends_on:
-      db:
-        condition: service_healthy
-
-    restart: unless-stopped
-
-  frontend:
-    build:
-      context: .
-      dockerfile: ./apps/frontend/Dockerfile.dev
-
-    ports:
-      - "3000:3000"
-
-    env_file:
-      - ./apps/frontend/.env
-
-    # Both watchers poll: colima does not reliably pass file events from macOS.
-    environment:
-      NODE_ENV: development
-      BACKEND_URL: http://backend:3001
-      WATCHPACK_POLLING: "true"
-
-    working_dir: /app/apps/frontend
-
-    volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/apps/frontend/node_modules
-      - /app/apps/backend/node_modules
-      - /app/apps/frontend/.next
-
-    depends_on:
-      backend:
-        condition: service_started
-
-    restart: unless-stopped
-
   db:
     image: postgres:16-alpine
 
@@ -68,8 +9,9 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
 
+    # 5433 on the host, so a Postgres installed on the machine can keep 5432.
     ports:
-      - "5432:5432"
+      - "5433:5432"
 
     volumes:
       - postgres-data:/var/lib/postgresql/data

@@ -147,6 +147,16 @@ export const TimeLogFormModal = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
 
+  const startBillableFrom = (activityId: string) => {
+    const item = pickerItems.find(
+      (candidate) =>
+        candidate.projectId === getValues("projectId") &&
+        candidate.activityId === activityId,
+    );
+
+    if (item) setValue("isBillable", item.defaultBillable);
+  };
+
   const onSubmit = async (data: TimeLogFormData) => {
     const match = pickerItems.find(
       (item) =>
@@ -287,7 +297,10 @@ export const TimeLogFormModal = ({
                 render={({ field }) => (
                   <FormSelect
                     value={field.value}
-                    onValueChange={field.onChange}
+                    onValueChange={(activityId) => {
+                      field.onChange(activityId);
+                      if (!isEditMode) startBillableFrom(activityId);
+                    }}
                     options={activityOptions}
                     placeholder={
                       selectedProjectId

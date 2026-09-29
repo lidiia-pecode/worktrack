@@ -10,6 +10,7 @@ import { DataSource, In, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import {
   AddTeamMemberDto,
   CreateTeamDto,
@@ -21,6 +22,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
 import { findActiveTeam } from './find-active-team.util';
+import { TeamRole } from './enums/team-role.enum';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
@@ -61,6 +63,30 @@ export class TeamsService {
     };
   }
 
+  /** A membership still in effect on `today`, or one that has not started. */
+  private stillInEffect(today: string) {
+    return Raw((alias) => `(${alias} IS NULL OR ${alias} > :today)`, {
+      today,
+    });
+  }
+
+  /** An active team shows who is on it; an archived one, who was. */
+  private shownMemberships(team: Team): TeamMembership[] {
+    const memberships = team.memberships ?? [];
+
+    return team.status === TeamStatus.ARCHIVED
+      ? memberships
+      : memberships.filter((membership) => membership.leftAt === null);
+  }
+
+  private async assertTeamIsActive(
+    teamId: string,
+    companyId: string,
+    archivedMessage = 'An archived team cannot be changed',
+  ): Promise<void> {
+    await findActiveTeam(this.teamRepo, teamId, companyId, archivedMessage);
+  }
+
   /** An owner acts on any team, a manager only on one they actively lead. */
   private async assertTeamInScope(
     teamId: string,
@@ -71,6 +97,15 @@ export class TeamsService {
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
       throw new ForbiddenException(
         'You can only change the membership of teams you lead',
+      );
+    }
+  }
+
+  /** The Owner already acts for everyone, so only a Manager leads a team. */
+  private assertCanLeadTeam(user: User, roleInTeam?: TeamRole): void {
+    if (roleInTeam === TeamRole.MANAGER && user.role !== UserRole.MANAGER) {
+      throw new BadRequestException(
+        'Only a user with the Manager role can manage a team',
       );
     }
   }
@@ -102,9 +137,7 @@ export class TeamsService {
 
     const results = teams.map((team) => ({
       ...team,
-      memberships: team.memberships
-        ? team.memberships.filter((m) => m.leftAt === null)
-        : [],
+      memberships: this.shownMemberships(team),
     }));
 
     return { results, count };
@@ -146,11 +179,8 @@ export class TeamsService {
       );
     }
 
-    if (!includeHistory && team.memberships) {
-      return {
-        ...team,
-        memberships: team.memberships.filter((m) => m.leftAt === null),
-      };
+    if (!includeHistory) {
+      return { ...team, memberships: this.shownMemberships(team) };
     }
 
     return team;
@@ -182,6 +212,10 @@ export class TeamsService {
   ): Promise<Team> {
     const team = await this.getTeamById(id, companyId, true);
 
+    if (team.status === TeamStatus.ARCHIVED) {
+      throw new BadRequestException('An archived team cannot be changed');
+    }
+
     if (dto.name && dto.name !== team.name) {
       team.name = dto.name;
     }
@@ -198,7 +232,12 @@ export class TeamsService {
     }
   }
 
-  /** Nobody can join an archived team, so its pending invitations are revoked. */
+  /**
+   * Archiving ends the team's responsibility: its pending invitations are
+   * revoked and every membership still in effect ends today, so the team
+   * grants nothing afterwards. A membership that has not started yet ends on
+   * its start date.
+   */
   async archiveTeam(
     id: string,
     companyId: string,
@@ -210,8 +249,18 @@ export class TeamsService {
     }
 
     return this.dataSource.transaction(async (manager) => {
-      team.status = TeamStatus.ARCHIVED;
-      const archived = await manager.getRepository(Team).save(team);
+      await manager
+        .getRepository(Team)
+        .update(team.id, { status: TeamStatus.ARCHIVED });
+
+      const today = await findCompanyToday(manager, companyId);
+      await manager
+        .createQueryBuilder()
+        .update(TeamMembership)
+        .set({ leftAt: () => 'GREATEST(joined_at, :today)' })
+        .where({ teamId: id, companyId, leftAt: this.stillInEffect(today) })
+        .setParameters({ today })
+        .execute();
 
       const { affected } = await manager
         .getRepository(Invitation)
@@ -220,8 +269,65 @@ export class TeamsService {
           { status: InvitationStatus.REVOKED, revokedAt: new Date() },
         );
 
+      const archived = await manager.getRepository(Team).findOneOrFail({
+        where: { id },
+        relations: ['memberships', 'memberships.user'],
+      });
+
       return { ...archived, revokedInvitationCount: affected ?? 0 };
     });
+  }
+
+  /** Who archiving the team would affect, shown to the owner beforehand. */
+  async getArchiveImpact(
+    id: string,
+    companyId: string,
+  ): Promise<{ managers: User[]; peopleLeftWithoutTeam: User[] }> {
+    await this.assertTeamIsActive(id, companyId, 'Team is already archived');
+
+    const today = await findCompanyToday(this.dataSource.manager, companyId);
+
+    const memberships = await this.membershipRepo.find({
+      where: {
+        teamId: id,
+        companyId,
+        leftAt: this.stillInEffect(today),
+        user: { status: UserStatus.ACTIVE },
+      },
+      relations: ['user'],
+      order: { user: { firstName: 'ASC', lastName: 'ASC' } },
+    });
+
+    const managers = memberships
+      .filter((membership) => membership.roleInTeam === TeamRole.MANAGER)
+      .map((membership) => membership.user);
+    const members = memberships
+      .filter((membership) => membership.roleInTeam === TeamRole.MEMBER)
+      .map((membership) => membership.user);
+
+    const placedElsewhere =
+      members.length === 0
+        ? []
+        : await this.membershipRepo.find({
+            select: ['userId'],
+            where: {
+              companyId,
+              teamId: Not(id),
+              userId: In(members.map((member) => member.id)),
+              leftAt: this.stillInEffect(today),
+              team: { status: TeamStatus.ACTIVE },
+            },
+          });
+    const placedUserIds = new Set(
+      placedElsewhere.map((membership) => membership.userId),
+    );
+
+    return {
+      managers,
+      peopleLeftWithoutTeam: members.filter(
+        (member) => !placedUserIds.has(member.id),
+      ),
+    };
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {
@@ -260,6 +366,8 @@ export class TeamsService {
         `User with id ${dto.userId} not found in this company`,
       );
     }
+
+    this.assertCanLeadTeam(user, dto.roleInTeam);
 
     const newLeftAt = dto.leftAt ?? null;
     if (newLeftAt && this.isInvalidDateRange(dto.joinedAt, newLeftAt)) {
@@ -316,6 +424,8 @@ export class TeamsService {
     dto: UpdateTeamMemberDto,
     teamId: string,
   ): Promise<TeamMembership> {
+    await this.assertTeamIsActive(teamId, companyId);
+
     return this.dataSource.transaction(async (manager) => {
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
@@ -337,6 +447,15 @@ export class TeamsService {
       const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
       const newLeftAt =
         dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
+
+      // Setting a role, or reopening a membership, must respect who may lead;
+      // editing the dates of one that stays closed need not.
+      if (newLeftAt === null || dto.roleInTeam !== undefined) {
+        this.assertCanLeadTeam(
+          membership.user,
+          dto.roleInTeam ?? membership.roleInTeam,
+        );
+      }
 
       if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
         throw new BadRequestException('leftAt cannot be earlier than joinedAt');
@@ -388,6 +507,7 @@ export class TeamsService {
     user: AuthUser,
   ): Promise<void> {
     await this.assertTeamInScope(teamId, user);
+    await this.assertTeamIsActive(teamId, companyId);
 
     const membership = await this.membershipRepo.findOne({
       where: {

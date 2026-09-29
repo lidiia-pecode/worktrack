@@ -1,12 +1,11 @@
 import { redirect } from "next/navigation";
 
 import { getCurrentUser } from "@/lib/api/server/auth";
+import { getOwnerSetupState } from "@/lib/api/server/onboarding";
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { UserRole } from "@/types/enums";
 
 import { LandingPage } from "../components/homepage/LandingPage";
-
-import { WorkspaceSetup } from "../components/onboarding/workspace-setup/WorkspaceSetup";
-import { ManagerWorkspaceSetup } from "../components/onboarding/workspace-setup/ManagerWorkspaceSetup";
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -19,13 +18,13 @@ export default async function Home() {
     redirect("/timesheet");
   }
 
-  return (
-    <main className="min-h-screen bg-background">
-      <div className="mx-auto flex max-w-7xl justify-center px-6 py-10">
-        {user.role === UserRole.OWNER && <WorkspaceSetup />}
+  // A manager's welcome is on Team time.
+  if (user.role === UserRole.MANAGER) {
+    redirect("/team");
+  }
 
-        {user.role === UserRole.MANAGER && <ManagerWorkspaceSetup />}
-      </div>
-    </main>
-  );
+  // The owner is led through setup only until it is completed or skipped.
+  const setupState = await getOwnerSetupState();
+
+  redirect(setupState?.setupFinished ? "/team" : GETTING_STARTED_PATH);
 }

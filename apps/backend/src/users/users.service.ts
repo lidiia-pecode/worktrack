@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { CreateUserPayload, UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
@@ -18,6 +18,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { findActiveTeam } from 'src/teams/find-active-team.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -419,6 +420,13 @@ export class UsersService {
             'Only Company OWNER can assign the OWNER role',
           );
         }
+
+        if (
+          user.role === UserRole.MANAGER &&
+          payload.role !== UserRole.MANAGER
+        ) {
+          await this.assertManagesNoTeam(user, man);
+        }
         user.role = payload.role;
       }
       if (payload.position !== undefined) user.position = payload.position;
@@ -427,6 +435,33 @@ export class UsersService {
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);
+  }
+
+  /** Team memberships never change as a side effect of a role change. */
+  private async assertManagesNoTeam(
+    user: User,
+    manager: EntityManager,
+  ): Promise<void> {
+    const managedTeams = await manager.getRepository(TeamMembership).find({
+      where: {
+        userId: user.id,
+        companyId: user.companyId,
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: IsNull(),
+        team: { status: TeamStatus.ACTIVE },
+      },
+      relations: ['team'],
+      order: { team: { name: 'ASC' } },
+    });
+
+    if (managedTeams.length > 0) {
+      const teamNames = managedTeams
+        .map((membership) => membership.team.name)
+        .join(', ');
+      throw new BadRequestException(
+        `This person manages ${teamNames}. Remove them as manager before changing their role.`,
+      );
+    }
   }
 
   async updateProfile(

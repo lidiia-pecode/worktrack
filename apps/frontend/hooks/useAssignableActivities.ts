@@ -14,6 +14,7 @@ export type PickerProjectActivity = {
   projectName: string;
   activityId: string;
   activityName: string;
+  defaultBillable: boolean;
 };
 
 /**
@@ -48,6 +49,7 @@ export function useAssignableActivities(userId?: string, enabled = true) {
           projectName: project.name,
           activityId: activity.id,
           activityName: activity.name,
+          defaultBillable: activity.defaultBillable,
         },
       ];
     });

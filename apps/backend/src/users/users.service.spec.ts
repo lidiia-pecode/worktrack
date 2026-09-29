@@ -322,6 +322,107 @@ describe('UsersService scope', () => {
     });
   });
 
+  describe('changing a Manager to Employee', () => {
+    const leadTeam = async (
+      user: AuthUser,
+      teamName: string,
+      { status = TeamStatus.ACTIVE, leftAt = null as string | null } = {},
+    ) => {
+      const team = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `${teamName} ${RUN}`, status });
+
+      return dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: team.id,
+        userId: user.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: '2026-01-01',
+        leftAt,
+      });
+    };
+
+    const demote = (user: AuthUser) =>
+      service.updateUser(
+        user.id,
+        companyId,
+        { role: UserRole.EMPLOYEE },
+        UserRole.OWNER,
+      );
+
+    it('is allowed for a Manager who manages no team', async () => {
+      const teamless = await createUser('teamlessmanager', UserRole.MANAGER);
+
+      const updated = await demote(teamless);
+
+      expect(updated.role).toBe(UserRole.EMPLOYEE);
+    });
+
+    it('is refused while they manage a team, naming every team', async () => {
+      const leader = await createUser('twoteamleader', UserRole.MANAGER);
+      await leadTeam(leader, 'Gamma');
+      await leadTeam(leader, 'Delta');
+
+      const refusal = demote(leader);
+
+      await expect(refusal).rejects.toThrow(BadRequestException);
+      await expect(refusal).rejects.toThrow(
+        new RegExp(`Delta ${RUN}, Gamma ${RUN}`),
+      );
+    });
+
+    it('leaves the role and memberships untouched when refused', async () => {
+      const leader = await createUser('keptleader', UserRole.MANAGER);
+      const membership = await leadTeam(leader, 'Epsilon');
+
+      await expect(demote(leader)).rejects.toThrow(BadRequestException);
+
+      await expect(
+        dataSource.getRepository(User).findOneByOrFail({ id: leader.id }),
+      ).resolves.toMatchObject({ role: UserRole.MANAGER });
+      await expect(
+        dataSource
+          .getRepository(TeamMembership)
+          .findOneByOrFail({ id: membership.id }),
+      ).resolves.toMatchObject({ leftAt: null, roleInTeam: TeamRole.MANAGER });
+    });
+
+    it('is allowed once they no longer manage the team', async () => {
+      const former = await createUser('formerleader', UserRole.MANAGER);
+      await leadTeam(former, 'Zeta', { leftAt: '2026-02-01' });
+
+      await expect(demote(former)).resolves.toMatchObject({
+        role: UserRole.EMPLOYEE,
+      });
+    });
+
+    it('is refused for making a team manager an Owner too', async () => {
+      const leader = await createUser('ownerbound', UserRole.MANAGER);
+      await leadTeam(leader, 'Theta');
+
+      await expect(
+        service.updateUser(
+          leader.id,
+          companyId,
+          { role: UserRole.OWNER },
+          UserRole.OWNER,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('is not blocked by an archived team', async () => {
+      const archivedLeader = await createUser(
+        'archivedleader',
+        UserRole.MANAGER,
+      );
+      await leadTeam(archivedLeader, 'Eta', { status: TeamStatus.ARCHIVED });
+
+      await expect(demote(archivedLeader)).resolves.toMatchObject({
+        role: UserRole.EMPLOYEE,
+      });
+    });
+  });
+
   describe('paging through people who tie', () => {
     const PAGE_SIZE = 2;
     let tiedIds: string[];

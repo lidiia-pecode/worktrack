@@ -18,7 +18,8 @@ but a multi-company SaaS product is explicitly not a goal — see
 
 ## Shape
 
-npm-workspaces monorepo, run locally with Docker Compose.
+npm-workspaces monorepo. Locally both apps run on the machine and only
+PostgreSQL runs in Docker Compose (`make dev`).
 
 ```text
 worktrack/
@@ -70,7 +71,7 @@ enforced in `TimeLogsService`.
 | :--- | :--- |
 | [`README.md`](../README.md) | Setup, commands, environment |
 | [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
-| [`docs/permission-model.md`](./permission-model.md) | The permission model and the scopes that delivered it |
+| [`docs/permission-model.md`](./permission-model.md) | The permission model and its open questions |
 | [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
 
 A local checkout carries more: the active scope document, the list of defects
@@ -106,22 +107,21 @@ Expected hours are capacity minus absences, and owners and managers plan their
 people's week by project at `/planning`, against the hours each person has
 available. Each month locks by itself a week after it ends, and an owner can
 reopen one at `/admin/periods`. Owners and managers read hours, planned vs
-actual and utilisation at `/reports`. The remaining work is Phases 11–13 and a
-production launch, starting with week views and reports polish. The
-authorization gaps are all closed.
+actual and utilisation at `/reports`, and download hours as an Excel file for
+invoicing. The authorization gaps are all closed. The work ahead is making it a
+better product; a production launch comes last, once it is ready.
 
-Backend test coverage is twenty-five suites and 397 tests, covering the
+Backend test coverage is twenty-eight suites and 477 tests, covering the
 role-visibility filters, team and invitation rules, the time-log, absence,
-capacity and planning rules, monthly locking in and outside UTC, the reports,
-page and date-range limits, and sessions — mostly against a real database. The
-frontend has Vitest tests for its date, month, absence, lock and paging helpers.
+capacity and planning rules, monthly locking in and outside UTC, the reports and
+the export, page and date-range limits, and sessions — mostly against a real
+database. The frontend has Vitest tests for its date, month, absence, lock,
+paging and time zone helpers, tab keyboard navigation and download file names.
 GitHub Actions runs the formatting check, lint with no warnings allowed,
 typecheck, build and tests for both applications on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
 built by its host.
 
 See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
-fuller assessment and §7 for the order the remaining work should be built in.
-The target permission model is in
-[`permission-model.md`](./permission-model.md); its §5 says which parts of it
-are enforced today and which are still ahead.
+fuller assessment and §7 for the roadmap. The permission model, all of it
+enforced, is in [`permission-model.md`](./permission-model.md).

@@ -2,19 +2,27 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useTeamMembers, useTeamsMutations } from "@/hooks/useTeams";
+import {
+  useTeamArchiveImpact,
+  useTeamDetails,
+  useTeamMembers,
+  useTeamsMutations,
+} from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { todayISODate } from "@/lib/utils/date";
 
-import { Team } from "@/types/Team";
+import { Team, TeamArchiveImpact, TeamUser } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 import { fullName, initials } from "@/lib/utils/user";
 
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { EntityPicker } from "../shared/resourse/EntityPicker";
 import { TeamForm, TeamFormData } from "./TeamForm";
@@ -31,10 +39,35 @@ type View = "form" | "members";
 
 const FORM_ID = "team-details-form";
 
+const namesOf = (users: TeamUser[]) =>
+  new Intl.ListFormat("en", { type: "conjunction" }).format(
+    users.map(fullName),
+  );
+
+const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
+  if (!impact) return "Checking who this affects...";
+
+  const { managers, peopleLeftWithoutTeam } = impact;
+  const effects = [
+    managers.length > 0 &&
+      `${namesOf(managers)} will no longer manage this team.`,
+    peopleLeftWithoutTeam.length > 0 &&
+      `${namesOf(peopleLeftWithoutTeam)} will be left without a team, for you to place in another one.`,
+    managers.length === 0 &&
+      peopleLeftWithoutTeam.length === 0 &&
+      "Nobody will be left without a team.",
+  ].filter(Boolean);
+
+  return [
+    ...effects,
+    "Time, absences and plans stay as they are. Restoring the team later brings it back with no members.",
+  ].join(" ");
+};
+
 export function TeamModal({
   open,
   onClose,
-  team,
+  team: teamProp,
   isOnboarding = false,
 }: TeamModalProps) {
   const router = useRouter();
@@ -47,6 +80,13 @@ export function TeamModal({
   const [assignRoleOverride, setAssignRoleOverride] = useState<TeamRole | null>(
     null,
   );
+  const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+  // A new team stays open on its members, so the owner can add them straight away.
+  const [createdTeam, setCreatedTeam] = useState<Team | null>(null);
+  const [hasCompletedStep, setHasCompletedStep] = useState(false);
+
+  const { data: createdTeamDetails } = useTeamDetails(createdTeam?.id ?? null);
+  const team = teamProp ?? createdTeamDetails ?? createdTeam ?? undefined;
 
   const { create, update, archive, unarchive } = useTeamsMutations();
 
@@ -67,6 +107,12 @@ export function TeamModal({
   const isEditMode = Boolean(team);
   const isArchived = team?.status === TeamStatus.ARCHIVED;
   const isPicking = view === "members";
+  const canEdit = isOwner && !isArchived;
+
+  const archiveImpact = useTeamArchiveImpact(
+    team?.id ?? "",
+    isConfirmingArchive,
+  );
 
   const isSubmitting = create.isPending || update.isPending;
   const isArchiving = archive.isPending || unarchive.isPending;
@@ -97,7 +143,7 @@ export function TeamModal({
           data,
         },
         {
-          onSuccess: onClose,
+          onSuccess: handleCloseModal,
         },
       );
 
@@ -105,12 +151,9 @@ export function TeamModal({
     }
 
     create.mutate(data, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push("/");
-        }
+      onSuccess: (created) => {
+        setCreatedTeam(created);
+        setHasCompletedStep(true);
       },
     });
   };
@@ -167,11 +210,7 @@ export function TeamModal({
       setSelectedUserIds([]);
       setAssignRoleOverride(null);
       setView("form");
-
-      if (isOnboarding) {
-        onClose();
-        router.push("/");
-      }
+      setHasCompletedStep(true);
     } finally {
       setIsAddingMembers(false);
     }
@@ -183,18 +222,36 @@ export function TeamModal({
     }
 
     if (isArchived) {
-      unarchive.mutate(team.id, { onSuccess: onClose });
+      unarchive.mutate(team.id, { onSuccess: handleCloseModal });
       return;
     }
 
-    archive.mutate(team.id, { onSuccess: onClose });
+    setIsConfirmingArchive(true);
+  };
+
+  const confirmArchive = () => {
+    if (!team || !archiveImpact.data) return;
+
+    archive.mutate(team.id, {
+      onSuccess: () => {
+        setIsConfirmingArchive(false);
+        handleCloseModal();
+      },
+    });
   };
 
   const handleCloseModal = () => {
     setSelectedUserIds([]);
     setAssignRoleOverride(null);
     setView("form");
+    setCreatedTeam(null);
+    setHasCompletedStep(false);
     onClose();
+
+    // Back to the checklist only once something was set up here.
+    if (isOnboarding && hasCompletedStep) {
+      router.push(GETTING_STARTED_PATH);
+    }
   };
 
   const pickerEmptyMessage =
@@ -203,174 +260,197 @@ export function TeamModal({
       : "No employees available.";
 
   return (
-    <ResourceFormModal
-      open={open}
-      onClose={handleCloseModal}
-      size="lg"
-      bodyPadding={!isPicking}
-      title={
-        isPicking ? "Add members" : isEditMode ? team!.name : "Create team"
-      }
-      description={
-        isPicking
-          ? "Select people to add to this team."
-          : isEditMode
-            ? isOwner
-              ? "Update team details and manage who's on it."
-              : "See who is on this team and remove anyone who has left."
-            : "Create a team to organize people and manage access."
-      }
-      icon={isPicking ? undefined : <UsersRound className="size-5" />}
-      footer={
-        isPicking ? (
-          <div className="flex items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleCloseMembersPicker}
-              className="gap-1.5"
-              disabled={isAddingMembers}
-            >
-              <ArrowLeft className="size-4" />
-              Back
-            </Button>
-
-            <Button
-              type="button"
-              size="sm"
-              onClick={handleApplyMembers}
-              isLoading={isAddingMembers}
-              disabled={selectedUserIds.length === 0}
-            >
-              Apply
-              {selectedUserIds.length > 0 && ` (${selectedUserIds.length})`}
-            </Button>
-          </div>
-        ) : (
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode && isOwner ? (
-              <Button
-                type="button"
-                variant={isArchived ? "success" : "destructive"}
-                size="sm"
-                className="gap-1.5"
-                onClick={handleArchiveToggle}
-                isLoading={isArchiving}
-              >
-                {isArchived ? (
-                  <ArchiveRestore className="size-4" />
-                ) : (
-                  <Archive className="size-4" />
-                )}
-
-                {isArchived ? "Unarchive" : "Archive"}
-              </Button>
-            ) : (
-              <span />
-            )}
-
-            <div className="flex items-center gap-2">
+    <>
+      <ResourceFormModal
+        open={open}
+        onClose={handleCloseModal}
+        size="lg"
+        bodyPadding={!isPicking}
+        title={
+          isPicking ? "Add members" : isEditMode ? team!.name : "Create team"
+        }
+        description={
+          isPicking
+            ? "Select people to add to this team."
+            : isArchived
+              ? "This team is archived and can no longer be changed."
+              : createdTeam
+                ? "Team created. Add the people who are on it, now or later."
+                : isEditMode
+                  ? isOwner
+                    ? "Update team details and manage who's on it."
+                    : "See who is on this team and remove anyone who has left."
+                  : "Create a team to organize people and manage access."
+        }
+        icon={isPicking ? undefined : <UsersRound className="size-5" />}
+        footer={
+          isPicking ? (
+            <div className="flex items-center justify-between gap-3">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={handleCloseModal}
+                onClick={handleCloseMembersPicker}
+                className="gap-1.5"
+                disabled={isAddingMembers}
               >
-                {isOwner ? "Cancel" : "Close"}
+                <ArrowLeft className="size-4" />
+                Back
               </Button>
 
-              {isOwner && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleApplyMembers}
+                isLoading={isAddingMembers}
+                disabled={selectedUserIds.length === 0}
+              >
+                Apply
+                {selectedUserIds.length > 0 && ` (${selectedUserIds.length})`}
+              </Button>
+            </div>
+          ) : (
+            <div className="flex w-full items-center justify-between gap-3">
+              {isEditMode && isOwner ? (
                 <Button
-                  type="submit"
-                  form={FORM_ID}
+                  type="button"
+                  variant={isArchived ? "success" : "destructive"}
                   size="sm"
-                  isLoading={isSubmitting}
+                  className="gap-1.5"
+                  onClick={handleArchiveToggle}
+                  isLoading={isArchiving}
                 >
-                  {isEditMode ? "Save changes" : "Create team"}
+                  {isArchived ? (
+                    <ArchiveRestore className="size-4" />
+                  ) : (
+                    <Archive className="size-4" />
+                  )}
+
+                  {isArchived ? "Unarchive" : "Archive"}
                 </Button>
+              ) : (
+                <span />
               )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCloseModal}
+                >
+                  {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
+                </Button>
+
+                {canEdit && (
+                  <Button
+                    type="submit"
+                    form={FORM_ID}
+                    size="sm"
+                    isLoading={isSubmitting}
+                  >
+                    {isEditMode ? "Save changes" : "Create team"}
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        )
-      }
-    >
-      {isPicking ? (
-        <div className="space-y-4 px-6 py-5">
-          <div className="space-y-2">
-            <p className="text-sm font-medium">Add as</p>
+          )
+        }
+      >
+        {isPicking ? (
+          <div className="space-y-4 px-6 py-5">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Add as</p>
 
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={
-                  assignRole === TeamRole.MANAGER ? "primary" : "outline"
-                }
-                aria-pressed={assignRole === TeamRole.MANAGER}
-                onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
-              >
-                Manager
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    assignRole === TeamRole.MANAGER ? "primary" : "outline"
+                  }
+                  aria-pressed={assignRole === TeamRole.MANAGER}
+                  onClick={() => handleChangeAssignRole(TeamRole.MANAGER)}
+                >
+                  Manager
+                </Button>
 
-              <Button
-                type="button"
-                size="sm"
-                variant={assignRole === TeamRole.MEMBER ? "primary" : "outline"}
-                aria-pressed={assignRole === TeamRole.MEMBER}
-                onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
-              >
-                Member
-              </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={
+                    assignRole === TeamRole.MEMBER ? "primary" : "outline"
+                  }
+                  aria-pressed={assignRole === TeamRole.MEMBER}
+                  onClick={() => handleChangeAssignRole(TeamRole.MEMBER)}
+                >
+                  Member
+                </Button>
+              </div>
             </div>
-          </div>
 
-          <EntityPicker
-            items={availableUsers}
-            selectedIds={selectedUserIds}
-            onToggle={handleToggleUser}
-            getId={(candidate) => candidate.id}
-            getLabel={fullName}
-            getSubtitle={(candidate) => candidate.email}
-            getAvatarText={initials}
-            isLoading={isUsersLoading}
-            hasNextPage={pagination.hasNextPage}
-            isFetchingNextPage={pagination.isFetchingNextPage}
-            onFetchNextPage={pagination.fetchNextPage}
-            emptyMessage={pickerEmptyMessage}
-            searchPlaceholder="Search people..."
-          />
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {isOwner && (
-            <TeamForm
-              formId={FORM_ID}
-              mode={isEditMode ? "edit" : "create"}
-              defaultValues={
-                team
-                  ? {
-                      name: team.name,
-                    }
-                  : undefined
-              }
-              onSubmit={handleSubmit}
-              isSubmitting={isSubmitting}
+            <EntityPicker
+              items={availableUsers}
+              selectedIds={selectedUserIds}
+              onToggle={handleToggleUser}
+              getId={(candidate) => candidate.id}
+              getLabel={fullName}
+              getSubtitle={(candidate) => candidate.email}
+              getAvatarText={initials}
+              isLoading={isUsersLoading}
+              hasNextPage={pagination.hasNextPage}
+              isFetchingNextPage={pagination.isFetchingNextPage}
+              onFetchNextPage={pagination.fetchNextPage}
+              emptyMessage={pickerEmptyMessage}
+              searchPlaceholder="Search people..."
             />
-          )}
-
-          {isEditMode && team && (
-            <div
-              className={isOwner ? "border-t border-border pt-6" : undefined}
-            >
-              <TeamMembersSection
-                team={team}
-                onOpenAddMembers={handleOpenMembersPicker}
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {canEdit && (
+              <TeamForm
+                formId={FORM_ID}
+                mode={isEditMode ? "edit" : "create"}
+                defaultValues={
+                  team
+                    ? {
+                        name: team.name,
+                      }
+                    : undefined
+                }
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
               />
-            </div>
-          )}
-        </div>
-      )}
-    </ResourceFormModal>
+            )}
+
+            {isEditMode && team && (
+              <div
+                className={canEdit ? "border-t border-border pt-6" : undefined}
+              >
+                <TeamMembersSection
+                  team={team}
+                  onOpenAddMembers={handleOpenMembersPicker}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </ResourceFormModal>
+
+      <ConfirmModal
+        isOpen={isConfirmingArchive}
+        title={team ? `Archive ${team.name}?` : ""}
+        message={
+          archiveImpact.isError
+            ? "Could not check who this affects. Close this and try again."
+            : archiveImpactMessage(archiveImpact.data)
+        }
+        confirmText="Archive"
+        variant="danger"
+        onConfirm={confirmArchive}
+        onClose={() => setIsConfirmingArchive(false)}
+        loading={archive.isPending || archiveImpact.isFetching}
+      />
+    </>
   );
 }

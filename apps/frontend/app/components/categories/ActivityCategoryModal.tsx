@@ -16,6 +16,8 @@ import {
 } from "./ActivityCategoryForm";
 import { useRouter } from "next/navigation";
 
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
 interface ActivityCategoryModalProps {
   open: boolean;
   onClose: () => void;
@@ -61,7 +63,7 @@ export function ActivityCategoryModal({
         onClose();
 
         if (isOnboarding) {
-          router.push("/");
+          router.push(GETTING_STARTED_PATH);
         }
       },
     });

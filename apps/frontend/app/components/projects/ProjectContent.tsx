@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
+import {
+  useProjectDetails,
+  useProjectsInfiniteQuery,
+} from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
@@ -16,12 +19,12 @@ import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
 
 export function ProjectsContent() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const { isOnboarding, opensCreateForm, projectId } = useSetupLinkParams();
+  const [createOpen, setCreateOpen] = useState(opensCreateForm);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(
+    projectId,
+  );
   const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.ACTIVE);
-
-  const searchParams = useSearchParams();
-  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
@@ -36,10 +39,16 @@ export function ProjectsContent() {
     status,
   });
 
-  const editingProject = useMemo(
+  const listedProject = useMemo(
     () => projects.find((project) => project.id === editingProjectId),
     [projects, editingProjectId],
   );
+
+  // A project opened from a setup link may not be on the loaded page.
+  const { data: fetchedProject } = useProjectDetails(
+    listedProject ? undefined : (editingProjectId ?? undefined),
+  );
+  const editingProject = listedProject ?? fetchedProject;
 
   const handleTabChange = (tab: "active" | "archived") => {
     setEditingProjectId(null);

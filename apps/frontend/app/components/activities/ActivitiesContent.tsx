@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { ClipboardList } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { hasManagerAccess } from "@/lib/utils/user";
 
@@ -16,14 +16,12 @@ import { ActivityCard } from "./ActivityCard";
 import { ActivityModal } from "./ActivityModal";
 
 export function ActivitiesContent() {
-  const [createOpen, setCreateOpen] = useState(false);
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
+  const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(
     null,
   );
   const [status, setStatus] = useState<ActivityStatus>(ActivityStatus.ACTIVE);
-
-  const searchParams = useSearchParams();
-  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);

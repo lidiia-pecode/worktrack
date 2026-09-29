@@ -22,6 +22,7 @@ import {
 } from './dtos/team.dto';
 import {
   ArchivedTeamResponse,
+  TeamArchiveImpactResponse,
   TeamMembershipResponse,
   TeamResponse,
 } from './dtos/team-response.dto';
@@ -74,6 +75,16 @@ export class TeamsController {
     @Body() dto: UpdateTeamDto,
   ): Promise<Team> {
     return this.teamsService.updateTeam(id, authUser.companyId, dto);
+  }
+
+  @Role(UserRole.OWNER)
+  @Get(':id/archive-impact')
+  @Serialize(TeamArchiveImpactResponse)
+  async getArchiveImpact(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.teamsService.getArchiveImpact(id, authUser.companyId);
   }
 
   @Role(UserRole.OWNER)

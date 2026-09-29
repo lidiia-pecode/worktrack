@@ -246,8 +246,10 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   {edit ? "Cancel" : "Close"}
                 </Button>
 
+                {/* Separate keys stop the Edit click from submitting the form. */}
                 {edit ? (
                   <Button
+                    key="save"
                     type="submit"
                     form="user-modal-form"
                     disabled={update.isPending || setCapacity.isPending}
@@ -258,11 +260,12 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   </Button>
                 ) : (
                   <Button
+                    key="edit"
                     type="button"
                     onClick={() => setEdit(true)}
                     disabled={isLoadingCapacity}
                   >
-                    Save changes
+                    Edit
                   </Button>
                 )}
               </div>

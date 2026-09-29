@@ -18,6 +18,7 @@ type Handler = keyof TeamsController;
 const OWNER_ONLY: Handler[] = [
   'createTeam',
   'updateTeam',
+  'getArchiveImpact',
   'archiveTeam',
   'unarchiveTeam',
   'addMember',

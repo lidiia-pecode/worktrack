@@ -1,8 +1,8 @@
 "use client";
-import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { User } from "@/types";
@@ -15,10 +15,9 @@ import { UserCard } from "./UserCard";
 type UserTab = "active" | "archived";
 
 export function UsersContent() {
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
+  const [inviteOpen, setInviteOpen] = useState(opensCreateForm);
   const [tab, setTab] = useState<UserTab>("active");
-  const searchParams = useSearchParams();
-  const isOnboarding = searchParams.get("onboarding") === "true";
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
   const status = tab === "active" ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;

@@ -1,14 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 
 import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
-import { useProjectDetails, useProjectsMutations } from "@/hooks/useProjects";
+import {
+  useClientNameSuggestions,
+  useProjectDetails,
+  useProjectsMutations,
+} from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 
@@ -71,6 +78,7 @@ export function ProjectModal({
   );
 
   const { create, update, archive, unarchive } = useProjectsMutations();
+  const clientSuggestions = useClientNameSuggestions();
 
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
@@ -146,6 +154,14 @@ export function ProjectModal({
     onClose();
   };
 
+  const handleSaved = () => {
+    handleClose();
+
+    if (isOnboarding) {
+      router.push(GETTING_STARTED_PATH);
+    }
+  };
+
   const handleSubmit = (data: ProjectFormData) => {
     const payload = {
       ...data,
@@ -167,21 +183,13 @@ export function ProjectModal({
         proceed: () =>
           update.mutate(
             { id: project.id, data: payload },
-            { onSuccess: onClose },
+            { onSuccess: handleSaved },
           ),
       });
       return;
     }
 
-    create.mutate(payload, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push("/");
-        }
-      },
-    });
+    create.mutate(payload, { onSuccess: handleSaved });
   };
 
   const handleToggleUser = (userId: string) => {
@@ -322,7 +330,18 @@ export function ProjectModal({
             hasNextPage={activitiesPagination.hasNextPage}
             isFetchingNextPage={activitiesPagination.isFetchingNextPage}
             onFetchNextPage={activitiesPagination.fetchNextPage}
-            emptyMessage="No activities found."
+            emptyMessage={
+              <>
+                No activities yet. Projects are logged against them, so{" "}
+                <Link
+                  href="/admin/activities"
+                  className="font-medium text-brand hover:underline"
+                >
+                  create an activity first
+                </Link>
+                .
+              </>
+            }
             searchPlaceholder="Search activities..."
           />
         </div>
@@ -353,8 +372,10 @@ export function ProjectModal({
             mode={project ? "edit" : "create"}
             defaultValues={{
               name: project?.name ?? "",
+              clientName: project?.clientName ?? null,
               description: project?.description ?? "",
             }}
+            clientSuggestions={clientSuggestions}
             membersCount={selectedUsers.length + hiddenMembersCount}
             activitiesCount={selectedActivities.length}
             onSubmit={handleSubmit}

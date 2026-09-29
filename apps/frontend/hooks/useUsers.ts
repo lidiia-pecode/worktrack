@@ -58,6 +58,9 @@ export const useUsersMutations = createEntityMutations<
 >({
   queryKey: queryKeys.users.all,
 
+  // Team member rows show each person's company role.
+  alsoInvalidate: [queryKeys.teams.all],
+
   api: {
     create: UsersClientApi.create,
     update: UsersClientApi.update,

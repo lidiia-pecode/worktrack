@@ -5,6 +5,7 @@ import {
   ArchivedTeam,
   CreateTeamPayload,
   Team,
+  TeamArchiveImpact,
   TeamListResponse,
   TeamMembership,
   TeamsQuery,
@@ -42,6 +43,9 @@ export const TeamsClientApi = {
 
   removeMember: (teamId: string, membershipId: string) =>
     client.delete<void>(`/${teamId}/members/${membershipId}`),
+
+  getArchiveImpact: (id: string) =>
+    client.get<TeamArchiveImpact>(`/${id}/archive-impact`),
 
   archive: (id: string) => client.archive<ArchivedTeam>(`/${id}/archive`),
 

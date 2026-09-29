@@ -35,12 +35,13 @@ export default async function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-screen">
+      <body className="h-full overflow-hidden">
         <Providers>
+          {/* Only the main area scrolls, so the sidebar never moves. */}
           <div className="flex h-full flex-col md:flex-row">
             {user && <Sidebar user={user} />}
 
-            <main className="flex-1 h-full overflow-y-auto bg-gray-50">
+            <main className="min-h-0 flex-1 overflow-y-auto bg-gray-50">
               {children}
             </main>
           </div>

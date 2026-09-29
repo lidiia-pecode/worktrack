@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { TeamsClientApi } from "@/lib/api/resources/teams.api";
 import { TeamStatus } from "@/types/enums";
@@ -51,18 +51,21 @@ export function useTeamOptions() {
   return { options, isLoading };
 }
 
-/**
- * Whether the caller can see an archived team. For a manager with no active
- * team, this tells "leads nothing" apart from "every team they lead is archived".
- */
-export function useHasArchivedTeams() {
-  const { items, isLoading } = useTeamsQuery(1, {
-    status: TeamStatus.ARCHIVED,
-    pageSize: 1,
+export const useTeamDetails = (teamId: string | null) =>
+  useQuery({
+    queryKey: queryKeys.teams.detail(teamId ?? ""),
+    queryFn: () => TeamsClientApi.getById(teamId!),
+    enabled: Boolean(teamId),
   });
 
-  return { hasArchivedTeams: items.length > 0, isLoading };
-}
+/** Who archiving a team would affect, read when the owner is about to. */
+export const useTeamArchiveImpact = (teamId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: queryKeys.teams.archiveImpact(teamId),
+    queryFn: () => TeamsClientApi.getArchiveImpact(teamId),
+    enabled,
+    staleTime: 0,
+  });
 
 export const useTeamsMutations = createEntityMutations<
   Team,

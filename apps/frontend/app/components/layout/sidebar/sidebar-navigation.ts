@@ -7,12 +7,21 @@ import {
   FolderKanban,
   FileBarChart,
   FolderTree,
+  ListChecks,
   Users,
 } from "lucide-react";
+
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 
 import { NavigationItem } from "./SidebarNavigation";
 
 export const managerNavigation: NavigationItem[] = [
+  {
+    label: "Getting started",
+    href: GETTING_STARTED_PATH,
+    icon: ListChecks,
+    ownerOnly: true,
+  },
   {
     label: "Team time",
     href: "/team",

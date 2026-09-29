@@ -4,8 +4,9 @@ import { useMemo, useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useHasArchivedTeams, useTeamsInfiniteQuery } from "@/hooks/useTeams";
-import { managerWithoutActiveTeamMessage } from "@/lib/constants";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
+import { useTeamsInfiniteQuery } from "@/hooks/useTeams";
+import { MANAGER_WITHOUT_TEAM_MESSAGE } from "@/lib/constants";
 
 import { hasManagerAccess } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
@@ -13,11 +14,11 @@ import { Team } from "@/types/Team";
 import { ResourcePage } from "../shared/resourse/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
-import { useSearchParams } from "next/navigation";
 import { TeamStatus, UserRole } from "@/types/enums";
 
 export function TeamsContent() {
-  const [createOpen, setCreateOpen] = useState(false);
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
+  const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingTeamId, setEditingTeamId] = useState<string | null>(null);
   const [status, setStatus] = useState<TeamStatus>(TeamStatus.ACTIVE);
 
@@ -33,13 +34,8 @@ export function TeamsContent() {
     status,
   });
 
-  const searchParams = useSearchParams();
-
-  const isOnboarding = searchParams.get("onboarding") === "true";
-
   const canRead = hasManagerAccess(user?.role);
   const isOwner = user?.role === UserRole.OWNER;
-  const { hasArchivedTeams } = useHasArchivedTeams();
 
   const editingTeam = useMemo(
     () => teams.find((team) => team.id === editingTeamId),
@@ -66,7 +62,7 @@ export function TeamsContent() {
         emptyDescription={
           isOwner
             ? "Create your first team to organize your workspace."
-            : managerWithoutActiveTeamMessage(hasArchivedTeams)
+            : MANAGER_WITHOUT_TEAM_MESSAGE
         }
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Create team"
@@ -94,6 +90,7 @@ export function TeamsContent() {
       />
 
       <TeamModal
+        key={editingTeam?.id ?? "edit"}
         isOnboarding={isOnboarding}
         team={editingTeam}
         open={Boolean(editingTeam)}

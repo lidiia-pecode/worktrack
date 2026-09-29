@@ -15,6 +15,8 @@ import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { useRouter } from "next/navigation";
 
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
 interface ActivityModalProps {
   open: boolean;
   onClose: () => void;
@@ -66,7 +68,7 @@ export function ActivityModal({
         onClose();
 
         if (isOnboarding) {
-          router.push("/");
+          router.push(GETTING_STARTED_PATH);
         }
       },
     });
@@ -119,6 +121,7 @@ export function ActivityModal({
               form={FORM_ID}
               size="sm"
               isLoading={isSubmitting}
+              disabled={!categoriesLoading && categories.length === 0}
             >
               {isEditMode ? "Save changes" : "Create activity"}
             </Button>
@@ -136,6 +139,7 @@ export function ActivityModal({
               ? {
                   name: activity.name,
                   categoryId: activity.category.id,
+                  defaultBillable: activity.defaultBillable,
                 }
               : undefined
           }

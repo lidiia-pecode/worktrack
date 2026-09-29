@@ -16,7 +16,6 @@ export const queryKeys = {
 
   onboarding: {
     ownerSetup: () => ["onboarding", "owner-setup"] as const,
-    managerSetup: () => ["onboarding", "manager-setup"] as const,
   },
 
   teams: {
@@ -29,6 +28,10 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("teams", params),
 
     allPages: (params?: QueryParams) => createAllPagesKey("teams", params),
+
+    detail: (id: string) => ["teams", "detail", id] as const,
+
+    archiveImpact: (id: string) => ["teams", "archive-impact", id] as const,
   },
 
   projects: {

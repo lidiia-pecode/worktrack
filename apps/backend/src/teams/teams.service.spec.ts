@@ -11,12 +11,13 @@ import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
+import { TeamStatus } from './enums/team-status.enum';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 
@@ -242,6 +243,102 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('who can manage a team', () => {
+    afterEach(async () => {
+      await dataSource
+        .getRepository(TeamMembership)
+        .delete({ userId: loneManager.id });
+    });
+
+    const addAs = (user: AuthUser, roleInTeam: TeamRole) =>
+      service.addMember(alpha, companyId, {
+        userId: user.id,
+        roleInTeam,
+        joinedAt: TODAY,
+      });
+
+    it('lets a Manager be added as the team manager', async () => {
+      const membership = await addAs(loneManager, TeamRole.MANAGER);
+
+      expect(membership.roleInTeam).toBe(TeamRole.MANAGER);
+    });
+
+    it('refuses adding an employee as the team manager', async () => {
+      await expect(addAs(employee, TeamRole.MANAGER)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+    });
+
+    it('refuses adding the owner as the team manager', async () => {
+      await expect(addAs(owner, TeamRole.MANAGER)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('still adds an employee as a member', async () => {
+      const membership = await addAs(employee, TeamRole.MEMBER);
+
+      expect(membership.roleInTeam).toBe(TeamRole.MEMBER);
+    });
+
+    it('refuses making an employee the team manager', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.updateMember(
+          membershipId,
+          companyId,
+          { roleInTeam: TeamRole.MANAGER },
+          alpha,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses reopening a manager membership for someone who is no longer a Manager', async () => {
+      const closed = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alpha,
+        userId: employee.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: '2026-01-01',
+        leftAt: '2026-02-01',
+      });
+
+      await expect(
+        service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
+      ).rejects.toThrow(BadRequestException);
+
+      await dataSource.getRepository(TeamMembership).delete({ id: closed.id });
+    });
+
+    it('refuses making an employee the team manager with an end date', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.updateMember(
+          membershipId,
+          companyId,
+          { roleInTeam: TeamRole.MANAGER, leftAt: '2099-12-31' },
+          alpha,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('lets a Manager member be made the team manager', async () => {
+      const membershipId = await addToTeam(alpha, loneManager);
+
+      const updated = await service.updateMember(
+        membershipId,
+        companyId,
+        { roleInTeam: TeamRole.MANAGER },
+        alpha,
+      );
+
+      expect(updated.roleInTeam).toBe(TeamRole.MANAGER);
+    });
+  });
+
   describe('overlapping memberships', () => {
     const closedMembership = (joinedAt: string, leftAt: string) =>
       dataSource.getRepository(TeamMembership).save({
@@ -330,6 +427,229 @@ describe('TeamsService', () => {
 
       expect(archived.revokedInvitationCount).toBe(0);
       await expect(statusOf(other.id)).resolves.toBe(InvitationStatus.PENDING);
+    });
+  });
+
+  describe('archiving closes the team', () => {
+    const visibility = () =>
+      new TeamVisibilityService(
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+      );
+
+    const membershipOf = (id: string) =>
+      dataSource.getRepository(TeamMembership).findOneByOrFail({ id });
+
+    const saveMembership = (
+      teamId: string,
+      user: AuthUser,
+      dates: { joinedAt: string; leftAt?: string | null },
+      roleInTeam = TeamRole.MEMBER,
+    ) =>
+      dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId,
+        userId: user.id,
+        roleInTeam,
+        leftAt: null,
+        ...dates,
+      });
+
+    /** A team with its own Manager and one member, apart from the fixtures. */
+    const teamWithPeople = async (name: string) => {
+      const teamId = await createTeam(name);
+      const manager = await createUser(`${name}-manager`, UserRole.MANAGER);
+      const member = await createUser(`${name}-member`, UserRole.EMPLOYEE);
+      const managerMembershipId = await addToTeam(
+        teamId,
+        manager,
+        TeamRole.MANAGER,
+      );
+      const memberMembershipId = await addToTeam(teamId, member);
+
+      return {
+        teamId,
+        manager,
+        member,
+        managerMembershipId,
+        memberMembershipId,
+      };
+    };
+
+    it('ends every open membership today and keeps the rows', async () => {
+      const team = await teamWithPeople('closing');
+
+      const archived = await service.archiveTeam(team.teamId, companyId);
+
+      expect(archived.status).toBe(TeamStatus.ARCHIVED);
+      expect(archived.memberships?.map((m) => m.leftAt)).toEqual([
+        TODAY,
+        TODAY,
+      ]);
+
+      await expect(
+        membershipOf(team.managerMembershipId),
+      ).resolves.toMatchObject({ leftAt: TODAY, joinedAt: JOINED_AT });
+      await expect(
+        membershipOf(team.memberMembershipId),
+      ).resolves.toMatchObject({ leftAt: TODAY });
+    });
+
+    it('ends a membership that has not started on its start date', async () => {
+      const teamId = await createTeam('future');
+      const newcomer = await createUser('future-newcomer', UserRole.EMPLOYEE);
+      const upcoming = await saveMembership(teamId, newcomer, {
+        joinedAt: TOMORROW,
+      });
+
+      await service.archiveTeam(teamId, companyId);
+
+      await expect(membershipOf(upcoming.id)).resolves.toMatchObject({
+        leftAt: TOMORROW,
+      });
+    });
+
+    it('brings a planned end forward and leaves ended ones alone', async () => {
+      const teamId = await createTeam('planned end');
+      const leaving = await createUser('planned-leaving', UserRole.EMPLOYEE);
+      const gone = await createUser('planned-gone', UserRole.EMPLOYEE);
+      const plannedEnd = await saveMembership(teamId, leaving, {
+        joinedAt: JOINED_AT,
+        leftAt: TOMORROW,
+      });
+      const alreadyEnded = await saveMembership(teamId, gone, {
+        joinedAt: JOINED_AT,
+        leftAt: YESTERDAY,
+      });
+
+      await service.archiveTeam(teamId, companyId);
+
+      await expect(membershipOf(plannedEnd.id)).resolves.toMatchObject({
+        leftAt: TODAY,
+      });
+      await expect(membershipOf(alreadyEnded.id)).resolves.toMatchObject({
+        leftAt: YESTERDAY,
+      });
+    });
+
+    it('takes away the former manager reach over the team', async () => {
+      const team = await teamWithPeople('reach');
+
+      await expect(
+        visibility().isUserInManagedTeams(team.member.id, team.manager),
+      ).resolves.toBe(true);
+
+      await service.archiveTeam(team.teamId, companyId);
+
+      await expect(
+        visibility().getVisibleTeamIds(team.manager),
+      ).resolves.not.toContain(team.teamId);
+      await expect(
+        visibility().isUserInManagedTeams(team.member.id, team.manager),
+      ).resolves.toBe(false);
+    });
+
+    it('refuses changing an archived team', async () => {
+      const team = await teamWithPeople('read only');
+      await service.archiveTeam(team.teamId, companyId);
+
+      await expect(
+        service.updateTeam(team.teamId, companyId, { name: `Renamed ${RUN}` }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.updateMember(
+          team.memberMembershipId,
+          companyId,
+          { joinedAt: YESTERDAY },
+          team.teamId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.removeMember(
+          team.memberMembershipId,
+          companyId,
+          team.teamId,
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('still shows an archived team its former members', async () => {
+      const team = await teamWithPeople('history');
+      await service.archiveTeam(team.teamId, companyId);
+
+      const read = await service.getTeamById(team.teamId, companyId);
+
+      expect(read.memberships?.map((m) => m.leftAt)).toEqual([TODAY, TODAY]);
+    });
+
+    it('restores the team with no members', async () => {
+      const team = await teamWithPeople('restored');
+      await service.archiveTeam(team.teamId, companyId);
+
+      const restored = await service.unarchiveTeam(team.teamId, companyId);
+
+      expect(restored.status).toBe(TeamStatus.ACTIVE);
+      await expect(activeMemberIds(team.teamId)).resolves.toEqual([]);
+    });
+  });
+
+  describe('getArchiveImpact', () => {
+    it('lists the manager and the people left without a team', async () => {
+      const teamId = await createTeam('impact');
+      const manager = await createUser('impact-manager', UserRole.MANAGER);
+      const teamless = await createUser('impact-teamless', UserRole.EMPLOYEE);
+      const placed = await createUser('impact-placed', UserRole.EMPLOYEE);
+      await addToTeam(teamId, manager, TeamRole.MANAGER);
+      await addToTeam(teamId, teamless);
+      await addToTeam(teamId, placed);
+      await addToTeam(beta, placed);
+
+      const impact = await service.getArchiveImpact(teamId, companyId);
+
+      expect(impact.managers.map((user) => user.id)).toEqual([manager.id]);
+      expect(impact.peopleLeftWithoutTeam.map((user) => user.id)).toEqual([
+        teamless.id,
+      ]);
+    });
+
+    it('counts someone as teamless when their other team is archived', async () => {
+      const teamId = await createTeam('impact archived other');
+      const otherTeamId = await createTeam('impact other');
+      const person = await createUser('impact-other', UserRole.EMPLOYEE);
+      await addToTeam(teamId, person);
+      await addToTeam(otherTeamId, person);
+      await dataSource
+        .getRepository(Team)
+        .update(otherTeamId, { status: TeamStatus.ARCHIVED });
+
+      const impact = await service.getArchiveImpact(teamId, companyId);
+
+      expect(impact.peopleLeftWithoutTeam.map((user) => user.id)).toEqual([
+        person.id,
+      ]);
+    });
+
+    it('leaves out people who are archived', async () => {
+      const teamId = await createTeam('impact deactivated');
+      const gone = await createUser('impact-gone', UserRole.EMPLOYEE);
+      await addToTeam(teamId, gone);
+      await dataSource
+        .getRepository(User)
+        .update(gone.id, { status: UserStatus.DEACTIVATED });
+
+      const impact = await service.getArchiveImpact(teamId, companyId);
+
+      expect(impact.peopleLeftWithoutTeam).toEqual([]);
+    });
+
+    it('refuses a team that is already archived', async () => {
+      const teamId = await createTeam('impact already archived');
+      await service.archiveTeam(teamId, companyId);
+
+      await expect(service.getArchiveImpact(teamId, companyId)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
