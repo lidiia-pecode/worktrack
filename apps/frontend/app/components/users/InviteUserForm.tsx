@@ -59,6 +59,7 @@ export function InviteUserForm({
     register,
     control,
     setValue,
+    getFieldState,
     handleSubmit,
     formState: { errors },
   } = useForm<InviteUserFormData>({
@@ -81,6 +82,13 @@ export function InviteUserForm({
   const noTeamsMessage = isOwner
     ? "Create a team first. An employee always joins into a team."
     : MANAGER_WITHOUT_TEAM_MESSAGE;
+
+  // The form can open before the signed-in user has loaded.
+  useEffect(() => {
+    if (!getFieldState("role").isDirty) {
+      setValue("role", defaultRole);
+    }
+  }, [defaultRole, getFieldState, setValue]);
 
   useEffect(() => {
     if (teamOptions.length === 1) {

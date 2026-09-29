@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
 import { UserMenu } from "./UserMenu";
 import { Logo } from "../../shared/Logo";
 import { SidebarNavigation } from "./SidebarNavigation";
-import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
+import {
+  employeeNavigation,
+  gettingStartedNavigation,
+  managerNavigation,
+} from "./sidebar-navigation";
 import { User } from "@/types";
 import { UserRole } from "@/types/enums";
 import { hasManagerAccess } from "@/lib/utils/user";
+import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
 import { CloseButton } from "../../shared/buttons/CloseButton";
 
 interface SidebarProps {
@@ -22,11 +27,20 @@ export function Sidebar({ user }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const canManage = hasManagerAccess(user?.role);
   const isOwner = user?.role === UserRole.OWNER;
-  const navlist = (canManage ? managerNavigation : employeeNavigation).filter(
-    (item) => isOwner || !item.ownerOnly,
-  );
+  const { data: setupState, refetch: refetchSetupState } = useOwnerSetupState({
+    enabled: isOwner,
+  });
+  const isSetupOpen = isOwner && setupState?.setupComplete === false;
 
-  // The company wizard runs on its own, before the app is set up.
+  useEffect(() => {
+    if (isSetupOpen) void refetchSetupState();
+  }, [pathname, isSetupOpen, refetchSetupState]);
+
+  const navlist = [
+    ...(isSetupOpen ? [gettingStartedNavigation] : []),
+    ...(canManage ? managerNavigation : employeeNavigation),
+  ].filter((item) => isOwner || !item.ownerOnly);
+
   if (pathname.startsWith("/onboarding")) return null;
 
   return (

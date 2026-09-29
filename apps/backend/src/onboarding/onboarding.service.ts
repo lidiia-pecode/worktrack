@@ -58,24 +58,45 @@ export class OnboardingService {
   // ===========================================================================
 
   async getOwnerSetupState(companyId: string): Promise<OwnerSetupStateDto> {
-    const [createTeam, managerJoined, managerInvited, assignManager] =
-      await Promise.all([
-        this.hasActiveTeam(companyId),
-        this.hasActiveManagerUser(companyId),
-        this.hasPendingManagerInvitation(companyId),
-        this.hasManagerAssignedToTeam(companyId),
-      ]);
+    const [
+      createTeam,
+      createCategory,
+      createActivity,
+      projectWithActivitiesId,
+      projectWithPeopleId,
+      firstProjectId,
+      managerJoined,
+      managerInvited,
+      assignManager,
+    ] = await Promise.all([
+      this.hasActiveTeam(companyId),
+      this.hasActiveCategory(companyId),
+      this.hasActiveActivity(companyId),
+      this.findProjectReadyForTime(companyId, { withPeople: false }),
+      this.findProjectReadyForTime(companyId, { withPeople: true }),
+      this.findFirstActiveProject(companyId),
+      this.hasActiveManagerUser(companyId),
+      this.hasPendingManagerInvitation(companyId),
+      this.hasManagerAssignedToTeam(companyId),
+    ]);
 
     const steps: OwnerSetupStepStateDto = {
       createTeam,
-      inviteManager: managerInvited || managerJoined,
-      managerJoined,
-      assignManager,
+      createCategory,
+      createActivity,
+      addProjectActivities: projectWithActivitiesId !== null,
+      addProjectPeople: projectWithPeopleId !== null,
     };
 
     return {
       role: 'OWNER',
       steps,
+      managerSteps: {
+        inviteManager: managerInvited || managerJoined,
+        managerJoined,
+        assignManager,
+      },
+      setupProjectId: projectWithActivitiesId ?? firstProjectId,
       setupComplete: Object.values(steps).every(Boolean),
     };
   }
@@ -293,7 +314,7 @@ export class OnboardingService {
   }
 
   // ===========================================================================
-  // MANAGER — ACTIVITIES
+  // ACTIVITIES
   // ===========================================================================
 
   private async hasActiveActivity(companyId: string): Promise<boolean> {
@@ -306,7 +327,7 @@ export class OnboardingService {
   }
 
   // ===========================================================================
-  // MANAGER — CATEGORIES
+  // CATEGORIES
   // ===========================================================================
 
   private async hasActiveCategory(companyId: string): Promise<boolean> {
@@ -319,7 +340,61 @@ export class OnboardingService {
   }
 
   // ===========================================================================
-  // MANAGER — PROJECTS
+  // OWNER — PROJECTS
+  // ===========================================================================
+
+  /** A project somebody can log time on: it has activities, and people when asked. */
+  private async findProjectReadyForTime(
+    companyId: string,
+    { withPeople }: { withPeople: boolean },
+  ): Promise<string | null> {
+    const query = this.projectRepo
+      .createQueryBuilder('project')
+      .select('project.id', 'id')
+      .innerJoin(
+        'project.projectActivities',
+        'projectActivity',
+        'projectActivity.isActive = true',
+      )
+      .innerJoin(
+        'projectActivity.activity',
+        'activity',
+        'activity.status = :activityStatus',
+        { activityStatus: ActivityStatus.ACTIVE },
+      )
+      .where('project.companyId = :companyId', { companyId })
+      .andWhere('project.status = :projectStatus', {
+        projectStatus: ProjectStatus.ACTIVE,
+      });
+
+    if (withPeople) {
+      query.innerJoin('project.users', 'user', 'user.status = :userStatus', {
+        userStatus: UserStatus.ACTIVE,
+      });
+    }
+
+    const project = await query
+      .orderBy('project.createdAt', 'ASC')
+      .limit(1)
+      .getRawOne<{ id: string }>();
+
+    return project?.id ?? null;
+  }
+
+  private async findFirstActiveProject(
+    companyId: string,
+  ): Promise<string | null> {
+    const project = await this.projectRepo.findOne({
+      where: { companyId, status: ProjectStatus.ACTIVE },
+      order: { createdAt: 'ASC' },
+      select: { id: true },
+    });
+
+    return project?.id ?? null;
+  }
+
+  // ===========================================================================
+  // PROJECTS
   // ===========================================================================
 
   private async hasActiveProject(companyId: string): Promise<boolean> {

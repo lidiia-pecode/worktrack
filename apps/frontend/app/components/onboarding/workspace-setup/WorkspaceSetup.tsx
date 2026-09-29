@@ -1,26 +1,174 @@
 "use client";
 
-import Link from "next/link";
+import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Activity,
+  Building2,
+  FolderKanban,
+  RefreshCw,
+  Tags,
+  UserCheck,
+  UserPlus,
+  UsersRound,
+} from "lucide-react";
 
-import { ArrowRight, Check, Lock, UserPlus, UsersRound } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  useInvitations,
+  usePendingInvitations,
+} from "@/hooks/auth/useInvitation";
 import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
+import { setupLink } from "@/hooks/useSetupLink";
+import { OwnerSetupState } from "@/types/Onboarding";
+import { PendingInvitation } from "@/types/Invitation";
+import { UserRole } from "@/types/enums";
 
+import { ErrorState } from "../../shared/ErrorState";
 import { useSetupCompleteRedirect } from "./useSetupCompleteRedirect";
 import { SetupSkeleton } from "./SetupSkeleton";
+import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 
-type SetupStep = {
-  id: "team" | "inviteManager" | "managerJoined" | "assignManager";
+const EXPIRY_LABEL = new Intl.DateTimeFormat(undefined, {
+  day: "numeric",
+  month: "long",
+});
 
-  title: string;
-  description: string;
-  href?: string;
-  icon: typeof UsersRound;
-  completed: boolean;
-  locked: boolean;
+const requiredSteps = ({
+  steps,
+  setupProjectId,
+}: OwnerSetupState): SetupStepItem[] => {
+  const projectLink = setupProjectId
+    ? {
+        label: "Open project",
+        href: setupLink("/admin/projects", { projectId: setupProjectId }),
+      }
+    : {
+        label: "Create project",
+        href: setupLink("/admin/projects", { create: true }),
+      };
+
+  return [
+    {
+      id: "company",
+      title: "Company details",
+      description:
+        "Time zone, week start and working day, set when you created the company.",
+      icon: Building2,
+      completed: true,
+      keepsActionWhenDone: true,
+      link: { label: "Open Settings", href: "/settings" },
+    },
+    {
+      id: "team",
+      title: "Create a team",
+      description:
+        "A team is a group of people whose time one manager reviews. People join one when they are invited.",
+      icon: UsersRound,
+      completed: steps.createTeam,
+      link: {
+        label: "Create team",
+        href: setupLink("/admin/teams", { create: true }),
+      },
+    },
+    {
+      id: "category",
+      title: "Create a category",
+      description:
+        "Categories group the kinds of work, such as Development or Meetings.",
+      icon: Tags,
+      completed: steps.createCategory,
+      link: {
+        label: "Create category",
+        href: setupLink("/admin/categories", { create: true }),
+      },
+    },
+    {
+      id: "activity",
+      title: "Create activities",
+      description:
+        "Activities are what people log time against, such as Coding or Code review.",
+      icon: Activity,
+      completed: steps.createActivity,
+      locked: !steps.createCategory,
+      link: {
+        label: "Create activity",
+        href: setupLink("/admin/activities", { create: true }),
+      },
+    },
+    {
+      id: "projectActivities",
+      title: "Add activities to a project",
+      description:
+        "A project is the work time goes to, for a client or internal. People pick from its activities.",
+      icon: FolderKanban,
+      completed: steps.addProjectActivities,
+      locked: !steps.createActivity,
+      link: projectLink,
+    },
+    {
+      id: "projectPeople",
+      title: "Put people on the project",
+      description:
+        "Only people on a project can log time to it. Add yourself if you log time too.",
+      icon: UserCheck,
+      completed: steps.addProjectPeople,
+      locked: !steps.addProjectActivities,
+      link: projectLink,
+    },
+  ];
 };
 
+const managerSteps = (
+  { steps, managerSteps }: OwnerSetupState,
+  invitation: PendingInvitation | undefined,
+  resendAction: ReactNode,
+): SetupStepItem[] => [
+  {
+    id: "inviteManager",
+    title: "Invite a manager",
+    description: "Send an invitation with the Manager role.",
+    icon: UserPlus,
+    completed: managerSteps.inviteManager,
+    link: {
+      label: "Invite manager",
+      href: setupLink("/admin/users", { create: true }),
+    },
+  },
+  {
+    id: "managerJoined",
+    title: "The manager accepts",
+    description: managerSteps.managerJoined
+      ? "A manager has joined the company."
+      : invitation
+        ? `Waiting for ${invitation.email} to accept. The invitation works until ${EXPIRY_LABEL.format(new Date(invitation.expiresAt))}.`
+        : "They join once they accept the invitation email.",
+    icon: UserCheck,
+    completed: managerSteps.managerJoined,
+    locked: !managerSteps.inviteManager,
+    extraAction: !managerSteps.managerJoined && invitation && resendAction,
+  },
+  {
+    id: "assignManager",
+    title: "Make them a team's manager",
+    description: "Open a team and add them to it as its manager.",
+    icon: UsersRound,
+    completed: managerSteps.assignManager,
+    locked: !managerSteps.managerJoined || !steps.createTeam,
+    link: { label: "Open teams", href: setupLink("/admin/teams") },
+  },
+];
+
+const firstOpenStepId = (steps: SetupStepItem[]) =>
+  steps.find((step) => !step.completed && !step.locked)?.id;
+
 export function WorkspaceSetup() {
-  const { data, isLoading, isError } = useOwnerSetupState();
+  const router = useRouter();
+  const { data, isLoading, isError, refetch } = useOwnerSetupState();
+  const { data: invitations = [] } = usePendingInvitations();
+  const {
+    actions: { resend },
+  } = useInvitations();
 
   useSetupCompleteRedirect(data?.setupComplete);
 
@@ -29,173 +177,133 @@ export function WorkspaceSetup() {
   }
 
   if (isError || !data) {
-    return null;
+    return (
+      <ErrorState
+        title="Setup could not be loaded"
+        description="We couldn't check what is already set up. Try again in a moment."
+        onRetry={() => refetch()}
+        className="w-full max-w-3xl"
+      />
+    );
   }
 
-  const { createTeam, inviteManager, managerJoined, assignManager } =
-    data.steps;
-
-  const steps: SetupStep[] = [
-    {
-      id: "team",
-      title: "Create your first team",
-      description: "Create a team to organize your people and projects.",
-      href: "/admin/teams?onboarding=true",
-      icon: UsersRound,
-      completed: createTeam,
-      locked: false,
-    },
-    {
-      id: "inviteManager",
-      title: "Invite a manager",
-      description: "Invite a manager to help manage your workspace.",
-      href: "/admin/users?onboarding=true",
-      icon: UserPlus,
-      completed: inviteManager,
-      locked: !createTeam,
-    },
-    {
-      id: "managerJoined",
-      title: "Manager joins the workspace",
-      description: "Your manager needs to accept the invitation.",
-      icon: UserPlus,
-      completed: managerJoined,
-      locked: !inviteManager,
-    },
-    {
-      id: "assignManager",
-      title: "Assign the manager to a team",
-      description: "Add the manager to the team they will manage.",
-      href: "/admin/teams?onboarding=true",
-      icon: UsersRound,
-      completed: assignManager,
-      locked: !managerJoined,
-    },
-  ];
-
-  const completedCount = steps.filter((step) => step.completed).length;
-
-  const isComplete = data.setupComplete;
-
-  const progress = (completedCount / steps.length) * 100;
-
   // The redirect to /team is already in flight; do not flash an empty page.
-  if (isComplete) {
+  if (data.setupComplete) {
     return <SetupSkeleton />;
   }
 
-  const currentStep = steps.find((step) => !step.completed && !step.locked);
+  const managerInvitation = invitations.find(
+    (invitation) =>
+      invitation.role === UserRole.MANAGER &&
+      new Date(invitation.expiresAt) > new Date(),
+  );
+
+  const resendAction = managerInvitation && (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      isLoading={resend.isPending}
+      onClick={() => resend.mutate(managerInvitation.id)}
+    >
+      {!resend.isPending && <RefreshCw aria-hidden="true" />}
+      Resend
+    </Button>
+  );
+
+  const required = requiredSteps(data);
+  const optional = managerSteps(data, managerInvitation, resendAction);
+  const doneCount = required.filter((step) => step.completed).length;
+  const currentStepId = firstOpenStepId(required);
 
   return (
     <section className="w-full max-w-3xl">
-      <header className="mb-8">
-        <p className="mb-2 text-sm font-semibold text-brand">Workspace setup</p>
+      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-2 text-sm font-semibold text-brand">
+            Getting started
+          </p>
 
-        <h1 className="text-2xl font-bold tracking-tight text-foreground">
-          Let&apos;s get your workspace ready
-        </h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            Get your company ready to log time
+          </h1>
 
-        <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Complete these steps to finish setting up your workspace.
-        </p>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+            Each step checks what is already in place. Once the last one is
+            done, people on the project can log their time.
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push("/team")}
+        >
+          Finish later
+        </Button>
       </header>
 
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="flex items-center justify-between gap-6 border-b border-border px-6 py-4">
           <div>
-            <p className="text-sm font-semibold text-card-foreground">
-              Getting started
-            </p>
+            <h2 className="text-sm font-semibold text-card-foreground">
+              Setup steps
+            </h2>
 
             <p className="mt-1 text-xs text-muted-foreground">
-              {completedCount} of {steps.length} steps completed
+              {doneCount} of {required.length} done
             </p>
           </div>
 
           <div
+            role="progressbar"
+            aria-label="Setup progress"
+            aria-valuemin={0}
+            aria-valuemax={required.length}
+            aria-valuenow={doneCount}
+            aria-valuetext={`${doneCount} of ${required.length} steps done`}
             className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-muted"
-            aria-label={`${progress}% complete`}
           >
             <div
               className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{
-                width: `${progress}%`,
-              }}
+              style={{ width: `${(doneCount / required.length) * 100}%` }}
             />
           </div>
         </div>
 
-        <div className="divide-y divide-border">
-          {steps.map((step, index) => {
-            const Icon = step.icon;
+        <ol className="divide-y divide-border">
+          {required.map((step) => (
+            <SetupStepRow
+              key={step.id}
+              step={step}
+              isCurrent={step.id === currentStepId}
+            />
+          ))}
+        </ol>
+      </div>
 
-            const isCurrent = currentStep?.id === step.id;
+      <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+        <div className="border-b border-border px-6 py-4">
+          <h2 className="text-sm font-semibold text-card-foreground">
+            Add a manager <span className="font-normal">(optional)</span>
+          </h2>
 
-            return (
-              <div
-                key={step.id}
-                className={[
-                  "flex items-center gap-4 px-6 py-5",
-                  step.locked && "opacity-60",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-              >
-                <div
-                  className={[
-                    "flex size-10 shrink-0 items-center justify-center rounded-xl",
-                    step.completed
-                      ? "bg-success/10 text-success-text"
-                      : step.locked
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-brand-subtle text-brand",
-                  ].join(" ")}
-                >
-                  {step.completed ? (
-                    <Check className="size-[18px]" />
-                  ) : step.locked ? (
-                    <Lock className="size-[16px]" />
-                  ) : (
-                    <Icon className="size-[18px]" />
-                  )}
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {index + 1}
-                    </span>
-
-                    <h3
-                      className={[
-                        "text-sm font-semibold",
-                        step.completed
-                          ? "text-muted-foreground"
-                          : "text-foreground",
-                      ].join(" ")}
-                    >
-                      {step.title}
-                    </h3>
-                  </div>
-
-                  <p className="mt-1 text-sm leading-5 text-muted-foreground">
-                    {step.description}
-                  </p>
-                </div>
-
-                {isCurrent && step.href && (
-                  <Link
-                    href={step.href}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3.5 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-brand-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    Continue
-                    <ArrowRight className="size-[15px]" />
-                  </Link>
-                )}
-              </div>
-            );
-          })}
+          <p className="mt-1 text-xs text-muted-foreground">
+            A manager reviews and corrects their team&apos;s time. Skip this if
+            you look after everyone yourself.
+          </p>
         </div>
+
+        <ol className="divide-y divide-border">
+          {optional.map((step) => (
+            <SetupStepRow
+              key={step.id}
+              step={step}
+              isCurrent={step.id === currentStepId}
+            />
+          ))}
+        </ol>
       </div>
     </section>
   );

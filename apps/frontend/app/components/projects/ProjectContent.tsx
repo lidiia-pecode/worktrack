@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
@@ -16,12 +16,12 @@ import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
 
 export function ProjectsContent() {
-  const [createOpen, setCreateOpen] = useState(false);
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const { isOnboarding, opensCreateForm, projectId } = useSetupLinkParams();
+  const [createOpen, setCreateOpen] = useState(opensCreateForm);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(
+    projectId,
+  );
   const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.ACTIVE);
-
-  const searchParams = useSearchParams();
-  const isOnboarding = searchParams.get("onboarding") === "true";
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);

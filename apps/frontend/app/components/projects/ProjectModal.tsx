@@ -152,6 +152,14 @@ export function ProjectModal({
     onClose();
   };
 
+  const handleSaved = () => {
+    onClose();
+
+    if (isOnboarding) {
+      router.push("/");
+    }
+  };
+
   const handleSubmit = (data: ProjectFormData) => {
     const payload = {
       ...data,
@@ -173,21 +181,13 @@ export function ProjectModal({
         proceed: () =>
           update.mutate(
             { id: project.id, data: payload },
-            { onSuccess: onClose },
+            { onSuccess: handleSaved },
           ),
       });
       return;
     }
 
-    create.mutate(payload, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push("/");
-        }
-      },
-    });
+    create.mutate(payload, { onSuccess: handleSaved });
   };
 
   const handleToggleUser = (userId: string) => {

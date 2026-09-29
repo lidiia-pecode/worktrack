@@ -26,7 +26,8 @@ export function SidebarNavigation({
   return (
     <nav className="space-y-1">
       {navItems.map((item) => {
-        const isActive = pathname.startsWith(item.href);
+        const isActive =
+          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
         const Icon = item.icon;
 
         return (

@@ -7,10 +7,18 @@ import {
   FolderKanban,
   FileBarChart,
   FolderTree,
+  ListChecks,
   Users,
 } from "lucide-react";
 
 import { NavigationItem } from "./SidebarNavigation";
+
+/** Shown to the owner until setup is complete. */
+export const gettingStartedNavigation: NavigationItem = {
+  label: "Getting started",
+  href: "/",
+  icon: ListChecks,
+};
 
 export const managerNavigation: NavigationItem[] = [
   {
