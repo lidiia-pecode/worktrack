@@ -6,12 +6,13 @@ import {
   IsString,
   Length,
   Max,
+  MaxLength,
   Min,
-  Matches,
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { WeekDay } from '../enums/week-day.enum';
 import { TrimString } from 'src/lib/decorators';
+import { IsIanaTimeZone } from 'src/lib/validators/IsIanaTimeZone';
 
 export class UpdateCompanyDto {
   @IsOptional()
@@ -22,10 +23,11 @@ export class UpdateCompanyDto {
 
   @IsOptional()
   @IsString()
-  @Matches(/^[A-Za-z_]+\/[A-Za-z_]+$|^UTC$/, {
-    message:
-      'Timezone must be a valid IANA time zone format (e.g. Europe/Kyiv, UTC)',
-  })
+  @MaxLength(50)
+  @IsIanaTimeZone()
+  @Transform(({ value }: TransformFnParams): unknown =>
+    value === 'Europe/Kiev' ? 'Europe/Kyiv' : value,
+  )
   timezone?: string;
 
   @IsOptional()

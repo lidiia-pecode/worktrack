@@ -16,27 +16,17 @@ import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
 import Input from "../../../../components/ui/input";
 import { FormSelect } from "../../shared/FormSelect";
+import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 
-import { CompanyCurrency, WeekDay } from "@/types/enums";
+import { WeekDay } from "@/types/enums";
+import { WEEK_START_OPTIONS } from "@/lib/constants";
+import { toListedTimeZone } from "@/lib/utils/time-zones";
 import {
   settingsLabelClassName,
   settingsNumberInputClassName,
 } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
-import { TIMEZONE_OPTIONS } from "@/lib/constants";
-
-const CURRENCY_OPTIONS = [
-  { value: CompanyCurrency.USD, label: "USD" },
-  { value: CompanyCurrency.EUR, label: "EUR" },
-  { value: CompanyCurrency.UAH, label: "UAH" },
-  { value: CompanyCurrency.GBP, label: "GBP" },
-];
-
-const WEEK_START_OPTIONS = [
-  { value: WeekDay.MONDAY, label: "Monday" },
-  { value: WeekDay.SUNDAY, label: "Sunday" },
-];
 
 export const CompanySettings = () => {
   const { company, actions } = useCompany();
@@ -54,7 +44,6 @@ export const CompanySettings = () => {
     defaultValues: {
       companyName: "",
       timezone: "",
-      currency: CompanyCurrency.USD,
       weekStartDay: WeekDay.MONDAY,
       standardWorkHoursPerDay: 0,
     },
@@ -65,8 +54,7 @@ export const CompanySettings = () => {
 
     reset({
       companyName: company.companyName ?? "",
-      timezone: company.timezone ?? "",
-      currency: company.currency ?? CompanyCurrency.USD,
+      timezone: toListedTimeZone(company.timezone) ?? company.timezone ?? "",
       weekStartDay: company.weekStartDay ?? WeekDay.MONDAY,
       standardWorkHoursPerDay: company.standardWorkHoursPerDay ?? 0,
     });
@@ -116,7 +104,7 @@ export const CompanySettings = () => {
           </h3>
 
           <p className="mt-1 text-xs text-muted-foreground">
-            Configure how dates, times, and currency are handled.
+            How the company&apos;s days and weeks are counted.
           </p>
 
           <div className="mt-4 grid gap-5 sm:grid-cols-2">
@@ -124,30 +112,10 @@ export const CompanySettings = () => {
               name="timezone"
               control={control}
               render={({ field }) => (
-                <FormSelect
-                  id="timezone"
-                  label="Timezone"
-                  placeholder="Select timezone"
+                <TimeZoneSelect
                   value={field.value}
-                  options={TIMEZONE_OPTIONS}
+                  onValueChange={field.onChange}
                   error={errors.timezone?.message}
-                  onValueChange={field.onChange}
-                />
-              )}
-            />
-
-            <Controller
-              name="currency"
-              control={control}
-              render={({ field }) => (
-                <FormSelect
-                  id="currency"
-                  label="Currency"
-                  placeholder="Select currency"
-                  value={field.value}
-                  options={CURRENCY_OPTIONS}
-                  error={errors.currency?.message}
-                  onValueChange={field.onChange}
                 />
               )}
             />
@@ -168,26 +136,35 @@ export const CompanySettings = () => {
               )}
             />
 
-            <div className="relative">
-              <Input
-                label="Standard work hours / day"
-                type="number"
-                min={1}
-                max={24}
-                step={0.5}
-                placeholder="8"
-                {...register("standardWorkHoursPerDay", {
-                  valueAsNumber: true,
-                })}
-                error={errors.standardWorkHoursPerDay?.message}
-                className={settingsNumberInputClassName}
-                labelClassname={settingsLabelClassName}
-              />
+            <div>
+              <div className="relative">
+                <Input
+                  label="Standard work hours / day"
+                  type="number"
+                  min={1}
+                  max={24}
+                  step={0.5}
+                  placeholder="8"
+                  {...register("standardWorkHoursPerDay", {
+                    valueAsNumber: true,
+                  })}
+                  error={errors.standardWorkHoursPerDay?.message}
+                  className={settingsNumberInputClassName}
+                  labelClassname={settingsLabelClassName}
+                />
 
-              <NumberInputControls
-                onIncrement={() => updateWorkHours(0.5)}
-                onDecrement={() => updateWorkHours(-0.5)}
-              />
+                <NumberInputControls
+                  onIncrement={() => updateWorkHours(0.5)}
+                  onDecrement={() => updateWorkHours(-0.5)}
+                />
+              </div>
+
+              {!errors.standardWorkHoursPerDay && (
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Changing it recalculates Expected hours, past weeks included,
+                  for everyone on the company&apos;s default hours.
+                </p>
+              )}
             </div>
           </div>
         </section>

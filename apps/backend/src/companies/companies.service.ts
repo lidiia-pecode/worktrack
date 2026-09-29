@@ -187,7 +187,12 @@ export class CompaniesService {
     const trimmedName = dto.companyName?.trim();
 
     if (trimmedName === undefined || trimmedName === company.companyName) {
-      Object.assign(company, dto);
+      // Fields left out of the request are undefined on the DTO; copying them
+      // would blank the company that is returned.
+      const sentFields = Object.fromEntries(
+        Object.entries(dto).filter(([, value]) => value !== undefined),
+      );
+      Object.assign(company, sentFields);
       return repo.save(company);
     }
 

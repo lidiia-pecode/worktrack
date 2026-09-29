@@ -1,16 +1,14 @@
-import { CompanyCurrency, WeekDay } from "@/types/enums";
+import { WeekDay } from "@/types/enums";
 import { z } from "zod";
 
 export const companySchema = z.object({
   companyName: z
     .string()
     .trim()
-    .min(1, "Company name is required")
-    .max(100, "Company name must be less than 100 characters"),
+    .min(2, "Company name must be at least 2 characters")
+    .max(255, "Company name must be at most 255 characters"),
 
-  timezone: z.string().min(1, "Timezone is required"),
-
-  currency: z.enum(CompanyCurrency),
+  timezone: z.string().min(1, "Choose a time zone"),
 
   weekStartDay: z.enum(WeekDay),
 

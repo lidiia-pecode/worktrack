@@ -10,7 +10,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:time-zones": "node scripts/generate-time-zones.mjs /usr/share/zoneinfo && prettier --write lib/constants/time-zones.generated.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
