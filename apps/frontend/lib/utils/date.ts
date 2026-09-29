@@ -198,6 +198,11 @@ export function formatMonthLabel(monthKey: string): string {
   return MONTH_YEAR_LABEL.format(new Date(`${monthKey}-01T00:00:00`));
 }
 
+/** e.g. "7 Oct 2026", from a YYYY-MM-DD date. */
+export function formatDayMonthYearLabel(date: string): string {
+  return DAY_MONTH_YEAR_LABEL.format(new Date(`${date}T00:00:00`));
+}
+
 /** e.g. "7 Oct", from a YYYY-MM-DD date. */
 export function formatDayMonthLabel(date: string): string {
   return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));

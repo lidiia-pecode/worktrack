@@ -29,6 +29,8 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("teams", params),
 
     allPages: (params?: QueryParams) => createAllPagesKey("teams", params),
+
+    archiveImpact: (id: string) => ["teams", "archive-impact", id] as const,
   },
 
   projects: {

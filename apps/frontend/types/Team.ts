@@ -40,6 +40,12 @@ export interface ArchivedTeam extends Team {
   revokedInvitationCount: number;
 }
 
+// TeamArchiveImpactResponse
+export interface TeamArchiveImpact {
+  managers: TeamUser[];
+  peopleLeftWithoutTeam: TeamUser[];
+}
+
 // Payloads
 export interface CreateTeamPayload {
   name: string;

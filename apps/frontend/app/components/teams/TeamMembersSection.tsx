@@ -11,8 +11,9 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { useUsersMutations } from "@/hooks/useUsers";
 import { Team, TeamUser } from "@/types/Team";
-import { TeamRole, UserRole } from "@/types/enums";
+import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
 import { fullName } from "@/lib/utils/user";
+import { formatDayMonthYearLabel } from "@/lib/utils/date";
 
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { Avatar } from "../shared/Avatar";
@@ -42,6 +43,10 @@ export function TeamMembersSection({
   const [personToPromote, setPersonToPromote] = useState<TeamUser | null>(null);
 
   const isOwner = user?.role === UserRole.OWNER;
+
+  if (team.status === TeamStatus.ARCHIVED) {
+    return <ArchivedTeamMembers team={team} />;
+  }
 
   const confirmPromotion = () => {
     if (!personToPromote) return;
@@ -162,3 +167,45 @@ export function TeamMembersSection({
     </div>
   );
 }
+
+const ArchivedTeamMembers = ({ team }: { team: Team }) => {
+  const formerMembers = (team.memberships ?? []).filter(
+    (m): m is typeof m & { user: NonNullable<typeof m.user> } => !!m.user,
+  );
+
+  const period = (joinedAt: string, leftAt?: string | null) =>
+    leftAt
+      ? `${formatDayMonthYearLabel(joinedAt)} – ${formatDayMonthYearLabel(leftAt)}`
+      : `Since ${formatDayMonthYearLabel(joinedAt)}`;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">
+          Former members
+        </h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Who was on this team and when. Restoring it starts with no members.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <AssignedList
+          items={formerMembers}
+          getId={(membership) => membership.id}
+          getPrimary={(membership) => fullName(membership.user)}
+          getSecondary={(membership) =>
+            period(membership.joinedAt, membership.leftAt)
+          }
+          renderLeading={(membership) => (
+            <Avatar user={membership.user} size="md" />
+          )}
+          emptyMessage="Nobody was on this team."
+          renderTrailing={(membership) => (
+            <Badge>{roleLabel(membership.roleInTeam)}</Badge>
+          )}
+        />
+      </div>
+    </div>
+  );
+};

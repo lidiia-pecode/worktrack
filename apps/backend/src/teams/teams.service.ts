@@ -70,6 +70,15 @@ export class TeamsService {
     });
   }
 
+  /** An active team shows who is on it; an archived one, who was. */
+  private shownMemberships(team: Team): TeamMembership[] {
+    const memberships = team.memberships ?? [];
+
+    return team.status === TeamStatus.ARCHIVED
+      ? memberships
+      : memberships.filter((membership) => membership.leftAt === null);
+  }
+
   private async assertTeamIsActive(
     teamId: string,
     companyId: string,
@@ -132,9 +141,7 @@ export class TeamsService {
 
     const results = teams.map((team) => ({
       ...team,
-      memberships: team.memberships
-        ? team.memberships.filter((m) => m.leftAt === null)
-        : [],
+      memberships: this.shownMemberships(team),
     }));
 
     return { results, count };
@@ -176,11 +183,8 @@ export class TeamsService {
       );
     }
 
-    if (!includeHistory && team.memberships) {
-      return {
-        ...team,
-        memberships: team.memberships.filter((m) => m.leftAt === null),
-      };
+    if (!includeHistory) {
+      return { ...team, memberships: this.shownMemberships(team) };
     }
 
     return team;

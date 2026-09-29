@@ -544,6 +544,15 @@ describe('TeamsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('still shows an archived team its former members', async () => {
+      const team = await teamWithPeople('history');
+      await service.archiveTeam(team.teamId, companyId);
+
+      const read = await service.getTeamById(team.teamId, companyId);
+
+      expect(read.memberships?.map((m) => m.leftAt)).toEqual([TODAY, TODAY]);
+    });
+
     it('restores the team with no members', async () => {
       const team = await teamWithPeople('restored');
       await service.archiveTeam(team.teamId, companyId);

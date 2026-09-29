@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
 
 import { UserRole } from "@/types/enums";
-import { managerWithoutActiveTeamMessage, ROLE_LABELS } from "@/lib/constants";
+import { MANAGER_WITHOUT_TEAM_MESSAGE, ROLE_LABELS } from "@/lib/constants";
 
 import { FormSelect } from "../shared/FormSelect";
 
@@ -17,7 +17,7 @@ import {
   InviteUserFormData,
 } from "@/lib/forms/schemas/invite-user.schema";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useHasArchivedTeams, useTeamOptions } from "@/hooks/useTeams";
+import { useTeamOptions } from "@/hooks/useTeams";
 
 interface InviteUserFormProps {
   formId?: string;
@@ -34,7 +34,6 @@ export function InviteUserForm({
   const isOwner = user?.role === UserRole.OWNER;
 
   const { options: teamOptions, isLoading: isLoadingTeams } = useTeamOptions();
-  const { hasArchivedTeams } = useHasArchivedTeams();
 
   const roleOptions = isOwner
     ? [
@@ -81,7 +80,7 @@ export function InviteUserForm({
 
   const noTeamsMessage = isOwner
     ? "Create a team first. An employee always joins into a team."
-    : managerWithoutActiveTeamMessage(hasArchivedTeams);
+    : MANAGER_WITHOUT_TEAM_MESSAGE;
 
   useEffect(() => {
     if (teamOptions.length === 1) {
