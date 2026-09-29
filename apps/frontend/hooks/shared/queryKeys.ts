@@ -30,6 +30,8 @@ export const queryKeys = {
 
     allPages: (params?: QueryParams) => createAllPagesKey("teams", params),
 
+    detail: (id: string) => ["teams", "detail", id] as const,
+
     archiveImpact: (id: string) => ["teams", "archive-impact", id] as const,
   },
 

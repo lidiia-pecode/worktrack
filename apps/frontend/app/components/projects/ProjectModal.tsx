@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
@@ -327,7 +328,18 @@ export function ProjectModal({
             hasNextPage={activitiesPagination.hasNextPage}
             isFetchingNextPage={activitiesPagination.isFetchingNextPage}
             onFetchNextPage={activitiesPagination.fetchNextPage}
-            emptyMessage="No activities found."
+            emptyMessage={
+              <>
+                No activities yet. Projects are logged against them, so{" "}
+                <Link
+                  href="/admin/activities"
+                  className="font-medium text-brand hover:underline"
+                >
+                  create an activity first
+                </Link>
+                .
+              </>
+            }
             searchPlaceholder="Search activities..."
           />
         </div>

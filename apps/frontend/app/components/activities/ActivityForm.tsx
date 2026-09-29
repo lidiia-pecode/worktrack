@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -73,20 +74,33 @@ export function ActivityForm({
       </FormSection>
 
       <FormSection label="Category">
-        <Controller
-          control={control}
-          name="categoryId"
-          render={({ field }) => (
-            <FormSelect
-              value={field.value}
-              onValueChange={field.onChange}
-              options={categoryOptions}
-              placeholder="Select category"
-              error={errors.categoryId?.message}
-              disabled={isSubmitting}
-            />
-          )}
-        />
+        {categories.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            There are no categories yet, and every activity belongs to one.{" "}
+            <Link
+              href="/admin/categories"
+              className="font-medium text-brand hover:underline"
+            >
+              Create a category first
+            </Link>
+            .
+          </p>
+        ) : (
+          <Controller
+            control={control}
+            name="categoryId"
+            render={({ field }) => (
+              <FormSelect
+                value={field.value}
+                onValueChange={field.onChange}
+                options={categoryOptions}
+                placeholder="Select category"
+                error={errors.categoryId?.message}
+                disabled={isSubmitting}
+              />
+            )}
+          />
+        )}
       </FormSection>
 
       <div>

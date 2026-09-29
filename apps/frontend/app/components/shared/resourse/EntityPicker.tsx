@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { SearchInput } from "../inputs/SearchInput";
 import { PickerRow } from "./PickerRow";
@@ -16,7 +16,7 @@ export interface EntityPickerProps<T> {
   getAvatarText?: (item: T) => string;
   renderIcon?: (item: T) => React.ReactNode;
 
-  emptyMessage: string;
+  emptyMessage: ReactNode;
   searchPlaceholder?: string;
   filterItem?: (item: T, query: string) => boolean;
 

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import {
   useTeamArchiveImpact,
+  useTeamDetails,
   useTeamMembers,
   useTeamsMutations,
 } from "@/hooks/useTeams";
@@ -64,7 +65,7 @@ const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
 export function TeamModal({
   open,
   onClose,
-  team,
+  team: teamProp,
   isOnboarding = false,
 }: TeamModalProps) {
   const router = useRouter();
@@ -78,6 +79,12 @@ export function TeamModal({
     null,
   );
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+  // A new team stays open on its members, so the owner can add them straight away.
+  const [createdTeam, setCreatedTeam] = useState<Team | null>(null);
+  const [hasCompletedStep, setHasCompletedStep] = useState(false);
+
+  const { data: createdTeamDetails } = useTeamDetails(createdTeam?.id ?? null);
+  const team = teamProp ?? createdTeamDetails ?? createdTeam ?? undefined;
 
   const { create, update, archive, unarchive } = useTeamsMutations();
 
@@ -134,7 +141,7 @@ export function TeamModal({
           data,
         },
         {
-          onSuccess: onClose,
+          onSuccess: handleCloseModal,
         },
       );
 
@@ -142,12 +149,9 @@ export function TeamModal({
     }
 
     create.mutate(data, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push("/");
-        }
+      onSuccess: (created) => {
+        setCreatedTeam(created);
+        setHasCompletedStep(true);
       },
     });
   };
@@ -204,11 +208,7 @@ export function TeamModal({
       setSelectedUserIds([]);
       setAssignRoleOverride(null);
       setView("form");
-
-      if (isOnboarding) {
-        onClose();
-        router.push("/");
-      }
+      setHasCompletedStep(true);
     } finally {
       setIsAddingMembers(false);
     }
@@ -242,7 +242,14 @@ export function TeamModal({
     setSelectedUserIds([]);
     setAssignRoleOverride(null);
     setView("form");
+    setCreatedTeam(null);
+    setHasCompletedStep(false);
     onClose();
+
+    // Back to the checklist only once something was set up here.
+    if (isOnboarding && hasCompletedStep) {
+      router.push("/");
+    }
   };
 
   const pickerEmptyMessage =
@@ -265,11 +272,13 @@ export function TeamModal({
             ? "Select people to add to this team."
             : isArchived
               ? "This team is archived and can no longer be changed."
-              : isEditMode
-                ? isOwner
-                  ? "Update team details and manage who's on it."
-                  : "See who is on this team and remove anyone who has left."
-                : "Create a team to organize people and manage access."
+              : createdTeam
+                ? "Team created. Add the people who are on it, now or later."
+                : isEditMode
+                  ? isOwner
+                    ? "Update team details and manage who's on it."
+                    : "See who is on this team and remove anyone who has left."
+                  : "Create a team to organize people and manage access."
         }
         icon={isPicking ? undefined : <UsersRound className="size-5" />}
         footer={
@@ -328,7 +337,7 @@ export function TeamModal({
                   size="sm"
                   onClick={handleCloseModal}
                 >
-                  {canEdit ? "Cancel" : "Close"}
+                  {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
                 </Button>
 
                 {canEdit && (

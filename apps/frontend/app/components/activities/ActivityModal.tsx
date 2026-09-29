@@ -119,6 +119,7 @@ export function ActivityModal({
               form={FORM_ID}
               size="sm"
               isLoading={isSubmitting}
+              disabled={!categoriesLoading && categories.length === 0}
             >
               {isEditMode ? "Save changes" : "Create activity"}
             </Button>

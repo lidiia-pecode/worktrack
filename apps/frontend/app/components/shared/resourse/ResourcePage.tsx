@@ -121,6 +121,8 @@ export function ResourcePage<T>({
       ? `No archived ${title.toLowerCase()}`
       : emptyTitle;
 
+  const canCreateHere = canCreate && onCreate && !isArchived;
+
   const emptyStateDescription = search
     ? `No ${title.toLowerCase()} match "${search}".`
     : isArchived
@@ -143,7 +145,7 @@ export function ResourcePage<T>({
           )}
         </div>
 
-        {canCreate && onCreate && !isArchived && (
+        {canCreateHere && (
           <Button type="button" onClick={onCreate} className="shrink-0 gap-2">
             <Plus className="size-4" />
             {createLabel}
@@ -209,6 +211,15 @@ export function ResourcePage<T>({
             title={emptyStateTitle}
             description={emptyStateDescription}
             icon={isArchived ? <Archive className="size-6" /> : emptyIcon}
+            action={
+              canCreateHere &&
+              !search && (
+                <Button type="button" onClick={onCreate} className="gap-2">
+                  <Plus className="size-4" />
+                  {createLabel}
+                </Button>
+              )
+            }
           />
         )}
 
