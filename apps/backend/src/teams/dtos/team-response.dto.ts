@@ -82,3 +82,14 @@ export class ArchivedTeamResponse extends TeamResponse {
   @Expose()
   revokedInvitationCount!: number;
 }
+
+@Exclude()
+export class TeamArchiveImpactResponse {
+  @Expose()
+  @Type(() => TeamUserResponse)
+  managers!: TeamUserResponse[];
+
+  @Expose()
+  @Type(() => TeamUserResponse)
+  peopleLeftWithoutTeam!: TeamUserResponse[];
+}
