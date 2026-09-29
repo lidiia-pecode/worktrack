@@ -16,7 +16,6 @@ export const queryKeys = {
 
   onboarding: {
     ownerSetup: () => ["onboarding", "owner-setup"] as const,
-    managerSetup: () => ["onboarding", "manager-setup"] as const,
   },
 
   teams: {

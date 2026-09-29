@@ -6,7 +6,6 @@ import { UserRole } from "@/types/enums";
 import { LandingPage } from "../components/homepage/LandingPage";
 
 import { WorkspaceSetup } from "../components/onboarding/workspace-setup/WorkspaceSetup";
-import { ManagerWorkspaceSetup } from "../components/onboarding/workspace-setup/ManagerWorkspaceSetup";
 
 export default async function Home() {
   const user = await getCurrentUser();
@@ -19,12 +18,15 @@ export default async function Home() {
     redirect("/timesheet");
   }
 
+  // A manager's welcome is on Team time.
+  if (user.role === UserRole.MANAGER) {
+    redirect("/team");
+  }
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl justify-center px-6 py-10">
-        {user.role === UserRole.OWNER && <WorkspaceSetup />}
-
-        {user.role === UserRole.MANAGER && <ManagerWorkspaceSetup />}
+        <WorkspaceSetup />
       </div>
     </main>
   );

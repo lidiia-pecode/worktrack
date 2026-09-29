@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, MoreThan, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -22,11 +22,6 @@ import {
   OwnerSetupStateDto,
   OwnerSetupStepStateDto,
 } from './dtos/owner-setup-state.dto';
-
-import {
-  ManagerSetupStateDto,
-  ManagerSetupStepStateDto,
-} from './dtos/manager-setup-state.dto';
 
 @Injectable()
 export class OnboardingService {
@@ -52,10 +47,6 @@ export class OnboardingService {
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
   ) {}
-
-  // ===========================================================================
-  // OWNER
-  // ===========================================================================
 
   async getOwnerSetupState(companyId: string): Promise<OwnerSetupStateDto> {
     const [
@@ -102,67 +93,6 @@ export class OnboardingService {
   }
 
   // ===========================================================================
-  // MANAGER
-  // ===========================================================================
-
-  async getManagerSetupState(
-    companyId: string,
-    userId: string,
-  ): Promise<ManagerSetupStateDto> {
-    const teamIds = await this.getManagerActiveTeamIds(companyId, userId);
-
-    const teamAssigned = teamIds.length > 0;
-
-    if (!teamAssigned) {
-      return {
-        role: 'MANAGER',
-        steps: {
-          teamAssigned: false,
-          inviteMember: false,
-          memberJoined: false,
-          addTeamMember: false,
-          createProject: false,
-          createActivity: false,
-          createCategory: false,
-        },
-        setupComplete: false,
-      };
-    }
-
-    const [
-      inviteMember,
-      memberJoined,
-      addTeamMember,
-      createCategory,
-      createActivity,
-      createProject,
-    ] = await Promise.all([
-      this.hasPendingOrAcceptedEmployeeInvitation(companyId),
-      this.hasActiveEmployeeInTeams(companyId, teamIds),
-      this.hasTeamMember(companyId, teamIds),
-      this.hasActiveActivity(companyId),
-      this.hasActiveCategory(companyId),
-      this.hasActiveProject(companyId),
-    ]);
-
-    const steps: ManagerSetupStepStateDto = {
-      teamAssigned,
-      inviteMember,
-      memberJoined,
-      addTeamMember,
-      createCategory,
-      createActivity,
-      createProject,
-    };
-
-    return {
-      role: 'MANAGER',
-      steps,
-      setupComplete: Object.values(steps).every(Boolean),
-    };
-  }
-
-  // ===========================================================================
   // TEAM
   // ===========================================================================
 
@@ -173,34 +103,6 @@ export class OnboardingService {
         status: TeamStatus.ACTIVE,
       },
     });
-  }
-
-  private async getManagerActiveTeamIds(
-    companyId: string,
-    userId: string,
-  ): Promise<string[]> {
-    const memberships = await this.membershipRepo.find({
-      where: {
-        companyId,
-        userId,
-        leftAt: IsNull(),
-        roleInTeam: TeamRole.MANAGER,
-        team: {
-          companyId,
-          status: TeamStatus.ACTIVE,
-        },
-        user: {
-          companyId,
-          role: UserRole.MANAGER,
-          status: UserStatus.ACTIVE,
-        },
-      },
-      select: {
-        teamId: true,
-      },
-    });
-
-    return memberships.map(({ teamId }) => teamId);
   }
 
   private async hasManagerAssignedToTeam(companyId: string): Promise<boolean> {
@@ -222,25 +124,8 @@ export class OnboardingService {
     });
   }
 
-  private async hasTeamMember(
-    companyId: string,
-    teamIds: string[],
-  ): Promise<boolean> {
-    if (teamIds.length === 0) {
-      return false;
-    }
-
-    return this.membershipRepo
-      .createQueryBuilder('membership')
-      .where('membership.companyId = :companyId', { companyId })
-      .andWhere('membership.teamId IN (:...teamIds)', { teamIds })
-      .andWhere('membership.leftAt IS NULL')
-      .andWhere('membership.roleInTeam = :role', { role: TeamRole.MEMBER })
-      .getExists();
-  }
-
   // ===========================================================================
-  // OWNER — MANAGER
+  // MANAGER
   // ===========================================================================
 
   private async hasActiveManagerUser(companyId: string): Promise<boolean> {
@@ -262,53 +147,6 @@ export class OnboardingService {
         role: UserRole.MANAGER,
         status: InvitationStatus.PENDING,
         expiresAt: MoreThan(new Date()),
-      },
-    });
-  }
-
-  // ===========================================================================
-  // MANAGER — INVITATIONS
-  // ===========================================================================
-
-  private async hasPendingOrAcceptedEmployeeInvitation(
-    companyId: string,
-  ): Promise<boolean> {
-    return this.invitationRepo.exists({
-      where: [
-        {
-          companyId,
-          role: UserRole.EMPLOYEE,
-          status: InvitationStatus.PENDING,
-          expiresAt: MoreThan(new Date()),
-        },
-        {
-          companyId,
-          role: UserRole.EMPLOYEE,
-          status: InvitationStatus.ACCEPTED,
-        },
-      ],
-    });
-  }
-
-  // ===========================================================================
-  // MANAGER — EMPLOYEES
-  // ===========================================================================
-
-  /** Only the manager's own teams count: people outside them are not theirs to see. */
-  private async hasActiveEmployeeInTeams(
-    companyId: string,
-    teamIds: string[],
-  ): Promise<boolean> {
-    return this.membershipRepo.exists({
-      where: {
-        companyId,
-        teamId: In(teamIds),
-        leftAt: IsNull(),
-        user: {
-          companyId,
-          role: UserRole.EMPLOYEE,
-          status: UserStatus.ACTIVE,
-        },
       },
     });
   }
@@ -340,7 +178,7 @@ export class OnboardingService {
   }
 
   // ===========================================================================
-  // OWNER — PROJECTS
+  // PROJECTS
   // ===========================================================================
 
   /** A project somebody can log time on: it has activities, and people when asked. */
@@ -391,18 +229,5 @@ export class OnboardingService {
     });
 
     return project?.id ?? null;
-  }
-
-  // ===========================================================================
-  // PROJECTS
-  // ===========================================================================
-
-  private async hasActiveProject(companyId: string): Promise<boolean> {
-    return this.projectRepo.exists({
-      where: {
-        companyId,
-        status: ProjectStatus.ACTIVE,
-      },
-    });
   }
 }

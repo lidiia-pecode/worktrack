@@ -12,10 +12,3 @@ export function useOwnerSetupState({ enabled = true } = {}) {
     enabled,
   });
 }
-
-export function useManagerSetupState() {
-  return useQuery({
-    queryKey: queryKeys.onboarding.managerSetup(),
-    queryFn: OnboardingClientApi.getManagerSetupState,
-  });
-}
