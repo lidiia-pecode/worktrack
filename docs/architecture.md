@@ -111,7 +111,7 @@ actual and utilisation at `/reports`, and download hours as an Excel file for
 invoicing. The authorization gaps are all closed. The work ahead is making it a
 better product; a production launch comes last, once it is ready.
 
-Backend test coverage is twenty-six suites and 420 tests, covering the
+Backend test coverage is twenty-eight suites and 477 tests, covering the
 role-visibility filters, team and invitation rules, the time-log, absence,
 capacity and planning rules, monthly locking in and outside UTC, the reports and
 the export, page and date-range limits, and sessions — mostly against a real

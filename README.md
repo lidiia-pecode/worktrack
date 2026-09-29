@@ -188,7 +188,7 @@ Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting with an Excel
 export of hours, and admin CRUD for users, teams, projects, activities and
 categories are implemented, and a new company is guided from sign-up to somebody
-logging time. Test coverage is twenty-eight backend suites and 472 tests,
+logging time. Test coverage is twenty-eight backend suites and 477 tests,
 covering who may see and change whose data and the business rules behind each
 feature, plus frontend tests for the date, lock, paging and time zone logic the
 screens rely on.

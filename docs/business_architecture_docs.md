@@ -681,7 +681,7 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-Backend test coverage is twenty-six suites and 420 tests, covering the
+Backend test coverage is twenty-eight suites and 477 tests, covering the
 role-visibility filters, team and invitation rules, time-log, absence, capacity
 and planning rules, monthly locking in and outside UTC, the reports and the
 export, page and date-range limits, name checks, and session refresh, rate

@@ -9,9 +9,11 @@ import { SetupSkeleton } from "./SetupSkeleton";
 
 /** The one-time setup checklist until setup is finished, then a lasting guide. */
 export const GettingStarted = () => {
-  const { data, isLoading, isError, refetch } = useOwnerSetupState();
+  const { data, isFetchedAfterMount, isError, refetch } = useOwnerSetupState();
 
-  if (isLoading) {
+  // Coming back from a step, the cached state is a step behind; wait for
+  // this visit's own answer rather than show the old checklist.
+  if (!isFetchedAfterMount && !isError) {
     return <SetupSkeleton />;
   }
 
