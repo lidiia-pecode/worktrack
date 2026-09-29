@@ -28,9 +28,9 @@ endpoint cannot be reviewed or reverted as a unit.
 git checkout main && git pull
 git checkout -b feat/team-week-grid
 
-make dev                              # stack up, work as usual
-make test                             # backend suite, needs the stack running
-npm run test -w apps/frontend         # frontend suite, no stack needed
+make dev                              # Postgres in Docker, both apps on the machine
+make test                             # backend suite, against the local database
+npm run test -w apps/frontend         # frontend suite, no database needed
 npm run format:check && npm run lint && npm run typecheck   # repo root, both apps
 
 git push -u origin feat/team-week-grid
@@ -98,9 +98,8 @@ You never write one by hand. Change the entity, then let TypeORM diff the
 entities against a live database and write the file:
 
 ```bash
-make up                         # the diff is taken against the running local database
-docker-compose -f docker-compose.dev.yml exec backend \
-  npm run migration:generate -- src/migrations/DescriptiveName
+make db                         # the diff is taken against the running local database
+npm run migration:generate -w apps/backend -- src/migrations/DescriptiveName
 npx prettier --write apps/backend/src/migrations/<the new file>.ts
 ```
 
@@ -135,11 +134,10 @@ timestamp order. Two consequences worth internalising:
 ### Checking what is pending
 
 There is **no `migration:show` npm script**; call the binary directly. Against
-the local database, inside the container:
+the local database, from `apps/backend`:
 
 ```bash
-docker-compose -f docker-compose.dev.yml exec backend \
-  npx typeorm migration:show -d dist/data-source.js
+npx typeorm-ts-node-commonjs migration:show -d src/data-source.ts
 ```
 
 `[X]` is applied, `[ ]` is pending. Run this before and after every apply,
@@ -202,7 +200,7 @@ migration has genuinely disappeared from the list before running anything.
 ### Testing a schema change
 
 Twice. `make down-hard && make setup` proves it runs on an empty database, and
-`make up && make migrate` against a database that already has data proves it
+`make migrate` against a database that already has data proves it
 runs as an upgrade. Only the second catches a `NOT NULL` added to a populated
 table. CI covers the first of these on every pull request; the second is yours.
 
@@ -334,7 +332,7 @@ After applying, all of these:
 
 | | Runs | Data source | Applied by |
 | :--- | :--- | :--- | :--- |
-| **Local** | `make migrate`, or `migration:run` in the container | `src/data-source.ts` via ts-node | You, whenever you pull a schema change |
+| **Local** | `make migrate` | `src/data-source.ts` via ts-node | You, whenever you pull a schema change |
 | **CI** | every pull request, before the tests | `src/data-source.ts` | `ci.yml`, against a throwaway Postgres |
 | **Neon** | by hand from a laptop | `dist/data-source.js` | You, around the deploy |
 

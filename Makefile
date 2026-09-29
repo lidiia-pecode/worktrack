@@ -1,41 +1,35 @@
 COMPOSE = docker-compose -f docker-compose.dev.yml
 
-# Rebuild the images and start fresh app containers: node_modules and the
-# Next.js cache come from the new images. Only the database is kept.
-up:
-	$(COMPOSE) build
-	$(MAKE) remove-apps
-	$(COMPOSE) up -d
+# Postgres runs in Docker; the backend and frontend run on this machine.
+db:
+	$(COMPOSE) up -d --wait db
 
-# Stop containers, keep database
-down: remove-apps
+# Start Postgres, then the backend and frontend in this terminal.
+# Ctrl+C stops both apps; Postgres keeps running until `make down`.
+dev: db
+	npm run dev
+
+# Stop Postgres, keep its data
+down:
 	$(COMPOSE) down
 
-# Stop containers and remove volumes (reset database)
+# Stop Postgres and delete its data (reset database)
 down-hard:
 	$(COMPOSE) down -v
 
-# Removes the app containers together with their anonymous volumes, so none are
-# left behind.
-remove-apps:
-	$(COMPOSE) rm --stop --force --volumes backend frontend
+migrate: db
+	npm run migration:run -w apps/backend
 
-migrate:
-	$(COMPOSE) exec backend npm run migration:run
+# Backend tests. They hit the dev database, so Postgres must be running.
+test: db
+	npm test -w apps/backend
 
-# Backend tests. They hit the dev database, so the stack must be running.
-test:
-	$(COMPOSE) exec backend npm test
-
-seed:
-	$(COMPOSE) exec backend npm run seed
+seed: db
+	npm run seed -w apps/backend
 
 init: migrate seed
 
 # First project setup / reset database
-setup: up init
+setup: init
 
-# Start project with existing data
-dev: up
-
-.PHONY: up down down-hard remove-apps migrate test seed init setup dev
+.PHONY: db dev down down-hard migrate test seed init setup

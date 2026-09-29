@@ -18,7 +18,8 @@ but a multi-company SaaS product is explicitly not a goal — see
 
 ## Shape
 
-npm-workspaces monorepo, run locally with Docker Compose.
+npm-workspaces monorepo. Locally both apps run on the machine and only
+PostgreSQL runs in Docker Compose (`make dev`).
 
 ```text
 worktrack/

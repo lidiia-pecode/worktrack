@@ -2,7 +2,7 @@
 
 WorkTrack is a full-stack time tracking application for a single services company. Employees log working hours against the projects they are assigned to, and managers and owners get visibility into projects, teams and where the time went.
 
-The project is organized as a **monorepo**, containing both the frontend and backend applications, along with shared Docker configuration for local development.
+The project is organized as a **monorepo**, containing both the frontend and backend applications. Locally both apps run on your machine and only PostgreSQL runs in Docker.
 
 ## Tech Stack
 
@@ -22,9 +22,9 @@ The project is organized as a **monorepo**, containing both the frontend and bac
 
 ### Development
 
-- Docker & Docker Compose
-- Makefile
 - npm Workspaces
+- Docker Compose (PostgreSQL only)
+- Makefile
 
 ## Project Structure
 
@@ -42,9 +42,9 @@ worktrack/
 
 ### Prerequisites
 
-- Node.js 22 (see `.nvmrc`)
-- Docker & Docker Compose
-- npm
+- Node.js 22 (see `.nvmrc`) and npm
+- Docker with Docker Compose, for PostgreSQL. On macOS with colima, 2 CPUs and
+  2 GB are plenty: `colima start --cpu 2 --memory 2`
 
 ### Installation
 
@@ -53,10 +53,6 @@ Install dependencies:
 ```bash
 npm install
 ```
-
-> The containers keep their own `node_modules`, so installing on your machine
-> does not affect them. After a change to `package.json` or `package-lock.json`,
-> run `make up` to give the containers the new dependencies.
 
 Create the env files from the samples. The sample values work as they are for
 local development; [Environment Variables](#environment-variables) explains them:
@@ -67,33 +63,15 @@ cp apps/backend/.env.sample apps/backend/.env
 cp apps/frontend/.env.sample apps/frontend/.env
 ```
 
-Start the development environment:
-
-```bash
-make dev
-```
-
-This command will:
-
-- build Docker images;
-- start PostgreSQL;
-- start the backend;
-- start the frontend.
-
-Every `make up` (and `make dev`) starts the apps fresh: `node_modules` and the
-Next.js cache are recreated from the new images, which takes about half a minute.
-Only the database is kept. Both watchers poll for file changes, because file
-events from macOS do not reliably reach the containers.
-
-For the first project setup (or after resetting the database), run this instead
-of `make dev`:
+For the first project setup (or after resetting the database), create the
+schema and the test data:
 
 ```bash
 make setup
 ```
 
-This command starts the stack, runs all database migrations and seeds one test
-company with users, projects, activities, teams, planning and time logs.
+This starts PostgreSQL, runs all database migrations and seeds one test company
+with users, projects, activities, teams, planning and time logs.
 
 `make seed` creates the **WorkTrack Demo** company with five test users — an
 owner, a manager and three employees. The logins are written to
@@ -101,18 +79,32 @@ owner, a manager and three employees. The logins are written to
 To change what gets created, edit `apps/backend/src/seed/seed-config.ts` and
 re-run `make seed`.
 
+### Running
+
+```bash
+make dev
+```
+
+This starts PostgreSQL in Docker, then the backend (<http://localhost:3001>)
+and the frontend (<http://localhost:3000>) in the same terminal, each line
+prefixed with the app it came from. Both reload on file changes. `Ctrl+C` stops
+the two apps; PostgreSQL keeps running until `make down`.
+
+After pulling a change to `package.json` or `package-lock.json`, run
+`npm install` again.
+
 ## Available Commands
 
 ```bash
-make up         # Rebuild images and start fresh app containers; keeps the database
-make down       # Stop containers
-make down-hard  # Stop containers and remove database volumes
+make dev        # Start PostgreSQL, then the backend and frontend; Ctrl+C stops the apps
+make db         # Start PostgreSQL only
+make down       # Stop PostgreSQL, keep its data
+make down-hard  # Stop PostgreSQL and delete its data
 make migrate    # Run database migrations
 make seed       # Seed the test company and write TEST-CREDENTIALS.md
 make init       # Run migrations and seed data
-make test       # Run backend tests (needs the stack running)
-make setup      # First-time project setup (up + init)
-make dev        # Start development environment
+make setup      # First-time project setup (same as init)
+make test       # Run backend tests against the local database
 ```
 
 The same checks CI runs are available from the repository root. Each fans out
@@ -125,8 +117,8 @@ npm run typecheck
 npm run build
 ```
 
-The backend tests run inside the container against the dev database, so they
-need the stack running. Each spec keeps to its own throwaway company, so your
+The backend tests run against the local database; `make test` starts
+PostgreSQL first if it is not running. Each spec keeps to its own throwaway company, so your
 data is safe; [`docs/workflow.md`](docs/workflow.md) has the details. The
 frontend tests run anywhere:
 
@@ -146,6 +138,9 @@ Worth knowing:
 
 - The root `.env` sets the Postgres container's credentials. They must match
   `DB_USERNAME`, `DB_PASSWORD` and `DB_NAME` in `apps/backend/.env`.
+- The container publishes PostgreSQL on port **5433**, not 5432, so a PostgreSQL
+  installed on the machine (Homebrew, Postgres.app) can keep 5432. The backend
+  sample already uses `DB_PORT=5433`.
 - Hosted databases hand out a single connection URL instead of separate values.
   Set `DATABASE_URL` (and `DATABASE_SSL=true`) and the discrete `DB_*` variables
   are ignored.
