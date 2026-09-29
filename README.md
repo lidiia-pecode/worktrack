@@ -187,9 +187,10 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting with an Excel
 export of hours, and admin CRUD for users, teams, projects, activities and
-categories are implemented. Test coverage is twenty-six backend suites and 420
-tests, covering who may see and change whose data and the business rules behind
-each feature, plus frontend tests for the date, lock and paging logic the
+categories are implemented, and a new company is guided from sign-up to somebody
+logging time. Test coverage is twenty-eight backend suites and 472 tests,
+covering who may see and change whose data and the business rules behind each
+feature, plus frontend tests for the date, lock, paging and time zone logic the
 screens rely on.
 
 The original feature plan is complete, the most recent additions being keyboard

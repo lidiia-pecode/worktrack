@@ -1,9 +1,9 @@
 # WorkTrack — Target permission model
 
 **Status: delivered.** This document describes how responsibility and access
-work. Every rule in it is enforced today except two in §3.2 — the team-manager role
-rule and archived teams — confirmed in September 2026 and enforced from the
-company-setup work of the improvement roadmap.
+work, and every rule in it is enforced today. The last two, in §3.2 — the
+team-manager role rule and archived teams — were confirmed and enforced in
+September 2026 with the company-setup work of the improvement roadmap.
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 remain
 the record of current behaviour; §6 below lists the questions still open.
 
@@ -83,18 +83,18 @@ Owner only. Creating a team, renaming it, archiving it, and setting anyone's
 `roleInTeam` are all Owner actions. A manager cannot create the structure they
 operate in.
 
-**Only a Manager can manage a team** — confirmed in September 2026, not yet
-enforced. A team's manager must be a user whose company role is MANAGER; an
+**Only a Manager can manage a team** — confirmed and enforced in September
+2026. A team's manager must be a user whose company role is MANAGER; an
 EMPLOYEE cannot be made one, and neither can the Owner, who already sees and
 acts for everyone. To give an employee a team, the Owner first changes their
 company role to MANAGER, then makes them the team's manager. The API refuses
 `roleInTeam = MANAGER` for anyone else, on adding and on changing a membership.
 A Manager who manages no team may be changed back to Employee; one who manages a
 team may not, and the refusal names the teams — memberships never change as a
-side effect. Today the member list and the API accept any member as team
-manager, and a demotion is not checked.
+side effect. The member list offers the Owner a "make Manager" step for an
+employee, which changes only the company role.
 
-**Archiving a team closes it** — confirmed in September 2026, not yet enforced.
+**Archiving a team closes it** — confirmed and enforced in September 2026.
 A team holds no data of its own, so archiving it ends a unit of responsibility
 rather than any work. Archiving ends every open membership, manager and member
 alike, on the company's today, so the team grants nothing afterwards and its
@@ -103,8 +103,7 @@ confirming, and people left without a team are the Owner's to place. An
 archived team is read-only. Restoring it brings it back with no members; the
 Owner adds people again under the current rules, so a restore never hands reach
 back by itself. An archived team therefore never blocks demoting its former
-manager. Today archiving leaves memberships open and no visibility check looks
-at a team's status, so an archived team's manager keeps full reach.
+manager.
 
 ### 3.3 Team membership
 

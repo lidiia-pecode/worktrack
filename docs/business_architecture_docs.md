@@ -341,7 +341,8 @@ a single date cannot exceed 1440 minutes. The daily total is enforced under a
 writes cannot exceed the budget between them.
 
 `isBillable` defaults from `Activity.defaultBillable` when the entry does not
-specify it (D2).
+specify it (D2). The time form starts a new entry from the chosen activity's
+default, and the person can change it on each entry.
 
 ### Absences
 
@@ -485,7 +486,17 @@ both sides at the same moment.
 
 The company holds `timezone`, `currency`, `weekStartDay` and
 `standardWorkHoursPerDay`. The timesheet reads all except currency rather than
-hardcoding calendar assumptions. Slugs are unique and regenerated on rename.
+hardcoding calendar assumptions. Currency is neither asked for nor shown (D7).
+The time zone is any valid IANA zone except Russia's; the old name `Europe/Kiev`
+is saved as `Europe/Kyiv`. The standard working day allows half hours. Slugs are
+unique and regenerated on rename.
+
+A new company's owner answers three questions in the setup wizard — time zone,
+week start and working day — then follows a checklist whose steps end with
+somebody able to log time: a team, a category and activities, a project with
+activities, and at least one person on it, the owner included. Inviting a
+manager is optional, so an owner who manages everyone can finish. A manager gets
+a welcome on Team time instead of a checklist.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;
@@ -510,7 +521,7 @@ A failed invitation email leaves no invitation behind. Pending invitations can b
 listed, resent and revoked — by the owner for the whole company, by a manager for
 those into the teams they lead. A resend issues a new link and the old one stops
 working, and sending and resending are each limited per session. Archiving a team
-revokes its pending invitations.
+revokes its pending invitations and closes the team (§5).
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
 themselves, an OWNER account cannot be archived, and only an OWNER may modify
@@ -557,6 +568,14 @@ Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member
 from a team they lead, because removal only narrows their own reach.
 
+Only a user with the MANAGER role can be a team's manager; the Owner, who already
+acts for everyone, cannot. To give an employee a team, the Owner first makes them
+a Manager. A Manager who leads a team cannot be changed to Employee until they no
+longer lead it, and the refusal names the teams. Archiving a team ends every open
+membership on the company's today, so its former manager loses reach from that
+day; an archived team is read-only, and restoring it brings it back with no
+members.
+
 Note that MANAGER still has full CRUD over projects, activities and categories
 company-wide — not restricted to their own teams. See §10 Q3.
 
@@ -579,7 +598,9 @@ see, and how a new company gets started. §7 plans that work.
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
   states.
-- **Admin CRUD** — users, teams, projects, activities and categories.
+- **Admin CRUD** — users, teams, projects, activities and categories. A project
+  is client work, with a client suggested from those already used, or internal;
+  an activity has a billable default.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
   entries day by day and correct them.
@@ -617,8 +638,9 @@ see, and how a new company gets started. §7 plans that work.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
-- **Onboarding** — setup-state endpoints tell a new workspace what it still has
-  to configure, and a wizard renders from them.
+- **Onboarding** — the owner's setup wizard and checklist, which end once
+  somebody can log time (§4, company settings), and a manager's welcome on Team
+  time.
 
 ### Decided while building, and still in force
 
@@ -640,7 +662,7 @@ see, and how a new company gets started. §7 plans that work.
 
 | Field | Status |
 | :--- | :--- |
-| `Company.currency` | Read by no logic. **Should stay unused** under D7. |
+| `Company.currency` | Read by no logic and no longer asked for or shown. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
 
 ### Authorization
@@ -725,6 +747,7 @@ is in its pull request.
 | 11 | Week views and reports polish |
 | 12 | Keyboard and screen-reader access, AA contrast |
 | 13 | Excel export of hours |
+| 14 | Company setup: a three-question wizard and an owner's checklist that ends with somebody able to log time; a manager's welcome; only Managers lead teams; archived teams closed; clients and billable defaults on the forms; local development on the host |
 
 ### Improvement roadmap — high level, flexible
 
