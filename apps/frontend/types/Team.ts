@@ -1,6 +1,6 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { Company } from "./Company";
-import { TeamRole, TeamStatus } from "./enums";
+import { TeamRole, TeamStatus, UserRole } from "./enums";
 
 // TeamUserResponse
 export interface TeamUser {
@@ -8,6 +8,7 @@ export interface TeamUser {
   firstName: string;
   lastName: string;
   email: string;
+  role: UserRole;
   avatarUrl?: string | null;
   position?: string | null;
 }

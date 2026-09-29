@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { UserPlus, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -7,12 +9,14 @@ import { Button } from "@/components/ui/button";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
-import { Team } from "@/types/Team";
+import { useUsersMutations } from "@/hooks/useUsers";
+import { Team, TeamUser } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
 import { fullName } from "@/lib/utils/user";
 
 import { AssignedList } from "../shared/resourse/AssignedList";
 import { Avatar } from "../shared/Avatar";
+import { ConfirmModal } from "../shared/ConfirmModal";
 import Select from "../shared/Select";
 
 const roleOptions = [
@@ -34,8 +38,19 @@ export function TeamMembersSection({
 }: TeamMembersSectionProps) {
   const { user } = useAuth();
   const { updateMember, removeMember } = useTeamMembers(team.id);
+  const { update: updateUser } = useUsersMutations();
+  const [personToPromote, setPersonToPromote] = useState<TeamUser | null>(null);
 
   const isOwner = user?.role === UserRole.OWNER;
+
+  const confirmPromotion = () => {
+    if (!personToPromote) return;
+
+    updateUser.mutate(
+      { id: personToPromote.id, data: { role: UserRole.MANAGER } },
+      { onSuccess: () => setPersonToPromote(null) },
+    );
+  };
 
   const activeMembers = (team.memberships ?? []).filter(
     (m): m is typeof m & { user: NonNullable<typeof m.user> } =>
@@ -84,7 +99,7 @@ export function TeamMembersSection({
           }
           renderTrailing={(membership) => (
             <>
-              {isOwner ? (
+              {isOwner && membership.user.role === UserRole.MANAGER ? (
                 <Select
                   aria-label={`Role for ${membership.user.firstName}`}
                   value={membership.roleInTeam}
@@ -107,6 +122,17 @@ export function TeamMembersSection({
                 <Badge>{roleLabel(membership.roleInTeam)}</Badge>
               )}
 
+              {isOwner && membership.user.role === UserRole.EMPLOYEE && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setPersonToPromote(membership.user)}
+                >
+                  Make Manager
+                </Button>
+              )}
+
               <Button
                 type="button"
                 variant="ghost"
@@ -121,6 +147,18 @@ export function TeamMembersSection({
           )}
         />
       </div>
+
+      <ConfirmModal
+        isOpen={Boolean(personToPromote)}
+        title={
+          personToPromote ? `Make ${fullName(personToPromote)} a Manager?` : ""
+        }
+        message="A Manager can lead teams. They see and correct the time, absences and plans of the people in the teams they lead, and read their reports. You can then make them this team's manager."
+        confirmText="Make Manager"
+        onConfirm={confirmPromotion}
+        onClose={() => setPersonToPromote(null)}
+        loading={updateUser.isPending}
+      />
     </div>
   );
 }
