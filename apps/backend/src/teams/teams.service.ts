@@ -448,7 +448,9 @@ export class TeamsService {
       const newLeftAt =
         dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
 
-      if (newLeftAt === null) {
+      // Setting a role, or reopening a membership, must respect who may lead;
+      // editing the dates of one that stays closed need not.
+      if (newLeftAt === null || dto.roleInTeam !== undefined) {
         this.assertCanLeadTeam(
           membership.user,
           dto.roleInTeam ?? membership.roleInTeam,

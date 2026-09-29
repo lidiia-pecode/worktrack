@@ -312,6 +312,19 @@ describe('TeamsService', () => {
       await dataSource.getRepository(TeamMembership).delete({ id: closed.id });
     });
 
+    it('refuses making an employee the team manager with an end date', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.updateMember(
+          membershipId,
+          companyId,
+          { roleInTeam: TeamRole.MANAGER, leftAt: '2099-12-31' },
+          alpha,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('lets a Manager member be made the team manager', async () => {
       const membershipId = await addToTeam(alpha, loneManager);
 

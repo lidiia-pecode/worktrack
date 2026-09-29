@@ -115,8 +115,8 @@ Backend test coverage is twenty-eight suites and 477 tests, covering the
 role-visibility filters, team and invitation rules, the time-log, absence,
 capacity and planning rules, monthly locking in and outside UTC, the reports and
 the export, page and date-range limits, and sessions — mostly against a real
-database. The frontend has Vitest tests for its date, month, absence, lock and
-paging helpers, tab keyboard navigation and download file names.
+database. The frontend has Vitest tests for its date, month, absence, lock,
+paging and time zone helpers, tab keyboard navigation and download file names.
 GitHub Actions runs the formatting check, lint with no warnings allowed,
 typecheck, build and tests for both applications on every pull request. The backend has a production image
 (`apps/backend/Dockerfile`); the frontend has none by design, because it is
