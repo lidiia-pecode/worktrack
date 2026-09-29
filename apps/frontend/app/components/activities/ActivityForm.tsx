@@ -15,10 +15,12 @@ const activitySchema = z.object({
   name: z
     .string()
     .trim()
-    .min(3, "Activity name must be at least 3 characters")
-    .max(100, "Activity name must be less than 100 characters"),
+    .min(2, "Activity name must be at least 2 characters")
+    .max(100, "Activity name must be at most 100 characters"),
 
   categoryId: z.string().min(1, "Category is required"),
+
+  defaultBillable: z.boolean(),
 });
 
 export type ActivityFormData = z.infer<typeof activitySchema>;
@@ -49,6 +51,7 @@ export function ActivityForm({
     defaultValues: {
       name: defaultValues?.name ?? "",
       categoryId: defaultValues?.categoryId ?? "",
+      defaultBillable: defaultValues?.defaultBillable ?? true,
     },
   });
 
@@ -85,6 +88,22 @@ export function ActivityForm({
           )}
         />
       </FormSection>
+
+      <div>
+        <label className="flex cursor-pointer select-none items-center gap-2.5">
+          <input
+            type="checkbox"
+            {...register("defaultBillable")}
+            disabled={isSubmitting}
+            className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <span className="text-sm text-foreground">Billable by default</span>
+        </label>
+        <p className="mt-1.5 pl-6.5 text-xs text-muted-foreground">
+          New time entries for this activity start as billable. People can still
+          change it on each entry.
+        </p>
+      </div>
     </form>
   );
 }

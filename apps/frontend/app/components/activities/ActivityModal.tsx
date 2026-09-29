@@ -136,6 +136,7 @@ export function ActivityModal({
               ? {
                   name: activity.name,
                   categoryId: activity.category.id,
+                  defaultBillable: activity.defaultBillable,
                 }
               : undefined
           }

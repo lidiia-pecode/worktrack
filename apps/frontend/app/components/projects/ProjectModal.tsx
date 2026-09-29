@@ -8,7 +8,11 @@ import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
-import { useProjectDetails, useProjectsMutations } from "@/hooks/useProjects";
+import {
+  useClientNameSuggestions,
+  useProjectDetails,
+  useProjectsMutations,
+} from "@/hooks/useProjects";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 
@@ -71,6 +75,7 @@ export function ProjectModal({
   );
 
   const { create, update, archive, unarchive } = useProjectsMutations();
+  const clientSuggestions = useClientNameSuggestions();
 
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
@@ -353,8 +358,10 @@ export function ProjectModal({
             mode={project ? "edit" : "create"}
             defaultValues={{
               name: project?.name ?? "",
+              clientName: project?.clientName ?? null,
               description: project?.description ?? "",
             }}
+            clientSuggestions={clientSuggestions}
             membersCount={selectedUsers.length + hiddenMembersCount}
             activitiesCount={selectedActivities.length}
             onSubmit={handleSubmit}

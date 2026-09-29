@@ -11,7 +11,7 @@ export const teamFormSchema = z.object({
     .string()
     .trim()
     .min(2, "Team name must be at least 2 characters")
-    .max(100, "Team name must be less than 100 characters"),
+    .max(255, "Team name must be at most 255 characters"),
 });
 
 export type TeamFormData = z.infer<typeof teamFormSchema>;

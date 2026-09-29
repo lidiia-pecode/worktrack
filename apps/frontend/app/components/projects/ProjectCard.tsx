@@ -53,6 +53,10 @@ export function ProjectCard({
         ) : undefined
       }
     >
+      <p className="mb-2 truncate text-xs font-medium text-foreground">
+        {project.clientName || "Internal"}
+      </p>
+
       <p className="line-clamp-2 text-sm leading-5 text-muted-foreground">
         {project.description || "No description"}
       </p>
