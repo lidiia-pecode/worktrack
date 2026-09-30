@@ -81,3 +81,8 @@ export enum UnusableInvitationCode {
   REVOKED = "INVITATION_REVOKED",
   ACCEPTED = "INVITATION_ACCEPTED",
 }
+
+/** Mirrors the backend's NotificationType. */
+export enum NotificationType {
+  INVITATION_ACCEPTED = "INVITATION_ACCEPTED",
+}

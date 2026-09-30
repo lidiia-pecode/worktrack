@@ -18,6 +18,10 @@ export const queryKeys = {
     ownerSetup: () => ["onboarding", "owner-setup"] as const,
   },
 
+  notifications: {
+    all: ["notifications"] as const,
+  },
+
   teams: {
     all: ["teams"] as const,
     lists: () => ["teams", "list"] as const,
