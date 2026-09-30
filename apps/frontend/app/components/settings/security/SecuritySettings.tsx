@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Link2, ShieldCheck } from "lucide-react";
+import { CircleCheck, KeyRound, Link2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import Link from "next/link";
@@ -74,28 +74,35 @@ export const SecuritySettings = () => {
 
   return (
     <div className="space-y-6">
-      {!isGoogleLinked && (
-        <SettingsSection>
-          <SettingsSectionHeader
-            icon={Link2}
-            title="Connected accounts"
-            description="Manage the accounts you can use to sign in."
-          />
+      <SettingsSection>
+        <SettingsSectionHeader
+          icon={Link2}
+          title="Connected accounts"
+          description="Manage the accounts you can use to sign in."
+        />
 
-          <div className="p-6">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Google
-                  </h3>
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-foreground">
+                  Google
+                </h3>
 
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Use your Google account to sign in.
-                  </p>
-                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {isGoogleLinked
+                    ? `You can sign in with the Google account for ${user?.email}.`
+                    : "Use your Google account to sign in."}
+                </p>
               </div>
+            </div>
 
+            {isGoogleLinked ? (
+              <span className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-success-text">
+                <CircleCheck className="size-4" aria-hidden="true" />
+                Connected
+              </span>
+            ) : (
               <Button
                 type="button"
                 variant="primary"
@@ -103,10 +110,10 @@ export const SecuritySettings = () => {
               >
                 Link Google
               </Button>
-            </div>
+            )}
           </div>
-        </SettingsSection>
-      )}
+        </div>
+      </SettingsSection>
 
       <SettingsSection>
         <SettingsSectionHeader
@@ -182,25 +189,6 @@ export const SecuritySettings = () => {
             </Button>
           </SettingsActions>
         </form>
-      </SettingsSection>
-
-      <SettingsSection>
-        <div className="flex items-start gap-3 p-6">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border bg-brand-subtle text-brand">
-            <ShieldCheck className="h-5 w-5" />
-          </div>
-
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">
-              Account security
-            </h3>
-
-            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-              Your account is protected with secure authentication and encrypted
-              sessions.
-            </p>
-          </div>
-        </div>
       </SettingsSection>
     </div>
   );

@@ -117,7 +117,7 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
             disabled={actions.logout.isPending}
           >
             <LogOut />
-            Sign Out
+            Sign out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

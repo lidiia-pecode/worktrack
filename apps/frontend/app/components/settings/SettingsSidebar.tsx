@@ -4,7 +4,7 @@ import { Building2, Lock, UserRound, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
-export type SettingsTab = "profile" | "security" | "company";
+import type { SettingsTab } from "./settings-tabs";
 
 type Props = {
   activeTab: SettingsTab;
