@@ -1,5 +1,5 @@
 export const ROLE_LABELS = {
-  OWNER: "Company-owner",
-  MANAGER: "Project Manager",
+  OWNER: "Owner",
+  MANAGER: "Manager",
   EMPLOYEE: "Employee",
 } as const;

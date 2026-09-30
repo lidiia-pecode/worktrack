@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { MailPlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
@@ -9,6 +12,8 @@ import { useRouter } from "next/navigation";
 
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { useInvitations } from "@/hooks/auth/useInvitation";
+
+const FORM_ID = "invite-user-form";
 
 interface InviteUserModalProps {
   open: boolean;
@@ -26,6 +31,7 @@ export function InviteUserModal({
   } = useInvitations();
 
   const router = useRouter();
+  const [canSubmit, setCanSubmit] = useState(true);
 
   const handleSubmit = (data: InviteUserFormData) => {
     create.mutate(data, {
@@ -46,8 +52,30 @@ export function InviteUserModal({
       title="Invite user"
       description="Send an invitation to join your workspace."
       icon={<MailPlus className="size-5" />}
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+
+          <Button
+            type="submit"
+            form={FORM_ID}
+            size="sm"
+            isLoading={create.isPending}
+            disabled={!canSubmit}
+          >
+            Send invitation
+          </Button>
+        </div>
+      }
     >
-      <InviteUserForm onSubmit={handleSubmit} isSubmitting={create.isPending} />
+      <InviteUserForm
+        formId={FORM_ID}
+        onSubmit={handleSubmit}
+        onCanSubmitChange={setCanSubmit}
+        isSubmitting={create.isPending}
+      />
     </ResourceFormModal>
   );
 }

@@ -13,6 +13,8 @@ export interface PendingInvitation {
   team: { id: string; name: string } | null;
   invitedBy: { id: string; firstName: string; lastName: string } | null;
   expiresAt: string;
+  /** Still pending after its expiry, so it can be resent. */
+  expired: boolean;
   createdAt: string;
 }
 

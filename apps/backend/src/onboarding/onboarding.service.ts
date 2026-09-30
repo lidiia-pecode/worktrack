@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
@@ -183,6 +183,7 @@ export class OnboardingService {
     });
   }
 
+  /** An expired one still counts: it stays listed, and the next step offers Resend. */
   private async hasPendingManagerInvitation(
     companyId: string,
   ): Promise<boolean> {
@@ -191,7 +192,6 @@ export class OnboardingService {
         companyId,
         role: UserRole.MANAGER,
         status: InvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
       },
     });
   }

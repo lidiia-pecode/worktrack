@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo } from "react";
+import { ReactNode, useId, useMemo } from "react";
 import {
   Select,
   SelectContent,
@@ -23,7 +23,7 @@ type FormSelectProps = {
   options: Option[];
   placeholder?: string;
   error?: string;
-  description?: string;
+  description?: ReactNode;
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;

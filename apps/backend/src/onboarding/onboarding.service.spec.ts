@@ -271,7 +271,7 @@ describe('OnboardingService', () => {
         .update(projectId, { status: ProjectStatus.ACTIVE });
     });
 
-    it('counts a pending manager invitation, then the manager joining and leading a team', async () => {
+    it('counts a pending manager invitation, even an expired one, then the manager joining and leading a team', async () => {
       await dataSource.getRepository(Invitation).save({
         companyId,
         teamId: null,
@@ -282,7 +282,7 @@ describe('OnboardingService', () => {
         tokenHash: createHash('sha256')
           .update(randomBytes(32).toString('hex'))
           .digest('hex'),
-        expiresAt: new Date(Date.now() + 3_600_000),
+        expiresAt: new Date(Date.now() - 1000),
       });
 
       expect((await ownerState()).managerSteps).toEqual({
