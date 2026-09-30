@@ -6,7 +6,7 @@ export default function LoginPage() {
     <AuthFormWrapper
       badge="Welcome back"
       title="Pick up right where you left off."
-      description="Your time logs, projects, and team updates are waiting for you. Let's get things done."
+      description="Your timesheet, projects and team's time are where you left them."
     >
       <AuthForm mode="login" />
     </AuthFormWrapper>
