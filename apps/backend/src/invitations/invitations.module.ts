@@ -5,6 +5,7 @@ import { UsersModule } from 'src/users/users.module';
 import { AuthModule } from 'src/auth/auth.module';
 import { MailModule } from 'src/mail/mail.module';
 import { TeamsModule } from 'src/teams/teams.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 import { Team } from 'src/teams/entities/team.entity';
 
 import { Invitation } from './entities/invitation.entity';
@@ -18,6 +19,7 @@ import { InvitationsService } from './invitations.service';
     AuthModule,
     MailModule,
     TeamsModule,
+    NotificationsModule,
   ],
 
   controllers: [InvitationsController],

@@ -19,6 +19,7 @@ import appConfig from './config/app.config';
 import authConfig from './config/auth.config';
 import mailConfig from './config/mail.config';
 import { InvitationsModule } from './invitations/invitations.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { AbsencesModule } from './absences/absences.module';
 import { CapacityModule } from './capacity/capacity.module';
@@ -64,6 +65,7 @@ import { TokenService } from './auth/services/token.service';
     CompaniesModule,
     TeamsModule,
     InvitationsModule,
+    NotificationsModule,
     OnboardingModule,
     AbsencesModule,
     CapacityModule,

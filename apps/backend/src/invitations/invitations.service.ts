@@ -18,6 +18,7 @@ import { MailService } from 'src/mail/mail.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { PasswordService } from 'src/auth/services/password.service';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { findActiveTeam } from 'src/teams/find-active-team.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -63,6 +64,8 @@ export class InvitationsService {
 
     @InjectRepository(Team)
     private readonly teamRepository: Repository<Team>,
+
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -232,7 +235,7 @@ export class InvitationsService {
 
       await this.createInvitationMembership(invitation, user.id, manager);
 
-      await this.acceptInvitation(invitation, invitationRepository);
+      await this.acceptInvitation(invitation, user.id, manager);
 
       return user;
     });
@@ -301,7 +304,7 @@ export class InvitationsService {
 
       await this.createInvitationMembership(invitation, user.id, manager);
 
-      await this.acceptInvitation(invitation, invitationRepository);
+      await this.acceptInvitation(invitation, user.id, manager);
 
       return user;
     });
@@ -414,14 +417,22 @@ export class InvitationsService {
     return invitation;
   }
 
+  /** Shared by both completion paths, so the inviter is told either way. */
   private async acceptInvitation(
     invitation: Invitation,
-    repository: Repository<Invitation>,
+    joinedUserId: string,
+    manager: EntityManager,
   ): Promise<void> {
     invitation.status = InvitationStatus.ACCEPTED;
     invitation.acceptedAt = new Date();
 
-    await repository.save(invitation);
+    await manager.getRepository(Invitation).save(invitation);
+
+    await this.notificationsService.notifyInvitationAccepted(
+      invitation,
+      joinedUserId,
+      manager,
+    );
   }
 
   /**

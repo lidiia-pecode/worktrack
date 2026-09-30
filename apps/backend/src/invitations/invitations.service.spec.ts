@@ -98,6 +98,7 @@ describe('InvitationsService.create', () => {
             Promise.resolve(TEAMS[where.id] ?? null),
         ),
       }),
+      stub({ notifyInvitationAccepted: jest.fn() }),
     );
   });
 

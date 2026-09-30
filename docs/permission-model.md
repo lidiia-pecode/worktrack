@@ -77,6 +77,10 @@ in [`business_architecture_docs.md`](./business_architecture_docs.md) §4
 The principle it rested on still governs the rest of this document: appointing a
 manager is the Owner's act of delegation and cannot be self-propagating.
 
+When an invitation is accepted, its sender is notified. A notification belongs
+to its recipient alone: everyone reads and marks only their own, whatever their
+role, and it names only the person who joined — someone the sender invited.
+
 ### 3.2 Team creation and manager assignment
 
 Owner only. Creating a team, renaming it, archiving it, and setting anyone's

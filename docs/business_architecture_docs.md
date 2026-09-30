@@ -275,6 +275,9 @@ Company  (tenant root — everything below carries companyId)
 ├── Invitation      email + role + status (PENDING | ACCEPTED | REVOKED)
 │                   teamId (the team it is for) + invitedById (who sent it)
 │
+├── Notification    recipient + type + subjectUser + readAt
+│                   type: INVITATION_ACCEPTED
+│
 ├── ActCategory ──< Activity          defaultBillable
 │
 ├── Project  (clientName: free text)
@@ -520,7 +523,9 @@ invite a manager or an employee, a manager only an employee into a team they
 lead. An employee invitation always names a team. There is no other way in:
 nobody is created directly. Accepting an invitation that carries a team creates
 the team membership, always as a `MEMBER`, in the same transaction that creates
-the user.
+the user. The same transaction notifies whoever sent the invitation, if they
+are still active, that the person has joined, so they can put them on a project;
+it is an in-app notification only, and each person reads only their own.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
 A failed invitation email leaves no invitation behind. Pending invitations can be
@@ -545,6 +550,7 @@ another OWNER or grant the OWNER role.
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
+| Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
 | Activities, Categories | full CRUD | full CRUD | read |

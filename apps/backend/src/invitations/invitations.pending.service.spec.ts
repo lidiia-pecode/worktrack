@@ -156,6 +156,7 @@ describe('InvitationsService pending invitations', () => {
       dataSource,
       teamVisibility,
       dataSource.getRepository(Team),
+      stub({ notifyInvitationAccepted: jest.fn() }),
     );
 
     owner = await createUser('owner', UserRole.OWNER);
