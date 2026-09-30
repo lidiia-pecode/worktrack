@@ -321,7 +321,9 @@ export class AuthService {
       );
 
       if (!user) {
-        throw new UnauthorizedException('Invalid or expired reset token');
+        throw new UnauthorizedException(
+          'This reset link has expired or was already used.',
+        );
       }
 
       if (user.passwordHash) {

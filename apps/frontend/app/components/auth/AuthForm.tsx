@@ -83,6 +83,12 @@ export const AuthForm = ({
     },
   });
 
+  const formError = (error: unknown) =>
+    error && !isApiValidationError(error) ? getErrorMessage(error) : null;
+
+  const loginError = formError(actions.login.error);
+  const signupError = formError(actions.signup.error);
+
   const onLoginSubmit = async (data: LoginFormInputs) => {
     try {
       await actions.login.mutateAsync(data);
@@ -228,6 +234,8 @@ export const AuthForm = ({
             disabled={isSubmitting}
           />
 
+          {loginError && <FormAlert>{loginError}</FormAlert>}
+
           <div className="-mt-1 flex justify-end">
             <Link
               href="/forgot-password"
@@ -295,6 +303,8 @@ export const AuthForm = ({
             error={signupForm.formState.errors.password?.message}
             disabled={isSubmitting}
           />
+
+          {signupError && <FormAlert>{signupError}</FormAlert>}
 
           <Button
             type="submit"
@@ -378,17 +388,28 @@ export const AuthForm = ({
 
       <GoogleButton onClick={handleGoogleAuth} disabled={isSubmitting} />
 
-      {!isInvitation && (
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          {isLogin
-            ? "Don't have an account yet? "
-            : "Already have an account? "}
-
+      {isLogin && (
+        <p className="mt-5 text-center text-sm leading-6 text-muted-foreground">
+          Joining a company? Use the link in your invitation email.
+          <br />
+          Starting a new one?{" "}
           <Link
-            href={isLogin ? "/register" : "/login"}
-            className="ml-1 font-medium text-brand hover:underline"
+            href="/register"
+            className="font-medium text-brand hover:underline"
           >
-            {isLogin ? "Sign up" : "Sign in"}
+            Start a company
+          </Link>
+        </p>
+      )}
+
+      {isSignup && (
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-brand hover:underline"
+          >
+            Sign in
           </Link>
         </p>
       )}

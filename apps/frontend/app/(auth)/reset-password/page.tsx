@@ -18,6 +18,9 @@ import {
   ResetPasswordPageHeader,
 } from "@/app/components/auth";
 import { Button } from "@/components/ui/button";
+import { FormAlert } from "@/app/components/shared/FormAlert";
+import { getErrorMessage, isApiMessageError } from "@/lib/api/errors";
+import Link from "next/link";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -39,13 +42,23 @@ export default function ResetPasswordPage() {
   const onSubmit = async (data: ResetPasswordFormValues) => {
     if (!token) return;
 
-    await actions.resetPassword.mutateAsync({
-      token,
-      newPassword: data.newPassword,
-    });
+    try {
+      await actions.resetPassword.mutateAsync({
+        token,
+        newPassword: data.newPassword,
+      });
+    } catch {
+      return;
+    }
 
-    router.replace("/login");
+    router.replace("/");
+    router.refresh();
   };
+
+  const resetError = actions.resetPassword.error;
+
+  const linkExpired =
+    isApiMessageError(resetError) && resetError.statusCode === 401;
 
   if (!token) {
     return (
@@ -94,6 +107,23 @@ export default function ResetPasswordPage() {
           error={errors.confirmPassword?.message}
           labelClassname={settingsLabelClassName}
         />
+
+        {resetError && (
+          <FormAlert>
+            {getErrorMessage(resetError)}
+            {linkExpired && (
+              <>
+                {" "}
+                <Link
+                  href="/forgot-password"
+                  className="font-medium underline underline-offset-4"
+                >
+                  Request a new link
+                </Link>
+              </>
+            )}
+          </FormAlert>
+        )}
 
         <Button
           type="submit"

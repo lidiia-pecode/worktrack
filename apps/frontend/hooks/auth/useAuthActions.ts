@@ -7,6 +7,7 @@ import { queryKeys } from "../shared/queryKeys";
 export function useAuthActions() {
   const queryClient = useQueryClient();
 
+  // Sign-in and sign-up replace the global toast: AuthForm shows the error.
   const login = useMutation({
     mutationFn: AuthClient.login,
 
@@ -15,6 +16,8 @@ export function useAuthActions() {
         queryKey: queryKeys.auth.me(),
       });
     },
+
+    onError: () => {},
   });
 
   const signup = useMutation({
@@ -25,6 +28,8 @@ export function useAuthActions() {
         queryKey: queryKeys.auth.me(),
       });
     },
+
+    onError: () => {},
   });
 
   const completeGoogleSignup = useMutation({

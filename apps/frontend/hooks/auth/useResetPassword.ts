@@ -19,12 +19,10 @@ export function useResetPassword() {
     mutationFn: AuthClient.resetPassword,
 
     onSuccess: () => {
-      toast.success("Password reset successfully");
+      toast.success("Your password has been changed");
     },
 
-    onError: (error) => {
-      toast.error(getErrorMessage(error));
-    },
+    onError: () => {},
   });
 
   return {

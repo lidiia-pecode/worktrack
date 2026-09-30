@@ -60,7 +60,9 @@ export class PasswordResetService {
       resetToken.usedAt ||
       resetToken.expiresAt <= new Date()
     ) {
-      throw new UnauthorizedException('Invalid or expired reset token');
+      throw new UnauthorizedException(
+        'This reset link has expired or was already used.',
+      );
     }
 
     resetToken.usedAt = new Date();
