@@ -162,6 +162,11 @@ export class InvitationsService {
     await this.invitationRepository.save(invitation);
   }
 
+  /** Refuses an unusable token with the same codes the invitation page reads. */
+  async assertUsableToken(token: string): Promise<void> {
+    await this.findValidInvitation(token, this.invitationRepository);
+  }
+
   /** What the invitation page shows before the person accepts. */
   async describeByToken(token: string) {
     const invitation = await this.findValidInvitation(

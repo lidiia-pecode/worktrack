@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -131,10 +132,23 @@ export class InvitationsController {
   }
 
   @Get('google')
-  startGoogleInvitation(
+  async startGoogleInvitation(
     @Query('token') token: string,
     @Res() res: Response,
-  ): void {
+  ): Promise<void> {
+    try {
+      await this.invitationsService.assertUsableToken(token);
+    } catch (error) {
+      if (!(error instanceof HttpException)) throw error;
+
+      // Back to the invitation page, which says what is wrong with the link,
+      // rather than on to Google with a link that cannot be accepted.
+      const frontendUrl = this.cookieService.getFrontendUrl();
+      const query = new URLSearchParams({ token: token ?? '' });
+
+      return res.redirect(`${frontendUrl}/invitations/complete?${query}`);
+    }
+
     this.cookieService.setInvitationFlowCookie(res, token);
 
     res.redirect('./google/authorize');

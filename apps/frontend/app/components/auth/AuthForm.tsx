@@ -20,7 +20,9 @@ import {
   GOOGLE_INVITATION_URL,
   GOOGLE_LOGIN_URL,
   GOOGLE_SIGNUP_URL,
+  ROLE_LABELS,
 } from "@/lib/constants";
+import { UserRole } from "@/types/enums";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,9 @@ interface AuthFormProps {
   invitation?: {
     token: string;
     email: string;
-    role: string;
+    role: UserRole;
+    companyName: string;
+    teamName: string | null;
   };
 }
 
@@ -149,26 +153,46 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
             ? "Enter your credentials to access your workspace."
             : isSignup
               ? "Set up your account and get started with WorkTrack."
-              : "Create your account to join this workspace."}
+              : `Create your account to join ${invitation?.companyName ?? "your company"}.`}
         </p>
       </div>
 
       {isInvitation && invitation && (
-        <div className="mb-7 rounded-xl border border-border/80 bg-muted/30 p-4">
+        <dl className="mb-7 space-y-3 rounded-xl border border-border/80 bg-muted/30 p-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">Email</span>
+            <dt className="text-sm text-muted-foreground">Company</dt>
 
-            <span className="truncate text-sm font-medium text-foreground">
+            <dd className="truncate text-sm font-medium text-foreground">
+              {invitation.companyName}
+            </dd>
+          </div>
+
+          {invitation.teamName && (
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-sm text-muted-foreground">Team</dt>
+
+              <dd className="truncate text-sm font-medium text-foreground">
+                {invitation.teamName}
+              </dd>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted-foreground">Role</dt>
+
+            <dd>
+              <Badge variant="neutral">{ROLE_LABELS[invitation.role]}</Badge>
+            </dd>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted-foreground">Email</dt>
+
+            <dd className="truncate text-sm font-medium text-foreground">
               {invitation.email}
-            </span>
+            </dd>
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">Role</span>
-
-            <Badge variant="neutral">{invitation.role}</Badge>
-          </div>
-        </div>
+        </dl>
       )}
 
       {isLogin && (
@@ -311,11 +335,13 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
             disabled={isSubmitting}
           />
 
-          {invitationActions.password.isError && (
-            <p className="text-sm text-destructive-text">
-              {getErrorMessage(invitationActions.password.error)}
-            </p>
-          )}
+          {/* Field errors already sit under their fields. */}
+          {invitationActions.password.isError &&
+            !isApiValidationError(invitationActions.password.error) && (
+              <p role="alert" className="text-sm text-destructive-text">
+                {getErrorMessage(invitationActions.password.error)}
+              </p>
+            )}
 
           <Button
             type="submit"

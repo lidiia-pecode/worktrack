@@ -1,4 +1,4 @@
-import { UserRole } from "./enums";
+import { UnusableInvitationCode, UserRole } from "./enums";
 
 export interface CreateInvitationPayload {
   email: string;
@@ -21,8 +21,21 @@ export interface PendingInvitation {
 export interface InvitationValidation {
   email: string;
   role: UserRole;
+  companyName: string;
+  /** Null when the person who sent it no longer exists. */
+  inviterName: string | null;
   teamName: string | null;
   expiresAt: string;
+}
+
+/** How the API refuses a link that cannot be used. */
+export interface UnusableInvitationError {
+  statusCode: number;
+  message: string;
+  code: UnusableInvitationCode;
+  /** Given for an expired or revoked invitation: whom to ask for a new one. */
+  companyName?: string;
+  inviterName?: string | null;
 }
 
 export interface CompleteInvitationPayload {

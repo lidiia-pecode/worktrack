@@ -24,7 +24,8 @@ const describeInvitation = ({
   teamName,
 }: InvitationEmailParams): string => {
   const who = inviterName ? `${inviterName} invited you` : 'You are invited';
-  const team = teamName ? ` in the ${teamName} team` : '';
+
+  const team = teamName ? `, in the team “${teamName}”` : '';
 
   return `${who} to join ${companyName} on WorkTrack as ${roleDescription}${team}.`;
 };

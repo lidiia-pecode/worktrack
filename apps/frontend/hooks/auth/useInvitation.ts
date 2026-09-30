@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 
 import { InvitationsClientApi } from "@/lib/api/resources/invitations-client-api";
+import { isUnusableInvitationError } from "@/lib/api/errors";
 
 import { queryKeys } from "../shared/queryKeys";
 
@@ -75,6 +76,9 @@ export const useCompleteInvitation = () => {
       router.replace("/");
       router.refresh();
     },
+
+    // Replaces the global toast: the form shows the error itself.
+    onError: () => {},
   });
 
   return {
@@ -87,4 +91,7 @@ export const useInvitationValidation = (token: string) =>
     queryKey: queryKeys.invitations.validate(token),
     queryFn: () => InvitationsClientApi.validate(token),
     enabled: Boolean(token),
+    // An unusable link stays unusable; only a failed request is worth retrying.
+    retry: (failureCount, error) =>
+      !isUnusableInvitationError(error) && failureCount < 2,
   });

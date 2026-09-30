@@ -15,7 +15,7 @@ describe('invitationEmail', () => {
 
     expect(subject).toBe('Emma Clarke invited you to Smith & Co on WorkTrack');
     expect(text).toContain(
-      'Emma Clarke invited you to join Smith & Co on WorkTrack as an employee in the Delivery team.',
+      'Emma Clarke invited you to join Smith & Co on WorkTrack as an employee, in the team “Delivery”.',
     );
     expect(text).toContain('The invitation is valid for 7 days.');
     expect(text).toContain('you can ignore this email');
