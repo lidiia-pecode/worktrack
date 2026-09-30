@@ -118,6 +118,7 @@ export class InvitationsService {
     await this.saveWithNewLinkAndSend(invitation, existingInvitation);
   }
 
+  /** Expired invitations stay listed, marked, so they can be resent. */
   async listPending(user: AuthUser): Promise<PendingInvitation[]> {
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
@@ -328,6 +329,7 @@ export class InvitationsService {
 
       const { id } = await repository.save(invitation);
 
+      // The original sender stays the inviter when someone else resends it.
       const saved = await repository.findOneOrFail({
         where: { id },
         relations: { company: true, invitedBy: true, team: true },
@@ -337,6 +339,7 @@ export class InvitationsService {
         inviteUrl,
         companyName: saved.company.companyName,
         inviterName: fullName(saved.invitedBy),
+        // Only managers and employees are ever invited.
         roleDescription:
           saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
         teamName: saved.team?.name ?? null,
@@ -345,6 +348,7 @@ export class InvitationsService {
     });
   }
 
+  /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
   private async findPendingInScope(
     id: string,
     user: AuthUser,
@@ -457,6 +461,8 @@ export class InvitationsService {
       throw new BadRequestException('An employee must be invited into a team');
     }
 
+    // Checked before the team itself, so a manager gets the same answer for
+    // any team they do not lead, whether it exists, is archived or not.
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {

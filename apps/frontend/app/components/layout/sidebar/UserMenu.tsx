@@ -21,6 +21,7 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 import { NotificationsDialog } from "./NotificationsDialog";
 
+/** Past this the badge reads "9+", which is all a count in a menu needs. */
 const MAX_SHOWN_COUNT = 9;
 
 const countLabel = (count: number) =>

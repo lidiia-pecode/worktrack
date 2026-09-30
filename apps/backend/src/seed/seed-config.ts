@@ -39,6 +39,7 @@ export interface SeedUser {
   role: UserRole;
   position: string;
   capacityHoursPerWeek: number;
+  /** Shown in the credentials file so it is obvious who to log in as and why. */
   note: string;
 }
 

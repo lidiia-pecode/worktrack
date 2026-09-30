@@ -74,6 +74,8 @@ export function InviteUserForm({
 
   const role = useWatch({ control, name: "role" });
 
+  // Accepting an invitation always creates a plain member, so only an employee
+  // can be invited straight into a team.
   const showTeamField = role === UserRole.EMPLOYEE;
 
   const hasNoTeams = !isLoadingTeams && teamOptions.length === 0;
@@ -97,6 +99,7 @@ export function InviteUserForm({
     onCanSubmitChange(!cannotInviteIntoTeam);
   }, [cannotInviteIntoTeam, onCanSubmitChange]);
 
+  // The form can open before the signed-in user has loaded.
   useEffect(() => {
     if (!getFieldState("role").isDirty) {
       setValue("role", defaultRole);
