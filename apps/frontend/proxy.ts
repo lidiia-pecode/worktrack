@@ -68,8 +68,12 @@ function handleRouteGuards(
   req: NextRequest,
   response: NextResponse,
 ) {
+  // The Google sign-up and link pages finish signing somebody in, so a
+  // signed-in person has no business there.
   const isGuestRoute =
-    pathname.startsWith("/login") || pathname.startsWith("/register");
+    pathname.startsWith("/login") ||
+    pathname.startsWith("/register") ||
+    pathname.startsWith("/google/");
 
   const isProtectedRoute =
     pathname.startsWith("/admin") ||

@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { INVITATION_VALID_DAYS } from "@/lib/constants";
+import { cn } from "@/lib/utils/cn";
 import { UnusableInvitationCode } from "@/types/enums";
 import type { UnusableInvitationError } from "@/types/Invitation";
 
@@ -60,7 +61,7 @@ export const InvitationProblem = ({ error }: InvitationProblemProps) => {
   return (
     <InvitationNoticeLayout title={title} message={message}>
       {isAccepted && (
-        <Link href="/login" className={buttonVariants({ className: "w-full" })}>
+        <Link href="/login" className={cn(buttonVariants(), "w-full")}>
           Sign in
         </Link>
       )}

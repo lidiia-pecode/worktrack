@@ -11,6 +11,7 @@ import {
   Post,
   Query,
   Res,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -22,6 +23,7 @@ import {
 } from 'src/auth/guards';
 
 import { CookieService } from 'src/auth/services/cookie.service';
+import { GoogleInvitationCallbackFilter } from 'src/auth/google-callback.filter';
 import {
   INVITATION_EMAILS_PER_MINUTE,
   LimitPerSession,
@@ -159,6 +161,7 @@ export class InvitationsController {
   authorizeGoogleInvitation(): void {}
 
   @Get('google/callback')
+  @UseFilters(GoogleInvitationCallbackFilter)
   @UseGuards(GoogleInvitationGuard)
   async completeGoogleInvitation(
     @CurrentUser() googleUser: GoogleUserPayload,

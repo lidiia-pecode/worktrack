@@ -4,22 +4,24 @@ import { useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
+import { googleErrorMessage } from "@/lib/constants";
+
 export function useGoogleLinkResult() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const googleStatus = searchParams.get("google");
-    const message = searchParams.get("message");
+    const linked = searchParams.get("google") === "linked";
+    const error = googleErrorMessage(searchParams.get("error"));
 
-    if (!googleStatus) return;
+    if (!linked && !error) return;
 
     requestAnimationFrame(() => {
-      if (googleStatus === "linked") {
+      if (linked) {
         toast.success("Google account linked successfully");
       }
 
-      if (googleStatus === "error") {
-        toast.error(message ?? "Failed to link Google account");
+      if (error) {
+        toast.error(error);
       }
     });
   }, [searchParams]);

@@ -35,6 +35,9 @@ export function useAuthActions() {
         queryKey: queryKeys.auth.me(),
       });
     },
+
+    // Replaces the global toast: the Google sign-up page shows the error itself.
+    onError: () => {},
   });
 
   const completeGoogleLink = useMutation({

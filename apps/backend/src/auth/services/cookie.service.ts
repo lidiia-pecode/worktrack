@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { CookieOptions, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 
 @Injectable()
 export class CookieService {
@@ -59,6 +59,11 @@ export class CookieService {
         'auth.google.oauthStateExpiresInMs',
       ),
     });
+  }
+
+  getInvitationFlowToken(req: Request): string | undefined {
+    return req.cookies?.[CookieService.INVITATION_FLOW_COOKIE] as
+      string | undefined;
   }
 
   clearInvitationFlowCookie(res: Response): void {

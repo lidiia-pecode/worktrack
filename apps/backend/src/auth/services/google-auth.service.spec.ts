@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { QueryFailedError } from 'typeorm';
 
+import { AuthErrorCode } from '../auth-error';
 import { AuthPolicyService } from './auth-policy.service';
 import { GoogleAuthService } from './google-auth.service';
 
@@ -70,5 +71,59 @@ describe('GoogleAuthService token creation', () => {
       createService(save).createGoogleSignupToken(googleUser),
     ).rejects.toThrow('connection lost');
     expect(save).toHaveBeenCalledTimes(1);
+  });
+});
+
+const GOOGLE_USER = {
+  email: 'Emma.Clarke@example.com',
+  firstName: 'Emma',
+  lastName: 'Clarke',
+  googleId: 'google-new',
+};
+
+describe('GoogleAuthService.validateGoogleLogin', () => {
+  const serviceFor = (existingUser: unknown) =>
+    new GoogleAuthService(
+      stub({}),
+      stub({
+        findByGoogleIdWithCompany: jest.fn().mockResolvedValue(null),
+        findByEmailWithCompany: jest.fn().mockResolvedValue(existingUser),
+      }),
+      stub({}),
+      stub({}),
+      new AuthPolicyService(),
+      stub({}),
+      stub({}),
+      stub({}),
+      stub({}),
+    );
+
+  it('offers linking to an account with a password', async () => {
+    const service = serviceFor({ id: 'user-1', passwordHash: 'hash' });
+
+    await expect(service.validateGoogleLogin(GOOGLE_USER)).resolves.toEqual({
+      type: 'link',
+      userId: 'user-1',
+      googleId: 'google-new',
+    });
+  });
+
+  it('refuses a Google-only account signed in with another Google account', async () => {
+    const service = serviceFor({ id: 'user-1', passwordHash: null });
+
+    await expect(
+      service.validateGoogleLogin(GOOGLE_USER),
+    ).rejects.toMatchObject({
+      response: { code: AuthErrorCode.ACCOUNT_USES_OTHER_GOOGLE },
+    });
+  });
+
+  it('treats an unknown address as a sign-up', async () => {
+    const service = serviceFor(null);
+
+    await expect(service.validateGoogleLogin(GOOGLE_USER)).resolves.toEqual({
+      type: 'signup',
+      googleUser: GOOGLE_USER,
+    });
   });
 });

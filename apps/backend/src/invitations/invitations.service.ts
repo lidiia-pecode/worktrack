@@ -6,7 +6,6 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -39,6 +38,7 @@ import {
   UnusableInvitationCode,
   unusableInvitation,
 } from './unusable-invitation';
+import { AuthErrorCode, authError } from 'src/auth/auth-error';
 import type { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { User } from 'src/users/entities/user.entity';
 
@@ -260,9 +260,7 @@ export class InvitationsService {
       const googleEmail = this.normalizeEmail(googleUser.email);
 
       if (invitationEmail !== googleEmail) {
-        throw new UnauthorizedException(
-          'Google account email does not match the invitation email',
-        );
+        throw authError(AuthErrorCode.GOOGLE_EMAIL_MISMATCH);
       }
 
       const existingUser = await userRepository.findOne({
@@ -270,7 +268,7 @@ export class InvitationsService {
       });
 
       if (existingUser) {
-        throw new ConflictException('A user with this email already exists');
+        throw authError(AuthErrorCode.ACCOUNT_EXISTS);
       }
 
       const existingGoogleUser = await userRepository.findOne({
@@ -278,15 +276,16 @@ export class InvitationsService {
       });
 
       if (existingGoogleUser) {
-        throw new ConflictException(
-          'This Google account is already associated with another user',
-        );
+        throw authError(AuthErrorCode.GOOGLE_ACCOUNT_IN_USE);
       }
 
       const firstName = googleUser.firstName.trim();
       const lastName = googleUser.lastName.trim();
 
-      this.validateUserName(firstName, lastName);
+      // A Google profile may have no family name; the password form asks for one.
+      if (!firstName || !lastName) {
+        throw authError(AuthErrorCode.GOOGLE_NAME_MISSING);
+      }
 
       const user = await this.usersService.createInvitedUser(
         {

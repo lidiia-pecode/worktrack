@@ -20,6 +20,7 @@ import {
   GOOGLE_INVITATION_URL,
   GOOGLE_LOGIN_URL,
   GOOGLE_SIGNUP_URL,
+  googleErrorMessage,
   ROLE_LABELS,
 } from "@/lib/constants";
 import { UserRole } from "@/types/enums";
@@ -27,6 +28,7 @@ import { UserRole } from "@/types/enums";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { FormAlert } from "../shared/FormAlert";
 import { GoogleButton } from "../shared/buttons/GoogleButton";
 import { PasswordInput } from "../shared/inputs";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
@@ -43,9 +45,17 @@ interface AuthFormProps {
     companyName: string;
     teamName: string | null;
   };
+  /** From `?error=` after a Google sign-in that returned here. */
+  googleErrorCode?: string | null;
 }
 
-export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
+export const AuthForm = ({
+  mode,
+  invitation,
+  googleErrorCode,
+}: AuthFormProps) => {
+  const googleError = googleErrorMessage(googleErrorCode);
+
   const router = useRouter();
 
   const actions = useAuthActions();
@@ -156,6 +166,8 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
               : `Create your account to join ${invitation?.companyName ?? "your company"}.`}
         </p>
       </div>
+
+      {googleError && <FormAlert className="mb-6">{googleError}</FormAlert>}
 
       {isInvitation && invitation && (
         <dl className="mb-7 space-y-3 rounded-xl border border-border/80 bg-muted/30 p-4">

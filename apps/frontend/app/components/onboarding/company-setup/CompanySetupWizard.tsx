@@ -21,6 +21,7 @@ import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { OnboardingStepHeader } from "./OnboardingStepHeader";
 import { StepActions } from "./StepActions";
+import { FormAlert } from "../../shared/FormAlert";
 
 const setupSchema = companySchema.pick({
   timezone: true,
@@ -216,12 +217,9 @@ export const CompanySetupWizard = () => {
         )}
 
         {saveError && (
-          <p
-            role="alert"
-            className="rounded-lg border border-destructive/20 bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive-text"
-          >
+          <FormAlert>
             Could not save your company settings: {saveError}
-          </p>
+          </FormAlert>
         )}
 
         <StepActions

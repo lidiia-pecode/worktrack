@@ -18,6 +18,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
+import { AuthErrorCode } from 'src/auth/auth-error';
 import { InvitationsService } from './invitations.service';
 
 /**
@@ -295,6 +296,40 @@ describe('InvitationsService acceptance', () => {
       expect(memberships[0].teamId).toBe(alpha);
       expect(memberships[0].roleInTeam).toBe(TeamRole.MEMBER);
       expect(memberships[0].joinedAt).toBe(TODAY);
+    });
+
+    const expectCode = (promise: Promise<unknown>, code: AuthErrorCode) =>
+      expect(promise).rejects.toMatchObject({ response: { code } });
+
+    it('refuses a Google account with another email address', async () => {
+      const email = `google-other-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await expectCode(
+        service.completeWithGoogle(token, {
+          email: `someone-else-${RUN}@invitations-accept.test`,
+          firstName: 'Google',
+          lastName: 'Hire',
+          googleId: `google-other-${RUN}`,
+        }),
+        AuthErrorCode.GOOGLE_EMAIL_MISMATCH,
+      );
+      await expect(findUser(email)).resolves.toBeNull();
+    });
+
+    it('asks for the password form when Google gives no family name', async () => {
+      const email = `google-noname-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await expectCode(
+        service.completeWithGoogle(token, {
+          email,
+          firstName: 'Mononym',
+          lastName: ' ',
+          googleId: `google-noname-${RUN}`,
+        }),
+        AuthErrorCode.GOOGLE_NAME_MISSING,
+      );
     });
   });
 });

@@ -30,6 +30,7 @@ export default function InvitationCompletePage() {
   const searchParams = useSearchParams();
 
   const token = searchParams.get("token") ?? "";
+  const googleErrorCode = searchParams.get("error");
 
   const {
     data: invitation,
@@ -74,6 +75,7 @@ export default function InvitationCompletePage() {
           companyName: invitation.companyName,
           teamName: invitation.teamName,
         }}
+        googleErrorCode={googleErrorCode}
       />
     </AuthFormWrapper>
   );

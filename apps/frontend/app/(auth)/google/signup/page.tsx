@@ -1,19 +1,32 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import Input from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
-import { isApiMessageError } from "@/lib/api";
+import { FormAlert } from "@/app/components/shared/FormAlert";
+import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
+import { applyServerErrors } from "@/lib/forms/utils";
+import { cn } from "@/lib/utils/cn";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import {
   googleSignupSchema,
   type GoogleSignupFormInputs,
 } from "@/lib/forms/schemas/auth.schema";
+
+const START_AGAIN_LINK = (
+  <Link
+    href="/register"
+    className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+  >
+    Start again from sign-up
+  </Link>
+);
 
 export default function GoogleSignupPage() {
   const router = useRouter();
@@ -21,10 +34,12 @@ export default function GoogleSignupPage() {
   const token = searchParams.get("token");
 
   const actions = useAuthActions();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<GoogleSignupFormInputs>({
     resolver: zodResolver(googleSignupSchema),
@@ -34,10 +49,9 @@ export default function GoogleSignupPage() {
   });
 
   const onSubmit = async (data: GoogleSignupFormInputs) => {
-    if (!token) {
-      toast.error("Google signup token is missing");
-      return;
-    }
+    if (!token) return;
+
+    setSubmitError(null);
 
     try {
       await actions.completeGoogleSignup.mutateAsync({
@@ -47,37 +61,52 @@ export default function GoogleSignupPage() {
 
       router.replace("/onboarding");
       router.refresh();
-    } catch (err: unknown) {
-      if (isApiMessageError(err) && typeof err.message === "string") {
-        toast.error(err.message);
+    } catch (error: unknown) {
+      if (isApiValidationError(error)) {
+        applyServerErrors(error, setError);
         return;
       }
 
-      toast.error("Failed to complete Google signup. Please try again.");
+      setSubmitError(getErrorMessage(error));
     }
   };
 
   return (
     <AuthFormWrapper
       badge="Almost there"
-      title="Create your workspace."
-      description="Just add your company name to finish creating your WorkTrack workspace."
+      title="Name your company."
+      description="You signed in with Google. Add your company's name to finish, and you become its owner."
     >
-      <form
-        onSubmit={handleSubmit(onSubmit)}
-        className="flex flex-col space-y-4"
-      >
-        <Input
-          placeholder="Company name"
-          {...register("companyName")}
-          error={errors.companyName?.message}
-          disabled={isSubmitting}
-        />
+      {token ? (
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex flex-col space-y-4"
+        >
+          <Input
+            placeholder="Company name"
+            {...register("companyName")}
+            error={errors.companyName?.message}
+            disabled={isSubmitting}
+          />
 
-        <Button type="submit" isLoading={isSubmitting}>
-          Complete signup
-        </Button>
-      </form>
+          {submitError && <FormAlert>{submitError}</FormAlert>}
+
+          <Button type="submit" isLoading={isSubmitting}>
+            Complete signup
+          </Button>
+
+          {submitError && START_AGAIN_LINK}
+        </form>
+      ) : (
+        <div className="space-y-4">
+          <FormAlert>
+            This sign-up link is incomplete. Start again with Google from the
+            sign-up page.
+          </FormAlert>
+
+          {START_AGAIN_LINK}
+        </div>
+      )}
     </AuthFormWrapper>
   );
 }
