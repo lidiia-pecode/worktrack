@@ -4,9 +4,9 @@ import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrappe
 export default function RegisterPage() {
   return (
     <AuthFormWrapper
-      badge="Get started for free"
-      title="Your team's flow, unified."
-      description="Create your workspace in seconds. Track hours, manage projects, and streamline reporting effortlessly."
+      badge="Start a company"
+      title="Start your company."
+      description="You become its owner and set up how your company tracks time. Joining a company instead? Use the link in your invitation email."
     >
       <AuthForm mode="signup" />
     </AuthFormWrapper>

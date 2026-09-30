@@ -17,7 +17,7 @@ export const AuthFormWrapper = ({
   description,
 }: AuthFormWrapperProps) => {
   return (
-    <main className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+    <div className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden min-h-screen overflow-hidden bg-foreground text-background lg:flex lg:flex-col lg:px-14 lg:py-10 xl:px-20">
         <GlowBackground variant="auth" />
 
@@ -39,39 +39,11 @@ export const AuthFormWrapper = ({
             {description}
           </p>
         </div>
-
-        <div className="relative z-10 max-w-md">
-          <div className="flex items-center gap-4 rounded-2xl border border-secondary/25 bg-secondary/10 px-4 py-4 backdrop-blur-sm">
-            <div className="flex -space-x-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-foreground bg-brand text-xs font-bold text-brand-foreground">
-                JD
-              </div>
-
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-foreground bg-brand-secondary text-xs font-bold text-brand-foreground">
-                AS
-              </div>
-
-              <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-foreground bg-secondary text-xs font-bold text-secondary-foreground">
-                +8k
-              </div>
-            </div>
-
-            <div className="min-w-0">
-              <p className="text-xs font-semibold text-background">
-                Trusted by modern teams
-              </p>
-
-              <p className="mt-0.5 text-xs text-secondary">
-                Over 120,000+ hours tracked this month
-              </p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-6 py-12 sm:px-10 lg:px-12 xl:px-20">
         <div className="relative z-10 w-full max-w-120">{children}</div>
       </section>
-    </main>
+    </div>
   );
 };

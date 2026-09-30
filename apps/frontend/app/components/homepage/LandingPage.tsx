@@ -1,229 +1,227 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import {
+  BarChart3,
+  BriefcaseBusiness,
+  CalendarClock,
+  CalendarDays,
+  Mail,
+  Palmtree,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 
-import { Logo } from "../shared/Logo";
+import { buttonVariants } from "@/components/ui/button";
+import { GlowBackground } from "@/components/ui/glow-background";
+import { cn } from "@/lib/utils/cn";
 
-const FLOW_STAGES = [
+import { Logo } from "../shared/Logo";
+import { ProductIllustration } from "./ProductIllustration";
+
+const BENEFITS_SECTION_ID = "benefits";
+const GETTING_STARTED_SECTION_ID = "getting-started";
+
+const NAV_LINKS = [
+  { href: `#${BENEFITS_SECTION_ID}`, label: "What it does" },
+  { href: `#${GETTING_STARTED_SECTION_ID}`, label: "Getting started" },
+] as const;
+
+const BENEFITS = [
   {
-    name: "Backlog",
-    count: "12",
-    dot: "bg-muted-foreground/50",
-    tasks: ["Redesign onboarding", "Audit unused flags", "Q3 roadmap draft"],
+    icon: Users,
+    title: "Teams at a glance",
+    description:
+      "Group people into teams. Each team's manager sees who has logged their week, who is short and where the time went.",
   },
   {
-    name: "In Progress",
-    count: "5",
-    dot: "bg-brand",
-    tasks: ["API migration", "Fix mobile nav", "Design QA pass"],
+    icon: BriefcaseBusiness,
+    title: "Projects and activities",
+    description:
+      "Keep client work and internal projects apart, and break the hours down by the kind of work done.",
   },
   {
-    name: "In Review",
-    count: "3",
-    dot: "bg-warning",
-    tasks: ["Pricing page copy", "Sprint retro doc"],
+    icon: CalendarDays,
+    title: "A simple weekly timesheet",
+    description:
+      "Everyone logs the whole week in one view, by project and activity, and marks each entry billable or not.",
   },
   {
-    name: "Done",
-    count: "28",
-    dot: "bg-success",
-    tasks: ["Ship v2.4", "Onboarding emails", "Cache layer fix"],
+    icon: CalendarClock,
+    title: "Planning ahead",
+    description:
+      "Plan who works on what in the coming weeks, then compare the plan with the time actually logged.",
+  },
+  {
+    icon: Palmtree,
+    title: "Absences that explain the gaps",
+    description:
+      "Vacation, sick leave and public holidays lower the expected hours, so a short week never reads as missing time.",
+  },
+  {
+    icon: BarChart3,
+    title: "Reports you can invoice from",
+    description:
+      "Hours by client, project, activity or person, exported to Excel. Past months lock, so invoiced hours stay as they were.",
   },
 ] as const;
 
 const STEPS = [
   {
-    number: "01",
-    title: "Plan",
+    title: "Create your company",
     description:
-      "Turn a messy backlog into a week your team actually agrees on.",
+      "Set the time zone and working day, then add your teams, projects and activities.",
   },
   {
-    number: "02",
-    title: "Track",
-    description: "Watch work move in real time — no status meeting required.",
+    title: "Invite your people",
+    description:
+      "Send invitations by email. Each person joins through the link in theirs.",
   },
   {
-    number: "03",
-    title: "Ship",
+    title: "Track and understand",
     description:
-      "Every finished task rolls into a release note, automatically.",
+      "Time is logged week by week, and reports show where the hours went.",
   },
 ] as const;
 
-export const LandingPage = () => {
-  const shouldReduceMotion = useReducedMotion();
+const SECTION_TITLE_CLASS =
+  "text-2xl font-semibold tracking-tight text-foreground sm:text-3xl";
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <div className="relative z-10">
-        <header className="px-6 pt-4 lg:px-10">
-          <nav className="mx-auto flex max-w-[1600px] items-center justify-between rounded-2xl border border-border/70 bg-card/85 px-6 py-4 shadow-sm backdrop-blur-xl lg:px-8">
-            <Logo />
+const LandingHeader = () => (
+  <header className="sticky top-0 z-20 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4 lg:px-10">
+      <Logo />
 
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className="inline-flex h-10 items-center justify-center rounded-full border border-border bg-card px-5 text-sm font-semibold text-foreground transition-colors hover:border-brand/40 hover:bg-secondary/30"
-              >
-                Log in
-              </Link>
-
-              <Link
-                href="/register"
-                className="inline-flex h-10 items-center justify-center rounded-full bg-brand px-5 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
-              >
-                Sign up free
-              </Link>
-            </div>
-          </nav>
-        </header>
-
-        <section className="relative px-6 pb-24 pt-24 lg:pt-28">
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7 }}
-            className="mx-auto max-w-3xl text-center"
-          >
-            <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-brand/25 bg-brand/10 px-3.5 py-1.5 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-brand-secondary">
-              <span className="animate-glow-pulse h-1.5 w-1.5 rounded-full bg-brand" />
-              For teams shipping every week
-            </div>
-
-            <h1 className="text-4xl font-bold leading-[1.05] tracking-[-0.035em] text-foreground sm:text-6xl lg:text-[4.5rem]">
-              Your team&apos;s flow,
-              <br className="hidden sm:block" /> unified.
-            </h1>
-
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-              WorkTrack turns scattered tasks, threads, and to-dos into one line
-              you can actually see moving — from backlog to done.
-            </p>
-
-            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-              <Link
-                href="/register"
-                className="inline-flex h-12 items-center justify-center rounded-full bg-brand px-7 text-sm font-semibold text-brand-foreground shadow-lg shadow-glow-primary transition-all hover:bg-brand-hover"
-              >
-                Start free
-              </Link>
+      <nav aria-label="Page sections" className="hidden sm:block">
+        <ul className="flex items-center gap-2">
+          {NAV_LINKS.map(({ href, label }) => (
+            <li key={href}>
               <a
-                href="#flow"
-                className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-card px-7 text-sm font-semibold text-foreground transition-colors hover:border-brand/40 hover:bg-secondary/30"
+                href={href}
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
-                See how it works
+                {label}
               </a>
-            </div>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </div>
+  </header>
+);
 
-            <p className="mt-4 font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-              No credit card · cancel anytime
-            </p>
-          </motion.div>
+export const LandingPage = () => (
+  <div className="relative min-h-full bg-background text-foreground">
+    <LandingHeader />
 
-          {/* Signature element: a live flow visualization of a real kanban board */}
-          <motion.div
-            id="flow"
-            initial={{ opacity: 0, y: 24, scale: 0.98 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8 }}
-            className="relative mx-auto mt-20 max-w-6xl scroll-mt-24"
+    <div className="relative overflow-hidden">
+      <GlowBackground />
+
+      <section
+        aria-labelledby="landing-title"
+        className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-14 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:px-10 lg:py-20"
+      >
+        <div>
+          <p className="text-sm font-semibold text-brand">
+            Time, teams and projects in one place
+          </p>
+
+          <h1
+            id="landing-title"
+            className="mt-4 text-4xl font-bold tracking-tight text-balance text-foreground sm:text-5xl"
           >
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-secondary/20 p-6 shadow-[0_24px_70px_-35px_rgba(57,61,63,0.45)] backdrop-blur-sm sm:p-10">
-              <div className="mb-8 flex items-center justify-between">
-                <span className="font-mono text-xs uppercase tracking-[0.14em] text-muted-foreground">
-                  This week&apos;s board
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  48 tasks · 6 people
-                </span>
-              </div>
+            Know where your team&apos;s time goes
+          </h1>
 
-              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4 sm:gap-5">
-                {FLOW_STAGES.map((stage, i) => (
-                  <motion.div
-                    key={stage.name}
-                    initial={{ opacity: 0, y: 12 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.08 }}
-                    className="flex flex-col gap-2.5"
-                  >
-                    <div className="flex items-center gap-2 pb-1">
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${stage.dot}`}
-                      />
-                      <span className="text-xs font-semibold text-foreground">
-                        {stage.name}
-                      </span>
-                      <span className="ml-auto font-mono text-[11px] text-muted-foreground">
-                        {stage.count}
-                      </span>
-                    </div>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
+            WorkTrack brings your people, projects and hours together. Everyone
+            fills in a simple weekly timesheet, and you see who worked on what,
+            what is planned next and how each month adds up.
+          </p>
 
-                    {stage.tasks.map((task) => (
-                      <div
-                        key={task}
-                        className="rounded-lg border border-border bg-card px-3 py-2.5 text-[13px] font-medium leading-snug text-foreground shadow-sm"
-                      >
-                        {task}
-                      </div>
-                    ))}
-                  </motion.div>
-                ))}
-              </div>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="/register" className={buttonVariants({ size: "xl" })}>
+              Start a company
+            </Link>
 
-              {/* A task, traveling the line — the literal "flow" the headline promises */}
-              <div className="relative mt-9 h-px w-full bg-border">
-                {!shouldReduceMotion && (
-                  <motion.span
-                    aria-hidden="true"
-                    className="absolute -top-[3px] h-[7px] w-[7px] rounded-full bg-brand"
-                    style={{ boxShadow: "0 0 14px 3px var(--glow-primary)" }}
-                    animate={{ left: ["0%", "97%"] }}
-                    transition={{
-                      duration: 7,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                  />
-                )}
-              </div>
-            </div>
-
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-3 -z-10 rounded-2xl bg-brand/10 blur-2xl"
-            />
-          </motion.div>
-        </section>
-
-        <section className="px-6 pb-28">
-          <div className="mx-auto grid max-w-5xl gap-10 sm:grid-cols-3 sm:gap-8">
-            {STEPS.map((step, i) => (
-              <motion.div
-                key={step.number}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.5 }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-              >
-                <span className="font-mono text-sm text-brand-secondary">
-                  {step.number}
-                </span>
-                <h3 className="mt-2 text-xl font-semibold text-foreground">
-                  {step.title}
-                </h3>
-                <p className="mt-2 text-[15px] leading-6 text-muted-foreground">
-                  {step.description}
-                </p>
-              </motion.div>
-            ))}
+            <Link
+              href="/login"
+              className={cn(
+                buttonVariants({ variant: "outline", size: "xl" }),
+                "bg-card",
+              )}
+            >
+              Sign in
+            </Link>
           </div>
-        </section>
+
+          <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+            <Mail className="size-4 shrink-0 text-brand" aria-hidden="true" />
+            Joining a company? Use the link in your invitation email.
+          </p>
+        </div>
+
+        <ProductIllustration />
+      </section>
+    </div>
+
+    <section
+      id={BENEFITS_SECTION_ID}
+      aria-labelledby="benefits-title"
+      className="scroll-mt-20 border-y border-border bg-card"
+    >
+      <div className="mx-auto max-w-6xl px-6 py-16 lg:px-10 lg:py-20">
+        <h2 id="benefits-title" className={SECTION_TITLE_CLASS}>
+          What WorkTrack does for your company
+        </h2>
+        <p className="mt-3 max-w-2xl text-muted-foreground">
+          A clear picture of your people and their work, and hours you can rely
+          on when it is time to invoice.
+        </p>
+
+        <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          {BENEFITS.map(({ icon: Icon, title, description }) => (
+            <li key={title}>
+              <span className="flex size-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+
+              <h3 className="mt-4 text-base font-semibold text-foreground">
+                {title}
+              </h3>
+              <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                {description}
+              </p>
+            </li>
+          ))}
+        </ul>
       </div>
-    </main>
-  );
-};
+    </section>
+
+    <section
+      id={GETTING_STARTED_SECTION_ID}
+      aria-labelledby="getting-started-title"
+      className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16 lg:px-10 lg:py-20"
+    >
+      <h2 id="getting-started-title" className={SECTION_TITLE_CLASS}>
+        Getting started
+      </h2>
+
+      <ol className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-8">
+        {STEPS.map((step, index) => (
+          <li key={step.title} className="border-t-2 border-brand/30 pt-5">
+            <span className="text-sm font-semibold text-brand">
+              Step {index + 1}
+            </span>
+
+            <h3 className="mt-2 text-base font-semibold text-foreground">
+              {step.title}
+            </h3>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              {step.description}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </section>
+  </div>
+);
