@@ -7,7 +7,10 @@ import { ConfigService } from '@nestjs/config';
 import { Resend } from 'resend';
 
 import { passwordResetTemplate } from './templates/password-reset.template';
-import { invitationTemplate } from './templates/invitation.template';
+import {
+  invitationEmail,
+  type InvitationEmailParams,
+} from './templates/invitation.template';
 
 @Injectable()
 export class MailService {
@@ -48,21 +51,19 @@ export class MailService {
     }
   }
 
-  async sendInvitationEmail(email: string, inviteUrl: string): Promise<void> {
+  async sendInvitationEmail(
+    email: string,
+    params: InvitationEmailParams,
+  ): Promise<void> {
     const from = this.configService.getOrThrow<string>('mail.from');
-
-    const expiresIn = this.configService.getOrThrow<string>(
-      'auth.invitation.expiresIn',
-    );
+    const { subject, html, text } = invitationEmail(params);
 
     const { error } = await this.resend.emails.send({
       from,
       to: email,
-      subject: 'You have been invited to WorkTrack',
-      html: invitationTemplate({
-        inviteUrl,
-        expiresIn,
-      }),
+      subject,
+      html,
+      text,
     });
 
     if (error) {

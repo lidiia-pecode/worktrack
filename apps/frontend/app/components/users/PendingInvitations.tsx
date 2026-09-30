@@ -25,11 +25,12 @@ const describeInvitation = ({
   team,
   invitedBy,
   expiresAt,
+  expired,
 }: PendingInvitation): string =>
   [
     team?.name ?? "No team",
     invitedBy && `Sent by ${invitedBy.firstName} ${invitedBy.lastName}`,
-    `Expires ${EXPIRES_AT_LABEL.format(new Date(expiresAt))}`,
+    `${expired ? "Expired" : "Expires"} ${EXPIRES_AT_LABEL.format(new Date(expiresAt))}`,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -105,6 +106,8 @@ export const PendingInvitations = () => {
                 </p>
 
                 <Badge>{ROLE_LABELS[invitation.role] ?? invitation.role}</Badge>
+
+                {invitation.expired && <Badge variant="warning">Expired</Badge>}
               </div>
 
               <p className="mt-1 text-xs text-muted-foreground">

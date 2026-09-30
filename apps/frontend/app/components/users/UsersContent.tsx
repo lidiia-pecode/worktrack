@@ -52,13 +52,7 @@ export function UsersContent() {
         isError={isError || !canManage}
         onRetry={refetch}
         getSearchValue={(user) =>
-          [
-            user.firstName,
-            user.lastName,
-            user.email,
-            user.username,
-            user.position,
-          ]
+          [user.firstName, user.lastName, user.email, user.position]
             .filter(Boolean)
             .join(" ")
         }

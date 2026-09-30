@@ -22,6 +22,7 @@ import { setupLink } from "@/hooks/useSetupLink";
 import { OwnerSetupState } from "@/types/Onboarding";
 import { PendingInvitation } from "@/types/Invitation";
 import { UserRole } from "@/types/enums";
+import { INVITATION_VALID_DAYS } from "@/lib/constants";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
@@ -132,9 +133,11 @@ const managerSteps = (
     title: "The manager accepts",
     description: managerSteps.managerJoined
       ? "A manager has joined the company."
-      : invitation
-        ? `Waiting for ${invitation.email} to accept. The invitation works until ${EXPIRY_LABEL.format(new Date(invitation.expiresAt))}.`
-        : "They join once they accept the invitation email.",
+      : invitation?.expired
+        ? `The invitation to ${invitation.email} has expired. Resend it to give them another ${INVITATION_VALID_DAYS} days.`
+        : invitation
+          ? `Waiting for ${invitation.email} to accept. The invitation works until ${EXPIRY_LABEL.format(new Date(invitation.expiresAt))}.`
+          : "They join once they accept the invitation email.",
     icon: UserCheck,
     completed: managerSteps.managerJoined,
     locked: !managerSteps.inviteManager,
@@ -168,9 +171,7 @@ export function SetupChecklist({ state }: SetupChecklistProps) {
   } = useInvitations();
 
   const managerInvitation = invitations.find(
-    (invitation) =>
-      invitation.role === UserRole.MANAGER &&
-      new Date(invitation.expiresAt) > new Date(),
+    (invitation) => invitation.role === UserRole.MANAGER,
   );
 
   const resendAction = managerInvitation && (

@@ -15,9 +15,11 @@ import { databaseConnectionOptions } from './config/database.options';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CompaniesModule } from './companies/companies.module';
 import { TeamsModule } from './teams/teams.module';
+import appConfig from './config/app.config';
 import authConfig from './config/auth.config';
 import mailConfig from './config/mail.config';
 import { InvitationsModule } from './invitations/invitations.module';
+import { NotificationsModule } from './notifications/notifications.module';
 import { OnboardingModule } from './onboarding/onboarding.module';
 import { AbsencesModule } from './absences/absences.module';
 import { CapacityModule } from './capacity/capacity.module';
@@ -30,7 +32,7 @@ import { TokenService } from './auth/services/token.service';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [authConfig, mailConfig],
+      load: [appConfig, authConfig, mailConfig],
       validationSchema: envValidationSchema,
       validationOptions: {
         allowUnknown: true,
@@ -63,6 +65,7 @@ import { TokenService } from './auth/services/token.service';
     CompaniesModule,
     TeamsModule,
     InvitationsModule,
+    NotificationsModule,
     OnboardingModule,
     AbsencesModule,
     CapacityModule,

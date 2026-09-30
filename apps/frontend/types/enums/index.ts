@@ -73,3 +73,16 @@ export enum HoursReportGroupBy {
   ACTIVITY = "activity",
   PERSON = "person",
 }
+
+/** Mirrors the backend's UnusableInvitationCode. */
+export enum UnusableInvitationCode {
+  NOT_FOUND = "INVITATION_NOT_FOUND",
+  EXPIRED = "INVITATION_EXPIRED",
+  REVOKED = "INVITATION_REVOKED",
+  ACCEPTED = "INVITATION_ACCEPTED",
+}
+
+/** Mirrors the backend's NotificationType. */
+export enum NotificationType {
+  INVITATION_ACCEPTED = "INVITATION_ACCEPTED",
+}

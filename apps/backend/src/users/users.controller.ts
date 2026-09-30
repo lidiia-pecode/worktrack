@@ -5,14 +5,13 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
-  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserDetailsResponse, UserResponse } from './dtos/user-response.dto';
 import { AssignableUserResponse } from './dtos/assignable-user-response.dto';
-import { CreateUserPayload, UpdateUserPayload } from './dtos/user-payload.dto';
+import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -83,16 +82,6 @@ export class UsersController {
       authUser.companyId,
       authUser,
     );
-  }
-
-  @Role(UserRole.OWNER)
-  @Post()
-  @Serialize(UserResponse)
-  async createUser(
-    @CurrentUser() authUser: AuthUser,
-    @Body() body: CreateUserPayload,
-  ): Promise<User> {
-    return this.usersService.createUser(authUser.companyId, body);
   }
 
   @Role(UserRole.OWNER)

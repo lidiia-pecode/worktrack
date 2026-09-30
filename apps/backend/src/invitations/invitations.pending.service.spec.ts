@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import {
-  BadRequestException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -16,10 +15,13 @@ import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import type { InvitationEmailParams } from 'src/mail/templates/invitation.template';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
+import { INVITATION_VALID_MS } from './invitation.constants';
 import { InvitationsService } from './invitations.service';
+import { UnusableInvitationCode } from './unusable-invitation';
 
 /**
  * Sending, resending and revoking all come down to which invitation rows are
@@ -100,12 +102,22 @@ describe('InvitationsService pending invitations', () => {
       .getRepository(Invitation)
       .findOneByOrFail({ email, status: InvitationStatus.PENDING });
 
+  type SentEmail = [string, InvitationEmailParams];
+
+  const lastSentEmail = () => sendInvitationEmail.mock.lastCall as SentEmail;
+
   /** The token the last email carried, read from the link that was sent. */
   const lastSentToken = (): string => {
-    const [, inviteUrl] = sendInvitationEmail.mock.lastCall as [string, string];
+    const [, { inviteUrl }] = lastSentEmail();
 
     return new URL(inviteUrl).searchParams.get('token')!;
   };
+
+  /** An unusable link is refused with a code the invitation page reads. */
+  const expectUnusable = (
+    promise: Promise<unknown>,
+    code: UnusableInvitationCode,
+  ) => expect(promise).rejects.toMatchObject({ response: { code } });
 
   const failNextSend = () =>
     sendInvitationEmail.mockRejectedValueOnce(
@@ -140,13 +152,11 @@ describe('InvitationsService pending invitations', () => {
       stub({ sendInvitationEmail }),
       stub({}),
       stub({}),
-      stub({
-        getOrThrow: (key: string) =>
-          key === 'auth.invitation.expiresInMs' ? 3_600_000 : 'http://app.test',
-      }),
+      stub({ getOrThrow: () => 'http://app.test' }),
       dataSource,
       teamVisibility,
       dataSource.getRepository(Team),
+      stub({ notifyInvitationAccepted: jest.fn() }),
     );
 
     owner = await createUser('owner', UserRole.OWNER);
@@ -187,7 +197,7 @@ describe('InvitationsService pending invitations', () => {
       await expect(findPending(email)).resolves.toBeDefined();
     });
 
-    it('keeps an expired invitation revoked on the way', async () => {
+    it('keeps the expired invitation it would replace', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
 
@@ -201,6 +211,28 @@ describe('InvitationsService pending invitations', () => {
       const invitations = await findInvitations(email);
 
       expect(invitations.map((invitation) => invitation.status)).toEqual([
+        InvitationStatus.PENDING,
+      ]);
+    });
+  });
+
+  describe('inviting again over an expired invitation', () => {
+    it('replaces it with a new pending one', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
+
+      await invite(owner, email, alpha);
+
+      const statuses = (await findInvitations(email))
+        .map((invitation) => invitation.status)
+        .sort();
+
+      expect(statuses).toEqual([
+        InvitationStatus.PENDING,
         InvitationStatus.REVOKED,
       ]);
     });
@@ -245,7 +277,7 @@ describe('InvitationsService pending invitations', () => {
       await expect(listedEmails(betaManager)).resolves.toContain(email);
     });
 
-    it('leaves out an expired invitation', async () => {
+    it('keeps an expired invitation, marked expired', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
 
@@ -253,7 +285,14 @@ describe('InvitationsService pending invitations', () => {
         .getRepository(Invitation)
         .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
 
-      await expect(listedEmails(owner)).resolves.not.toContain(email);
+      const listed = await service.listPending(owner);
+
+      expect(
+        listed.find((invitation) => invitation.email === email),
+      ).toMatchObject({ expired: true });
+      expect(
+        listed.find((invitation) => invitation.email === alphaEmail),
+      ).toMatchObject({ expired: false });
     });
 
     it('names the team and who sent it', async () => {
@@ -277,27 +316,41 @@ describe('InvitationsService pending invitations', () => {
       const newToken = lastSentToken();
 
       expect(newToken).not.toBe(oldToken);
-      await expect(service.findByToken(oldToken)).rejects.toThrow(
-        NotFoundException,
+      await expectUnusable(
+        service.describeByToken(oldToken),
+        UnusableInvitationCode.NOT_FOUND,
       );
-      await expect(service.findByToken(newToken)).resolves.toMatchObject({
+      await expect(service.describeByToken(newToken)).resolves.toMatchObject({
         email,
       });
     });
 
-    it('gives the invitation a new expiry', async () => {
+    it('gives an expired invitation seven more days', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
 
       await dataSource
         .getRepository(Invitation)
-        .update({ email }, { expiresAt: new Date(Date.now() + 1000) });
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
       const { id } = await findPending(email);
 
       await service.resend(id, alphaManager);
 
       const resent = await findPending(email);
-      expect(resent.expiresAt.getTime()).toBeGreaterThan(Date.now() + 60_000);
+      expect(resent.expiresAt.getTime()).toBeGreaterThan(
+        Date.now() + INVITATION_VALID_MS - 60_000,
+      );
+    });
+
+    it('keeps the original sender as the inviter', async () => {
+      const email = nextEmail();
+      await invite(alphaManager, email, alpha);
+      const { id } = await findPending(email);
+
+      await service.resend(id, owner);
+
+      const [, sent] = lastSentEmail();
+      expect(sent.inviterName).toBe('alphamanager Test');
     });
 
     it('keeps the old link working when the email fails', async () => {
@@ -311,7 +364,7 @@ describe('InvitationsService pending invitations', () => {
         InternalServerErrorException,
       );
 
-      await expect(service.findByToken(oldToken)).resolves.toMatchObject({
+      await expect(service.describeByToken(oldToken)).resolves.toMatchObject({
         email,
       });
     });
@@ -337,13 +390,94 @@ describe('InvitationsService pending invitations', () => {
     });
   });
 
-  describe('findByToken', () => {
-    it('names the team the invitee is joining', async () => {
-      await invite(owner, nextEmail(), alpha);
+  describe('the email', () => {
+    it('names the company, the inviter, the role, the team and the expiry', async () => {
+      const email = nextEmail();
+      await invite(alphaManager, email, alpha);
 
-      const invitation = await service.findByToken(lastSentToken());
+      const [to, sent] = lastSentEmail();
 
-      expect(invitation.team?.name).toBe(`Alpha ${RUN}`);
+      expect(to).toBe(email);
+      expect(sent).toMatchObject({
+        companyName: SLUG,
+        inviterName: 'alphamanager Test',
+        roleDescription: 'an employee',
+        teamName: `Alpha ${RUN}`,
+        validDays: 7,
+      });
+      expect(sent.inviteUrl).toMatch(
+        /^http:\/\/app\.test\/invitations\/complete\?token=/,
+      );
+    });
+
+    it('names no team for a manager', async () => {
+      await invite(owner, nextEmail(), undefined, UserRole.MANAGER);
+
+      const [, sent] = lastSentEmail();
+
+      expect(sent).toMatchObject({
+        roleDescription: 'a manager',
+        teamName: null,
+      });
+    });
+  });
+
+  describe('describeByToken', () => {
+    it('names the company, the team and who invited', async () => {
+      await invite(alphaManager, nextEmail(), alpha);
+
+      await expect(
+        service.describeByToken(lastSentToken()),
+      ).resolves.toMatchObject({
+        companyName: SLUG,
+        teamName: `Alpha ${RUN}`,
+        inviterName: 'alphamanager Test',
+        role: UserRole.EMPLOYEE,
+      });
+    });
+
+    it('says who to ask when the link has expired', async () => {
+      const email = nextEmail();
+      await invite(alphaManager, email, alpha);
+      const token = lastSentToken();
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
+
+      await expect(service.describeByToken(token)).rejects.toMatchObject({
+        response: {
+          code: UnusableInvitationCode.EXPIRED,
+          companyName: SLUG,
+          inviterName: 'alphamanager Test',
+        },
+      });
+    });
+
+    it('tells an accepted link apart', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+      const token = lastSentToken();
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { status: InvitationStatus.ACCEPTED });
+
+      await expectUnusable(
+        service.describeByToken(token),
+        UnusableInvitationCode.ACCEPTED,
+      );
+    });
+
+    it('answers "not found" to an unknown or empty token', async () => {
+      await expectUnusable(
+        service.describeByToken('not-a-token'),
+        UnusableInvitationCode.NOT_FOUND,
+      );
+      await expectUnusable(
+        service.describeByToken(' '),
+        UnusableInvitationCode.NOT_FOUND,
+      );
     });
   });
 
@@ -356,8 +490,9 @@ describe('InvitationsService pending invitations', () => {
 
       await service.revoke(id, alphaManager);
 
-      await expect(service.findByToken(token)).rejects.toThrow(
-        BadRequestException,
+      await expectUnusable(
+        service.describeByToken(token),
+        UnusableInvitationCode.REVOKED,
       );
     });
 

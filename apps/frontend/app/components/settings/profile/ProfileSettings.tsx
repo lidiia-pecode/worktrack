@@ -35,7 +35,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     defaultValues: {
       firstName: "",
       lastName: "",
-      username: "",
     },
   });
 
@@ -45,7 +44,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     reset({
       firstName: user.firstName ?? "",
       lastName: user.lastName ?? "",
-      username: user.username ?? "",
     });
   }, [user, reset]);
 
@@ -53,7 +51,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
     actions.update.mutate({
       firstName: data.firstName,
       lastName: data.lastName,
-      username: data.username,
     });
   };
 
@@ -81,13 +78,6 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
               labelClassname={settingsLabelClassName}
             />
           </div>
-
-          <Input
-            label="Username"
-            {...register("username")}
-            error={errors.username?.message}
-            labelClassname={settingsLabelClassName}
-          />
 
           <Input
             label="Email"

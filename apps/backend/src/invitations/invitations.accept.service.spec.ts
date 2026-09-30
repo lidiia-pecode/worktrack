@@ -12,12 +12,16 @@ import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
+import { AuthErrorCode } from 'src/auth/auth-error';
+import { Notification } from 'src/notifications/entities/notification.entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/enums/notification-type.enum';
 import { InvitationsService } from './invitations.service';
 
 /**
@@ -77,13 +81,14 @@ describe('InvitationsService acceptance', () => {
     email: string,
     teamId: string | null,
     role: UserRole = UserRole.EMPLOYEE,
+    invitedById: string = manager.id,
   ): Promise<string> => {
     const rawToken = randomBytes(32).toString('hex');
 
     await dataSource.getRepository(Invitation).save({
       companyId,
       teamId,
-      invitedById: manager.id,
+      invitedById,
       email,
       role,
       status: InvitationStatus.PENDING,
@@ -147,13 +152,11 @@ describe('InvitationsService acceptance', () => {
         createSession: jest.fn().mockResolvedValue({ access_token: '' }),
       }),
       stub({ hash: jest.fn().mockResolvedValue('hashed') }),
-      stub({
-        getOrThrow: (key: string) =>
-          key === 'auth.invitation.expiresInMs' ? 3_600_000 : 'http://app.test',
-      }),
+      stub({ getOrThrow: () => 'http://app.test' }),
       dataSource,
       teamVisibility,
       dataSource.getRepository(Team),
+      new NotificationsService(dataSource.getRepository(Notification)),
     );
 
     manager = await createUser('manager', UserRole.MANAGER);
@@ -298,6 +301,139 @@ describe('InvitationsService acceptance', () => {
       expect(memberships[0].teamId).toBe(alpha);
       expect(memberships[0].roleInTeam).toBe(TeamRole.MEMBER);
       expect(memberships[0].joinedAt).toBe(TODAY);
+    });
+
+    const expectCode = (promise: Promise<unknown>, code: AuthErrorCode) =>
+      expect(promise).rejects.toMatchObject({ response: { code } });
+
+    it('refuses a Google account with another email address', async () => {
+      const email = `google-other-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await expectCode(
+        service.completeWithGoogle(token, {
+          email: `someone-else-${RUN}@invitations-accept.test`,
+          firstName: 'Google',
+          lastName: 'Hire',
+          googleId: `google-other-${RUN}`,
+        }),
+        AuthErrorCode.GOOGLE_EMAIL_MISMATCH,
+      );
+      await expect(findUser(email)).resolves.toBeNull();
+    });
+
+    it('asks for the password form when Google gives no family name', async () => {
+      const email = `google-noname-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await expectCode(
+        service.completeWithGoogle(token, {
+          email,
+          firstName: 'Mononym',
+          lastName: ' ',
+          googleId: `google-noname-${RUN}`,
+        }),
+        AuthErrorCode.GOOGLE_NAME_MISSING,
+      );
+    });
+  });
+
+  describe('the joined notification', () => {
+    let notifications: NotificationsService;
+
+    beforeAll(() => {
+      notifications = new NotificationsService(
+        dataSource.getRepository(Notification),
+      );
+    });
+
+    const notificationsAbout = (userId: string) =>
+      dataSource
+        .getRepository(Notification)
+        .find({ where: { subjectUserId: userId } });
+
+    it('tells the inviter when someone joins by password', async () => {
+      const email = `notify-password-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await service.completeWithPassword(token, 'Secret123', 'Emma', 'Clarke');
+
+      const joined = await findUser(email);
+      const [notification] = await notificationsAbout(joined!.id);
+
+      expect(notification).toMatchObject({
+        recipientId: manager.id,
+        type: NotificationType.INVITATION_ACCEPTED,
+        readAt: null,
+      });
+    });
+
+    it('tells the inviter when someone joins with Google', async () => {
+      const email = `notify-google-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+
+      await service.completeWithGoogle(token, {
+        email,
+        firstName: 'Liam',
+        lastName: 'Turner',
+        googleId: `notify-google-${RUN}`,
+      });
+
+      const joined = await findUser(email);
+
+      await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(1);
+    });
+
+    it('tells nobody when the inviter has been archived', async () => {
+      const archivedInviter = await createUser(
+        'archivedinviter',
+        UserRole.MANAGER,
+      );
+      await dataSource
+        .getRepository(User)
+        .update(archivedInviter.id, { status: UserStatus.DEACTIVATED });
+
+      const email = `notify-archived-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(
+        email,
+        null,
+        UserRole.MANAGER,
+        archivedInviter.id,
+      );
+
+      await service.completeWithPassword(
+        token,
+        'Secret123',
+        'Olivia',
+        'Brooks',
+      );
+
+      const joined = await findUser(email);
+
+      await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(0);
+    });
+
+    it('lists only the caller’s own, and marks them read', async () => {
+      const bystander = await createUser('bystander', UserRole.MANAGER);
+
+      const before = await notifications.listForUser(manager);
+      expect(before.unreadCount).toBeGreaterThan(0);
+      expect(before.items[0].subjectUser?.firstName).toBeDefined();
+
+      await expect(notifications.listForUser(bystander)).resolves.toEqual({
+        items: [],
+        unreadCount: 0,
+      });
+
+      await notifications.markAllRead(bystander);
+      await expect(notifications.listForUser(manager)).resolves.toMatchObject({
+        unreadCount: before.unreadCount,
+      });
+
+      await notifications.markAllRead(manager);
+      await expect(notifications.listForUser(manager)).resolves.toMatchObject({
+        unreadCount: 0,
+      });
     });
   });
 });

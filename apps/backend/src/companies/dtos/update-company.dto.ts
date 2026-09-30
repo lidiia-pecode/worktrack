@@ -1,4 +1,3 @@
-// src/companies/dtos/update-company.dto.ts
 import {
   IsEnum,
   IsNumber,
@@ -11,14 +10,12 @@ import {
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { WeekDay } from '../enums/week-day.enum';
-import { TrimString } from 'src/lib/decorators';
+import { CompanyName } from 'src/lib/validators/account-fields';
 import { IsIanaTimeZone } from 'src/lib/validators/IsIanaTimeZone';
 
 export class UpdateCompanyDto {
   @IsOptional()
-  @IsString()
-  @TrimString()
-  @Length(2, 255)
+  @CompanyName()
   companyName?: string;
 
   @IsOptional()

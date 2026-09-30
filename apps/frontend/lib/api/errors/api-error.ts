@@ -1,3 +1,6 @@
+import { UnusableInvitationCode } from "@/types/enums";
+import type { UnusableInvitationError } from "@/types/Invitation";
+
 export type ApiValidationError = {
   statusCode: number;
   errors?: Record<string, string[]>;
@@ -54,4 +57,20 @@ export function getErrorMessage(error: unknown): string {
   }
 
   return "Something went wrong";
+}
+
+const UNUSABLE_INVITATION_CODES: string[] = Object.values(
+  UnusableInvitationCode,
+);
+
+export function isUnusableInvitationError(
+  error: unknown,
+): error is UnusableInvitationError {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof error.code === "string" &&
+    UNUSABLE_INVITATION_CODES.includes(error.code)
+  );
 }

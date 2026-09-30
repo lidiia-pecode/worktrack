@@ -6,11 +6,10 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, MoreThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -19,6 +18,7 @@ import { MailService } from 'src/mail/mail.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { PasswordService } from 'src/auth/services/password.service';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { NotificationsService } from 'src/notifications/notifications.service';
 import { findActiveTeam } from 'src/teams/find-active-team.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -31,8 +31,22 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
+import {
+  INVITATION_VALID_DAYS,
+  INVITATION_VALID_MS,
+} from './invitation.constants';
+import {
+  UnusableInvitationCode,
+  unusableInvitation,
+} from './unusable-invitation';
+import { AuthErrorCode, authError } from 'src/auth/auth-error';
 import type { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { User } from 'src/users/entities/user.entity';
+
+export type PendingInvitation = Invitation & { expired: boolean };
+
+const fullName = (user: User | null): string | null =>
+  user ? `${user.firstName} ${user.lastName}` : null;
 
 @Injectable()
 export class InvitationsService {
@@ -50,6 +64,8 @@ export class InvitationsService {
 
     @InjectRepository(Team)
     private readonly teamRepository: Repository<Team>,
+
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async create(
@@ -72,7 +88,8 @@ export class InvitationsService {
         );
       }
 
-      throw new ConflictException('A user with this email already exists');
+      // Says nothing about the account or the company it belongs to.
+      throw new ConflictException('This email address cannot be invited');
     }
 
     const existingInvitation = await this.invitationRepository.findOne({
@@ -83,17 +100,10 @@ export class InvitationsService {
       },
     });
 
-    if (existingInvitation) {
-      if (existingInvitation.expiresAt > new Date()) {
-        throw new ConflictException(
-          'An active invitation already exists for this email',
-        );
-      }
-
-      existingInvitation.status = InvitationStatus.REVOKED;
-      existingInvitation.revokedAt = new Date();
-
-      await this.invitationRepository.save(existingInvitation);
+    if (existingInvitation && existingInvitation.expiresAt > new Date()) {
+      throw new ConflictException(
+        'An active invitation already exists for this email',
+      );
     }
 
     const invitation = this.invitationRepository.create({
@@ -105,26 +115,32 @@ export class InvitationsService {
       status: InvitationStatus.PENDING,
     });
 
-    await this.saveWithNewLinkAndSend(invitation);
+    await this.saveWithNewLinkAndSend(invitation, existingInvitation);
   }
 
-  async listPending(user: AuthUser): Promise<Invitation[]> {
+  /** Expired invitations stay listed, marked, so they can be resent. */
+  async listPending(user: AuthUser): Promise<PendingInvitation[]> {
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds?.length === 0) {
       return [];
     }
 
-    return this.invitationRepository.find({
+    const invitations = await this.invitationRepository.find({
       where: {
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
         ...(visibleTeamIds ? { teamId: In(visibleTeamIds) } : {}),
       },
       relations: { team: true, invitedBy: true },
       order: { createdAt: 'DESC' },
     });
+
+    const now = new Date();
+
+    return invitations.map((invitation) =>
+      Object.assign(invitation, { expired: invitation.expiresAt <= now }),
+    );
   }
 
   async resend(id: string, user: AuthUser): Promise<void> {
@@ -142,8 +158,26 @@ export class InvitationsService {
     await this.invitationRepository.save(invitation);
   }
 
-  async findByToken(token: string): Promise<Invitation> {
-    return this.findValidInvitation(token, this.invitationRepository);
+  /** Refuses an unusable token with the same codes the invitation page reads. */
+  async assertUsableToken(token: string): Promise<void> {
+    await this.findValidInvitation(token, this.invitationRepository);
+  }
+
+  /** What the invitation page shows before the person accepts. */
+  async describeByToken(token: string) {
+    const invitation = await this.findValidInvitation(
+      token,
+      this.invitationRepository,
+    );
+
+    return {
+      email: invitation.email,
+      role: invitation.role,
+      companyName: invitation.company.companyName,
+      inviterName: fullName(invitation.invitedBy),
+      teamName: invitation.team?.name ?? null,
+      expiresAt: invitation.expiresAt,
+    };
   }
 
   async completeWithPassword(
@@ -173,11 +207,6 @@ export class InvitationsService {
         throw new ConflictException('A user with this email already exists');
       }
 
-      const normalizedFirstName = firstName.trim();
-      const normalizedLastName = lastName.trim();
-
-      this.validateUserName(normalizedFirstName, normalizedLastName);
-
       const passwordHash = await this.passwordService.hash(password);
 
       const user = await this.usersService.createInvitedUser(
@@ -185,8 +214,8 @@ export class InvitationsService {
           companyId: invitation.companyId,
           email,
           role: invitation.role,
-          firstName: normalizedFirstName,
-          lastName: normalizedLastName,
+          firstName,
+          lastName,
           passwordHash,
         },
         manager,
@@ -194,7 +223,7 @@ export class InvitationsService {
 
       await this.createInvitationMembership(invitation, user.id, manager);
 
-      await this.acceptInvitation(invitation, invitationRepository);
+      await this.acceptInvitation(invitation, user.id, manager);
 
       return user;
     });
@@ -222,9 +251,7 @@ export class InvitationsService {
       const googleEmail = this.normalizeEmail(googleUser.email);
 
       if (invitationEmail !== googleEmail) {
-        throw new UnauthorizedException(
-          'Google account email does not match the invitation email',
-        );
+        throw authError(AuthErrorCode.GOOGLE_EMAIL_MISMATCH);
       }
 
       const existingUser = await userRepository.findOne({
@@ -232,7 +259,7 @@ export class InvitationsService {
       });
 
       if (existingUser) {
-        throw new ConflictException('A user with this email already exists');
+        throw authError(AuthErrorCode.ACCOUNT_EXISTS);
       }
 
       const existingGoogleUser = await userRepository.findOne({
@@ -240,15 +267,16 @@ export class InvitationsService {
       });
 
       if (existingGoogleUser) {
-        throw new ConflictException(
-          'This Google account is already associated with another user',
-        );
+        throw authError(AuthErrorCode.GOOGLE_ACCOUNT_IN_USE);
       }
 
       const firstName = googleUser.firstName.trim();
       const lastName = googleUser.lastName.trim();
 
-      this.validateUserName(firstName, lastName);
+      // A Google profile may have no family name; the password form asks for one.
+      if (!firstName || !lastName) {
+        throw authError(AuthErrorCode.GOOGLE_NAME_MISSING);
+      }
 
       const user = await this.usersService.createInvitedUser(
         {
@@ -264,7 +292,7 @@ export class InvitationsService {
 
       await this.createInvitationMembership(invitation, user.id, manager);
 
-      await this.acceptInvitation(invitation, invitationRepository);
+      await this.acceptInvitation(invitation, user.id, manager);
 
       return user;
     });
@@ -274,24 +302,49 @@ export class InvitationsService {
 
   /**
    * Every send gets a fresh link, so only the latest email works. The email
-   * goes out before the save is committed, so a failed send changes nothing.
+   * goes out before the save is committed, so a failed send changes nothing —
+   * including the expired invitation it replaces, which stays listed.
    */
-  private async saveWithNewLinkAndSend(invitation: Invitation): Promise<void> {
+  private async saveWithNewLinkAndSend(
+    invitation: Invitation,
+    replaces?: Invitation | null,
+  ): Promise<void> {
     const rawToken = randomBytes(32).toString('hex');
 
     invitation.tokenHash = this.hashToken(rawToken);
-    invitation.expiresAt = new Date(
-      Date.now() +
-        this.configService.getOrThrow<number>('auth.invitation.expiresInMs'),
-    );
+    invitation.expiresAt = new Date(Date.now() + INVITATION_VALID_MS);
 
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
     const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Invitation).save(invitation);
+      const repository = manager.getRepository(Invitation);
 
-      await this.mailService.sendInvitationEmail(invitation.email, inviteUrl);
+      if (replaces) {
+        replaces.status = InvitationStatus.REVOKED;
+        replaces.revokedAt = new Date();
+        await repository.save(replaces);
+      }
+
+      const { id } = await repository.save(invitation);
+
+      // The original sender stays the inviter when someone else resends it.
+      const saved = await repository.findOneOrFail({
+        where: { id },
+        relations: { company: true, invitedBy: true, team: true },
+      });
+
+      await this.mailService.sendInvitationEmail(saved.email, {
+        inviteUrl,
+        companyName: saved.company.companyName,
+        inviterName: fullName(saved.invitedBy),
+        // Only managers and employees are ever invited.
+        roleDescription:
+          saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
+        teamName: saved.team?.name ?? null,
+        validDays: INVITATION_VALID_DAYS,
+      });
     });
   }
 
@@ -329,39 +382,56 @@ export class InvitationsService {
     const normalizedToken = token?.trim();
 
     if (!normalizedToken) {
-      throw new BadRequestException('Invitation token is required');
+      throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
     const tokenHash = this.hashToken(normalizedToken);
 
     const invitation = await repository.findOne({
       where: { tokenHash },
-      relations: { team: true },
+      relations: { team: true, company: true, invitedBy: true },
     });
 
     if (!invitation) {
-      throw new NotFoundException('Invitation not found');
+      throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
-    if (invitation.status !== InvitationStatus.PENDING) {
-      throw new BadRequestException('Invitation is no longer valid');
+    if (invitation.status === InvitationStatus.ACCEPTED) {
+      throw unusableInvitation(UnusableInvitationCode.ACCEPTED);
+    }
+
+    const inviterContext = {
+      companyName: invitation.company.companyName,
+      inviterName: fullName(invitation.invitedBy),
+    };
+
+    if (invitation.status === InvitationStatus.REVOKED) {
+      throw unusableInvitation(UnusableInvitationCode.REVOKED, inviterContext);
     }
 
     if (invitation.expiresAt <= new Date()) {
-      throw new BadRequestException('Invitation has expired');
+      throw unusableInvitation(UnusableInvitationCode.EXPIRED, inviterContext);
     }
 
     return invitation;
   }
 
+  /** Shared by both completion paths, so the inviter is told either way. */
   private async acceptInvitation(
     invitation: Invitation,
-    repository: Repository<Invitation>,
+    joinedUserId: string,
+    manager: EntityManager,
   ): Promise<void> {
     invitation.status = InvitationStatus.ACCEPTED;
     invitation.acceptedAt = new Date();
 
-    await repository.save(invitation);
+    await manager.getRepository(Invitation).save(invitation);
+
+    await this.notificationsService.notifyInvitationAccepted(
+      invitation,
+      joinedUserId,
+      manager,
+    );
   }
 
   /**
@@ -465,12 +535,6 @@ export class InvitationsService {
 
     if (role === UserRole.MANAGER && callerRole !== UserRole.OWNER) {
       throw new ForbiddenException('Only an owner can invite a manager');
-    }
-  }
-
-  private validateUserName(firstName: string, lastName: string): void {
-    if (!firstName || !lastName) {
-      throw new BadRequestException('First name and last name are required');
     }
   }
 

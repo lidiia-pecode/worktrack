@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
@@ -55,26 +56,33 @@ describe('InvitationsService.create', () => {
       caller(callerRole),
     );
 
+  let findByEmailWithCompany: jest.Mock;
+
   beforeEach(() => {
     sendInvitationEmail = jest.fn().mockResolvedValue(undefined);
+    findByEmailWithCompany = jest.fn().mockResolvedValue(null);
     createInvitation = jest.fn((entity: unknown) => entity);
 
     const invitationRepository = {
       findOne: jest.fn().mockResolvedValue(null),
       create: createInvitation,
-      save: jest.fn().mockResolvedValue(undefined),
+      save: jest.fn((entity: unknown) => Promise.resolve(entity)),
+      findOneOrFail: jest.fn().mockResolvedValue({
+        email: 'invitee@invitations.test',
+        role: UserRole.EMPLOYEE,
+        company: { companyName: 'Clarke Studio' },
+        invitedBy: null,
+        team: null,
+      }),
     };
 
     service = new InvitationsService(
       stub(invitationRepository),
-      stub({ findByEmailWithCompany: jest.fn().mockResolvedValue(null) }),
+      stub({ findByEmailWithCompany }),
       stub({ sendInvitationEmail }),
       stub({}),
       stub({}),
-      stub({
-        getOrThrow: (key: string) =>
-          key === 'auth.invitation.expiresInMs' ? 3_600_000 : 'http://app.test',
-      }),
+      stub({ getOrThrow: () => 'http://app.test' }),
       stub({
         transaction: (work: (manager: unknown) => Promise<unknown>) =>
           work({ getRepository: () => invitationRepository }),
@@ -90,6 +98,7 @@ describe('InvitationsService.create', () => {
             Promise.resolve(TEAMS[where.id] ?? null),
         ),
       }),
+      stub({ notifyInvitationAccepted: jest.fn() }),
     );
   });
 
@@ -213,6 +222,25 @@ describe('InvitationsService.create', () => {
           invitedById: CALLER_ID,
         }),
       );
+    });
+  });
+
+  describe('an address that already has an account', () => {
+    it('says so plainly when the account is in this company', async () => {
+      findByEmailWithCompany.mockResolvedValue({ companyId: COMPANY_ID });
+
+      await expect(invite(UserRole.OWNER, UserRole.MANAGER)).rejects.toThrow(
+        'A user with this email already belongs to this company',
+      );
+    });
+
+    it('gives a neutral answer when the account is in another company', async () => {
+      findByEmailWithCompany.mockResolvedValue({ companyId: 'other-company' });
+
+      await expect(invite(UserRole.OWNER, UserRole.MANAGER)).rejects.toThrow(
+        new ConflictException('This email address cannot be invited'),
+      );
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
   });
 });

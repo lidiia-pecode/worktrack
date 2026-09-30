@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
 
 import { UserRole } from "@/types/enums";
@@ -20,15 +20,17 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamOptions } from "@/hooks/useTeams";
 
 interface InviteUserFormProps {
-  formId?: string;
+  formId: string;
   isSubmitting?: boolean;
   onSubmit: (data: InviteUserFormData) => void;
+  onCanSubmitChange: (canSubmit: boolean) => void;
 }
 
 export function InviteUserForm({
-  formId = "invite-user-form",
+  formId,
   isSubmitting = false,
   onSubmit,
+  onCanSubmitChange,
 }: InviteUserFormProps) {
   const { user } = useAuth();
   const isOwner = user?.role === UserRole.OWNER;
@@ -79,9 +81,23 @@ export function InviteUserForm({
   const hasNoTeams = !isLoadingTeams && teamOptions.length === 0;
   const cannotInviteIntoTeam = showTeamField && hasNoTeams;
 
-  const noTeamsMessage = isOwner
-    ? "Create a team first. An employee always joins into a team."
-    : MANAGER_WITHOUT_TEAM_MESSAGE;
+  const noTeamsMessage = isOwner ? (
+    <>
+      An employee always joins into a team.{" "}
+      <Link
+        href="/admin/teams?create=true"
+        className="font-medium text-brand underline-offset-4 hover:underline"
+      >
+        Create a team first
+      </Link>
+    </>
+  ) : (
+    MANAGER_WITHOUT_TEAM_MESSAGE
+  );
+
+  useEffect(() => {
+    onCanSubmitChange(!cannotInviteIntoTeam);
+  }, [cannotInviteIntoTeam, onCanSubmitChange]);
 
   // The form can open before the signed-in user has loaded.
   useEffect(() => {
@@ -147,14 +163,6 @@ export function InviteUserForm({
           )}
         />
       )}
-
-      <Button
-        type="submit"
-        disabled={isSubmitting || cannotInviteIntoTeam}
-        className="w-full"
-      >
-        Send invitation
-      </Button>
     </form>
   );
 }

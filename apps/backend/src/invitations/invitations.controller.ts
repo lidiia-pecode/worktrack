@@ -4,12 +4,14 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
   Res,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -21,6 +23,7 @@ import {
 } from 'src/auth/guards';
 
 import { CookieService } from 'src/auth/services/cookie.service';
+import { GoogleInvitationCallbackFilter } from 'src/auth/google-callback.filter';
 import {
   INVITATION_EMAILS_PER_MINUTE,
   LimitPerSession,
@@ -101,15 +104,8 @@ export class InvitationsController {
   }
 
   @Get('validate')
-  async validate(@Query('token') token: string) {
-    const invitation = await this.invitationsService.findByToken(token);
-
-    return {
-      email: invitation.email,
-      role: invitation.role,
-      teamName: invitation.team?.name ?? null,
-      expiresAt: invitation.expiresAt,
-    };
+  validate(@Query('token') token: string) {
+    return this.invitationsService.describeByToken(token);
   }
 
   @Post('complete-password')
@@ -138,10 +134,23 @@ export class InvitationsController {
   }
 
   @Get('google')
-  startGoogleInvitation(
+  async startGoogleInvitation(
     @Query('token') token: string,
     @Res() res: Response,
-  ): void {
+  ): Promise<void> {
+    try {
+      await this.invitationsService.assertUsableToken(token);
+    } catch (error) {
+      if (!(error instanceof HttpException)) throw error;
+
+      // Back to the invitation page, which says what is wrong with the link,
+      // rather than on to Google with a link that cannot be accepted.
+      const frontendUrl = this.cookieService.getFrontendUrl();
+      const query = new URLSearchParams({ token: token ?? '' });
+
+      return res.redirect(`${frontendUrl}/invitations/complete?${query}`);
+    }
+
     this.cookieService.setInvitationFlowCookie(res, token);
 
     res.redirect('./google/authorize');
@@ -152,6 +161,7 @@ export class InvitationsController {
   authorizeGoogleInvitation(): void {}
 
   @Get('google/callback')
+  @UseFilters(GoogleInvitationCallbackFilter)
   @UseGuards(GoogleInvitationGuard)
   async completeGoogleInvitation(
     @CurrentUser() googleUser: GoogleUserPayload,

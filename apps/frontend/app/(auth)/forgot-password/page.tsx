@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Mail } from "lucide-react";
+import { toast } from "sonner";
 
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import Input from "@/components/ui/input";
@@ -18,12 +19,19 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    await forgotPassword.mutateAsync({ email });
-    setSubmitted(true);
+    try {
+      await forgotPassword.mutateAsync({ email });
+      setSubmitted(true);
+    } catch {
+      // The hook has already shown the error.
+    }
   };
 
   const handleResend = () => {
-    forgotPassword.mutate({ email });
+    forgotPassword.mutate(
+      { email },
+      { onSuccess: () => toast.success(`We sent another link to ${email}.`) },
+    );
   };
 
   return (

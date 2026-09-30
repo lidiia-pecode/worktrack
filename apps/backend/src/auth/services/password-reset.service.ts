@@ -60,7 +60,9 @@ export class PasswordResetService {
       resetToken.usedAt ||
       resetToken.expiresAt <= new Date()
     ) {
-      throw new UnauthorizedException('Invalid or expired reset token');
+      throw new UnauthorizedException(
+        'This reset link has expired or was already used.',
+      );
     }
 
     resetToken.usedAt = new Date();
@@ -79,7 +81,8 @@ export class PasswordResetService {
 
     const token = await this.createToken(user.id);
 
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
     const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 

@@ -10,7 +10,6 @@ export interface User {
   avatarUrl?: string | null;
   firstName: string;
   lastName: string;
-  username?: string | null;
   email: string;
   googleLinked: boolean;
   hasPassword: boolean;
@@ -20,15 +19,6 @@ export interface User {
 
 export interface UserQuery extends PaginationParams {
   status?: UserStatus;
-}
-
-export interface CreateUserPayload {
-  firstName: string;
-  lastName: string;
-  username?: string;
-  email: string;
-  password: string;
-  role?: UserRole;
 }
 
 export interface UpdateUserPayload {
@@ -41,7 +31,6 @@ export interface UpdateUserPayload {
 export interface UpdateProfilePayload {
   firstName?: string;
   lastName?: string;
-  username?: string;
   avatarUrl?: string;
 }
 

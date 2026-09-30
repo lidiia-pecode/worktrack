@@ -26,6 +26,7 @@ import { UsersService } from 'src/users/users.service';
 import { SessionService } from './session.service';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashToken } from 'src/lib/utils/hash-token.util';
+import { AuthErrorCode, authError } from '../auth-error';
 
 const MAX_TOKEN_ATTEMPTS = 3;
 
@@ -69,7 +70,9 @@ export class GoogleAuthService {
       .execute();
 
     if (result.affected !== 1) {
-      throw new BadRequestException('Invalid or expired Google signup token.');
+      throw new BadRequestException(
+        'This Google sign-up has expired or was already used.',
+      );
     }
 
     const token = await tokenRepository.findOne({ where: { tokenHash } });
@@ -149,6 +152,12 @@ export class GoogleAuthService {
           userId: existingUser.id,
           googleId,
         };
+      }
+
+      // A Google-only account with a different Google id: there is no
+      // password to prove the address with, and sign-up would clash with it.
+      if (existingUser) {
+        throw authError(AuthErrorCode.ACCOUNT_USES_OTHER_GOOGLE);
       }
 
       return {
@@ -330,18 +339,14 @@ export class GoogleAuthService {
       this.authPolicyService.normalizeEmail(user.email) !==
       this.authPolicyService.normalizeEmail(googleUser.email)
     ) {
-      throw new ConflictException(
-        'Google account email must match your account email',
-      );
+      throw authError(AuthErrorCode.GOOGLE_EMAIL_MISMATCH);
     }
 
     try {
       await this.usersService.linkGoogleAccount(userId, googleUser.googleId);
     } catch (error: unknown) {
       if (isDatabaseConflictError(error)) {
-        throw new ConflictException(
-          'This Google account is already linked to another user.',
-        );
+        throw authError(AuthErrorCode.GOOGLE_ACCOUNT_IN_USE);
       }
       throw error;
     }

@@ -2,6 +2,7 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
@@ -57,12 +58,12 @@ async function bootstrap() {
       excludeExtraneousValues: true,
     }),
   );
-  const allowedOrigins = process.env.FRONTEND_URL
-    ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
-    : ['http://localhost:3000'];
+  const frontendUrl = app
+    .get(ConfigService)
+    .getOrThrow<string>('app.frontendUrl');
 
   app.enableCors({
-    origin: allowedOrigins,
+    origin: new URL(frontendUrl).origin,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

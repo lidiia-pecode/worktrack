@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { CompanyStatus } from 'src/companies/enums/company-status.enum';
+
+import { AuthErrorCode, authError } from '../auth-error';
 
 @Injectable()
 export class AuthPolicyService {
@@ -12,13 +14,11 @@ export class AuthPolicyService {
 
   validateUserAccess(user: User): void {
     if (user.status !== UserStatus.ACTIVE) {
-      throw new UnauthorizedException('User account is inactive');
+      throw authError(AuthErrorCode.ACCOUNT_INACTIVE);
     }
 
     if (user.company?.status === CompanyStatus.SUSPENDED) {
-      throw new UnauthorizedException(
-        'Company account is suspended. Please contact billing.',
-      );
+      throw authError(AuthErrorCode.COMPANY_SUSPENDED);
     }
   }
 }

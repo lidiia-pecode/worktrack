@@ -68,6 +68,8 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: false })
   lastName!: string;
 
+  // Unused: nothing reads or writes it. Kept, with its index, until the
+  // follow-up migration that drops both, so no other migration drops it first.
   @Column({
     type: 'varchar',
     length: 20,

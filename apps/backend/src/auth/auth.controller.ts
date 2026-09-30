@@ -6,6 +6,7 @@ import {
   Post,
   Req,
   Res,
+  UseFilters,
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
@@ -50,6 +51,12 @@ import { SessionService } from './services';
 import { GoogleAuthService } from './services/google-auth.service';
 import { Serialize } from 'src/lib/interceptors';
 import { ForgotPasswordDto, ResetPasswordDto } from './dtos/reset-password.dto';
+import { AuthErrorCode, authError } from './auth-error';
+import {
+  GoogleLinkCallbackFilter,
+  GoogleLoginCallbackFilter,
+  GoogleSignupCallbackFilter,
+} from './google-callback.filter';
 
 @Controller('auth')
 export class AuthController {
@@ -61,14 +68,25 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  /**
+   * Sign-in and sign-up share this. Only sign-up may start a company, so an
+   * unknown account on the sign-in path is refused — an invited person who
+   * clicks it must use their invitation instead.
+   */
   private async handleGoogleCallback(
+    flow: 'login' | 'signup',
     googleUser: GoogleUserPayload,
     metadata: SessionMetadata,
     res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
     const result = await this.googleAuthService.validateGoogleLogin(googleUser);
+
+    if (result.type === 'signup' && flow === 'login') {
+      throw authError(AuthErrorCode.GOOGLE_NO_ACCOUNT);
+    }
 
     if (result.type === 'login') {
       const tokens = await this.sessionService.createSession(
@@ -106,13 +124,14 @@ export class AuthController {
   googleSignup() {}
 
   @Get('google/signup/callback')
+  @UseFilters(GoogleSignupCallbackFilter)
   @UseGuards(GoogleSignupGuard)
   async googleSignupCallback(
     @CurrentUser() googleUser: GoogleUserPayload,
     @ReqMetadata() metadata: SessionMetadata,
     @Res() res: Response,
   ) {
-    return this.handleGoogleCallback(googleUser, metadata, res);
+    return this.handleGoogleCallback('signup', googleUser, metadata, res);
   }
 
   @Post('google/signup/complete')
@@ -144,13 +163,14 @@ export class AuthController {
   googleLogin() {}
 
   @Get('google/callback')
+  @UseFilters(GoogleLoginCallbackFilter)
   @UseGuards(GoogleLoginGuard)
   async googleLoginCallback(
     @CurrentUser() googleUser: GoogleUserPayload,
     @ReqMetadata() metadata: SessionMetadata,
     @Res() res: Response,
   ) {
-    return this.handleGoogleCallback(googleUser, metadata, res);
+    return this.handleGoogleCallback('login', googleUser, metadata, res);
   }
 
   @Get('google/link')
@@ -158,33 +178,21 @@ export class AuthController {
   googleLink() {}
 
   @Get('google/link/callback')
+  @UseFilters(GoogleLinkCallbackFilter)
   @UseGuards(AccessGuard, GoogleLinkGuard)
   async googleLinkCallback(
     @Req() req: GoogleLinkRequest,
     @Res() res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
-    try {
-      const authContext = req.authContext;
-      const googleUser = req.user;
+    await this.googleAuthService.completeGoogleLink(
+      req.authContext.user.id,
+      req.user,
+    );
 
-      await this.googleAuthService.completeGoogleLink(
-        authContext.user.id,
-        googleUser,
-      );
-
-      return res.redirect(`${frontendUrl}/settings?google=linked`);
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Failed to link Google account';
-
-      return res.redirect(
-        `${frontendUrl}/settings?google=error&message=${encodeURIComponent(message)}`,
-      );
-    }
+    return res.redirect(`${frontendUrl}/settings?google=linked`);
   }
 
   @Post('google/link/complete')

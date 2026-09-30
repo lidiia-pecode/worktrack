@@ -7,14 +7,14 @@ import {
   UsersQuery,
   UpdateProfilePayload,
   UserDetails,
-  CreateUserPayload,
   UpdateUserPayload,
 } from "@/types";
 import { buildQueryString, createClient, createCrudClient } from "../core";
 
+// People join only by invitation, so users have no create route.
 const crud = createCrudClient<
   User,
-  CreateUserPayload,
+  never,
   UpdateUserPayload,
   UserListResponse,
   UsersQuery,
@@ -24,7 +24,9 @@ const crud = createCrudClient<
 const client = createClient({ endpoint: "users" });
 
 export const UsersClientApi = {
-  ...crud,
+  getAll: crud.getAll,
+  getById: crud.getById,
+  update: crud.update,
 
   getAssignable: (params?: UsersQuery) =>
     client.get<AssignableUserListResponse>(

@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -13,17 +14,22 @@ import {
   SignUpFormInputs,
   signupSchema,
 } from "@/lib/forms/schemas/auth.schema";
+import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
 import { applyServerErrors } from "@/lib/forms/utils";
 import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
 import {
   GOOGLE_INVITATION_URL,
   GOOGLE_LOGIN_URL,
   GOOGLE_SIGNUP_URL,
+  googleErrorMessage,
+  ROLE_LABELS,
 } from "@/lib/constants";
+import { UserRole } from "@/types/enums";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { FormAlert } from "../shared/FormAlert";
 import { GoogleButton } from "../shared/buttons/GoogleButton";
 import { PasswordInput } from "../shared/inputs";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
@@ -36,11 +42,33 @@ interface AuthFormProps {
   invitation?: {
     token: string;
     email: string;
-    role: string;
+    role: UserRole;
+    companyName: string;
+    teamName: string | null;
   };
+  /** From `?error=` after a Google sign-in that returned here. */
+  googleErrorCode?: string | null;
 }
 
-export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
+export const AuthForm = ({
+  mode,
+  invitation,
+  googleErrorCode,
+}: AuthFormProps) => {
+  // Kept from the first render, so it survives dropping `?error=` below.
+  const [googleError, setGoogleError] = useState(() =>
+    googleErrorMessage(googleErrorCode),
+  );
+
+  // Shown once: a reload or Back should not bring the message back.
+  useEffect(() => {
+    if (!googleErrorCode) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("error");
+    window.history.replaceState(null, "", url);
+  }, [googleErrorCode]);
+
   const router = useRouter();
 
   const actions = useAuthActions();
@@ -68,7 +96,16 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
     },
   });
 
+  const formError = (error: unknown) =>
+    error && !isApiValidationError(error) ? getErrorMessage(error) : null;
+
+  const loginError = formError(actions.login.error);
+  const signupError = formError(actions.signup.error);
+  const invitationError = formError(invitationActions.password.error);
+
   const onLoginSubmit = async (data: LoginFormInputs) => {
+    setGoogleError(null);
+
     try {
       await actions.login.mutateAsync(data);
 
@@ -82,6 +119,8 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
   };
 
   const onSignupSubmit = async (data: SignUpFormInputs) => {
+    setGoogleError(null);
+
     try {
       await actions.signup.mutateAsync(data);
 
@@ -96,6 +135,8 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
 
   const onInvitationSubmit = async (data: InvitationFormInputs) => {
     if (!invitation?.token) return;
+
+    setGoogleError(null);
 
     try {
       await invitationActions.password.mutateAsync({
@@ -148,26 +189,48 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
             ? "Enter your credentials to access your workspace."
             : isSignup
               ? "Set up your account and get started with WorkTrack."
-              : "Create your account to join this workspace."}
+              : `Create your account to join ${invitation?.companyName ?? "your company"}.`}
         </p>
       </div>
 
+      {googleError && <FormAlert className="mb-6">{googleError}</FormAlert>}
+
       {isInvitation && invitation && (
-        <div className="mb-7 rounded-xl border border-border/80 bg-muted/30 p-4">
+        <dl className="mb-7 space-y-3 rounded-xl border border-border/80 bg-muted/30 p-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">Email</span>
+            <dt className="text-sm text-muted-foreground">Company</dt>
 
-            <span className="truncate text-sm font-medium text-foreground">
+            <dd className="truncate text-sm font-medium text-foreground">
+              {invitation.companyName}
+            </dd>
+          </div>
+
+          {invitation.teamName && (
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-sm text-muted-foreground">Team</dt>
+
+              <dd className="truncate text-sm font-medium text-foreground">
+                {invitation.teamName}
+              </dd>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted-foreground">Role</dt>
+
+            <dd>
+              <Badge variant="neutral">{ROLE_LABELS[invitation.role]}</Badge>
+            </dd>
+          </div>
+
+          <div className="flex items-center justify-between gap-4">
+            <dt className="text-sm text-muted-foreground">Email</dt>
+
+            <dd className="truncate text-sm font-medium text-foreground">
               {invitation.email}
-            </span>
+            </dd>
           </div>
-
-          <div className="mt-3 flex items-center justify-between gap-4">
-            <span className="text-sm text-muted-foreground">Role</span>
-
-            <Badge variant="neutral">{invitation.role}</Badge>
-          </div>
-        </div>
+        </dl>
       )}
 
       {isLogin && (
@@ -190,6 +253,8 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
             error={loginForm.formState.errors.password?.message}
             disabled={isSubmitting}
           />
+
+          {loginError && <FormAlert>{loginError}</FormAlert>}
 
           <div className="-mt-1 flex justify-end">
             <Link
@@ -253,10 +318,13 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           <PasswordInput
             placeholder="Password"
             autoComplete="new-password"
+            description={PASSWORD_RULES_HINT}
             {...signupForm.register("password")}
             error={signupForm.formState.errors.password?.message}
             disabled={isSubmitting}
           />
+
+          {signupError && <FormAlert>{signupError}</FormAlert>}
 
           <Button
             type="submit"
@@ -295,6 +363,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           <PasswordInput
             placeholder="Password"
             autoComplete="new-password"
+            description={PASSWORD_RULES_HINT}
             {...invitationForm.register("password")}
             error={invitationForm.formState.errors.password?.message}
             disabled={isSubmitting}
@@ -308,11 +377,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
             disabled={isSubmitting}
           />
 
-          {invitationActions.password.isError && (
-            <p className="text-sm text-destructive-text">
-              {getErrorMessage(invitationActions.password.error)}
-            </p>
-          )}
+          {invitationError && <FormAlert>{invitationError}</FormAlert>}
 
           <Button
             type="submit"
@@ -337,17 +402,28 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
 
       <GoogleButton onClick={handleGoogleAuth} disabled={isSubmitting} />
 
-      {!isInvitation && (
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          {isLogin
-            ? "Don't have an account yet? "
-            : "Already have an account? "}
-
+      {isLogin && (
+        <p className="mt-5 text-center text-sm leading-6 text-muted-foreground">
+          Joining a company? Use the link in your invitation email.
+          <br />
+          Starting a new one?{" "}
           <Link
-            href={isLogin ? "/register" : "/login"}
-            className="ml-1 font-medium text-brand hover:underline"
+            href="/register"
+            className="font-medium text-brand hover:underline"
           >
-            {isLogin ? "Sign up" : "Sign in"}
+            Start a company
+          </Link>
+        </p>
+      )}
+
+      {isSignup && (
+        <p className="mt-5 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-medium text-brand hover:underline"
+          >
+            Sign in
           </Link>
         </p>
       )}

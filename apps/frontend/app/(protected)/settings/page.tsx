@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { UserRole } from "@/types/enums";
@@ -10,17 +10,28 @@ import { SecuritySettings } from "@/app/components/settings/security/SecuritySet
 import { CompanySettings } from "@/app/components/settings/company/CompanySettings";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { useGoogleLinkResult } from "@/hooks/auth/useGoogleLinkResult";
-
-type SettingsTab = "profile" | "security" | "company";
+import {
+  resolveSettingsTab,
+  type SettingsTab,
+} from "@/app/components/settings/settings-tabs";
 
 export default function SettingsPage() {
   const { user } = useAuth();
 
-  useGoogleLinkResult();
+  const searchParams = useSearchParams();
+  const { hasResult: hasGoogleResult } = useGoogleLinkResult();
 
   const isOwner = user?.role === UserRole.OWNER;
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>("profile");
+  const activeTab = resolveSettingsTab(searchParams.get("tab"), {
+    isOwner,
+    hasGoogleResult,
+  });
+
+  // Next keeps useSearchParams in step with the history API, so switching tabs
+  // needs no request to the server.
+  const setActiveTab = (tab: SettingsTab) =>
+    window.history.replaceState(null, "", `?tab=${tab}`);
 
   return (
     <section className="flex min-h-full w-full flex-col p-6">
