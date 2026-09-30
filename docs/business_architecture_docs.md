@@ -535,8 +535,9 @@ revoked — by the owner for the whole company, by a manager for those into the
 teams they lead; an expired one stays listed, marked expired, until it is resent
 or revoked. A resend issues a new link and a fresh seven days, the old link stops
 working, and sending and resending are each limited per session. Inviting an
-address that has an account in another company is refused with a neutral message
-that reveals nothing about it. A link that cannot be used says why — expired,
+address that has an account in another company is refused with a neutral
+message: it shows the address cannot be invited, but not which company it
+belongs to. A link that cannot be used says why — expired,
 revoked, already accepted or unknown — and, when expired or revoked, whom to ask.
 
 Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
@@ -704,8 +705,9 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-Backend test coverage is twenty-eight suites and 477 tests, covering the
-role-visibility filters, team and invitation rules, time-log, absence, capacity
+Backend test coverage is thirty-four suites and 534 tests, covering the
+role-visibility filters, team and invitation rules, the Google callbacks and
+notifications, time-log, absence, capacity
 and planning rules, monthly locking in and outside UTC, the reports and the
 export, page and date-range limits, name checks, and session refresh, rate
 limits and token clean-up — most against a real database. The frontend has

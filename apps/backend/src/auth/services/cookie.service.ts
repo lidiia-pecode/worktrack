@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { CookieOptions, Request, Response } from 'express';
 
+export const INVITATION_FLOW_COOKIE = 'invitation_flow_token';
+
 @Injectable()
 export class CookieService {
   private static readonly ACCESS_TOKEN_COOKIE = 'access_token';
   private static readonly REFRESH_TOKEN_COOKIE = 'refresh_token';
-  private static readonly INVITATION_FLOW_COOKIE = 'invitation_flow_token';
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -53,7 +54,7 @@ export class CookieService {
   }
 
   setInvitationFlowCookie(res: Response, token: string): void {
-    res.cookie(CookieService.INVITATION_FLOW_COOKIE, token, {
+    res.cookie(INVITATION_FLOW_COOKIE, token, {
       ...this.getCookieOptions(),
       maxAge: this.configService.getOrThrow<number>(
         'auth.google.oauthStateExpiresInMs',
@@ -62,12 +63,11 @@ export class CookieService {
   }
 
   getInvitationFlowToken(req: Request): string | undefined {
-    return req.cookies?.[CookieService.INVITATION_FLOW_COOKIE] as
-      string | undefined;
+    return req.cookies?.[INVITATION_FLOW_COOKIE] as string | undefined;
   }
 
   clearInvitationFlowCookie(res: Response): void {
-    res.clearCookie(CookieService.INVITATION_FLOW_COOKIE, {
+    res.clearCookie(INVITATION_FLOW_COOKIE, {
       ...this.getCookieOptions(),
     });
   }

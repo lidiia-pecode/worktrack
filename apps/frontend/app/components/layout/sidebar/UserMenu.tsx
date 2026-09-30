@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 import { ROLE_LABELS } from "@/lib/constants";
+import { UserRole } from "@/types/enums";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { fullName, initials } from "@/lib/utils/user";
 import { useRouter } from "next/navigation";
@@ -20,7 +21,6 @@ import { useNotifications } from "@/hooks/useNotifications";
 
 import { NotificationsDialog } from "./NotificationsDialog";
 
-/** Past this the badge reads "9+", which is all a count in a menu needs. */
 const MAX_SHOWN_COUNT = 9;
 
 const countLabel = (count: number) =>
@@ -30,11 +30,22 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
   const router = useRouter();
   const { user } = useAuth();
   const actions = useAuthActions();
-  const { data: notifications } = useNotifications();
+  const receivesNotifications =
+    Boolean(user) && user?.role !== UserRole.EMPLOYEE;
+  const { data: notifications } = useNotifications({
+    enabled: receivesNotifications,
+  });
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const userInitials = initials(user);
   const unreadCount = notifications?.unreadCount ?? 0;
+  const accountLabel = [
+    user && `${fullName(user)}, ${ROLE_LABELS[user.role]}`,
+    "account menu",
+    unreadCount > 0 && `${unreadCount} unread notifications`,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   const handleLogout = () => {
     actions.logout.mutate(undefined, {
@@ -52,11 +63,7 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
           render={
             <button
               className="flex w-full items-center gap-3 rounded-xl p-2 transition-colors hover:bg-gray-100"
-              aria-label={
-                unreadCount > 0
-                  ? `Account menu, ${unreadCount} unread notifications`
-                  : "Account menu"
-              }
+              aria-label={accountLabel}
             >
               <div
                 className={`relative flex ${isDesktop ? "h-7 w-7" : "h-10 w-10"} items-center justify-center rounded-full bg-gray-900 text-sm font-semibold text-white`}
@@ -99,15 +106,17 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
             Settings
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setNotificationsOpen(true)}>
-            <Bell />
-            Notifications
-            {unreadCount > 0 && (
-              <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-brand-foreground tabular-nums">
-                {countLabel(unreadCount)}
-              </span>
-            )}
-          </DropdownMenuItem>
+          {receivesNotifications && (
+            <DropdownMenuItem onClick={() => setNotificationsOpen(true)}>
+              <Bell />
+              Notifications
+              {unreadCount > 0 && (
+                <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-brand-foreground tabular-nums">
+                  {countLabel(unreadCount)}
+                </span>
+              )}
+            </DropdownMenuItem>
+          )}
 
           <DropdownMenuSeparator className="m-0" />
 
@@ -122,10 +131,12 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <NotificationsDialog
-        open={notificationsOpen}
-        onClose={() => setNotificationsOpen(false)}
-      />
+      {receivesNotifications && (
+        <NotificationsDialog
+          open={notificationsOpen}
+          onClose={() => setNotificationsOpen(false)}
+        />
+      )}
     </>
   );
 }

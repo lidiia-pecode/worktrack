@@ -58,7 +58,7 @@ export class Notification {
   @JoinColumn({ name: 'recipient_id' })
   recipient!: User;
 
-  @ManyToOne(() => User, { nullable: true, onDelete: 'CASCADE' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'subject_user_id' })
   subjectUser!: User | null;
 }

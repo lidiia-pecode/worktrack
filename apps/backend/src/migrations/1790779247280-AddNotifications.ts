@@ -20,7 +20,7 @@ export class AddNotifications1790779247280 implements MigrationInterface {
       `ALTER TABLE "notifications" ADD CONSTRAINT "FK_5332a4daa46fd3f4e6625dd275d" FOREIGN KEY ("recipient_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
     );
     await queryRunner.query(
-      `ALTER TABLE "notifications" ADD CONSTRAINT "FK_fa81c50194573f2c1d2acb29270" FOREIGN KEY ("subject_user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`,
+      `ALTER TABLE "notifications" ADD CONSTRAINT "FK_fa81c50194573f2c1d2acb29270" FOREIGN KEY ("subject_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE NO ACTION`,
     );
   }
 

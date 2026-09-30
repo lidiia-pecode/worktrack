@@ -7,13 +7,19 @@ import type { NotificationList } from "@/types/Notification";
 
 import { queryKeys } from "./shared/queryKeys";
 
+/**
+ * Often enough to see someone join without a reload. React Query also refetches
+ * when the tab regains focus.
+ */
 const REFRESH_INTERVAL_MS = 60_000;
 
-export const useNotifications = () =>
+/** Only people who can invite receive notifications, so only they ask. */
+export const useNotifications = ({ enabled }: { enabled: boolean }) =>
   useQuery({
     queryKey: queryKeys.notifications.all,
     queryFn: NotificationsClientApi.list,
     refetchInterval: REFRESH_INTERVAL_MS,
+    enabled,
   });
 
 export const useMarkNotificationsRead = () => {
@@ -21,6 +27,10 @@ export const useMarkNotificationsRead = () => {
 
   return useMutation({
     mutationFn: NotificationsClientApi.markAllRead,
+
+    // A refresh already on its way would bring the old unread count back.
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: queryKeys.notifications.all }),
 
     onSuccess: () =>
       queryClient.setQueryData<NotificationList>(

@@ -100,17 +100,10 @@ export class InvitationsService {
       },
     });
 
-    if (existingInvitation) {
-      if (existingInvitation.expiresAt > new Date()) {
-        throw new ConflictException(
-          'An active invitation already exists for this email',
-        );
-      }
-
-      existingInvitation.status = InvitationStatus.REVOKED;
-      existingInvitation.revokedAt = new Date();
-
-      await this.invitationRepository.save(existingInvitation);
+    if (existingInvitation && existingInvitation.expiresAt > new Date()) {
+      throw new ConflictException(
+        'An active invitation already exists for this email',
+      );
     }
 
     const invitation = this.invitationRepository.create({
@@ -122,10 +115,9 @@ export class InvitationsService {
       status: InvitationStatus.PENDING,
     });
 
-    await this.saveWithNewLinkAndSend(invitation);
+    await this.saveWithNewLinkAndSend(invitation, existingInvitation);
   }
 
-  /** Expired invitations stay listed, marked, so they can be resent. */
   async listPending(user: AuthUser): Promise<PendingInvitation[]> {
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
@@ -214,11 +206,6 @@ export class InvitationsService {
         throw new ConflictException('A user with this email already exists');
       }
 
-      const normalizedFirstName = firstName.trim();
-      const normalizedLastName = lastName.trim();
-
-      this.validateUserName(normalizedFirstName, normalizedLastName);
-
       const passwordHash = await this.passwordService.hash(password);
 
       const user = await this.usersService.createInvitedUser(
@@ -226,8 +213,8 @@ export class InvitationsService {
           companyId: invitation.companyId,
           email,
           role: invitation.role,
-          firstName: normalizedFirstName,
-          lastName: normalizedLastName,
+          firstName,
+          lastName,
           passwordHash,
         },
         manager,
@@ -314,9 +301,13 @@ export class InvitationsService {
 
   /**
    * Every send gets a fresh link, so only the latest email works. The email
-   * goes out before the save is committed, so a failed send changes nothing.
+   * goes out before the save is committed, so a failed send changes nothing —
+   * including the expired invitation it replaces, which stays listed.
    */
-  private async saveWithNewLinkAndSend(invitation: Invitation): Promise<void> {
+  private async saveWithNewLinkAndSend(
+    invitation: Invitation,
+    replaces?: Invitation | null,
+  ): Promise<void> {
     const rawToken = randomBytes(32).toString('hex');
 
     invitation.tokenHash = this.hashToken(rawToken);
@@ -328,9 +319,15 @@ export class InvitationsService {
 
     await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Invitation);
+
+      if (replaces) {
+        replaces.status = InvitationStatus.REVOKED;
+        replaces.revokedAt = new Date();
+        await repository.save(replaces);
+      }
+
       const { id } = await repository.save(invitation);
 
-      // The original sender stays the inviter when someone else resends it.
       const saved = await repository.findOneOrFail({
         where: { id },
         relations: { company: true, invitedBy: true, team: true },
@@ -340,7 +337,6 @@ export class InvitationsService {
         inviteUrl,
         companyName: saved.company.companyName,
         inviterName: fullName(saved.invitedBy),
-        // Only managers and employees are ever invited.
         roleDescription:
           saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
         teamName: saved.team?.name ?? null,
@@ -349,7 +345,6 @@ export class InvitationsService {
     });
   }
 
-  /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
   private async findPendingInScope(
     id: string,
     user: AuthUser,
@@ -462,8 +457,6 @@ export class InvitationsService {
       throw new BadRequestException('An employee must be invited into a team');
     }
 
-    // Checked before the team itself, so a manager gets the same answer for
-    // any team they do not lead, whether it exists, is archived or not.
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
@@ -536,12 +529,6 @@ export class InvitationsService {
 
     if (role === UserRole.MANAGER && callerRole !== UserRole.OWNER) {
       throw new ForbiddenException('Only an owner can invite a manager');
-    }
-  }
-
-  private validateUserName(firstName: string, lastName: string): void {
-    if (!firstName || !lastName) {
-      throw new BadRequestException('First name and last name are required');
     }
   }
 

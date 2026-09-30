@@ -16,7 +16,7 @@ describe("googleErrorMessage", () => {
 
   it("falls back to a generic message for a code it does not know", () => {
     expect(googleErrorMessage("SOMETHING_NEW")).toBe(
-      "Signing in with Google did not work. Try again.",
+      "Something went wrong with Google. Try again.",
     );
   });
 });

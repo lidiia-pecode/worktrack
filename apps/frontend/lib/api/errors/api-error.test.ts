@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest";
 
+import { UnusableInvitationCode } from "@/types/enums";
+
 import { isUnusableInvitationError } from "./api-error";
 
 describe("isUnusableInvitationError", () => {
-  it("recognises the codes the invitation routes send", () => {
-    expect(
-      isUnusableInvitationError({
-        statusCode: 400,
-        message: "Invitation has expired",
-        code: "INVITATION_EXPIRED",
-      }),
-    ).toBe(true);
-  });
+  it.each(Object.values(UnusableInvitationCode))(
+    "recognises %s, a code the invitation routes send",
+    (code) => {
+      expect(
+        isUnusableInvitationError({ statusCode: 400, message: "", code }),
+      ).toBe(true);
+    },
+  );
 
   it.each([
     { statusCode: 404, message: "Not found" },

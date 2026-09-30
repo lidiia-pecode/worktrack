@@ -1,10 +1,12 @@
 // apps/backend/src/auth/guards/GoogleGuard.ts
 
-import { UnauthorizedException } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 
 export function createGoogleGuard(strategy: string) {
   class GoogleGuard extends AuthGuard(strategy) {
+    readonly logger = new Logger(`GoogleGuard:${strategy}`);
+
     handleRequest<TUser = unknown>(
       err: unknown,
       user: unknown,
@@ -12,6 +14,12 @@ export function createGoogleGuard(strategy: string) {
     ): TUser {
       if (err || !user) {
         const infoObj = info as { message?: string } | undefined;
+
+        this.logger.warn(
+          `Google authentication failed: ${
+            err instanceof Error ? err.message : (infoObj?.message ?? 'no user')
+          }`,
+        );
 
         throw new UnauthorizedException(
           infoObj?.message ?? 'Google authentication failed',

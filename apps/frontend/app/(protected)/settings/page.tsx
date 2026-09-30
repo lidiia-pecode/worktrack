@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { UserRole } from "@/types/enums";
@@ -19,8 +19,6 @@ export default function SettingsPage() {
   const { user } = useAuth();
 
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
   const { hasResult: hasGoogleResult } = useGoogleLinkResult();
 
   const isOwner = user?.role === UserRole.OWNER;
@@ -30,8 +28,10 @@ export default function SettingsPage() {
     hasGoogleResult,
   });
 
+  // Next keeps useSearchParams in step with the history API, so switching tabs
+  // needs no request to the server.
   const setActiveTab = (tab: SettingsTab) =>
-    router.replace(`${pathname}?tab=${tab}`, { scroll: false });
+    window.history.replaceState(null, "", `?tab=${tab}`);
 
   return (
     <section className="flex min-h-full w-full flex-col p-6">

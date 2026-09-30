@@ -197,7 +197,7 @@ describe('InvitationsService pending invitations', () => {
       await expect(findPending(email)).resolves.toBeDefined();
     });
 
-    it('keeps an expired invitation revoked on the way', async () => {
+    it('keeps the expired invitation it would replace', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
 
@@ -211,6 +211,28 @@ describe('InvitationsService pending invitations', () => {
       const invitations = await findInvitations(email);
 
       expect(invitations.map((invitation) => invitation.status)).toEqual([
+        InvitationStatus.PENDING,
+      ]);
+    });
+  });
+
+  describe('inviting again over an expired invitation', () => {
+    it('replaces it with a new pending one', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
+
+      await invite(owner, email, alpha);
+
+      const statuses = (await findInvitations(email))
+        .map((invitation) => invitation.status)
+        .sort();
+
+      expect(statuses).toEqual([
+        InvitationStatus.PENDING,
         InvitationStatus.REVOKED,
       ]);
     });

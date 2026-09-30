@@ -3,6 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -54,7 +55,19 @@ export const AuthForm = ({
   invitation,
   googleErrorCode,
 }: AuthFormProps) => {
-  const googleError = googleErrorMessage(googleErrorCode);
+  // Kept from the first render, so it survives dropping `?error=` below.
+  const [googleError, setGoogleError] = useState(() =>
+    googleErrorMessage(googleErrorCode),
+  );
+
+  // Shown once: a reload or Back should not bring the message back.
+  useEffect(() => {
+    if (!googleErrorCode) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.delete("error");
+    window.history.replaceState(null, "", url);
+  }, [googleErrorCode]);
 
   const router = useRouter();
 
@@ -88,8 +101,11 @@ export const AuthForm = ({
 
   const loginError = formError(actions.login.error);
   const signupError = formError(actions.signup.error);
+  const invitationError = formError(invitationActions.password.error);
 
   const onLoginSubmit = async (data: LoginFormInputs) => {
+    setGoogleError(null);
+
     try {
       await actions.login.mutateAsync(data);
 
@@ -103,6 +119,8 @@ export const AuthForm = ({
   };
 
   const onSignupSubmit = async (data: SignUpFormInputs) => {
+    setGoogleError(null);
+
     try {
       await actions.signup.mutateAsync(data);
 
@@ -117,6 +135,8 @@ export const AuthForm = ({
 
   const onInvitationSubmit = async (data: InvitationFormInputs) => {
     if (!invitation?.token) return;
+
+    setGoogleError(null);
 
     try {
       await invitationActions.password.mutateAsync({
@@ -357,13 +377,7 @@ export const AuthForm = ({
             disabled={isSubmitting}
           />
 
-          {/* Field errors already sit under their fields. */}
-          {invitationActions.password.isError &&
-            !isApiValidationError(invitationActions.password.error) && (
-              <p role="alert" className="text-sm text-destructive-text">
-                {getErrorMessage(invitationActions.password.error)}
-              </p>
-            )}
+          {invitationError && <FormAlert>{invitationError}</FormAlert>}
 
           <Button
             type="submit"

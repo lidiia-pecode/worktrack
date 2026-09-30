@@ -81,7 +81,9 @@ export function NotificationsDialog({
   open,
   onClose,
 }: NotificationsDialogProps) {
-  const { data, isError, refetch } = useNotifications();
+  const { data, isError, isPending, refetch } = useNotifications({
+    enabled: true,
+  });
   const markRead = useMarkNotificationsRead();
   const { mutate: markAllRead } = markRead;
   const hasUnread = (data?.unreadCount ?? 0) > 0;
@@ -102,7 +104,7 @@ export function NotificationsDialog({
       title="Notifications"
       icon={<Bell className="size-5" />}
     >
-      {isError ? (
+      {isError && !data ? (
         <p className="text-sm text-muted-foreground">
           Could not load your notifications.{" "}
           <button
@@ -113,6 +115,8 @@ export function NotificationsDialog({
             Try again
           </button>
         </p>
+      ) : isPending ? (
+        <p className="text-sm text-muted-foreground">Loading notifications…</p>
       ) : notifications.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           Nothing yet. When someone you invited joins, you will see it here.
