@@ -528,10 +528,25 @@ are still active, that the person has joined, so they can put them on a project;
 it is an in-app notification only, and each person reads only their own.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
-A failed invitation email leaves no invitation behind. Pending invitations can be
-listed, resent and revoked — by the owner for the whole company, by a manager for
-those into the teams they lead. A resend issues a new link and the old one stops
-working, and sending and resending are each limited per session. Archiving a team
+An invitation is valid for seven days, a product rule rather than a setting. Its
+email names the company, the sender, the role and the team. A failed invitation
+email leaves no invitation behind. Pending invitations can be listed, resent and
+revoked — by the owner for the whole company, by a manager for those into the
+teams they lead; an expired one stays listed, marked expired, until it is resent
+or revoked. A resend issues a new link and a fresh seven days, the old link stops
+working, and sending and resending are each limited per session. Inviting an
+address that has an account in another company is refused with a neutral message
+that reveals nothing about it. A link that cannot be used says why — expired,
+revoked, already accepted or unknown — and, when expired or revoked, whom to ask.
+
+Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
+is 8–100 characters with an upper-case letter, a lower-case letter and a digit;
+an existing password is only checked for presence. Names are 1–100 characters and
+company names 2–100 characters of any kind. "Continue with Google" on the sign-in
+page signs in only accounts WorkTrack knows; an unknown one is pointed to the
+invitation email, and only the sign-up page starts a company. A failed Google
+sign-in returns to the page it started from with a message, never an error on the
+backend's host. Archiving a team
 revokes its pending invitations and closes the team (§5).
 
 Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
@@ -604,8 +619,9 @@ see, and how a new company gets started. §7 plans that work.
 
 - **Authentication and sessions** — email/password and Google, HTTP-only
   cookies, rotating refresh tokens that survive concurrent refreshes, password
-  reset, changing or setting your own password, invitation-based signup. Rate
-  limits count signed-in traffic per session and sign-in attempts per account.
+  reset that signs you in, changing or setting your own password,
+  invitation-based signup by password or Google. Rate limits count signed-in
+  traffic per session and sign-in attempts per account.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
@@ -760,6 +776,7 @@ is in its pull request.
 | 12 | Keyboard and screen-reader access, AA contrast |
 | 13 | Excel export of hours |
 | 14 | Company setup: a three-question wizard and an owner's checklist that ends with somebody able to log time; a manager's welcome; only Managers lead teams; archived teams closed; clients and billable defaults on the forms; local development on the host |
+| 15 | Invitations, joining and signing in: seven-day invitations with a fuller email, expired ones kept and resendable; an invitation page that explains every link; Google failures back on WorkTrack pages; one password and name rule; no username or direct creation; a "joined" notification for the inviter |
 
 ### Improvement roadmap — high level, flexible
 
