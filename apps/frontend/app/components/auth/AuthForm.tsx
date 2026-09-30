@@ -13,6 +13,7 @@ import {
   SignUpFormInputs,
   signupSchema,
 } from "@/lib/forms/schemas/auth.schema";
+import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
 import { applyServerErrors } from "@/lib/forms/utils";
 import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
 import {
@@ -253,6 +254,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           <PasswordInput
             placeholder="Password"
             autoComplete="new-password"
+            description={PASSWORD_RULES_HINT}
             {...signupForm.register("password")}
             error={signupForm.formState.errors.password?.message}
             disabled={isSubmitting}
@@ -295,6 +297,7 @@ export const AuthForm = ({ mode, invitation }: AuthFormProps) => {
           <PasswordInput
             placeholder="Password"
             autoComplete="new-password"
+            description={PASSWORD_RULES_HINT}
             {...invitationForm.register("password")}
             error={invitationForm.formState.errors.password?.message}
             disabled={isSubmitting}

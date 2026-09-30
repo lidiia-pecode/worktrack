@@ -1,12 +1,10 @@
 import { WeekDay } from "@/types/enums";
 import { z } from "zod";
 
+import { companyNameSchema } from "./names.schema";
+
 export const companySchema = z.object({
-  companyName: z
-    .string()
-    .trim()
-    .min(2, "Company name must be at least 2 characters")
-    .max(255, "Company name must be at most 255 characters"),
+  companyName: companyNameSchema,
 
   timezone: z.string().min(1, "Choose a time zone"),
 

@@ -6,18 +6,15 @@ import {
   MinLength,
 } from 'class-validator';
 import { TrimAndLowercase } from 'src/lib/decorators';
+import { PersonName } from 'src/lib/validators/account-fields';
 
 export class UpdateProfilePayload {
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @PersonName('First name')
   firstName?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @PersonName('Last name')
   lastName?: string;
 
   @TrimAndLowercase()
@@ -31,10 +28,4 @@ export class UpdateProfilePayload {
   @IsOptional()
   @IsString()
   avatarUrl?: string;
-
-  // @IsOptional()
-  // @MinLength(8)
-  // @MaxLength(100)
-  // @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/)
-  // password?: string;
 }

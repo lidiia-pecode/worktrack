@@ -1,51 +1,28 @@
-// apps/backend/src/auth/auth.dto.ts
-
-import {
-  IsEmail,
-  IsNotEmpty,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 import { TrimAndLowercase } from 'src/lib/decorators';
+import {
+  CompanyName,
+  ExistingPassword,
+  NewPassword,
+  PersonName,
+} from 'src/lib/validators/account-fields';
 import { AuthContext } from '../auth-strategies/types';
-import { TrimString } from 'src/lib/decorators/trim-string.decorator';
 
 export class SignUpPayload {
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(20)
+  @PersonName('First name')
   firstName!: string;
 
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(20)
+  @PersonName('Last name')
   lastName!: string;
 
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(100)
-  @TrimString()
-  @Matches(/^[a-zA-Z0-9_ ]+$/, {
-    message:
-      'Company name can contain only letters, numbers, spaces, and underscores',
-  })
+  @CompanyName()
   companyName!: string;
 
   @TrimAndLowercase()
   @IsEmail()
   email!: string;
 
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/, {
-    message: 'Password needs to contain at least 1 capital letter and 1 number',
-  })
+  @NewPassword()
   password!: string;
 }
 
@@ -54,12 +31,7 @@ export class SignInPayload {
   @IsEmail()
   email!: string;
 
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/, {
-    message: 'Password need to contain at least 1 Cap letter and 1 number',
-  })
+  @ExistingPassword()
   password!: string;
 }
 
@@ -79,10 +51,7 @@ export class GoogleUserPayload {
 }
 
 export class CompleteGoogleSignupDto {
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(100)
+  @CompanyName()
   companyName!: string;
 
   @IsNotEmpty()

@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
 import { TrimAndLowercase } from 'src/lib/decorators';
+import { PersonName } from 'src/lib/validators/account-fields';
 
 export class CreateUserPayload {
   @IsNotEmpty()
@@ -60,15 +61,11 @@ export class CreateUserPayload {
 
 export class UpdateUserPayload {
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @PersonName('First name')
   firstName?: string;
 
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
+  @PersonName('Last name')
   lastName?: string;
 
   @IsOptional()

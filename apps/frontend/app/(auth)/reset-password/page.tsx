@@ -9,6 +9,7 @@ import {
   ResetPasswordFormValues,
   resetPasswordSchema,
 } from "@/lib/forms/schemas/reset-password.schema";
+import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import { settingsLabelClassName } from "@/app/components/settings/styles/settings-styles";
 import {
@@ -79,6 +80,7 @@ export default function ResetPasswordPage() {
           label="New password"
           type="password"
           placeholder="Enter a new password"
+          description={PASSWORD_RULES_HINT}
           {...register("newPassword")}
           error={errors.newPassword?.message}
           labelClassname={settingsLabelClassName}

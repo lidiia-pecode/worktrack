@@ -1,21 +1,15 @@
+import { IsOptional } from 'class-validator';
+
 import {
-  IsOptional,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+  ExistingPassword,
+  NewPassword,
+} from 'src/lib/validators/account-fields';
 
 export class ChangePasswordPayload {
   @IsOptional()
-  @IsString()
-  @MinLength(1)
-  @MaxLength(100)
+  @ExistingPassword()
   currentPassword?: string;
 
-  @IsString()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/)
+  @NewPassword()
   newPassword!: string;
 }

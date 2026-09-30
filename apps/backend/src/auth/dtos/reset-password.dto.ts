@@ -1,10 +1,6 @@
-import {
-  IsEmail,
-  IsString,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEmail, IsString, MinLength } from 'class-validator';
+
+import { NewPassword } from 'src/lib/validators/account-fields';
 
 export class ForgotPasswordDto {
   @IsEmail()
@@ -16,9 +12,6 @@ export class ResetPasswordDto {
   @MinLength(1)
   token!: string;
 
-  @IsString()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/)
+  @NewPassword()
   newPassword!: string;
 }

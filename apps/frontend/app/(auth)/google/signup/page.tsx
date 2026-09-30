@@ -1,5 +1,6 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -9,10 +10,10 @@ import { Button } from "@/components/ui/button";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { isApiMessageError } from "@/lib/api";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
-
-interface GoogleSignupForm {
-  companyName: string;
-}
+import {
+  googleSignupSchema,
+  type GoogleSignupFormInputs,
+} from "@/lib/forms/schemas/auth.schema";
 
 export default function GoogleSignupPage() {
   const router = useRouter();
@@ -25,13 +26,14 @@ export default function GoogleSignupPage() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<GoogleSignupForm>({
+  } = useForm<GoogleSignupFormInputs>({
+    resolver: zodResolver(googleSignupSchema),
     defaultValues: {
       companyName: "",
     },
   });
 
-  const onSubmit = async (data: GoogleSignupForm) => {
+  const onSubmit = async (data: GoogleSignupFormInputs) => {
     if (!token) {
       toast.error("Google signup token is missing");
       return;
@@ -40,7 +42,7 @@ export default function GoogleSignupPage() {
     try {
       await actions.completeGoogleSignup.mutateAsync({
         token,
-        companyName: data.companyName.trim(),
+        companyName: data.companyName,
       });
 
       router.replace("/onboarding");
@@ -67,11 +69,7 @@ export default function GoogleSignupPage() {
       >
         <Input
           placeholder="Company name"
-          {...register("companyName", {
-            required: "Company name is required",
-            validate: (value) =>
-              value.trim().length > 0 || "Company name is required",
-          })}
+          {...register("companyName")}
           error={errors.companyName?.message}
           disabled={isSubmitting}
         />
