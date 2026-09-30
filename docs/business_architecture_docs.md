@@ -517,9 +517,10 @@ its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
-lead. An employee invitation always names a team, and creating an employee
-directly does too. Accepting an invitation that carries a team creates the team
-membership, always as a `MEMBER`, in the same transaction that creates the user.
+lead. An employee invitation always names a team. There is no other way in:
+nobody is created directly. Accepting an invitation that carries a team creates
+the team membership, always as a `MEMBER`, in the same transaction that creates
+the user.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
 A failed invitation email leaves no invitation behind. Pending invitations can be

@@ -1,63 +1,6 @@
-import {
-  IsEmail,
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Matches,
-  MaxLength,
-  MinLength,
-} from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
-import { TrimAndLowercase } from 'src/lib/decorators';
 import { PersonName } from 'src/lib/validators/account-fields';
-
-export class CreateUserPayload {
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  firstName!: string;
-
-  @IsNotEmpty()
-  @IsString()
-  @MinLength(2)
-  @MaxLength(50)
-  lastName!: string;
-
-  @TrimAndLowercase()
-  @IsOptional()
-  @IsString()
-  @MinLength(3)
-  @MaxLength(20)
-  @Matches(/^[a-zA-Z0-9_]+$/, {
-    message: 'Username can contain only letters, numbers, and underscores',
-  })
-  username?: string;
-
-  @TrimAndLowercase()
-  @IsNotEmpty()
-  @IsEmail()
-  @MaxLength(100)
-  email!: string;
-
-  @IsNotEmpty()
-  @MinLength(8)
-  @MaxLength(100)
-  @Matches(/^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9]).*$/, {
-    message: 'Password need to contain at least 1 Cap letter and 1 number',
-  })
-  password!: string;
-
-  @IsOptional()
-  @IsEnum(UserRole)
-  role?: UserRole;
-
-  @IsOptional()
-  @IsUUID()
-  teamId?: string;
-}
 
 export class UpdateUserPayload {
   @IsOptional()

@@ -34,20 +34,17 @@ const UNASSIGNED_EMAIL = 'unassigned@worktrack.test';
 
 export interface SeedUser {
   email: string;
-  username: string;
   firstName: string;
   lastName: string;
   role: UserRole;
   position: string;
   capacityHoursPerWeek: number;
-  /** Shown in the credentials file so it is obvious who to log in as and why. */
   note: string;
 }
 
 export const USERS: SeedUser[] = [
   {
     email: OWNER_EMAIL,
-    username: 'owner',
     firstName: 'Owner',
     lastName: 'WorkTrack',
     role: UserRole.OWNER,
@@ -57,7 +54,6 @@ export const USERS: SeedUser[] = [
   },
   {
     email: MANAGER_EMAIL,
-    username: 'manager',
     firstName: 'Sarah',
     lastName: 'Manager',
     role: UserRole.MANAGER,
@@ -67,7 +63,6 @@ export const USERS: SeedUser[] = [
   },
   {
     email: DEV_EMAIL,
-    username: 'developer',
     firstName: 'John',
     lastName: 'Doe',
     role: UserRole.EMPLOYEE,
@@ -77,7 +72,6 @@ export const USERS: SeedUser[] = [
   },
   {
     email: DESIGNER_EMAIL,
-    username: 'designer',
     firstName: 'Jane',
     lastName: 'Smith',
     role: UserRole.EMPLOYEE,
@@ -87,7 +81,6 @@ export const USERS: SeedUser[] = [
   },
   {
     email: UNASSIGNED_EMAIL,
-    username: 'unassigned',
     firstName: 'Mark',
     lastName: 'Nobody',
     role: UserRole.EMPLOYEE,

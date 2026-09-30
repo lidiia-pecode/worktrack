@@ -26,7 +26,6 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
       userRepo.create({
         companyId,
         email: data.email,
-        username: data.username,
         firstName: data.firstName,
         lastName: data.lastName,
         role: data.role,

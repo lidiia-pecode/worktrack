@@ -32,9 +32,6 @@ export class UserResponse {
   email!: string;
 
   @Expose()
-  username?: string;
-
-  @Expose()
   googleLinked!: boolean;
 
   @Expose()

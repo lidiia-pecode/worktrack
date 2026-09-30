@@ -7,20 +7,16 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
-import { CreateUserPayload, UpdateUserPayload } from './dtos/user-payload.dto';
+import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
 import { UsersQuery } from './dtos/users-query.dto';
 import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
-import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
-import { findActiveTeam } from 'src/teams/find-active-team.util';
-import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Injectable()
@@ -40,7 +36,6 @@ export class UsersService {
     repo: Repository<User>,
     user: User,
     email?: string,
-    username?: string,
   ): Promise<User> {
     try {
       return await repo.save(user);
@@ -54,14 +49,6 @@ export class UsersService {
         ) {
           throw new ConflictException(
             `User with email ${email || user.email} already exists`,
-          );
-        }
-        if (
-          constraint?.includes('username') ||
-          error.driverError.detail?.includes('username')
-        ) {
-          throw new ConflictException(
-            `User with username ${username || user.username} already exists`,
           );
         }
         throw new ConflictException(
@@ -324,77 +311,6 @@ export class UsersService {
     return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
-  async createUser(
-    companyId: string,
-    payload: CreateUserPayload,
-    manager?: EntityManager,
-  ): Promise<User> {
-    const { teamId, ...userFields } = payload;
-    const role = userFields.role ?? UserRole.EMPLOYEE;
-
-    if (role === UserRole.EMPLOYEE && !teamId) {
-      throw new BadRequestException('An employee must be created in a team');
-    }
-
-    if (role !== UserRole.EMPLOYEE && teamId) {
-      throw new BadRequestException(
-        'Only an employee can be created in a team',
-      );
-    }
-
-    const execute = async (man: EntityManager): Promise<User> => {
-      const repo = this.getRepository(man);
-      const passwordHash = await hashPassword(userFields.password);
-
-      const user = repo.create({
-        ...userFields,
-        role,
-        email: userFields.email?.toLowerCase().trim(),
-        companyId,
-        passwordHash,
-        status: UserStatus.ACTIVE,
-      });
-
-      const saved = await this.safeSave(
-        repo,
-        user,
-        userFields.email,
-        userFields.username,
-      );
-
-      if (teamId) {
-        await this.addToActiveTeam(man, companyId, teamId, saved.id);
-      }
-
-      return saved;
-    };
-
-    return manager ? execute(manager) : this.dataSource.transaction(execute);
-  }
-
-  private async addToActiveTeam(
-    manager: EntityManager,
-    companyId: string,
-    teamId: string,
-    userId: string,
-  ): Promise<void> {
-    await findActiveTeam(
-      manager.getRepository(Team),
-      teamId,
-      companyId,
-      'Cannot add a user to an archived team',
-    );
-
-    await manager.getRepository(TeamMembership).save({
-      companyId,
-      teamId,
-      userId,
-      roleInTeam: TeamRole.MEMBER,
-      joinedAt: await findCompanyToday(manager, companyId),
-      leftAt: null,
-    });
-  }
-
   async updateUser(
     id: string,
     companyId: string,
@@ -477,9 +393,8 @@ export class UsersService {
       if (payload.firstName !== undefined) user.firstName = payload.firstName;
       if (payload.lastName !== undefined) user.lastName = payload.lastName;
       if (payload.avatarUrl !== undefined) user.avatarUrl = payload.avatarUrl;
-      if (payload.username !== undefined) user.username = payload.username;
 
-      return this.safeSave(repo, user, undefined, payload.username);
+      return this.safeSave(repo, user);
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);

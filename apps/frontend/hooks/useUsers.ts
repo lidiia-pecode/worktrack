@@ -2,13 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  AssignableUser,
-  CreateUserPayload,
-  UpdateUserPayload,
-  User,
-  UsersQuery,
-} from "@/types";
+import { AssignableUser, UpdateUserPayload, User, UsersQuery } from "@/types";
 
 import { UsersClientApi } from "@/lib/api/resources";
 
@@ -51,7 +45,7 @@ export const useAssignableUsersInfiniteQuery =
 
 export const useUsersMutations = createEntityMutations<
   User,
-  CreateUserPayload,
+  never,
   UpdateUserPayload,
   User,
   User
@@ -62,14 +56,12 @@ export const useUsersMutations = createEntityMutations<
   alsoInvalidate: [queryKeys.teams.all],
 
   api: {
-    create: UsersClientApi.create,
     update: UsersClientApi.update,
     archive: UsersClientApi.archive,
     unarchive: UsersClientApi.unarchive,
   },
 
   messages: {
-    create: "User created successfully",
     update: "User updated successfully",
     archive: "User deleted successfully",
     unarchive: "User restored successfully",

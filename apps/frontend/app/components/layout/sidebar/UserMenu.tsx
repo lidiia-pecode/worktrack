@@ -12,7 +12,7 @@ import {
 
 import { ROLE_LABELS } from "@/lib/constants";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { initials } from "@/lib/utils/user";
+import { fullName, initials } from "@/lib/utils/user";
 import { useRouter } from "next/navigation";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
 
@@ -46,7 +46,7 @@ export function UserMenu({ isDesktop = false }: { isDesktop?: boolean }) {
             <div className="flex-1 text-left">
               {!isDesktop && (
                 <p className="text-sm font-medium text-gray-900">
-                  {user?.username}
+                  {user && fullName(user)}
                 </p>
               )}
 

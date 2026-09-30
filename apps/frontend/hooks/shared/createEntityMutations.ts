@@ -24,7 +24,7 @@ type EntityMutationApi<
   TDeleteResult = void,
   TRestoreResult = void,
 > = {
-  create: (payload: TCreate) => Promise<TEntity>;
+  create?: (payload: TCreate) => Promise<TEntity>;
 
   update: (id: string, payload: TUpdate) => Promise<TEntity>;
   delete?: (id: string) => Promise<TDeleteResult>;
@@ -105,7 +105,11 @@ export function createEntityMutations<
       );
     };
     const create = useMutation({
-      mutationFn: config.api.create,
+      mutationFn:
+        config.api.create ??
+        (() => {
+          throw new Error("Create is not supported.");
+        }),
 
       onSuccess: () => {
         invalidate();

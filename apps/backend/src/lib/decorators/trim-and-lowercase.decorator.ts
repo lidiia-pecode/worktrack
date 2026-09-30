@@ -1,7 +1,7 @@
 import { Transform, TransformFnParams } from 'class-transformer';
 
 /**
- * For identifiers compared exactly, such as emails and usernames. Text a person
+ * For identifiers compared exactly, such as emails. Text a person
  * typed for display, such as a name, uses `TrimString` instead.
  */
 export function TrimAndLowercase() {
