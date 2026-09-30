@@ -56,7 +56,7 @@ export class CookieService {
     res.cookie(CookieService.INVITATION_FLOW_COOKIE, token, {
       ...this.getCookieOptions(),
       maxAge: this.configService.getOrThrow<number>(
-        'auth.invitation.expiresInMs',
+        'auth.google.oauthStateExpiresInMs',
       ),
     });
   }
@@ -68,6 +68,6 @@ export class CookieService {
   }
 
   getFrontendUrl(): string {
-    return this.configService.getOrThrow<string>('FRONTEND_URL');
+    return this.configService.getOrThrow<string>('app.frontendUrl');
   }
 }

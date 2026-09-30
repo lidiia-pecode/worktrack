@@ -46,5 +46,8 @@ export class PendingInvitationResponse {
   expiresAt!: Date;
 
   @Expose()
+  expired!: boolean;
+
+  @Expose()
   createdAt!: Date;
 }

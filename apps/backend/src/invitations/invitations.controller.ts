@@ -101,15 +101,8 @@ export class InvitationsController {
   }
 
   @Get('validate')
-  async validate(@Query('token') token: string) {
-    const invitation = await this.invitationsService.findByToken(token);
-
-    return {
-      email: invitation.email,
-      role: invitation.role,
-      teamName: invitation.team?.name ?? null,
-      expiresAt: invitation.expiresAt,
-    };
+  validate(@Query('token') token: string) {
+    return this.invitationsService.describeByToken(token);
   }
 
   @Post('complete-password')

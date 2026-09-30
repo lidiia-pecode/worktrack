@@ -79,7 +79,8 @@ export class PasswordResetService {
 
     const token = await this.createToken(user.id);
 
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
     const resetUrl = `${frontendUrl}/reset-password?token=${encodeURIComponent(token)}`;
 

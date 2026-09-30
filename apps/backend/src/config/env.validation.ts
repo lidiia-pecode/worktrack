@@ -72,16 +72,15 @@ export const envValidationSchema = Joi.object({
     .pattern(/^\d+[smhd]$/)
     .default('15m'),
 
-  INVITATION_EXPIRES_IN: Joi.string()
-    .pattern(/^\d+[smhd]$/)
-    .default('1d'),
-
   RESEND_API_KEY: Joi.string().required(),
 
   MAIL_FROM: Joi.string().required(),
 
   // Frontend & App
-  FRONTEND_URL: Joi.string().uri().required(),
+  FRONTEND_URL: Joi.string()
+    .uri({ scheme: ['http', 'https'] })
+    .pattern(/^[^,\s]+$/, 'a single URL')
+    .required(),
   PORT: Joi.number().port().default(3001),
 
   TRUST_PROXY_HOPS: Joi.number().integer().min(0).default(1),

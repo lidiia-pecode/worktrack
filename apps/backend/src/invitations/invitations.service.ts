@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, MoreThan, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -31,8 +31,21 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Invitation } from './entities/invitation.entity';
 import { InvitationStatus } from './enums/invitation-status.enum';
+import {
+  INVITATION_VALID_DAYS,
+  INVITATION_VALID_MS,
+} from './invitation.constants';
+import {
+  UnusableInvitationCode,
+  unusableInvitation,
+} from './unusable-invitation';
 import type { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { User } from 'src/users/entities/user.entity';
+
+export type PendingInvitation = Invitation & { expired: boolean };
+
+const fullName = (user: User | null): string | null =>
+  user ? `${user.firstName} ${user.lastName}` : null;
 
 @Injectable()
 export class InvitationsService {
@@ -72,7 +85,8 @@ export class InvitationsService {
         );
       }
 
-      throw new ConflictException('A user with this email already exists');
+      // Says nothing about the account or the company it belongs to.
+      throw new ConflictException('This email address cannot be invited');
     }
 
     const existingInvitation = await this.invitationRepository.findOne({
@@ -108,23 +122,29 @@ export class InvitationsService {
     await this.saveWithNewLinkAndSend(invitation);
   }
 
-  async listPending(user: AuthUser): Promise<Invitation[]> {
+  /** Expired invitations stay listed, marked, so they can be resent. */
+  async listPending(user: AuthUser): Promise<PendingInvitation[]> {
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds?.length === 0) {
       return [];
     }
 
-    return this.invitationRepository.find({
+    const invitations = await this.invitationRepository.find({
       where: {
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
-        expiresAt: MoreThan(new Date()),
         ...(visibleTeamIds ? { teamId: In(visibleTeamIds) } : {}),
       },
       relations: { team: true, invitedBy: true },
       order: { createdAt: 'DESC' },
     });
+
+    const now = new Date();
+
+    return invitations.map((invitation) =>
+      Object.assign(invitation, { expired: invitation.expiresAt <= now }),
+    );
   }
 
   async resend(id: string, user: AuthUser): Promise<void> {
@@ -142,8 +162,21 @@ export class InvitationsService {
     await this.invitationRepository.save(invitation);
   }
 
-  async findByToken(token: string): Promise<Invitation> {
-    return this.findValidInvitation(token, this.invitationRepository);
+  /** What the invitation page shows before the person accepts. */
+  async describeByToken(token: string) {
+    const invitation = await this.findValidInvitation(
+      token,
+      this.invitationRepository,
+    );
+
+    return {
+      email: invitation.email,
+      role: invitation.role,
+      companyName: invitation.company.companyName,
+      inviterName: fullName(invitation.invitedBy),
+      teamName: invitation.team?.name ?? null,
+      expiresAt: invitation.expiresAt,
+    };
   }
 
   async completeWithPassword(
@@ -280,18 +313,32 @@ export class InvitationsService {
     const rawToken = randomBytes(32).toString('hex');
 
     invitation.tokenHash = this.hashToken(rawToken);
-    invitation.expiresAt = new Date(
-      Date.now() +
-        this.configService.getOrThrow<number>('auth.invitation.expiresInMs'),
-    );
+    invitation.expiresAt = new Date(Date.now() + INVITATION_VALID_MS);
 
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
     const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
 
     await this.dataSource.transaction(async (manager) => {
-      await manager.getRepository(Invitation).save(invitation);
+      const repository = manager.getRepository(Invitation);
+      const { id } = await repository.save(invitation);
 
-      await this.mailService.sendInvitationEmail(invitation.email, inviteUrl);
+      // The original sender stays the inviter when someone else resends it.
+      const saved = await repository.findOneOrFail({
+        where: { id },
+        relations: { company: true, invitedBy: true, team: true },
+      });
+
+      await this.mailService.sendInvitationEmail(saved.email, {
+        inviteUrl,
+        companyName: saved.company.companyName,
+        inviterName: fullName(saved.invitedBy),
+        // Only managers and employees are ever invited.
+        roleDescription:
+          saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
+        teamName: saved.team?.name ?? null,
+        validDays: INVITATION_VALID_DAYS,
+      });
     });
   }
 
@@ -329,26 +376,35 @@ export class InvitationsService {
     const normalizedToken = token?.trim();
 
     if (!normalizedToken) {
-      throw new BadRequestException('Invitation token is required');
+      throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
     const tokenHash = this.hashToken(normalizedToken);
 
     const invitation = await repository.findOne({
       where: { tokenHash },
-      relations: { team: true },
+      relations: { team: true, company: true, invitedBy: true },
     });
 
     if (!invitation) {
-      throw new NotFoundException('Invitation not found');
+      throw unusableInvitation(UnusableInvitationCode.NOT_FOUND);
     }
 
-    if (invitation.status !== InvitationStatus.PENDING) {
-      throw new BadRequestException('Invitation is no longer valid');
+    if (invitation.status === InvitationStatus.ACCEPTED) {
+      throw unusableInvitation(UnusableInvitationCode.ACCEPTED);
+    }
+
+    const inviterContext = {
+      companyName: invitation.company.companyName,
+      inviterName: fullName(invitation.invitedBy),
+    };
+
+    if (invitation.status === InvitationStatus.REVOKED) {
+      throw unusableInvitation(UnusableInvitationCode.REVOKED, inviterContext);
     }
 
     if (invitation.expiresAt <= new Date()) {
-      throw new BadRequestException('Invitation has expired');
+      throw unusableInvitation(UnusableInvitationCode.EXPIRED, inviterContext);
     }
 
     return invitation;

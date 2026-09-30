@@ -147,10 +147,7 @@ describe('InvitationsService acceptance', () => {
         createSession: jest.fn().mockResolvedValue({ access_token: '' }),
       }),
       stub({ hash: jest.fn().mockResolvedValue('hashed') }),
-      stub({
-        getOrThrow: (key: string) =>
-          key === 'auth.invitation.expiresInMs' ? 3_600_000 : 'http://app.test',
-      }),
+      stub({ getOrThrow: () => 'http://app.test' }),
       dataSource,
       teamVisibility,
       dataSource.getRepository(Team),

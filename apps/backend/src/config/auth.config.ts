@@ -27,7 +27,6 @@ export default registerAs('auth', () => {
   const passwordResetTokenExpiresIn =
     process.env.PASSWORD_RESET_TOKEN_EXPIRES_IN!;
 
-  const invitationTokenExpiresIn = process.env.INVITATION_EXPIRES_IN!;
   const googleOAuthStateExpiresIn = process.env.GOOGLE_OAUTH_STATE_EXPIRES_IN!;
 
   return {
@@ -55,11 +54,6 @@ export default registerAs('auth', () => {
     passwordReset: {
       expiresIn: passwordResetTokenExpiresIn,
       expiresInMs: parseDurationToMs(passwordResetTokenExpiresIn),
-    },
-
-    invitation: {
-      expiresIn: invitationTokenExpiresIn,
-      expiresInMs: parseDurationToMs(invitationTokenExpiresIn),
     },
 
     cookie: {

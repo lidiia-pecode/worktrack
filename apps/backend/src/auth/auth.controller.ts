@@ -66,7 +66,8 @@ export class AuthController {
     metadata: SessionMetadata,
     res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
     const result = await this.googleAuthService.validateGoogleLogin(googleUser);
 
@@ -163,7 +164,8 @@ export class AuthController {
     @Req() req: GoogleLinkRequest,
     @Res() res: Response,
   ) {
-    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const frontendUrl =
+      this.configService.getOrThrow<string>('app.frontendUrl');
 
     try {
       const authContext = req.authContext;
