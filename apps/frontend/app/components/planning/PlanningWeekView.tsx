@@ -124,14 +124,20 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     void refetchAbsences();
   };
 
-  const { options: teamOptions } = useTeamOptions();
-  const onlyViewer = onlyViewerReason({
+  const {
+    options: teamOptions,
+    isLoading: isLoadingTeams,
+    isError: isTeamsError,
+  } = useTeamOptions();
+  const onlyViewerFromRows = onlyViewerReason({
     role,
     viewerId,
     rowUserIds: rows.map((row) => row.user.id),
     hasActiveFilters: Boolean(teamId),
     ledTeamCount: teamOptions.length,
   });
+  // Which reason applies depends on the teams, so it waits for them.
+  const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
   if (isLoadingSettings || isLoadingWeek || isLoadingAbsences) {
     return (

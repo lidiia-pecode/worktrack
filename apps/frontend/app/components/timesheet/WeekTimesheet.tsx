@@ -332,6 +332,11 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
         {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
+        {/* Earlier weeks may hold time logged before, so they stay reachable. */}
+        <div className="mb-4">
+          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+        </div>
+
         {content === "notOnProjects" ? (
           <EmptyState
             title="You're not on any projects yet"

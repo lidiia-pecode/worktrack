@@ -96,7 +96,11 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
 
   const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
 
-  const { options: teamOptions } = useTeamOptions();
+  const {
+    options: teamOptions,
+    isLoading: isLoadingTeams,
+    isError: isTeamsError,
+  } = useTeamOptions();
   const { isDismissed: isManagerWelcomeDismissed } = useDismissible(
     managerWelcomeKey(viewerId),
   );
@@ -127,8 +131,13 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     hasActiveFilters,
     ledTeamCount: teamOptions.length,
   });
+  // Which reason applies depends on the teams, so it waits for them.
   const notice =
-    role === UserRole.MANAGER && !isManagerWelcomeDismissed ? null : onlyViewer;
+    isLoadingTeams ||
+    isTeamsError ||
+    (role === UserRole.MANAGER && !isManagerWelcomeDismissed)
+      ? null
+      : onlyViewer;
 
   const clearFilters = () => {
     setTeamId(undefined);

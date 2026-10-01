@@ -106,6 +106,20 @@ export class InvitationsService {
       );
     }
 
+    // Replacing an expired invitation revokes it, so it has to be one the
+    // caller could resend or revoke themselves.
+    if (
+      existingInvitation &&
+      !this.isInScope(
+        existingInvitation,
+        await this.teamVisibility.getVisibleTeamIds(user),
+      )
+    ) {
+      throw new ConflictException(
+        'An invitation for this email is already waiting',
+      );
+    }
+
     const invitation = this.invitationRepository.create({
       companyId,
       teamId,
@@ -346,6 +360,22 @@ export class InvitationsService {
     });
   }
 
+  /**
+   * An owner reaches every invitation; a manager only employee ones into the
+   * teams they lead, since inviting a manager to lead a team is the owner's.
+   */
+  private isInScope(
+    invitation: Invitation,
+    visibleTeamIds: string[] | null,
+  ): boolean {
+    return (
+      !visibleTeamIds ||
+      (invitation.role === UserRole.EMPLOYEE &&
+        invitation.teamId != null &&
+        visibleTeamIds.includes(invitation.teamId))
+    );
+  }
+
   /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
   private async findPendingInScope(
     id: string,
@@ -361,13 +391,7 @@ export class InvitationsService {
 
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
-    const isInScope =
-      !visibleTeamIds ||
-      (invitation?.role === UserRole.EMPLOYEE &&
-        invitation.teamId != null &&
-        visibleTeamIds.includes(invitation.teamId));
-
-    if (!invitation || !isInScope) {
+    if (!invitation || !this.isInScope(invitation, visibleTeamIds)) {
       throw new NotFoundException('Invitation not found');
     }
 

@@ -39,7 +39,7 @@ export const useTeamsInfiniteQuery = teamsQueries.useInfiniteQuery;
  * a manager leads, so a manager only ever sees their own.
  */
 export function useTeamOptions() {
-  const { items, isLoading } = teamsQueries.useAllPagesQuery({
+  const { items, isLoading, isError } = teamsQueries.useAllPagesQuery({
     status: TeamStatus.ACTIVE,
   });
 
@@ -48,7 +48,7 @@ export function useTeamOptions() {
     [items],
   );
 
-  return { options, isLoading };
+  return { options, isLoading, isError };
 }
 
 export const useTeamDetails = (teamId: string | null) =>
