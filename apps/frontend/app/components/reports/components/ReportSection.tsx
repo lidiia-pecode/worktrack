@@ -9,16 +9,15 @@ type ReportSectionProps = {
   isLoading: boolean;
   isError: boolean;
   isEmpty: boolean;
-  /** The previous range is still showing while the new one loads. */
   isPlaceholderData: boolean;
   isProvisional: boolean;
   emptyTitle: string;
   emptyDescription: string;
+  emptyAction?: ReactNode;
   onRetry: () => void;
   children: ReactNode;
 };
 
-/** The states every report shares, around the report's own table. */
 export const ReportSection = ({
   isLoading,
   isError,
@@ -27,6 +26,7 @@ export const ReportSection = ({
   isProvisional,
   emptyTitle,
   emptyDescription,
+  emptyAction,
   onRetry,
   children,
 }: ReportSectionProps) => {
@@ -56,6 +56,7 @@ export const ReportSection = ({
           title={emptyTitle}
           description={emptyDescription}
           icon={<FileBarChart />}
+          action={emptyAction}
         />
       </div>
     );

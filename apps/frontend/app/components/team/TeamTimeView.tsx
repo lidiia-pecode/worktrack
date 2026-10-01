@@ -1,12 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SearchX } from "lucide-react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
+import { useDismissible } from "@/hooks/useDismissible";
+import { useTeamOptions } from "@/hooks/useTeams";
 import { TeamSummaryUser } from "@/types";
+import { Button } from "@/components/ui/button";
 import {
   formatDuration,
   formatWeekRangeLabel,
@@ -21,11 +25,14 @@ import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { UserRole } from "@/types/enums";
 
 import Container from "../layout/Container";
+import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekNav } from "../shared/week/WeekNav";
-import { TeamEmptyState } from "./components/TeamEmptyState";
+import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
+import { onlyViewerReason } from "../shared/week/only-viewer";
+import { managerWelcomeKey } from "./components/ManagerWelcome";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
@@ -89,6 +96,15 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
 
   const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
 
+  const {
+    options: teamOptions,
+    isLoading: isLoadingTeams,
+    isError: isTeamsError,
+  } = useTeamOptions();
+  const { isDismissed: isManagerWelcomeDismissed } = useDismissible(
+    managerWelcomeKey(viewerId),
+  );
+
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
 
@@ -105,12 +121,23 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const hasError = isSettingsError || isSummaryError || isAbsencesError;
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
-  const hasNobodyToShow = rows.length === 0;
 
-  // A week where everyone was away is the case this view exists to explain,
-  // so absences alone are reason enough to show the grid.
-  const isEmpty =
-    hasNobodyToShow || (totals.minutes === 0 && absences.length === 0);
+  const matchesNobody = hasActiveFilters && rows.length === 0;
+
+  const onlyViewer = onlyViewerReason({
+    role,
+    viewerId,
+    rowUserIds: rows.map((row) => row.user.id),
+    hasActiveFilters,
+    ledTeamCount: teamOptions.length,
+  });
+  // Which reason applies depends on the teams, so it waits for them.
+  const notice =
+    isLoadingTeams ||
+    isTeamsError ||
+    (role === UserRole.MANAGER && !isManagerWelcomeDismissed)
+      ? null
+      : onlyViewer;
 
   const clearFilters = () => {
     setTeamId(undefined);
@@ -167,19 +194,28 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
         />
       )}
 
-      {!hasError && isEmpty && (
+      {!hasError && matchesNobody && (
         <div className="p-6">
-          <TeamEmptyState
-            hasNobodyToShow={hasNobodyToShow}
-            hasActiveFilters={hasActiveFilters}
-            role={role}
-            weekLabel={formatWeekRangeLabel(weekStart)}
-            onClearFilters={clearFilters}
+          <EmptyState
+            icon={<SearchX />}
+            title="Nobody matches these filters"
+            description="Nobody you can see is in the team or on the project you picked."
+            action={
+              <Button variant="secondary" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            }
           />
         </div>
       )}
 
-      {!hasError && !isEmpty && (
+      {!hasError && notice && (
+        <div className="py-3 pr-3">
+          <OnlyViewerNotice reason={notice} />
+        </div>
+      )}
+
+      {!hasError && !matchesNobody && (
         <div
           className={[
             "overflow-x-auto transition-opacity",

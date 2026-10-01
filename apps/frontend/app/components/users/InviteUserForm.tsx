@@ -19,6 +19,8 @@ import {
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamOptions } from "@/hooks/useTeams";
 
+const NO_TEAM = "none";
+
 interface InviteUserFormProps {
   formId: string;
   isSubmitting?: boolean;
@@ -74,12 +76,11 @@ export function InviteUserForm({
 
   const role = useWatch({ control, name: "role" });
 
-  // Accepting an invitation always creates a plain member, so only an employee
-  // can be invited straight into a team.
-  const showTeamField = role === UserRole.EMPLOYEE;
-
+  // An employee always joins a team; a manager may be invited to lead one,
+  // which is optional and offered only when a team exists.
+  const isEmployee = role === UserRole.EMPLOYEE;
   const hasNoTeams = !isLoadingTeams && teamOptions.length === 0;
-  const cannotInviteIntoTeam = showTeamField && hasNoTeams;
+  const cannotInviteIntoTeam = isEmployee && hasNoTeams;
 
   const noTeamsMessage = isOwner ? (
     <>
@@ -99,7 +100,6 @@ export function InviteUserForm({
     onCanSubmitChange(!cannotInviteIntoTeam);
   }, [cannotInviteIntoTeam, onCanSubmitChange]);
 
-  // The form can open before the signed-in user has loaded.
   useEffect(() => {
     if (!getFieldState("role").isDirty) {
       setValue("role", defaultRole);
@@ -107,16 +107,17 @@ export function InviteUserForm({
   }, [defaultRole, getFieldState, setValue]);
 
   useEffect(() => {
-    if (teamOptions.length === 1) {
+    if (!isEmployee) setValue("teamId", undefined);
+  }, [isEmployee, setValue]);
+
+  useEffect(() => {
+    if (isEmployee && teamOptions.length === 1) {
       setValue("teamId", teamOptions[0].value);
     }
-  }, [teamOptions, setValue]);
-
-  const submit = (data: InviteUserFormData) =>
-    onSubmit(showTeamField ? data : { ...data, teamId: undefined });
+  }, [isEmployee, teamOptions, setValue]);
 
   return (
-    <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-5">
+    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       <Input
         id="invite-user-email"
         label="Email"
@@ -144,7 +145,7 @@ export function InviteUserForm({
         )}
       />
 
-      {showTeamField && (
+      {isEmployee && (
         <Controller
           name="teamId"
           control={control}
@@ -159,6 +160,27 @@ export function InviteUserForm({
               description={hasNoTeams ? noTeamsMessage : undefined}
               error={fieldState.error?.message}
               disabled={isSubmitting || isLoadingTeams || hasNoTeams}
+            />
+          )}
+        />
+      )}
+
+      {!isEmployee && !hasNoTeams && (
+        <Controller
+          name="teamId"
+          control={control}
+          render={({ field, fieldState }) => (
+            <FormSelect
+              id="invite-user-team-to-lead"
+              label="Team to lead (optional)"
+              value={field.value ?? NO_TEAM}
+              onValueChange={(value) =>
+                field.onChange(value === NO_TEAM ? undefined : value)
+              }
+              options={[{ value: NO_TEAM, label: "No team" }, ...teamOptions]}
+              description="They become this team's manager when they accept."
+              error={fieldState.error?.message}
+              disabled={isSubmitting || isLoadingTeams}
             />
           )}
         />

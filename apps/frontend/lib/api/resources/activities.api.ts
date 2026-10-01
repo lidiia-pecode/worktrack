@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ActivityArchiveImpact,
   ActivityListResponse,
   ActivityPayload,
   ActivityQuery,
@@ -26,6 +27,9 @@ const client = createClient({
 
 export const ActivitiesClientApi = {
   ...crud,
+
+  getArchiveImpact: (id: string) =>
+    client.get<ActivityArchiveImpact>(`/${id}/archive-impact`),
 
   archive: (id: string) => client.archive<Activity>(`/${id}/archive`),
 

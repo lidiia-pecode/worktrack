@@ -50,6 +50,8 @@ export const queryKeys = {
     allPages: (params?: QueryParams) => createAllPagesKey("projects", params),
 
     detail: (id: string) => ["projects", "detail", id] as const,
+
+    mine: () => ["projects", "mine"] as const,
   },
 
   activities: {
@@ -62,6 +64,9 @@ export const queryKeys = {
     infinite: (params?: QueryParams) => createInfiniteKey("activities", params),
 
     allPages: (params?: QueryParams) => createAllPagesKey("activities", params),
+
+    archiveImpact: (id: string) =>
+      ["activities", "archive-impact", id] as const,
   },
 
   activityCategories: {

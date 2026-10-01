@@ -12,7 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 
 import { UserCapacity } from './entities/user-capacity.entity';
-import { WORKING_DAYS_PER_WEEK } from './working-days.util';
+import { WORKING_DAYS_PER_WEEK, isoDateIn } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
@@ -104,6 +104,37 @@ export class CapacityService {
   ): Promise<number> {
     const timeline = await this.timelineFor(companyId, userId, date);
     return timeline.minutesPerWeekOn(date);
+  }
+
+  /**
+   * The day each person's account was created, where the company is. Nothing
+   * is expected of anybody before it, so someone who joins on a Wednesday is
+   * not behind for Monday and Tuesday.
+   */
+  async startDatesFor(
+    companyId: string,
+    userIds: string[],
+  ): Promise<Map<string, string>> {
+    const startDates = new Map<string, string>();
+
+    if (userIds.length === 0) return startDates;
+
+    const [company, users] = await Promise.all([
+      this.companyRepo.findOne({
+        where: { id: companyId },
+        select: ['id', 'timezone'],
+      }),
+      this.userRepo.find({
+        where: { companyId, id: In(userIds) },
+        select: ['id', 'createdAt'],
+      }),
+    ]);
+
+    for (const user of users) {
+      startDates.set(user.id, isoDateIn(user.createdAt, company?.timezone));
+    }
+
+    return startDates;
   }
 
   /** Today where the company is, so every view agrees on which day it is. */

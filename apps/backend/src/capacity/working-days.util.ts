@@ -14,9 +14,9 @@ const toUtc = (date: string): number => Date.parse(`${date}T00:00:00Z`);
 export const toISODate = (timestamp: number): string =>
   new Date(timestamp).toISOString().slice(0, 10);
 
-/** Today where the company is, so nobody is "behind" at nine on Monday. */
-export const todayISODate = (timeZone?: string): string => {
-  if (!timeZone) return new Date().toISOString().slice(0, 10);
+/** The date a moment falls on in a time zone, or in UTC without one. */
+export const isoDateIn = (moment: Date, timeZone?: string): string => {
+  if (!timeZone) return moment.toISOString().slice(0, 10);
 
   try {
     return new Intl.DateTimeFormat('en-CA', {
@@ -24,11 +24,15 @@ export const todayISODate = (timeZone?: string): string => {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date());
+    }).format(moment);
   } catch {
-    return new Date().toISOString().slice(0, 10);
+    return moment.toISOString().slice(0, 10);
   }
 };
+
+/** Today where the company is, so nobody is "behind" at nine on Monday. */
+export const todayISODate = (timeZone?: string): string =>
+  isoDateIn(new Date(), timeZone);
 
 export const addDays = (date: string, days: number): string =>
   toISODate(toUtc(date) + days * MS_PER_DAY);

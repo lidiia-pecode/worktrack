@@ -5,6 +5,7 @@ import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 
 import {
+  ACCOUNTS_CREATED_AT,
   CAPACITY_VALID_FROM,
   COMPANY,
   SEED_PASSWORD,
@@ -20,7 +21,13 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
 
   for (const data of USERS) {
     const existing = await userRepo.findOneBy({ companyId, email: data.email });
-    if (existing) continue;
+
+    if (existing) {
+      if (existing.createdAt > ACCOUNTS_CREATED_AT) {
+        await userRepo.update(existing.id, { createdAt: ACCOUNTS_CREATED_AT });
+      }
+      continue;
+    }
 
     const user = await userRepo.save(
       userRepo.create({
@@ -32,6 +39,7 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
         position: data.position,
         passwordHash,
         status: UserStatus.ACTIVE,
+        createdAt: ACCOUNTS_CREATED_AT,
       }),
     );
 

@@ -199,6 +199,32 @@ describe('InvitationsService acceptance', () => {
       expect(memberships[0].joinedAt).toBe(TODAY);
     });
 
+    it('makes an invited manager the manager of their team', async () => {
+      const email = `lead-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha, UserRole.MANAGER);
+
+      await service.completeWithPassword(token, 'password123', 'New', 'Lead');
+
+      const user = await findUser(email);
+      const memberships = await activeMemberships(user!.id);
+
+      expect(user!.role).toBe(UserRole.MANAGER);
+      expect(memberships).toHaveLength(1);
+      expect(memberships[0].teamId).toBe(alpha);
+      expect(memberships[0].roleInTeam).toBe(TeamRole.MANAGER);
+    });
+
+    it('leaves an invited manager without a team when it was archived', async () => {
+      const email = `lead-archived-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, archived, UserRole.MANAGER);
+
+      await service.completeWithPassword(token, 'password123', 'Late', 'Lead');
+
+      const user = await findUser(email);
+
+      await expect(activeMemberships(user!.id)).resolves.toHaveLength(0);
+    });
+
     it('puts them inside the inviting manager scope straight away', async () => {
       const email = `visible-${RUN}@invitations-accept.test`;
       const token = await createInvitation(email, alpha);

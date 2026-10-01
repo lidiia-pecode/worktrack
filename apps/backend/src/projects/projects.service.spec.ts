@@ -12,6 +12,7 @@ import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { Activity } from 'src/activities/entities/activity.entity';
+import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -24,7 +25,9 @@ import { PlanningService } from 'src/planning/planning.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
+import { ProjectsQuery } from './dtos/projects-query.dto';
 import { Project } from './entities/project.entity';
+import { ProjectStatus } from './enums/project-status.enum';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { ProjectsService } from './projects.service';
 
@@ -638,6 +641,108 @@ describe('ProjectsService membership scope', () => {
       ).rejects.toThrow(NotFoundException);
 
       await setStatus(betaMember, UserStatus.ACTIVE);
+    });
+  });
+
+  describe("a project's activities", () => {
+    const createActivity = async (name: string): Promise<string> => {
+      const category = await dataSource
+        .getRepository(ActCategory)
+        .findOneByOrFail({ companyId });
+      const activity = await dataSource.getRepository(Activity).save({
+        companyId,
+        name: `${name} ${RUN}`,
+        categoryId: category.id,
+      });
+
+      return activity.id;
+    };
+
+    const offeredIds = async (projectId: string): Promise<string[]> => {
+      const project = await service.getById(projectId, owner);
+
+      return project.projectActivities.map((pa) => pa.activityId).sort();
+    };
+
+    const linkIsActive = async (projectId: string, activityId: string) =>
+      (
+        await dataSource
+          .getRepository(ProjectActivity)
+          .findOneByOrFail({ projectId, activityId })
+      ).isActive;
+
+    it('stops listing a removed activity, and the next save keeps it removed', async () => {
+      const kept = await createActivity('Kept');
+      const removed = await createActivity('Removed');
+      const projectId = await createProject('Removal', []);
+
+      await service.update(projectId, { activityIds: [kept, removed] }, owner);
+      await service.update(projectId, { activityIds: [kept] }, owner);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([kept]);
+
+      const { results } = await service.list(
+        // Newest first, so this project is on the first page.
+        Object.assign(new ProjectsQuery(), { pageSize: 10 }),
+        owner,
+      );
+      const listed = results.find((project) => project.id === projectId);
+      expect(listed?.projectActivities.map((pa) => pa.activityId)).toEqual([
+        kept,
+      ]);
+
+      // What the dialog now shows is what the next save sends.
+      await service.update(projectId, { activityIds: [kept] }, owner);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([kept]);
+      // The link stays for the time already logged on it.
+      await expect(linkIsActive(projectId, removed)).resolves.toBe(false);
+    });
+
+    it('hides an archived activity, and restoring it puts it back', async () => {
+      const kept = await createActivity('Still offered');
+      const retired = await createActivity('Retired');
+      const projectId = await createProject('Archived activity', []);
+
+      await service.update(projectId, { activityIds: [kept, retired] }, owner);
+      await dataSource
+        .getRepository(Activity)
+        .update(retired, { status: ActivityStatus.ARCHIVED });
+
+      await expect(offeredIds(projectId)).resolves.toEqual([kept]);
+
+      // Saving what the dialog shows is not a removal of the hidden one.
+      await service.update(projectId, { activityIds: [kept] }, owner);
+      await expect(linkIsActive(projectId, retired)).resolves.toBe(true);
+
+      await dataSource
+        .getRepository(Activity)
+        .update(retired, { status: ActivityStatus.ACTIVE });
+
+      await expect(offeredIds(projectId)).resolves.toEqual(
+        [kept, retired].sort(),
+      );
+    });
+  });
+
+  describe('listOwnProjects', () => {
+    it('lists the active projects the caller is on, with or without activities', async () => {
+      const newcomer = await createUser('newcomer', UserRole.EMPLOYEE);
+      const loggable = await createProject('Own loggable', [newcomer]);
+      const empty = await createProject('Own empty', [newcomer]);
+      const archived = await createProject('Own archived', [newcomer]);
+      await createProject('Someone else', [alphaMember]);
+
+      await linkActivity(loggable);
+      await dataSource
+        .getRepository(Project)
+        .update(archived, { status: ProjectStatus.ARCHIVED });
+
+      const { results } = await service.listOwnProjects(newcomer);
+
+      expect(results.map((project) => project.id).sort()).toEqual(
+        [loggable, empty].sort(),
+      );
     });
   });
 

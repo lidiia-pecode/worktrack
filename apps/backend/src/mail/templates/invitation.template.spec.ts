@@ -6,6 +6,7 @@ const PARAMS = {
   inviterName: 'Emma Clarke',
   roleDescription: 'an employee',
   teamName: 'Delivery',
+  leadsTeam: false,
   validDays: 7,
 };
 
@@ -38,6 +39,16 @@ describe('invitationEmail', () => {
 
     expect(html).not.toContain('<b>Acme</b>');
     expect(html).toContain('&lt;b&gt;Acme&lt;/b&gt;');
+  });
+
+  it('says a manager is invited to lead the team', () => {
+    const { text } = invitationEmail({
+      ...PARAMS,
+      roleDescription: 'a manager',
+      leadsTeam: true,
+    });
+
+    expect(text).toContain('as a manager, leading the team “Delivery”.');
   });
 
   it('reads well without an inviter or a team', () => {

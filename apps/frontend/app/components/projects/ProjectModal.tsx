@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { GETTING_STARTED_PATH } from "@/lib/constants";
+import { createFirstLink } from "@/hooks/useSetupLink";
 
 import { Archive, ArchiveRestore, ArrowLeft, FolderKanban } from "lucide-react";
 
@@ -31,7 +32,7 @@ import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ProjectMembersSection } from "./ProjectMembersSection";
-import { ProjectActivitiesSection } from "./ProjectActivitieSsection";
+import { ProjectActivitiesSection } from "./ProjectActivitiesSection";
 
 interface ProjectModalProps {
   open: boolean;
@@ -334,7 +335,7 @@ export function ProjectModal({
               <>
                 No activities yet. Projects are logged against them, so{" "}
                 <Link
-                  href="/admin/activities"
+                  href={createFirstLink("/admin/activities", isOnboarding)}
                   className="font-medium text-brand hover:underline"
                 >
                   create an activity first

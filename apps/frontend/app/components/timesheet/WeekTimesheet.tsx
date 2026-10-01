@@ -1,14 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { ReactNode, useMemo, useRef, useState } from "react";
 
-import { CalendarOff, Clock, FolderKanban } from "lucide-react";
+import { CalendarOff, Clock, FolderKanban, ListTodo } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
 import { useAbsences } from "@/hooks/useAbsences";
 import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
+import { useOwnProjects } from "@/hooks/useProjects";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
@@ -29,6 +30,7 @@ import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import Container from "../layout/Container";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
+import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "../shared/week/WeekNav";
@@ -39,6 +41,7 @@ import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { WeekProgressBar } from "./components/WeekProgressBar";
+import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
 type ModalState = {
   date: string;
@@ -59,11 +62,17 @@ const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "long",
 });
 
+const noActivitiesMessage = (projects: { name: string }[]) =>
+  projects.length === 1
+    ? "Activities need to be added to projects before you can log time."
+    : `None of your ${projects.length} projects has activities yet. Activities need to be added before you can log time.`;
+
 type WeekTimesheetProps = {
   userId: string;
+  welcome?: ReactNode;
 };
 
-export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
+export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
     weekStartDay,
     dailyTargetMinutes,
@@ -123,6 +132,13 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isError: isPickerError,
     refetch: refetchPicker,
   } = useAssignableActivities();
+
+  const {
+    data: ownProjects,
+    isLoading: isLoadingOwnProjects,
+    isError: isOwnProjectsError,
+    refetch: refetchOwnProjects,
+  } = useOwnProjects();
 
   const {
     expectedMinutes,
@@ -263,6 +279,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     void refetchSettings();
     void refetchAbsences();
     void refetchExpected();
+    void refetchOwnProjects();
   };
 
   const hasError =
@@ -270,19 +287,30 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     isPickerError ||
     isSettingsError ||
     isAbsencesError ||
-    isExpectedError;
+    isExpectedError ||
+    isOwnProjectsError;
 
-  // Someone on no project can still be on holiday, so an absence is enough to
-  // show the week rather than the "not on any projects" state.
-  const isUnassigned =
-    pickerItems.length === 0 && timelogs.length === 0 && absences.length === 0;
+  const content = timesheetContentFor({
+    loggableActivities: pickerItems.length,
+    ownProjects: ownProjects?.count ?? 0,
+    timeLogs: timelogs.length,
+    absences: absences.length,
+    isCurrentWeek: dateFrom <= todayIso && todayIso <= dateTo,
+  });
+  const showsFigures =
+    !hasError &&
+    showsWeekFigures({
+      loggableActivities: pickerItems.length,
+      timeLogs: timelogs.length,
+    });
 
   if (
     isLoadingSettings ||
     isLoadingLogs ||
     isLoadingPicker ||
     isLoadingAbsences ||
-    isLoadingExpected
+    isLoadingExpected ||
+    isLoadingOwnProjects
   ) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
@@ -294,13 +322,49 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
     );
   }
 
+  if (!hasError && content !== "week") {
+    return (
+      <section className="flex min-h-full w-full flex-col p-6">
+        <PageHeader
+          title="Timesheet"
+          description="Record your working hours, day by day."
+        />
+
+        {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
+
+        {/* Earlier weeks may hold time logged before, so they stay reachable. */}
+        <div className="mb-4">
+          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+        </div>
+
+        {content === "notOnProjects" ? (
+          <EmptyState
+            title="You're not on any projects yet"
+            description="Once a manager adds you to a project, you'll be able to log time against it here."
+            icon={<FolderKanban />}
+          />
+        ) : (
+          <EmptyState
+            title="No activities yet"
+            description={noActivitiesMessage(ownProjects?.results ?? [])}
+            icon={<ListTodo />}
+          />
+        )}
+      </section>
+    );
+  }
+
   return (
     <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+      {welcome && (
+        <div className="px-3 pt-4 pb-1 empty:hidden sm:pl-0">{welcome}</div>
+      )}
+
       <div className="border-b border-border">
         <div className="flex items-center justify-between py-3 pr-3">
           <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
-          {!hasError && (
+          {showsFigures && (
             <div className="flex items-center gap-2 text-sm">
               <span>Time logged:</span>
 
@@ -320,7 +384,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
                   title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
                   className="px-1.5 text-[10px] font-medium"
                 >
-                  −{formatDuration(behindMinutes)}
+                  -{formatDuration(behindMinutes)}
                 </Badge>
               )}
             </div>
@@ -349,7 +413,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
           </div>
         )}
 
-        {!hasError && (
+        {showsFigures && (
           <div className="px-3 pb-3">
             <WeekProgressBar
               billableMinutes={billableMinutes}
@@ -368,17 +432,7 @@ export const WeekTimesheet = ({ userId }: WeekTimesheetProps) => {
         />
       )}
 
-      {!hasError && isUnassigned && (
-        <div className="p-6">
-          <EmptyState
-            title="You're not on any projects yet"
-            description="Once a manager adds you to a project, you'll be able to log time against it here."
-            icon={<FolderKanban />}
-          />
-        </div>
-      )}
-
-      {!hasError && !isUnassigned && (
+      {!hasError && (
         <>
           <div className="grid grid-cols-7 border-b border-border">
             {weekDates.map((date) => (

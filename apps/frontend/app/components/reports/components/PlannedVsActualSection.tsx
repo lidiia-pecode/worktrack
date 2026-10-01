@@ -1,5 +1,8 @@
 "use client";
 
+import Link from "next/link";
+
+import { buttonVariants } from "@/components/ui/button";
 import { usePlannedVsActual } from "@/hooks/usePlannedVsActual";
 
 import { DateRange } from "./ReportFilters";
@@ -24,7 +27,15 @@ export const PlannedVsActualSection = ({
       isPlaceholderData={isPlaceholderData}
       isProvisional={Boolean(report?.isProvisional)}
       emptyTitle="Nothing planned or logged in this range"
-      emptyDescription="Pick another period, or plan your team's week on the Planning page."
+      emptyDescription="Pick another period, or plan your team's week."
+      emptyAction={
+        <Link
+          href="/planning"
+          className={buttonVariants({ variant: "secondary" })}
+        >
+          Open Planning
+        </Link>
+      }
       onRetry={refetch}
     >
       {report && (

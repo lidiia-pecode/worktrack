@@ -13,6 +13,7 @@ import {
 } from "@/hooks/auth/useInvitation";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { UserRole } from "@/types/enums";
 
 const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
@@ -21,19 +22,23 @@ const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-const describeInvitation = ({
-  team,
-  invitedBy,
-  expiresAt,
-  expired,
-}: PendingInvitation): string =>
-  [
-    team?.name ?? "No team",
+const teamLabel = ({ role, team }: PendingInvitation): string => {
+  if (!team) return "No team";
+
+  return role === UserRole.MANAGER ? `Leads ${team.name}` : team.name;
+};
+
+const describeInvitation = (invitation: PendingInvitation): string => {
+  const { invitedBy, expiresAt, expired } = invitation;
+
+  return [
+    teamLabel(invitation),
     invitedBy && `Sent by ${invitedBy.firstName} ${invitedBy.lastName}`,
     `${expired ? "Expired" : "Expires"} ${EXPIRES_AT_LABEL.format(new Date(expiresAt))}`,
   ]
     .filter(Boolean)
     .join(" · ");
+};
 
 export const PendingInvitations = () => {
   const { data: invitations = [], isError, refetch } = usePendingInvitations();

@@ -3,11 +3,10 @@ import { escapeHtml } from './escape-html';
 export interface InvitationEmailParams {
   inviteUrl: string;
   companyName: string;
-  /** Null when the person who sent it no longer exists. */
   inviterName: string | null;
-  /** "a manager" or "an employee", read as part of a sentence. */
   roleDescription: string;
   teamName: string | null;
+  leadsTeam: boolean;
   validDays: number;
 }
 
@@ -22,10 +21,13 @@ const describeInvitation = ({
   inviterName,
   roleDescription,
   teamName,
+  leadsTeam,
 }: InvitationEmailParams): string => {
   const who = inviterName ? `${inviterName} invited you` : 'You are invited';
 
-  const team = teamName ? `, in the team “${teamName}”` : '';
+  const team = teamName
+    ? `, ${leadsTeam ? 'leading' : 'in'} the team “${teamName}”`
+    : '';
 
   return `${who} to join ${companyName} on WorkTrack as ${roleDescription}${team}.`;
 };

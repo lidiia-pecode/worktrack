@@ -1,9 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { useForm } from "react-hook-form";
 
 import {
@@ -29,6 +28,7 @@ import { UserRole } from "@/types/enums";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
+import { AuthCard, AuthLink } from "./components/AuthCard";
 import { FormAlert } from "../shared/FormAlert";
 import { GoogleButton } from "../shared/buttons/GoogleButton";
 import { PasswordInput } from "../shared/inputs";
@@ -36,6 +36,35 @@ import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import { useCompleteInvitation } from "@/hooks/auth/useInvitation";
 
 type AuthFormMode = "login" | "signup" | "invitation";
+
+const HEADINGS: Record<AuthFormMode, { title: string; description: string }> = {
+  login: {
+    title: "Welcome back",
+    description: "Enter your credentials to access your workspace.",
+  },
+  signup: {
+    title: "Create your workspace",
+    description: "Set up your account and get started with WorkTrack.",
+  },
+  invitation: {
+    title: "Complete your account",
+    description: "Create your account to join your company.",
+  },
+};
+
+type FieldProps = ComponentProps<typeof Input>;
+
+interface NameRowProps {
+  firstName: FieldProps;
+  lastName: FieldProps;
+}
+
+const NameRow = ({ firstName, lastName }: NameRowProps) => (
+  <div className="flex flex-col gap-4 sm:flex-row sm:gap-3">
+    <Input label="First name" autoComplete="given-name" {...firstName} />
+    <Input label="Last name" autoComplete="family-name" {...lastName} />
+  </div>
+);
 
 interface AuthFormProps {
   mode: AuthFormMode;
@@ -92,7 +121,6 @@ export const AuthForm = ({
       firstName: "",
       lastName: "",
       password: "",
-      confirmPassword: "",
     },
   });
 
@@ -168,31 +196,33 @@ export const AuthForm = ({
     window.location.replace(isLogin ? GOOGLE_LOGIN_URL : GOOGLE_SIGNUP_URL);
   };
 
+  const footer = isLogin ? (
+    <>
+      Joining a company? Use the link in your invitation email.
+      <br />
+      Starting a new one? <AuthLink href="/register">Start a company</AuthLink>
+    </>
+  ) : isSignup ? (
+    <>
+      Already have an account? <AuthLink href="/login">Sign in</AuthLink>
+    </>
+  ) : null;
+
   const isSubmitting =
     actions.login.isPending ||
     actions.signup.isPending ||
     invitationActions.password.isPending;
 
   return (
-    <div className="w-full rounded-2xl border border-border/80 bg-card/90 p-7 shadow-[0_18px_50px_-30px_rgba(60,45,40,0.35)] backdrop-blur-sm sm:p-8">
-      <div className="mb-7">
-        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          {isLogin
-            ? "Welcome back"
-            : isSignup
-              ? "Create your workspace"
-              : "Complete your account"}
-        </h2>
-
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          {isLogin
-            ? "Enter your credentials to access your workspace."
-            : isSignup
-              ? "Set up your account and get started with WorkTrack."
-              : `Create your account to join ${invitation?.companyName ?? "your company"}.`}
-        </p>
-      </div>
-
+    <AuthCard
+      title={HEADINGS[mode].title}
+      description={
+        isInvitation && invitation
+          ? `Create your account to join ${invitation.companyName}.`
+          : HEADINGS[mode].description
+      }
+      footer={footer}
+    >
       {googleError && <FormAlert className="mb-6">{googleError}</FormAlert>}
 
       {isInvitation && invitation && (
@@ -207,7 +237,9 @@ export const AuthForm = ({
 
           {invitation.teamName && (
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-sm text-muted-foreground">Team</dt>
+              <dt className="text-sm text-muted-foreground">
+                {invitation.role === UserRole.MANAGER ? "Team to lead" : "Team"}
+              </dt>
 
               <dd className="truncate text-sm font-medium text-foreground">
                 {invitation.teamName}
@@ -235,10 +267,13 @@ export const AuthForm = ({
 
       {isLogin && (
         <form
+          noValidate
           className="flex flex-col space-y-4"
           onSubmit={loginForm.handleSubmit(onLoginSubmit)}
         >
           <Input
+            label="Email"
+            type="email"
             placeholder="you@example.com"
             autoComplete="email"
             {...loginForm.register("email")}
@@ -247,7 +282,7 @@ export const AuthForm = ({
           />
 
           <PasswordInput
-            placeholder="Password"
+            label="Password"
             autoComplete="current-password"
             {...loginForm.register("password")}
             error={loginForm.formState.errors.password?.message}
@@ -257,12 +292,9 @@ export const AuthForm = ({
           {loginError && <FormAlert>{loginError}</FormAlert>}
 
           <div className="-mt-1 flex justify-end">
-            <Link
-              href="/forgot-password"
-              className="text-xs font-medium text-brand hover:underline"
-            >
+            <AuthLink href="/forgot-password" className="text-xs">
               Forgot your password?
-            </Link>
+            </AuthLink>
           </div>
 
           <Button
@@ -271,36 +303,32 @@ export const AuthForm = ({
             isLoading={actions.login.isPending}
             disabled={isSubmitting}
           >
-            Sign In
+            Sign in
           </Button>
         </form>
       )}
 
       {isSignup && (
         <form
+          noValidate
           className="flex flex-col space-y-4"
           onSubmit={signupForm.handleSubmit(onSignupSubmit)}
         >
-          <div className="flex gap-3">
-            <Input
-              placeholder="First Name"
-              autoComplete="given-name"
-              {...signupForm.register("firstName")}
-              error={signupForm.formState.errors.firstName?.message}
-              disabled={isSubmitting}
-            />
-
-            <Input
-              placeholder="Last Name"
-              autoComplete="family-name"
-              {...signupForm.register("lastName")}
-              error={signupForm.formState.errors.lastName?.message}
-              disabled={isSubmitting}
-            />
-          </div>
+          <NameRow
+            firstName={{
+              ...signupForm.register("firstName"),
+              error: signupForm.formState.errors.firstName?.message,
+              disabled: isSubmitting,
+            }}
+            lastName={{
+              ...signupForm.register("lastName"),
+              error: signupForm.formState.errors.lastName?.message,
+              disabled: isSubmitting,
+            }}
+          />
 
           <Input
-            placeholder="Company Name"
+            label="Company name"
             autoComplete="organization"
             {...signupForm.register("companyName")}
             error={signupForm.formState.errors.companyName?.message}
@@ -308,6 +336,8 @@ export const AuthForm = ({
           />
 
           <Input
+            label="Email"
+            type="email"
             placeholder="you@example.com"
             autoComplete="email"
             {...signupForm.register("email")}
@@ -316,7 +346,7 @@ export const AuthForm = ({
           />
 
           <PasswordInput
-            placeholder="Password"
+            label="Password"
             autoComplete="new-password"
             description={PASSWORD_RULES_HINT}
             {...signupForm.register("password")}
@@ -339,41 +369,29 @@ export const AuthForm = ({
 
       {isInvitation && (
         <form
+          noValidate
           className="flex flex-col space-y-4"
           onSubmit={invitationForm.handleSubmit(onInvitationSubmit)}
         >
-          <div className="flex gap-3">
-            <Input
-              placeholder="First Name"
-              autoComplete="given-name"
-              {...invitationForm.register("firstName")}
-              error={invitationForm.formState.errors.firstName?.message}
-              disabled={isSubmitting}
-            />
-
-            <Input
-              placeholder="Last Name"
-              autoComplete="family-name"
-              {...invitationForm.register("lastName")}
-              error={invitationForm.formState.errors.lastName?.message}
-              disabled={isSubmitting}
-            />
-          </div>
+          <NameRow
+            firstName={{
+              ...invitationForm.register("firstName"),
+              error: invitationForm.formState.errors.firstName?.message,
+              disabled: isSubmitting,
+            }}
+            lastName={{
+              ...invitationForm.register("lastName"),
+              error: invitationForm.formState.errors.lastName?.message,
+              disabled: isSubmitting,
+            }}
+          />
 
           <PasswordInput
-            placeholder="Password"
+            label="Password"
             autoComplete="new-password"
             description={PASSWORD_RULES_HINT}
             {...invitationForm.register("password")}
             error={invitationForm.formState.errors.password?.message}
-            disabled={isSubmitting}
-          />
-
-          <PasswordInput
-            placeholder="Confirm Password"
-            autoComplete="new-password"
-            {...invitationForm.register("confirmPassword")}
-            error={invitationForm.formState.errors.confirmPassword?.message}
             disabled={isSubmitting}
           />
 
@@ -390,43 +408,17 @@ export const AuthForm = ({
         </form>
       )}
 
-      <div className="my-5 flex items-center gap-3">
+      <div className="my-4 flex items-center gap-3">
         <div className="h-px flex-1 bg-border" />
 
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-          or continue with
+        <span className="text-xs font-medium tracking-wider text-muted-foreground">
+          or
         </span>
 
         <div className="h-px flex-1 bg-border" />
       </div>
 
       <GoogleButton onClick={handleGoogleAuth} disabled={isSubmitting} />
-
-      {isLogin && (
-        <p className="mt-5 text-center text-sm leading-6 text-muted-foreground">
-          Joining a company? Use the link in your invitation email.
-          <br />
-          Starting a new one?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-brand hover:underline"
-          >
-            Start a company
-          </Link>
-        </p>
-      )}
-
-      {isSignup && (
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            href="/login"
-            className="font-medium text-brand hover:underline"
-          >
-            Sign in
-          </Link>
-        </p>
-      )}
-    </div>
+    </AuthCard>
   );
 };

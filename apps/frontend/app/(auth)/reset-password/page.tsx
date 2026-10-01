@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
+import Link from "next/link";
 
 import {
   ResetPasswordFormValues,
@@ -11,16 +12,15 @@ import {
 } from "@/lib/forms/schemas/reset-password.schema";
 import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
-import { settingsLabelClassName } from "@/app/components/settings/styles/settings-styles";
+import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
 import {
-  PasswordInput,
-  ResetPasswordPageLayout,
-  ResetPasswordPageHeader,
+  SecondaryAuthHeader,
+  SecondaryAuthLayout,
 } from "@/app/components/auth";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import { FormAlert } from "@/app/components/shared/FormAlert";
 import { getErrorMessage, isApiMessageError } from "@/lib/api/errors";
-import Link from "next/link";
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -33,10 +33,9 @@ export default function ResetPasswordPage() {
   const {
     register,
     handleSubmit,
-    formState: { errors, isValid },
+    formState: { errors },
   } = useForm<ResetPasswordFormValues>({
     resolver: zodResolver(resetPasswordSchema),
-    mode: "onChange",
   });
 
   const onSubmit = async (data: ResetPasswordFormValues) => {
@@ -62,50 +61,42 @@ export default function ResetPasswordPage() {
 
   if (!token) {
     return (
-      <ResetPasswordPageLayout>
-        <ResetPasswordPageHeader
+      <SecondaryAuthLayout>
+        <SecondaryAuthHeader
           icon={KeyRound}
           title="Invalid reset link"
           description="This password reset link is missing a token or is invalid."
         />
 
-        <Button
-          type="button"
-          className="w-full"
-          onClick={() => router.replace("/forgot-password")}
+        <Link
+          href="/forgot-password"
+          className={cn(buttonVariants(), "w-full")}
         >
           Request a new link
-        </Button>
-      </ResetPasswordPageLayout>
+        </Link>
+      </SecondaryAuthLayout>
     );
   }
 
   return (
-    <ResetPasswordPageLayout>
-      <ResetPasswordPageHeader
+    <SecondaryAuthLayout>
+      <SecondaryAuthHeader
         icon={KeyRound}
         title="Reset password"
         description="Enter your new password below."
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      <form
+        noValidate
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col space-y-4"
+      >
         <PasswordInput
           label="New password"
-          type="password"
-          placeholder="Enter a new password"
+          autoComplete="new-password"
           description={PASSWORD_RULES_HINT}
           {...register("newPassword")}
           error={errors.newPassword?.message}
-          labelClassname={settingsLabelClassName}
-        />
-
-        <PasswordInput
-          label="Confirm new password"
-          type="password"
-          placeholder="Repeat your new password"
-          {...register("confirmPassword")}
-          error={errors.confirmPassword?.message}
-          labelClassname={settingsLabelClassName}
         />
 
         {resetError && (
@@ -128,12 +119,11 @@ export default function ResetPasswordPage() {
         <Button
           type="submit"
           className="w-full"
-          disabled={!isValid || actions.resetPassword.isPending}
           isLoading={actions.resetPassword.isPending}
         >
           Reset password
         </Button>
       </form>
-    </ResetPasswordPageLayout>
+    </SecondaryAuthLayout>
   );
 }

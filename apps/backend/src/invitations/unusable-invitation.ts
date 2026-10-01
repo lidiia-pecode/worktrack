@@ -6,6 +6,7 @@ export enum UnusableInvitationCode {
   EXPIRED = 'INVITATION_EXPIRED',
   REVOKED = 'INVITATION_REVOKED',
   ACCEPTED = 'INVITATION_ACCEPTED',
+  ACCOUNT_EXISTS = 'INVITATION_ACCOUNT_EXISTS',
 }
 
 const RESPONSES: Record<
@@ -27,6 +28,10 @@ const RESPONSES: Record<
   [UnusableInvitationCode.ACCEPTED]: {
     status: HttpStatus.BAD_REQUEST,
     message: 'Invitation has already been accepted',
+  },
+  [UnusableInvitationCode.ACCOUNT_EXISTS]: {
+    status: HttpStatus.CONFLICT,
+    message: 'An account with this email already exists',
   },
 };
 

@@ -34,6 +34,23 @@ import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
+/**
+ * What a project offers people to log against. A removed link is kept for the
+ * time already logged on it, and an archived activity keeps its links so that
+ * restoring it brings it back; neither is listed as the project's.
+ */
+const isOffered = (projectActivity: ProjectActivity): boolean =>
+  projectActivity.isActive &&
+  projectActivity.activity?.status === ActivityStatus.ACTIVE;
+
+const withOfferedActivities = (project: Project): Project => {
+  project.projectActivities = (project.projectActivities ?? []).filter(
+    isOffered,
+  );
+
+  return project;
+};
+
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -109,7 +126,7 @@ export class ProjectsService {
       const existing = existingMap.get(activityId);
 
       if (existing) {
-        if (!existing.isActive) {
+        if (!existing.isActive && activitiesMap.has(activityId)) {
           existing.isActive = true;
           entitiesToSave.push(existing);
         }
@@ -129,7 +146,11 @@ export class ProjectsService {
     }
 
     for (const pa of existingProjectActivities) {
-      if (!targetIdsSet.has(pa.activity.id) && pa.isActive) {
+      if (
+        !targetIdsSet.has(pa.activity.id) &&
+        pa.isActive &&
+        pa.activity.status === ActivityStatus.ACTIVE
+      ) {
         pa.isActive = false;
         entitiesToSave.push(pa);
       }
@@ -295,7 +316,9 @@ export class ProjectsService {
     ).getMany();
     project.membersCount = await this.countMembers(project.id, user, manager);
 
-    return project;
+    // Shaped only for the response: the loaded entity keeps every link, since
+    // saving it with fewer would detach the rest.
+    return withOfferedActivities(project);
   }
 
   // ---------------------------------------------------------------------------
@@ -323,7 +346,7 @@ export class ProjectsService {
       .take(query.limit)
       .getManyAndCount();
 
-    return { results, count };
+    return { results: results.map(withOfferedActivities), count };
   }
 
   async getById(id: string, user: AuthUser): Promise<Project> {
@@ -462,16 +485,24 @@ export class ProjectsService {
     return this.withScopedMembers(project, user);
   }
 
-  /**
-   * Project activities a person may log time against: the activity link is
-   * enabled, both the project and the activity are active, and that person is
-   * a member of the project. Defaults to the caller; owners and managers may
-   * ask for someone they are allowed to write for.
-   *
-   * Exists so clients do not have to fetch every company project and filter
-   * membership themselves — that leaked the whole project roster to employees
-   * and silently truncated at the project page size.
-   */
+  /** The active projects the caller is a member of, loggable or not. */
+  async listOwnProjects(user: AuthUser) {
+    const [results, count] = await this.repo
+      .createQueryBuilder('project')
+      .innerJoin(
+        'project_users',
+        'pu',
+        'pu.project_id = project.id AND pu.user_id = :userId',
+        { userId: user.id },
+      )
+      .where('project.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('project.status = :status', { status: ProjectStatus.ACTIVE })
+      .orderBy('project.name', 'ASC')
+      .getManyAndCount();
+
+    return { results, count };
+  }
+
   async listAssignableActivities(
     query: AssignableActivitiesQuery,
     user: AuthUser,

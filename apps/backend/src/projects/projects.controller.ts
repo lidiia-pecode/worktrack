@@ -23,7 +23,10 @@ import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { ProjectActivityResponse } from './dtos/project-activity-response.dto';
+import {
+  ProjectActivityResponse,
+  ProjectSummaryResponse,
+} from './dtos/project-activity-response.dto';
 import { ProjectsQuery } from './dtos/projects-query.dto';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
@@ -39,6 +42,12 @@ export class ProjectsController {
   @SerializeList(ProjectListItemResponse)
   getAll(@Query() query: ProjectsQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(query, user);
+  }
+
+  @Get('me')
+  @SerializeList(ProjectSummaryResponse)
+  listOwnProjects(@CurrentUser() user: AuthUser) {
+    return this.service.listOwnProjects(user);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

@@ -1,15 +1,23 @@
 "use client";
 
+import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { Link2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
+import {
+  SecondaryAuthHeader,
+  SecondaryAuthLayout,
+} from "@/app/components/auth";
+import { FormAlert } from "@/app/components/shared/FormAlert";
 import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
-import { isApiValidationError } from "@/lib/api/errors";
+import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
 import { applyServerErrors } from "@/lib/forms/utils";
 import {
   GoogleLinkFormInputs,
@@ -22,6 +30,7 @@ export default function GoogleLinkPage() {
   const token = searchParams.get("token");
 
   const actions = useAuthActions();
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const {
     register,
@@ -36,11 +45,9 @@ export default function GoogleLinkPage() {
   });
 
   const onSubmit = async (data: GoogleLinkFormInputs) => {
-    if (!token) {
-      toast.error("Google link token is missing or invalid.");
-      router.replace("/login");
-      return;
-    }
+    if (!token) return;
+
+    setSubmitError(null);
 
     try {
       await actions.completeGoogleLink.mutateAsync({
@@ -48,37 +55,66 @@ export default function GoogleLinkPage() {
         password: data.password,
       });
 
-      toast.success("Account successfully linked!");
+      toast.success("Google account linked");
       router.replace("/");
       router.refresh();
-    } catch (err: unknown) {
-      if (isApiValidationError(err)) {
-        applyServerErrors(err, setError);
+    } catch (error: unknown) {
+      if (isApiValidationError(error)) {
+        applyServerErrors(error, setError);
+        return;
       }
+
+      setSubmitError(getErrorMessage(error));
     }
   };
 
+  if (!token) {
+    return (
+      <SecondaryAuthLayout>
+        <SecondaryAuthHeader
+          icon={Link2}
+          title="Invalid link"
+          description="This Google link is incomplete. Continue with Google again from the sign-in page."
+        />
+
+        <Link href="/login" className={cn(buttonVariants(), "w-full")}>
+          Go to sign in
+        </Link>
+      </SecondaryAuthLayout>
+    );
+  }
+
   return (
-    <AuthFormWrapper
-      badge="Account Match Found"
-      title="Link your Google Account."
-      description="An account with this email already exists. Please enter your password to link your Google account."
-    >
+    <SecondaryAuthLayout>
+      <SecondaryAuthHeader
+        icon={Link2}
+        title="Link your Google account"
+        description="An account with this email already exists. Please enter your password to link your Google account."
+      />
+
       <form
+        noValidate
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col space-y-4"
       >
         <PasswordInput
-          placeholder="Enter your current password"
+          label="Password"
+          autoComplete="current-password"
           {...register("password")}
           error={errors.password?.message}
           disabled={actions.completeGoogleLink.isPending}
         />
 
-        <Button type="submit" isLoading={actions.completeGoogleLink.isPending}>
-          Link Account & Sign In
+        {submitError && <FormAlert>{submitError}</FormAlert>}
+
+        <Button
+          type="submit"
+          className="w-full"
+          isLoading={actions.completeGoogleLink.isPending}
+        >
+          Link account and sign in
         </Button>
       </form>
-    </AuthFormWrapper>
+    </SecondaryAuthLayout>
   );
 }

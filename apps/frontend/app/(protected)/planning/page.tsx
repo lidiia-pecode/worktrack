@@ -12,7 +12,7 @@ export default async function PlanningPage() {
         description="Plan your team's week by project. Plans are guidance, never a limit on logged time."
       />
 
-      <PlanningWeekView role={user.role} />
+      <PlanningWeekView role={user.role} viewerId={user.id} />
     </section>
   );
 }

@@ -17,6 +17,9 @@ import { ActivitiesQuery } from './dtos/activities-query.dto';
 import { ActivityStatus } from './enums/activity-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import type { Project } from 'src/projects/entities/project.entity';
 
 @Injectable()
 export class ActivitiesService {
@@ -24,6 +27,8 @@ export class ActivitiesService {
     @InjectRepository(Activity)
     private readonly repo: Repository<Activity>,
     private readonly actCategoriesService: ActCategoriesService,
+    @InjectRepository(ProjectActivity)
+    private readonly projectActivityRepo: Repository<ProjectActivity>,
   ) {}
 
   private async assertUniqueName(
@@ -194,6 +199,39 @@ export class ActivitiesService {
       }
       throw error;
     }
+  }
+
+  /**
+   * The active projects that offer this activity now, which archiving takes it
+   * off. Their links stay, so restoring it puts it back on the same projects.
+   */
+  async getArchiveImpact(
+    id: string,
+    companyId: string,
+  ): Promise<{ projects: Pick<Project, 'id' | 'name'>[] }> {
+    const activity = await this.findRaw(id, companyId);
+
+    if (activity.status === ActivityStatus.ARCHIVED) {
+      throw new BadRequestException('Activity is already archived');
+    }
+
+    const links = await this.projectActivityRepo.find({
+      where: {
+        companyId,
+        activityId: id,
+        isActive: true,
+        project: { status: ProjectStatus.ACTIVE },
+      },
+      relations: { project: true },
+      order: { project: { name: 'ASC' } },
+    });
+
+    return {
+      projects: links.map(({ project }) => ({
+        id: project.id,
+        name: project.name,
+      })),
+    };
   }
 
   async archive(

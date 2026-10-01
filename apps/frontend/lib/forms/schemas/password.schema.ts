@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-// Mirrors the backend rule in src/lib/validators/account-fields.ts.
 export const PASSWORD_RULES_HINT =
-  "8-100 characters, with an uppercase letter, a lowercase letter and a number.";
+  "At least 8 characters, with an uppercase letter, a lowercase letter and a number.";
 
 export const newPasswordSchema = z
   .string()

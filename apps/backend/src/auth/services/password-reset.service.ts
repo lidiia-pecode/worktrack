@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { EntityManager, Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -8,6 +12,11 @@ import { hashToken } from 'src/lib/utils/hash-token.util';
 import { randomBytes } from 'crypto';
 import { MailService } from 'src/mail/mail.service';
 import { UsersService } from 'src/users/users.service';
+
+// Sign-up and Google sign-in already tell whether an address has an account,
+// under the same rate limits, so saying it here discloses nothing new.
+export const NO_ACCOUNT_FOR_EMAIL =
+  "No account for this email. Please make sure you're using the email associated with your WorkTrack account.";
 
 @Injectable()
 export class PasswordResetService {
@@ -76,7 +85,7 @@ export class PasswordResetService {
     const user = await this.usersService.findByEmailWithCompany(email);
 
     if (!user) {
-      return;
+      throw new NotFoundException(NO_ACCOUNT_FOR_EMAIL);
     }
 
     const token = await this.createToken(user.id);

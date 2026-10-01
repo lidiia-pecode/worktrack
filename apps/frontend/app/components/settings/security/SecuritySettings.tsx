@@ -16,7 +16,6 @@ import { isApiValidationError } from "@/lib/api/errors";
 import { SettingsSection } from "../components/SettingsSection";
 import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import { SettingsActions } from "../components/SettingsActions";
-import { settingsLabelClassName } from "../styles/settings-styles";
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -38,8 +37,6 @@ export const SecuritySettings = () => {
     handleSubmit,
     reset,
     setError,
-    trigger,
-    getValues,
     formState: { errors, isDirty },
   } = useForm<SecurityFormValues>({
     resolver: zodResolver(createSecuritySchema(!!hasPassword)),
@@ -47,7 +44,6 @@ export const SecuritySettings = () => {
     defaultValues: {
       currentPassword: "",
       newPassword: "",
-      confirmPassword: "",
     },
   });
 
@@ -63,12 +59,6 @@ export const SecuritySettings = () => {
       if (isApiValidationError(error)) {
         applyServerErrors(error, setError);
       }
-    }
-  };
-
-  const revalidateConfirmation = () => {
-    if (getValues("confirmPassword")) {
-      trigger("confirmPassword");
     }
   };
 
@@ -127,7 +117,6 @@ export const SecuritySettings = () => {
         />
 
         <form onSubmit={handleSubmit(onSubmit)} className="p-6" noValidate>
-          {/* Lets password managers save the new password against the right account. */}
           <input
             type="email"
             autoComplete="username"
@@ -143,30 +132,16 @@ export const SecuritySettings = () => {
                 autoComplete="current-password"
                 {...register("currentPassword")}
                 error={errors.currentPassword?.message}
-                labelClassname={settingsLabelClassName}
               />
             )}
 
-            <div className="grid items-start gap-6 sm:grid-cols-2">
-              <PasswordInput
-                label="New password"
-                autoComplete="new-password"
-                description={PASSWORD_RULES_HINT}
-                {...register("newPassword", {
-                  onChange: revalidateConfirmation,
-                })}
-                error={errors.newPassword?.message}
-                labelClassname={settingsLabelClassName}
-              />
-
-              <PasswordInput
-                label="Confirm new password"
-                autoComplete="new-password"
-                {...register("confirmPassword")}
-                error={errors.confirmPassword?.message}
-                labelClassname={settingsLabelClassName}
-              />
-            </div>
+            <PasswordInput
+              label="New password"
+              autoComplete="new-password"
+              description={PASSWORD_RULES_HINT}
+              {...register("newPassword")}
+              error={errors.newPassword?.message}
+            />
           </div>
 
           <SettingsActions className="flex-wrap items-center gap-4">

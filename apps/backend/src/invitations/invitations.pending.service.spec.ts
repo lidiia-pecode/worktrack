@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import {
+  ConflictException,
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
@@ -236,6 +237,25 @@ describe('InvitationsService pending invitations', () => {
         InvitationStatus.REVOKED,
       ]);
     });
+
+    it("refuses a manager replacing the owner's invitation for a manager", async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha, UserRole.MANAGER);
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
+
+      await expect(invite(alphaManager, email, alpha)).rejects.toThrow(
+        ConflictException,
+      );
+
+      const [kept] = await findInvitations(email);
+      expect(kept).toMatchObject({
+        status: InvitationStatus.PENDING,
+        role: UserRole.MANAGER,
+      });
+    });
   });
 
   describe('listPending', () => {
@@ -275,6 +295,21 @@ describe('InvitationsService pending invitations', () => {
       await invite(owner, email, beta);
 
       await expect(listedEmails(betaManager)).resolves.toContain(email);
+    });
+
+    it("keeps the owner's invitation for a manager to lead their team out of reach", async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha, UserRole.MANAGER);
+      const { id } = await findPending(email);
+
+      await expect(listedEmails(alphaManager)).resolves.not.toContain(email);
+      await expect(service.resend(id, alphaManager)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.revoke(id, alphaManager)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(listedEmails(owner)).resolves.toContain(email);
     });
 
     it('keeps an expired invitation, marked expired', async () => {
@@ -466,6 +501,29 @@ describe('InvitationsService pending invitations', () => {
       await expectUnusable(
         service.describeByToken(token),
         UnusableInvitationCode.ACCEPTED,
+      );
+    });
+
+    it('says when the address has gained an account since it was sent', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+      const token = lastSentToken();
+
+      await dataSource.getRepository(User).save({
+        companyId,
+        role: UserRole.EMPLOYEE,
+        firstName: 'Signed',
+        lastName: 'Up',
+        email,
+      });
+
+      await expectUnusable(
+        service.describeByToken(token),
+        UnusableInvitationCode.ACCOUNT_EXISTS,
+      );
+      await expectUnusable(
+        service.assertUsableToken(token),
+        UnusableInvitationCode.ACCOUNT_EXISTS,
       );
     });
 

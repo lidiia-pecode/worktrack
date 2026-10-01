@@ -4,15 +4,12 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { AuthClient } from "@/lib/api/resources";
-import { getErrorMessage } from "@/lib/api/errors";
 
 export function useResetPassword() {
   const forgotPassword = useMutation({
     mutationFn: AuthClient.forgotPassword,
 
-    onError: (error) => {
-      toast.error(getErrorMessage(error));
-    },
+    onError: () => {},
   });
 
   const resetPassword = useMutation({

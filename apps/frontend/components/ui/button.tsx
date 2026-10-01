@@ -86,6 +86,12 @@ const buttonVariants = cva(
           "hover:bg-neutral-200",
           "hover:text-neutral-900",
         ],
+
+        pastel: [
+          "border border-brand/15",
+          "bg-brand-subtle text-brand",
+          "hover:bg-brand/15",
+        ],
       },
 
       size: {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Archive, ArchiveRestore, ClipboardList } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -7,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Activity } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
-import { useActivities } from "@/hooks/useActivities";
+import { useActivities, useActivityArchiveImpact } from "@/hooks/useActivities";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 
+import { ConfirmModal } from "../shared/ConfirmModal";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
+import { archiveImpactMessage } from "./archive-impact";
 import { useRouter } from "next/navigation";
 
 import { GETTING_STARTED_PATH } from "@/lib/constants";
@@ -43,6 +46,23 @@ export function ActivityModal({
     });
 
   const isEditMode = Boolean(activity);
+
+  const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+  const archiveImpact = useActivityArchiveImpact(
+    activity?.id ?? "",
+    isConfirmingArchive,
+  );
+
+  const confirmArchive = () => {
+    if (!activity || !archiveImpact.data) return;
+
+    archive.mutate(activity.id, {
+      onSuccess: () => {
+        setIsConfirmingArchive(false);
+        onClose();
+      },
+    });
+  };
 
   const isArchived = activity?.status === ActivityStatus.ARCHIVED;
 
@@ -75,78 +95,97 @@ export function ActivityModal({
   };
 
   return (
-    <ResourceFormModal
-      open={open}
-      onClose={onClose}
-      title={isEditMode ? activity!.name : "Create activity"}
-      description={
-        isEditMode
-          ? "Update the activity details."
-          : "Create an activity that can be assigned to projects."
-      }
-      icon={<ClipboardList className="size-5" />}
-      footer={
-        <div className="flex w-full items-center justify-between gap-3">
-          {isEditMode ? (
-            <Button
-              type="button"
-              variant={isArchived ? "success" : "destructive"}
-              size="sm"
-              onClick={() =>
-                isArchived
-                  ? unarchive.mutate(activity.id, { onSuccess: onClose })
-                  : archive.mutate(activity!.id, { onSuccess: onClose })
-              }
-              isLoading={archive.isPending || unarchive.isPending}
-            >
-              {isArchived ? (
-                <ArchiveRestore className="size-4" />
-              ) : (
-                <Archive className="size-4" />
-              )}
-
-              {isArchived ? "Unarchive" : "Archive"}
-            </Button>
-          ) : (
-            <span />
-          )}
-
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              form={FORM_ID}
-              size="sm"
-              isLoading={isSubmitting}
-              disabled={!categoriesLoading && categories.length === 0}
-            >
-              {isEditMode ? "Save changes" : "Create activity"}
-            </Button>
-          </div>
-        </div>
-      }
-    >
-      {!categoriesLoading && (
-        <ActivityForm
-          formId={FORM_ID}
-          mode={isEditMode ? "edit" : "create"}
-          categories={categories}
-          defaultValues={
-            activity
-              ? {
-                  name: activity.name,
-                  categoryId: activity.category.id,
-                  defaultBillable: activity.defaultBillable,
+    <>
+      <ResourceFormModal
+        open={open}
+        onClose={onClose}
+        title={isEditMode ? activity!.name : "Create activity"}
+        description={
+          isEditMode
+            ? "Update the activity details."
+            : "Create an activity that can be assigned to projects."
+        }
+        icon={<ClipboardList className="size-5" />}
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
+            {isEditMode ? (
+              <Button
+                type="button"
+                variant={isArchived ? "success" : "destructive"}
+                size="sm"
+                onClick={() =>
+                  isArchived
+                    ? unarchive.mutate(activity.id, { onSuccess: onClose })
+                    : setIsConfirmingArchive(true)
                 }
-              : undefined
-          }
-          onSubmit={handleSubmit}
-          isSubmitting={isSubmitting}
-        />
-      )}
-    </ResourceFormModal>
+                isLoading={archive.isPending || unarchive.isPending}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="size-4" />
+                ) : (
+                  <Archive className="size-4" />
+                )}
+
+                {isArchived ? "Unarchive" : "Archive"}
+              </Button>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSubmitting}
+                disabled={!categoriesLoading && categories.length === 0}
+              >
+                {isEditMode ? "Save changes" : "Create activity"}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        {!categoriesLoading && (
+          <ActivityForm
+            formId={FORM_ID}
+            mode={isEditMode ? "edit" : "create"}
+            categories={categories}
+            defaultValues={
+              activity
+                ? {
+                    name: activity.name,
+                    categoryId: activity.category.id,
+                    defaultBillable: activity.defaultBillable,
+                  }
+                : undefined
+            }
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+            isOnboarding={isOnboarding}
+          />
+        )}
+      </ResourceFormModal>
+
+      <ConfirmModal
+        isOpen={isConfirmingArchive}
+        title={activity ? `Archive ${activity.name}?` : ""}
+        message={
+          archiveImpact.isError
+            ? "Could not check which projects use it. Close this and try again."
+            : archiveImpactMessage(archiveImpact.data)
+        }
+        confirmText="Archive"
+        variant="danger"
+        onConfirm={confirmArchive}
+        onClose={() => setIsConfirmingArchive(false)}
+        loading={archive.isPending}
+        confirmDisabled={!archiveImpact.data}
+      />
+    </>
   );
 }

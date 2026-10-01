@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form";
 
 import Input from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
+import { AuthCard, AuthFormWrapper } from "@/app/components/auth";
 import { FormAlert } from "@/app/components/shared/FormAlert";
 import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
 import { applyServerErrors } from "@/lib/forms/utils";
@@ -78,34 +78,41 @@ export default function GoogleSignupPage() {
       description="You signed in with Google. Add your company's name to finish, and you become its owner."
     >
       {token ? (
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col space-y-4"
+        <AuthCard
+          title="Finish signing up"
+          description="One last step: your company's name."
         >
-          <Input
-            placeholder="Company name"
-            {...register("companyName")}
-            error={errors.companyName?.message}
-            disabled={isSubmitting}
-          />
+          <form
+            noValidate
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col space-y-4"
+          >
+            <Input
+              label="Company name"
+              autoComplete="organization"
+              {...register("companyName")}
+              error={errors.companyName?.message}
+              disabled={isSubmitting}
+            />
 
-          {submitError && <FormAlert>{submitError}</FormAlert>}
+            {submitError && <FormAlert>{submitError}</FormAlert>}
 
-          <Button type="submit" isLoading={isSubmitting}>
-            Complete signup
-          </Button>
+            <Button type="submit" className="w-full" isLoading={isSubmitting}>
+              Complete sign-up
+            </Button>
 
-          {submitError && START_AGAIN_LINK}
-        </form>
+            {submitError && START_AGAIN_LINK}
+          </form>
+        </AuthCard>
       ) : (
-        <div className="space-y-4">
-          <FormAlert>
-            This sign-up link is incomplete. Start again with Google from the
-            sign-up page.
-          </FormAlert>
-
-          {START_AGAIN_LINK}
-        </div>
+        <AuthCard
+          title="Invalid link"
+          description="This sign-up link is incomplete. Start again with Google from the sign-up page."
+        >
+          <Link href="/register" className={cn(buttonVariants(), "w-full")}>
+            Start again from sign-up
+          </Link>
+        </AuthCard>
       )}
     </AuthFormWrapper>
   );

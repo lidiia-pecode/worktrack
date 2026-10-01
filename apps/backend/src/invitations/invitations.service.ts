@@ -106,6 +106,20 @@ export class InvitationsService {
       );
     }
 
+    // Replacing an expired invitation revokes it, so it has to be one the
+    // caller could resend or revoke themselves.
+    if (
+      existingInvitation &&
+      !this.isInScope(
+        existingInvitation,
+        await this.teamVisibility.getVisibleTeamIds(user),
+      )
+    ) {
+      throw new ConflictException(
+        'An invitation for this email is already waiting',
+      );
+    }
+
     const invitation = this.invitationRepository.create({
       companyId,
       teamId,
@@ -130,7 +144,9 @@ export class InvitationsService {
       where: {
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
-        ...(visibleTeamIds ? { teamId: In(visibleTeamIds) } : {}),
+        ...(visibleTeamIds
+          ? { teamId: In(visibleTeamIds), role: UserRole.EMPLOYEE }
+          : {}),
       },
       relations: { team: true, invitedBy: true },
       order: { createdAt: 'DESC' },
@@ -160,15 +176,12 @@ export class InvitationsService {
 
   /** Refuses an unusable token with the same codes the invitation page reads. */
   async assertUsableToken(token: string): Promise<void> {
-    await this.findValidInvitation(token, this.invitationRepository);
+    await this.findOpenableInvitation(token);
   }
 
   /** What the invitation page shows before the person accepts. */
   async describeByToken(token: string) {
-    const invitation = await this.findValidInvitation(
-      token,
-      this.invitationRepository,
-    );
+    const invitation = await this.findOpenableInvitation(token);
 
     return {
       email: invitation.email,
@@ -329,7 +342,6 @@ export class InvitationsService {
 
       const { id } = await repository.save(invitation);
 
-      // The original sender stays the inviter when someone else resends it.
       const saved = await repository.findOneOrFail({
         where: { id },
         relations: { company: true, invitedBy: true, team: true },
@@ -339,13 +351,29 @@ export class InvitationsService {
         inviteUrl,
         companyName: saved.company.companyName,
         inviterName: fullName(saved.invitedBy),
-        // Only managers and employees are ever invited.
         roleDescription:
           saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
         teamName: saved.team?.name ?? null,
+        leadsTeam: saved.role === UserRole.MANAGER,
         validDays: INVITATION_VALID_DAYS,
       });
     });
+  }
+
+  /**
+   * An owner reaches every invitation; a manager only employee ones into the
+   * teams they lead, since inviting a manager to lead a team is the owner's.
+   */
+  private isInScope(
+    invitation: Invitation,
+    visibleTeamIds: string[] | null,
+  ): boolean {
+    return (
+      !visibleTeamIds ||
+      (invitation.role === UserRole.EMPLOYEE &&
+        invitation.teamId != null &&
+        visibleTeamIds.includes(invitation.teamId))
+    );
   }
 
   /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
@@ -363,13 +391,30 @@ export class InvitationsService {
 
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
-    const isInScope =
-      !visibleTeamIds ||
-      (invitation?.teamId != null &&
-        visibleTeamIds.includes(invitation.teamId));
-
-    if (!invitation || !isInScope) {
+    if (!invitation || !this.isInScope(invitation, visibleTeamIds)) {
       throw new NotFoundException('Invitation not found');
+    }
+
+    return invitation;
+  }
+
+  /**
+   * Sending refuses an address that has an account, but the person may have
+   * signed up since. Saying so when the link opens spares them a form that
+   * can only fail; both completions still check inside their transaction.
+   */
+  private async findOpenableInvitation(token: string): Promise<Invitation> {
+    const invitation = await this.findValidInvitation(
+      token,
+      this.invitationRepository,
+    );
+
+    const hasAccount = await this.dataSource
+      .getRepository(User)
+      .exists({ where: { email: this.normalizeEmail(invitation.email) } });
+
+    if (hasAccount) {
+      throw unusableInvitation(UnusableInvitationCode.ACCOUNT_EXISTS);
     }
 
     return invitation;
@@ -434,10 +479,6 @@ export class InvitationsService {
     );
   }
 
-  /**
-   * An employee always joins into a team, and a manager may only staff a team
-   * they lead, so the invitation has to carry the team from the start.
-   */
   private async resolveInvitationTeamId(
     companyId: string,
     payload: CreateInvitationPayload,
@@ -445,15 +486,7 @@ export class InvitationsService {
   ): Promise<string | null> {
     const { teamId } = payload;
 
-    // Accepting always creates a plain member, so a manager invited into a
-    // team would not lead it. The owner assigns them afterwards instead.
-    if (payload.role !== UserRole.EMPLOYEE) {
-      if (teamId) {
-        throw new BadRequestException(
-          'Only an employee can be invited into a team',
-        );
-      }
-
+    if (payload.role === UserRole.MANAGER && !teamId) {
       return null;
     }
 
@@ -461,8 +494,6 @@ export class InvitationsService {
       throw new BadRequestException('An employee must be invited into a team');
     }
 
-    // Checked before the team itself, so a manager gets the same answer for
-    // any team they do not lead, whether it exists, is archived or not.
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
@@ -510,9 +541,10 @@ export class InvitationsService {
       companyId: invitation.companyId,
       teamId: invitation.teamId,
       userId,
-      // Never taken from the invitation: accepting must not become a second
-      // route to a manager membership.
-      roleInTeam: TeamRole.MEMBER,
+      roleInTeam:
+        invitation.role === UserRole.MANAGER
+          ? TeamRole.MANAGER
+          : TeamRole.MEMBER,
       joinedAt: await findCompanyToday(manager, invitation.companyId),
       leftAt: null,
     });

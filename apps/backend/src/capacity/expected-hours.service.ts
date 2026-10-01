@@ -42,9 +42,10 @@ interface ShareSums {
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0 };
 
 /**
- * How many minutes somebody was expected to work: their capacity, minus the
- * days they were away. Planning is never consulted — an employee with no plan
- * at all has the same expectation as anybody else.
+ * How many minutes somebody was expected to work: their capacity from the day
+ * their account was created, minus the days they were away. Planning is never
+ * consulted — an employee with no plan at all has the same expectation as
+ * anybody else.
  */
 @Injectable()
 export class ExpectedHoursService {
@@ -112,9 +113,9 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Walks every working day in the range: each contributes a fifth of the
-   * capacity in force that day, and counts as available unless an absence
-   * covers it.
+   * Walks every working day in the range from the person's start date: each
+   * contributes a fifth of the capacity in force that day, and counts as
+   * available unless an absence covers it.
    */
   private async sumSharesFor(
     companyId: string,
@@ -127,14 +128,16 @@ export class ExpectedHoursService {
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 
-    const [timelines, absencesByUser, today] = await Promise.all([
+    const [timelines, startDates, absencesByUser, today] = await Promise.all([
       this.capacity.timelinesFor(companyId, userIds, to),
+      this.capacity.startDatesFor(companyId, userIds),
       this.absenceRangesFor(companyId, userIds, from, to),
       this.capacity.today(companyId),
     ]);
 
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
+      const startDate = startDates.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
       const sum: ShareSums = {
         available: 0,
@@ -144,6 +147,7 @@ export class ExpectedHoursService {
 
       for (const date of eachDate(from, to)) {
         if (!isWorkingDay(date)) continue;
+        if (startDate && date < startDate) continue;
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;

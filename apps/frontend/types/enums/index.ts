@@ -80,6 +80,7 @@ export enum UnusableInvitationCode {
   EXPIRED = "INVITATION_EXPIRED",
   REVOKED = "INVITATION_REVOKED",
   ACCEPTED = "INVITATION_ACCEPTED",
+  ACCOUNT_EXISTS = "INVITATION_ACCOUNT_EXISTS",
 }
 
 /** Mirrors the backend's NotificationType. */

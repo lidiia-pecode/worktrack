@@ -298,6 +298,18 @@ project or an activity alone — always against a specific *activity enabled on 
 specific project*. This is what makes "Development on Client X's redesign"
 distinguishable from "Development on our internal tooling".
 
+**What a project offers.** A project's activity list is what people may log
+against there: an activity enabled on the project, and active in the company's
+catalogue.
+- *Removing* an activity from a project takes it off that project's list at
+  once, with no warning, even when time has been logged on it. Adding it again
+  picks up the same link and history.
+- *Archiving* an activity takes it off the list of every project. The owner or
+  manager is first shown the active projects that offer it. Its project links
+  stay, so restoring it puts it back on the same projects.
+- Neither changes a time entry: past time stays under its project and activity,
+  in the timesheet and in every report.
+
 **Planning is the exception, deliberately.** A `PlanningEntry` names a project
 and nothing finer: the activity is chosen when the time is actually logged.
 Planning says which project, the time log says what work.
@@ -439,7 +451,7 @@ and this document:
 
 | Word | What it means | How it is worked out |
 | :--- | :--- | :--- |
-| **Expected** | How much somebody was supposed to work | capacity, minus the days they were away |
+| **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
 | **Behind** | They logged less than expected | logged < expected, over finished days only |
@@ -452,8 +464,10 @@ keeps an empty table. A change is a new row rather than an edit, which is what
 stops a contract change rewriting weeks somebody has already worked.
 
 **Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
-Friday day in the range that no absence covers, each contributing a fifth of the
-capacity in force that day, summed and rounded once at the end. Rounding once is
+Friday day in the range that no absence covers, from the day the person's
+account was created in the company's time zone, each contributing a fifth of the
+capacity in force that day, summed and rounded once at the end. Nobody is behind
+for the days before they joined; there is no separate start date (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns two
 figures — `total` for the whole range, and `toDate` counting only days that have
@@ -504,7 +518,13 @@ again, and changes to teams or projects later do not reopen it
 (`Company.setupFinishedAt`). "Getting started" stays in the owner's menu: the
 checklist while setup is open, and afterwards a guide to how WorkTrack fits
 together. A manager gets a welcome on Team time instead of a
-checklist.
+checklist, and an employee one on their timesheet; each speaks only to that
+person's own role. An employee with nothing to log sees why — on no project, or
+on projects with no activities yet — and no "behind" for that week. Team
+time and Planning always show their people, the viewer included, even before
+anybody has logged or been planned; when the viewer is the only one there, a
+line says why — nobody else has joined, or the manager leads no team or an
+empty one.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;
@@ -520,10 +540,12 @@ its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
-lead. An employee invitation always names a team. There is no other way in:
-nobody is created directly. Accepting an invitation that carries a team creates
-the team membership, always as a `MEMBER`, in the same transaction that creates
-the user. The same transaction notifies whoever sent the invitation, if they
+lead. An employee invitation always names a team; an owner may also name a team
+for a manager to lead. There is no other way in: nobody is created directly.
+Accepting an invitation that carries a team creates the team membership in the
+same transaction that creates the user — a `MEMBER` for an employee, the team's
+`MANAGER` for a manager. Only the owner invites managers and only the owner
+appoints a team's manager, so this is not a second route to leading a team. The same transaction notifies whoever sent the invitation, if they
 are still active, that the person has joined, so they can put them on a project;
 it is an in-app notification only, and each person reads only their own.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
@@ -538,7 +560,11 @@ working, and sending and resending are each limited per session. Inviting an
 address that has an account in another company is refused with a neutral
 message: it shows the address cannot be invited, but not which company it
 belongs to. A link that cannot be used says why — expired,
-revoked, already accepted or unknown — and, when expired or revoked, whom to ask.
+revoked, already accepted, unknown, or for an address that has since gained an
+account — and, when expired or revoked, whom to ask. Someone already signed in
+who opens a valid link is not offered the form: accepting would create another
+person's account, so the page names both addresses and offers to go back to
+WorkTrack or to sign out and accept.
 
 Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
 is 8–100 characters with an upper-case letter, a lower-case letter and a digit;
@@ -565,7 +591,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
-| Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
+| Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
@@ -779,6 +805,7 @@ is in its pull request.
 | 13 | Excel export of hours |
 | 14 | Company setup: a three-question wizard and an owner's checklist that ends with somebody able to log time; a manager's welcome; only Managers lead teams; archived teams closed; clients and billable defaults on the forms; local development on the host |
 | 15 | Invitations, joining and signing in: seven-day invitations with a fuller email, expired ones kept and resendable; an invitation page that explains every link; Google failures back on WorkTrack pages; one password and name rule; no username or direct creation; a "joined" notification for the inviter |
+| 16 | The rest of the first run: one look for every auth page; invitation links that handle a signed-in visitor and an address that already has an account; Expected from the day an account was created; first screens for each role that say why there is nothing to log, with role-focused welcomes; Team and Planning always showing their people; a manager invited to lead a team; activities that stay off a project once removed |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1020,16 +1047,6 @@ routes is a change to the §5 matrix and would be recorded as one.
 *Alternative:* build it only from the routes already open to employees, with no
 permission change and no billable split by project.
 
-**Q14 — When does somebody's Expected start?**
-Belongs to Area 3. With no capacity row, the company default applies to
-every date, so a person who joined on Thursday is behind for Monday to Wednesday.
-*Recommendation:* the day their account was created, in the company's time zone,
-with no new field.
-*Alternative:* an explicit start date on the person, set when they are invited
-or created and editable by the owner — right for a company that backfills
-history from before it started using WorkTrack, but a migration and a form
-field.
-
 **Q15 — Is time on a project with no client ever billable?**
 Belongs to Area 3. The reports count all time on a project with no client
 as internal, whatever its billable flag (D2), but the timesheet's progress bar
@@ -1039,6 +1056,21 @@ the timesheet and "internal" in the report.
 no client, and the timesheet shows the same three-way split as the reports.
 *Alternative:* keep the flag free on every project and only relabel the
 timesheet's bar.
+
+**Q16 — Can someone delete their own account, or an owner their company?**
+Raised on 1 October 2026; no area yet. Nobody can delete an account today:
+people are archived, never deleted (§8 rule 6). A user row also cannot be
+removed by hand, since `project_users` refers to it without a cascade. If that
+reference is lifted, deleting a person also deletes their time logs, absences,
+plans and capacity, which changes the company's reports and its locked periods.
+An employee's hours are the company's records, and the company decides what
+happens to them.
+*Recommendation:* no self-service deletion for employees and managers; the
+owner archives people, as today. Deleting a company is the owner's case, and it
+is decided together with Q6: what is exported first, how long data is kept, and
+what `Company.deletedAt` means.
+*Alternative:* "Delete my account" for any user, which then needs a rule for
+their time logs, such as anonymising the person and keeping the hours.
 
 ### Answered
 
@@ -1060,3 +1092,8 @@ timesheet's bar.
   role to Manager first. Recorded in
   [`permission-model.md`](./permission-model.md) §3.2 and enforced from Area 1's
   first phase; §4 and §5 change when it ships.
+- **Q14** — Expected starts on the day the person's account was created, in the
+  company's time zone, with no new field; days before it expect nothing. Moved
+  from Area 3 into Area 1's last phase (1 October 2026) and in force since; see
+  §4. An explicit start date on the person stays the answer for a company
+  that backfills older history.

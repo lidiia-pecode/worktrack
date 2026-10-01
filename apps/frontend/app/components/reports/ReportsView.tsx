@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarClock, FileBarChart, Gauge } from "lucide-react";
 
+import { useHoursReport } from "@/hooks/useHoursReport";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import {
   getMonthRange,
@@ -53,8 +54,6 @@ export const ReportsView = () => {
   const { timezone } = useWorkSettings();
 
   const [tab, setTab] = useState<ReportTab>("hours");
-  // Null until the viewer picks one: the company's current month, which is
-  // only known once the workspace time zone has loaded.
   const [chosenPeriod, setChosenPeriod] = useState<string | null>(null);
   const [customRange, setCustomRange] = useState(EMPTY_RANGE);
   const [groupBy, setGroupBy] = useState(HoursReportGroupBy.CLIENT);
@@ -64,7 +63,12 @@ export const ReportsView = () => {
   const rangeError = getRangeError(range);
   const isRangeValid = !rangeError;
 
-  // Switching to a custom range starts from the month that was showing.
+  const { report: hoursReport } = useHoursReport(
+    { ...range, groupBy },
+    isRangeValid && tab === "hours",
+  );
+  const hasHoursToExport = (hoursReport?.rows.length ?? 0) > 0;
+
   const changePeriod = (nextPeriod: string) => {
     if (nextPeriod === CUSTOM_RANGE && period !== CUSTOM_RANGE) {
       setCustomRange(getMonthRange(period));
@@ -120,7 +124,8 @@ export const ReportsView = () => {
             onGroupByChange={setGroupBy}
             showGroupBy={tab === "hours"}
             actions={
-              tab === "hours" && (
+              tab === "hours" &&
+              hasHoursToExport && (
                 <HoursExportButton range={range} disabled={!isRangeValid} />
               )
             }

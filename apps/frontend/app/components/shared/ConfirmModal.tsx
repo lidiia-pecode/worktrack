@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import {
   Dialog,
   DialogContent,
@@ -12,12 +14,13 @@ import { Button } from "@/components/ui/button";
 interface ConfirmModalProps {
   isOpen: boolean;
   title?: string;
-  message?: string;
+  message?: ReactNode;
   confirmText?: string;
   cancelText?: string;
   onConfirm: () => void;
   onClose: () => void;
   loading?: boolean;
+  confirmDisabled?: boolean;
   variant?: "archive" | "danger";
 }
 
@@ -30,6 +33,7 @@ export const ConfirmModal = ({
   onConfirm,
   onClose,
   loading = false,
+  confirmDisabled = false,
   variant = "archive",
 }: ConfirmModalProps) => {
   return (
@@ -57,6 +61,7 @@ export const ConfirmModal = ({
             size="sm"
             onClick={onConfirm}
             isLoading={loading}
+            disabled={confirmDisabled}
           >
             {confirmText}
           </Button>

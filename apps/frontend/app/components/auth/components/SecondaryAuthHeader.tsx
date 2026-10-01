@@ -1,17 +1,17 @@
 import { ArrowLeft, LucideIcon } from "lucide-react";
 import Link from "next/link";
 
-interface ResetPasswordPageHeaderProps {
+interface SecondaryAuthHeaderProps {
   icon: LucideIcon;
   title: string;
   description: string;
 }
 
-export const ResetPasswordPageHeader = ({
+export const SecondaryAuthHeader = ({
   icon: Icon,
   title,
   description,
-}: ResetPasswordPageHeaderProps) => {
+}: SecondaryAuthHeaderProps) => {
   return (
     <div className="mb-7">
       <div className="mb-5 flex items-center justify-between">
@@ -24,16 +24,16 @@ export const ResetPasswordPageHeader = ({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to login
+          Back to sign in
         </Link>
       </div>
 
-      <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
 
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {description}
         </p>
       </div>

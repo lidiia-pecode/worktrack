@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { getNextTabIndex } from "@/lib/utils/tabs";
 
 import { EmptyState } from "../EmptyState";
+import { createActionPlacement } from "./create-action";
 import { SearchInput } from "../inputs/SearchInput";
 
 export type ResourceTab = "active" | "archived";
@@ -121,7 +122,13 @@ export function ResourcePage<T>({
       ? `No archived ${title.toLowerCase()}`
       : emptyTitle;
 
-  const canCreateHere = canCreate && onCreate && !isArchived;
+  const createAction = createActionPlacement({
+    canCreate: Boolean(canCreate && onCreate && !isArchived),
+    isLoading,
+    isError,
+    itemCount: items.length,
+    isSearching: Boolean(search.trim()),
+  });
 
   const emptyStateDescription = search
     ? `No ${title.toLowerCase()} match "${search}".`
@@ -145,7 +152,7 @@ export function ResourcePage<T>({
           )}
         </div>
 
-        {canCreateHere && (
+        {createAction === "header" && (
           <Button type="button" onClick={onCreate} className="shrink-0 gap-2">
             <Plus className="size-4" />
             {createLabel}
@@ -212,8 +219,7 @@ export function ResourcePage<T>({
             description={emptyStateDescription}
             icon={isArchived ? <Archive className="size-6" /> : emptyIcon}
             action={
-              canCreateHere &&
-              !search && (
+              createAction === "emptyState" && (
                 <Button type="button" onClick={onCreate} className="gap-2">
                   <Plus className="size-4" />
                   {createLabel}

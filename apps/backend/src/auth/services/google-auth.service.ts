@@ -27,6 +27,7 @@ import { SessionService } from './session.service';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { hashToken } from 'src/lib/utils/hash-token.util';
 import { AuthErrorCode, authError } from '../auth-error';
+import { createValidationException } from 'src/lib/utils/validation-exception.util';
 
 const MAX_TOKEN_ATTEMPTS = 3;
 
@@ -217,7 +218,9 @@ export class GoogleAuthService {
       .execute();
 
     if (result.affected !== 1) {
-      throw new BadRequestException('Invalid or expired Google link token.');
+      throw new BadRequestException(
+        'This link has expired or has already been used. Continue with Google again from the sign-in page.',
+      );
     }
 
     const token = await tokenRepository.findOne({ where: { tokenHash } });
@@ -253,7 +256,7 @@ export class GoogleAuthService {
           userEntity.passwordHash,
         );
         if (!isPasswordValid) {
-          throw new BadRequestException('Incorrect password');
+          throw createValidationException({ password: ['Incorrect password'] });
         }
 
         const existingGoogleUser = await userRepository.findOne({

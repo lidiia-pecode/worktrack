@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { createFirstLink } from "@/hooks/useSetupLink";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -33,6 +35,7 @@ interface ActivityFormProps {
   mode?: "create" | "edit";
   onSubmit: (data: ActivityFormData) => void;
   isSubmitting?: boolean;
+  isOnboarding?: boolean;
 }
 
 export function ActivityForm({
@@ -41,6 +44,7 @@ export function ActivityForm({
   categories,
   onSubmit,
   isSubmitting = false,
+  isOnboarding = false,
 }: ActivityFormProps) {
   const {
     register,
@@ -78,7 +82,7 @@ export function ActivityForm({
           <p className="text-sm text-muted-foreground">
             There are no categories yet, and every activity belongs to one.{" "}
             <Link
-              href="/admin/categories"
+              href={createFirstLink("/admin/categories", isOnboarding)}
               className="font-medium text-brand hover:underline"
             >
               Create a category first

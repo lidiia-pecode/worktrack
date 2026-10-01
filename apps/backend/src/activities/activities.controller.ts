@@ -17,7 +17,10 @@ import {
   ActivityPayload,
   UpdateActivityPayload,
 } from './dtos/activity-payload.dto';
-import { ActivityResponse } from './dtos/activity-response.dto';
+import {
+  ActivityArchiveImpactResponse,
+  ActivityResponse,
+} from './dtos/activity-response.dto';
 import { ActivitiesQuery } from './dtos/activities-query.dto';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -58,6 +61,16 @@ export class ActivitiesController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.update(id, payload, user.companyId);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Get(':id/archive-impact')
+  @Serialize(ActivityArchiveImpactResponse)
+  getArchiveImpact(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.getArchiveImpact(id, user.companyId);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

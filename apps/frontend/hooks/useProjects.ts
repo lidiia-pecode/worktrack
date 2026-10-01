@@ -83,3 +83,9 @@ export const useProjectDetails = (id?: string) =>
     queryFn: () => ProjectsClientApi.getById(id!),
     enabled: Boolean(id),
   });
+
+export const useOwnProjects = () =>
+  useQuery({
+    queryKey: queryKeys.projects.mine(),
+    queryFn: ProjectsClientApi.getMine,
+  });

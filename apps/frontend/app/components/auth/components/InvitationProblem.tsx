@@ -1,11 +1,16 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import { INVITATION_VALID_DAYS } from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
 import { UnusableInvitationCode } from "@/types/enums";
 import type { UnusableInvitationError } from "@/types/Invitation";
 
+import { AuthCard } from "./AuthCard";
 import { AuthFormWrapper } from "./AuthFormWrapper";
 
 interface Notice {
@@ -39,6 +44,12 @@ const noticeFor = (error: UnusableInvitationError | null): Notice => {
         message:
           "This invitation has been accepted. Sign in with the email address it was sent to.",
       };
+    case UnusableInvitationCode.ACCOUNT_EXISTS:
+      return {
+        title: "This email already has an account",
+        message:
+          "A WorkTrack account belongs to one company, so this invitation can't be used with it. Sign in to your account, or ask the person who invited you to use a different email address.",
+      };
     default:
       return {
         title: "This link does not work",
@@ -48,23 +59,78 @@ const noticeFor = (error: UnusableInvitationError | null): Notice => {
   }
 };
 
+const SIGN_IN_CODES = [
+  UnusableInvitationCode.ACCEPTED,
+  UnusableInvitationCode.ACCOUNT_EXISTS,
+];
+
+const GoToAppLink = () => (
+  <Link href="/" className={cn(buttonVariants(), "w-full")}>
+    Go to WorkTrack
+  </Link>
+);
+
 interface InvitationProblemProps {
-  /** Null for a missing token or a link the API does not know. */
   error: UnusableInvitationError | null;
+  isSignedIn: boolean;
 }
 
 /** Says what is wrong with an invitation link and what to do next. */
-export const InvitationProblem = ({ error }: InvitationProblemProps) => {
+export const InvitationProblem = ({
+  error,
+  isSignedIn,
+}: InvitationProblemProps) => {
   const { title, message } = noticeFor(error);
-  const isAccepted = error?.code === UnusableInvitationCode.ACCEPTED;
+  const offersSignIn = !!error && SIGN_IN_CODES.includes(error.code);
 
   return (
     <InvitationNoticeLayout title={title} message={message}>
-      {isAccepted && (
-        <Link href="/login" className={cn(buttonVariants(), "w-full")}>
-          Sign in
-        </Link>
+      {isSignedIn ? (
+        <GoToAppLink />
+      ) : (
+        offersSignIn && (
+          <Link href="/login" className={cn(buttonVariants(), "w-full")}>
+            Sign in
+          </Link>
+        )
       )}
+    </InvitationNoticeLayout>
+  );
+};
+
+interface InvitationForAnotherAccountProps {
+  invitedEmail: string;
+  signedInEmail: string;
+}
+
+export const InvitationForAnotherAccount = ({
+  invitedEmail,
+  signedInEmail,
+}: InvitationForAnotherAccountProps) => {
+  const router = useRouter();
+  const { logout } = useAuthActions();
+
+  const signOut = () =>
+    logout.mutate(undefined, { onSuccess: () => router.refresh() });
+
+  return (
+    <InvitationNoticeLayout
+      title="You're already signed in"
+      message={`This invitation is for ${invitedEmail}. You're signed in as ${signedInEmail}.`}
+    >
+      <div className="flex flex-col gap-3">
+        <GoToAppLink />
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={signOut}
+          isLoading={logout.isPending}
+        >
+          Sign out to accept
+        </Button>
+      </div>
     </InvitationNoticeLayout>
   );
 };
@@ -93,6 +159,37 @@ export const InvitationLoadFailed = ({
   </InvitationNoticeLayout>
 );
 
+export const INVITED_HEADING = {
+  badge: "You're invited",
+  title: "Join your team on WorkTrack.",
+};
+
+export const InvitationLoading = () => (
+  <AuthFormWrapper
+    {...INVITED_HEADING}
+    description="Checking your invitation link."
+  >
+    <AuthCard>
+      <div className="animate-pulse" role="status" aria-busy="true">
+        <span className="sr-only">Loading your invitation</span>
+        <div className="h-7 w-56 rounded bg-muted" />
+        <div className="mt-3 h-4 w-full rounded bg-muted" />
+        <div className="mt-8 h-64 w-full rounded-xl bg-muted" />
+      </div>
+    </AuthCard>
+  </AuthFormWrapper>
+);
+
+const InvitationLayout = ({ children }: { children: React.ReactNode }) => (
+  <AuthFormWrapper
+    badge="Invitation"
+    title="Joining a company on WorkTrack."
+    description="Everyone joins through a link in an invitation email from their company."
+  >
+    {children}
+  </AuthFormWrapper>
+);
+
 interface InvitationNoticeLayoutProps extends Notice {
   children?: React.ReactNode;
 }
@@ -102,17 +199,9 @@ const InvitationNoticeLayout = ({
   message,
   children,
 }: InvitationNoticeLayoutProps) => (
-  <AuthFormWrapper
-    badge="Invitation"
-    title="Joining a company on WorkTrack."
-    description="Everyone joins through a link in an invitation email from their company."
-  >
-    <div className="w-full rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-8">
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>
-
-      {children && <div className="mt-6">{children}</div>}
-    </div>
-  </AuthFormWrapper>
+  <InvitationLayout>
+    <AuthCard title={title} description={message}>
+      {children}
+    </AuthCard>
+  </InvitationLayout>
 );
