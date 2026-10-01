@@ -29,3 +29,17 @@ export class ActivityResponse {
   @Expose()
   updatedAt!: Date;
 }
+
+class ArchiveImpactProjectResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+}
+
+export class ActivityArchiveImpactResponse {
+  @Expose()
+  @Type(() => ArchiveImpactProjectResponse)
+  projects!: ArchiveImpactProjectResponse[];
+}

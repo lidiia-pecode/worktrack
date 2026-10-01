@@ -31,7 +31,7 @@ import { EntityPicker } from "../shared/resourse/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ProjectMembersSection } from "./ProjectMembersSection";
-import { ProjectActivitiesSection } from "./ProjectActivitieSsection";
+import { ProjectActivitiesSection } from "./ProjectActivitiesSection";
 
 interface ProjectModalProps {
   open: boolean;

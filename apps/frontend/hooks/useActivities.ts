@@ -7,6 +7,8 @@ import {
   UpdateActivityPayload,
 } from "@/types";
 
+import { useQuery } from "@tanstack/react-query";
+
 import { ActivitiesClientApi } from "@/lib/api/resources";
 
 import { createEntityMutations } from "./shared/createEntityMutations";
@@ -36,6 +38,8 @@ const useActivitiesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.activities.all,
 
+  alsoInvalidate: [queryKeys.projects.all, queryKeys.projectActivities.all],
+
   api: {
     create: ActivitiesClientApi.create,
     update: ActivitiesClientApi.update,
@@ -61,3 +65,15 @@ export function useActivities(page = 1, params?: ActivityQueryParams) {
     actions,
   };
 }
+
+/** The projects archiving an activity would take it off, read when about to. */
+export const useActivityArchiveImpact = (
+  activityId: string,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: queryKeys.activities.archiveImpact(activityId),
+    queryFn: () => ActivitiesClientApi.getArchiveImpact(activityId),
+    enabled,
+    staleTime: 0,
+  });

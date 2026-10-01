@@ -28,3 +28,8 @@ export interface ActivityQuery extends PaginationParams {
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;
 export type ActivityListResponse = PaginatedResponse<Activity>;
+
+/** The active projects that offer an activity now, which archiving takes it off. */
+export interface ActivityArchiveImpact {
+  projects: { id: string; name: string }[];
+}

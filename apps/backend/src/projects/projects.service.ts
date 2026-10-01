@@ -34,6 +34,23 @@ import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 
+/**
+ * What a project offers people to log against. A removed link is kept for the
+ * time already logged on it, and an archived activity keeps its links so that
+ * restoring it brings it back; neither is listed as the project's.
+ */
+const isOffered = (projectActivity: ProjectActivity): boolean =>
+  projectActivity.isActive &&
+  projectActivity.activity?.status === ActivityStatus.ACTIVE;
+
+const withOfferedActivities = (project: Project): Project => {
+  project.projectActivities = (project.projectActivities ?? []).filter(
+    isOffered,
+  );
+
+  return project;
+};
+
 @Injectable()
 export class ProjectsService {
   constructor(
@@ -128,8 +145,14 @@ export class ProjectsService {
       }
     }
 
+    // An archived activity is not shown in the project dialog, so leaving it
+    // out of a save is no removal: its link stays for when it is restored.
     for (const pa of existingProjectActivities) {
-      if (!targetIdsSet.has(pa.activity.id) && pa.isActive) {
+      if (
+        !targetIdsSet.has(pa.activity.id) &&
+        pa.isActive &&
+        pa.activity.status === ActivityStatus.ACTIVE
+      ) {
         pa.isActive = false;
         entitiesToSave.push(pa);
       }
@@ -295,7 +318,9 @@ export class ProjectsService {
     ).getMany();
     project.membersCount = await this.countMembers(project.id, user, manager);
 
-    return project;
+    // Shaped only for the response: the loaded entity keeps every link, since
+    // saving it with fewer would detach the rest.
+    return withOfferedActivities(project);
   }
 
   // ---------------------------------------------------------------------------
@@ -323,7 +348,7 @@ export class ProjectsService {
       .take(query.limit)
       .getManyAndCount();
 
-    return { results, count };
+    return { results: results.map(withOfferedActivities), count };
   }
 
   async getById(id: string, user: AuthUser): Promise<Project> {

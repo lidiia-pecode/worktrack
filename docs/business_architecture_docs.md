@@ -298,6 +298,18 @@ project or an activity alone — always against a specific *activity enabled on 
 specific project*. This is what makes "Development on Client X's redesign"
 distinguishable from "Development on our internal tooling".
 
+**What a project offers.** A project's activity list is what people may log
+against there: an activity enabled on the project, and active in the company's
+catalogue.
+- *Removing* an activity from a project takes it off that project's list at
+  once, with no warning, even when time has been logged on it. Adding it again
+  picks up the same link and history.
+- *Archiving* an activity takes it off the list of every project. The owner or
+  manager is first shown the active projects that offer it. Its project links
+  stay, so restoring it puts it back on the same projects.
+- Neither changes a time entry: past time stays under its project and activity,
+  in the timesheet and in every report.
+
 **Planning is the exception, deliberately.** A `PlanningEntry` names a project
 and nothing finer: the activity is chosen when the time is actually logged.
 Planning says which project, the time log says what work.

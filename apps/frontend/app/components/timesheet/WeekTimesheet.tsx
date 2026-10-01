@@ -64,12 +64,11 @@ const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
 
 const noActivitiesMessage = (projects: { name: string }[]) =>
   projects.length === 1
-    ? `Activities need to be added before you can log time for ${projects[0].name}.`
+    ? `Activities need to be added to projects before you can log time.`
     : `None of your ${projects.length} projects has activities yet. Activities need to be added before you can log time.`;
 
 type WeekTimesheetProps = {
   userId: string;
-  /** A first-visit card, placed above the week or above the empty state. */
   welcome?: ReactNode;
 };
 

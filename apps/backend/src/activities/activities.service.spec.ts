@@ -9,6 +9,9 @@ import { ActCategoriesService } from 'src/activity-categories/activity-categorie
 
 import { Activity } from './entities/activity.entity';
 import { ActivitiesService } from './activities.service';
+import { Project } from 'src/projects/entities/project.entity';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
 /**
  * Runs against the development database, so it needs the Docker stack. The
@@ -40,6 +43,7 @@ describe('Activity and category names', () => {
     activities = new ActivitiesService(
       dataSource.getRepository(Activity),
       categories,
+      dataSource.getRepository(ProjectActivity),
     );
 
     const company = await dataSource
@@ -55,6 +59,8 @@ describe('Activity and category names', () => {
   afterAll(async () => {
     if (!dataSource?.isInitialized) return;
 
+    // Project links hold on to their activity, and go with their project.
+    await dataSource.getRepository(Project).delete({ companyId });
     await dataSource.getRepository(Activity).delete({ companyId });
     await dataSource.getRepository(ActCategory).delete({ companyId });
     await dataSource.getRepository(Company).delete({ slug: SLUG });
@@ -115,6 +121,44 @@ describe('Activity and category names', () => {
           companyId,
         ),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('archive impact', () => {
+    const createProject = async (
+      name: string,
+      activityId: string,
+      { linkActive = true, status = ProjectStatus.ACTIVE } = {},
+    ): Promise<void> => {
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `${name} ${RUN}`, status });
+
+      await dataSource.getRepository(ProjectActivity).save({
+        companyId,
+        projectId: project.id,
+        activityId,
+        isActive: linkActive,
+      });
+    };
+
+    it('lists the active projects that offer the activity now', async () => {
+      const { id } = await activities.create(
+        { name: 'Research', categoryId },
+        companyId,
+      );
+
+      await createProject('Zephyr', id);
+      await createProject('Atlas', id);
+      await createProject('Removed from', id, { linkActive: false });
+      await createProject('Archived', id, { status: ProjectStatus.ARCHIVED });
+
+      const { projects } = await activities.getArchiveImpact(id, companyId);
+
+      expect(projects.map((project) => project.name)).toEqual([
+        `Atlas ${RUN}`,
+        `Zephyr ${RUN}`,
+      ]);
     });
   });
 });
