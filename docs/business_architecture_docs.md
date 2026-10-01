@@ -439,7 +439,7 @@ and this document:
 
 | Word | What it means | How it is worked out |
 | :--- | :--- | :--- |
-| **Expected** | How much somebody was supposed to work | capacity, minus the days they were away |
+| **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
 | **Behind** | They logged less than expected | logged < expected, over finished days only |
@@ -452,8 +452,10 @@ keeps an empty table. A change is a new row rather than an edit, which is what
 stops a contract change rewriting weeks somebody has already worked.
 
 **Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
-Friday day in the range that no absence covers, each contributing a fifth of the
-capacity in force that day, summed and rounded once at the end. Rounding once is
+Friday day in the range that no absence covers, from the day the person's
+account was created in the company's time zone, each contributing a fifth of the
+capacity in force that day, summed and rounded once at the end. Nobody is behind
+for the days before they joined; there is no separate start date (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns two
 figures — `total` for the whole range, and `toDate` counting only days that have
@@ -1071,6 +1073,6 @@ their time logs, such as anonymising the person and keeping the hours.
   first phase; §4 and §5 change when it ships.
 - **Q14** — Expected starts on the day the person's account was created, in the
   company's time zone, with no new field; days before it expect nothing. Moved
-  from Area 3 into Area 1's last phase (1 October 2026); §4 changes when it
-  ships. An explicit start date on the person stays the answer for a company
+  from Area 3 into Area 1's last phase (1 October 2026) and in force since; see
+  §4. An explicit start date on the person stays the answer for a company
   that backfills older history.

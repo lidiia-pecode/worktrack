@@ -38,6 +38,7 @@ import {
   freezeAtLastGraceSecond,
   timeZoneOnAnotherDay,
 } from 'src/lib/testing/time-zones';
+import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
@@ -103,6 +104,7 @@ describe('PlanningService', () => {
       firstName: name,
       lastName: 'Test',
       email,
+      createdAt: LONG_STANDING_ACCOUNT_CREATED_AT,
     });
 
     return { id: user.id, email, companyId, role };

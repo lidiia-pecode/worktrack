@@ -22,6 +22,7 @@ import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import { todayISODate } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { ReportingPeriod } from '../entities/reporting-period.entity';
 import { ReportingService } from '../reporting.service';
@@ -66,6 +67,7 @@ describe('UtilisationService', () => {
       firstName: name,
       lastName: 'Test',
       email,
+      createdAt: LONG_STANDING_ACCOUNT_CREATED_AT,
     });
 
     return { id: user.id, email, companyId, role };

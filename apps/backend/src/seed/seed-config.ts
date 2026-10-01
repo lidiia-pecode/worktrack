@@ -12,8 +12,9 @@ import { TeamRole } from 'src/teams/enums/team-role.enum';
 
 export const SEED_PASSWORD = 'Password123!';
 
-/** Early enough that every seeded week falls after it. */
 export const CAPACITY_VALID_FROM = '2020-01-01';
+
+export const ACCOUNTS_CREATED_AT = new Date(`${CAPACITY_VALID_FROM}T00:00:00Z`);
 
 export const COMPANY = {
   companyName: 'WorkTrack Demo',
@@ -39,7 +40,6 @@ export interface SeedUser {
   role: UserRole;
   position: string;
   capacityHoursPerWeek: number;
-  /** Shown in the credentials file so it is obvious who to log in as and why. */
   note: string;
 }
 

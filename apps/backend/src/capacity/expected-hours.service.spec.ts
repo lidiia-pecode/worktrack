@@ -27,6 +27,7 @@ import {
   freezeAtLastGraceSecond,
   timeZoneOnAnotherDay,
 } from 'src/lib/testing/time-zones';
+import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { UserCapacity } from './entities/user-capacity.entity';
 import { CapacityService } from './capacity.service';
@@ -76,6 +77,7 @@ describe('ExpectedHoursService', () => {
       firstName: name,
       lastName: 'Test',
       email: `${name}-${RUN}@capacity.test`,
+      createdAt: LONG_STANDING_ACCOUNT_CREATED_AT,
     });
 
     return user.id;
@@ -240,6 +242,50 @@ describe('ExpectedHoursService', () => {
       await expect(
         expectedFor(partTimer, '2026-02-14', '2026-02-14'),
       ).resolves.toBe(0);
+    });
+  });
+
+  describe('the day an account was created', () => {
+    const WEDNESDAY = '2026-02-11';
+    const TWO_WORKING_DAYS = (2 * FULL_WEEK) / 5;
+
+    const createUserOn = async (name: string, createdAt: string) => {
+      const userId = await createUser(name);
+      await dataSource
+        .getRepository(User)
+        .update(userId, { createdAt: new Date(createdAt) });
+
+      return userId;
+    };
+
+    it('expects nothing before somebody joined in the middle of the week', async () => {
+      const joiner = await createUserOn('wednesday', `${WEDNESDAY}T09:00:00Z`);
+
+      await expect(expectedFor(joiner)).resolves.toBe(
+        FULL_WEEK - TWO_WORKING_DAYS,
+      );
+    });
+
+    it('expects the whole week of somebody who joined the weekend before', async () => {
+      const joiner = await createUserOn('weekend', '2026-02-07T12:00:00Z');
+
+      await expect(expectedFor(joiner)).resolves.toBe(FULL_WEEK);
+    });
+
+    it("takes the joining day in the company's time zone", async () => {
+      // Late on Tuesday in UTC is already Wednesday in Kyiv.
+      const joiner = await createUserOn('kyiv', '2026-02-10T23:30:00Z');
+      const companies = dataSource.getRepository(Company);
+
+      await companies.update(companyId, { timezone: 'Europe/Kyiv' });
+
+      try {
+        await expect(expectedFor(joiner)).resolves.toBe(
+          FULL_WEEK - TWO_WORKING_DAYS,
+        );
+      } finally {
+        await companies.update(companyId, { timezone: 'UTC' });
+      }
     });
   });
 
