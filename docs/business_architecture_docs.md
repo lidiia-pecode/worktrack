@@ -520,7 +520,11 @@ checklist while setup is open, and afterwards a guide to how WorkTrack fits
 together. A manager gets a welcome on Team time instead of a
 checklist, and an employee one on their timesheet; each speaks only to that
 person's own role. An employee with nothing to log sees why — on no project, or
-on projects with no activities yet — and no "behind" for that week.
+on projects with no activities yet — and no "behind" for that week. Team
+time and Planning always show their people, the viewer included, even before
+anybody has logged or been planned; when the viewer is the only one there, a
+line says why — nobody else has joined, or the manager leads no team or an
+empty one.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;

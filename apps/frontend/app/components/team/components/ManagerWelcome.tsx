@@ -55,6 +55,9 @@ const OWN_ITEMS: WelcomeItem[] = [
   },
 ];
 
+export const managerWelcomeKey = (userId: string) =>
+  `worktrack:manager-welcome:${userId}`;
+
 const teamNames = (names: string[]) =>
   new Intl.ListFormat("en", { type: "conjunction" }).format(names);
 
@@ -71,7 +74,7 @@ export const ManagerWelcome = ({ userId, firstName }: ManagerWelcomeProps) => {
 
   return (
     <WelcomeCard
-      dismissKey={`worktrack:manager-welcome:${userId}`}
+      dismissKey={managerWelcomeKey(userId)}
       firstName={firstName}
       status={status}
       items={leadsTeam ? [...TEAM_ITEMS, ...OWN_ITEMS] : OWN_ITEMS}

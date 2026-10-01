@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { ActivityArchiveImpact } from "@/types";
 
-const MAX_NAMED_PROJECTS = 6;
+export const MAX_NAMED_PROJECTS = 6;
 
 const projectNames = (names: string[]): ReactNode => {
   const named = names.slice(0, MAX_NAMED_PROJECTS);

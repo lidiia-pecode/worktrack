@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchX, UsersRound } from "lucide-react";
+import { SearchX } from "lucide-react";
 
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
+import { useTeamOptions } from "@/hooks/useTeams";
 import {
   formatDuration,
   getWeekDates,
@@ -22,6 +23,8 @@ import { Button } from "@/components/ui/button";
 
 import Container from "../layout/Container";
 import { EmptyState } from "../shared/EmptyState";
+import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
+import { onlyViewerReason } from "../shared/week/only-viewer";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
@@ -37,9 +40,10 @@ type OpenedDay = {
 
 type PlanningWeekViewProps = {
   role: UserRole;
+  viewerId: string;
 };
 
-export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
+export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const {
     weekStartDay,
     timezone,
@@ -120,6 +124,15 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
     void refetchAbsences();
   };
 
+  const { options: teamOptions } = useTeamOptions();
+  const onlyViewer = onlyViewerReason({
+    role,
+    viewerId,
+    rowUserIds: rows.map((row) => row.user.id),
+    hasActiveFilters: Boolean(teamId),
+    ledTeamCount: teamOptions.length,
+  });
+
   if (isLoadingSettings || isLoadingWeek || isLoadingAbsences) {
     return (
       <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
@@ -165,35 +178,22 @@ export const PlanningWeekView = ({ role }: PlanningWeekViewProps) => {
 
       {!hasError && rows.length === 0 && (
         <div className="p-6">
-          {teamId ? (
-            <EmptyState
-              icon={<SearchX />}
-              title="Nobody in this team"
-              description="The team you picked has nobody you can plan for."
-              action={
-                <Button
-                  variant="secondary"
-                  onClick={() => setTeamId(undefined)}
-                >
-                  Clear filters
-                </Button>
-              }
-            />
-          ) : (
-            <EmptyState
-              icon={<UsersRound />}
-              title={
-                role === UserRole.MANAGER
-                  ? "You don't lead a team yet"
-                  : "Nobody to plan for yet"
-              }
-              description={
-                role === UserRole.MANAGER
-                  ? "You plan for the people in teams you manage. Ask an owner to make you the manager of a team, and their week will appear here."
-                  : "Once people join the workspace, you can plan their week here."
-              }
-            />
-          )}
+          <EmptyState
+            icon={<SearchX />}
+            title="Nobody in this team"
+            description="The team you picked has nobody you can plan for."
+            action={
+              <Button variant="secondary" onClick={() => setTeamId(undefined)}>
+                Clear filters
+              </Button>
+            }
+          />
+        </div>
+      )}
+
+      {!hasError && onlyViewer && (
+        <div className="py-3 pr-3">
+          <OnlyViewerNotice reason={onlyViewer} />
         </div>
       )}
 

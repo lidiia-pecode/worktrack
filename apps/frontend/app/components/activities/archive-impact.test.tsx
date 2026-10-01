@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ActivityArchiveImpact } from "@/types";
 
-import { archiveImpactMessage } from "./archive-impact";
+import { MAX_NAMED_PROJECTS, archiveImpactMessage } from "./archive-impact";
 
 const projects = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
@@ -24,9 +24,9 @@ describe("archiveImpactMessage", () => {
     );
   });
 
-  it("names the first ten in bold and counts the rest in plain text", () => {
-    expect(html({ projects: projects(12) })).toContain(
-      `${bold("Project 10")}, and 2 more,`,
+  it("names the first few in bold and counts the rest in plain text", () => {
+    expect(html({ projects: projects(MAX_NAMED_PROJECTS + 2) })).toContain(
+      `${bold(`Project ${MAX_NAMED_PROJECTS}`)}, and 2 more,`,
     );
   });
 
