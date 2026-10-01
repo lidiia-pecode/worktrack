@@ -166,6 +166,7 @@ export function ActivityModal({
             }
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
+            isOnboarding={isOnboarding}
           />
         )}
       </ResourceFormModal>

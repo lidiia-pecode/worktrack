@@ -22,6 +22,15 @@ export const setupLink = (path: string, options: SetupLinkOptions = {}) => {
 };
 
 /**
+ * A "create this first" hint: opens the page with its create form open, and
+ * keeps the setup context only when the hint itself was reached from setup.
+ */
+export const createFirstLink = (path: string, isOnboarding: boolean) =>
+  isOnboarding
+    ? setupLink(path, { create: true })
+    : `${path}?${new URLSearchParams({ [CREATE]: "true" })}`;
+
+/**
  * Read these once, as the page's starting state: the form opens on arrival,
  * and the parameters are then dropped so a reload or Back does not reopen it.
  */
