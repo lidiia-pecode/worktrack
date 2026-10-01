@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import { UnusableInvitationCode } from "@/types/enums";
 import type { UnusableInvitationError } from "@/types/Invitation";
 
+import { AuthCard } from "./AuthCard";
 import { AuthFormWrapper } from "./AuthFormWrapper";
 
 interface Notice {
@@ -93,6 +94,29 @@ export const InvitationLoadFailed = ({
   </InvitationNoticeLayout>
 );
 
+export const InvitationLoading = () => (
+  <InvitationLayout>
+    <AuthCard>
+      <div className="animate-pulse" aria-busy="true">
+        <span className="sr-only">Loading your invitation</span>
+        <div className="h-7 w-56 rounded bg-muted" />
+        <div className="mt-3 h-4 w-full rounded bg-muted" />
+        <div className="mt-8 h-64 w-full rounded-xl bg-muted" />
+      </div>
+    </AuthCard>
+  </InvitationLayout>
+);
+
+const InvitationLayout = ({ children }: { children: React.ReactNode }) => (
+  <AuthFormWrapper
+    badge="Invitation"
+    title="Joining a company on WorkTrack."
+    description="Everyone joins through a link in an invitation email from their company."
+  >
+    {children}
+  </AuthFormWrapper>
+);
+
 interface InvitationNoticeLayoutProps extends Notice {
   children?: React.ReactNode;
 }
@@ -102,17 +126,9 @@ const InvitationNoticeLayout = ({
   message,
   children,
 }: InvitationNoticeLayoutProps) => (
-  <AuthFormWrapper
-    badge="Invitation"
-    title="Joining a company on WorkTrack."
-    description="Everyone joins through a link in an invitation email from their company."
-  >
-    <div className="w-full rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-8">
-      <h2 className="text-xl font-semibold text-foreground">{title}</h2>
-
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{message}</p>
-
-      {children && <div className="mt-6">{children}</div>}
-    </div>
-  </AuthFormWrapper>
+  <InvitationLayout>
+    <AuthCard title={title} description={message}>
+      {children}
+    </AuthCard>
+  </InvitationLayout>
 );

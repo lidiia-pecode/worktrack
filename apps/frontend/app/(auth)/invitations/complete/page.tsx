@@ -6,6 +6,7 @@ import { AuthForm } from "@/app/components/auth/AuthForm";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import {
   InvitationLoadFailed,
+  InvitationLoading,
   InvitationProblem,
 } from "@/app/components/auth/components/InvitationProblem";
 import { useInvitationValidation } from "@/hooks/auth/useInvitation";
@@ -46,7 +47,7 @@ export default function InvitationCompletePage() {
   }
 
   if (isLoading) {
-    return <InvitationCompleteLoading />;
+    return <InvitationLoading />;
   }
 
   if (isError || !invitation) {
@@ -78,20 +79,5 @@ export default function InvitationCompletePage() {
         googleErrorCode={googleErrorCode}
       />
     </AuthFormWrapper>
-  );
-}
-
-function InvitationCompleteLoading() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md rounded-2xl border border-border/80 bg-card/90 p-8 shadow-sm">
-        <div className="animate-pulse">
-          <div className="h-4 w-32 rounded bg-muted" />
-          <div className="mt-5 h-9 w-64 rounded bg-muted" />
-          <div className="mt-3 h-4 w-full rounded bg-muted" />
-          <div className="mt-8 h-96 w-full rounded-2xl bg-muted" />
-        </div>
-      </div>
-    </div>
   );
 }

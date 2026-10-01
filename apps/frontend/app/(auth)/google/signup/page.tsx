@@ -8,6 +8,7 @@ import { useForm } from "react-hook-form";
 
 import Input from "@/components/ui/input";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { AuthCard } from "@/app/components/auth/components/AuthCard";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import { FormAlert } from "@/app/components/shared/FormAlert";
 import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
@@ -77,36 +78,43 @@ export default function GoogleSignupPage() {
       title="Name your company."
       description="You signed in with Google. Add your company's name to finish, and you become its owner."
     >
-      {token ? (
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          className="flex flex-col space-y-4"
-        >
-          <Input
-            placeholder="Company name"
-            {...register("companyName")}
-            error={errors.companyName?.message}
-            disabled={isSubmitting}
-          />
+      <AuthCard
+        title="Finish signing up"
+        description="One last step: your company's name."
+      >
+        {token ? (
+          <form
+            noValidate
+            onSubmit={handleSubmit(onSubmit)}
+            className="flex flex-col space-y-4"
+          >
+            <Input
+              label="Company name"
+              autoComplete="organization"
+              {...register("companyName")}
+              error={errors.companyName?.message}
+              disabled={isSubmitting}
+            />
 
-          {submitError && <FormAlert>{submitError}</FormAlert>}
+            {submitError && <FormAlert>{submitError}</FormAlert>}
 
-          <Button type="submit" isLoading={isSubmitting}>
-            Complete signup
-          </Button>
+            <Button type="submit" className="w-full" isLoading={isSubmitting}>
+              Complete sign-up
+            </Button>
 
-          {submitError && START_AGAIN_LINK}
-        </form>
-      ) : (
-        <div className="space-y-4">
-          <FormAlert>
-            This sign-up link is incomplete. Start again with Google from the
-            sign-up page.
-          </FormAlert>
+            {submitError && START_AGAIN_LINK}
+          </form>
+        ) : (
+          <div className="space-y-4">
+            <FormAlert>
+              This sign-up link is incomplete. Start again with Google from the
+              sign-up page.
+            </FormAlert>
 
-          {START_AGAIN_LINK}
-        </div>
-      )}
+            {START_AGAIN_LINK}
+          </div>
+        )}
+      </AuthCard>
     </AuthFormWrapper>
   );
 }

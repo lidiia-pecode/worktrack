@@ -1020,16 +1020,6 @@ routes is a change to the §5 matrix and would be recorded as one.
 *Alternative:* build it only from the routes already open to employees, with no
 permission change and no billable split by project.
 
-**Q14 — When does somebody's Expected start?**
-Belongs to Area 3. With no capacity row, the company default applies to
-every date, so a person who joined on Thursday is behind for Monday to Wednesday.
-*Recommendation:* the day their account was created, in the company's time zone,
-with no new field.
-*Alternative:* an explicit start date on the person, set when they are invited
-or created and editable by the owner — right for a company that backfills
-history from before it started using WorkTrack, but a migration and a form
-field.
-
 **Q15 — Is time on a project with no client ever billable?**
 Belongs to Area 3. The reports count all time on a project with no client
 as internal, whatever its billable flag (D2), but the timesheet's progress bar
@@ -1039,6 +1029,21 @@ the timesheet and "internal" in the report.
 no client, and the timesheet shows the same three-way split as the reports.
 *Alternative:* keep the flag free on every project and only relabel the
 timesheet's bar.
+
+**Q16 — Can someone delete their own account, or an owner their company?**
+Raised on 1 October 2026; no area yet. Nobody can delete an account today:
+people are archived, never deleted (§8 rule 6). A user row also cannot be
+removed by hand, since `project_users` refers to it without a cascade. If that
+reference is lifted, deleting a person also deletes their time logs, absences,
+plans and capacity, which changes the company's reports and its locked periods.
+An employee's hours are the company's records, and the company decides what
+happens to them.
+*Recommendation:* no self-service deletion for employees and managers; the
+owner archives people, as today. Deleting a company is the owner's case, and it
+is decided together with Q6: what is exported first, how long data is kept, and
+what `Company.deletedAt` means.
+*Alternative:* "Delete my account" for any user, which then needs a rule for
+their time logs, such as anonymising the person and keeping the hours.
 
 ### Answered
 
@@ -1060,3 +1065,8 @@ timesheet's bar.
   role to Manager first. Recorded in
   [`permission-model.md`](./permission-model.md) §3.2 and enforced from Area 1's
   first phase; §4 and §5 change when it ships.
+- **Q14** — Expected starts on the day the person's account was created, in the
+  company's time zone, with no new field; days before it expect nothing. Moved
+  from Area 3 into Area 1's last phase (1 October 2026); §4 changes when it
+  ships. An explicit start date on the person stays the answer for a company
+  that backfills older history.

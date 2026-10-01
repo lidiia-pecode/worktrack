@@ -87,6 +87,13 @@
   );
 
   /* ------------------------------------------------------------------------
+     Elevation
+     ------------------------------------------------------------------------ */
+
+  --raised-shadow: 0 18px 50px -30px
+    color-mix(in oklch, var(--foreground) 35%, transparent);
+
+  /* ------------------------------------------------------------------------
      Semantic states
      ------------------------------------------------------------------------ */
 
@@ -214,6 +221,8 @@
 
   --color-glow-primary: var(--glow-primary);
   --color-glow-secondary: var(--glow-secondary);
+
+  --shadow-raised: var(--raised-shadow);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);

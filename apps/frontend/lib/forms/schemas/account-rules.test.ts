@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { invitationSchema, loginSchema, signupSchema } from "./auth.schema";
 import { companySchema } from "./company.schema";
 import { googleLinkSchema } from "./google-link.schema";
+import { forgotPasswordSchema } from "./reset-password.schema";
 import { WeekDay } from "@/types/enums";
 
 const VALID_SIGN_UP = {
@@ -25,7 +26,6 @@ describe("account rules match the backend", () => {
           firstName: "Liam",
           lastName: "Turner",
           password,
-          confirmPassword: password,
         }).success,
       ).toBe(false);
     },
@@ -70,5 +70,15 @@ describe("account rules match the backend", () => {
         standardWorkHoursPerDay: 8,
       }).success,
     ).toBe(false);
+  });
+
+  it.each([
+    ["", "Enter your email"],
+    ["emma.clarke", "Enter a valid email address"],
+  ])("tells which email is missing or wrong: %j", (email, message) => {
+    const result = forgotPasswordSchema.safeParse({ email });
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0].message).toBe(message);
   });
 });

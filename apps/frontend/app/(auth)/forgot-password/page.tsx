@@ -2,13 +2,26 @@
 
 import { useState } from "react";
 import { Mail } from "lucide-react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
+import { FormAlert } from "@/app/components/shared/FormAlert";
+import { getErrorMessage, isApiMessageError } from "@/lib/api/errors";
+import {
+  ForgotPasswordFormValues,
+  forgotPasswordSchema,
+} from "@/lib/forms/schemas/reset-password.schema";
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ResetPasswordPageLayout } from "@/app/components/auth";
-import { ResetPasswordPageHeader } from "@/app/components/auth";
+import {
+  SecondaryAuthHeader,
+  SecondaryAuthLayout,
+} from "@/app/components/auth";
+
+const isNoAccountError = (error: unknown) =>
+  isApiMessageError(error) && error.statusCode === 404;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -16,27 +29,44 @@ export default function ForgotPasswordPage() {
 
   const { forgotPassword } = useResetPassword().actions;
 
-  const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<ForgotPasswordFormValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+  });
 
+  const formError =
+    forgotPassword.error && !isNoAccountError(forgotPassword.error)
+      ? getErrorMessage(forgotPassword.error)
+      : null;
+
+  const onSubmit = async (data: ForgotPasswordFormValues) => {
     try {
-      await forgotPassword.mutateAsync({ email });
+      await forgotPassword.mutateAsync(data);
+      setEmail(data.email);
       setSubmitted(true);
-    } catch {
-      // The hook has already shown the error.
+    } catch (error: unknown) {
+      if (isNoAccountError(error)) {
+        setError("email", { message: getErrorMessage(error) });
+      }
     }
   };
 
   const handleResend = () => {
     forgotPassword.mutate(
       { email },
-      { onSuccess: () => toast.success(`We sent another link to ${email}.`) },
+      {
+        onSuccess: () => toast.success(`We sent another link to ${email}.`),
+      },
     );
   };
 
   return (
-    <ResetPasswordPageLayout>
-      <ResetPasswordPageHeader
+    <SecondaryAuthLayout>
+      <SecondaryAuthHeader
         icon={Mail}
         title={submitted ? "Check your email" : "Forgot your password?"}
         description={
@@ -47,20 +77,26 @@ export default function ForgotPasswordPage() {
       />
 
       {!submitted ? (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          noValidate
+          onSubmit={handleSubmit(onSubmit)}
+          className="flex flex-col space-y-4"
+        >
           <Input
+            label="Email"
             type="email"
             placeholder="you@example.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
+            autoComplete="email"
+            {...register("email")}
+            error={errors.email?.message}
           />
+
+          {formError && <FormAlert>{formError}</FormAlert>}
 
           <Button
             type="submit"
             className="w-full"
             isLoading={forgotPassword.isPending}
-            disabled={!email.trim()}
           >
             Send reset link
           </Button>
@@ -73,8 +109,10 @@ export default function ForgotPasswordPage() {
 
           <div className="space-y-3">
             <p className="text-center text-sm text-muted-foreground">
-              Didn&apos;t receive the email?
+              Didn&apos;t receive an email?
             </p>
+
+            {formError && <FormAlert>{formError}</FormAlert>}
 
             <Button
               type="button"
@@ -87,6 +125,6 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
       )}
-    </ResetPasswordPageLayout>
+    </SecondaryAuthLayout>
   );
 }

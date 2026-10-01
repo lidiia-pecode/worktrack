@@ -2,10 +2,14 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import { Link2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
-import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
+import {
+  SecondaryAuthHeader,
+  SecondaryAuthLayout,
+} from "@/app/components/auth";
 import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
@@ -59,26 +63,34 @@ export default function GoogleLinkPage() {
   };
 
   return (
-    <AuthFormWrapper
-      badge="Account Match Found"
-      title="Link your Google Account."
-      description="An account with this email already exists. Please enter your password to link your Google account."
-    >
+    <SecondaryAuthLayout>
+      <SecondaryAuthHeader
+        icon={Link2}
+        title="Link your Google account"
+        description="An account with this email already exists. Please enter your password to link your Google account."
+      />
+
       <form
+        noValidate
         onSubmit={handleSubmit(onSubmit)}
         className="flex flex-col space-y-4"
       >
         <PasswordInput
-          placeholder="Enter your current password"
+          label="Password"
+          autoComplete="current-password"
           {...register("password")}
           error={errors.password?.message}
           disabled={actions.completeGoogleLink.isPending}
         />
 
-        <Button type="submit" isLoading={actions.completeGoogleLink.isPending}>
-          Link Account & Sign In
+        <Button
+          type="submit"
+          className="w-full"
+          isLoading={actions.completeGoogleLink.isPending}
+        >
+          Link account and sign in
         </Button>
       </form>
-    </AuthFormWrapper>
+    </SecondaryAuthLayout>
   );
 }
