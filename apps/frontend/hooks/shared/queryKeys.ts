@@ -50,6 +50,8 @@ export const queryKeys = {
     allPages: (params?: QueryParams) => createAllPagesKey("projects", params),
 
     detail: (id: string) => ["projects", "detail", id] as const,
+
+    mine: () => ["projects", "mine"] as const,
   },
 
   activities: {

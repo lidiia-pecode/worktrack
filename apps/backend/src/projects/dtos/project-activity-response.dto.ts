@@ -2,7 +2,7 @@ import { Expose, Type } from 'class-transformer';
 import { ActivityResponse } from 'src/activities/dtos/activity-response.dto';
 import { ProjectStatus } from '../enums/project-status.enum';
 
-class ProjectSummaryResponse {
+export class ProjectSummaryResponse {
   @Expose()
   id!: string;
 

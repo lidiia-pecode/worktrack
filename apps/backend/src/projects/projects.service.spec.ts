@@ -25,6 +25,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
 import { Project } from './entities/project.entity';
+import { ProjectStatus } from './enums/project-status.enum';
 import { ProjectActivity } from './entities/project-activity.entity';
 import { ProjectsService } from './projects.service';
 
@@ -638,6 +639,27 @@ describe('ProjectsService membership scope', () => {
       ).rejects.toThrow(NotFoundException);
 
       await setStatus(betaMember, UserStatus.ACTIVE);
+    });
+  });
+
+  describe('listOwnProjects', () => {
+    it('lists the active projects the caller is on, with or without activities', async () => {
+      const newcomer = await createUser('newcomer', UserRole.EMPLOYEE);
+      const loggable = await createProject('Own loggable', [newcomer]);
+      const empty = await createProject('Own empty', [newcomer]);
+      const archived = await createProject('Own archived', [newcomer]);
+      await createProject('Someone else', [alphaMember]);
+
+      await linkActivity(loggable);
+      await dataSource
+        .getRepository(Project)
+        .update(archived, { status: ProjectStatus.ARCHIVED });
+
+      const { results } = await service.listOwnProjects(newcomer);
+
+      expect(results.map((project) => project.id).sort()).toEqual(
+        [loggable, empty].sort(),
+      );
     });
   });
 

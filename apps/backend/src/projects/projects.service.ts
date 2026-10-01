@@ -462,16 +462,24 @@ export class ProjectsService {
     return this.withScopedMembers(project, user);
   }
 
-  /**
-   * Project activities a person may log time against: the activity link is
-   * enabled, both the project and the activity are active, and that person is
-   * a member of the project. Defaults to the caller; owners and managers may
-   * ask for someone they are allowed to write for.
-   *
-   * Exists so clients do not have to fetch every company project and filter
-   * membership themselves — that leaked the whole project roster to employees
-   * and silently truncated at the project page size.
-   */
+  /** The active projects the caller is a member of, loggable or not. */
+  async listOwnProjects(user: AuthUser) {
+    const [results, count] = await this.repo
+      .createQueryBuilder('project')
+      .innerJoin(
+        'project_users',
+        'pu',
+        'pu.project_id = project.id AND pu.user_id = :userId',
+        { userId: user.id },
+      )
+      .where('project.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('project.status = :status', { status: ProjectStatus.ACTIVE })
+      .orderBy('project.name', 'ASC')
+      .getManyAndCount();
+
+    return { results, count };
+  }
+
   async listAssignableActivities(
     query: AssignableActivitiesQuery,
     user: AuthUser,

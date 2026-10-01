@@ -506,7 +506,9 @@ again, and changes to teams or projects later do not reopen it
 (`Company.setupFinishedAt`). "Getting started" stays in the owner's menu: the
 checklist while setup is open, and afterwards a guide to how WorkTrack fits
 together. A manager gets a welcome on Team time instead of a
-checklist.
+checklist, and an employee one on their timesheet; each speaks only to that
+person's own role. An employee with nothing to log sees why — on no project, or
+on projects with no activities yet — and no "behind" for that week.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;
