@@ -126,7 +126,7 @@ export class ProjectsService {
       const existing = existingMap.get(activityId);
 
       if (existing) {
-        if (!existing.isActive) {
+        if (!existing.isActive && activitiesMap.has(activityId)) {
           existing.isActive = true;
           entitiesToSave.push(existing);
         }
@@ -145,8 +145,6 @@ export class ProjectsService {
       }
     }
 
-    // An archived activity is not shown in the project dialog, so leaving it
-    // out of a save is no removal: its link stays for when it is restored.
     for (const pa of existingProjectActivities) {
       if (
         !targetIdsSet.has(pa.activity.id) &&

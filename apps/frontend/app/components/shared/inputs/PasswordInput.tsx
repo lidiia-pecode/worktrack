@@ -10,7 +10,6 @@ type Props = React.InputHTMLAttributes<HTMLInputElement> & {
   error?: string;
   className?: string;
   label?: string;
-  labelClassname?: string;
   description?: string;
 };
 

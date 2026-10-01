@@ -7,6 +7,7 @@ const NOTHING = {
   ownProjects: 0,
   timeLogs: 0,
   absences: 0,
+  isCurrentWeek: true,
 };
 
 describe("timesheetContentFor", () => {
@@ -32,6 +33,12 @@ describe("timesheetContentFor", () => {
 
   it("shows the week of someone on no project who is away", () => {
     expect(timesheetContentFor({ ...NOTHING, absences: 1 })).toBe("week");
+  });
+
+  it("always shows another week, so its navigation stays", () => {
+    expect(timesheetContentFor({ ...NOTHING, isCurrentWeek: false })).toBe(
+      "week",
+    );
   });
 
   it("shows the week that still holds time logged earlier", () => {

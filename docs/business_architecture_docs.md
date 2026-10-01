@@ -591,7 +591,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
-| Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
+| Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |

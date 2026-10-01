@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { Link2 } from "lucide-react";
@@ -13,7 +14,8 @@ import {
 } from "@/app/components/auth";
 import { FormAlert } from "@/app/components/shared/FormAlert";
 import { PasswordInput } from "@/app/components/shared/inputs/PasswordInput";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import { getErrorMessage, isApiValidationError } from "@/lib/api/errors";
 import { applyServerErrors } from "@/lib/forms/utils";
@@ -75,13 +77,9 @@ export default function GoogleLinkPage() {
           description="This Google link is incomplete. Continue with Google again from the sign-in page."
         />
 
-        <Button
-          type="button"
-          className="w-full"
-          onClick={() => router.replace("/login")}
-        >
+        <Link href="/login" className={cn(buttonVariants(), "w-full")}>
           Go to sign in
-        </Button>
+        </Link>
       </SecondaryAuthLayout>
     );
   }

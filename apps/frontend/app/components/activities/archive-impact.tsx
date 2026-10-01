@@ -37,7 +37,7 @@ export const archiveImpactMessage = (
     "Time already logged on it stays in reports, and restoring it puts it back on the same projects.";
 
   if (impact.projects.length === 0) {
-    return `No active project offers it now.`;
+    return "No active project offers it now.";
   }
 
   const names = projectNames(impact.projects.map((project) => project.name));

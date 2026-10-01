@@ -1,4 +1,4 @@
-import { InvitationComplete } from "@/app/components/auth/InvitationComplete";
+import { InvitationComplete } from "@/app/components/auth";
 import { getCurrentUser } from "@/lib/api/server/auth";
 
 export default async function InvitationCompletePage() {

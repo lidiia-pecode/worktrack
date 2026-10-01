@@ -180,8 +180,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <div className="p-6">
           <EmptyState
             icon={<SearchX />}
-            title="Nobody in this team"
-            description="The team you picked has nobody you can plan for."
+            title="Nobody matches these filters"
+            description="Nobody you can plan for is in the team you picked."
             action={
               <Button variant="secondary" onClick={() => setTeamId(undefined)}>
                 Clear filters

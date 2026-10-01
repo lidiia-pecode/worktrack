@@ -7,7 +7,6 @@ type InputProps = {
   label?: string;
   error?: string;
   description?: string;
-  labelClassname?: string;
   endAdornment?: React.ReactNode;
 } & React.InputHTMLAttributes<HTMLInputElement>;
 
@@ -19,7 +18,6 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
       description,
       id,
       className,
-      labelClassname,
       endAdornment,
       disabled,
       ...props
@@ -34,10 +32,7 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className={cn(
-              "mb-1.5 block text-sm font-medium text-foreground",
-              labelClassname,
-            )}
+            className="mb-1.5 block text-sm font-medium text-foreground"
           >
             {label}
           </label>

@@ -64,13 +64,13 @@ const teamNames = (names: string[]) =>
 export const ManagerWelcome = ({ userId, firstName }: ManagerWelcomeProps) => {
   const { options: teams, isLoading } = useTeamOptions();
 
+  if (isLoading) return null;
+
   const leadsTeam = teams.length > 0;
 
-  const status = isLoading
-    ? "Checking which teams you lead..."
-    : leadsTeam
-      ? `You lead ${teamNames(teams.map((team) => team.label))}.`
-      : "You don't lead a team yet. When you do, its people and their time appear here.";
+  const status = leadsTeam
+    ? `You lead ${teamNames(teams.map((team) => team.label))}.`
+    : "You don't lead a team yet. When you do, its people and their time appear here.";
 
   return (
     <WelcomeCard

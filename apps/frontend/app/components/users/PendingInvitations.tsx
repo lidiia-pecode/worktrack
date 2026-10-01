@@ -22,24 +22,23 @@ const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-const describeInvitation = ({
-  role,
-  team,
-  invitedBy,
-  expiresAt,
-  expired,
-}: PendingInvitation): string =>
-  [
-    team
-      ? role === UserRole.MANAGER
-        ? `Leads ${team.name}`
-        : team.name
-      : "No team",
+const teamLabel = ({ role, team }: PendingInvitation): string => {
+  if (!team) return "No team";
+
+  return role === UserRole.MANAGER ? `Leads ${team.name}` : team.name;
+};
+
+const describeInvitation = (invitation: PendingInvitation): string => {
+  const { invitedBy, expiresAt, expired } = invitation;
+
+  return [
+    teamLabel(invitation),
     invitedBy && `Sent by ${invitedBy.firstName} ${invitedBy.lastName}`,
     `${expired ? "Expired" : "Expires"} ${EXPIRES_AT_LABEL.format(new Date(expiresAt))}`,
   ]
     .filter(Boolean)
     .join(" · ");
+};
 
 export const PendingInvitations = () => {
   const { data: invitations = [], isError, refetch } = usePendingInvitations();

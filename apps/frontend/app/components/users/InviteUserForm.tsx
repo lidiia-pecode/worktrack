@@ -107,9 +107,11 @@ export function InviteUserForm({
   }, [defaultRole, getFieldState, setValue]);
 
   useEffect(() => {
-    if (!isEmployee) {
-      setValue("teamId", undefined);
-    } else if (teamOptions.length === 1) {
+    if (!isEmployee) setValue("teamId", undefined);
+  }, [isEmployee, setValue]);
+
+  useEffect(() => {
+    if (isEmployee && teamOptions.length === 1) {
       setValue("teamId", teamOptions[0].value);
     }
   }, [isEmployee, teamOptions, setValue]);

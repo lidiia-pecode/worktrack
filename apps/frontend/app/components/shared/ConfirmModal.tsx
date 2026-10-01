@@ -20,6 +20,7 @@ interface ConfirmModalProps {
   onConfirm: () => void;
   onClose: () => void;
   loading?: boolean;
+  confirmDisabled?: boolean;
   variant?: "archive" | "danger";
 }
 
@@ -32,6 +33,7 @@ export const ConfirmModal = ({
   onConfirm,
   onClose,
   loading = false,
+  confirmDisabled = false,
   variant = "archive",
 }: ConfirmModalProps) => {
   return (
@@ -59,6 +61,7 @@ export const ConfirmModal = ({
             size="sm"
             onClick={onConfirm}
             isLoading={loading}
+            disabled={confirmDisabled}
           >
             {confirmText}
           </Button>

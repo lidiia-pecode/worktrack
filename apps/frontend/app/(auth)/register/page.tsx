@@ -1,5 +1,4 @@
-import { AuthForm } from "@/app/components/auth/AuthForm";
-import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
+import { AuthForm, AuthFormWrapper } from "@/app/components/auth";
 
 interface RegisterPageProps {
   searchParams: Promise<{ error?: string }>;

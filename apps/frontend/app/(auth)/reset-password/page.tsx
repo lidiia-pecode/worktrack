@@ -17,7 +17,8 @@ import {
   SecondaryAuthHeader,
   SecondaryAuthLayout,
 } from "@/app/components/auth";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 import { FormAlert } from "@/app/components/shared/FormAlert";
 import { getErrorMessage, isApiMessageError } from "@/lib/api/errors";
 
@@ -67,13 +68,12 @@ export default function ResetPasswordPage() {
           description="This password reset link is missing a token or is invalid."
         />
 
-        <Button
-          type="button"
-          className="w-full"
-          onClick={() => router.replace("/forgot-password")}
+        <Link
+          href="/forgot-password"
+          className={cn(buttonVariants(), "w-full")}
         >
           Request a new link
-        </Button>
+        </Link>
       </SecondaryAuthLayout>
     );
   }
@@ -119,7 +119,6 @@ export default function ResetPasswordPage() {
         <Button
           type="submit"
           className="w-full"
-          disabled={actions.resetPassword.isPending}
           isLoading={actions.resetPassword.isPending}
         >
           Reset password

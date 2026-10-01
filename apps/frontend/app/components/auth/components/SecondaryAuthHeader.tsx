@@ -28,12 +28,12 @@ export const SecondaryAuthHeader = ({
         </Link>
       </div>
 
-      <div className="space-y-1.5">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           {title}
         </h1>
 
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {description}
         </p>
       </div>

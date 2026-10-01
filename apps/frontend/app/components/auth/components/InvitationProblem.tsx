@@ -159,17 +159,25 @@ export const InvitationLoadFailed = ({
   </InvitationNoticeLayout>
 );
 
+export const INVITED_HEADING = {
+  badge: "You're invited",
+  title: "Join your team on WorkTrack.",
+};
+
 export const InvitationLoading = () => (
-  <InvitationLayout>
+  <AuthFormWrapper
+    {...INVITED_HEADING}
+    description="Checking your invitation link."
+  >
     <AuthCard>
-      <div className="animate-pulse" aria-busy="true">
+      <div className="animate-pulse" role="status" aria-busy="true">
         <span className="sr-only">Loading your invitation</span>
         <div className="h-7 w-56 rounded bg-muted" />
         <div className="mt-3 h-4 w-full rounded bg-muted" />
         <div className="mt-8 h-64 w-full rounded-xl bg-muted" />
       </div>
     </AuthCard>
-  </InvitationLayout>
+  </AuthFormWrapper>
 );
 
 const InvitationLayout = ({ children }: { children: React.ReactNode }) => (

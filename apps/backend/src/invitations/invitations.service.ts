@@ -130,7 +130,9 @@ export class InvitationsService {
       where: {
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
-        ...(visibleTeamIds ? { teamId: In(visibleTeamIds) } : {}),
+        ...(visibleTeamIds
+          ? { teamId: In(visibleTeamIds), role: UserRole.EMPLOYEE }
+          : {}),
       },
       relations: { team: true, invitedBy: true },
       order: { createdAt: 'DESC' },
@@ -361,7 +363,8 @@ export class InvitationsService {
 
     const isInScope =
       !visibleTeamIds ||
-      (invitation?.teamId != null &&
+      (invitation?.role === UserRole.EMPLOYEE &&
+        invitation.teamId != null &&
         visibleTeamIds.includes(invitation.teamId));
 
     if (!invitation || !isInScope) {
@@ -382,11 +385,11 @@ export class InvitationsService {
       this.invitationRepository,
     );
 
-    const existingUser = await this.usersService.findByEmailWithCompany(
-      invitation.email,
-    );
+    const hasAccount = await this.dataSource
+      .getRepository(User)
+      .exists({ where: { email: this.normalizeEmail(invitation.email) } });
 
-    if (existingUser) {
+    if (hasAccount) {
       throw unusableInvitation(UnusableInvitationCode.ACCOUNT_EXISTS);
     }
 

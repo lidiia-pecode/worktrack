@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AuthForm } from "@/app/components/auth/AuthForm";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import {
+  INVITED_HEADING,
   InvitationForAnotherAccount,
   InvitationLoadFailed,
   InvitationLoading,
@@ -84,8 +85,7 @@ export const InvitationComplete = ({
 
   return (
     <AuthFormWrapper
-      badge="You're invited"
-      title="Join your team on WorkTrack."
+      {...INVITED_HEADING}
       description={describeInvitation(invitation)}
     >
       <AuthForm

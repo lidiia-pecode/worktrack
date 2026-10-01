@@ -1,5 +1,6 @@
 "use client";
 
+import { useId } from "react";
 import { Hand, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,12 +29,13 @@ export const WelcomeCard = ({
   className,
 }: WelcomeCardProps) => {
   const { isDismissed, dismiss } = useDismissible(dismissKey);
+  const titleId = useId();
 
   if (isDismissed) return null;
 
   return (
     <section
-      aria-labelledby="welcome-title"
+      aria-labelledby={titleId}
       className={cn(
         "rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
         className,
@@ -45,10 +47,7 @@ export const WelcomeCard = ({
         </div>
 
         <div className="min-w-0">
-          <h2
-            id="welcome-title"
-            className="text-base font-semibold text-foreground"
-          >
+          <h2 id={titleId} className="text-base font-semibold text-foreground">
             Welcome, {firstName}
           </h2>
 

@@ -64,7 +64,7 @@ const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
 
 const noActivitiesMessage = (projects: { name: string }[]) =>
   projects.length === 1
-    ? `Activities need to be added to projects before you can log time.`
+    ? "Activities need to be added to projects before you can log time."
     : `None of your ${projects.length} projects has activities yet. Activities need to be added before you can log time.`;
 
 type WeekTimesheetProps = {
@@ -295,6 +295,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     ownProjects: ownProjects?.count ?? 0,
     timeLogs: timelogs.length,
     absences: absences.length,
+    isCurrentWeek: dateFrom <= todayIso && todayIso <= dateTo,
   });
   const showsFigures =
     !hasError &&

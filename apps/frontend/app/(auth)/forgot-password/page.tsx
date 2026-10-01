@@ -85,6 +85,7 @@ export default function ForgotPasswordPage() {
             autoComplete="email"
             {...register("email")}
             error={errors.email?.message}
+            disabled={forgotPassword.isPending}
           />
 
           {formError && <FormAlert>{formError}</FormAlert>}
@@ -119,14 +120,9 @@ export default function ForgotPasswordPage() {
               Resend reset link
             </Button>
 
-            {resent && (
-              <p
-                role="status"
-                className="text-center text-sm text-success-text"
-              >
-                We sent another link to {email}
-              </p>
-            )}
+            <p role="status" className="text-center text-sm text-success-text">
+              {resent && `We sent another link to ${email}`}
+            </p>
           </div>
         </div>
       )}

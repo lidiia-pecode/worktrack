@@ -183,7 +183,8 @@ export function ActivityModal({
         variant="danger"
         onConfirm={confirmArchive}
         onClose={() => setIsConfirmingArchive(false)}
-        loading={archive.isPending || archiveImpact.isFetching}
+        loading={archive.isPending}
+        confirmDisabled={!archiveImpact.data}
       />
     </>
   );

@@ -6,6 +6,7 @@ interface TimesheetCounts {
   ownProjects: number;
   timeLogs: number;
   absences: number;
+  isCurrentWeek: boolean;
 }
 
 export const timesheetContentFor = ({
@@ -13,7 +14,9 @@ export const timesheetContentFor = ({
   ownProjects,
   timeLogs,
   absences,
+  isCurrentWeek,
 }: TimesheetCounts): TimesheetContent => {
+  if (!isCurrentWeek) return "week";
   if (loggableActivities > 0 || timeLogs > 0 || absences > 0) return "week";
 
   return ownProjects > 0 ? "noActivities" : "notOnProjects";

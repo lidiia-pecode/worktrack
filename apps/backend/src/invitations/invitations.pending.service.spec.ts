@@ -277,6 +277,21 @@ describe('InvitationsService pending invitations', () => {
       await expect(listedEmails(betaManager)).resolves.toContain(email);
     });
 
+    it("keeps the owner's invitation for a manager to lead their team out of reach", async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha, UserRole.MANAGER);
+      const { id } = await findPending(email);
+
+      await expect(listedEmails(alphaManager)).resolves.not.toContain(email);
+      await expect(service.resend(id, alphaManager)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(service.revoke(id, alphaManager)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(listedEmails(owner)).resolves.toContain(email);
+    });
+
     it('keeps an expired invitation, marked expired', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
