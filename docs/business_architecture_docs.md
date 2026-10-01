@@ -805,6 +805,7 @@ is in its pull request.
 | 13 | Excel export of hours |
 | 14 | Company setup: a three-question wizard and an owner's checklist that ends with somebody able to log time; a manager's welcome; only Managers lead teams; archived teams closed; clients and billable defaults on the forms; local development on the host |
 | 15 | Invitations, joining and signing in: seven-day invitations with a fuller email, expired ones kept and resendable; an invitation page that explains every link; Google failures back on WorkTrack pages; one password and name rule; no username or direct creation; a "joined" notification for the inviter |
+| 16 | The rest of the first run: one look for every auth page; invitation links that handle a signed-in visitor and an address that already has an account; Expected from the day an account was created; first screens for each role that say why there is nothing to log, with role-focused welcomes; Team and Planning always showing their people; a manager invited to lead a team; activities that stay off a project once removed |
 
 ### Improvement roadmap — high level, flexible
 

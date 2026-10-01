@@ -351,7 +351,9 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   return (
     <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
-      {welcome && <div className="pt-4 pb-1 pr-3 empty:hidden">{welcome}</div>}
+      {welcome && (
+        <div className="px-3 pt-4 pb-1 empty:hidden sm:pl-0">{welcome}</div>
+      )}
 
       <div className="border-b border-border">
         <div className="flex items-center justify-between py-3 pr-3">

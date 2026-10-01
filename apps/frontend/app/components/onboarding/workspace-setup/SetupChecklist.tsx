@@ -120,7 +120,8 @@ const managerSteps = (
   {
     id: "inviteManager",
     title: "Invite a manager",
-    description: "Send an invitation with the Manager role.",
+    description:
+      "Send an invitation with the Manager role. You can pick the team they lead now, or later.",
     icon: UserPlus,
     completed: managerSteps.inviteManager,
     link: {

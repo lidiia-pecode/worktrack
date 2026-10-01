@@ -67,7 +67,7 @@ const GUIDE_TOPICS: SetupStepItem[] = [
   {
     id: "managers",
     title: "Managers",
-    description: `${TOPIC_TEXT.manager} Invite someone with the Manager role, then make them a team's manager.`,
+    description: `${TOPIC_TEXT.manager} Invite someone with the Manager role and pick the team they lead, or make them a team's manager once they join.`,
     icon: UserPlus,
     completed: false,
     link: { label: "Open teams", href: "/admin/teams" },
