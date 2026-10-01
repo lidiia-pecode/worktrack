@@ -326,7 +326,6 @@ export class InvitationsService {
 
       const { id } = await repository.save(invitation);
 
-      // The original sender stays the inviter when someone else resends it.
       const saved = await repository.findOneOrFail({
         where: { id },
         relations: { company: true, invitedBy: true, team: true },
@@ -336,10 +335,10 @@ export class InvitationsService {
         inviteUrl,
         companyName: saved.company.companyName,
         inviterName: fullName(saved.invitedBy),
-        // Only managers and employees are ever invited.
         roleDescription:
           saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
         teamName: saved.team?.name ?? null,
+        leadsTeam: saved.role === UserRole.MANAGER,
         validDays: INVITATION_VALID_DAYS,
       });
     });
@@ -453,10 +452,6 @@ export class InvitationsService {
     );
   }
 
-  /**
-   * An employee always joins into a team, and a manager may only staff a team
-   * they lead, so the invitation has to carry the team from the start.
-   */
   private async resolveInvitationTeamId(
     companyId: string,
     payload: CreateInvitationPayload,
@@ -464,15 +459,7 @@ export class InvitationsService {
   ): Promise<string | null> {
     const { teamId } = payload;
 
-    // Accepting always creates a plain member, so a manager invited into a
-    // team would not lead it. The owner assigns them afterwards instead.
-    if (payload.role !== UserRole.EMPLOYEE) {
-      if (teamId) {
-        throw new BadRequestException(
-          'Only an employee can be invited into a team',
-        );
-      }
-
+    if (payload.role === UserRole.MANAGER && !teamId) {
       return null;
     }
 
@@ -480,8 +467,6 @@ export class InvitationsService {
       throw new BadRequestException('An employee must be invited into a team');
     }
 
-    // Checked before the team itself, so a manager gets the same answer for
-    // any team they do not lead, whether it exists, is archived or not.
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
@@ -529,9 +514,10 @@ export class InvitationsService {
       companyId: invitation.companyId,
       teamId: invitation.teamId,
       userId,
-      // Never taken from the invitation: accepting must not become a second
-      // route to a manager membership.
-      roleInTeam: TeamRole.MEMBER,
+      roleInTeam:
+        invitation.role === UserRole.MANAGER
+          ? TeamRole.MANAGER
+          : TeamRole.MEMBER,
       joinedAt: await findCompanyToday(manager, invitation.companyId),
       leftAt: null,
     });

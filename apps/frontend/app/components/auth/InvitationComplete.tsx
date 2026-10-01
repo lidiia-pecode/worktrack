@@ -23,7 +23,9 @@ const describeInvitation = ({
 }: InvitationValidation): string => {
   const who = inviterName ? `${inviterName} invited you` : "You are invited";
   const as = role === UserRole.MANAGER ? "a manager" : "an employee";
-  const team = teamName ? `, in the team “${teamName}”` : "";
+  const team = teamName
+    ? `, ${role === UserRole.MANAGER ? "leading" : "in"} the team “${teamName}”`
+    : "";
 
   return `${who} to join ${companyName} as ${as}${team}. Create your account to start tracking your time.`;
 };

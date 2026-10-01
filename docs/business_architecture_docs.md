@@ -540,10 +540,12 @@ its first `OWNER` together. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
-lead. An employee invitation always names a team. There is no other way in:
-nobody is created directly. Accepting an invitation that carries a team creates
-the team membership, always as a `MEMBER`, in the same transaction that creates
-the user. The same transaction notifies whoever sent the invitation, if they
+lead. An employee invitation always names a team; an owner may also name a team
+for a manager to lead. There is no other way in: nobody is created directly.
+Accepting an invitation that carries a team creates the team membership in the
+same transaction that creates the user — a `MEMBER` for an employee, the team's
+`MANAGER` for a manager. Only the owner invites managers and only the owner
+appoints a team's manager, so this is not a second route to leading a team. The same transaction notifies whoever sent the invitation, if they
 are still active, that the person has joined, so they can put them on a project;
 it is an in-app notification only, and each person reads only their own.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
@@ -589,7 +591,7 @@ another OWNER or grant the OWNER role.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
-| Invitations | create, any role, an employee always into a team; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
+| Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke those into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |

@@ -205,9 +205,20 @@ describe('InvitationsService.create', () => {
       expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
 
-    it('refuses a team on a manager invitation', async () => {
+    it('lets an owner invite a manager to lead a team', async () => {
+      await invite(UserRole.OWNER, UserRole.MANAGER, OTHER_TEAM_ID);
+
+      expect(createInvitation).toHaveBeenCalledWith(
+        expect.objectContaining({
+          role: UserRole.MANAGER,
+          teamId: OTHER_TEAM_ID,
+        }),
+      );
+    });
+
+    it('refuses to invite a manager to lead an archived team', async () => {
       await expect(
-        invite(UserRole.OWNER, UserRole.MANAGER, LED_TEAM_ID),
+        invite(UserRole.OWNER, UserRole.MANAGER, ARCHIVED_TEAM_ID),
       ).rejects.toThrow(BadRequestException);
 
       expect(sendInvitationEmail).not.toHaveBeenCalled();

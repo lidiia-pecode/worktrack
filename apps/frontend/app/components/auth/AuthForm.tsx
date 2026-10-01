@@ -237,7 +237,9 @@ export const AuthForm = ({
 
           {invitation.teamName && (
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-sm text-muted-foreground">Team</dt>
+              <dt className="text-sm text-muted-foreground">
+                {invitation.role === UserRole.MANAGER ? "Team to lead" : "Team"}
+              </dt>
 
               <dd className="truncate text-sm font-medium text-foreground">
                 {invitation.teamName}
