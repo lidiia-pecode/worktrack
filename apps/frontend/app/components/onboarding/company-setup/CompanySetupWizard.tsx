@@ -211,7 +211,6 @@ export const CompanySetupWizard = () => {
             step={0.5}
             {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
             error={errors.standardWorkHoursPerDay?.message}
-            labelClassname="mb-1.5"
             disabled={isSaving}
           />
         )}

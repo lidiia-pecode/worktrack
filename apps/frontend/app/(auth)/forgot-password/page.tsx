@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Mail } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
 
 import { useResetPassword } from "@/hooks/auth/useResetPassword";
 import { FormAlert } from "@/app/components/shared/FormAlert";
@@ -26,6 +25,7 @@ const isNoAccountError = (error: unknown) =>
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [resent, setResent] = useState(false);
 
   const { forgotPassword } = useResetPassword().actions;
 
@@ -56,12 +56,8 @@ export default function ForgotPasswordPage() {
   };
 
   const handleResend = () => {
-    forgotPassword.mutate(
-      { email },
-      {
-        onSuccess: () => toast.success(`We sent another link to ${email}.`),
-      },
-    );
+    setResent(false);
+    forgotPassword.mutate({ email }, { onSuccess: () => setResent(true) });
   };
 
   return (
@@ -122,6 +118,15 @@ export default function ForgotPasswordPage() {
             >
               Resend reset link
             </Button>
+
+            {resent && (
+              <p
+                role="status"
+                className="text-center text-sm text-success-text"
+              >
+                We sent another link to {email}
+              </p>
+            )}
           </div>
         </div>
       )}

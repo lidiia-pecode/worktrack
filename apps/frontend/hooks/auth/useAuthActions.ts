@@ -53,6 +53,9 @@ export function useAuthActions() {
         queryKey: queryKeys.auth.me(),
       });
     },
+
+    // Replaces the global toast: the Google link page shows the error itself.
+    onError: () => {},
   });
 
   const logout = useMutation({

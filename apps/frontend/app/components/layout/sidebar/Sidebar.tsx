@@ -13,6 +13,16 @@ import { UserRole } from "@/types/enums";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { CloseButton } from "../../shared/buttons/CloseButton";
 
+const PAGES_WITHOUT_SIDEBAR = [
+  "/onboarding",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/google/",
+  "/invitations/",
+];
+
 interface SidebarProps {
   user: User;
 }
@@ -26,8 +36,9 @@ export function Sidebar({ user }: SidebarProps) {
     (item) => isOwner || !item.ownerOnly,
   );
 
-  // The company wizard runs on its own, before the app is set up.
-  if (pathname.startsWith("/onboarding")) return null;
+  if (PAGES_WITHOUT_SIDEBAR.some((page) => pathname.startsWith(page))) {
+    return null;
+  }
 
   return (
     <>

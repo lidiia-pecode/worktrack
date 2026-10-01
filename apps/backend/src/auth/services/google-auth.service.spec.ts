@@ -127,3 +127,63 @@ describe('GoogleAuthService.validateGoogleLogin', () => {
     });
   });
 });
+
+describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
+  /** A link token that `consumed` says was or was not still usable. */
+  const serviceFor = (consumed: boolean, isPasswordValid = true) => {
+    const tokenQuery = {
+      update: () => tokenQuery,
+      set: () => tokenQuery,
+      where: () => tokenQuery,
+      andWhere: () => tokenQuery,
+      execute: () => Promise.resolve({ affected: consumed ? 1 : 0 }),
+    };
+
+    const repositories: Record<string, unknown> = {
+      GoogleLinkToken: {
+        createQueryBuilder: () => tokenQuery,
+        findOne: () => Promise.resolve({ userId: 'user-1', googleId: 'g-1' }),
+      },
+      User: {
+        findOne: () => Promise.resolve({ id: 'user-1', passwordHash: 'hash' }),
+      },
+    };
+
+    const manager = {
+      getRepository: (entity: { name: string }) => repositories[entity.name],
+    };
+
+    return new GoogleAuthService(
+      stub({ verify: jest.fn().mockResolvedValue(isPasswordValid) }),
+      stub({}),
+      stub({}),
+      stub({
+        transaction: (work: (manager: unknown) => Promise<unknown>) =>
+          work(manager),
+      }),
+      new AuthPolicyService(),
+      stub({}),
+      stub({}),
+      stub({}),
+      stub({}),
+    );
+  };
+
+  it('returns a wrong password as an error on the password field', async () => {
+    const service = serviceFor(true, false);
+
+    await expect(
+      service.completeGoogleLinkWithPassword('token', 'wrong'),
+    ).rejects.toMatchObject({
+      response: { errors: { password: ['Incorrect password'] } },
+    });
+  });
+
+  it('says how to start again when the link cannot be used', async () => {
+    const service = serviceFor(false);
+
+    await expect(
+      service.completeGoogleLinkWithPassword('token', 'Password1'),
+    ).rejects.toThrow('sign-in page');
+  });
+});

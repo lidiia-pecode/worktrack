@@ -29,7 +29,7 @@ export class MailService {
       'auth.passwordReset.expiresIn',
     );
 
-    const { error } = await this.resend.emails.send({
+    const { data, error } = await this.resend.emails.send({
       from,
       to: email,
       subject: 'Reset your WorkTrack password',
@@ -49,6 +49,8 @@ export class MailService {
         'Failed to send password reset email',
       );
     }
+
+    this.logger.log(`Sent password reset email ${data?.id}`);
   }
 
   async sendInvitationEmail(
@@ -58,7 +60,7 @@ export class MailService {
     const from = this.configService.getOrThrow<string>('mail.from');
     const { subject, html, text } = invitationEmail(params);
 
-    const { error } = await this.resend.emails.send({
+    const { data, error } = await this.resend.emails.send({
       from,
       to: email,
       subject,
@@ -71,5 +73,7 @@ export class MailService {
 
       throw new InternalServerErrorException('Failed to send invitation email');
     }
+
+    this.logger.log(`Sent invitation email ${data?.id}`);
   }
 }

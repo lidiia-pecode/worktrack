@@ -21,10 +21,7 @@ import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 import { WeekDay } from "@/types/enums";
 import { WEEK_START_OPTIONS } from "@/lib/constants";
 import { toListedTimeZone } from "@/lib/utils/time-zones";
-import {
-  settingsLabelClassName,
-  settingsNumberInputClassName,
-} from "../styles/settings-styles";
+import { settingsNumberInputClassName } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
 
@@ -91,7 +88,6 @@ export const CompanySettings = () => {
               placeholder="Your company name"
               {...register("companyName")}
               error={errors.companyName?.message}
-              labelClassname={settingsLabelClassName}
             />
           </div>
         </section>
@@ -150,7 +146,6 @@ export const CompanySettings = () => {
                   })}
                   error={errors.standardWorkHoursPerDay?.message}
                   className={settingsNumberInputClassName}
-                  labelClassname={settingsLabelClassName}
                 />
 
                 <NumberInputControls

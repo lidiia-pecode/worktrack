@@ -160,15 +160,12 @@ export class InvitationsService {
 
   /** Refuses an unusable token with the same codes the invitation page reads. */
   async assertUsableToken(token: string): Promise<void> {
-    await this.findValidInvitation(token, this.invitationRepository);
+    await this.findOpenableInvitation(token);
   }
 
   /** What the invitation page shows before the person accepts. */
   async describeByToken(token: string) {
-    const invitation = await this.findValidInvitation(
-      token,
-      this.invitationRepository,
-    );
+    const invitation = await this.findOpenableInvitation(token);
 
     return {
       email: invitation.email,
@@ -370,6 +367,28 @@ export class InvitationsService {
 
     if (!invitation || !isInScope) {
       throw new NotFoundException('Invitation not found');
+    }
+
+    return invitation;
+  }
+
+  /**
+   * Sending refuses an address that has an account, but the person may have
+   * signed up since. Saying so when the link opens spares them a form that
+   * can only fail; both completions still check inside their transaction.
+   */
+  private async findOpenableInvitation(token: string): Promise<Invitation> {
+    const invitation = await this.findValidInvitation(
+      token,
+      this.invitationRepository,
+    );
+
+    const existingUser = await this.usersService.findByEmailWithCompany(
+      invitation.email,
+    );
+
+    if (existingUser) {
+      throw unusableInvitation(UnusableInvitationCode.ACCOUNT_EXISTS);
     }
 
     return invitation;

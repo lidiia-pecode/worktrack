@@ -469,6 +469,29 @@ describe('InvitationsService pending invitations', () => {
       );
     });
 
+    it('says when the address has gained an account since it was sent', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+      const token = lastSentToken();
+
+      await dataSource.getRepository(User).save({
+        companyId,
+        role: UserRole.EMPLOYEE,
+        firstName: 'Signed',
+        lastName: 'Up',
+        email,
+      });
+
+      await expectUnusable(
+        service.describeByToken(token),
+        UnusableInvitationCode.ACCOUNT_EXISTS,
+      );
+      await expectUnusable(
+        service.assertUsableToken(token),
+        UnusableInvitationCode.ACCOUNT_EXISTS,
+      );
+    });
+
     it('answers "not found" to an unknown or empty token', async () => {
       await expectUnusable(
         service.describeByToken('not-a-token'),

@@ -538,7 +538,11 @@ working, and sending and resending are each limited per session. Inviting an
 address that has an account in another company is refused with a neutral
 message: it shows the address cannot be invited, but not which company it
 belongs to. A link that cannot be used says why — expired,
-revoked, already accepted or unknown — and, when expired or revoked, whom to ask.
+revoked, already accepted, unknown, or for an address that has since gained an
+account — and, when expired or revoked, whom to ask. Someone already signed in
+who opens a valid link is not offered the form: accepting would create another
+person's account, so the page names both addresses and offers to go back to
+WorkTrack or to sign out and accept.
 
 Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
 is 8–100 characters with an upper-case letter, a lower-case letter and a digit;
