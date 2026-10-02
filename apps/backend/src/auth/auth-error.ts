@@ -11,6 +11,7 @@ export enum AuthErrorCode {
   GOOGLE_EMAIL_MISMATCH = 'GOOGLE_EMAIL_MISMATCH',
   GOOGLE_ACCOUNT_IN_USE = 'GOOGLE_ACCOUNT_IN_USE',
   GOOGLE_NAME_MISSING = 'GOOGLE_NAME_MISSING',
+  GOOGLE_EMAIL_UNVERIFIED = 'GOOGLE_EMAIL_UNVERIFIED',
   ACCOUNT_USES_OTHER_GOOGLE = 'ACCOUNT_USES_OTHER_GOOGLE',
   ACCOUNT_EXISTS = 'ACCOUNT_EXISTS',
   ACCOUNT_INACTIVE = 'ACCOUNT_INACTIVE',
@@ -39,6 +40,10 @@ const RESPONSES: Record<
   [AuthErrorCode.GOOGLE_NAME_MISSING]: {
     status: HttpStatus.BAD_REQUEST,
     message: 'First name and last name are required',
+  },
+  [AuthErrorCode.GOOGLE_EMAIL_UNVERIFIED]: {
+    status: HttpStatus.UNAUTHORIZED,
+    message: "Google hasn't verified this account's email address",
   },
   [AuthErrorCode.ACCOUNT_USES_OTHER_GOOGLE]: {
     status: HttpStatus.CONFLICT,
