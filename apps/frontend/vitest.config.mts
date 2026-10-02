@@ -6,6 +6,26 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },
   },
   test: {
-    environment: "node",
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["**/*.test.ts"],
+          exclude: ["node_modules/**"],
+          environment: "node",
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "component",
+          include: ["**/*.test.tsx"],
+          exclude: ["node_modules/**"],
+          environment: "jsdom",
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+    ],
   },
 });
