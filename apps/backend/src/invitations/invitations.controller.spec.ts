@@ -33,7 +33,7 @@ describe('InvitationsController.startGoogleInvitation', () => {
   });
 
   const start = (token: string) =>
-    controller.startGoogleInvitation(token, stub<Response>({ redirect }));
+    controller.startGoogleInvitation({ token }, stub<Response>({ redirect }));
 
   it('continues to Google with a usable link', async () => {
     await start('good-token');
