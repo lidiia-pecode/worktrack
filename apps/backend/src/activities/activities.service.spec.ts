@@ -234,7 +234,7 @@ describe('Activity and category names', () => {
       ).resolves.toMatchObject({ status: ActivityStatus.ARCHIVED });
     });
 
-    it('refuses to move the activities into the same or an archived category', async () => {
+    it('refuses a move with no target, the same category or an archived one', async () => {
       const category = await categories.create({ name: 'Ops' }, companyId);
       const archivedTarget = await categories.create(
         { name: 'Old ops' },
@@ -246,6 +246,11 @@ describe('Activity and category names', () => {
         companyId,
       );
 
+      await expect(
+        categories.archive(category.id, companyId, {
+          activities: ActiveActivitiesAction.MOVE,
+        }),
+      ).rejects.toThrow(BadRequestException);
       await expect(
         categories.archive(category.id, companyId, {
           activities: ActiveActivitiesAction.MOVE,

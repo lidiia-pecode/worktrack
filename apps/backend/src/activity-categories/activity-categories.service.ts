@@ -257,14 +257,16 @@ export class ActCategoriesService {
     const activityIds = In(activities.map((activity) => activity.id));
 
     if (payload.activities === ActiveActivitiesAction.MOVE) {
-      if (payload.moveToCategoryId === category.id) {
+      const { moveToCategoryId } = payload;
+
+      if (!moveToCategoryId || moveToCategoryId === category.id) {
         throw new BadRequestException(
           'Choose another category to move the activities to',
         );
       }
 
       const target = await this.findActiveOnly(
-        payload.moveToCategoryId!,
+        moveToCategoryId,
         category.companyId,
         manager,
       );
