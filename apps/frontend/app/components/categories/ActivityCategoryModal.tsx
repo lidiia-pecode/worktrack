@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Tags, Archive, ArchiveRestore } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,7 @@ import { ActCategoryStatus } from "@/types/enums";
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 import {
   ActivityCategoryForm,
   ActivityCategoryFormData,
@@ -35,8 +37,10 @@ export function ActivityCategoryModal({
 }: ActivityCategoryModalProps) {
   const router = useRouter();
   const {
-    actions: { create, update, archive, unarchive },
+    actions: { create, update, unarchive },
   } = useActivityCategories();
+
+  const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
 
   const isEditMode = Boolean(category);
   const isArchived = category?.status === ActCategoryStatus.ARCHIVED;
@@ -70,73 +74,87 @@ export function ActivityCategoryModal({
   };
 
   return (
-    <ResourceFormModal
-      open={open}
-      onClose={onClose}
-      title={isEditMode ? category!.name : "Create activity category"}
-      description={
-        isEditMode
-          ? "Update the activity category details."
-          : "Create a category to organize your activities."
-      }
-      icon={<Tags className="size-5" />}
-      footer={
-        <div className="flex w-full items-center justify-between gap-3">
-          {isEditMode ? (
-            <Button
-              type="button"
-              variant={isArchived ? "success" : "destructive"}
-              size="sm"
-              className="gap-1.5"
-              onClick={() =>
-                isArchived
-                  ? unarchive.mutate(category!.id, { onSuccess: onClose })
-                  : archive.mutate(category!.id, { onSuccess: onClose })
-              }
-              isLoading={archive.isPending || unarchive.isPending}
-            >
-              {isArchived ? (
-                <ArchiveRestore className="size-4" />
-              ) : (
-                <Archive className="size-4" />
-              )}
-
-              {isArchived ? "Unarchive" : "Archive"}
-            </Button>
-          ) : (
-            <span />
-          )}
-
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              form={FORM_ID}
-              size="sm"
-              isLoading={isSubmitting}
-            >
-              {isEditMode ? "Save changes" : "Create category"}
-            </Button>
-          </div>
-        </div>
-      }
-    >
-      <ActivityCategoryForm
-        formId={FORM_ID}
-        mode={isEditMode ? "edit" : "create"}
-        defaultValues={
-          category
-            ? {
-                name: category.name,
-              }
-            : undefined
+    <>
+      <ResourceFormModal
+        open={open}
+        onClose={onClose}
+        title={isEditMode ? category!.name : "Create activity category"}
+        description={
+          isEditMode
+            ? "Update the activity category details."
+            : "Create a category to organize your activities."
         }
-        onSubmit={handleSubmit}
-        isSubmitting={isSubmitting}
-      />
-    </ResourceFormModal>
+        icon={<Tags className="size-5" />}
+        footer={
+          <div className="flex w-full items-center justify-between gap-3">
+            {isEditMode ? (
+              <Button
+                type="button"
+                variant={isArchived ? "success" : "destructive"}
+                size="sm"
+                className="gap-1.5"
+                onClick={() =>
+                  isArchived
+                    ? unarchive.mutate(category!.id, { onSuccess: onClose })
+                    : setIsConfirmingArchive(true)
+                }
+                isLoading={unarchive.isPending}
+              >
+                {isArchived ? (
+                  <ArchiveRestore className="size-4" />
+                ) : (
+                  <Archive className="size-4" />
+                )}
+
+                {isArchived ? "Unarchive" : "Archive"}
+              </Button>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSubmitting}
+              >
+                {isEditMode ? "Save changes" : "Create category"}
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        <ActivityCategoryForm
+          formId={FORM_ID}
+          mode={isEditMode ? "edit" : "create"}
+          defaultValues={
+            category
+              ? {
+                  name: category.name,
+                }
+              : undefined
+          }
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+        />
+      </ResourceFormModal>
+
+      {category && (
+        <CategoryArchiveDialog
+          isOpen={isConfirmingArchive}
+          category={category}
+          onClose={() => setIsConfirmingArchive(false)}
+          onArchived={() => {
+            setIsConfirmingArchive(false);
+            onClose();
+          }}
+        />
+      )}
+    </>
   );
 }

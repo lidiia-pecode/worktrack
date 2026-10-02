@@ -4,6 +4,11 @@ export enum ActivityStatus {
   ARCHIVED = "ARCHIVED",
 }
 
+export enum ActiveActivitiesAction {
+  MOVE = "MOVE",
+  ARCHIVE = "ARCHIVE",
+}
+
 export enum ActCategoryStatus {
   ACTIVE = "ACTIVE",
   INACTIVE = "INACTIVE",

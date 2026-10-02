@@ -30,6 +30,10 @@ export type UpdateActivityPayload = Partial<ActivityPayload>;
 export type ActivityListResponse = PaginatedResponse<Activity>;
 
 /** The active projects that offer an activity now, which archiving takes it off. */
+export interface RestoreActivityPayload {
+  categoryId?: string;
+}
+
 export interface ActivityArchiveImpact {
   projects: { id: string; name: string }[];
 }

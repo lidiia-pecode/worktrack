@@ -15,6 +15,7 @@ import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { ActivitiesService } from './activities.service';
 import {
   ActivityPayload,
+  RestoreActivityPayload,
   UpdateActivityPayload,
 } from './dtos/activity-payload.dto';
 import {
@@ -88,8 +89,9 @@ export class ActivitiesController {
   @Serialize(ActivityResponse)
   unarchive(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: RestoreActivityPayload,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.unarchive(id, user.companyId);
+    return this.service.unarchive(id, user.companyId, payload);
   }
 }

@@ -14,7 +14,11 @@ import { ActCategoriesService } from './activity-categories.service';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { ActivityCategoryResponse } from './dtos/activities-category-response.dto';
+import {
+  ActivityCategoryArchiveImpactResponse,
+  ActivityCategoryResponse,
+} from './dtos/activities-category-response.dto';
+import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
 import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
 import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -61,13 +65,24 @@ export class ActCategoriesController {
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Get(':id/archive-impact')
+  @Serialize(ActivityCategoryArchiveImpactResponse)
+  getArchiveImpact(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.getArchiveImpact(id, user.companyId);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
   @Patch(':id/archive')
   @Serialize(ActivityCategoryResponse)
   archive(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: ArchiveCategoryPayload,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.archive(id, user.companyId);
+    return this.service.archive(id, user.companyId, payload);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

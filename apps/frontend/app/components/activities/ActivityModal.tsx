@@ -15,6 +15,7 @@ import { ConfirmModal } from "../shared/ConfirmModal";
 import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
+import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
 import { archiveImpactMessage } from "./archive-impact";
 import { useRouter } from "next/navigation";
 
@@ -48,6 +49,7 @@ export function ActivityModal({
   const isEditMode = Boolean(activity);
 
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+  const [isChoosingRestore, setIsChoosingRestore] = useState(false);
   const archiveImpact = useActivityArchiveImpact(
     activity?.id ?? "",
     isConfirmingArchive,
@@ -65,6 +67,19 @@ export function ActivityModal({
   };
 
   const isArchived = activity?.status === ActivityStatus.ARCHIVED;
+  const isCategoryArchived =
+    activity?.category.status === ActCategoryStatus.ARCHIVED;
+
+  const restore = () => {
+    if (!activity) return;
+
+    if (isCategoryArchived) {
+      setIsChoosingRestore(true);
+      return;
+    }
+
+    unarchive.mutate(activity.id, { onSuccess: onClose });
+  };
 
   const isSubmitting = create.isPending || update.isPending;
 
@@ -114,9 +129,7 @@ export function ActivityModal({
                 variant={isArchived ? "success" : "destructive"}
                 size="sm"
                 onClick={() =>
-                  isArchived
-                    ? unarchive.mutate(activity.id, { onSuccess: onClose })
-                    : setIsConfirmingArchive(true)
+                  isArchived ? restore() : setIsConfirmingArchive(true)
                 }
                 isLoading={archive.isPending || unarchive.isPending}
               >
@@ -186,6 +199,18 @@ export function ActivityModal({
         loading={archive.isPending}
         confirmDisabled={!archiveImpact.data}
       />
+
+      {activity && isCategoryArchived && (
+        <ActivityRestoreDialog
+          isOpen={isChoosingRestore}
+          activity={activity}
+          onClose={() => setIsChoosingRestore(false)}
+          onRestored={() => {
+            setIsChoosingRestore(false);
+            onClose();
+          }}
+        />
+      )}
     </>
   );
 }

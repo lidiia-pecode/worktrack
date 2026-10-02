@@ -5,11 +5,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
 import { sameName } from 'src/lib/utils/same-name.util';
 import { Activity } from './entities/activity.entity';
 import {
   ActivityPayload,
+  RestoreActivityPayload,
   UpdateActivityPayload,
 } from './dtos/activity-payload.dto';
 import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
@@ -18,8 +19,8 @@ import { ActivityStatus } from './enums/activity-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import { ProjectStatus } from 'src/projects/enums/project-status.enum';
-import type { Project } from 'src/projects/entities/project.entity';
+import { findOfferingProjects, OfferingProject } from './offering-projects';
+import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 
 @Injectable()
 export class ActivitiesService {
@@ -29,6 +30,7 @@ export class ActivitiesService {
     private readonly actCategoriesService: ActCategoriesService,
     @InjectRepository(ProjectActivity)
     private readonly projectActivityRepo: Repository<ProjectActivity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   private async assertUniqueName(
@@ -141,29 +143,33 @@ export class ActivitiesService {
   async create(payload: ActivityPayload, companyId: string): Promise<Activity> {
     await this.assertUniqueName(companyId, payload.name);
 
-    const category = await this.actCategoriesService.findActiveOnly(
-      payload.categoryId,
-      companyId,
-    );
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Activity);
+      const category = await this.actCategoriesService.findActiveOnly(
+        payload.categoryId,
+        companyId,
+        manager,
+      );
 
-    const activity = this.repo.create({
-      companyId,
-      name: payload.name,
-      category,
-      defaultBillable: payload.defaultBillable ?? true,
-      status: ActivityStatus.ACTIVE,
-    });
+      const activity = repo.create({
+        companyId,
+        name: payload.name,
+        category,
+        defaultBillable: payload.defaultBillable ?? true,
+        status: ActivityStatus.ACTIVE,
+      });
 
-    try {
-      return await this.repo.save(activity);
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        throw new ConflictException(
-          `Activity "${payload.name}" already exists in this company`,
-        );
+      try {
+        return await repo.save(activity);
+      } catch (error: unknown) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(
+            `Activity "${payload.name}" already exists in this company`,
+          );
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
   }
 
   async update(
@@ -171,67 +177,57 @@ export class ActivitiesService {
     payload: UpdateActivityPayload,
     companyId: string,
   ): Promise<Activity> {
-    const activity = await this.findRaw(id, companyId);
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Activity);
+      const activity = await this.findRaw(id, companyId, repo);
 
-    if (payload.name !== undefined && payload.name !== activity.name) {
-      await this.assertUniqueName(companyId, payload.name, id);
-      activity.name = payload.name;
-    }
+      if (payload.name !== undefined && payload.name !== activity.name) {
+        await this.assertUniqueName(companyId, payload.name, id, repo);
+        activity.name = payload.name;
+      }
 
-    if (payload.categoryId !== undefined) {
-      activity.category = await this.actCategoriesService.findActiveOnly(
-        payload.categoryId,
-        companyId,
-      );
-    }
-
-    if (payload.defaultBillable !== undefined) {
-      activity.defaultBillable = payload.defaultBillable;
-    }
-
-    try {
-      return await this.repo.save(activity);
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        throw new ConflictException(
-          `Activity "${payload.name}" already exists in this company`,
+      if (payload.categoryId !== undefined) {
+        activity.category = await this.actCategoriesService.findActiveOnly(
+          payload.categoryId,
+          companyId,
+          manager,
         );
       }
-      throw error;
-    }
+
+      if (payload.defaultBillable !== undefined) {
+        activity.defaultBillable = payload.defaultBillable;
+      }
+
+      try {
+        return await repo.save(activity);
+      } catch (error: unknown) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(
+            `Activity "${payload.name}" already exists in this company`,
+          );
+        }
+        throw error;
+      }
+    });
   }
 
-  /**
-   * The active projects that offer this activity now, which archiving takes it
-   * off. Their links stay, so restoring it puts it back on the same projects.
-   */
   async getArchiveImpact(
     id: string,
     companyId: string,
-  ): Promise<{ projects: Pick<Project, 'id' | 'name'>[] }> {
+  ): Promise<{ projects: OfferingProject[] }> {
     const activity = await this.findRaw(id, companyId);
 
     if (activity.status === ActivityStatus.ARCHIVED) {
       throw new BadRequestException('Activity is already archived');
     }
 
-    const links = await this.projectActivityRepo.find({
-      where: {
-        companyId,
-        activityId: id,
-        isActive: true,
-        project: { status: ProjectStatus.ACTIVE },
-      },
-      relations: { project: true },
-      order: { project: { name: 'ASC' } },
-    });
+    const projectsByActivity = await findOfferingProjects(
+      this.projectActivityRepo,
+      companyId,
+      [id],
+    );
 
-    return {
-      projects: links.map(({ project }) => ({
-        id: project.id,
-        name: project.name,
-      })),
-    };
+    return { projects: projectsByActivity.get(id) ?? [] };
   }
 
   async archive(
@@ -252,15 +248,40 @@ export class ActivitiesService {
   async unarchive(
     id: string,
     companyId: string,
-    repo: Repository<Activity> = this.repo,
+    payload: RestoreActivityPayload = {},
   ): Promise<Activity> {
-    const activity = await this.findRaw(id, companyId, repo);
+    return this.dataSource.transaction(async (manager) => {
+      const repo = manager.getRepository(Activity);
+      const activity = await this.findRaw(id, companyId, repo);
 
-    if (activity.status === ActivityStatus.ACTIVE) {
-      throw new BadRequestException('Activity is already active');
-    }
+      if (activity.status === ActivityStatus.ACTIVE) {
+        throw new BadRequestException('Activity is already active');
+      }
 
-    activity.status = ActivityStatus.ACTIVE;
-    return repo.save(activity);
+      if (payload.categoryId) {
+        const category = await this.actCategoriesService.findActiveOnly(
+          payload.categoryId,
+          companyId,
+          manager,
+        );
+        activity.category = category;
+        activity.categoryId = category.id;
+      } else {
+        const category = await this.actCategoriesService.findLocked(
+          activity.categoryId,
+          companyId,
+          manager,
+        );
+
+        if (category.status === ActCategoryStatus.ARCHIVED) {
+          throw new ConflictException(
+            `Category "${category.name}" is archived. Restore the category first, or move the activity to an active one.`,
+          );
+        }
+      }
+
+      activity.status = ActivityStatus.ACTIVE;
+      return repo.save(activity);
+    });
   }
 }
