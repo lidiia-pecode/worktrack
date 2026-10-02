@@ -21,10 +21,6 @@ import { UserRole, UserStatus } from '../enums/user-role.enum';
 
 @Entity('users')
 @Index('IDX_users_company_id', ['companyId'])
-@Index('UQ_users_username', ['username'], {
-  unique: true,
-  where: 'username IS NOT NULL',
-})
 @Index('UQ_users_google_id', ['googleId'], {
   unique: true,
   where: 'google_id IS NOT NULL',
@@ -67,15 +63,6 @@ export class User {
 
   @Column({ type: 'varchar', length: 255, nullable: false })
   lastName!: string;
-
-  // Unused: nothing reads or writes it. Kept, with its index, until the
-  // follow-up migration that drops both, so no other migration drops it first.
-  @Column({
-    type: 'varchar',
-    length: 20,
-    nullable: true,
-  })
-  username?: string;
 
   @Column({ type: 'varchar', length: 255, nullable: false, unique: true })
   email!: string;

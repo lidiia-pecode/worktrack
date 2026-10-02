@@ -526,6 +526,11 @@ anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
 empty one.
 
+An active activity always belongs to an active category. A category that still
+has active activities is archived only by moving them to another active category
+or archiving them with it, and an activity whose category is archived is
+restored only by restoring the category too or moving the activity.
+
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;
 client names are free text (D8).
@@ -548,6 +553,7 @@ same transaction that creates the user — a `MEMBER` for an employee, the team'
 appoints a team's manager, so this is not a second route to leading a team. The same transaction notifies whoever sent the invitation, if they
 are still active, that the person has joined, so they can put them on a project;
 it is an in-app notification only, and each person reads only their own.
+A notification is deleted 60 days after it was read; unread ones are kept.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
 An invitation is valid for seven days, a product rule rather than a setting. Its
@@ -569,7 +575,10 @@ WorkTrack or to sign out and accept.
 Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
 is 8–100 characters with an upper-case letter, a lower-case letter and a digit;
 an existing password is only checked for presence. Names are 1–100 characters and
-company names 2–100 characters of any kind. "Continue with Google" on the sign-in
+company names 2–100 characters of any kind, without line breaks or invisible
+characters. Sign-in says that an account is deactivated or a company suspended
+only after a correct password, and every Google path refuses an address Google
+has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
 invitation email, and only the sign-up page starts a company. A failed Google
 sign-in returns to the page it started from with a message, never an error on the
@@ -782,7 +791,7 @@ itself started without help.
 
 ### Delivered
 
-Built from August to September 2026, one branch and one pull request per phase.
+Built from August to October 2026, one branch and one pull request per phase.
 The rules each one settled are in §2 and §4–§6; the detail of how each was built
 is in its pull request.
 
@@ -806,6 +815,7 @@ is in its pull request.
 | 14 | Company setup: a three-question wizard and an owner's checklist that ends with somebody able to log time; a manager's welcome; only Managers lead teams; archived teams closed; clients and billable defaults on the forms; local development on the host |
 | 15 | Invitations, joining and signing in: seven-day invitations with a fuller email, expired ones kept and resendable; an invitation page that explains every link; Google failures back on WorkTrack pages; one password and name rule; no username or direct creation; a "joined" notification for the inviter |
 | 16 | The rest of the first run: one look for every auth page; invitation links that handle a signed-in visitor and an address that already has an account; Expected from the day an account was created; first screens for each role that say why there is nothing to log, with role-focused welcomes; Team and Planning always showing their people; a manager invited to lead a team; activities that stay off a project once removed |
+| 17 | Fixes left from the first run: active activities only in active categories, with simple archive and restore dialogs; a refused role change that saves nothing; stricter input checks; the password checked before account status; unverified Google emails refused; a race-free team addition; old read notifications cleaned up; the `username` column dropped |
 
 ### Improvement roadmap — high level, flexible
 
