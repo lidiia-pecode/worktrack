@@ -33,6 +33,7 @@ import { TeamsService } from './teams.service';
 const RUN = Date.now();
 const SLUG = `teams-service-test-${RUN}`;
 const JOINED_AT = '2025-12-31';
+const ADDITION_HEAD_START_MS = 300;
 
 const TIME_ZONE = timeZoneOnAnotherDay();
 const TODAY = todayISODate(TIME_ZONE);
@@ -572,6 +573,38 @@ describe('TeamsService', () => {
           owner,
         ),
       ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.addMember(team.teamId, companyId, {
+          userId: employee.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: TODAY,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('makes an addition wait for an archive under way, then refuses it', async () => {
+      const team = await teamWithPeople('archiving now');
+      const archiving = dataSource.createQueryRunner();
+      await archiving.startTransaction();
+      await archiving.manager.update(
+        Team,
+        { id: team.teamId },
+        { status: TeamStatus.ARCHIVED },
+      );
+
+      const addition = service.addMember(team.teamId, companyId, {
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: TODAY,
+      });
+      // Long enough for the addition to reach the team while the archive is open.
+      await new Promise((resolve) =>
+        setTimeout(resolve, ADDITION_HEAD_START_MS),
+      );
+      await archiving.commitTransaction();
+      await archiving.release();
+
+      await expect(addition).rejects.toThrow(BadRequestException);
     });
 
     it('still shows an archived team its former members', async () => {
