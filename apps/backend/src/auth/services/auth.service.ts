@@ -51,13 +51,7 @@ export class AuthService {
     const user =
       await this.usersService.findByEmailWithCompany(normalizedEmail);
 
-    if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
-    }
-
-    this.authPolicyService.validateUserAccess(user);
-
-    if (!user.passwordHash) {
+    if (!user?.passwordHash) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -69,6 +63,8 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    this.authPolicyService.validateUserAccess(user);
 
     return user;
   }

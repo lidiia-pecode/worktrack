@@ -4,8 +4,12 @@ import {
   ActivityCategory,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
+  ArchiveActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { ActivityCategoriesClientApi } from "@/lib/api/resources";
 
@@ -30,6 +34,9 @@ export const useActivityCategoriesQuery = activityCategoriesQueries.useQuery;
 
 export const useActivityCategoriesInfiniteQuery =
   activityCategoriesQueries.useInfiniteQuery;
+
+export const useActivityCategoriesAllPagesQuery =
+  activityCategoriesQueries.useAllPagesQuery;
 
 export const useActivityCategoriesMutations = createEntityMutations<
   ActivityCategory,
@@ -68,3 +75,41 @@ export function useActivityCategories(
     actions,
   };
 }
+
+/** The active activities archiving a category would block on, read when about to. */
+export const useActivityCategoryArchiveImpact = (
+  categoryId: string,
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: queryKeys.activityCategories.archiveImpact(categoryId),
+    queryFn: () => ActivityCategoriesClientApi.getArchiveImpact(categoryId),
+    enabled,
+    staleTime: 0,
+  });
+
+/** Archives a category, moving or archiving its active activities in the same call. */
+export const useArchiveActivityCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: ArchiveActivityCategoryPayload;
+    }) => ActivityCategoriesClientApi.archive(id, payload),
+
+    onSuccess: () => {
+      [
+        queryKeys.activityCategories.all,
+        queryKeys.activities.all,
+        queryKeys.projects.all,
+        queryKeys.projectActivities.all,
+      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+
+      toast.success("Category archived successfully");
+    },
+  });
+};

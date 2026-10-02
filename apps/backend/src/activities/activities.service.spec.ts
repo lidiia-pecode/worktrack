@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -12,6 +12,9 @@ import { ActivitiesService } from './activities.service';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
+import { ActivityStatus } from './enums/activity-status.enum';
+import { ActiveActivitiesAction } from 'src/activity-categories/enums/active-activities-action.enum';
 
 /**
  * Runs against the development database, so it needs the Docker stack. The
@@ -39,11 +42,13 @@ describe('Activity and category names', () => {
 
     categories = new ActCategoriesService(
       dataSource.getRepository(ActCategory),
+      dataSource,
     );
     activities = new ActivitiesService(
       dataSource.getRepository(Activity),
       categories,
       dataSource.getRepository(ProjectActivity),
+      dataSource,
     );
 
     const company = await dataSource
@@ -121,6 +126,201 @@ describe('Activity and category names', () => {
           companyId,
         ),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe('active activities only in active categories', () => {
+    it('refuses to archive a category while it has active activities', async () => {
+      const category = await categories.create({ name: 'Design' }, companyId);
+      const activity = await activities.create(
+        { name: 'Wireframes', categoryId: category.id },
+        companyId,
+      );
+
+      await expect(categories.archive(category.id, companyId)).rejects.toThrow(
+        ConflictException,
+      );
+
+      await activities.archive(activity.id, companyId);
+
+      await expect(
+        categories.archive(category.id, companyId),
+      ).resolves.toMatchObject({ status: ActCategoryStatus.ARCHIVED });
+    });
+
+    it('refuses to put an activity in an archived category', async () => {
+      const category = await categories.create({ name: 'Legacy' }, companyId);
+      await categories.archive(category.id, companyId);
+
+      await expect(
+        activities.create(
+          { name: 'Old work', categoryId: category.id },
+          companyId,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      const activity = await activities.create(
+        { name: 'Moving work', categoryId },
+        companyId,
+      );
+
+      await expect(
+        activities.update(activity.id, { categoryId: category.id }, companyId),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('restores an activity only once its category is active', async () => {
+      const category = await categories.create({ name: 'Training' }, companyId);
+      const activity = await activities.create(
+        { name: 'Onboarding sessions', categoryId: category.id },
+        companyId,
+      );
+      await activities.archive(activity.id, companyId);
+      await categories.archive(category.id, companyId);
+
+      await expect(
+        activities.unarchive(activity.id, companyId),
+      ).rejects.toThrow(ConflictException);
+
+      await categories.unarchive(category.id, companyId);
+
+      await expect(
+        activities.unarchive(activity.id, companyId),
+      ).resolves.toMatchObject({ status: ActivityStatus.ACTIVE });
+    });
+  });
+
+  describe('resolving a blocked archive or restore', () => {
+    it('moves the active activities to another category, then archives', async () => {
+      const category = await categories.create({ name: 'QA' }, companyId);
+      const target = await categories.create({ name: 'Testing' }, companyId);
+      const kept = await activities.create(
+        { name: 'Regression', categoryId: category.id },
+        companyId,
+      );
+      const archived = await activities.create(
+        { name: 'Old smoke tests', categoryId: category.id },
+        companyId,
+      );
+      await activities.archive(archived.id, companyId);
+
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.MOVE,
+        moveToCategoryId: target.id,
+      });
+
+      const moved = await activities.getById(kept.id, companyId);
+      const untouched = await activities.getById(archived.id, companyId);
+      expect(moved).toMatchObject({
+        categoryId: target.id,
+        status: ActivityStatus.ACTIVE,
+      });
+      expect(untouched.categoryId).toBe(category.id);
+    });
+
+    it('archives the active activities together with the category', async () => {
+      const category = await categories.create({ name: 'Events' }, companyId);
+      const activity = await activities.create(
+        { name: 'Conference', categoryId: category.id },
+        companyId,
+      );
+
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.ARCHIVE,
+      });
+
+      await expect(
+        activities.getById(activity.id, companyId),
+      ).resolves.toMatchObject({ status: ActivityStatus.ARCHIVED });
+    });
+
+    it('refuses a move with no target, the same category or an archived one', async () => {
+      const category = await categories.create({ name: 'Ops' }, companyId);
+      const archivedTarget = await categories.create(
+        { name: 'Old ops' },
+        companyId,
+      );
+      await categories.archive(archivedTarget.id, companyId);
+      const activity = await activities.create(
+        { name: 'Deployments', categoryId: category.id },
+        companyId,
+      );
+
+      await expect(
+        categories.archive(category.id, companyId, {
+          activities: ActiveActivitiesAction.MOVE,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        categories.archive(category.id, companyId, {
+          activities: ActiveActivitiesAction.MOVE,
+          moveToCategoryId: category.id,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        categories.archive(category.id, companyId, {
+          activities: ActiveActivitiesAction.MOVE,
+          moveToCategoryId: archivedTarget.id,
+        }),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(
+        activities.getById(activity.id, companyId),
+      ).resolves.toMatchObject({
+        categoryId: category.id,
+        status: ActivityStatus.ACTIVE,
+      });
+    });
+
+    it('restores an activity into another active category', async () => {
+      const category = await categories.create({ name: 'Sales' }, companyId);
+      const target = await categories.create({ name: 'Presales' }, companyId);
+      const activity = await activities.create(
+        { name: 'Demos', categoryId: category.id },
+        companyId,
+      );
+      await activities.archive(activity.id, companyId);
+      await categories.archive(category.id, companyId);
+
+      await activities.unarchive(activity.id, companyId, {
+        categoryId: target.id,
+      });
+
+      await expect(
+        activities.getById(activity.id, companyId),
+      ).resolves.toMatchObject({
+        categoryId: target.id,
+        status: ActivityStatus.ACTIVE,
+      });
+    });
+
+    it('lists the active activities and the projects that offer them', async () => {
+      const category = await categories.create({ name: 'Content' }, companyId);
+      const writing = await activities.create(
+        { name: 'Writing', categoryId: category.id },
+        companyId,
+      );
+      const editing = await activities.create(
+        { name: 'Editing', categoryId: category.id },
+        companyId,
+      );
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Blog ${RUN}` });
+      await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: project.id, activityId: writing.id });
+
+      const impact = await categories.getArchiveImpact(category.id, companyId);
+
+      expect(impact.activities).toEqual([
+        { id: editing.id, name: 'Editing', projects: [] },
+        {
+          id: writing.id,
+          name: 'Writing',
+          projects: [{ id: project.id, name: `Blog ${RUN}` }],
+        },
+      ]);
     });
   });
 

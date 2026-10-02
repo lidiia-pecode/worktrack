@@ -2,9 +2,11 @@
 
 import {
   ActivityCategory,
+  ActivityCategoryArchiveImpact,
   ActivityCategoryListResponse,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
+  ArchiveActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types/ActivityCategory";
 
@@ -27,7 +29,11 @@ const client = createClient({
 export const ActivityCategoriesClientApi = {
   ...crud,
 
-  archive: (id: string) => client.archive<ActivityCategory>(`/${id}/archive`),
+  getArchiveImpact: (id: string) =>
+    client.get<ActivityCategoryArchiveImpact>(`/${id}/archive-impact`),
+
+  archive: (id: string, payload?: ArchiveActivityCategoryPayload) =>
+    client.patch<ActivityCategory>(`/${id}/archive`, payload),
 
   unarchive: (id: string) => client.patch<ActivityCategory>(`/${id}/unarchive`),
 };

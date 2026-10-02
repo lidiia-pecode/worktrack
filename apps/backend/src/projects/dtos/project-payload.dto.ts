@@ -20,7 +20,7 @@ export class ProjectPayload {
   @MaxLength(255)
   name!: string;
 
-  @TrimString()
+  @TrimString({ keepNull: true })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()

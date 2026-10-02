@@ -80,7 +80,7 @@ export function ActivityForm({
       <FormSection label="Category">
         {categories.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            There are no categories yet, and every activity belongs to one.{" "}
+            There are no active categories, and every activity belongs to one.{" "}
             <Link
               href={createFirstLink("/admin/categories", isOnboarding)}
               className="font-medium text-brand hover:underline"

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
 
+import { AuthErrorCode, authError } from '../auth-error';
 import { CookieStateStore } from './cookie-state-store';
 
 export function getGoogleStrategyOptions(
@@ -35,6 +36,11 @@ export function validateGoogleProfile(
   done: VerifyCallback,
 ): void {
   try {
+    if (profile.emails?.[0]?.verified !== true) {
+      done(authError(AuthErrorCode.GOOGLE_EMAIL_UNVERIFIED), false);
+      return;
+    }
+
     done(null, getGooglePayload(profile));
   } catch (error) {
     done(error, false);

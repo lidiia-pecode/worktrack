@@ -350,13 +350,6 @@ export class TeamsService {
     companyId: string,
     dto: AddTeamMemberDto,
   ): Promise<TeamMembership> {
-    await findActiveTeam(
-      this.teamRepo,
-      teamId,
-      companyId,
-      'Cannot add members to an archived team',
-    );
-
     const user = await this.userRepo.findOne({
       where: { id: dto.userId, companyId },
     });
@@ -375,6 +368,14 @@ export class TeamsService {
     }
 
     return this.dataSource.transaction(async (manager) => {
+      await findActiveTeam(
+        manager.getRepository(Team),
+        teamId,
+        companyId,
+        'Cannot add members to an archived team',
+        { lock: true },
+      );
+
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
       const overlappingMembership = await trxMembershipRepo.findOne({

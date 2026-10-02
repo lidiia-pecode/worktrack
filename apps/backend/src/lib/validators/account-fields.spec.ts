@@ -121,6 +121,44 @@ describe('person names', () => {
   });
 });
 
+describe('line breaks and invisible characters in names', () => {
+  it.each([
+    ['a line break', 'Emma\nClarke'],
+    ['a tab', 'Emma\tClarke'],
+    ['a right-to-left override', 'Emma\u202eekralC'],
+    ['a zero-width space', 'Em\u200bma'],
+    ['a line separator', 'Emma\u2028Clarke'],
+  ])('refuses %s in a person or company name', async (_, name) => {
+    await expect(
+      errorFields(UpdateProfilePayload, { firstName: name }),
+    ).resolves.toEqual(['firstName']);
+    await expect(
+      errorFields(CompleteInvitationDto, {
+        ...VALID_INVITATION,
+        lastName: name,
+      }),
+    ).resolves.toEqual(['lastName']);
+    await expect(
+      errorFields(UpdateCompanyDto, { companyName: name }),
+    ).resolves.toEqual(['companyName']);
+  });
+
+  it.each(["O'Brien", 'Anne-Marie', 'Олена', 'José María'])(
+    'still accepts %s',
+    async (name) => {
+      await expect(
+        errorFields(UpdateProfilePayload, { firstName: name, lastName: name }),
+      ).resolves.toEqual([]);
+    },
+  );
+
+  it('trims a trailing line break rather than refusing it', async () => {
+    await expect(
+      errorFields(UpdateProfilePayload, { firstName: 'Emma\n' }),
+    ).resolves.toEqual([]);
+  });
+});
+
 describe('company names', () => {
   it.each(['Smith & Co', 'A.B. Consulting', 'Kyiv-Tech', 'Студія Кларк', 'Q2'])(
     'accepts %s on both sign-up paths and in Settings',

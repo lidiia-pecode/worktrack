@@ -6,17 +6,20 @@ import { TeamStatus } from './enums/team-status.enum';
 
 /**
  * The team someone is being placed in: it must exist in the company and be
- * active. `archivedMessage` says what the caller was trying to do.
+ * active. `archivedMessage` says what the caller was trying to do. Inside a
+ * transaction, `lock` holds the team so it can't be archived until it commits.
  */
 export const findActiveTeam = async (
   teamRepository: Repository<Team>,
   teamId: string,
   companyId: string,
   archivedMessage: string,
+  { lock = false } = {},
 ): Promise<Team> => {
   const team = await teamRepository.findOne({
     where: { id: teamId, companyId },
     select: ['id', 'status'],
+    lock: lock ? { mode: 'pessimistic_read' } : undefined,
   });
 
   if (!team) {

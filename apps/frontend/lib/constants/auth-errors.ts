@@ -10,6 +10,8 @@ const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
     "This Google account is already linked to another WorkTrack account.",
   GOOGLE_NAME_MISSING:
     "Your Google profile has no first or last name. Create your account with a password instead.",
+  GOOGLE_EMAIL_UNVERIFIED:
+    "Google hasn't verified the email address of this account. Verify it with Google, or use a password instead.",
   ACCOUNT_USES_OTHER_GOOGLE:
     "The WorkTrack account for this address signs in with a different Google account. Use that one.",
   ACCOUNT_EXISTS:

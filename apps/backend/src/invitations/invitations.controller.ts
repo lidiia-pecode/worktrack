@@ -41,6 +41,7 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { CreateInvitationPayload } from './dtos/create-invitation.dto';
 import { CompleteInvitationDto } from './dtos/complete-invitation.dto';
+import { InvitationTokenQuery } from './dtos/invitation-token-query.dto';
 import { PendingInvitationResponse } from './dtos/invitation-response.dto';
 import { InvitationsService } from './invitations.service';
 
@@ -104,7 +105,7 @@ export class InvitationsController {
   }
 
   @Get('validate')
-  validate(@Query('token') token: string) {
+  validate(@Query() { token = '' }: InvitationTokenQuery) {
     return this.invitationsService.describeByToken(token);
   }
 
@@ -135,7 +136,7 @@ export class InvitationsController {
 
   @Get('google')
   async startGoogleInvitation(
-    @Query('token') token: string,
+    @Query() { token = '' }: InvitationTokenQuery,
     @Res() res: Response,
   ): Promise<void> {
     try {
@@ -146,7 +147,7 @@ export class InvitationsController {
       // Back to the invitation page, which says what is wrong with the link,
       // rather than on to Google with a link that cannot be accepted.
       const frontendUrl = this.cookieService.getFrontendUrl();
-      const query = new URLSearchParams({ token: token ?? '' });
+      const query = new URLSearchParams({ token });
 
       return res.redirect(`${frontendUrl}/invitations/complete?${query}`);
     }

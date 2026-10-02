@@ -7,9 +7,13 @@ import {
   UpdateActivityPayload,
 } from "@/types";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-import { ActivitiesClientApi } from "@/lib/api/resources";
+import {
+  ActivitiesClientApi,
+  ActivityCategoriesClientApi,
+} from "@/lib/api/resources";
 
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
@@ -77,3 +81,38 @@ export const useActivityArchiveImpact = (
     enabled,
     staleTime: 0,
   });
+
+type RestoreActivityVariables =
+  | { id: string; restoreCategoryId: string }
+  | { id: string; moveToCategoryId: string };
+
+/** Restores an activity whose category is archived, by restoring the category or moving it. */
+export const useRestoreActivityWithCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (variables: RestoreActivityVariables) => {
+      if ("restoreCategoryId" in variables) {
+        await ActivityCategoriesClientApi.unarchive(
+          variables.restoreCategoryId,
+        );
+        return ActivitiesClientApi.unarchive(variables.id);
+      }
+
+      return ActivitiesClientApi.unarchive(variables.id, {
+        categoryId: variables.moveToCategoryId,
+      });
+    },
+
+    onSettled: () => {
+      [
+        queryKeys.activities.all,
+        queryKeys.activityCategories.all,
+        queryKeys.projects.all,
+        queryKeys.projectActivities.all,
+      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+    },
+
+    onSuccess: () => toast.success("Activity restored successfully"),
+  });
+};

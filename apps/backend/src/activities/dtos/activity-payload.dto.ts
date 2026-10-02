@@ -27,3 +27,10 @@ export class ActivityPayload {
 }
 
 export class UpdateActivityPayload extends PartialType(ActivityPayload) {}
+
+/** A new active category, for an activity whose own category is archived. */
+export class RestoreActivityPayload {
+  @IsOptional()
+  @IsUUID()
+  categoryId?: string;
+}

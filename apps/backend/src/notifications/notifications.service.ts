@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, IsNull, Repository } from 'typeorm';
+import { EntityManager, IsNull, LessThan, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { Invitation } from 'src/invitations/entities/invitation.entity';
@@ -13,8 +14,13 @@ import { NotificationType } from './enums/notification-type.enum';
 /** A short list is all the menu shows; older ones are not paged. */
 const LATEST_NOTIFICATIONS = 20;
 
+const READ_RETENTION_DAYS = 60;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 @Injectable()
 export class NotificationsService {
+  private readonly logger = new Logger(NotificationsService.name);
+
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepository: Repository<Notification>,
@@ -75,5 +81,16 @@ export class NotificationsService {
       { recipientId: user.id, companyId: user.companyId, readAt: IsNull() },
       { readAt: new Date() },
     );
+  }
+
+  @Cron('0 0 3 * * *')
+  async deleteOldReadNotifications(): Promise<void> {
+    const readBefore = new Date(Date.now() - READ_RETENTION_DAYS * MS_PER_DAY);
+
+    const { affected } = await this.notificationRepository.delete({
+      readAt: LessThan(readBefore),
+    });
+
+    this.logger.log(`Deleted ${affected ?? 0} old read notifications.`);
   }
 }

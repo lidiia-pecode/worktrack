@@ -22,12 +22,7 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
   for (const data of USERS) {
     const existing = await userRepo.findOneBy({ companyId, email: data.email });
 
-    if (existing) {
-      if (existing.createdAt > ACCOUNTS_CREATED_AT) {
-        await userRepo.update(existing.id, { createdAt: ACCOUNTS_CREATED_AT });
-      }
-      continue;
-    }
+    if (existing) continue;
 
     const user = await userRepo.save(
       userRepo.create({

@@ -6,6 +6,7 @@ import {
   ActivityListResponse,
   ActivityPayload,
   ActivityQuery,
+  RestoreActivityPayload,
   UpdateActivityPayload,
 } from "@/types";
 
@@ -33,5 +34,6 @@ export const ActivitiesClientApi = {
 
   archive: (id: string) => client.archive<Activity>(`/${id}/archive`),
 
-  unarchive: (id: string) => client.patch<Activity>(`/${id}/unarchive`),
+  unarchive: (id: string, payload?: RestoreActivityPayload) =>
+    client.patch<Activity>(`/${id}/unarchive`, payload),
 };

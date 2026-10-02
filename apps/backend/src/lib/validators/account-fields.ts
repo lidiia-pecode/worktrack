@@ -10,6 +10,7 @@ const PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*[0-9])/;
 const PASSWORD_RULES_MESSAGE = `Password must be ${PASSWORD_MIN_LENGTH}-${PASSWORD_MAX_LENGTH} characters, with an uppercase letter, a lowercase letter and a number`;
 
 const PERSON_NAME_MAX_LENGTH = 100;
+const NO_CONTROL_OR_INVISIBLE_CHARACTERS = /^[^\p{Cc}\p{Cf}\p{Zl}\p{Zp}]*$/u;
 const COMPANY_NAME_MIN_LENGTH = 2;
 const COMPANY_NAME_MAX_LENGTH = 100;
 
@@ -33,7 +34,10 @@ export const PersonName = (label: string) =>
     TrimString(),
     IsString({ message: `${label} is required` }),
     Length(1, PERSON_NAME_MAX_LENGTH, {
-      message: `${label} must be 1–${PERSON_NAME_MAX_LENGTH} characters`,
+      message: `${label} must be 1-${PERSON_NAME_MAX_LENGTH} characters`,
+    }),
+    Matches(NO_CONTROL_OR_INVISIBLE_CHARACTERS, {
+      message: `${label} can't contain line breaks or invisible characters`,
     }),
   );
 
@@ -43,5 +47,8 @@ export const CompanyName = () =>
     IsString({ message: 'Company name is required' }),
     Length(COMPANY_NAME_MIN_LENGTH, COMPANY_NAME_MAX_LENGTH, {
       message: `Company name must be ${COMPANY_NAME_MIN_LENGTH}–${COMPANY_NAME_MAX_LENGTH} characters`,
+    }),
+    Matches(NO_CONTROL_OR_INVISIBLE_CHARACTERS, {
+      message: "Company name can't contain line breaks or invisible characters",
     }),
   );
