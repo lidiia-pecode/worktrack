@@ -747,8 +747,8 @@ and planning rules, monthly locking in and outside UTC, the reports and the
 export, page and date-range limits, name checks, and session refresh, rate
 limits and token clean-up — most against a real database. The frontend has
 Vitest tests for its date, month, absence, lock and paging helpers, the report
-range check, tab keyboard navigation and download file names; no component is
-tested. GitHub Actions runs the formatting check, lint with no warnings
+range check, tab keyboard navigation and download file names, and component
+tests in jsdom for the sidebar, the phone menu and sign-out. GitHub Actions runs the formatting check, lint with no warnings
 allowed, typecheck, build and tests for both applications on every pull
 request.
 
@@ -816,6 +816,7 @@ is in its pull request.
 | 15 | Invitations, joining and signing in: seven-day invitations with a fuller email, expired ones kept and resendable; an invitation page that explains every link; Google failures back on WorkTrack pages; one password and name rule; no username or direct creation; a "joined" notification for the inviter |
 | 16 | The rest of the first run: one look for every auth page; invitation links that handle a signed-in visitor and an address that already has an account; Expected from the day an account was created; first screens for each role that say why there is nothing to log, with role-focused welcomes; Team and Planning always showing their people; a manager invited to lead a team; activities that stay off a project once removed |
 | 17 | Fixes left from the first run: active activities only in active categories, with simple archive and restore dialogs; a refused role change that saves nothing; stricter input checks; the password checked before account status; unverified Google emails refused; a race-free team addition; old read notifications cleaned up; the `username` column dropped |
+| 18 | The application shell: navigation grouped into Work and Manage, with Getting started apart; an accessible phone menu that closes on navigation; one page frame and one page header; sign-out that clears every cached query; component tests |
 
 ### Improvement roadmap — high level, flexible
 

@@ -8,7 +8,7 @@ export default async function TeamPage() {
   const user = await requireManagerAccess();
 
   return (
-    <section className="flex min-h-full w-full flex-col p-6">
+    <>
       <PageHeader
         title="Team time"
         description="See who logged time this week, how much, and where it went."
@@ -19,6 +19,6 @@ export default async function TeamPage() {
       )}
 
       <TeamTimeView role={user.role} viewerId={user.id} />
-    </section>
+    </>
   );
 }

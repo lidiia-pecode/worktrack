@@ -9,11 +9,10 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { PageHeader } from "../../shared/PageHeader";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 import { TOPIC_TEXT } from "./setup-topics";
 
-// A reference, not a to-do list: nothing here is ticked, locked or counted, so
-// a team or project archived later never makes setup look unfinished.
 const GUIDE_TOPICS: SetupStepItem[] = [
   {
     id: "company",
@@ -75,31 +74,23 @@ const GUIDE_TOPICS: SetupStepItem[] = [
 ];
 
 interface SetupGuideProps {
-  /** Said only while it is true, so nothing here ever reads as unfinished. */
   isRequiredSetupDone: boolean;
 }
 
-/** Getting started once setup is finished: a guide to come back to. */
 export const SetupGuide = ({ isRequiredSetupDone }: SetupGuideProps) => (
   <section className="w-full max-w-3xl">
-    <header className="mb-8">
-      <h1 className="text-2xl font-bold tracking-tight text-foreground">
-        How WorkTrack fits together
-      </h1>
+    <PageHeader
+      title="How WorkTrack fits together"
+      description="Each part links to where you manage it — come back whenever you need a reminder."
+    />
 
-      <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-        Each part links to where you manage it — come back whenever you need a
-        reminder.
+    {isRequiredSetupDone && (
+      <p className="mb-8 flex items-start gap-2 rounded-lg border border-success/20 bg-success/10 px-3.5 py-2.5 text-sm text-success-text">
+        <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        Required setup is complete: people on your projects can log time.
+        Everything else, such as adding a manager, is optional.
       </p>
-
-      {isRequiredSetupDone && (
-        <p className="mt-4 flex items-start gap-2 rounded-lg border border-success/20 bg-success/10 px-3.5 py-2.5 text-sm text-success-text">
-          <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-          Required setup is complete: people on your projects can log time.
-          Everything else, such as adding a manager, is optional.
-        </p>
-      )}
-    </header>
+    )}
 
     <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <ul className="divide-y divide-border">

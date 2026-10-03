@@ -6,13 +6,13 @@ export default async function PlanningPage() {
   const user = await requireManagerAccess();
 
   return (
-    <section className="flex min-h-full w-full flex-col p-6">
+    <>
       <PageHeader
         title="Planning"
         description="Plan your team's week by project. Plans are guidance, never a limit on logged time."
       />
 
       <PlanningWeekView role={user.role} viewerId={user.id} />
-    </section>
+    </>
   );
 }

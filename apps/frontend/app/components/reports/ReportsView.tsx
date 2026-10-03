@@ -15,7 +15,6 @@ import {
 } from "@/lib/utils/date";
 import { HoursReportGroupBy } from "@/types/enums";
 
-import Container from "../layout/Container";
 import {
   ResourceTabButton,
   ResourceTabList,
@@ -37,7 +36,6 @@ const reportTabId = (tab: ReportTab) => `report-tab-${tab}`;
 
 const EMPTY_RANGE = { dateFrom: "", dateTo: "" };
 
-// Caught here so a range the server would refuse is never sent.
 export const getRangeError = ({ dateFrom, dateTo }: DateRange) => {
   if (!dateFrom || !dateTo) return "Pick both dates";
   if (!isISODate(dateFrom) || !isISODate(dateTo)) {
@@ -78,7 +76,7 @@ export const ReportsView = () => {
   };
 
   return (
-    <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+    <div className="flex flex-col">
       <ResourceTabList label="Report">
         <ResourceTabButton
           id={reportTabId("hours")}
@@ -144,6 +142,6 @@ export const ReportsView = () => {
           <UtilisationSection range={range} />
         )}
       </div>
-    </Container>
+    </div>
   );
 };

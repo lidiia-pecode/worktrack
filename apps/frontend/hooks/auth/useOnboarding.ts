@@ -5,10 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { OnboardingClientApi } from "@/lib/api/resources/onboarding.api";
 import { queryKeys } from "../shared/queryKeys";
 
-export function useOwnerSetupState() {
+export function useOwnerSetupState({ enabled = true } = {}) {
   return useQuery({
     queryKey: queryKeys.onboarding.ownerSetup(),
     queryFn: OnboardingClientApi.getOwnerSetupState,
+    enabled,
   });
 }
 

@@ -24,7 +24,6 @@ import { canWriteTimeLogsFor } from "@/lib/utils/user";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { UserRole } from "@/types/enums";
 
-import Container from "../layout/Container";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
@@ -131,7 +130,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     hasActiveFilters,
     ledTeamCount: teamOptions.length,
   });
-  // Which reason applies depends on the teams, so it waits for them.
   const notice =
     isLoadingTeams ||
     isTeamsError ||
@@ -152,17 +150,17 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
 
   if (isLoadingSettings || isLoadingSummary || isLoadingAbsences) {
     return (
-      <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+      <div className="flex flex-col">
         <LoadingState
           title="Loading the team's week"
           description="Fetching logged time and workspace settings."
         />
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+    <div className="flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
         <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
@@ -285,9 +283,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
       )}
 
       {openedUser && (
-        // Keyed per person: the timelog query keeps the previous page while
-        // loading, and reusing the panel would flash one person's entries
-        // under another's name.
         <UserTimeDetailPanel
           key={openedUser.id}
           user={openedUser}
@@ -300,6 +295,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
           onClose={() => setOpenedUser(null)}
         />
       )}
-    </Container>
+    </div>
   );
 };

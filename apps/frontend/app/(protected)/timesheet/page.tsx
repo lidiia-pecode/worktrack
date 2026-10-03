@@ -5,7 +5,7 @@ import { EmployeeWelcome } from "@/app/components/timesheet/components/EmployeeW
 import { WeekTimesheet } from "@/app/components/timesheet/WeekTimesheet";
 import { UserRole } from "@/types/enums";
 
-export default async function DashboardPage() {
+export default async function TimesheetPage() {
   const user = await getCurrentUser();
 
   if (!user) {

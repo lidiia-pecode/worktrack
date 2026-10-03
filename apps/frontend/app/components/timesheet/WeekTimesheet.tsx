@@ -27,7 +27,6 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { mapAbsencesByDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 
-import Container from "../layout/Container";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
 import { PageHeader } from "../shared/PageHeader";
@@ -156,7 +155,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   );
   const graceMonth = useGraceMonth();
 
-  // Context only: the timesheet works the same whether or not a plan loads.
   const { items: plannedEntries } = usePlanningEntries({
     userId,
     dateFrom,
@@ -255,13 +253,11 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     setNonWorkDayDate(null);
   };
 
-  // From a day already marked absent: edit that one.
   const openAbsence = (date: Date) => {
     const iso = toISODate(date);
     setAbsenceModal({ date: iso, absence: absencesByDate[iso] });
   };
 
-  // From the header: always a new one, starting today, whatever today holds.
   const openNewAbsence = () => setAbsenceModal({ date: todayIso });
 
   const openEdit = (timelog: TimeLog) => {
@@ -304,6 +300,13 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       timeLogs: timelogs.length,
     });
 
+  const header = (
+    <PageHeader
+      title="Timesheet"
+      description="Record your working hours, day by day."
+    />
+  );
+
   if (
     isLoadingSettings ||
     isLoadingLogs ||
@@ -313,26 +316,23 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isLoadingOwnProjects
   ) {
     return (
-      <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+      <>
+        {header}
         <LoadingState
           title="Loading your timesheet"
           description="Fetching your week and workspace settings."
         />
-      </Container>
+      </>
     );
   }
 
   if (!hasError && content !== "week") {
     return (
-      <section className="flex min-h-full w-full flex-col p-6">
-        <PageHeader
-          title="Timesheet"
-          description="Record your working hours, day by day."
-        />
+      <>
+        {header}
 
         {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
-        {/* Earlier weeks may hold time logged before, so they stay reachable. */}
         <div className="mb-4">
           <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
         </div>
@@ -350,18 +350,18 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
             icon={<ListTodo />}
           />
         )}
-      </section>
+      </>
     );
   }
 
   return (
-    <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
-      {welcome && (
-        <div className="px-3 pt-4 pb-1 empty:hidden sm:pl-0">{welcome}</div>
-      )}
+    <>
+      {header}
+
+      {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
       <div className="border-b border-border">
-        <div className="flex items-center justify-between py-3 pr-3">
+        <div className="flex items-center justify-between pb-3">
           <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
           {showsFigures && (
@@ -392,7 +392,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         </div>
 
         {!hasError && (
-          <div className="flex flex-wrap items-center justify-between gap-3 px-3 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
             <Button
               type="button"
               variant="outline"
@@ -414,7 +414,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         )}
 
         {showsFigures && (
-          <div className="px-3 pb-3">
+          <div className="pb-3">
             <WeekProgressBar
               billableMinutes={billableMinutes}
               nonBillableMinutes={nonBillableMinutes}
@@ -544,6 +544,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           isDeleting={actions.delete.isPending}
         />
       )}
-    </Container>
+    </>
   );
 };

@@ -28,13 +28,11 @@ export default function SettingsPage() {
     hasGoogleResult,
   });
 
-  // Next keeps useSearchParams in step with the history API, so switching tabs
-  // needs no request to the server.
   const setActiveTab = (tab: SettingsTab) =>
     window.history.replaceState(null, "", `?tab=${tab}`);
 
   return (
-    <section className="flex min-h-full w-full flex-col p-6">
+    <>
       <PageHeader
         title="Settings"
         description="Manage your profile, security, and workspace."
@@ -55,6 +53,6 @@ export default function SettingsPage() {
           {activeTab === "company" && isOwner && <CompanySettings />}
         </div>
       </div>
-    </section>
+    </>
   );
 }

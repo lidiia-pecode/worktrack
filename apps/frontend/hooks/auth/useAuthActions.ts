@@ -7,7 +7,6 @@ import { queryKeys } from "../shared/queryKeys";
 export function useAuthActions() {
   const queryClient = useQueryClient();
 
-  // Sign-in and sign-up replace the global toast: AuthForm shows the error.
   const login = useMutation({
     mutationFn: AuthClient.login,
 
@@ -41,7 +40,6 @@ export function useAuthActions() {
       });
     },
 
-    // Replaces the global toast: the Google sign-up page shows the error itself.
     onError: () => {},
   });
 
@@ -54,7 +52,6 @@ export function useAuthActions() {
       });
     },
 
-    // Replaces the global toast: the Google link page shows the error itself.
     onError: () => {},
   });
 
@@ -62,9 +59,7 @@ export function useAuthActions() {
     mutationFn: AuthClient.logout,
 
     onSuccess: () => {
-      queryClient.removeQueries({
-        queryKey: queryKeys.auth.me(),
-      });
+      queryClient.removeQueries();
     },
   });
 

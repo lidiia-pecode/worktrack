@@ -17,7 +17,7 @@ export const AuthFormWrapper = ({
   description,
 }: AuthFormWrapperProps) => {
   return (
-    <div className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+    <main className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
       <section className="relative hidden min-h-screen overflow-hidden bg-foreground text-background lg:flex lg:flex-col lg:px-14 lg:py-10 xl:px-20">
         <GlowBackground variant="auth" />
 
@@ -58,6 +58,6 @@ export const AuthFormWrapper = ({
           {children}
         </div>
       </section>
-    </div>
+    </main>
   );
 };

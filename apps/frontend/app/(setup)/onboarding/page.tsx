@@ -5,8 +5,8 @@ export default async function OnboardingPage() {
   await requireOwnerAccess();
 
   return (
-    <section className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-12 sm:px-8 lg:px-10">
+    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col justify-center px-6 py-12 sm:px-8 lg:px-10">
       <CompanySetupWizard />
-    </section>
+    </main>
   );
 }
