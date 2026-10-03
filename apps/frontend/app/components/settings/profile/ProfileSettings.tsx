@@ -83,9 +83,10 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           <Button
             type="submit"
             variant="primary"
-            disabled={!isDirty || actions.update.isPending}
+            disabled={!isDirty}
+            isLoading={actions.update.isPending}
           >
-            {actions.update.isPending ? "Saving..." : "Save changes"}
+            Save changes
           </Button>
         </SettingsActions>
       </form>

@@ -63,10 +63,10 @@ export const PeriodsContent = () => {
           type="button"
           variant="outline"
           onClick={() => loadOlder()}
-          disabled={isLoadingOlder}
+          isLoading={isLoadingOlder}
           className="min-w-28"
         >
-          {isLoadingOlder ? "Loading..." : "Show older"}
+          Show older
         </Button>
       </div>
 

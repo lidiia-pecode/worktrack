@@ -168,11 +168,10 @@ export const CompanySettings = () => {
           <Button
             type="submit"
             variant="primary"
-            disabled={!isDirty || isSubmitting || actions.update.isPending}
+            disabled={!isDirty}
+            isLoading={isSubmitting || actions.update.isPending}
           >
-            {isSubmitting || actions.update.isPending
-              ? "Saving..."
-              : "Save changes"}
+            Save changes
           </Button>
         </SettingsActions>
       </form>

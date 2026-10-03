@@ -2,18 +2,14 @@
 
 import { KeyboardEvent, ReactNode, useId, useMemo, useState } from "react";
 
-import {
-  AlertCircle,
-  Archive,
-  ArchiveRestore,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getNextTabIndex } from "@/lib/utils/tabs";
 
 import { EmptyState } from "../EmptyState";
+import { ErrorState } from "../ErrorState";
 import { PageHeader } from "../PageHeader";
 import { createActionPlacement } from "./create-action";
 import { SearchInput } from "../inputs/SearchInput";
@@ -202,7 +198,11 @@ export const ResourcePage = <T,>({
         {isLoading && <ResourcePageSkeleton />}
 
         {!isLoading && isError && (
-          <ResourcePageError title={title} onRetry={onRetry} />
+          <ErrorState
+            title={`Unable to load ${title.toLowerCase()}`}
+            description="Something went wrong while loading this page."
+            onRetry={onRetry}
+          />
         )}
 
         {!isLoading && !isError && filteredItems.length === 0 && (
@@ -234,10 +234,10 @@ export const ResourcePage = <T,>({
                   type="button"
                   variant="outline"
                   onClick={onFetchNextPage}
-                  disabled={isFetchingNextPage}
+                  isLoading={isFetchingNextPage}
                   className="min-w-28"
                 >
-                  {isFetchingNextPage ? "Loading..." : "Load more"}
+                  Load more
                 </Button>
               </div>
             )}
@@ -368,73 +368,15 @@ export const ResourceTabButton = ({
   );
 };
 
-interface ResourcePageErrorProps {
-  title: string;
-  onRetry?: () => void;
-}
+const ResourcePageSkeleton = () => (
+  <div role="status" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <span className="sr-only">Loading</span>
 
-const ResourcePageError = ({ title, onRetry }: ResourcePageErrorProps) => {
-  return (
-    <div
-      className="
-        flex min-h-[360px] flex-1 flex-col
-        items-center justify-center
-        rounded-2xl
-        border border-destructive/20
-        bg-destructive/5
-        p-8
-        text-center
-      "
-    >
-      <div
-        className="
-          flex size-12 items-center justify-center
-          rounded-2xl
-          bg-destructive/10
-          text-destructive-text
-        "
-      >
-        <AlertCircle className="size-6" />
-      </div>
-
-      <h2 className="mt-5 text-base font-semibold text-foreground">
-        Unable to load {title.toLowerCase()}
-      </h2>
-
-      <p className="mt-1 text-sm text-muted-foreground">
-        Something went wrong while loading this page.
-      </p>
-
-      {onRetry && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRetry}
-          className="mt-5 gap-2"
-        >
-          <RefreshCw className="size-4" />
-          Try again
-        </Button>
-      )}
-    </div>
-  );
-};
-
-const ResourcePageSkeleton = () => {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="
-            h-44
-            animate-pulse
-            rounded-xl
-            border border-border
-            bg-card
-          "
-        />
-      ))}
-    </div>
-  );
-};
+    {Array.from({ length: 3 }).map((_, index) => (
+      <Skeleton
+        key={index}
+        className="h-44 rounded-xl border border-border bg-card"
+      />
+    ))}
+  </div>
+);

@@ -250,11 +250,9 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                     key="save"
                     type="submit"
                     form="user-modal-form"
-                    disabled={update.isPending || setCapacity.isPending}
+                    isLoading={update.isPending || setCapacity.isPending}
                   >
-                    {update.isPending || setCapacity.isPending
-                      ? "Saving..."
-                      : "Save changes"}
+                    Save changes
                   </Button>
                 ) : (
                   <Button

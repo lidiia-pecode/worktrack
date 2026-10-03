@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuthActions } from "@/hooks/auth/useAuthActions";
 import { INVITATION_VALID_DAYS } from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
@@ -170,11 +171,11 @@ export const InvitationLoading = () => (
     description="Checking your invitation link."
   >
     <AuthCard>
-      <div className="animate-pulse" role="status" aria-busy="true">
+      <div role="status" aria-busy="true">
         <span className="sr-only">Loading your invitation</span>
-        <div className="h-7 w-56 rounded bg-muted" />
-        <div className="mt-3 h-4 w-full rounded bg-muted" />
-        <div className="mt-8 h-64 w-full rounded-xl bg-muted" />
+        <Skeleton className="h-7 w-56" />
+        <Skeleton className="mt-3 h-4 w-full" />
+        <Skeleton className="mt-8 h-64 w-full rounded-xl" />
       </div>
     </AuthCard>
   </AuthFormWrapper>

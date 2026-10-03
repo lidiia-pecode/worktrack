@@ -2,6 +2,9 @@
 
 import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { EmptyState } from "../EmptyState";
 import { SearchInput } from "../inputs/SearchInput";
 import { PickerRow } from "./PickerRow";
 
@@ -100,15 +103,18 @@ export const EntityPicker = <T,>({
         className="mt-3 max-h-80 overflow-y-auto rounded-xl border border-border bg-card p-1.5"
       >
         {isLoading ? (
-          <div className="space-y-1 p-1">
+          <div role="status" className="space-y-1 p-1">
+            <span className="sr-only">Loading</span>
+
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-xl bg-muted" />
+              <Skeleton key={i} className="h-11 rounded-xl" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            {search ? `No results for "${search}".` : emptyMessage}
-          </p>
+          <EmptyState
+            size="compact"
+            title={search ? `No results for "${search}".` : emptyMessage}
+          />
         ) : (
           <div className="space-y-0.5">
             {filtered.map((item) => {

@@ -13,6 +13,7 @@ import {
 } from "@/hooks/auth/useInvitation";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { ErrorState } from "../shared/ErrorState";
 import { UserRole } from "@/types/enums";
 
 const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
@@ -52,17 +53,12 @@ export const PendingInvitations = () => {
 
   if (isError) {
     return (
-      <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl border border-border bg-card px-5 py-3 text-sm text-muted-foreground">
-        Could not load pending invitations.
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-        >
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        size="compact"
+        title="Could not load pending invitations."
+        onRetry={() => refetch()}
+        className="mb-6 rounded-2xl border border-border bg-card"
+      />
     );
   }
 

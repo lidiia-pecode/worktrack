@@ -16,6 +16,7 @@ import {
 import { browserTimeZone, toListedTimeZone } from "@/lib/utils/time-zones";
 
 import { ErrorState } from "../../shared/ErrorState";
+import { LoadingState } from "../../shared/LoadingState";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 import { OnboardingProgress } from "./OnboardingProgress";
@@ -121,11 +122,7 @@ export const CompanySetupWizard = () => {
   };
 
   if (query.isLoading) {
-    return (
-      <p className="animate-pulse text-sm font-medium text-muted-foreground">
-        Loading your company...
-      </p>
-    );
+    return <LoadingState size="compact" title="Loading your company..." />;
   }
 
   if (query.isError || !company) {
