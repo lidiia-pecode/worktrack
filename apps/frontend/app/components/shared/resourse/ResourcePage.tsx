@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { getNextTabIndex } from "@/lib/utils/tabs";
 
 import { EmptyState } from "../EmptyState";
+import { PageHeader } from "../PageHeader";
 import { createActionPlacement } from "./create-action";
 import { SearchInput } from "../inputs/SearchInput";
 
@@ -45,7 +46,6 @@ interface ResourcePageProps<T> {
   onFetchNextPage?: () => void;
 
   renderItem: (item: T) => ReactNode;
-  /** Shown above the search and the items, e.g. a related list. */
   topContent?: ReactNode;
   showArchived?: boolean;
   tab?: ResourceTab;
@@ -137,28 +137,19 @@ export function ResourcePage<T>({
       : emptyDescription;
 
   return (
-    <section className="flex min-h-full w-full flex-col p-6">
-      {/* Header */}
-      <header className="mb-6 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-        <div className="min-w-0">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            {title}
-          </h1>
-
-          {description && (
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              {description}
-            </p>
-          )}
-        </div>
-
-        {createAction === "header" && (
-          <Button type="button" onClick={onCreate} className="shrink-0 gap-2">
-            <Plus className="size-4" />
-            {createLabel}
-          </Button>
-        )}
-      </header>
+    <section className="flex flex-1 flex-col">
+      <PageHeader
+        title={title}
+        description={description}
+        actions={
+          createAction === "header" && (
+            <Button type="button" onClick={onCreate} className="gap-2">
+              <Plus className="size-4" />
+              {createLabel}
+            </Button>
+          )
+        }
+      />
 
       {/* Tabs */}
       {showArchived && (
@@ -204,15 +195,12 @@ export function ResourcePage<T>({
           </div>
         )}
 
-        {/* Loading */}
         {isLoading && <ResourcePageSkeleton />}
 
-        {/* Error */}
         {!isLoading && isError && (
           <ResourcePageError title={title} onRetry={onRetry} />
         )}
 
-        {/* Empty */}
         {!isLoading && !isError && filteredItems.length === 0 && (
           <EmptyState
             title={emptyStateTitle}
@@ -267,7 +255,6 @@ export function ResourceTabList({
   className,
   children,
 }: ResourceTabListProps) {
-  // Arrow keys select the tab they move to, like a click.
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const tabs = Array.from(
       event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),

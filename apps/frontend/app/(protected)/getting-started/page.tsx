@@ -5,7 +5,7 @@ export default async function GettingStartedPage() {
   await requireOwnerAccess();
 
   return (
-    <div className="mx-auto flex max-w-7xl justify-center px-6 py-10">
+    <div className="flex justify-center">
       <GettingStarted />
     </div>
   );

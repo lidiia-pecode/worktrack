@@ -21,7 +21,6 @@ import { UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
 
-import Container from "../layout/Container";
 import { EmptyState } from "../shared/EmptyState";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
@@ -110,7 +109,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     0,
   );
 
-  // Looked up from the latest rows so the open day refreshes after each save.
   const openedRow = openedDay
     ? rows.find((row) => row.user.id === openedDay.userId)
     : undefined;
@@ -136,22 +134,21 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     hasActiveFilters: Boolean(teamId),
     ledTeamCount: teamOptions.length,
   });
-  // Which reason applies depends on the teams, so it waits for them.
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
   if (isLoadingSettings || isLoadingWeek || isLoadingAbsences) {
     return (
-      <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+      <div className="flex flex-col">
         <LoadingState
           title="Loading the week's plan"
           description="Fetching planned work and workspace settings."
         />
-      </Container>
+      </div>
     );
   }
 
   return (
-    <Container className="flex flex-col p-0 sm:pr-0 lg:pr-0">
+    <div className="flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
         <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
 
@@ -285,6 +282,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           onClose={() => setOpenedDay(null)}
         />
       )}
-    </Container>
+    </div>
   );
 };

@@ -25,6 +25,7 @@ import { UserRole } from "@/types/enums";
 import { INVITATION_VALID_DAYS } from "@/lib/constants";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
+import { PageHeader } from "../../shared/PageHeader";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 import { TOPIC_TEXT } from "./setup-topics";
 
@@ -195,27 +196,20 @@ export function SetupChecklist({ state }: SetupChecklistProps) {
 
   return (
     <section className="w-full max-w-3xl">
-      <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">
-            Get your company ready to log time
-          </h1>
-
-          <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-            Each step checks what is already in place. Once the last one is
-            done, people on the project can log their time.
-          </p>
-        </div>
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setIsConfirmingSkip(true)}
-        >
-          Skip setup
-        </Button>
-      </header>
+      <PageHeader
+        title="Get your company ready to log time"
+        description="Each step checks what is already in place. Once the last one is done, people on the project can log their time."
+        actions={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setIsConfirmingSkip(true)}
+          >
+            Skip setup
+          </Button>
+        }
+      />
 
       <ConfirmModal
         isOpen={isConfirmingSkip}

@@ -13,7 +13,9 @@ export default async function ProtectedLayout({
       {user && <Sidebar user={user} />}
 
       <main className="relative min-h-0 flex-1 overflow-y-auto bg-background">
-        {children}
+        <div className="mx-auto flex min-h-full w-full max-w-7xl flex-col p-6">
+          {children}
+        </div>
       </main>
     </div>
   );
