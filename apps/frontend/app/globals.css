@@ -138,6 +138,23 @@
   --chart-5: var(--success);
 
   /* ------------------------------------------------------------------------
+     Project colours
+     ------------------------------------------------------------------------ */
+
+  /* One per project, picked by hashing its id (lib/utils/project-colors.ts).
+     Translucent tints, so entry text in --foreground stays readable on them. */
+  --project-1: oklch(0.623 0.188 259.8 / 0.3);
+  --project-2: oklch(0.696 0.149 162.5 / 0.3);
+  --project-3: oklch(0.606 0.219 292.7 / 0.3);
+  --project-4: oklch(0.769 0.165 70.1 / 0.3);
+  --project-5: oklch(0.637 0.208 25.3 / 0.3);
+  --project-6: oklch(0.715 0.126 215.2 / 0.3);
+  --project-7: oklch(0.585 0.204 277.1 / 0.3);
+  --project-8: oklch(0.704 0.123 182.5 / 0.3);
+  --project-9: oklch(0.656 0.212 354.3 / 0.3);
+  --project-10: oklch(0.768 0.204 130.8 / 0.3);
+
+  /* ------------------------------------------------------------------------
      Dark secondary action
      ------------------------------------------------------------------------ */
 
@@ -233,6 +250,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+
+  /* Below text-xs, for dense grids and captions. */
+  --text-2xs: 0.6875rem;
+  --text-2xs--line-height: calc(0.875 / 0.6875);
 }
 
 .bg-time-management {

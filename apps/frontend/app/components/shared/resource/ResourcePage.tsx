@@ -346,7 +346,7 @@ export const ResourceTabButton = ({
         <span
           className={[
             "min-w-5 rounded-full px-1.5 py-0.5",
-            "text-center text-[11px] font-medium",
+            "text-center text-2xs font-medium",
             active
               ? "bg-brand-subtle text-brand"
               : "bg-muted/50 text-muted-foreground",

@@ -55,7 +55,7 @@ const DayEntries = ({
 }) => (
   <>
     {absence && (
-      <Badge variant="default" className="w-fit text-[10px]">
+      <Badge variant="default" className="w-fit text-2xs">
         {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
       </Badge>
     )}
@@ -173,7 +173,7 @@ export const PlanningWeekRow = ({
           <Badge
             variant="warning"
             title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
-            className="mt-1 px-1.5 text-[10px] font-medium"
+            className="mt-1 px-1.5 text-2xs font-medium"
           >
             Over by {formatDuration(overMinutes)}
           </Badge>

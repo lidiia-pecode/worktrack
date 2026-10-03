@@ -85,7 +85,7 @@ export const TeamCard = ({
           ))}
 
           {extraCount > 0 && (
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-2xs font-semibold text-muted-foreground ring-2 ring-card">
               +{extraCount}
             </div>
           )}

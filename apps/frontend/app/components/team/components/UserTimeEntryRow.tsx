@@ -37,7 +37,7 @@ export const UserTimeEntryRow = ({
           </span>
 
           {!timelog.isBillable && (
-            <span className="rounded bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
               Non-billable
             </span>
           )}

@@ -45,7 +45,7 @@ export const UserTimeDayGroup = ({
     >
       <header className="flex items-center justify-between gap-3 px-3 py-2">
         <h3 className="flex items-baseline gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="text-2xs uppercase tracking-wider text-muted-foreground">
             {formatWeekdayLabel(date)}
           </span>
 

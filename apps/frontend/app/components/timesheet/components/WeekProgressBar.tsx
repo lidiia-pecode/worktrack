@@ -158,7 +158,7 @@ export const WeekProgressBar = ({
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px]">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-2xs">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-muted-foreground">
           <span className="flex items-center gap-1.5">
             <span
@@ -190,7 +190,7 @@ export const WeekProgressBar = ({
           </span>
 
           {isOverExpected && (
-            <Badge variant="warning" className="px-1.5 text-[10px] font-medium">
+            <Badge variant="warning" className="px-1.5 text-2xs font-medium">
               +{formatDuration(overMinutes)}
             </Badge>
           )}

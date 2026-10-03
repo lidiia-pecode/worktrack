@@ -78,7 +78,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
           <Clock className="size-3.5 shrink-0" />
           <span>{formatDuration(timelog.minutes)}</span>
           {!timelog.isBillable && (
-            <span className="ml-1 rounded bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="ml-1 rounded bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
               Non-billable
             </span>
           )}

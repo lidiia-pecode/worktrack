@@ -56,7 +56,7 @@ const TimesheetCard = () => (
               absence && cn(ABSENCE_PATTERN, "items-center justify-center"),
             )}
           >
-            {absence && <Badge className="px-1.5 text-[10px]">{absence}</Badge>}
+            {absence && <Badge className="px-1.5 text-2xs">{absence}</Badge>}
 
             {entries.map(({ project, minutes }, index) => (
               <div

@@ -34,7 +34,7 @@ export const WeekHeaderDay = ({
       `}
     >
       <div className="flex gap-2 items-baseline">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <p className="text-2xs uppercase tracking-wider text-muted-foreground">
           {formatWeekdayLabel(date)}
         </p>
 

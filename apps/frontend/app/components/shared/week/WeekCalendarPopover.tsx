@@ -88,7 +88,7 @@ export const WeekCalendarPopover = ({
         {weekdayHeaders.map((d) => (
           <span
             key={d}
-            className="text-[11px] font-medium text-muted-foreground text-center py-1"
+            className="text-2xs font-medium text-muted-foreground text-center py-1"
           >
             {d}
           </span>
