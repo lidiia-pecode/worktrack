@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 import { BACKEND_URL } from "./lib/constants/backend-url";
 
 const nextConfig: NextConfig = {
+  devIndicators: { position: "bottom-right" },
+
   async rewrites() {
     return [
       {
