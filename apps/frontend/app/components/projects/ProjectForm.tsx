@@ -8,7 +8,11 @@ import { Activity, Users } from "lucide-react";
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import { FormSection } from "../shared/FormSection";
+import {
+  Field,
+  fieldLabelClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { DescriptionEditor } from "./DescriptionEditor";
 
 const projectFormSchema = z
@@ -93,30 +97,35 @@ export const ProjectForm = ({
 
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
-      <FormSection label="Project name">
-        <Input
-          id="project-name"
-          {...register("name")}
-          placeholder="e.g. Website redesign"
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
+      <Input
+        id="project-name"
+        label="Project name"
+        {...register("name")}
+        placeholder="e.g. Website redesign"
+        description={
+          isEditMode
+            ? "Update the name used to identify this project."
+            : "Choose a clear name that helps people understand what this project is about."
+        }
+        error={errors.name?.message}
+        disabled={isSubmitting}
+      />
 
-        {!errors.name && (
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            {isEditMode
-              ? "Update the name used to identify this project."
-              : "Choose a clear name that helps people understand what this project is about."}
-          </p>
-        )}
-      </FormSection>
-
-      <FormSection label="Who is it for">
+      <Field
+        id="project-work-type"
+        label="Who is it for"
+        group
+        description={
+          workType === "client"
+            ? undefined
+            : "Work for your own company, with no client."
+        }
+      >
         <Controller
           name="workType"
           control={control}
           render={({ field }) => (
-            <div className="flex gap-2" role="group" aria-label="Who is it for">
+            <div className="flex gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -142,7 +151,7 @@ export const ProjectForm = ({
           )}
         />
 
-        {workType === "client" ? (
+        {workType === "client" && (
           <div className="mt-3">
             <Input
               id="project-client"
@@ -161,35 +170,37 @@ export const ProjectForm = ({
               ))}
             </datalist>
           </div>
-        ) : (
-          <p className="mt-1.5 text-xs text-muted-foreground">
-            Work for your own company, with no client.
-          </p>
         )}
-      </FormSection>
+      </Field>
 
-      <FormSection label="Description">
+      <Field
+        id="project-description"
+        label="Description"
+        error={errors.description?.message}
+      >
         <Controller
           name="description"
           control={control}
           render={({ field }) => (
             <DescriptionEditor
+              labelledBy="project-description-label"
+              describedBy={fieldMessageId("project-description", {
+                error: errors.description?.message,
+              })}
               value={field.value ?? ""}
               onChange={field.onChange}
               disabled={isSubmitting}
             />
           )}
         />
-
-        {errors.description?.message && (
-          <p className="mt-1.5 text-xs text-destructive-text">
-            {errors.description.message}
-          </p>
-        )}
-      </FormSection>
+      </Field>
 
       {isEditMode && (
-        <FormSection label="Project overview">
+        <section aria-labelledby="project-overview-title">
+          <h3 id="project-overview-title" className={fieldLabelClassName}>
+            Project overview
+          </h3>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
               <Users className="size-4 text-muted-foreground" />
@@ -213,7 +224,7 @@ export const ProjectForm = ({
               </div>
             </div>
           </div>
-        </FormSection>
+        </section>
       )}
     </form>
   );

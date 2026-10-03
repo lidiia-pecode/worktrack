@@ -8,6 +8,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 
 type Option = {
@@ -19,6 +24,7 @@ type Option = {
 type FormSelectProps = {
   id?: string;
   label?: string;
+  "aria-label"?: string;
   value?: string;
   options: Option[];
   placeholder?: string;
@@ -33,6 +39,7 @@ type FormSelectProps = {
 export const FormSelect = ({
   id,
   label,
+  "aria-label": ariaLabel,
   value,
   options,
   placeholder = "Select an option",
@@ -52,16 +59,13 @@ export const FormSelect = ({
   );
 
   return (
-    <div className={cn("w-full", className)}>
-      {label && (
-        <label
-          htmlFor={selectId}
-          className="mb-1.5 block text-sm font-medium text-foreground"
-        >
-          {label}
-        </label>
-      )}
-
+    <Field
+      id={selectId}
+      label={label}
+      description={description}
+      error={error}
+      className={className}
+    >
       <Select
         value={value ?? null}
         disabled={disabled}
@@ -71,15 +75,12 @@ export const FormSelect = ({
       >
         <SelectTrigger
           id={selectId}
+          aria-label={ariaLabel}
           aria-invalid={!!error}
+          aria-describedby={fieldMessageId(selectId, { error, description })}
           className={cn(
-            "h-11 w-full rounded-lg border-input-placeholder/50 bg-input px-3.5 text-sm text-input-foreground",
-            "transition",
-            "hover:bg-input/80",
-            "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-            error &&
-              "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
+            fieldControlClassName(!!error),
+            "h-11",
             triggerClassName,
           )}
         >
@@ -116,12 +117,6 @@ export const FormSelect = ({
           ))}
         </SelectContent>
       </Select>
-
-      {description && !error && (
-        <p className="mt-1.5 text-xs text-muted-foreground">{description}</p>
-      )}
-
-      {error && <p className="mt-1.5 text-xs text-destructive-text">{error}</p>}
-    </div>
+    </Field>
   );
 };

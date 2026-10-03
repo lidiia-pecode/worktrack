@@ -19,6 +19,8 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 interface DescriptionEditorProps {
+  labelledBy?: string;
+  describedBy?: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -63,6 +65,8 @@ const ToolbarButton = ({
 };
 
 export const DescriptionEditor = ({
+  labelledBy,
+  describedBy,
   value,
   onChange,
   disabled = false,
@@ -94,6 +98,10 @@ export const DescriptionEditor = ({
 
     editorProps: {
       attributes: {
+        role: "textbox",
+        "aria-multiline": "true",
+        ...(labelledBy && { "aria-labelledby": labelledBy }),
+        ...(describedBy && { "aria-describedby": describedBy }),
         class: cn(
           "min-h-[160px] px-3.5 py-3",
           "text-sm text-foreground",

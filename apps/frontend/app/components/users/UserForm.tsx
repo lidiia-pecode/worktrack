@@ -9,9 +9,9 @@ import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils/date";
 import { Badge } from "@/components/ui/badge";
+import { Field, fieldLabelClassName } from "@/components/ui/field";
 import Input from "@/components/ui/input";
 
-import { FormSection } from "../shared/FormSection";
 import { FormSelect } from "../shared/FormSelect";
 import { DateInput } from "../shared/inputs";
 
@@ -80,68 +80,77 @@ export const UserForm = ({
     defaultValues,
   });
 
+  if (!isEditMode) {
+    return (
+      <dl className="space-y-6">
+        <div>
+          <dt className={fieldLabelClassName}>Position</dt>
+          <dd className="text-sm text-foreground">
+            {defaultValues.position || "Not specified"}
+          </dd>
+        </div>
+
+        <div>
+          <dt className={fieldLabelClassName}>Role</dt>
+          <dd>
+            <Badge>{ROLE_LABELS[defaultValues.role]}</Badge>
+          </dd>
+        </div>
+
+        <div>
+          <dt className={fieldLabelClassName}>Working hours</dt>
+          <dd className="text-sm text-foreground">
+            {describeCapacity(capacity)}
+          </dd>
+        </div>
+      </dl>
+    );
+  }
+
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <FormSection label="Position">
-        {isEditMode ? (
+      <Input
+        label="Position"
+        {...register("position")}
+        placeholder="e.g. Frontend Developer"
+        error={errors.position?.message}
+      />
+
+      <Controller
+        control={control}
+        name="role"
+        render={({ field, fieldState }) => (
+          <FormSelect
+            label="Role"
+            value={field.value}
+            onValueChange={field.onChange}
+            options={roleOptions}
+            error={fieldState.error?.message}
+          />
+        )}
+      />
+
+      <Field id="user-working-hours" label="Working hours" group>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input
-            {...register("position")}
-            placeholder="e.g. Frontend Developer"
-            error={errors.position?.message}
+            {...register("capacityHoursPerWeek", { valueAsNumber: true })}
+            type="number"
+            min={0}
+            max={168}
+            step={0.5}
+            label="Contracted hours per week"
+            description="Hours per week, not per day."
+            error={errors.capacityHoursPerWeek?.message}
           />
-        ) : (
-          <p className="text-sm text-foreground">
-            {defaultValues.position || "Not specified"}
-          </p>
-        )}
-      </FormSection>
 
-      <FormSection label="Role">
-        {isEditMode ? (
-          <Controller
-            control={control}
-            name="role"
-            render={({ field, fieldState }) => (
-              <FormSelect
-                value={field.value}
-                onValueChange={field.onChange}
-                options={roleOptions}
-                error={fieldState.error?.message}
-              />
-            )}
+          <DateInput
+            {...register("capacityValidFrom")}
+            label="Applies from"
+            description="Earlier weeks keep the hours they were measured against."
+            error={errors.capacityValidFrom?.message}
           />
-        ) : (
-          <Badge>{ROLE_LABELS[defaultValues.role]}</Badge>
-        )}
-      </FormSection>
-
-      <FormSection label="Working hours">
-        {isEditMode ? (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              {...register("capacityHoursPerWeek", { valueAsNumber: true })}
-              type="number"
-              min={0}
-              max={168}
-              step={0.5}
-              label="Contracted hours per week"
-              description="Hours per week, not per day."
-              error={errors.capacityHoursPerWeek?.message}
-            />
-
-            <DateInput
-              {...register("capacityValidFrom")}
-              label="Applies from"
-              description="Earlier weeks keep the hours they were measured against."
-              error={errors.capacityValidFrom?.message}
-            />
-          </div>
-        ) : (
-          <p className="text-sm text-foreground">
-            {describeCapacity(capacity)}
-          </p>
-        )}
-      </FormSection>
+        </div>
+      </Field>
     </form>
   );
 };
