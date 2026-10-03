@@ -56,7 +56,7 @@ interface ResourcePageProps<T> {
   archivedCount?: number;
 }
 
-export function ResourcePage<T>({
+export const ResourcePage = <T,>({
   title,
   description,
   items,
@@ -91,7 +91,7 @@ export function ResourcePage<T>({
 
   activeCount,
   archivedCount,
-}: ResourcePageProps<T>) {
+}: ResourcePageProps<T>) => {
   const [search, setSearch] = useState("");
   const tabsId = useId();
 
@@ -246,7 +246,7 @@ export function ResourcePage<T>({
       </div>
     </section>
   );
-}
+};
 
 interface ResourceTabListProps {
   label: string;
@@ -254,11 +254,11 @@ interface ResourceTabListProps {
   children: ReactNode;
 }
 
-export function ResourceTabList({
+export const ResourceTabList = ({
   label,
   className,
   children,
-}: ResourceTabListProps) {
+}: ResourceTabListProps) => {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const tabs = Array.from(
       event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
@@ -286,7 +286,7 @@ export function ResourceTabList({
       {children}
     </div>
   );
-}
+};
 
 interface ResourceTabButtonProps {
   id: string;
@@ -298,7 +298,7 @@ interface ResourceTabButtonProps {
   onClick: () => void;
 }
 
-export function ResourceTabButton({
+export const ResourceTabButton = ({
   id,
   controls,
   active,
@@ -306,7 +306,7 @@ export function ResourceTabButton({
   icon,
   count,
   onClick,
-}: ResourceTabButtonProps) {
+}: ResourceTabButtonProps) => {
   return (
     <button
       type="button"
@@ -366,14 +366,14 @@ export function ResourceTabButton({
       />
     </button>
   );
-}
+};
 
 interface ResourcePageErrorProps {
   title: string;
   onRetry?: () => void;
 }
 
-function ResourcePageError({ title, onRetry }: ResourcePageErrorProps) {
+const ResourcePageError = ({ title, onRetry }: ResourcePageErrorProps) => {
   return (
     <div
       className="
@@ -418,9 +418,9 @@ function ResourcePageError({ title, onRetry }: ResourcePageErrorProps) {
       )}
     </div>
   );
-}
+};
 
-function ResourcePageSkeleton() {
+const ResourcePageSkeleton = () => {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {Array.from({ length: 3 }).map((_, index) => (
@@ -437,4 +437,4 @@ function ResourcePageSkeleton() {
       ))}
     </div>
   );
-}
+};

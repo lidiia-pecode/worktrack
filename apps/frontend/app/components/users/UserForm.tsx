@@ -63,13 +63,13 @@ const describeCapacity = (capacity: Capacity | null) => {
   )}`;
 };
 
-export function UserForm({
+export const UserForm = ({
   formId,
   defaultValues,
   isEditMode,
   capacity,
   onSubmit,
-}: UserFormProps) {
+}: UserFormProps) => {
   const {
     register,
     control,
@@ -144,4 +144,4 @@ export function UserForm({
       </FormSection>
     </form>
   );
-}
+};

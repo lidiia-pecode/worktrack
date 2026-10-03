@@ -7,11 +7,11 @@ type LoadingStateProps = {
   className?: string;
 };
 
-export function LoadingState({
+export const LoadingState = ({
   title = "Loading...",
   description = "Please wait while we fetch your data.",
   className,
-}: LoadingStateProps) {
+}: LoadingStateProps) => {
   return (
     <div
       className={cn(
@@ -28,4 +28,4 @@ export function LoadingState({
       </p>
     </div>
   );
-}
+};

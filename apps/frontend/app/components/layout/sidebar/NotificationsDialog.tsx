@@ -77,10 +77,10 @@ interface NotificationsDialogProps {
   onClose: () => void;
 }
 
-export function NotificationsDialog({
+export const NotificationsDialog = ({
   open,
   onClose,
-}: NotificationsDialogProps) {
+}: NotificationsDialogProps) => {
   const { data, isError, isPending, refetch } = useNotifications({
     enabled: true,
   });
@@ -134,4 +134,4 @@ export function NotificationsDialog({
       )}
     </ResourceFormModal>
   );
-}
+};

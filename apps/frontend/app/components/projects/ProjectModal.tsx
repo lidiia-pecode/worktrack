@@ -55,12 +55,12 @@ function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return Array.from(byId.values());
 }
 
-export function ProjectModal({
+export const ProjectModal = ({
   open,
   onClose,
   project,
   isOnboarding = false,
-}: ProjectModalProps) {
+}: ProjectModalProps) => {
   const router = useRouter();
   const [view, setView] = useState<View>("form");
 
@@ -403,4 +403,4 @@ export function ProjectModal({
       <ConfirmModal {...confirmProps} />
     </>
   );
-}
+};

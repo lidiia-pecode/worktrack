@@ -12,13 +12,13 @@ interface StepActionsProps {
   submitLabel?: string;
 }
 
-export function StepActions({
+export const StepActions = ({
   onBack,
   onSkip,
   showBack = true,
   isPending,
   submitLabel = "Continue",
-}: StepActionsProps) {
+}: StepActionsProps) => {
   const canGoBack = showBack && Boolean(onBack);
 
   return (
@@ -63,4 +63,4 @@ export function StepActions({
       </div>
     </div>
   );
-}
+};

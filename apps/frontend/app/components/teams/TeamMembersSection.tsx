@@ -33,10 +33,10 @@ interface TeamMembersSectionProps {
   onOpenAddMembers: () => void;
 }
 
-export function TeamMembersSection({
+export const TeamMembersSection = ({
   team,
   onOpenAddMembers,
-}: TeamMembersSectionProps) {
+}: TeamMembersSectionProps) => {
   const { user } = useAuth();
   const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
@@ -167,7 +167,7 @@ export function TeamMembersSection({
       />
     </div>
   );
-}
+};
 
 const ArchivedTeamMembers = ({ team }: { team: Team }) => {
   const formerMembers = (team.memberships ?? []).filter(

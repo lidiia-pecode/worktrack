@@ -31,7 +31,7 @@ const sizeClass: Record<NonNullable<ResourceFormModalProps["size"]>, string> = {
   lg: "sm:max-w-2xl",
 };
 
-export function ResourceFormModal({
+export const ResourceFormModal = ({
   open,
   onClose,
   title,
@@ -41,7 +41,7 @@ export function ResourceFormModal({
   footer,
   bodyPadding = true,
   children,
-}: ResourceFormModalProps) {
+}: ResourceFormModalProps) => {
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent
@@ -86,4 +86,4 @@ export function ResourceFormModal({
       </DialogContent>
     </Dialog>
   );
-}
+};

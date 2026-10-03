@@ -15,7 +15,7 @@ type TimePickerProps = {
   minuteStep?: number;
 };
 
-export function TimePicker({
+export const TimePicker = ({
   hours,
   minutes,
   onHoursChange,
@@ -23,7 +23,7 @@ export function TimePicker({
   className,
   error,
   minuteStep = 5,
-}: TimePickerProps) {
+}: TimePickerProps) => {
   return (
     <div
       className={cn(
@@ -57,7 +57,7 @@ export function TimePicker({
       />
     </div>
   );
-}
+};
 
 type TimeFieldProps = {
   label: string;
@@ -69,7 +69,7 @@ type TimeFieldProps = {
   onChange: (value: number) => void;
 };
 
-function TimeField({
+const TimeField = ({
   label,
   value,
   min,
@@ -77,7 +77,7 @@ function TimeField({
   step,
   wrapOnStep,
   onChange,
-}: TimeFieldProps) {
+}: TimeFieldProps) => {
   const [draft, setDraft] = useState<string | null>(null);
 
   const displayValue = draft ?? value.toString().padStart(2, "0");
@@ -170,4 +170,4 @@ function TimeField({
       </Button>
     </div>
   );
-}
+};

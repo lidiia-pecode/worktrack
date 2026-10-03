@@ -3,10 +3,10 @@ interface OnboardingStepHeaderProps {
   description: string;
 }
 
-export function OnboardingStepHeader({
+export const OnboardingStepHeader = ({
   title,
   description,
-}: OnboardingStepHeaderProps) {
+}: OnboardingStepHeaderProps) => {
   return (
     <div>
       <h2 className="text-2xl font-bold tracking-tight text-foreground">
@@ -18,4 +18,4 @@ export function OnboardingStepHeader({
       </p>
     </div>
   );
-}
+};

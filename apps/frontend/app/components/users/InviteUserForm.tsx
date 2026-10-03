@@ -28,12 +28,12 @@ interface InviteUserFormProps {
   onCanSubmitChange: (canSubmit: boolean) => void;
 }
 
-export function InviteUserForm({
+export const InviteUserForm = ({
   formId,
   isSubmitting = false,
   onSubmit,
   onCanSubmitChange,
-}: InviteUserFormProps) {
+}: InviteUserFormProps) => {
   const { user } = useAuth();
   const isOwner = user?.role === UserRole.OWNER;
 
@@ -187,4 +187,4 @@ export function InviteUserForm({
       )}
     </form>
   );
-}
+};

@@ -16,11 +16,11 @@ interface ActivityCategoryCardProps {
   onView?: (category: ActivityCategory) => void;
 }
 
-export function ActivityCategoryCard({
+export const ActivityCategoryCard = ({
   category,
   canManage = false,
   onView,
-}: ActivityCategoryCardProps) {
+}: ActivityCategoryCardProps) => {
   const isArchived = category.status === ActCategoryStatus.ARCHIVED;
 
   return (
@@ -51,4 +51,4 @@ export function ActivityCategoryCard({
       }
     ></ResourceCard>
   );
-}
+};

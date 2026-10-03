@@ -29,12 +29,12 @@ interface ActivityCategoryModalProps {
 
 const FORM_ID = "activity-category-form";
 
-export function ActivityCategoryModal({
+export const ActivityCategoryModal = ({
   open,
   onClose,
   category,
   isOnboarding = false,
-}: ActivityCategoryModalProps) {
+}: ActivityCategoryModalProps) => {
   const router = useRouter();
   const {
     actions: { create, update, unarchive },
@@ -157,4 +157,4 @@ export function ActivityCategoryModal({
       )}
     </>
   );
-}
+};

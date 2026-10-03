@@ -6,11 +6,11 @@ interface ResourceCardFieldProps {
   icon?: ReactNode;
 }
 
-export function ResourceCardField({
+export const ResourceCardField = ({
   label,
   value,
   icon,
-}: ResourceCardFieldProps) {
+}: ResourceCardFieldProps) => {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="flex min-w-0 items-center gap-2 text-muted-foreground">
@@ -24,4 +24,4 @@ export function ResourceCardField({
       </span>
     </div>
   );
-}
+};

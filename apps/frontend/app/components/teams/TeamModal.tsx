@@ -64,12 +64,12 @@ const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
   ].join(" ");
 };
 
-export function TeamModal({
+export const TeamModal = ({
   open,
   onClose,
   team: teamProp,
   isOnboarding = false,
-}: TeamModalProps) {
+}: TeamModalProps) => {
   const router = useRouter();
   const { user } = useAuth();
   const { timezone } = useWorkSettings();
@@ -454,4 +454,4 @@ export function TeamModal({
       />
     </>
   );
-}
+};

@@ -21,11 +21,11 @@ interface InviteUserModalProps {
   isOnboarding?: boolean;
 }
 
-export function InviteUserModal({
+export const InviteUserModal = ({
   open,
   onClose,
   isOnboarding,
-}: InviteUserModalProps) {
+}: InviteUserModalProps) => {
   const {
     actions: { create },
   } = useInvitations();
@@ -78,4 +78,4 @@ export function InviteUserModal({
       />
     </ResourceFormModal>
   );
-}
+};

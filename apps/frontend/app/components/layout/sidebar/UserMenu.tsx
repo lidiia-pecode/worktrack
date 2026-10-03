@@ -29,7 +29,7 @@ const MAX_SHOWN_COUNT = 9;
 const countLabel = (count: number) =>
   count > MAX_SHOWN_COUNT ? `${MAX_SHOWN_COUNT}+` : String(count);
 
-export function UserMenu() {
+export const UserMenu = () => {
   const router = useRouter();
   const { user } = useAuth();
   const actions = useAuthActions();
@@ -140,4 +140,4 @@ export function UserMenu() {
       )}
     </>
   );
-}
+};

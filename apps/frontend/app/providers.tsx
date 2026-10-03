@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { getErrorMessage } from "@/lib/api";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+const Providers = ({ children }: { children: React.ReactNode }) => {
   const [client] = useState(
     () =>
       new QueryClient({
@@ -34,4 +34,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-}
+};
+
+export default Providers;

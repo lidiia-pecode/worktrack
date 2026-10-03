@@ -13,12 +13,12 @@ type TeamWeekRowProps = {
   onOpen: (row: TeamSummaryRow) => void;
 };
 
-export function TeamWeekRow({
+export const TeamWeekRow = ({
   row,
   weekDates,
   absencesByDate,
   onOpen,
-}: TeamWeekRowProps) {
+}: TeamWeekRowProps) => {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
 
   const behindMinutes = Math.max(0, row.expectedToDateMinutes - row.minutes);
@@ -100,4 +100,4 @@ export function TeamWeekRow({
       </td>
     </tr>
   );
-}
+};

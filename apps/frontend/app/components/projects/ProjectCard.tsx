@@ -17,11 +17,11 @@ interface ProjectCardProps {
   onView?: (project: Project) => void;
 }
 
-export function ProjectCard({
+export const ProjectCard = ({
   project,
   canManage = false,
   onView,
-}: ProjectCardProps) {
+}: ProjectCardProps) => {
   const membersCount = project.membersCount ?? 0;
   const activitiesCount = project.projectActivities?.length ?? 0;
   const isArchived = project.status === ProjectStatus.ARCHIVED;
@@ -82,4 +82,4 @@ export function ProjectCard({
       )}
     </ResourceCard>
   );
-}
+};

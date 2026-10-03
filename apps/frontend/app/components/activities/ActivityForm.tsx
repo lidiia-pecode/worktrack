@@ -38,14 +38,14 @@ interface ActivityFormProps {
   isOnboarding?: boolean;
 }
 
-export function ActivityForm({
+export const ActivityForm = ({
   formId = "activity-form",
   defaultValues,
   categories,
   onSubmit,
   isSubmitting = false,
   isOnboarding = false,
-}: ActivityFormProps) {
+}: ActivityFormProps) => {
   const {
     register,
     control,
@@ -124,4 +124,4 @@ export function ActivityForm({
       </div>
     </form>
   );
-}
+};

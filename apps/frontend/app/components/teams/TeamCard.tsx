@@ -20,7 +20,11 @@ interface TeamCardProps {
 
 const MAX_VISIBLE_AVATARS = 4;
 
-export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
+export const TeamCard = ({
+  team,
+  canManage = false,
+  onView,
+}: TeamCardProps) => {
   const members = team.memberships?.filter((m) => !m.leftAt && m.user) ?? [];
 
   const manager = members.find((m) => m.roleInTeam === TeamRole.MANAGER);
@@ -96,4 +100,4 @@ export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
       )}
     </ResourceCard>
   );
-}
+};

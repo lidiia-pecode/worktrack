@@ -28,7 +28,7 @@ export interface EntityPickerProps<T> {
   className?: string;
 }
 
-export function EntityPicker<T>({
+export const EntityPicker = <T,>({
   items,
   selectedIds,
   onToggle,
@@ -45,7 +45,7 @@ export function EntityPicker<T>({
   isFetchingNextPage = false,
   onFetchNextPage,
   className,
-}: EntityPickerProps<T>) {
+}: EntityPickerProps<T>) => {
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -137,4 +137,4 @@ export function EntityPicker<T>({
       </div>
     </div>
   );
-}
+};

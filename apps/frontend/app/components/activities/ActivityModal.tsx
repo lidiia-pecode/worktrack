@@ -30,12 +30,12 @@ interface ActivityModalProps {
 
 const FORM_ID = "activity-form";
 
-export function ActivityModal({
+export const ActivityModal = ({
   open,
   onClose,
   activity,
   isOnboarding = false,
-}: ActivityModalProps) {
+}: ActivityModalProps) => {
   const router = useRouter();
   const {
     actions: { create, update, archive, unarchive },
@@ -213,4 +213,4 @@ export function ActivityModal({
       )}
     </>
   );
-}
+};

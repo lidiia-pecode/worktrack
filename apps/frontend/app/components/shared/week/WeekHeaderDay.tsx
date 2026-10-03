@@ -14,13 +14,13 @@ type WeekHeaderDayProps = {
   isLocked?: boolean;
 };
 
-export function WeekHeaderDay({
+export const WeekHeaderDay = ({
   date,
   isToday: today,
   totalMinutes,
   targetMinutes,
   isLocked = false,
-}: WeekHeaderDayProps) {
+}: WeekHeaderDayProps) => {
   const weekend = isWeekend(date);
   const isOverTarget =
     targetMinutes !== undefined && totalMinutes > targetMinutes;
@@ -65,4 +65,4 @@ export function WeekHeaderDay({
       </p>
     </div>
   );
-}
+};

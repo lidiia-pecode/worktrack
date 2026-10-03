@@ -8,13 +8,13 @@ interface EmptyStateProps {
   className?: string;
 }
 
-export function EmptyState({
+export const EmptyState = ({
   title,
   description,
   icon,
   action,
   className,
-}: EmptyStateProps) {
+}: EmptyStateProps) => {
   return (
     <div
       className={[
@@ -57,4 +57,4 @@ export function EmptyState({
       </div>
     </div>
   );
-}
+};

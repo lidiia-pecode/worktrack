@@ -7,7 +7,11 @@ type FormSectionProps = {
   className?: string;
 };
 
-export function FormSection({ label, children, className }: FormSectionProps) {
+export const FormSection = ({
+  label,
+  children,
+  className,
+}: FormSectionProps) => {
   return (
     <section className={cn("space-y-2", className)}>
       <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -16,4 +20,4 @@ export function FormSection({ label, children, className }: FormSectionProps) {
       {children}
     </section>
   );
-}
+};

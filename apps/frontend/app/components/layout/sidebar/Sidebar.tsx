@@ -65,7 +65,7 @@ interface SidebarProps {
   user: User;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export const Sidebar = ({ user }: SidebarProps) => {
   const pathname = usePathname();
 
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
@@ -128,4 +128,4 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
     </>
   );
-}
+};

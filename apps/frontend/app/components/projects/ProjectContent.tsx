@@ -18,7 +18,7 @@ import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
 
-export function ProjectsContent() {
+export const ProjectsContent = () => {
   const { isOnboarding, opensCreateForm, projectId } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(
@@ -104,4 +104,4 @@ export function ProjectsContent() {
       />
     </>
   );
-}
+};

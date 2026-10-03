@@ -15,7 +15,7 @@ interface AvatarProps {
   className?: string;
 }
 
-export function Avatar({ user, size = "sm", className }: AvatarProps) {
+export const Avatar = ({ user, size = "sm", className }: AvatarProps) => {
   return (
     <div
       title={fullName(user)}
@@ -30,4 +30,4 @@ export function Avatar({ user, size = "sm", className }: AvatarProps) {
       {initials(user)}
     </div>
   );
-}
+};

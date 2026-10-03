@@ -26,13 +26,13 @@ interface ActivityCategoryFormProps {
   isSubmitting?: boolean;
 }
 
-export function ActivityCategoryForm({
+export const ActivityCategoryForm = ({
   formId = "activity-category-form",
   defaultValues,
   mode = "create",
   onSubmit,
   isSubmitting = false,
-}: ActivityCategoryFormProps) {
+}: ActivityCategoryFormProps) => {
   const {
     register,
     handleSubmit,
@@ -66,4 +66,4 @@ export function ActivityCategoryForm({
       />
     </form>
   );
-}
+};

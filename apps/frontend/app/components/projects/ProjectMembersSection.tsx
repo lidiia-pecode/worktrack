@@ -21,14 +21,14 @@ interface ProjectMembersSectionProps {
   onRemoveMember: (userId: string) => void;
 }
 
-export function ProjectMembersSection({
+export const ProjectMembersSection = ({
   members,
   hiddenCount = 0,
   isLoading = false,
   isCreateMode = false,
   onOpenAddMembers,
   onRemoveMember,
-}: ProjectMembersSectionProps) {
+}: ProjectMembersSectionProps) => {
   const summary = `${members.length} ${
     members.length === 1 ? "person is" : "people are"
   } ${isCreateMode ? "selected" : "assigned to this project"}.`;
@@ -97,4 +97,4 @@ export function ProjectMembersSection({
       </div>
     </div>
   );
-}
+};

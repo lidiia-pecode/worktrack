@@ -56,7 +56,7 @@ interface ProjectFormProps {
   isSubmitting?: boolean;
 }
 
-export function ProjectForm({
+export const ProjectForm = ({
   formId = "project-form",
   defaultValues,
   mode = "create",
@@ -65,7 +65,7 @@ export function ProjectForm({
   clientSuggestions = [],
   onSubmit,
   isSubmitting = false,
-}: ProjectFormProps) {
+}: ProjectFormProps) => {
   const {
     register,
     control,
@@ -217,4 +217,4 @@ export function ProjectForm({
       )}
     </form>
   );
-}
+};

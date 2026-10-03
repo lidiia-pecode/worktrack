@@ -16,7 +16,7 @@ type ErrorStateProps = {
   className?: string;
 };
 
-export function ErrorState({
+export const ErrorState = ({
   title = "Something went wrong",
   description = "We couldn't load the requested data. Please try again.",
 
@@ -25,7 +25,7 @@ export function ErrorState({
   action,
 
   className,
-}: ErrorStateProps) {
+}: ErrorStateProps) => {
   return (
     <div
       className={cn(
@@ -50,4 +50,4 @@ export function ErrorState({
       </div>
     </div>
   );
-}
+};

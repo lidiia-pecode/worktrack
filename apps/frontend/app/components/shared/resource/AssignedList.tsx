@@ -12,7 +12,7 @@ interface AssignedListProps<T> {
   loadingMessage?: string;
 }
 
-export function AssignedList<T>({
+export const AssignedList = <T,>({
   items,
   getId,
   renderLeading,
@@ -22,7 +22,7 @@ export function AssignedList<T>({
   emptyMessage = "Nothing assigned yet.",
   isLoading = false,
   loadingMessage = "Loading...",
-}: AssignedListProps<T>) {
+}: AssignedListProps<T>) => {
   if (isLoading) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
@@ -66,4 +66,4 @@ export function AssignedList<T>({
       ))}
     </ul>
   );
-}
+};

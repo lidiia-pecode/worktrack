@@ -14,7 +14,7 @@ import { UserCard } from "./UserCard";
 
 type UserTab = "active" | "archived";
 
-export function UsersContent() {
+export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [inviteOpen, setInviteOpen] = useState(opensCreateForm);
   const [tab, setTab] = useState<UserTab>("active");
@@ -81,4 +81,4 @@ export function UsersContent() {
       />{" "}
     </>
   );
-}
+};

@@ -34,13 +34,13 @@ interface ToolbarButtonProps {
   children: React.ReactNode;
 }
 
-function ToolbarButton({
+const ToolbarButton = ({
   onClick,
   active = false,
   disabled = false,
   label,
   children,
-}: ToolbarButtonProps) {
+}: ToolbarButtonProps) => {
   return (
     <button
       type="button"
@@ -60,15 +60,15 @@ function ToolbarButton({
       {children}
     </button>
   );
-}
+};
 
-export function DescriptionEditor({
+export const DescriptionEditor = ({
   value,
   onChange,
   disabled = false,
   placeholder = "Describe the project...",
   className,
-}: DescriptionEditorProps) {
+}: DescriptionEditorProps) => {
   const editor = useEditor({
     editable: !disabled,
 
@@ -215,4 +215,4 @@ export function DescriptionEditor({
       <EditorContent editor={editor} />
     </div>
   );
-}
+};

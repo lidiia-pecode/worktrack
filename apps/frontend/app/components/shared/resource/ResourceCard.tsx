@@ -10,7 +10,7 @@ interface ResourceCardProps {
   onClick?: () => void;
 }
 
-export function ResourceCard({
+export const ResourceCard = ({
   icon,
   title,
   subtitle,
@@ -18,7 +18,7 @@ export function ResourceCard({
   children,
   footer,
   onClick,
-}: ResourceCardProps) {
+}: ResourceCardProps) => {
   const isInteractive = Boolean(onClick);
 
   const content = (
@@ -101,4 +101,4 @@ export function ResourceCard({
       {content}
     </article>
   );
-}
+};

@@ -164,7 +164,7 @@ interface SetupChecklistProps {
 }
 
 /** The one-time setup flow, shown on Getting started until setup is finished. */
-export function SetupChecklist({ state }: SetupChecklistProps) {
+export const SetupChecklist = ({ state }: SetupChecklistProps) => {
   const skipSetup = useSkipOwnerSetup();
   const [isConfirmingSkip, setIsConfirmingSkip] = useState(false);
   const { data: invitations = [] } = usePendingInvitations();
@@ -279,4 +279,4 @@ export function SetupChecklist({ state }: SetupChecklistProps) {
       </div>
     </section>
   );
-}
+};

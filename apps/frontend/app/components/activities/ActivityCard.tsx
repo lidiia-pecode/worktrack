@@ -15,11 +15,11 @@ interface ActivityCardProps {
   onView?: (activity: Activity) => void;
 }
 
-export function ActivityCard({
+export const ActivityCard = ({
   activity,
   canManage = false,
   onView,
-}: ActivityCardProps) {
+}: ActivityCardProps) => {
   const isArchived = activity.status === ActivityStatus.ARCHIVED;
 
   return (
@@ -56,4 +56,4 @@ export function ActivityCard({
       />
     </ResourceCard>
   );
-}
+};

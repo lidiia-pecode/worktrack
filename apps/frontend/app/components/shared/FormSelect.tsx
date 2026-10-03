@@ -30,7 +30,7 @@ type FormSelectProps = {
   onValueChange: (value: string) => void;
 };
 
-export function FormSelect({
+export const FormSelect = ({
   id,
   label,
   value,
@@ -42,7 +42,7 @@ export function FormSelect({
   className,
   triggerClassName,
   onValueChange,
-}: FormSelectProps) {
+}: FormSelectProps) => {
   const generatedId = useId();
   const selectId = id ?? generatedId;
 
@@ -124,4 +124,4 @@ export function FormSelect({
       {error && <p className="mt-1.5 text-xs text-destructive-text">{error}</p>}
     </div>
   );
-}
+};
