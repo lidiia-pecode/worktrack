@@ -145,10 +145,11 @@ export const AbsenceFormModal = ({
         description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
+                className="mr-auto"
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
@@ -156,25 +157,22 @@ export const AbsenceFormModal = ({
                 <Trash2 className="size-4" />
                 Delete
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSaving}
-              >
-                {isEditMode ? "Save changes" : "Add absence"}
-              </Button>
-            </div>
-          </div>
+            <Button type="submit" form={FORM_ID} size="sm" isLoading={isSaving}>
+              {isEditMode ? "Save changes" : "Add absence"}
+            </Button>
+          </>
         }
       >
         <form

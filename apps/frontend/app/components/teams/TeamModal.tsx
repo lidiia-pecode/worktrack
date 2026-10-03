@@ -285,13 +285,13 @@ export const TeamModal = ({
         icon={isPicking ? undefined : <UsersRound className="size-5" />}
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={handleCloseMembersPicker}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
                 disabled={isAddingMembers}
               >
                 <ArrowLeft className="size-4" />
@@ -308,15 +308,15 @@ export const TeamModal = ({
                 Apply
                 {selectedUserIds.length > 0 && ` (${selectedUserIds.length})`}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex w-full items-center justify-between gap-3">
-              {isEditMode && isOwner ? (
+            <>
+              {isEditMode && isOwner && (
                 <Button
                   type="button"
                   variant={isArchived ? "success" : "destructive"}
                   size="sm"
-                  className="gap-1.5"
+                  className="mr-auto gap-1.5"
                   onClick={handleArchiveToggle}
                   isLoading={isArchiving}
                 >
@@ -328,32 +328,29 @@ export const TeamModal = ({
 
                   {isArchived ? "Restore" : "Archive"}
                 </Button>
-              ) : (
-                <span />
               )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseModal}
-                >
-                  {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+              >
+                {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
+              </Button>
 
-                {canEdit && (
-                  <Button
-                    type="submit"
-                    form={FORM_ID}
-                    size="sm"
-                    isLoading={isSubmitting}
-                  >
-                    {isEditMode ? "Save changes" : "Create team"}
-                  </Button>
-                )}
-              </div>
-            </div>
+              {canEdit && (
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  isLoading={isSubmitting}
+                >
+                  {isEditMode ? "Save changes" : "Create team"}
+                </Button>
+              )}
+            </>
           )
         }
       >

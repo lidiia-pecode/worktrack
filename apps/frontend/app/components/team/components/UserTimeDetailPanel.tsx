@@ -105,7 +105,7 @@ export const UserTimeDetailPanel = ({
         footer={
           !hasError &&
           !isLoading && (
-            <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex w-full items-center justify-between gap-3 text-sm">
               <span className="text-muted-foreground">Logged this week</span>
 
               <span className="font-semibold tabular-nums text-foreground">

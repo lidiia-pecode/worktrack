@@ -216,36 +216,40 @@ export const PlanningDayModal = ({
         description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of a ${formatDuration(dayLimitMinutes)} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {editing ? (
+          <>
+            {editing && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={startNew}
+                className="mr-auto"
+                disabled={create.isPending || update.isPending}
               >
                 Cancel edit
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Close
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={create.isPending || update.isPending}
+            >
+              Close
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={create.isPending || update.isPending}
-                disabled={hasNoProjects}
-              >
-                {editing ? "Save changes" : "Add plan"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={create.isPending || update.isPending}
+              disabled={hasNoProjects}
+            >
+              {editing ? "Save changes" : "Add plan"}
+            </Button>
+          </>
         }
       >
         <div className="space-y-6">

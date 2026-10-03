@@ -6,10 +6,17 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+
+const CONFIRM_BUTTON_VARIANT = {
+  default: "primary",
+  warning: "warning",
+  danger: "destructive",
+} as const;
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -21,30 +28,31 @@ interface ConfirmModalProps {
   onClose: () => void;
   loading?: boolean;
   confirmDisabled?: boolean;
-  variant?: "archive" | "danger";
+  /** `warning` for an action that is hard to undo, `danger` for one that removes something. */
+  variant?: keyof typeof CONFIRM_BUTTON_VARIANT;
 }
 
 export const ConfirmModal = ({
   isOpen,
   title = "Are you sure?",
   message = "This action cannot be undone.",
-  confirmText = "Archive",
+  confirmText = "Confirm",
   cancelText = "Cancel",
   onConfirm,
   onClose,
   loading = false,
   confirmDisabled = false,
-  variant = "archive",
+  variant = "default",
 }: ConfirmModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
+      <DialogContent className="gap-0 p-0 sm:max-w-sm">
+        <DialogHeader className="p-6">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -57,7 +65,7 @@ export const ConfirmModal = ({
 
           <Button
             type="button"
-            variant={variant === "danger" ? "destructive" : "warning"}
+            variant={CONFIRM_BUTTON_VARIANT[variant]}
             size="sm"
             onClick={onConfirm}
             isLoading={loading}
@@ -65,7 +73,7 @@ export const ConfirmModal = ({
           >
             {confirmText}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

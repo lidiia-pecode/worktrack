@@ -53,8 +53,14 @@ export const InviteUserModal = ({
       description="Send an invitation to join your workspace."
       icon={<MailPlus className="size-5" />}
       footer={
-        <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={create.isPending}
+          >
             Cancel
           </Button>
 
@@ -67,7 +73,7 @@ export const InviteUserModal = ({
           >
             Send invitation
           </Button>
-        </div>
+        </>
       }
     >
       <InviteUserForm

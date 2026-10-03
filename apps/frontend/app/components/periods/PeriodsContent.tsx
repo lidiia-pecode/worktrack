@@ -80,6 +80,7 @@ export const PeriodsContent = () => {
         }
         message="Time logs, absences, capacity changes and plans in this month become editable again for everyone who could edit them before. It stays open until you close it."
         confirmText="Reopen"
+        variant="warning"
         onConfirm={confirmReopen}
         onClose={() => setMonthToReopen(null)}
         loading={reopen.isPending}

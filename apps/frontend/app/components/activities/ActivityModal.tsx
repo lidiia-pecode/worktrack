@@ -122,10 +122,11 @@ export const ActivityModal = ({
         }
         icon={<ClipboardList className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
+                className="mr-auto"
                 variant={isArchived ? "success" : "destructive"}
                 size="sm"
                 onClick={() =>
@@ -141,26 +142,28 @@ export const ActivityModal = ({
 
                 {isArchived ? "Restore" : "Archive"}
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSubmitting}
-                disabled={!categoriesLoading && categories.length === 0}
-              >
-                {isEditMode ? "Save changes" : "Create activity"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSubmitting}
+              disabled={!categoriesLoading && categories.length === 0}
+            >
+              {isEditMode ? "Save changes" : "Create activity"}
+            </Button>
+          </>
         }
       >
         {!categoriesLoading && (

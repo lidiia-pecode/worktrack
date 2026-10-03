@@ -244,13 +244,13 @@ export const ProjectModal = ({
         icon={isPicking ? undefined : <FolderKanban className="size-5" />}
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setView("form")}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -265,15 +265,15 @@ export const ProjectModal = ({
                   ? ` (${selectedActivityIds.length})`
                   : ""}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex w-full items-center justify-between gap-3">
-              {project ? (
+            <>
+              {project && (
                 <Button
                   type="button"
                   variant={isArchived ? "success" : "destructive"}
                   size="sm"
-                  className="gap-1.5"
+                  className="mr-auto gap-1.5"
                   onClick={isArchived ? handleUnarchive : handleArchive}
                   isLoading={archive.isPending || unarchive.isPending}
                 >
@@ -284,31 +284,28 @@ export const ProjectModal = ({
                   )}
                   {isArchived ? "Restore" : "Archive"}
                 </Button>
-              ) : (
-                <span />
               )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClose}
-                >
-                  Cancel
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
 
-                <Button
-                  type="submit"
-                  form={FORM_ID}
-                  size="sm"
-                  isLoading={isSubmitting || isChecking}
-                  disabled={isMembersLoading}
-                >
-                  {project ? "Save changes" : "Create project"}
-                </Button>
-              </div>
-            </div>
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSubmitting || isChecking}
+                disabled={isMembersLoading}
+              >
+                {project ? "Save changes" : "Create project"}
+              </Button>
+            </>
           )
         }
       >

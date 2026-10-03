@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -78,11 +79,7 @@ export const ResourceFormModal = ({
           {children}
         </div>
 
-        {footer && (
-          <div className="border-t border-border bg-muted/30 px-6 py-4">
-            {footer}
-          </div>
-        )}
+        {footer && <DialogFooter>{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>
   );

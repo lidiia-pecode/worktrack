@@ -194,13 +194,13 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
         }
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setView("form")}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -214,12 +214,14 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
               >
                 Apply{pendingCount > 0 ? ` (${pendingCount})` : ""}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex items-center justify-between">
+            <>
               <Button
                 type="button"
                 variant={isDeactivated ? "success" : "destructive"}
+                size="sm"
+                className="mr-auto"
                 onClick={() =>
                   isDeactivated
                     ? unarchive.mutate(user.id, { onSuccess: onClose })
@@ -235,37 +237,39 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                 {isDeactivated ? "Reactivate" : "Deactivate"}
               </Button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => (edit ? setEdit(false) : handleCloseModal())}
-                >
-                  {edit ? "Cancel" : "Close"}
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => (edit ? setEdit(false) : handleCloseModal())}
+                disabled={update.isPending || setCapacity.isPending}
+              >
+                {edit ? "Cancel" : "Close"}
+              </Button>
 
-                {/* Separate keys stop the Edit click from submitting the form. */}
-                {edit ? (
-                  <Button
-                    key="save"
-                    type="submit"
-                    form="user-modal-form"
-                    isLoading={update.isPending || setCapacity.isPending}
-                  >
-                    Save changes
-                  </Button>
-                ) : (
-                  <Button
-                    key="edit"
-                    type="button"
-                    onClick={() => setEdit(true)}
-                    disabled={isLoadingCapacity}
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
+              {/* Separate keys stop the Edit click from submitting the form. */}
+              {edit ? (
+                <Button
+                  key="save"
+                  type="submit"
+                  form="user-modal-form"
+                  size="sm"
+                  isLoading={update.isPending || setCapacity.isPending}
+                >
+                  Save changes
+                </Button>
+              ) : (
+                <Button
+                  key="edit"
+                  type="button"
+                  size="sm"
+                  onClick={() => setEdit(true)}
+                  disabled={isLoadingCapacity}
+                >
+                  Edit
+                </Button>
+              )}
+            </>
           )
         }
       >

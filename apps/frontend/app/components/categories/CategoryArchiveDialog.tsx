@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -103,42 +104,44 @@ export const CategoryArchiveDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Archive {category.name}?</DialogTitle>
-          <DialogDescription>
-            {impact.isError
-              ? "Could not check its activities. Close this and try again."
-              : impact.data
-                ? categoryArchiveDescription(
-                    category.name,
-                    activities.map((activity) => activity.name),
-                  )
-                : "Checking its activities..."}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="gap-0 p-0 sm:max-w-md">
+        <div className="grid gap-4 p-6">
+          <DialogHeader>
+            <DialogTitle>Archive {category.name}?</DialogTitle>
+            <DialogDescription>
+              {impact.isError
+                ? "Could not check its activities. Close this and try again."
+                : impact.data
+                  ? categoryArchiveDescription(
+                      category.name,
+                      activities.map((activity) => activity.name),
+                    )
+                  : "Checking its activities..."}
+            </DialogDescription>
+          </DialogHeader>
 
-        {isReady && hasActiveActivities && (
-          <div className="space-y-3 text-sm text-muted-foreground">
-            {moveTargets.length > 0 ? (
-              <FormSelect
-                label="Its activities"
-                value={selectedOption}
-                options={options}
-                onValueChange={setChosenOption}
-                disabled={archive.isPending}
-              />
-            ) : (
-              <p>{noMoveTargetMessage(activities.length)}</p>
-            )}
+          {isReady && hasActiveActivities && (
+            <div className="space-y-3 text-sm text-muted-foreground">
+              {moveTargets.length > 0 ? (
+                <FormSelect
+                  label="Its activities"
+                  value={selectedOption}
+                  options={options}
+                  onValueChange={setChosenOption}
+                  disabled={archive.isPending}
+                />
+              ) : (
+                <p>{noMoveTargetMessage(activities.length)}</p>
+              )}
 
-            {archivesActivities && (
-              <p>{activitiesArchiveImpactMessage(activities)}</p>
-            )}
-          </div>
-        )}
+              {archivesActivities && (
+                <p>{activitiesArchiveImpactMessage(activities)}</p>
+              )}
+            </div>
+          )}
+        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -159,7 +162,7 @@ export const CategoryArchiveDialog = ({
           >
             Archive
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
