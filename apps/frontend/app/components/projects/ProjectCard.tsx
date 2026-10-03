@@ -43,10 +43,7 @@ export const ProjectCard = ({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${project.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(project);
-            }}
+            onClick={() => onView?.(project)}
           >
             <Pencil className="size-4" />
           </Button>

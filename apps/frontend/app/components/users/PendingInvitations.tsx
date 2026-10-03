@@ -5,6 +5,7 @@ import { MailPlus, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import { ROLE_LABELS } from "@/lib/constants";
 import { PendingInvitation } from "@/types/Invitation";
 import {
@@ -77,28 +78,23 @@ export const PendingInvitations = () => {
   };
 
   return (
-    <section
+    <Card
+      as="section"
       aria-labelledby="pending-invitations-title"
-      className="mb-6 rounded-2xl border border-border bg-card shadow-sm"
+      className="mb-6"
     >
-      <header className="flex items-center gap-2 border-b border-border px-5 py-3">
-        <MailPlus className="size-4 text-brand" aria-hidden="true" />
-
-        <h2
-          id="pending-invitations-title"
-          className="text-sm font-semibold text-card-foreground"
-        >
-          Pending invitations
-        </h2>
-
-        <Badge variant="neutral">{invitations.length}</Badge>
-      </header>
+      <CardHeader
+        icon={MailPlus}
+        title="Pending invitations"
+        titleId="pending-invitations-title"
+        action={<Badge variant="neutral">{invitations.length}</Badge>}
+      />
 
       <ul className="divide-y divide-border">
         {invitations.map((invitation) => (
           <li
             key={invitation.id}
-            className="flex flex-col gap-3 px-5 py-3 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
               <div className="flex min-w-0 items-center gap-2">
@@ -155,6 +151,6 @@ export const PendingInvitations = () => {
         onConfirm={handleRevoke}
         onClose={() => setInvitationToRevoke(null)}
       />
-    </section>
+    </Card>
   );
 };

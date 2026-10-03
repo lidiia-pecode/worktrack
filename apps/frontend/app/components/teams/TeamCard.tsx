@@ -54,10 +54,7 @@ export const TeamCard = ({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${team.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(team);
-            }}
+            onClick={() => onView?.(team)}
           >
             <Pencil className="size-4" />
           </Button>

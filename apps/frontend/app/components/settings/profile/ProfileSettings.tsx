@@ -7,14 +7,12 @@ import { useForm } from "react-hook-form";
 import { User } from "@/types";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
 import {
   ProfileFormValues,
   profileSchema,
 } from "@/lib/forms/schemas/profile.schema";
-import { SettingsSection } from "../components/SettingsSection";
-import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
 import Input from "../../../../components/ui/input";
-import { SettingsActions } from "../components/SettingsActions";
 import { useProfile } from "@/hooks/auth/useProfile";
 
 interface ProfileSettingsProps {
@@ -54,14 +52,14 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
   };
 
   return (
-    <SettingsSection>
-      <SettingsSectionHeader
+    <Card>
+      <CardHeader
         title="Profile"
         description="Manage your personal information."
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="p-6">
-        <div className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <CardBody className="space-y-6">
           <div className="grid gap-6 sm:grid-cols-2">
             <Input
               label="First name"
@@ -77,9 +75,9 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           </div>
 
           <Input label="Email" value={user?.email ?? ""} disabled />
-        </div>
+        </CardBody>
 
-        <SettingsActions>
+        <CardFooter>
           <Button
             type="submit"
             variant="primary"
@@ -88,8 +86,8 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
           >
             Save changes
           </Button>
-        </SettingsActions>
+        </CardFooter>
       </form>
-    </SettingsSection>
+    </Card>
   );
 };

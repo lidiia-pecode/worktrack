@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { Card } from "@/components/ui/card";
 import Input from "@/components/ui/input";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { getErrorMessage } from "@/lib/api/errors/api-error";
@@ -153,79 +154,81 @@ export const CompanySetupWizard = () => {
         currentStep={currentStep}
       />
 
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void continueOrFinish();
-        }}
-        className="mt-8 space-y-6 rounded-2xl border border-border bg-card p-7 shadow-sm sm:p-8"
-      >
-        <OnboardingStepHeader
-          title={step.title}
-          description={step.description}
-        />
-
-        {step.field === "timezone" && (
-          <Controller
-            name="timezone"
-            control={control}
-            render={({ field }) => (
-              <TimeZoneSelect
-                value={field.value ?? ""}
-                onValueChange={field.onChange}
-                error={errors.timezone?.message}
-                description="Preselected from this browser."
-                disabled={isSaving}
-              />
-            )}
+      <Card className="mt-8">
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void continueOrFinish();
+          }}
+          className="space-y-6 p-7 sm:p-8"
+        >
+          <OnboardingStepHeader
+            title={step.title}
+            description={step.description}
           />
-        )}
 
-        {step.field === "weekStartDay" && (
-          <Controller
-            name="weekStartDay"
-            control={control}
-            render={({ field }) => (
-              <FormSelect
-                id="weekStartDay"
-                label="Week starts on"
-                value={field.value}
-                options={WEEK_START_OPTIONS}
-                error={errors.weekStartDay?.message}
-                onValueChange={field.onChange}
-                disabled={isSaving}
-              />
-            )}
+          {step.field === "timezone" && (
+            <Controller
+              name="timezone"
+              control={control}
+              render={({ field }) => (
+                <TimeZoneSelect
+                  value={field.value ?? ""}
+                  onValueChange={field.onChange}
+                  error={errors.timezone?.message}
+                  description="Preselected from this browser."
+                  disabled={isSaving}
+                />
+              )}
+            />
+          )}
+
+          {step.field === "weekStartDay" && (
+            <Controller
+              name="weekStartDay"
+              control={control}
+              render={({ field }) => (
+                <FormSelect
+                  id="weekStartDay"
+                  label="Week starts on"
+                  value={field.value}
+                  options={WEEK_START_OPTIONS}
+                  error={errors.weekStartDay?.message}
+                  onValueChange={field.onChange}
+                  disabled={isSaving}
+                />
+              )}
+            />
+          )}
+
+          {step.field === "standardWorkHoursPerDay" && (
+            <Input
+              label="Hours in a working day"
+              type="number"
+              min={1}
+              max={24}
+              step={0.5}
+              {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
+              error={errors.standardWorkHoursPerDay?.message}
+              disabled={isSaving}
+            />
+          )}
+
+          {saveError && (
+            <FormAlert>
+              Could not save your company settings: {saveError}
+            </FormAlert>
+          )}
+
+          <StepActions
+            showBack={currentStep > 0}
+            onBack={() => setCurrentStep((index) => index - 1)}
+            onSkip={leaveSetup}
+            isPending={isSaving}
+            submitLabel={isLastStep ? "Finish" : "Continue"}
           />
-        )}
-
-        {step.field === "standardWorkHoursPerDay" && (
-          <Input
-            label="Hours in a working day"
-            type="number"
-            min={1}
-            max={24}
-            step={0.5}
-            {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
-            error={errors.standardWorkHoursPerDay?.message}
-            disabled={isSaving}
-          />
-        )}
-
-        {saveError && (
-          <FormAlert>
-            Could not save your company settings: {saveError}
-          </FormAlert>
-        )}
-
-        <StepActions
-          showBack={currentStep > 0}
-          onBack={() => setCurrentStep((index) => index - 1)}
-          onSkip={leaveSetup}
-          isPending={isSaving}
-          submitLabel={isLastStep ? "Finish" : "Continue"}
-        />
-      </form>
+        </form>
+      </Card>
     </div>
   );
 };

@@ -4,6 +4,7 @@ import { useId } from "react";
 import { Hand, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { useDismissible } from "@/hooks/useDismissible";
 import { cn } from "@/lib/utils/cn";
 
@@ -34,12 +35,10 @@ export const WelcomeCard = ({
   if (isDismissed) return null;
 
   return (
-    <section
+    <Card
+      as="section"
       aria-labelledby={titleId}
-      className={cn(
-        "rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5",
-        className,
-      )}
+      className={cn("p-4 sm:p-5", className)}
     >
       <div className="flex items-center gap-3">
         <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
@@ -85,6 +84,6 @@ export const WelcomeCard = ({
       >
         Got it
       </Button>
-    </section>
+    </Card>
   );
 };

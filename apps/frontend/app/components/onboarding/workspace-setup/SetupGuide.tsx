@@ -9,6 +9,8 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { Card } from "@/components/ui/card";
+
 import { PageHeader } from "../../shared/PageHeader";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 import { TOPIC_TEXT } from "./setup-topics";
@@ -92,12 +94,12 @@ export const SetupGuide = ({ isRequiredSetupDone }: SetupGuideProps) => (
       </p>
     )}
 
-    <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+    <Card>
       <ul className="divide-y divide-border">
         {GUIDE_TOPICS.map((topic) => (
           <SetupStepRow key={topic.id} step={topic} isCurrent={false} />
         ))}
       </ul>
-    </div>
+    </Card>
   </section>
 );

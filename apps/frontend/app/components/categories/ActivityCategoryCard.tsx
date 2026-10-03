@@ -40,10 +40,7 @@ export const ActivityCategoryCard = ({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${category.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(category);
-            }}
+            onClick={() => onView?.(category)}
           >
             <Pencil className="size-4" />
           </Button>

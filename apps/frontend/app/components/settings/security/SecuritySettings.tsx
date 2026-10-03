@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
 import {
   SecurityFormValues,
   createSecuritySchema,
@@ -13,9 +14,6 @@ import {
 import { PASSWORD_RULES_HINT } from "@/lib/forms/schemas/password.schema";
 import { applyServerErrors } from "@/lib/forms/utils/apply-server-errors";
 import { isApiValidationError } from "@/lib/api/errors";
-import { SettingsSection } from "../components/SettingsSection";
-import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
-import { SettingsActions } from "../components/SettingsActions";
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -64,14 +62,14 @@ export const SecuritySettings = () => {
 
   return (
     <div className="space-y-6">
-      <SettingsSection>
-        <SettingsSectionHeader
+      <Card>
+        <CardHeader
           icon={Link2}
           title="Connected accounts"
           description="Manage the accounts you can use to sign in."
         />
 
-        <div className="p-6">
+        <CardBody>
           <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 p-4">
             <div className="flex min-w-0 items-center gap-3">
               <div className="min-w-0">
@@ -102,11 +100,11 @@ export const SecuritySettings = () => {
               </Button>
             )}
           </div>
-        </div>
-      </SettingsSection>
+        </CardBody>
+      </Card>
 
-      <SettingsSection>
-        <SettingsSectionHeader
+      <Card>
+        <CardHeader
           icon={KeyRound}
           title="Password"
           description={
@@ -116,7 +114,7 @@ export const SecuritySettings = () => {
           }
         />
 
-        <form onSubmit={handleSubmit(onSubmit)} className="p-6" noValidate>
+        <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <input
             type="email"
             autoComplete="username"
@@ -125,7 +123,7 @@ export const SecuritySettings = () => {
             hidden
           />
 
-          <div className="space-y-6">
+          <CardBody className="space-y-6">
             {hasPassword && (
               <PasswordInput
                 label="Current password"
@@ -142,9 +140,9 @@ export const SecuritySettings = () => {
               {...register("newPassword")}
               error={errors.newPassword?.message}
             />
-          </div>
+          </CardBody>
 
-          <SettingsActions className="flex-wrap items-center gap-4">
+          <CardFooter className="flex-wrap gap-4">
             {hasPassword && (
               <Link
                 href="/forgot-password"
@@ -162,9 +160,9 @@ export const SecuritySettings = () => {
             >
               {hasPassword ? "Change password" : "Set password"}
             </Button>
-          </SettingsActions>
+          </CardFooter>
         </form>
-      </SettingsSection>
+      </Card>
     </div>
   );
 };
