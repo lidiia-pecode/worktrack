@@ -4,6 +4,7 @@ import { KeyboardEvent, ReactNode, useId, useMemo, useState } from "react";
 
 import { Archive, ArchiveRestore, Plus } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getNextTabIndex } from "@/lib/utils/tabs";
@@ -343,17 +344,9 @@ export const ResourceTabButton = ({
       <span>{label}</span>
 
       {typeof count === "number" && (
-        <span
-          className={[
-            "min-w-5 rounded-full px-1.5 py-0.5",
-            "text-center text-2xs font-medium",
-            active
-              ? "bg-brand-subtle text-brand"
-              : "bg-muted/50 text-muted-foreground",
-          ].join(" ")}
-        >
+        <Badge variant={active ? "default" : "neutral"} size="sm">
           {count}
-        </span>
+        </Badge>
       )}
 
       <span

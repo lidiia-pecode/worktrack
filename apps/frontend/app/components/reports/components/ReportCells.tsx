@@ -1,9 +1,6 @@
 import { formatDuration } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 
-export const HEADER_CELL_CLASS =
-  "p-3 text-2xs font-medium uppercase tracking-wider text-muted-foreground";
-
 export const Minutes = ({
   value,
   strong,

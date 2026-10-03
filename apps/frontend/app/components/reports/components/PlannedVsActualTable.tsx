@@ -1,8 +1,17 @@
 import { PlannedVsActualReport, PlannedVsActualRow } from "@/types";
 import { formatSignedDuration } from "@/lib/utils/date";
-import { cn } from "@/lib/utils/cn";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHeader,
+} from "@/components/ui/table";
 
-import { HEADER_CELL_CLASS, Minutes } from "./ReportCells";
+import { Minutes } from "./ReportCells";
 
 type PlannedVsActualTableProps = {
   rows: PlannedVsActualRow[];
@@ -27,72 +36,49 @@ export const PlannedVsActualTable = ({
   rows,
   totals,
 }: PlannedVsActualTableProps) => (
-  <div className="overflow-x-auto">
-    <table className="w-full min-w-xl border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-border bg-muted/10">
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "text-left")}>
-            Person
-          </th>
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "w-32 text-right")}>
-            Planned
-          </th>
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "w-32 text-right")}>
-            Logged
-          </th>
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "w-32 text-right")}>
-            Difference
-          </th>
-        </tr>
-      </thead>
+  <Table className="min-w-xl">
+    <TableHeader>
+      <TableHead>Person</TableHead>
+      <TableHead numeric className="w-32">
+        Planned
+      </TableHead>
+      <TableHead numeric className="w-32">
+        Logged
+      </TableHead>
+      <TableHead numeric className="w-32">
+        Difference
+      </TableHead>
+    </TableHeader>
 
-      <tbody>
-        {rows.map((row) => (
-          <tr
-            key={row.userId}
-            className="border-b border-border last:border-b-0"
-          >
-            <th scope="row" className="p-3 text-left font-normal">
-              <span className="block font-medium text-foreground">
-                {row.name}
-              </span>
+    <TableBody>
+      {rows.map((row) => (
+        <TableRow key={row.userId}>
+          <TableRowHeader detail={row.position}>{row.name}</TableRowHeader>
 
-              {row.position && (
-                <span className="block text-xs text-muted-foreground">
-                  {row.position}
-                </span>
-              )}
-            </th>
+          <TableCell numeric>
+            <Minutes value={row.plannedMinutes} />
+          </TableCell>
+          <TableCell numeric>
+            <Minutes value={row.loggedMinutes} strong />
+          </TableCell>
+          <TableCell numeric>
+            <Difference {...row} />
+          </TableCell>
+        </TableRow>
+      ))}
+    </TableBody>
 
-            <td className="p-3 text-right tabular-nums">
-              <Minutes value={row.plannedMinutes} />
-            </td>
-            <td className="p-3 text-right tabular-nums">
-              <Minutes value={row.loggedMinutes} strong />
-            </td>
-            <td className="p-3 text-right tabular-nums">
-              <Difference {...row} />
-            </td>
-          </tr>
-        ))}
-      </tbody>
-
-      <tfoot>
-        <tr className="border-t-2 border-border bg-muted/10">
-          <th scope="row" className="p-3 text-left font-semibold">
-            Total
-          </th>
-          <td className="p-3 text-right font-semibold tabular-nums">
-            <Minutes value={totals.plannedMinutes} strong />
-          </td>
-          <td className="p-3 text-right font-semibold tabular-nums">
-            <Minutes value={totals.loggedMinutes} strong />
-          </td>
-          <td className="p-3 text-right tabular-nums">
-            <Difference {...totals} />
-          </td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
+    <TableFooter>
+      <TableRowHeader className="font-semibold">Total</TableRowHeader>
+      <TableCell numeric className="font-semibold">
+        <Minutes value={totals.plannedMinutes} strong />
+      </TableCell>
+      <TableCell numeric className="font-semibold">
+        <Minutes value={totals.loggedMinutes} strong />
+      </TableCell>
+      <TableCell numeric>
+        <Difference {...totals} />
+      </TableCell>
+    </TableFooter>
+  </Table>
 );

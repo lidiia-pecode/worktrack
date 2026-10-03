@@ -1,8 +1,17 @@
 import { HoursReportRow, HoursSplit } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
-import { cn } from "@/lib/utils/cn";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHeader,
+} from "@/components/ui/table";
 
-import { HEADER_CELL_CLASS, Minutes } from "./ReportCells";
+import { Minutes } from "./ReportCells";
 
 type HoursReportTableProps = {
   groupBy: HoursReportGroupBy;
@@ -43,76 +52,46 @@ export const HoursReportTable = ({
   rows,
   totals,
 }: HoursReportTableProps) => (
-  <div className="overflow-x-auto">
-    <table className="w-full min-w-2xl border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-border bg-muted/10">
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "text-left")}>
-            {NAME_COLUMN_LABEL[groupBy]}
-          </th>
+  <Table className="min-w-2xl">
+    <TableHeader>
+      <TableHead>{NAME_COLUMN_LABEL[groupBy]}</TableHead>
 
-          {SPLIT_COLUMNS.map((column) => (
-            <th
-              key={column.key}
-              scope="col"
-              className={cn(HEADER_CELL_CLASS, "w-32 text-right")}
-            >
-              {column.label}
-            </th>
-          ))}
-        </tr>
-      </thead>
+      {SPLIT_COLUMNS.map((column) => (
+        <TableHead key={column.key} numeric className="w-32">
+          {column.label}
+        </TableHead>
+      ))}
+    </TableHeader>
 
-      <tbody>
-        {rows.map((row) => {
-          const { name, detail } = describeRow(groupBy, row);
+    <TableBody>
+      {rows.map((row) => {
+        const { name, detail } = describeRow(groupBy, row);
 
-          return (
-            <tr
-              key={row.id ?? row.name ?? "internal"}
-              className="border-b border-border last:border-b-0"
-            >
-              <th scope="row" className="p-3 text-left font-normal">
-                <span className="block font-medium text-foreground">
-                  {name}
-                </span>
+        return (
+          <TableRow key={row.id ?? row.name ?? "internal"}>
+            <TableRowHeader detail={detail}>{name}</TableRowHeader>
 
-                {detail && (
-                  <span className="block text-xs text-muted-foreground">
-                    {detail}
-                  </span>
-                )}
-              </th>
+            {SPLIT_COLUMNS.map((column) => (
+              <TableCell key={column.key} numeric>
+                <Minutes
+                  value={row[column.key]}
+                  strong={column.key === "totalMinutes"}
+                />
+              </TableCell>
+            ))}
+          </TableRow>
+        );
+      })}
+    </TableBody>
 
-              {SPLIT_COLUMNS.map((column) => (
-                <td key={column.key} className="p-3 text-right tabular-nums">
-                  <Minutes
-                    value={row[column.key]}
-                    strong={column.key === "totalMinutes"}
-                  />
-                </td>
-              ))}
-            </tr>
-          );
-        })}
-      </tbody>
+    <TableFooter>
+      <TableRowHeader className="font-semibold">Total</TableRowHeader>
 
-      <tfoot>
-        <tr className="border-t-2 border-border bg-muted/10">
-          <th scope="row" className="p-3 text-left font-semibold">
-            Total
-          </th>
-
-          {SPLIT_COLUMNS.map((column) => (
-            <td
-              key={column.key}
-              className="p-3 text-right font-semibold tabular-nums"
-            >
-              <Minutes value={totals[column.key]} strong />
-            </td>
-          ))}
-        </tr>
-      </tfoot>
-    </table>
-  </div>
+      {SPLIT_COLUMNS.map((column) => (
+        <TableCell key={column.key} numeric className="font-semibold">
+          <Minutes value={totals[column.key]} strong />
+        </TableCell>
+      ))}
+    </TableFooter>
+  </Table>
 );

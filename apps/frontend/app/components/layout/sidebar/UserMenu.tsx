@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Bell, LogOut, MoreHorizontal, User } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,9 +113,9 @@ export const UserMenu = () => {
               <Bell />
               Notifications
               {unreadCount > 0 && (
-                <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-brand-foreground tabular-nums">
+                <Badge variant="solid" size="sm" className="ml-auto">
                   {countLabel(unreadCount)}
-                </span>
+                </Badge>
               )}
             </DropdownMenuItem>
           )}
