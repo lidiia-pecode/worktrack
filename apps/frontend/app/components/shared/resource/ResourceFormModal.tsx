@@ -48,7 +48,7 @@ export const ResourceFormModal = ({
       <DialogContent
         className={cn("gap-0 overflow-hidden p-0", sizeClass[size])}
       >
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border py-5 pr-12 pl-6">
           <div className="flex items-start gap-3">
             {icon && (
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle text-brand">

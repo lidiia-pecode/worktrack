@@ -183,6 +183,7 @@ export const ProjectForm = ({
           control={control}
           render={({ field }) => (
             <DescriptionEditor
+              id="project-description"
               labelledBy="project-description-label"
               describedBy={fieldMessageId("project-description", {
                 error: errors.description?.message,

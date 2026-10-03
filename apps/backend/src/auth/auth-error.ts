@@ -55,7 +55,8 @@ const RESPONSES: Record<
   },
   [AuthErrorCode.ACCOUNT_INACTIVE]: {
     status: HttpStatus.UNAUTHORIZED,
-    message: 'User account is inactive',
+    message:
+      "This account has been deactivated. Ask your company's owner if you need access again.",
   },
   [AuthErrorCode.COMPANY_SUSPENDED]: {
     status: HttpStatus.UNAUTHORIZED,

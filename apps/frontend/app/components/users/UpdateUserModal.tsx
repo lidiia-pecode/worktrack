@@ -227,6 +227,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                     ? unarchive.mutate(user.id, { onSuccess: onClose })
                     : archive.mutate(user.id, { onSuccess: onClose })
                 }
+                isLoading={archive.isPending || unarchive.isPending}
               >
                 {isDeactivated ? (
                   <UserCheck className="size-4" />

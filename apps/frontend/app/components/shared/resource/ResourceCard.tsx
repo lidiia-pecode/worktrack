@@ -41,7 +41,7 @@ export const ResourceCard = ({
             <button
               type="button"
               onClick={onClick}
-              className="cursor-pointer text-left outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
+              className="block w-full cursor-pointer truncate text-left outline-none after:absolute after:inset-0 after:rounded-2xl focus-visible:after:ring-2 focus-visible:after:ring-ring focus-visible:after:ring-inset"
             >
               {title}
             </button>

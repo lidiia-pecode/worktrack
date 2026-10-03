@@ -46,8 +46,8 @@ export const ConfirmModal = ({
 }: ConfirmModalProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-sm">
-        <DialogHeader className="p-6">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-sm">
+        <DialogHeader className="p-6 pr-12">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{message}</DialogDescription>
         </DialogHeader>

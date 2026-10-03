@@ -104,9 +104,9 @@ export const CategoryArchiveDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="gap-0 p-0 sm:max-w-md">
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
         <div className="grid gap-4 p-6">
-          <DialogHeader>
+          <DialogHeader className="pr-6">
             <DialogTitle>Archive {category.name}?</DialogTitle>
             <DialogDescription>
               {impact.isError

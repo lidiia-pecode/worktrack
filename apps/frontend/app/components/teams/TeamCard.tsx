@@ -76,7 +76,7 @@ export const TeamCard = ({
       </div>
 
       {members.length > 0 && (
-        <div className="mt-4 flex items-center -space-x-2">
+        <div className="relative mt-4 flex w-fit items-center -space-x-2">
           {visibleMembers.map((m) => (
             <Avatar key={m.id} user={m.user!} size="sm" />
           ))}

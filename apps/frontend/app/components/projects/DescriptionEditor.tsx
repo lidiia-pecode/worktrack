@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 interface DescriptionEditorProps {
+  id?: string;
   labelledBy?: string;
   describedBy?: string;
   value: string;
@@ -65,6 +66,7 @@ const ToolbarButton = ({
 };
 
 export const DescriptionEditor = ({
+  id,
   labelledBy,
   describedBy,
   value,
@@ -99,6 +101,7 @@ export const DescriptionEditor = ({
     editorProps: {
       attributes: {
         role: "textbox",
+        ...(id && { id }),
         "aria-multiline": "true",
         ...(labelledBy && { "aria-labelledby": labelledBy }),
         ...(describedBy && { "aria-describedby": describedBy }),
