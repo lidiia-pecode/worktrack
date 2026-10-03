@@ -6,8 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Activity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
-import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ResourceCardField } from "../shared/resourse/ResourceCardField";
+import { ResourceCard } from "../shared/resource/ResourceCard";
+import { ResourceCardField } from "../shared/resource/ResourceCardField";
 
 interface ActivityCardProps {
   activity: Activity;
@@ -15,11 +15,11 @@ interface ActivityCardProps {
   onView?: (activity: Activity) => void;
 }
 
-export function ActivityCard({
+export const ActivityCard = ({
   activity,
   canManage = false,
   onView,
-}: ActivityCardProps) {
+}: ActivityCardProps) => {
   const isArchived = activity.status === ActivityStatus.ARCHIVED;
 
   return (
@@ -39,10 +39,7 @@ export function ActivityCard({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${activity.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(activity);
-            }}
+            onClick={() => onView?.(activity)}
           >
             <Pencil className="size-4" />
           </Button>
@@ -56,4 +53,4 @@ export function ActivityCard({
       />
     </ResourceCard>
   );
-}
+};

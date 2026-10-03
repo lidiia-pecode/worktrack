@@ -13,12 +13,12 @@ type TeamWeekRowProps = {
   onOpen: (row: TeamSummaryRow) => void;
 };
 
-export function TeamWeekRow({
+export const TeamWeekRow = ({
   row,
   weekDates,
   absencesByDate,
   onOpen,
-}: TeamWeekRowProps) {
+}: TeamWeekRowProps) => {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
 
   const behindMinutes = Math.max(0, row.expectedToDateMinutes - row.minutes);
@@ -61,7 +61,7 @@ export function TeamWeekRow({
             `}
           >
             {absence ? (
-              <Badge variant="default" className="text-[10px]">
+              <Badge variant="default" className="text-2xs">
                 {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
               </Badge>
             ) : minutes > 0 ? (
@@ -91,7 +91,7 @@ export function TeamWeekRow({
             <Badge
               variant="warning"
               title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
-              className="px-1.5 text-[10px] font-medium"
+              className="px-1.5 text-2xs font-medium"
             >
               −{formatDuration(behindMinutes)}
             </Badge>
@@ -100,4 +100,4 @@ export function TeamWeekRow({
       </td>
     </tr>
   );
-}
+};

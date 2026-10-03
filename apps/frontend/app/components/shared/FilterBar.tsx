@@ -9,7 +9,7 @@ type FilterBarProps = {
   className?: string;
 };
 
-export function FilterBar({ children, className }: FilterBarProps) {
+export const FilterBar = ({ children, className }: FilterBarProps) => {
   return (
     <div
       className={cn(
@@ -20,4 +20,4 @@ export function FilterBar({ children, className }: FilterBarProps) {
       {children}
     </div>
   );
-}
+};

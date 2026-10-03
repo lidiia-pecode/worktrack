@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ResourceCardField } from "../shared/resourse/ResourceCardField";
+import { ResourceCard } from "../shared/resource/ResourceCard";
+import { ResourceCardField } from "../shared/resource/ResourceCardField";
 import { Avatar } from "../shared/Avatar";
 
 interface TeamCardProps {
@@ -20,7 +20,11 @@ interface TeamCardProps {
 
 const MAX_VISIBLE_AVATARS = 4;
 
-export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
+export const TeamCard = ({
+  team,
+  canManage = false,
+  onView,
+}: TeamCardProps) => {
   const members = team.memberships?.filter((m) => !m.leftAt && m.user) ?? [];
 
   const manager = members.find((m) => m.roleInTeam === TeamRole.MANAGER);
@@ -50,10 +54,7 @@ export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${team.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(team);
-            }}
+            onClick={() => onView?.(team)}
           >
             <Pencil className="size-4" />
           </Button>
@@ -75,13 +76,13 @@ export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
       </div>
 
       {members.length > 0 && (
-        <div className="mt-4 flex items-center -space-x-2">
+        <div className="relative mt-4 flex w-fit items-center -space-x-2">
           {visibleMembers.map((m) => (
             <Avatar key={m.id} user={m.user!} size="sm" />
           ))}
 
           {extraCount > 0 && (
-            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+            <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-2xs font-semibold text-muted-foreground ring-2 ring-card">
               +{extraCount}
             </div>
           )}
@@ -96,4 +97,4 @@ export function TeamCard({ team, canManage = false, onView }: TeamCardProps) {
       )}
     </ResourceCard>
   );
-}
+};

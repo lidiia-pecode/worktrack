@@ -15,10 +15,10 @@ import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
 import { fullName } from "@/lib/utils/user";
 import { formatDayMonthYearLabel } from "@/lib/utils/date";
 
-import { AssignedList } from "../shared/resourse/AssignedList";
+import { AssignedList } from "../shared/resource/AssignedList";
 import { Avatar } from "../shared/Avatar";
 import { ConfirmModal } from "../shared/ConfirmModal";
-import Select from "../shared/Select";
+import { FormSelect } from "../shared/FormSelect";
 
 const roleOptions = [
   { label: "Member", value: TeamRole.MEMBER },
@@ -33,10 +33,10 @@ interface TeamMembersSectionProps {
   onOpenAddMembers: () => void;
 }
 
-export function TeamMembersSection({
+export const TeamMembersSection = ({
   team,
   onOpenAddMembers,
-}: TeamMembersSectionProps) {
+}: TeamMembersSectionProps) => {
   const { user } = useAuth();
   const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
@@ -105,24 +105,20 @@ export function TeamMembersSection({
           renderTrailing={(membership) => (
             <>
               {isOwner && membership.user.role === UserRole.MANAGER ? (
-                <Select
+                <FormSelect
                   aria-label={`Role for ${membership.user.firstName}`}
                   value={membership.roleInTeam}
-                  onChange={(event) =>
+                  options={roleOptions}
+                  onValueChange={(roleInTeam) =>
                     updateMember.mutate({
                       membershipId: membership.id,
-                      data: { roleInTeam: event.target.value as TeamRole },
+                      data: { roleInTeam: roleInTeam as TeamRole },
                     })
                   }
                   disabled={updateMember.isPending}
-                  className="h-8 w-auto py-1 text-xs"
-                >
-                  {roleOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                  className="w-auto"
+                  triggerClassName="h-8 w-auto gap-2 px-2.5 text-xs"
+                />
               ) : (
                 <Badge>{roleLabel(membership.roleInTeam)}</Badge>
               )}
@@ -167,7 +163,7 @@ export function TeamMembersSection({
       />
     </div>
   );
-}
+};
 
 const ArchivedTeamMembers = ({ team }: { team: Team }) => {
   const formerMembers = (team.memberships ?? []).filter(

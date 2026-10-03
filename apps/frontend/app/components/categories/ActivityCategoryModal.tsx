@@ -10,7 +10,7 @@ import { ActCategoryStatus } from "@/types/enums";
 
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 import {
   ActivityCategoryForm,
@@ -29,12 +29,12 @@ interface ActivityCategoryModalProps {
 
 const FORM_ID = "activity-category-form";
 
-export function ActivityCategoryModal({
+export const ActivityCategoryModal = ({
   open,
   onClose,
   category,
   isOnboarding = false,
-}: ActivityCategoryModalProps) {
+}: ActivityCategoryModalProps) => {
   const router = useRouter();
   const {
     actions: { create, update, unarchive },
@@ -86,13 +86,13 @@ export function ActivityCategoryModal({
         }
         icon={<Tags className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
                 variant={isArchived ? "success" : "destructive"}
                 size="sm"
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
                 onClick={() =>
                   isArchived
                     ? unarchive.mutate(category!.id, { onSuccess: onClose })
@@ -106,27 +106,29 @@ export function ActivityCategoryModal({
                   <Archive className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isArchived ? "Restore" : "Archive"}
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSubmitting}
-              >
-                {isEditMode ? "Save changes" : "Create category"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSubmitting}
+            >
+              {isEditMode ? "Save changes" : "Create category"}
+            </Button>
+          </>
         }
       >
         <ActivityCategoryForm
@@ -157,4 +159,4 @@ export function ActivityCategoryModal({
       )}
     </>
   );
-}
+};

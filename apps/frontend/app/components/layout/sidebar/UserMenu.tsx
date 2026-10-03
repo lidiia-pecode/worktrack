@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Bell, LogOut, MoreHorizontal, User } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,7 +30,7 @@ const MAX_SHOWN_COUNT = 9;
 const countLabel = (count: number) =>
   count > MAX_SHOWN_COUNT ? `${MAX_SHOWN_COUNT}+` : String(count);
 
-export function UserMenu() {
+export const UserMenu = () => {
   const router = useRouter();
   const { user } = useAuth();
   const actions = useAuthActions();
@@ -112,9 +113,9 @@ export function UserMenu() {
               <Bell />
               Notifications
               {unreadCount > 0 && (
-                <span className="ml-auto rounded-full bg-brand px-1.5 text-xs font-semibold text-brand-foreground tabular-nums">
+                <Badge variant="solid" size="sm" className="ml-auto">
                   {countLabel(unreadCount)}
-                </span>
+                </Badge>
               )}
             </DropdownMenuItem>
           )}
@@ -140,4 +141,4 @@ export function UserMenu() {
       )}
     </>
   );
-}
+};

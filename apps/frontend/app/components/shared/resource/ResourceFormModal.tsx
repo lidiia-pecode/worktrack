@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,7 +32,7 @@ const sizeClass: Record<NonNullable<ResourceFormModalProps["size"]>, string> = {
   lg: "sm:max-w-2xl",
 };
 
-export function ResourceFormModal({
+export const ResourceFormModal = ({
   open,
   onClose,
   title,
@@ -41,13 +42,13 @@ export function ResourceFormModal({
   footer,
   bodyPadding = true,
   children,
-}: ResourceFormModalProps) {
+}: ResourceFormModalProps) => {
   return (
     <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
       <DialogContent
         className={cn("gap-0 overflow-hidden p-0", sizeClass[size])}
       >
-        <DialogHeader className="border-b border-border px-6 py-5">
+        <DialogHeader className="border-b border-border py-5 pr-12 pl-6">
           <div className="flex items-start gap-3">
             {icon && (
               <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle text-brand">
@@ -78,12 +79,8 @@ export function ResourceFormModal({
           {children}
         </div>
 
-        {footer && (
-          <div className="border-t border-border bg-muted/30 px-6 py-4">
-            {footer}
-          </div>
-        )}
+        {footer && <DialogFooter>{footer}</DialogFooter>}
       </DialogContent>
     </Dialog>
   );
-}
+};

@@ -6,6 +6,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -69,24 +70,26 @@ export const ActivityRestoreDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Restore {activity.name}?</DialogTitle>
-          <DialogDescription>
-            Its category, {categoryName}, is archived. Restore it too, or move
-            the activity to an active category.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+        <div className="grid gap-4 p-6">
+          <DialogHeader className="pr-6">
+            <DialogTitle>Restore {activity.name}?</DialogTitle>
+            <DialogDescription>
+              Its category, {categoryName}, is archived. Restore it too, or move
+              the activity to an active category.
+            </DialogDescription>
+          </DialogHeader>
 
-        <FormSelect
-          label="Category"
-          value={selectedOption}
-          options={options}
-          onValueChange={setSelectedOption}
-          disabled={restore.isPending || activeCategories.isLoading}
-        />
+          <FormSelect
+            label="Category"
+            value={selectedOption}
+            options={options}
+            onValueChange={setSelectedOption}
+            disabled={restore.isPending || activeCategories.isLoading}
+          />
+        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter>
           <Button
             type="button"
             variant="outline"
@@ -106,7 +109,7 @@ export const ActivityRestoreDialog = ({
           >
             Restore
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

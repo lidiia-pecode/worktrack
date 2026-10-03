@@ -19,6 +19,9 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 interface DescriptionEditorProps {
+  id?: string;
+  labelledBy?: string;
+  describedBy?: string;
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -34,13 +37,13 @@ interface ToolbarButtonProps {
   children: React.ReactNode;
 }
 
-function ToolbarButton({
+const ToolbarButton = ({
   onClick,
   active = false,
   disabled = false,
   label,
   children,
-}: ToolbarButtonProps) {
+}: ToolbarButtonProps) => {
   return (
     <button
       type="button"
@@ -60,15 +63,18 @@ function ToolbarButton({
       {children}
     </button>
   );
-}
+};
 
-export function DescriptionEditor({
+export const DescriptionEditor = ({
+  id,
+  labelledBy,
+  describedBy,
   value,
   onChange,
   disabled = false,
   placeholder = "Describe the project...",
   className,
-}: DescriptionEditorProps) {
+}: DescriptionEditorProps) => {
   const editor = useEditor({
     editable: !disabled,
 
@@ -94,6 +100,11 @@ export function DescriptionEditor({
 
     editorProps: {
       attributes: {
+        role: "textbox",
+        ...(id && { id }),
+        "aria-multiline": "true",
+        ...(labelledBy && { "aria-labelledby": labelledBy }),
+        ...(describedBy && { "aria-describedby": describedBy }),
         class: cn(
           "min-h-[160px] px-3.5 py-3",
           "text-sm text-foreground",
@@ -215,4 +226,4 @@ export function DescriptionEditor({
       <EditorContent editor={editor} />
     </div>
   );
-}
+};

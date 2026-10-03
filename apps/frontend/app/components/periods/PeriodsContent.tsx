@@ -7,6 +7,7 @@ import {
   useReportingPeriodMutations,
 } from "@/hooks/useReportingPeriods";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { formatMonthLabel } from "@/lib/utils/date";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -46,27 +47,29 @@ export const PeriodsContent = () => {
 
   return (
     <>
-      <ul className="max-w-3xl divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-        {months.map((period) => (
-          <PeriodRow
-            key={period.month}
-            period={period}
-            onReopen={setMonthToReopen}
-            onClose={(month) => close.mutate(month)}
-            isClosing={close.isPending && close.variables === period.month}
-          />
-        ))}
-      </ul>
+      <Card className="max-w-3xl">
+        <ul className="divide-y divide-border">
+          {months.map((period) => (
+            <PeriodRow
+              key={period.month}
+              period={period}
+              onReopen={setMonthToReopen}
+              onClose={(month) => close.mutate(month)}
+              isClosing={close.isPending && close.variables === period.month}
+            />
+          ))}
+        </ul>
+      </Card>
 
       <div className="mt-6 flex max-w-3xl justify-center">
         <Button
           type="button"
           variant="outline"
           onClick={() => loadOlder()}
-          disabled={isLoadingOlder}
+          isLoading={isLoadingOlder}
           className="min-w-28"
         >
-          {isLoadingOlder ? "Loading..." : "Show older"}
+          Show older
         </Button>
       </div>
 
@@ -77,6 +80,7 @@ export const PeriodsContent = () => {
         }
         message="Time logs, absences, capacity changes and plans in this month become editable again for everyone who could edit them before. It stays open until you close it."
         confirmText="Reopen"
+        variant="warning"
         onConfirm={confirmReopen}
         onClose={() => setMonthToReopen(null)}
         loading={reopen.isPending}

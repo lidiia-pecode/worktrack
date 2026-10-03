@@ -4,7 +4,7 @@ import { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+  "inline-flex items-center gap-1.5 rounded-full font-medium transition-colors",
   {
     variants: {
       variant: {
@@ -14,32 +14,44 @@ const badgeVariants = cva(
         destructive:
           "bg-destructive/10 text-destructive-text border border-destructive/20",
         neutral: "bg-muted text-muted-foreground border border-border",
+        // For a count that asks for attention, such as unread notifications.
+        solid: "bg-brand text-brand-foreground border border-brand",
+      },
+      size: {
+        md: "px-2.5 py-0.5 text-xs",
+        // A count beside a label, such as a tab's.
+        sm: "min-w-5 justify-center px-1.5 text-2xs tabular-nums",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "md",
     },
   },
 );
 
 export interface BadgeProps
-  extends HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {
+  extends HTMLAttributes<HTMLSpanElement>, VariantProps<typeof badgeVariants> {
   dot?: boolean;
 }
 
 export function Badge({
   className,
   variant,
+  size,
   dot = false,
   children,
   ...props
 }: BadgeProps) {
   return (
-    <div className={cn(badgeVariants({ variant }), className)} {...props}>
+    <span
+      className={cn(badgeVariants({ variant, size }), className)}
+      {...props}
+    >
       {dot && (
         <span
           className={cn("size-1.5 rounded-full", {
-            "bg-brand": variant === "default",
+            "bg-brand": !variant || variant === "default",
             "bg-success": variant === "success",
             "bg-warning": variant === "warning",
             "bg-destructive": variant === "destructive",
@@ -48,6 +60,6 @@ export function Badge({
         />
       )}
       {children}
-    </div>
+    </span>
   );
 }

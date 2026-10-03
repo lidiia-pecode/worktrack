@@ -14,7 +14,7 @@ interface PickerRowProps {
   disabled?: boolean;
 }
 
-export function PickerRow({
+export const PickerRow = ({
   selected,
   label,
   subtitle,
@@ -22,7 +22,7 @@ export function PickerRow({
   icon,
   onToggle,
   disabled = false,
-}: PickerRowProps) {
+}: PickerRowProps) => {
   return (
     <button
       type="button"
@@ -58,4 +58,4 @@ export function PickerRow({
       </span>
     </button>
   );
-}
+};

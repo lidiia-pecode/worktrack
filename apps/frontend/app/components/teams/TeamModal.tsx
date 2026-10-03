@@ -23,8 +23,8 @@ import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 import { fullName, initials } from "@/lib/utils/user";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
-import { EntityPicker } from "../shared/resourse/EntityPicker";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { EntityPicker } from "../shared/resource/EntityPicker";
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
 
@@ -64,12 +64,12 @@ const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
   ].join(" ");
 };
 
-export function TeamModal({
+export const TeamModal = ({
   open,
   onClose,
   team: teamProp,
   isOnboarding = false,
-}: TeamModalProps) {
+}: TeamModalProps) => {
   const router = useRouter();
   const { user } = useAuth();
   const { timezone } = useWorkSettings();
@@ -285,13 +285,13 @@ export function TeamModal({
         icon={isPicking ? undefined : <UsersRound className="size-5" />}
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={handleCloseMembersPicker}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
                 disabled={isAddingMembers}
               >
                 <ArrowLeft className="size-4" />
@@ -308,15 +308,15 @@ export function TeamModal({
                 Apply
                 {selectedUserIds.length > 0 && ` (${selectedUserIds.length})`}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex w-full items-center justify-between gap-3">
-              {isEditMode && isOwner ? (
+            <>
+              {isEditMode && isOwner && (
                 <Button
                   type="button"
                   variant={isArchived ? "success" : "destructive"}
                   size="sm"
-                  className="gap-1.5"
+                  className="mr-auto gap-1.5"
                   onClick={handleArchiveToggle}
                   isLoading={isArchiving}
                 >
@@ -326,34 +326,31 @@ export function TeamModal({
                     <Archive className="size-4" />
                   )}
 
-                  {isArchived ? "Unarchive" : "Archive"}
+                  {isArchived ? "Restore" : "Archive"}
                 </Button>
-              ) : (
-                <span />
               )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCloseModal}
-                >
-                  {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+              >
+                {createdTeam ? "Done" : canEdit ? "Cancel" : "Close"}
+              </Button>
 
-                {canEdit && (
-                  <Button
-                    type="submit"
-                    form={FORM_ID}
-                    size="sm"
-                    isLoading={isSubmitting}
-                  >
-                    {isEditMode ? "Save changes" : "Create team"}
-                  </Button>
-                )}
-              </div>
-            </div>
+              {canEdit && (
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  size="sm"
+                  isLoading={isSubmitting}
+                >
+                  {isEditMode ? "Save changes" : "Create team"}
+                </Button>
+              )}
+            </>
           )
         }
       >
@@ -454,4 +451,4 @@ export function TeamModal({
       />
     </>
   );
-}
+};

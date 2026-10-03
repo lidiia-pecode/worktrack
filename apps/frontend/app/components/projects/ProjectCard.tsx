@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ResourceCardField } from "../shared/resourse/ResourceCardField";
+import { ResourceCard } from "../shared/resource/ResourceCard";
+import { ResourceCardField } from "../shared/resource/ResourceCardField";
 
 interface ProjectCardProps {
   project: Project;
@@ -17,11 +17,11 @@ interface ProjectCardProps {
   onView?: (project: Project) => void;
 }
 
-export function ProjectCard({
+export const ProjectCard = ({
   project,
   canManage = false,
   onView,
-}: ProjectCardProps) {
+}: ProjectCardProps) => {
   const membersCount = project.membersCount ?? 0;
   const activitiesCount = project.projectActivities?.length ?? 0;
   const isArchived = project.status === ProjectStatus.ARCHIVED;
@@ -43,10 +43,7 @@ export function ProjectCard({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${project.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(project);
-            }}
+            onClick={() => onView?.(project)}
           >
             <Pencil className="size-4" />
           </Button>
@@ -82,4 +79,4 @@ export function ProjectCard({
       )}
     </ResourceCard>
   );
-}
+};

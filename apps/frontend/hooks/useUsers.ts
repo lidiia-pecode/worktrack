@@ -63,8 +63,8 @@ export const useUsersMutations = createEntityMutations<
 
   messages: {
     update: "User updated successfully",
-    archive: "User deleted successfully",
-    unarchive: "User restored successfully",
+    archive: "User deactivated successfully",
+    unarchive: "User reactivated successfully",
   },
 });
 

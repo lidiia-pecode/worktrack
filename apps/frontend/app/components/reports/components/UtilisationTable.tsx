@@ -2,9 +2,18 @@ import { ReactNode } from "react";
 
 import { UtilisationFigures, UtilisationRow } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
-import { cn } from "@/lib/utils/cn";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableFooter,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableRowHeader,
+} from "@/components/ui/table";
 
-import { HEADER_CELL_CLASS, Minutes, Percent } from "./ReportCells";
+import { Minutes, Percent } from "./ReportCells";
 
 type UtilisationTableProps = {
   rows: UtilisationRow[];
@@ -83,84 +92,54 @@ const Available = ({ figures }: { figures: UtilisationFigures }) => (
 
 const FigureCells = ({ figures }: { figures: UtilisationFigures }) => (
   <>
-    <td className="p-3 text-right tabular-nums">
+    <TableCell numeric>
       <Available figures={figures} />
-    </td>
-    <td className="p-3 text-right tabular-nums">
+    </TableCell>
+    <TableCell numeric>
       <Minutes value={figures.loggedMinutes} strong />
-    </td>
+    </TableCell>
     {FIGURE_COLUMNS.map((column) => (
-      <td key={column.label} className="p-3 text-right tabular-nums">
+      <TableCell key={column.label} numeric>
         {column.render(figures)}
-      </td>
+      </TableCell>
     ))}
   </>
 );
 
 export const UtilisationTable = ({ rows, totals }: UtilisationTableProps) => (
-  <div className="overflow-x-auto">
-    <table className="w-full min-w-4xl border-collapse text-sm">
-      <thead>
-        <tr className="border-b border-border bg-muted/10">
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "text-left")}>
-            Person
-          </th>
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "w-28 text-right")}>
-            <span className="block">Available</span>
-            <span className="block font-normal normal-case tracking-normal">
-              finished days only
-            </span>
-          </th>
-          <th scope="col" className={cn(HEADER_CELL_CLASS, "w-28 text-right")}>
-            <span className="block">Logged</span>
-            <span className="block font-normal normal-case tracking-normal">
-              finished days only
-            </span>
-          </th>
-          {FIGURE_COLUMNS.map((column) => (
-            <th
-              key={column.label}
-              scope="col"
-              className={cn(HEADER_CELL_CLASS, "w-32 text-right")}
-            >
-              <span className="block">{column.label}</span>
-              <span className="block font-normal normal-case tracking-normal">
-                {column.against}
-              </span>
-            </th>
-          ))}
-        </tr>
-      </thead>
+  <Table className="min-w-4xl">
+    <TableHeader>
+      <TableHead>Person</TableHead>
+      <TableHead numeric detail="finished days only" className="w-28">
+        Available
+      </TableHead>
+      <TableHead numeric detail="finished days only" className="w-28">
+        Logged
+      </TableHead>
+      {FIGURE_COLUMNS.map((column) => (
+        <TableHead
+          key={column.label}
+          numeric
+          detail={column.against}
+          className="w-32"
+        >
+          {column.label}
+        </TableHead>
+      ))}
+    </TableHeader>
 
-      <tbody>
-        {rows.map((row) => (
-          <tr
-            key={row.userId}
-            className="border-b border-border last:border-b-0"
-          >
-            <th scope="row" className="p-3 text-left font-normal">
-              <span className="block font-medium text-foreground">
-                {row.name}
-              </span>
-              {row.position && (
-                <span className="block text-xs text-muted-foreground">
-                  {row.position}
-                </span>
-              )}
-            </th>
-            <FigureCells figures={row} />
-          </tr>
-        ))}
-      </tbody>
+    <TableBody>
+      {rows.map((row) => (
+        <TableRow key={row.userId}>
+          <TableRowHeader detail={row.position}>{row.name}</TableRowHeader>
+          <FigureCells figures={row} />
+        </TableRow>
+      ))}
+    </TableBody>
 
-      <tfoot>
-        <tr className="border-t-2 border-border bg-muted/10">
-          <th scope="row" className="p-3 text-left font-semibold">
-            Total
-          </th>
-          <FigureCells figures={totals} />
-        </tr>
-      </tfoot>
-    </table>
-  </div>
+    <TableFooter>
+      <TableRowHeader className="font-semibold">Total</TableRowHeader>
+      <FigureCells figures={totals} />
+    </TableFooter>
+  </Table>
 );

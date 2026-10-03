@@ -12,7 +12,7 @@ import { useActivities, useActivityArchiveImpact } from "@/hooks/useActivities";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
@@ -30,12 +30,12 @@ interface ActivityModalProps {
 
 const FORM_ID = "activity-form";
 
-export function ActivityModal({
+export const ActivityModal = ({
   open,
   onClose,
   activity,
   isOnboarding = false,
-}: ActivityModalProps) {
+}: ActivityModalProps) => {
   const router = useRouter();
   const {
     actions: { create, update, archive, unarchive },
@@ -122,10 +122,11 @@ export function ActivityModal({
         }
         icon={<ClipboardList className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
+                className="mr-auto"
                 variant={isArchived ? "success" : "destructive"}
                 size="sm"
                 onClick={() =>
@@ -139,28 +140,30 @@ export function ActivityModal({
                   <Archive className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isArchived ? "Restore" : "Archive"}
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSubmitting}
-                disabled={!categoriesLoading && categories.length === 0}
-              >
-                {isEditMode ? "Save changes" : "Create activity"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSubmitting}
+              disabled={!categoriesLoading && categories.length === 0}
+            >
+              {isEditMode ? "Save changes" : "Create activity"}
+            </Button>
+          </>
         }
       >
         {!categoriesLoading && (
@@ -213,4 +216,4 @@ export function ActivityModal({
       )}
     </>
   );
-}
+};

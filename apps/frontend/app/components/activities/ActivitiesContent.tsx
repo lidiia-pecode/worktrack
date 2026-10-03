@@ -11,11 +11,11 @@ import { hasManagerAccess } from "@/lib/utils/user";
 import { Activity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCard } from "./ActivityCard";
 import { ActivityModal } from "./ActivityModal";
 
-export function ActivitiesContent() {
+export const ActivitiesContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(
@@ -94,4 +94,4 @@ export function ActivitiesContent() {
       />
     </>
   );
-}
+};

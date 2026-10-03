@@ -4,6 +4,11 @@ import { useId, useMemo, useState } from "react";
 import { Combobox } from "@base-ui/react/combobox";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import {
   DEFAULT_TIME_ZONE_OPTIONS,
@@ -54,14 +59,7 @@ export const TimeZoneSelect = ({
   }, [query, selected]);
 
   return (
-    <div className="w-full">
-      <label
-        htmlFor={inputId}
-        className="mb-1.5 block text-sm font-medium text-foreground"
-      >
-        {label}
-      </label>
-
+    <Field id={inputId} label={label} description={description} error={error}>
       <Combobox.Root
         items={items}
         filter={null}
@@ -69,7 +67,6 @@ export const TimeZoneSelect = ({
         onValueChange={(option) => {
           if (option) onValueChange(option.value);
         }}
-        // Only typing searches; picking a zone fills the input with its label.
         onInputValueChange={(text, details) =>
           setQuery(details.reason === "input-change" ? text : "")
         }
@@ -83,21 +80,8 @@ export const TimeZoneSelect = ({
             id={inputId}
             placeholder="Search by country or city"
             aria-invalid={!!error}
-            aria-describedby={
-              error
-                ? `${inputId}-error`
-                : description
-                  ? `${inputId}-description`
-                  : undefined
-            }
-            className={cn(
-              "h-11 w-full rounded-lg border border-input-placeholder/50 bg-input px-3.5 pr-10 text-sm text-input-foreground outline-none transition",
-              "placeholder:text-input-placeholder hover:bg-input/80",
-              "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
-              "disabled:cursor-not-allowed disabled:opacity-50",
-              error &&
-                "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
-            )}
+            aria-describedby={fieldMessageId(inputId, { error, description })}
+            className={cn(fieldControlClassName(!!error), "h-11 pr-10")}
           />
           <Combobox.Trigger
             aria-label="Show time zones"
@@ -143,24 +127,6 @@ export const TimeZoneSelect = ({
           </Combobox.Positioner>
         </Combobox.Portal>
       </Combobox.Root>
-
-      {description && !error && (
-        <p
-          id={`${inputId}-description`}
-          className="mt-1.5 text-xs text-muted-foreground"
-        >
-          {description}
-        </p>
-      )}
-
-      {error && (
-        <p
-          id={`${inputId}-error`}
-          className="mt-1.5 text-xs text-destructive-text"
-        >
-          {error}
-        </p>
-      )}
-    </div>
+    </Field>
   );
 };

@@ -1,5 +1,8 @@
 import { ReactNode } from "react";
 
+import { EmptyState } from "../EmptyState";
+import { LoadingState } from "../LoadingState";
+
 interface AssignedListProps<T> {
   items: T[];
   getId: (item: T) => string;
@@ -12,7 +15,7 @@ interface AssignedListProps<T> {
   loadingMessage?: string;
 }
 
-export function AssignedList<T>({
+export const AssignedList = <T,>({
   items,
   getId,
   renderLeading,
@@ -22,21 +25,13 @@ export function AssignedList<T>({
   emptyMessage = "Nothing assigned yet.",
   isLoading = false,
   loadingMessage = "Loading...",
-}: AssignedListProps<T>) {
+}: AssignedListProps<T>) => {
   if (isLoading) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        {loadingMessage}
-      </p>
-    );
+    return <LoadingState size="compact" title={loadingMessage} />;
   }
 
   if (items.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        {emptyMessage}
-      </p>
-    );
+    return <EmptyState size="compact" title={emptyMessage} />;
   }
 
   return (
@@ -66,4 +61,4 @@ export function AssignedList<T>({
       ))}
     </ul>
   );
-}
+};

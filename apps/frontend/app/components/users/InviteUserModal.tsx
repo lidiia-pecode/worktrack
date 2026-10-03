@@ -5,7 +5,7 @@ import { MailPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { InviteUserForm } from "./InviteUserForm";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
 import { useRouter } from "next/navigation";
@@ -21,11 +21,11 @@ interface InviteUserModalProps {
   isOnboarding?: boolean;
 }
 
-export function InviteUserModal({
+export const InviteUserModal = ({
   open,
   onClose,
   isOnboarding,
-}: InviteUserModalProps) {
+}: InviteUserModalProps) => {
   const {
     actions: { create },
   } = useInvitations();
@@ -53,8 +53,14 @@ export function InviteUserModal({
       description="Send an invitation to join your workspace."
       icon={<MailPlus className="size-5" />}
       footer={
-        <div className="flex items-center justify-end gap-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+        <>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onClose}
+            disabled={create.isPending}
+          >
             Cancel
           </Button>
 
@@ -67,7 +73,7 @@ export function InviteUserModal({
           >
             Send invitation
           </Button>
-        </div>
+        </>
       }
     >
       <InviteUserForm
@@ -78,4 +84,4 @@ export function InviteUserModal({
       />
     </ResourceFormModal>
   );
-}
+};

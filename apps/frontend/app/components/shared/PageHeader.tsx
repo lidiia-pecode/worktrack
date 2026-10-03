@@ -6,7 +6,11 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-export function PageHeader({ title, description, actions }: PageHeaderProps) {
+export const PageHeader = ({
+  title,
+  description,
+  actions,
+}: PageHeaderProps) => {
   return (
     <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
       <div>
@@ -24,4 +28,4 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
       )}
     </div>
   );
-}
+};

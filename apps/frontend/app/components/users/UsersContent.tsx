@@ -7,14 +7,14 @@ import { useUsersInfiniteQuery } from "@/hooks/useUsers";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { User } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
 import { PendingInvitations } from "./PendingInvitations";
 import { UserCard } from "./UserCard";
 
 type UserTab = "active" | "archived";
 
-export function UsersContent() {
+export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [inviteOpen, setInviteOpen] = useState(opensCreateForm);
   const [tab, setTab] = useState<UserTab>("active");
@@ -67,6 +67,8 @@ export function UsersContent() {
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
         showArchived
+        archivedLabel="Deactivated"
+        archiveVerb="deactivate"
         tab={tab}
         onTabChange={handleTabChange}
         renderItem={(user) => <UserCard key={user.id} user={user} />}
@@ -79,4 +81,4 @@ export function UsersContent() {
       />{" "}
     </>
   );
-}
+};

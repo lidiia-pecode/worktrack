@@ -585,9 +585,10 @@ sign-in returns to the page it started from with a message, never an error on th
 backend's host. Archiving a team
 revokes its pending invitations and closes the team (§5).
 
-Users are archived, never deleted (`ACTIVE | DEACTIVATED`). A user cannot archive
-themselves, an OWNER account cannot be archived, and only an OWNER may modify
-another OWNER or grant the OWNER role.
+Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
+Deactivate and Reactivate. A user cannot deactivate themselves, an OWNER account
+cannot be deactivated, and only an OWNER may modify another OWNER or grant the
+OWNER role.
 
 ---
 
@@ -958,12 +959,12 @@ Short list. These are the things that would be expensive or dangerous to break.
 4. **Time logging never consults the plan** (D3).
 5. **Locked periods are immutable** — including moving an entry into or out of
    one (D5).
-6. **Archive, never delete.** Projects, activities, categories, teams and users
-   are archived so historical time stays resolvable. `ProjectActivity` rows are
-   deactivated rather than removed for the same reason. Team membership closes
-   with `leftAt` rather than deleting the row, and archiving a person changes
-   neither their team memberships nor their project memberships — active status
-   gates joining, not staying. Only a deliberate removal ever takes someone off
+6. **Archive, never delete.** Projects, activities, categories and teams are
+   archived, and users deactivated, so historical time stays resolvable.
+   `ProjectActivity` rows are deactivated rather than removed for the same
+   reason. Team membership closes with `leftAt` rather than deleting the row,
+   and deactivating a person changes neither their team memberships nor their
+   project memberships — active status gates joining, not staying. Only a deliberate removal ever takes someone off
    a team or a project.
 7. **Aggregate in the database.** Client-side summing does not survive company
    scale.
@@ -1070,15 +1071,15 @@ timesheet's bar.
 
 **Q16 — Can someone delete their own account, or an owner their company?**
 Raised on 1 October 2026; no area yet. Nobody can delete an account today:
-people are archived, never deleted (§8 rule 6). A user row also cannot be
+people are deactivated, never deleted (§8 rule 6). A user row also cannot be
 removed by hand, since `project_users` refers to it without a cascade. If that
 reference is lifted, deleting a person also deletes their time logs, absences,
 plans and capacity, which changes the company's reports and its locked periods.
 An employee's hours are the company's records, and the company decides what
 happens to them.
 *Recommendation:* no self-service deletion for employees and managers; the
-owner archives people, as today. Deleting a company is the owner's case, and it
-is decided together with Q6: what is exported first, how long data is kept, and
+owner deactivates people, as today. Deleting a company is the owner's case, and
+it is decided together with Q6: what is exported first, how long data is kept, and
 what `Company.deletedAt` means.
 *Alternative:* "Delete my account" for any user, which then needs a rule for
 their time logs, such as anonymising the person and keeping the hours.

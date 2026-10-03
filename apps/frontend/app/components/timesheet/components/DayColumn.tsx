@@ -119,18 +119,18 @@ export const DayColumn = ({
     >
       {absence && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          <Badge variant="default" dot className="text-[10px]">
+          <Badge variant="default" dot className="text-2xs">
             {ABSENCE_TYPE_LABELS[absence.type]}
           </Badge>
 
           {absence.note && (
-            <span className="line-clamp-2 text-[11px] text-muted-foreground">
+            <span className="line-clamp-2 text-2xs text-muted-foreground">
               {absence.note}
             </span>
           )}
 
           {isAbsenceLocked && !isLocked && (
-            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1 text-2xs text-muted-foreground">
               <Lock className="size-3" aria-hidden />
               Part of it is in a locked month
             </span>
@@ -146,7 +146,7 @@ export const DayColumn = ({
               id={plannedId}
               className="flex max-w-full flex-col items-center gap-1"
             >
-              <span className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+              <span className="flex items-center gap-1 text-2xs uppercase tracking-wider text-muted-foreground">
                 <CalendarClock className="size-3" aria-hidden />
                 Planned
               </span>
@@ -162,7 +162,7 @@ export const DayColumn = ({
             </div>
           )}
 
-          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
             {isLocked && (
               <>
                 <Lock className="size-3" aria-hidden />
@@ -193,7 +193,7 @@ export const DayColumn = ({
 
           <Badge
             variant="warning"
-            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-[10px] font-semibold shadow-sm"
+            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-2xs font-semibold shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}

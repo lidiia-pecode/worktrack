@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ActivityCategory } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
+import { ResourceCard } from "../shared/resource/ResourceCard";
 
 interface ActivityCategoryCardProps {
   category: ActivityCategory;
@@ -16,11 +16,11 @@ interface ActivityCategoryCardProps {
   onView?: (category: ActivityCategory) => void;
 }
 
-export function ActivityCategoryCard({
+export const ActivityCategoryCard = ({
   category,
   canManage = false,
   onView,
-}: ActivityCategoryCardProps) {
+}: ActivityCategoryCardProps) => {
   const isArchived = category.status === ActCategoryStatus.ARCHIVED;
 
   return (
@@ -40,10 +40,7 @@ export function ActivityCategoryCard({
             variant="ghost"
             size="iconSm"
             aria-label={`Edit ${category.name}`}
-            onClick={(event) => {
-              event.stopPropagation();
-              onView?.(category);
-            }}
+            onClick={() => onView?.(category)}
           >
             <Pencil className="size-4" />
           </Button>
@@ -51,4 +48,4 @@ export function ActivityCategoryCard({
       }
     ></ResourceCard>
   );
-}
+};

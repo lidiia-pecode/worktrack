@@ -225,7 +225,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className="border-r border-border/60 p-2 text-left text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                  className="border-r border-border/60 p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground"
                 >
                   Person
                 </th>
@@ -247,7 +247,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
                 <th
                   scope="col"
-                  className="p-2 text-right text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+                  className="p-2 text-right text-2xs font-medium uppercase tracking-wider text-muted-foreground"
                 >
                   Planned / available
                 </th>

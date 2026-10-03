@@ -1,12 +1,13 @@
+// Defined in app/globals.css as --project-1 to --project-10.
 export const PROJECT_COLORS = [
-  "rgba(59, 130, 246, 0.3)",
-  "rgba(16, 185, 129, 0.3)",
-  "rgba(139, 92, 246, 0.3)",
-  "rgba(245, 158, 11, 0.3)",
-  "rgba(239, 68, 68, 0.3)",
-  "rgba(6, 182, 212, 0.3)",
-  "rgba(99, 102, 241, 0.3)",
-  "rgba(20, 184, 166, 0.3)",
-  "rgba(236, 72, 153, 0.3)",
-  "rgba(132, 204, 22, 0.3)",
+  "var(--project-1)",
+  "var(--project-2)",
+  "var(--project-3)",
+  "var(--project-4)",
+  "var(--project-5)",
+  "var(--project-6)",
+  "var(--project-7)",
+  "var(--project-8)",
+  "var(--project-9)",
+  "var(--project-10)",
 ] as const;

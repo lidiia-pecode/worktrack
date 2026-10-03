@@ -14,13 +14,13 @@ type WeekHeaderDayProps = {
   isLocked?: boolean;
 };
 
-export function WeekHeaderDay({
+export const WeekHeaderDay = ({
   date,
   isToday: today,
   totalMinutes,
   targetMinutes,
   isLocked = false,
-}: WeekHeaderDayProps) {
+}: WeekHeaderDayProps) => {
   const weekend = isWeekend(date);
   const isOverTarget =
     targetMinutes !== undefined && totalMinutes > targetMinutes;
@@ -34,7 +34,7 @@ export function WeekHeaderDay({
       `}
     >
       <div className="flex gap-2 items-baseline">
-        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+        <p className="text-2xs uppercase tracking-wider text-muted-foreground">
           {formatWeekdayLabel(date)}
         </p>
 
@@ -65,4 +65,4 @@ export function WeekHeaderDay({
       </p>
     </div>
   );
-}
+};

@@ -11,7 +11,6 @@ import { ActivityCategory } from "@/types";
 
 import Input from "@/components/ui/input";
 
-import { FormSection } from "../shared/FormSection";
 import { FormSelect } from "../shared/FormSelect";
 
 const activitySchema = z.object({
@@ -38,14 +37,14 @@ interface ActivityFormProps {
   isOnboarding?: boolean;
 }
 
-export function ActivityForm({
+export const ActivityForm = ({
   formId = "activity-form",
   defaultValues,
   categories,
   onSubmit,
   isSubmitting = false,
   isOnboarding = false,
-}: ActivityFormProps) {
+}: ActivityFormProps) => {
   const {
     register,
     control,
@@ -65,47 +64,50 @@ export function ActivityForm({
     label: category.name,
   }));
 
+  const hasNoCategories = categories.length === 0;
+
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <FormSection label="Activity name">
-        <Input
-          id="activity-name"
-          placeholder="e.g. Frontend development"
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      </FormSection>
+      <Input
+        id="activity-name"
+        label="Activity name"
+        placeholder="e.g. Frontend development"
+        {...register("name")}
+        error={errors.name?.message}
+        disabled={isSubmitting}
+      />
 
-      <FormSection label="Category">
-        {categories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            There are no active categories, and every activity belongs to one.{" "}
-            <Link
-              href={createFirstLink("/admin/categories", isOnboarding)}
-              className="font-medium text-brand hover:underline"
-            >
-              Create a category first
-            </Link>
-            .
-          </p>
-        ) : (
-          <Controller
-            control={control}
-            name="categoryId"
-            render={({ field }) => (
-              <FormSelect
-                value={field.value}
-                onValueChange={field.onChange}
-                options={categoryOptions}
-                placeholder="Select category"
-                error={errors.categoryId?.message}
-                disabled={isSubmitting}
-              />
-            )}
+      <Controller
+        control={control}
+        name="categoryId"
+        render={({ field }) => (
+          <FormSelect
+            label="Category"
+            value={field.value}
+            onValueChange={field.onChange}
+            options={categoryOptions}
+            placeholder={
+              hasNoCategories ? "No active categories" : "Select category"
+            }
+            description={
+              hasNoCategories && (
+                <>
+                  Every activity belongs to a category.{" "}
+                  <Link
+                    href={createFirstLink("/admin/categories", isOnboarding)}
+                    className="font-medium text-brand hover:underline"
+                  >
+                    Create a category first
+                  </Link>
+                  .
+                </>
+              )
+            }
+            error={errors.categoryId?.message}
+            disabled={isSubmitting || hasNoCategories}
           />
         )}
-      </FormSection>
+      />
 
       <div>
         <label className="flex cursor-pointer select-none items-center gap-2.5">
@@ -124,4 +126,4 @@ export function ActivityForm({
       </div>
     </form>
   );
-}
+};

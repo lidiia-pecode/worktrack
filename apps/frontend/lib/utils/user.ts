@@ -12,7 +12,7 @@ export const fullName = (u: User | AvatarUser) =>
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;
 
-export const isArchivedUser = (user: { status?: UserStatus }) =>
+export const isDeactivatedUser = (user: { status?: UserStatus }) =>
   user.status === UserStatus.DEACTIVATED;
 
 /**

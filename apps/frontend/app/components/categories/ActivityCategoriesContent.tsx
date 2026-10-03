@@ -10,12 +10,12 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityCategory } from "@/types";
 
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCategoryCard } from "./ActivityCategoryCard";
 import { ActivityCategoryModal } from "./ActivityCategoryModal";
 import { ActCategoryStatus } from "@/types/enums";
 
-export function ActivityCategoriesContent() {
+export const ActivityCategoriesContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
@@ -98,4 +98,4 @@ export function ActivityCategoriesContent() {
       />
     </>
   );
-}
+};

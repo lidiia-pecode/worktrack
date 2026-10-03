@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 import Link from "next/link";
 
+import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils/cn";
 
 interface AuthCardProps {
@@ -16,7 +17,7 @@ export const AuthCard = ({
   children,
   footer,
 }: AuthCardProps) => (
-  <div className="w-full rounded-2xl border border-border/80 bg-card p-7 shadow-raised sm:p-8">
+  <Card elevation="raised" className="w-full border-border/80 p-7 sm:p-8">
     {title && (
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -38,7 +39,7 @@ export const AuthCard = ({
         {footer}
       </div>
     )}
-  </div>
+  </Card>
 );
 
 export const AuthLink = ({

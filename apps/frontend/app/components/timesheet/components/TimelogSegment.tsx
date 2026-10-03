@@ -75,11 +75,11 @@ export const TimelogSegment = ({
       )}
 
       <div className="relative z-10 pointer-events-none flex h-full flex-col justify-center overflow-hidden px-2 py-1">
-        <span className="truncate text-[11px] font-semibold leading-tight text-foreground/80">
+        <span className="truncate text-2xs font-semibold leading-tight text-foreground/80">
           {formatDuration(timelog.minutes)}
         </span>
 
-        <span className="truncate text-[10px] leading-tight text-foreground/80">
+        <span className="truncate text-2xs leading-tight text-foreground/80">
           {projectName} · {activityName}
         </span>
       </div>

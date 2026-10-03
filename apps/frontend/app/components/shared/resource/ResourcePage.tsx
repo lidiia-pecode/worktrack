@@ -2,18 +2,15 @@
 
 import { KeyboardEvent, ReactNode, useId, useMemo, useState } from "react";
 
-import {
-  AlertCircle,
-  Archive,
-  ArchiveRestore,
-  Plus,
-  RefreshCw,
-} from "lucide-react";
+import { Archive, ArchiveRestore, Plus } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getNextTabIndex } from "@/lib/utils/tabs";
 
 import { EmptyState } from "../EmptyState";
+import { ErrorState } from "../ErrorState";
 import { PageHeader } from "../PageHeader";
 import { createActionPlacement } from "./create-action";
 import { SearchInput } from "../inputs/SearchInput";
@@ -48,13 +45,15 @@ interface ResourcePageProps<T> {
   renderItem: (item: T) => ReactNode;
   topContent?: ReactNode;
   showArchived?: boolean;
+  archivedLabel?: string;
+  archiveVerb?: string;
   tab?: ResourceTab;
   onTabChange?: (tab: ResourceTab) => void;
   activeCount?: number;
   archivedCount?: number;
 }
 
-export function ResourcePage<T>({
+export const ResourcePage = <T,>({
   title,
   description,
   items,
@@ -82,12 +81,14 @@ export function ResourcePage<T>({
   topContent,
 
   showArchived = true,
+  archivedLabel = "Archived",
+  archiveVerb = "archive",
   tab = "active",
   onTabChange,
 
   activeCount,
   archivedCount,
-}: ResourcePageProps<T>) {
+}: ResourcePageProps<T>) => {
   const [search, setSearch] = useState("");
   const tabsId = useId();
 
@@ -119,7 +120,7 @@ export function ResourcePage<T>({
   const emptyStateTitle = search
     ? "No results found"
     : isArchived
-      ? `No archived ${title.toLowerCase()}`
+      ? `No ${archivedLabel.toLowerCase()} ${title.toLowerCase()}`
       : emptyTitle;
 
   const createAction = createActionPlacement({
@@ -133,7 +134,7 @@ export function ResourcePage<T>({
   const emptyStateDescription = search
     ? `No ${title.toLowerCase()} match "${search}".`
     : isArchived
-      ? `Archived ${title.toLowerCase()} will appear here when you archive them.`
+      ? `${archivedLabel} ${title.toLowerCase()} will appear here when you ${archiveVerb} them.`
       : emptyDescription;
 
   return (
@@ -169,7 +170,7 @@ export function ResourcePage<T>({
             controls={`${tabsId}-panel`}
             active={tab === "archived"}
             icon={<Archive className="size-3.5" />}
-            label="Archived"
+            label={archivedLabel}
             count={archivedCount}
             onClick={() => handleTabChange("archived")}
           />
@@ -198,7 +199,11 @@ export function ResourcePage<T>({
         {isLoading && <ResourcePageSkeleton />}
 
         {!isLoading && isError && (
-          <ResourcePageError title={title} onRetry={onRetry} />
+          <ErrorState
+            title={`Unable to load ${title.toLowerCase()}`}
+            description="Something went wrong while loading this page."
+            onRetry={onRetry}
+          />
         )}
 
         {!isLoading && !isError && filteredItems.length === 0 && (
@@ -230,10 +235,10 @@ export function ResourcePage<T>({
                   type="button"
                   variant="outline"
                   onClick={onFetchNextPage}
-                  disabled={isFetchingNextPage}
+                  isLoading={isFetchingNextPage}
                   className="min-w-28"
                 >
-                  {isFetchingNextPage ? "Loading..." : "Load more"}
+                  Load more
                 </Button>
               </div>
             )}
@@ -242,7 +247,7 @@ export function ResourcePage<T>({
       </div>
     </section>
   );
-}
+};
 
 interface ResourceTabListProps {
   label: string;
@@ -250,11 +255,11 @@ interface ResourceTabListProps {
   children: ReactNode;
 }
 
-export function ResourceTabList({
+export const ResourceTabList = ({
   label,
   className,
   children,
-}: ResourceTabListProps) {
+}: ResourceTabListProps) => {
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const tabs = Array.from(
       event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="tab"]'),
@@ -282,7 +287,7 @@ export function ResourceTabList({
       {children}
     </div>
   );
-}
+};
 
 interface ResourceTabButtonProps {
   id: string;
@@ -294,7 +299,7 @@ interface ResourceTabButtonProps {
   onClick: () => void;
 }
 
-export function ResourceTabButton({
+export const ResourceTabButton = ({
   id,
   controls,
   active,
@@ -302,7 +307,7 @@ export function ResourceTabButton({
   icon,
   count,
   onClick,
-}: ResourceTabButtonProps) {
+}: ResourceTabButtonProps) => {
   return (
     <button
       type="button"
@@ -339,17 +344,9 @@ export function ResourceTabButton({
       <span>{label}</span>
 
       {typeof count === "number" && (
-        <span
-          className={[
-            "min-w-5 rounded-full px-1.5 py-0.5",
-            "text-center text-[11px] font-medium",
-            active
-              ? "bg-brand-subtle text-brand"
-              : "bg-muted/50 text-muted-foreground",
-          ].join(" ")}
-        >
+        <Badge variant={active ? "default" : "neutral"} size="sm">
           {count}
-        </span>
+        </Badge>
       )}
 
       <span
@@ -362,75 +359,17 @@ export function ResourceTabButton({
       />
     </button>
   );
-}
+};
 
-interface ResourcePageErrorProps {
-  title: string;
-  onRetry?: () => void;
-}
+const ResourcePageSkeleton = () => (
+  <div role="status" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <span className="sr-only">Loading</span>
 
-function ResourcePageError({ title, onRetry }: ResourcePageErrorProps) {
-  return (
-    <div
-      className="
-        flex min-h-[360px] flex-1 flex-col
-        items-center justify-center
-        rounded-2xl
-        border border-destructive/20
-        bg-destructive/5
-        p-8
-        text-center
-      "
-    >
-      <div
-        className="
-          flex size-12 items-center justify-center
-          rounded-2xl
-          bg-destructive/10
-          text-destructive-text
-        "
-      >
-        <AlertCircle className="size-6" />
-      </div>
-
-      <h2 className="mt-5 text-base font-semibold text-foreground">
-        Unable to load {title.toLowerCase()}
-      </h2>
-
-      <p className="mt-1 text-sm text-muted-foreground">
-        Something went wrong while loading this page.
-      </p>
-
-      {onRetry && (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onRetry}
-          className="mt-5 gap-2"
-        >
-          <RefreshCw className="size-4" />
-          Try again
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function ResourcePageSkeleton() {
-  return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 3 }).map((_, index) => (
-        <div
-          key={index}
-          className="
-            h-44
-            animate-pulse
-            rounded-xl
-            border border-border
-            bg-card
-          "
-        />
-      ))}
-    </div>
-  );
-}
+    {Array.from({ length: 3 }).map((_, index) => (
+      <Skeleton
+        key={index}
+        className="h-44 rounded-xl border border-border bg-card"
+      />
+    ))}
+  </div>
+);

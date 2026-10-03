@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardHeader } from "@/components/ui/card";
 import {
   useInvitations,
   usePendingInvitations,
@@ -164,7 +165,7 @@ interface SetupChecklistProps {
 }
 
 /** The one-time setup flow, shown on Getting started until setup is finished. */
-export function SetupChecklist({ state }: SetupChecklistProps) {
+export const SetupChecklist = ({ state }: SetupChecklistProps) => {
   const skipSetup = useSkipOwnerSetup();
   const [isConfirmingSkip, setIsConfirmingSkip] = useState(false);
   const { data: invitations = [] } = usePendingInvitations();
@@ -216,38 +217,33 @@ export function SetupChecklist({ state }: SetupChecklistProps) {
         title="Skip setup?"
         message="This checklist won't start again. Getting started stays in the menu as a guide to how WorkTrack fits together."
         confirmText="Skip setup"
+        variant="warning"
         onConfirm={() => skipSetup.mutate()}
         onClose={() => setIsConfirmingSkip(false)}
         loading={skipSetup.isPending}
       />
 
-      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="flex items-center justify-between gap-6 border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-card-foreground">
-              Setup steps
-            </h2>
-
-            <p className="mt-1 text-xs text-muted-foreground">
-              {doneCount} of {required.length} done
-            </p>
-          </div>
-
-          <div
-            role="progressbar"
-            aria-label="Setup progress"
-            aria-valuemin={0}
-            aria-valuemax={required.length}
-            aria-valuenow={doneCount}
-            aria-valuetext={`${doneCount} of ${required.length} steps done`}
-            className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-muted"
-          >
+      <Card>
+        <CardHeader
+          title="Setup steps"
+          description={`${doneCount} of ${required.length} done`}
+          action={
             <div
-              className="h-full rounded-full bg-primary transition-[width] duration-300"
-              style={{ width: `${(doneCount / required.length) * 100}%` }}
-            />
-          </div>
-        </div>
+              role="progressbar"
+              aria-label="Setup progress"
+              aria-valuemin={0}
+              aria-valuemax={required.length}
+              aria-valuenow={doneCount}
+              aria-valuetext={`${doneCount} of ${required.length} steps done`}
+              className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-muted"
+            >
+              <div
+                className="h-full rounded-full bg-primary transition-[width] duration-300"
+                style={{ width: `${(doneCount / required.length) * 100}%` }}
+              />
+            </div>
+          }
+        />
 
         <ol className="divide-y divide-border">
           {required.map((step) => (
@@ -258,25 +254,24 @@ export function SetupChecklist({ state }: SetupChecklistProps) {
             />
           ))}
         </ol>
-      </div>
+      </Card>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div className="border-b border-border px-6 py-4">
-          <h2 className="text-sm font-semibold text-card-foreground">
-            Add a manager <span className="font-normal">(optional)</span>
-          </h2>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            {TOPIC_TEXT.manager} Skip this if you look after everyone yourself.
-          </p>
-        </div>
+      <Card className="mt-6">
+        <CardHeader
+          title={
+            <>
+              Add a manager <span className="font-normal">(optional)</span>
+            </>
+          }
+          description={`${TOPIC_TEXT.manager} Skip this if you look after everyone yourself.`}
+        />
 
         <ol className="divide-y divide-border">
           {optional.map((step) => (
             <SetupStepRow key={step.id} step={step} isCurrent={false} />
           ))}
         </ol>
-      </div>
+      </Card>
     </section>
   );
-}
+};

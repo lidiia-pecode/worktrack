@@ -11,7 +11,7 @@ import { fullName } from "@/lib/utils/user";
 import { Avatar } from "../../shared/Avatar";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLogFormModal } from "../../timesheet/components/TimeLogFormModal";
 import { UserTimeDayGroup } from "./UserTimeDayGroup";
 
@@ -105,7 +105,7 @@ export const UserTimeDetailPanel = ({
         footer={
           !hasError &&
           !isLoading && (
-            <div className="flex items-center justify-between gap-3 text-sm">
+            <div className="flex w-full items-center justify-between gap-3 text-sm">
               <span className="text-muted-foreground">Logged this week</span>
 
               <span className="font-semibold tabular-nums text-foreground">

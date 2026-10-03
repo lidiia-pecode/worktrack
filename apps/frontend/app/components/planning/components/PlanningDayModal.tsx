@@ -16,12 +16,16 @@ import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
-import { FormSection } from "../../shared/FormSection";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "planning-form";
 const MINUTE_STEP = 15;
@@ -212,36 +216,40 @@ export const PlanningDayModal = ({
         description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of a ${formatDuration(dayLimitMinutes)} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {editing ? (
+          <>
+            {editing && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={startNew}
+                className="mr-auto"
+                disabled={create.isPending || update.isPending}
               >
                 Cancel edit
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Close
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={create.isPending || update.isPending}
+            >
+              Close
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={create.isPending || update.isPending}
-                disabled={hasNoProjects}
-              >
-                {editing ? "Save changes" : "Add plan"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={create.isPending || update.isPending}
+              disabled={hasNoProjects}
+            >
+              {editing ? "Save changes" : "Add plan"}
+            </Button>
+          </>
         }
       >
         <div className="space-y-6">
@@ -310,28 +318,31 @@ export const PlanningDayModal = ({
             className="space-y-6"
           >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
-              <FormSection label="Project">
-                <Controller
-                  control={control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <FormSelect
-                      value={field.value}
-                      onValueChange={handleProjectChange}
-                      options={projectOptions}
-                      placeholder={
-                        hasNoProjects
-                          ? "Not on any active project"
-                          : "Select project"
-                      }
-                      error={errors.projectId?.message}
-                      disabled={hasNoProjects}
-                    />
-                  )}
-                />
-              </FormSection>
-
-              <FormSection label="Hours">
+              <Controller
+                control={control}
+                name="projectId"
+                render={({ field }) => (
+                  <FormSelect
+                    label="Project"
+                    value={field.value}
+                    onValueChange={handleProjectChange}
+                    options={projectOptions}
+                    placeholder={
+                      hasNoProjects
+                        ? "Not on any active project"
+                        : "Select project"
+                    }
+                    error={errors.projectId?.message}
+                    disabled={hasNoProjects}
+                  />
+                )}
+              />
+              <Field
+                id="plan-hours"
+                label="Hours"
+                group
+                error={errors.hours?.message}
+              >
                 <TimePicker
                   hours={Number(hours)}
                   minutes={Number(minutes)}
@@ -341,14 +352,8 @@ export const PlanningDayModal = ({
                   error={!!errors.hours}
                   className="w-fit"
                 />
-              </FormSection>
+              </Field>
             </div>
-
-            {errors.hours && (
-              <p className="-mt-4 text-xs text-destructive-text">
-                {errors.hours.message}
-              </p>
-            )}
 
             {hasNoProjects && (
               <p className="text-sm text-muted-foreground">
@@ -357,21 +362,23 @@ export const PlanningDayModal = ({
               </p>
             )}
 
-            <FormSection label="Note">
+            <Field id="plan-note" label="Note" error={errors.note?.message}>
               <TextareaAutosize
+                id="plan-note"
                 {...register("note")}
+                aria-invalid={!!errors.note}
+                aria-describedby={fieldMessageId("plan-note", {
+                  error: errors.note?.message,
+                })}
                 minRows={2}
                 maxRows={6}
                 placeholder="Optional context for this plan"
-                className="w-full resize-none rounded-lg border border-input-placeholder/50 bg-input px-3.5 py-2.5 text-sm leading-relaxed text-input-foreground outline-none transition placeholder:text-input-placeholder focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+                className={cn(
+                  fieldControlClassName(!!errors.note),
+                  "resize-none py-2.5 leading-relaxed",
+                )}
               />
-
-              {errors.note && (
-                <p className="text-xs text-destructive-text">
-                  {errors.note.message}
-                </p>
-              )}
-            </FormSection>
+            </Field>
           </form>
         </div>
       </ResourceFormModal>

@@ -7,14 +7,13 @@ import { Button } from "@/components/ui/button";
 
 import { AssignableUser } from "@/types";
 
-import { fullName, isArchivedUser } from "@/lib/utils/user";
+import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 
-import { AssignedList } from "../shared/resourse/AssignedList";
+import { AssignedList } from "../shared/resource/AssignedList";
 import { Avatar } from "../shared/Avatar";
 
 interface ProjectMembersSectionProps {
   members: AssignableUser[];
-  /** Members on the project that this viewer may not read. */
   hiddenCount?: number;
   isLoading?: boolean;
   isCreateMode?: boolean;
@@ -22,14 +21,14 @@ interface ProjectMembersSectionProps {
   onRemoveMember: (userId: string) => void;
 }
 
-export function ProjectMembersSection({
+export const ProjectMembersSection = ({
   members,
   hiddenCount = 0,
   isLoading = false,
   isCreateMode = false,
   onOpenAddMembers,
   onRemoveMember,
-}: ProjectMembersSectionProps) {
+}: ProjectMembersSectionProps) => {
   const summary = `${members.length} ${
     members.length === 1 ? "person is" : "people are"
   } ${isCreateMode ? "selected" : "assigned to this project"}.`;
@@ -79,8 +78,8 @@ export function ProjectMembersSection({
           emptyMessage="No members yet. Click 'Add members' to get started."
           renderTrailing={(user) => (
             <div className="flex items-center gap-2">
-              {isArchivedUser(user) && (
-                <Badge variant="neutral">Archived</Badge>
+              {isDeactivatedUser(user) && (
+                <Badge variant="neutral">Deactivated</Badge>
               )}
 
               <Button
@@ -98,4 +97,4 @@ export function ProjectMembersSection({
       </div>
     </div>
   );
-}
+};

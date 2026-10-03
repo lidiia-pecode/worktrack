@@ -24,13 +24,13 @@ interface TeamFormProps {
   isSubmitting?: boolean;
 }
 
-export function TeamForm({
+export const TeamForm = ({
   formId = "team-form",
   defaultValues,
   mode = "create",
   onSubmit,
   isSubmitting = false,
-}: TeamFormProps) {
+}: TeamFormProps) => {
   const {
     register,
     handleSubmit,
@@ -64,4 +64,4 @@ export function TeamForm({
       />
     </form>
   );
-}
+};

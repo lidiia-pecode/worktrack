@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
@@ -20,6 +20,8 @@ import { CloseButton } from "../../shared/buttons/CloseButton";
 import { GettingStartedLink, SidebarNavigation } from "./SidebarNavigation";
 import { UserMenu } from "./UserMenu";
 import { navigationFor } from "./sidebar-navigation";
+
+const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
 
 interface SidebarBodyProps {
   user: User;
@@ -63,12 +65,25 @@ interface SidebarProps {
   user: User;
 }
 
-export function Sidebar({ user }: SidebarProps) {
+export const Sidebar = ({ user }: SidebarProps) => {
   const pathname = usePathname();
 
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
   const isMenuOpen = menuOpenedOn === pathname;
   const closeMenu = () => setMenuOpenedOn(null);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+
+    const desktop = window.matchMedia(DESKTOP_MEDIA_QUERY);
+    const closeOnDesktop = (event: MediaQueryListEvent) => {
+      if (event.matches) setMenuOpenedOn(null);
+    };
+
+    desktop.addEventListener("change", closeOnDesktop);
+
+    return () => desktop.removeEventListener("change", closeOnDesktop);
+  }, [isMenuOpen]);
 
   return (
     <>
@@ -113,4 +128,4 @@ export function Sidebar({ user }: SidebarProps) {
       </aside>
     </>
   );
-}
+};

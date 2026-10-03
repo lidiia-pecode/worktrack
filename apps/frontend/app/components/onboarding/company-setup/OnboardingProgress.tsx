@@ -3,10 +3,10 @@ interface OnboardingProgressProps {
   currentStep: number;
 }
 
-export function OnboardingProgress({
+export const OnboardingProgress = ({
   steps,
   currentStep,
-}: OnboardingProgressProps) {
+}: OnboardingProgressProps) => {
   return (
     <ol className="flex items-start">
       {steps.map((step, index) => {
@@ -56,4 +56,4 @@ export function OnboardingProgress({
       })}
     </ol>
   );
-}
+};

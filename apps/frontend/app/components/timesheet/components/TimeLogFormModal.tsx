@@ -10,12 +10,13 @@ import TextareaAutosize from "react-textarea-autosize";
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
-import { FormSection } from "../../shared/FormSection";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Field, fieldControlClassName } from "@/components/ui/field";
+import { cn } from "@/lib/utils/cn";
 
 const FORM_ID = "timelog-form";
 
@@ -215,10 +216,11 @@ export const TimeLogFormModal = ({
           .join(" · ")}
         icon={<Calendar className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
+                className="mr-auto"
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
@@ -226,26 +228,28 @@ export const TimeLogFormModal = ({
                 <Trash2 className="size-4" />
                 Delete
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSaving}
-                disabled={hasNoOptions}
-              >
-                {isEditMode ? "Save changes" : "Log time"}
-              </Button>
-            </div>
-          </div>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSaving}
+              disabled={hasNoOptions}
+            >
+              {isEditMode ? "Save changes" : "Log time"}
+            </Button>
+          </>
         }
       >
         <form
@@ -253,7 +257,12 @@ export const TimeLogFormModal = ({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-6"
         >
-          <FormSection label="Duration">
+          <Field
+            id="timelog-duration"
+            label="Duration"
+            group
+            error={errors.hours?.message}
+          >
             <TimePicker
               hours={Number(hours)}
               minutes={Number(minutes)}
@@ -262,68 +271,64 @@ export const TimeLogFormModal = ({
               error={!!errors.hours}
               className="w-fit"
             />
-
-            {errors.hours && (
-              <p className="text-xs text-destructive-text">
-                {errors.hours.message}
-              </p>
-            )}
-          </FormSection>
+          </Field>
 
           <div className="grid grid-cols-2 gap-4">
-            <FormSection label="Project">
-              <Controller
-                control={control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormSelect
-                    value={field.value}
-                    onValueChange={field.onChange}
-                    options={projectOptions}
-                    placeholder={
-                      hasNoOptions ? "No projects assigned" : "Select project"
-                    }
-                    error={errors.projectId?.message}
-                    disabled={hasNoOptions}
-                  />
-                )}
-              />
-            </FormSection>
+            <Controller
+              control={control}
+              name="projectId"
+              render={({ field }) => (
+                <FormSelect
+                  label="Project"
+                  value={field.value}
+                  onValueChange={field.onChange}
+                  options={projectOptions}
+                  placeholder={
+                    hasNoOptions ? "No projects assigned" : "Select project"
+                  }
+                  error={errors.projectId?.message}
+                  disabled={hasNoOptions}
+                />
+              )}
+            />
 
-            <FormSection label="Activity">
-              <Controller
-                control={control}
-                name="activityId"
-                render={({ field }) => (
-                  <FormSelect
-                    value={field.value}
-                    onValueChange={(activityId) => {
-                      field.onChange(activityId);
-                      if (!isEditMode) startBillableFrom(activityId);
-                    }}
-                    options={activityOptions}
-                    placeholder={
-                      selectedProjectId
-                        ? "Select activity"
-                        : "Pick a project first"
-                    }
-                    error={errors.activityId?.message}
-                    disabled={!selectedProjectId}
-                  />
-                )}
-              />
-            </FormSection>
+            <Controller
+              control={control}
+              name="activityId"
+              render={({ field }) => (
+                <FormSelect
+                  label="Activity"
+                  value={field.value}
+                  onValueChange={(activityId) => {
+                    field.onChange(activityId);
+                    if (!isEditMode) startBillableFrom(activityId);
+                  }}
+                  options={activityOptions}
+                  placeholder={
+                    selectedProjectId
+                      ? "Select activity"
+                      : "Pick a project first"
+                  }
+                  error={errors.activityId?.message}
+                  disabled={!selectedProjectId}
+                />
+              )}
+            />
           </div>
 
-          <FormSection label="Note">
+          <Field id="timelog-note" label="Note">
             <TextareaAutosize
+              id="timelog-note"
               {...register("note")}
               minRows={3}
               maxRows={8}
               placeholder="What did you work on?"
-              className="w-full resize-none rounded-lg border border-input-placeholder/50 bg-input px-3.5 py-2.5 text-sm leading-relaxed text-input-foreground outline-none transition placeholder:text-input-placeholder focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+              className={cn(
+                fieldControlClassName(),
+                "resize-none py-2.5 leading-relaxed",
+              )}
             />
-          </FormSection>
+          </Field>
 
           <label className="flex cursor-pointer select-none items-center gap-2.5">
             <input

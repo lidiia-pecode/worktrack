@@ -1,44 +1,49 @@
 import { ReactNode } from "react";
+import { cn } from "@/lib/utils/cn";
 
 interface EmptyStateProps {
-  title: string;
+  title: ReactNode;
   description?: string;
   icon?: ReactNode;
   action?: ReactNode;
+  /** `compact` fits inside a dialog, list or section, and shows the title only. */
+  size?: "page" | "compact";
   className?: string;
 }
 
-export function EmptyState({
+export const EmptyState = ({
   title,
   description,
   icon,
   action,
+  size = "page",
   className,
-}: EmptyStateProps) {
+}: EmptyStateProps) => {
+  if (size === "compact") {
+    return (
+      <p
+        className={cn(
+          "py-6 text-center text-sm text-muted-foreground",
+          className,
+        )}
+      >
+        {title}
+      </p>
+    );
+  }
+
   return (
     <div
-      className={[
-        "flex min-h-[360px] flex-1",
-        "items-center justify-center",
+      className={cn(
+        "flex min-h-[360px] flex-1 items-center justify-center",
         "rounded-2xl border border-dashed border-border",
         "bg-card/50 px-6 py-16 text-center",
         className,
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      )}
     >
       <div className="flex max-w-md flex-col items-center">
         {icon && (
-          <div
-            className="
-              flex size-16
-              items-center justify-center
-              rounded-2xl
-              bg-brand-subtle
-              text-brand
-              shadow-sm
-            "
-          >
+          <div className="flex size-16 items-center justify-center rounded-2xl bg-brand-subtle text-brand shadow-sm">
             <div className="[&>svg]:size-8">{icon}</div>
           </div>
         )}
@@ -57,4 +62,4 @@ export function EmptyState({
       </div>
     </div>
   );
-}
+};

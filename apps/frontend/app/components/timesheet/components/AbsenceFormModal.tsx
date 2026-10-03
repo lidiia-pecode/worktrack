@@ -11,12 +11,13 @@ import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { Button } from "@/components/ui/button";
+import { Field, fieldControlClassName } from "@/components/ui/field";
+import { cn } from "@/lib/utils/cn";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
-import { FormSection } from "../../shared/FormSection";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateInput } from "../../shared/inputs";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "absence-form";
 
@@ -144,10 +145,11 @@ export const AbsenceFormModal = ({
         description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}
         footer={
-          <div className="flex w-full items-center justify-between gap-3">
-            {isEditMode ? (
+          <>
+            {isEditMode && (
               <Button
                 type="button"
+                className="mr-auto"
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
@@ -155,25 +157,22 @@ export const AbsenceFormModal = ({
                 <Trash2 className="size-4" />
                 Delete
               </Button>
-            ) : (
-              <span />
             )}
 
-            <div className="flex items-center gap-2">
-              <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                Cancel
-              </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSaving}
+            >
+              Cancel
+            </Button>
 
-              <Button
-                type="submit"
-                form={FORM_ID}
-                size="sm"
-                isLoading={isSaving}
-              >
-                {isEditMode ? "Save changes" : "Add absence"}
-              </Button>
-            </div>
-          </div>
+            <Button type="submit" form={FORM_ID} size="sm" isLoading={isSaving}>
+              {isEditMode ? "Save changes" : "Add absence"}
+            </Button>
+          </>
         }
       >
         <form
@@ -181,48 +180,49 @@ export const AbsenceFormModal = ({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-6"
         >
-          <FormSection label="Reason">
-            <Controller
-              control={control}
-              name="type"
-              render={({ field }) => (
-                <FormSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  options={TYPE_OPTIONS}
-                  placeholder="Select a reason"
-                  error={errors.type?.message}
-                />
-              )}
-            />
-          </FormSection>
+          <Controller
+            control={control}
+            name="type"
+            render={({ field }) => (
+              <FormSelect
+                label="Reason"
+                value={field.value}
+                onValueChange={field.onChange}
+                options={TYPE_OPTIONS}
+                placeholder="Select a reason"
+                error={errors.type?.message}
+              />
+            )}
+          />
 
           <div className="grid grid-cols-2 gap-4">
-            <FormSection label="First day">
-              <DateInput
-                {...register("startDate")}
-                error={errors.startDate?.message}
-              />
-            </FormSection>
+            <DateInput
+              label="First day"
+              {...register("startDate")}
+              error={errors.startDate?.message}
+            />
 
-            <FormSection label="Last day">
-              <DateInput
-                {...register("endDate")}
-                min={startDate || undefined}
-                error={errors.endDate?.message}
-              />
-            </FormSection>
+            <DateInput
+              label="Last day"
+              {...register("endDate")}
+              min={startDate || undefined}
+              error={errors.endDate?.message}
+            />
           </div>
 
-          <FormSection label="Note">
+          <Field id="absence-note" label="Note">
             <TextareaAutosize
+              id="absence-note"
               {...register("note")}
               minRows={3}
               maxRows={8}
               placeholder="Anything worth adding?"
-              className="w-full resize-none rounded-lg border border-input-placeholder/50 bg-input px-3.5 py-2.5 text-sm leading-relaxed text-input-foreground outline-none transition placeholder:text-input-placeholder focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20"
+              className={cn(
+                fieldControlClassName(),
+                "resize-none py-2.5 leading-relaxed",
+              )}
             />
-          </FormSection>
+          </Field>
         </form>
       </ResourceFormModal>
 

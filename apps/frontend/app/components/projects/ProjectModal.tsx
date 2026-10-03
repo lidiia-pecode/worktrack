@@ -23,12 +23,12 @@ import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 import { Project } from "@/types";
 import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
 
-import { fullName, initials, isArchivedUser } from "@/lib/utils/user";
+import { fullName, initials, isDeactivatedUser } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { EntityPicker } from "../shared/resourse/EntityPicker";
+import { EntityPicker } from "../shared/resource/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ProjectMembersSection } from "./ProjectMembersSection";
@@ -55,17 +55,15 @@ function dedupeById<T extends { id: string }>(items: T[]): T[] {
   return Array.from(byId.values());
 }
 
-export function ProjectModal({
+export const ProjectModal = ({
   open,
   onClose,
   project,
   isOnboarding = false,
-}: ProjectModalProps) {
+}: ProjectModalProps) => {
   const router = useRouter();
   const [view, setView] = useState<View>("form");
 
-  // The project list no longer returns members, so an existing project has to
-  // load them separately.
   const { data: projectDetails, isLoading: isDetailsLoading } =
     useProjectDetails(project?.id);
 
@@ -110,20 +108,15 @@ export function ProjectModal({
     [savedMembers],
   );
 
-  // The member list is scoped to the viewer while the count is the project's
-  // true size, so the difference is what a manager may not read.
   const hiddenMembersCount = Math.max(
     (projectDetails?.membersCount ?? 0) - savedUserIds.length,
     0,
   );
 
-  // Fall back to the saved members until the user picks their own selection.
   const selectedUserIds = pickedUserIds ?? savedUserIds;
 
   const isMembersLoading = isDetailsLoading || isUsersLoading;
 
-  // Current members first: an archived one is not in the assignable list, and
-  // dropping out of this pool would silently drop them from the save.
   const users = useMemo(
     () => dedupeById([...savedMembers, ...rawUsers]),
     [savedMembers, rawUsers],
@@ -251,13 +244,13 @@ export function ProjectModal({
         icon={isPicking ? undefined : <FolderKanban className="size-5" />}
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setView("form")}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -272,15 +265,15 @@ export function ProjectModal({
                   ? ` (${selectedActivityIds.length})`
                   : ""}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex w-full items-center justify-between gap-3">
-              {project ? (
+            <>
+              {project && (
                 <Button
                   type="button"
                   variant={isArchived ? "success" : "destructive"}
                   size="sm"
-                  className="gap-1.5"
+                  className="mr-auto gap-1.5"
                   onClick={isArchived ? handleUnarchive : handleArchive}
                   isLoading={archive.isPending || unarchive.isPending}
                 >
@@ -289,33 +282,30 @@ export function ProjectModal({
                   ) : (
                     <Archive className="size-4" />
                   )}
-                  {isArchived ? "Unarchive" : "Archive"}
+                  {isArchived ? "Restore" : "Archive"}
                 </Button>
-              ) : (
-                <span />
               )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClose}
-                >
-                  Cancel
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
 
-                <Button
-                  type="submit"
-                  form={FORM_ID}
-                  size="sm"
-                  isLoading={isSubmitting || isChecking}
-                  disabled={isMembersLoading}
-                >
-                  {project ? "Save changes" : "Create project"}
-                </Button>
-              </div>
-            </div>
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={isSubmitting || isChecking}
+                disabled={isMembersLoading}
+              >
+                {project ? "Save changes" : "Create project"}
+              </Button>
+            </>
           )
         }
       >
@@ -355,7 +345,9 @@ export function ProjectModal({
             getId={(user) => user.id}
             getLabel={fullName}
             getSubtitle={(user) =>
-              isArchivedUser(user) ? `${user.email} · Archived` : user.email
+              isDeactivatedUser(user)
+                ? `${user.email} · Deactivated`
+                : user.email
             }
             getAvatarText={initials}
             isLoading={isUsersLoading}
@@ -408,4 +400,4 @@ export function ProjectModal({
       <ConfirmModal {...confirmProps} />
     </>
   );
-}
+};

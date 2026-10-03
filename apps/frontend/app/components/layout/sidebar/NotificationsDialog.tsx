@@ -11,7 +11,10 @@ import {
 import { NotificationType } from "@/types/enums";
 import type { AppNotification } from "@/types/Notification";
 
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { EmptyState } from "../../shared/EmptyState";
+import { ErrorState } from "../../shared/ErrorState";
+import { LoadingState } from "../../shared/LoadingState";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const SENT_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   day: "numeric",
@@ -77,10 +80,10 @@ interface NotificationsDialogProps {
   onClose: () => void;
 }
 
-export function NotificationsDialog({
+export const NotificationsDialog = ({
   open,
   onClose,
-}: NotificationsDialogProps) {
+}: NotificationsDialogProps) => {
   const { data, isError, isPending, refetch } = useNotifications({
     enabled: true,
   });
@@ -105,22 +108,18 @@ export function NotificationsDialog({
       icon={<Bell className="size-5" />}
     >
       {isError && !data ? (
-        <p className="text-sm text-muted-foreground">
-          Could not load your notifications.{" "}
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="font-medium text-brand underline-offset-4 hover:underline"
-          >
-            Try again
-          </button>
-        </p>
+        <ErrorState
+          size="compact"
+          title="Could not load your notifications."
+          onRetry={() => refetch()}
+        />
       ) : isPending ? (
-        <p className="text-sm text-muted-foreground">Loading notifications…</p>
+        <LoadingState size="compact" title="Loading notifications..." />
       ) : notifications.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Nothing yet. When someone you invited joins, you will see it here.
-        </p>
+        <EmptyState
+          size="compact"
+          title="Nothing yet. When someone you invited joins, you will see it here."
+        />
       ) : (
         <ul className="-my-3 divide-y divide-border">
           {notifications.map((notification) => (
@@ -134,4 +133,4 @@ export function NotificationsDialog({
       )}
     </ResourceFormModal>
   );
-}
+};

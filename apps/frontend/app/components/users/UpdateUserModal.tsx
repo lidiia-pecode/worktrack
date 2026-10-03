@@ -3,11 +3,11 @@
 import { useState } from "react";
 
 import {
-  Archive,
-  ArchiveRestore,
   ArrowLeft,
   FolderKanban,
   Trash2,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 import { User } from "@/types";
@@ -27,9 +27,9 @@ import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { Button } from "@/components/ui/button";
 
-import { EntityPicker } from "../shared/resourse/EntityPicker";
-import { AssignedList } from "../shared/resourse/AssignedList";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { EntityPicker } from "../shared/resource/EntityPicker";
+import { AssignedList } from "../shared/resource/AssignedList";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm, UserFormData } from "./UserForm";
 import { ProjectStatus, UserStatus } from "@/types/enums";
@@ -172,7 +172,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const isPicking = view === "projects";
   const pendingCount = pendingProjectIds.length;
-  const isArchived = user.status === UserStatus.DEACTIVATED;
+  const isDeactivated = user.status === UserStatus.DEACTIVATED;
 
   return (
     <>
@@ -194,13 +194,13 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
         }
         footer={
           isPicking ? (
-            <div className="flex items-center justify-between gap-3">
+            <>
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => setView("form")}
-                className="gap-1.5"
+                className="mr-auto gap-1.5"
               >
                 <ArrowLeft className="size-4" />
                 Back
@@ -214,60 +214,63 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
               >
                 Apply{pendingCount > 0 ? ` (${pendingCount})` : ""}
               </Button>
-            </div>
+            </>
           ) : (
-            <div className="flex items-center justify-between">
+            <>
               <Button
                 type="button"
-                variant={isArchived ? "success" : "destructive"}
+                variant={isDeactivated ? "success" : "destructive"}
+                size="sm"
+                className="mr-auto"
                 onClick={() =>
-                  isArchived
+                  isDeactivated
                     ? unarchive.mutate(user.id, { onSuccess: onClose })
                     : archive.mutate(user.id, { onSuccess: onClose })
                 }
+                isLoading={archive.isPending || unarchive.isPending}
               >
-                {isArchived ? (
-                  <ArchiveRestore className="size-4" />
+                {isDeactivated ? (
+                  <UserCheck className="size-4" />
                 ) : (
-                  <Archive className="size-4" />
+                  <UserX className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isDeactivated ? "Reactivate" : "Deactivate"}
               </Button>
 
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => (edit ? setEdit(false) : handleCloseModal())}
-                >
-                  {edit ? "Cancel" : "Close"}
-                </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => (edit ? setEdit(false) : handleCloseModal())}
+                disabled={update.isPending || setCapacity.isPending}
+              >
+                {edit ? "Cancel" : "Close"}
+              </Button>
 
-                {/* Separate keys stop the Edit click from submitting the form. */}
-                {edit ? (
-                  <Button
-                    key="save"
-                    type="submit"
-                    form="user-modal-form"
-                    disabled={update.isPending || setCapacity.isPending}
-                  >
-                    {update.isPending || setCapacity.isPending
-                      ? "Saving..."
-                      : "Save changes"}
-                  </Button>
-                ) : (
-                  <Button
-                    key="edit"
-                    type="button"
-                    onClick={() => setEdit(true)}
-                    disabled={isLoadingCapacity}
-                  >
-                    Edit
-                  </Button>
-                )}
-              </div>
-            </div>
+              {/* Separate keys stop the Edit click from submitting the form. */}
+              {edit ? (
+                <Button
+                  key="save"
+                  type="submit"
+                  form="user-modal-form"
+                  size="sm"
+                  isLoading={update.isPending || setCapacity.isPending}
+                >
+                  Save changes
+                </Button>
+              ) : (
+                <Button
+                  key="edit"
+                  type="button"
+                  size="sm"
+                  onClick={() => setEdit(true)}
+                  disabled={isLoadingCapacity}
+                >
+                  Edit
+                </Button>
+              )}
+            </>
           )
         }
       >

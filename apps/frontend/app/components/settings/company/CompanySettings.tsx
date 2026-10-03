@@ -6,14 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
 import {
   CompanyFormValues,
   companySchema,
 } from "@/lib/forms/schemas/company.schema";
 
-import { SettingsSection } from "../components/SettingsSection";
-import { SettingsSectionHeader } from "../components/SettingsSectionHeader";
-import { SettingsActions } from "../components/SettingsActions";
 import Input from "../../../../components/ui/input";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
@@ -73,109 +71,110 @@ export const CompanySettings = () => {
   };
 
   return (
-    <SettingsSection>
-      <SettingsSectionHeader
+    <Card>
+      <CardHeader
         icon={Building2}
         title="Company settings"
         description="Manage your company and workspace preferences."
       />
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8 p-6">
-        <section>
-          <div className="mt-4">
-            <Input
-              label="Company name"
-              placeholder="Your company name"
-              {...register("companyName")}
-              error={errors.companyName?.message}
-            />
-          </div>
-        </section>
-
-        <div className="border-t border-border" />
-
-        <section>
-          <h3 className="font-semibold text-foreground">
-            Regional preferences
-          </h3>
-
-          <p className="mt-1 text-xs text-muted-foreground">
-            How the company&apos;s days and weeks are counted.
-          </p>
-
-          <div className="mt-4 grid gap-5 sm:grid-cols-2">
-            <Controller
-              name="timezone"
-              control={control}
-              render={({ field }) => (
-                <TimeZoneSelect
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  error={errors.timezone?.message}
-                />
-              )}
-            />
-
-            <Controller
-              name="weekStartDay"
-              control={control}
-              render={({ field }) => (
-                <FormSelect
-                  id="weekStartDay"
-                  label="Week starts on"
-                  placeholder="Select day"
-                  value={field.value}
-                  options={WEEK_START_OPTIONS}
-                  error={errors.weekStartDay?.message}
-                  onValueChange={field.onChange}
-                />
-              )}
-            />
-
-            <div>
-              <div className="relative">
-                <Input
-                  label="Standard work hours / day"
-                  type="number"
-                  min={1}
-                  max={24}
-                  step={0.5}
-                  placeholder="8"
-                  {...register("standardWorkHoursPerDay", {
-                    valueAsNumber: true,
-                  })}
-                  error={errors.standardWorkHoursPerDay?.message}
-                  className={settingsNumberInputClassName}
-                />
-
-                <NumberInputControls
-                  onIncrement={() => updateWorkHours(0.5)}
-                  onDecrement={() => updateWorkHours(-0.5)}
-                />
-              </div>
-
-              {!errors.standardWorkHoursPerDay && (
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  Changing it recalculates Expected hours, past weeks included,
-                  for everyone on the company&apos;s default hours.
-                </p>
-              )}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <CardBody className="space-y-8">
+          <section>
+            <div className="mt-4">
+              <Input
+                label="Company name"
+                placeholder="Your company name"
+                {...register("companyName")}
+                error={errors.companyName?.message}
+              />
             </div>
-          </div>
-        </section>
+          </section>
 
-        <SettingsActions>
+          <div className="border-t border-border" />
+
+          <section>
+            <h3 className="font-semibold text-foreground">
+              Regional preferences
+            </h3>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              How the company&apos;s days and weeks are counted.
+            </p>
+
+            <div className="mt-4 grid gap-5 sm:grid-cols-2">
+              <Controller
+                name="timezone"
+                control={control}
+                render={({ field }) => (
+                  <TimeZoneSelect
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    error={errors.timezone?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                name="weekStartDay"
+                control={control}
+                render={({ field }) => (
+                  <FormSelect
+                    id="weekStartDay"
+                    label="Week starts on"
+                    placeholder="Select day"
+                    value={field.value}
+                    options={WEEK_START_OPTIONS}
+                    error={errors.weekStartDay?.message}
+                    onValueChange={field.onChange}
+                  />
+                )}
+              />
+
+              <div>
+                <div className="relative">
+                  <Input
+                    label="Standard work hours / day"
+                    type="number"
+                    min={1}
+                    max={24}
+                    step={0.5}
+                    placeholder="8"
+                    {...register("standardWorkHoursPerDay", {
+                      valueAsNumber: true,
+                    })}
+                    error={errors.standardWorkHoursPerDay?.message}
+                    className={settingsNumberInputClassName}
+                  />
+
+                  <NumberInputControls
+                    onIncrement={() => updateWorkHours(0.5)}
+                    onDecrement={() => updateWorkHours(-0.5)}
+                  />
+                </div>
+
+                {!errors.standardWorkHoursPerDay && (
+                  <p className="mt-1.5 text-xs text-muted-foreground">
+                    Changing it recalculates Expected hours, past weeks
+                    included, for everyone on the company&apos;s default hours.
+                  </p>
+                )}
+              </div>
+            </div>
+          </section>
+        </CardBody>
+
+        <CardFooter>
           <Button
             type="submit"
             variant="primary"
-            disabled={!isDirty || isSubmitting || actions.update.isPending}
+            disabled={!isDirty}
+            isLoading={isSubmitting || actions.update.isPending}
           >
-            {isSubmitting || actions.update.isPending
-              ? "Saving..."
-              : "Save changes"}
+            Save changes
           </Button>
-        </SettingsActions>
+        </CardFooter>
       </form>
-    </SettingsSection>
+    </Card>
   );
 };

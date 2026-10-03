@@ -28,12 +28,6 @@ const buttonVariants = cva(
           "hover:bg-brand-hover",
         ],
 
-        complete: [
-          "bg-brand-secondary text-brand-foreground",
-          "shadow-lg shadow-glow-secondary",
-          "hover:bg-brand-secondary-hover",
-        ],
-
         secondary: [
           "border border-border",
           "bg-secondary text-secondary-foreground",
@@ -69,23 +63,7 @@ const buttonVariants = cva(
           "hover:bg-warning/20",
         ],
 
-        gradient: [
-          "bg-gradient-to-r from-brand to-brand-secondary",
-          "text-brand-foreground",
-          "shadow-lg shadow-glow-primary",
-          "hover:from-brand-hover hover:to-brand-secondary-hover",
-        ],
-
         link: ["h-auto bg-transparent p-0 text-primary", "hover:underline"],
-
-        neutral: [
-          "border border-neutral-300",
-          "bg-neutral-100 text-neutral-800",
-          "shadow-sm",
-          "hover:border-neutral-400",
-          "hover:bg-neutral-200",
-          "hover:text-neutral-900",
-        ],
 
         pastel: [
           "border border-brand/15",

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { Activity } from "@/types";
 
-import { AssignedList } from "../shared/resourse/AssignedList";
+import { AssignedList } from "../shared/resource/AssignedList";
 
 interface ProjectActivitiesSectionProps {
   activities: Activity[];
@@ -15,12 +15,12 @@ interface ProjectActivitiesSectionProps {
   onRemoveActivity: (activityId: string) => void;
 }
 
-export function ProjectActivitiesSection({
+export const ProjectActivitiesSection = ({
   activities,
   isCreateMode = false,
   onOpenAddActivities,
   onRemoveActivity,
-}: ProjectActivitiesSectionProps) {
+}: ProjectActivitiesSectionProps) => {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -75,4 +75,4 @@ export function ProjectActivitiesSection({
       </div>
     </div>
   );
-}
+};

@@ -18,12 +18,12 @@ type TeamFiltersProps = {
   onProjectChange?: (projectId?: string) => void;
 };
 
-export function TeamFilters({
+export const TeamFilters = ({
   teamId,
   projectId,
   onTeamChange,
   onProjectChange,
-}: TeamFiltersProps) {
+}: TeamFiltersProps) => {
   const { options: activeTeamOptions } = useTeamOptions();
 
   const { items: projects } = useAllProjectsQuery(
@@ -71,4 +71,4 @@ export function TeamFilters({
       )}
     </FilterBar>
   );
-}
+};

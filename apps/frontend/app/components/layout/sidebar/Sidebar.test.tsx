@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +34,31 @@ const employee: User = {
   updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
+// jsdom has no matchMedia; this one lets a test widen the screen.
+const viewport = vi.hoisted(() => ({
+  listeners: new Set<(event: MediaQueryListEvent) => void>(),
+}));
+
+vi.stubGlobal("matchMedia", (query: string) => ({
+  matches: false,
+  media: query,
+  addEventListener: (
+    _type: string,
+    listener: (event: MediaQueryListEvent) => void,
+  ) => viewport.listeners.add(listener),
+  removeEventListener: (
+    _type: string,
+    listener: (event: MediaQueryListEvent) => void,
+  ) => viewport.listeners.delete(listener),
+}));
+
+const widenToDesktop = () =>
+  act(() =>
+    viewport.listeners.forEach((listener) =>
+      listener({ matches: true } as MediaQueryListEvent),
+    ),
+  );
+
 const openMenu = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Open menu" }));
 
@@ -63,6 +88,17 @@ describe("Sidebar phone menu", () => {
     await openMenu();
     navigation.pathname = "/settings";
     rerender(<Sidebar user={employee} />);
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("closes when the screen grows to desktop width", async () => {
+    render(<Sidebar user={employee} />);
+
+    await openMenu();
+    widenToDesktop();
 
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
