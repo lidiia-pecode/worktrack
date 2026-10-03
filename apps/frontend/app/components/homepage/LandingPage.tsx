@@ -113,115 +113,117 @@ export const LandingPage = () => (
   <div className="relative min-h-full bg-background text-foreground">
     <LandingHeader />
 
-    <div className="relative overflow-hidden">
-      <GlowBackground />
+    <main>
+      <div className="relative overflow-hidden">
+        <GlowBackground />
 
-      <section
-        aria-labelledby="landing-title"
-        className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-14 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:px-10 lg:py-20"
-      >
-        <div>
-          <p className="text-sm font-semibold text-brand">
-            Time, teams and projects in one place
-          </p>
+        <section
+          aria-labelledby="landing-title"
+          className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 py-14 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:px-10 lg:py-20"
+        >
+          <div>
+            <p className="text-sm font-semibold text-brand">
+              Time, teams and projects in one place
+            </p>
 
-          <h1
-            id="landing-title"
-            className="mt-4 text-4xl font-bold tracking-tight text-balance text-foreground sm:text-5xl"
-          >
-            Know where your team&apos;s time goes
-          </h1>
-
-          <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
-            WorkTrack brings your people, projects and hours together. Everyone
-            fills in a simple weekly timesheet, and you see who worked on what,
-            what is planned next and how each month adds up.
-          </p>
-
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href="/register" className={buttonVariants({ size: "xl" })}>
-              Start a company
-            </Link>
-
-            <Link
-              href="/login"
-              className={cn(
-                buttonVariants({ variant: "outline", size: "xl" }),
-                "bg-card",
-              )}
+            <h1
+              id="landing-title"
+              className="mt-4 text-4xl font-bold tracking-tight text-balance text-foreground sm:text-5xl"
             >
-              Sign in
-            </Link>
+              Know where your team&apos;s time goes
+            </h1>
+
+            <p className="mt-5 max-w-xl text-lg leading-8 text-muted-foreground">
+              WorkTrack brings your people, projects and hours together.
+              Everyone fills in a simple weekly timesheet, and you see who
+              worked on what, what is planned next and how each month adds up.
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <Link href="/register" className={buttonVariants({ size: "xl" })}>
+                Start a company
+              </Link>
+
+              <Link
+                href="/login"
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "xl" }),
+                  "bg-card",
+                )}
+              >
+                Sign in
+              </Link>
+            </div>
+
+            <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="size-4 shrink-0 text-brand" aria-hidden="true" />
+              Joining a company? Use the link in your invitation email.
+            </p>
           </div>
 
-          <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-            <Mail className="size-4 shrink-0 text-brand" aria-hidden="true" />
-            Joining a company? Use the link in your invitation email.
+          <ProductIllustration />
+        </section>
+      </div>
+
+      <section
+        id={BENEFITS_SECTION_ID}
+        aria-labelledby="benefits-title"
+        className="scroll-mt-20 border-y border-border bg-card"
+      >
+        <div className="mx-auto max-w-6xl px-6 py-16 lg:px-10 lg:py-20">
+          <h2 id="benefits-title" className={SECTION_TITLE_CLASS}>
+            What WorkTrack does for your company
+          </h2>
+          <p className="mt-3 max-w-2xl text-muted-foreground">
+            A clear picture of your people and their work, and hours you can
+            rely on when it is time to invoice.
           </p>
+
+          <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+            {BENEFITS.map(({ icon: Icon, title, description }) => (
+              <li key={title}>
+                <span className="flex size-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
+                  <Icon className="size-5" aria-hidden="true" />
+                </span>
+
+                <h3 className="mt-4 text-base font-semibold text-foreground">
+                  {title}
+                </h3>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  {description}
+                </p>
+              </li>
+            ))}
+          </ul>
         </div>
-
-        <ProductIllustration />
       </section>
-    </div>
 
-    <section
-      id={BENEFITS_SECTION_ID}
-      aria-labelledby="benefits-title"
-      className="scroll-mt-20 border-y border-border bg-card"
-    >
-      <div className="mx-auto max-w-6xl px-6 py-16 lg:px-10 lg:py-20">
-        <h2 id="benefits-title" className={SECTION_TITLE_CLASS}>
-          What WorkTrack does for your company
+      <section
+        id={GETTING_STARTED_SECTION_ID}
+        aria-labelledby="getting-started-title"
+        className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16 lg:px-10 lg:py-20"
+      >
+        <h2 id="getting-started-title" className={SECTION_TITLE_CLASS}>
+          Getting started
         </h2>
-        <p className="mt-3 max-w-2xl text-muted-foreground">
-          A clear picture of your people and their work, and hours you can rely
-          on when it is time to invoice.
-        </p>
 
-        <ul className="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {BENEFITS.map(({ icon: Icon, title, description }) => (
-            <li key={title}>
-              <span className="flex size-10 items-center justify-center rounded-xl bg-brand-subtle text-brand">
-                <Icon className="size-5" aria-hidden="true" />
+        <ol className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-8">
+          {STEPS.map((step, index) => (
+            <li key={step.title} className="border-t-2 border-brand/30 pt-5">
+              <span className="text-sm font-semibold text-brand">
+                Step {index + 1}
               </span>
 
-              <h3 className="mt-4 text-base font-semibold text-foreground">
-                {title}
+              <h3 className="mt-2 text-base font-semibold text-foreground">
+                {step.title}
               </h3>
               <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {description}
+                {step.description}
               </p>
             </li>
           ))}
-        </ul>
-      </div>
-    </section>
-
-    <section
-      id={GETTING_STARTED_SECTION_ID}
-      aria-labelledby="getting-started-title"
-      className="mx-auto max-w-6xl scroll-mt-20 px-6 py-16 lg:px-10 lg:py-20"
-    >
-      <h2 id="getting-started-title" className={SECTION_TITLE_CLASS}>
-        Getting started
-      </h2>
-
-      <ol className="mt-10 grid gap-10 sm:grid-cols-3 sm:gap-8">
-        {STEPS.map((step, index) => (
-          <li key={step.title} className="border-t-2 border-brand/30 pt-5">
-            <span className="text-sm font-semibold text-brand">
-              Step {index + 1}
-            </span>
-
-            <h3 className="mt-2 text-base font-semibold text-foreground">
-              {step.title}
-            </h3>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              {step.description}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </section>
+        </ol>
+      </section>
+    </main>
   </div>
 );

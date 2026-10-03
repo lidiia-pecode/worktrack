@@ -4,24 +4,15 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
-import { UserMenu } from "./UserMenu";
-import { Logo } from "../../shared/Logo";
-import { SidebarNavigation } from "./SidebarNavigation";
-import { employeeNavigation, managerNavigation } from "./sidebar-navigation";
 import { User } from "@/types";
 import { UserRole } from "@/types/enums";
-import { hasManagerAccess } from "@/lib/utils/user";
-import { CloseButton } from "../../shared/buttons/CloseButton";
+import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
 
-const PAGES_WITHOUT_SIDEBAR = [
-  "/onboarding",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/google/",
-  "/invitations/",
-];
+import { Logo } from "../../shared/Logo";
+import { CloseButton } from "../../shared/buttons/CloseButton";
+import { GettingStartedLink, SidebarNavigation } from "./SidebarNavigation";
+import { UserMenu } from "./UserMenu";
+import { navigationFor } from "./sidebar-navigation";
 
 interface SidebarProps {
   user: User;
@@ -30,27 +21,23 @@ interface SidebarProps {
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const canManage = hasManagerAccess(user?.role);
-  const isOwner = user?.role === UserRole.OWNER;
-  const navlist = (canManage ? managerNavigation : employeeNavigation).filter(
-    (item) => isOwner || !item.ownerOnly,
-  );
 
-  if (PAGES_WITHOUT_SIDEBAR.some((page) => pathname.startsWith(page))) {
-    return null;
-  }
+  const isOwner = user.role === UserRole.OWNER;
+  const { data: setupState } = useOwnerSetupState({ enabled: isOwner });
+  const isSetupOpen = setupState ? !setupState.setupFinished : false;
+  const groups = navigationFor(user.role);
 
   return (
     <>
       {/* Mobile */}
 
-      <header className="sticky top-0 z-40 border-b border-gray-100 bg-white md:hidden">
+      <header className="sticky top-0 z-40 border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:hidden">
         <div className="flex h-16 items-center justify-between px-4">
           <Logo />
 
           <button
             onClick={() => setIsOpen(true)}
-            className="rounded-lg p-2 transition-colors hover:bg-gray-100"
+            className="rounded-lg p-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <Menu size={22} />
           </button>
@@ -64,22 +51,32 @@ export function Sidebar({ user }: SidebarProps) {
             onClick={() => setIsOpen(false)}
           />
 
-          <aside className="fixed inset-y-0 left-0 z-50 flex w-80 flex-col bg-white shadow-xl md:hidden">
-            <div className="flex h-16 items-center justify-between border-b border-gray-100 px-4">
+          <aside className="fixed inset-y-0 left-0 z-50 flex w-80 flex-col bg-sidebar text-sidebar-foreground shadow-xl md:hidden">
+            <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
               <Logo />
 
               <CloseButton onClick={() => setIsOpen(false)} />
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto px-3 py-5">
               <SidebarNavigation
-                navItems={navlist}
+                groups={groups}
                 pathname={pathname}
                 onNavigate={() => setIsOpen(false)}
               />
             </div>
 
-            <div className="border-t border-gray-100 p-4">
+            {isOwner && (
+              <div className="px-3 pb-3">
+                <GettingStartedLink
+                  isSetupOpen={isSetupOpen}
+                  pathname={pathname}
+                  onNavigate={() => setIsOpen(false)}
+                />
+              </div>
+            )}
+
+            <div className="border-t border-sidebar-border p-3">
               <UserMenu />
             </div>
           </aside>
@@ -88,21 +85,23 @@ export function Sidebar({ user }: SidebarProps) {
 
       {/* Desktop */}
 
-      <aside className="hidden h-screen w-50 flex-col border-r border-gray-200 bg-white md:flex">
-        <div className="border-b border-gray-100 px-6 py-5">
+      <aside className="hidden w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+        <div className="flex h-16 items-center border-b border-sidebar-border px-5">
           <Logo />
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
-          <SidebarNavigation
-            navItems={navlist}
-            pathname={pathname}
-            isDesktop={true}
-          />
+        <div className="flex-1 overflow-y-auto px-3 py-5">
+          <SidebarNavigation groups={groups} pathname={pathname} />
         </div>
 
-        <div className="border-t border-gray-100 p-4">
-          <UserMenu isDesktop={true} />
+        {isOwner && (
+          <div className="px-3 pb-3">
+            <GettingStartedLink isSetupOpen={isSetupOpen} pathname={pathname} />
+          </div>
+        )}
+
+        <div className="border-t border-sidebar-border p-3">
+          <UserMenu />
         </div>
       </aside>
     </>
