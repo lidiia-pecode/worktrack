@@ -11,7 +11,7 @@ import { fullName } from "@/lib/utils/user";
 import { Avatar } from "../../shared/Avatar";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLogFormModal } from "../../timesheet/components/TimeLogFormModal";
 import { UserTimeDayGroup } from "./UserTimeDayGroup";
 

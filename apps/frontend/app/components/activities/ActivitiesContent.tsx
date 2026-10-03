@@ -11,7 +11,7 @@ import { hasManagerAccess } from "@/lib/utils/user";
 import { Activity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCard } from "./ActivityCard";
 import { ActivityModal } from "./ActivityModal";
 

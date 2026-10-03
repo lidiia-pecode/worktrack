@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ResourceCardField } from "../shared/resourse/ResourceCardField";
+import { ResourceCard } from "../shared/resource/ResourceCard";
+import { ResourceCardField } from "../shared/resource/ResourceCardField";
 
 interface ProjectCardProps {
   project: Project;

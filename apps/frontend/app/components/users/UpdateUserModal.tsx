@@ -3,11 +3,11 @@
 import { useState } from "react";
 
 import {
-  Archive,
-  ArchiveRestore,
   ArrowLeft,
   FolderKanban,
   Trash2,
+  UserCheck,
+  UserX,
 } from "lucide-react";
 
 import { User } from "@/types";
@@ -27,9 +27,9 @@ import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { Button } from "@/components/ui/button";
 
-import { EntityPicker } from "../shared/resourse/EntityPicker";
-import { AssignedList } from "../shared/resourse/AssignedList";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { EntityPicker } from "../shared/resource/EntityPicker";
+import { AssignedList } from "../shared/resource/AssignedList";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm, UserFormData } from "./UserForm";
 import { ProjectStatus, UserStatus } from "@/types/enums";
@@ -172,7 +172,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const isPicking = view === "projects";
   const pendingCount = pendingProjectIds.length;
-  const isArchived = user.status === UserStatus.DEACTIVATED;
+  const isDeactivated = user.status === UserStatus.DEACTIVATED;
 
   return (
     <>
@@ -219,20 +219,20 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
             <div className="flex items-center justify-between">
               <Button
                 type="button"
-                variant={isArchived ? "success" : "destructive"}
+                variant={isDeactivated ? "success" : "destructive"}
                 onClick={() =>
-                  isArchived
+                  isDeactivated
                     ? unarchive.mutate(user.id, { onSuccess: onClose })
                     : archive.mutate(user.id, { onSuccess: onClose })
                 }
               >
-                {isArchived ? (
-                  <ArchiveRestore className="size-4" />
+                {isDeactivated ? (
+                  <UserCheck className="size-4" />
                 ) : (
-                  <Archive className="size-4" />
+                  <UserX className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isDeactivated ? "Reactivate" : "Deactivate"}
               </Button>
 
               <div className="flex items-center gap-2">

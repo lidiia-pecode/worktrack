@@ -11,7 +11,7 @@ import { MANAGER_WITHOUT_TEAM_MESSAGE } from "@/lib/constants";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { TeamCard } from "./TeamCard";
 import { TeamModal } from "./TeamModal";
 import { TeamStatus, UserRole } from "@/types/enums";

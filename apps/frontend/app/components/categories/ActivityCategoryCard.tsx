@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ActivityCategory } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
+import { ResourceCard } from "../shared/resource/ResourceCard";
 
 interface ActivityCategoryCardProps {
   category: ActivityCategory;

@@ -10,7 +10,7 @@ import { ActCategoryStatus } from "@/types/enums";
 
 import { useActivityCategories } from "@/hooks/useActivityCategories";
 
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 import {
   ActivityCategoryForm,
@@ -106,7 +106,7 @@ export function ActivityCategoryModal({
                   <Archive className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isArchived ? "Restore" : "Archive"}
               </Button>
             ) : (
               <span />

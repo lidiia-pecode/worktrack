@@ -11,7 +11,7 @@ import {
 import { NotificationType } from "@/types/enums";
 import type { AppNotification } from "@/types/Notification";
 
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const SENT_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   day: "numeric",

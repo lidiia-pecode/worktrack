@@ -63,11 +63,6 @@
   --brand-foreground: oklch(0.98 0.006 200);
 
   --brand-hover: color-mix(in oklch, var(--brand) 88%, black);
-  --brand-secondary-hover: color-mix(
-    in oklch,
-    var(--brand-secondary) 88%,
-    black
-  );
 
   --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
 
@@ -80,11 +75,6 @@
      ------------------------------------------------------------------------ */
 
   --glow-primary: color-mix(in oklch, var(--brand) 14%, transparent);
-  --glow-secondary: color-mix(
-    in oklch,
-    var(--brand-secondary) 11%,
-    transparent
-  );
 
   /* ------------------------------------------------------------------------
      Elevation
@@ -195,7 +185,6 @@
   --color-brand-secondary: var(--brand-secondary);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
-  --color-brand-secondary-hover: var(--brand-secondary-hover);
   --color-brand-on-dark: var(--brand-on-dark);
 
   --color-brand-subtle: var(--brand-subtle);
@@ -220,7 +209,6 @@
   --color-ring: var(--ring);
 
   --color-glow-primary: var(--glow-primary);
-  --color-glow-secondary: var(--glow-secondary);
 
   --shadow-raised: var(--raised-shadow);
 

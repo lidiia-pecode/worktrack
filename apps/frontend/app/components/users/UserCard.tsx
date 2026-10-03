@@ -8,8 +8,8 @@ import { ROLE_LABELS } from "@/lib/constants";
 
 import { Badge } from "@/components/ui/badge";
 
-import { ResourceCard } from "../shared/resourse/ResourceCard";
-import { ResourceCardField } from "../shared/resourse/ResourceCardField";
+import { ResourceCard } from "../shared/resource/ResourceCard";
+import { ResourceCardField } from "../shared/resource/ResourceCardField";
 import { Avatar } from "../shared/Avatar";
 import { UpdateUserModal } from "./UpdateUserModal";
 

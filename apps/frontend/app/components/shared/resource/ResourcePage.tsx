@@ -48,6 +48,8 @@ interface ResourcePageProps<T> {
   renderItem: (item: T) => ReactNode;
   topContent?: ReactNode;
   showArchived?: boolean;
+  archivedLabel?: string;
+  archiveVerb?: string;
   tab?: ResourceTab;
   onTabChange?: (tab: ResourceTab) => void;
   activeCount?: number;
@@ -82,6 +84,8 @@ export function ResourcePage<T>({
   topContent,
 
   showArchived = true,
+  archivedLabel = "Archived",
+  archiveVerb = "archive",
   tab = "active",
   onTabChange,
 
@@ -119,7 +123,7 @@ export function ResourcePage<T>({
   const emptyStateTitle = search
     ? "No results found"
     : isArchived
-      ? `No archived ${title.toLowerCase()}`
+      ? `No ${archivedLabel.toLowerCase()} ${title.toLowerCase()}`
       : emptyTitle;
 
   const createAction = createActionPlacement({
@@ -133,7 +137,7 @@ export function ResourcePage<T>({
   const emptyStateDescription = search
     ? `No ${title.toLowerCase()} match "${search}".`
     : isArchived
-      ? `Archived ${title.toLowerCase()} will appear here when you archive them.`
+      ? `${archivedLabel} ${title.toLowerCase()} will appear here when you ${archiveVerb} them.`
       : emptyDescription;
 
   return (
@@ -169,7 +173,7 @@ export function ResourcePage<T>({
             controls={`${tabsId}-panel`}
             active={tab === "archived"}
             icon={<Archive className="size-3.5" />}
-            label="Archived"
+            label={archivedLabel}
             count={archivedCount}
             onClick={() => handleTabChange("archived")}
           />

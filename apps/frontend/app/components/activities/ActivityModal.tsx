@@ -12,7 +12,7 @@ import { useActivities, useActivityArchiveImpact } from "@/hooks/useActivities";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
@@ -139,7 +139,7 @@ export function ActivityModal({
                   <Archive className="size-4" />
                 )}
 
-                {isArchived ? "Unarchive" : "Archive"}
+                {isArchived ? "Restore" : "Archive"}
               </Button>
             ) : (
               <span />

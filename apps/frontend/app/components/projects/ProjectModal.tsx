@@ -23,12 +23,12 @@ import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 import { Project } from "@/types";
 import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
 
-import { fullName, initials, isArchivedUser } from "@/lib/utils/user";
+import { fullName, initials, isDeactivatedUser } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { EntityPicker } from "../shared/resourse/EntityPicker";
+import { EntityPicker } from "../shared/resource/EntityPicker";
 
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ProjectMembersSection } from "./ProjectMembersSection";
@@ -64,8 +64,6 @@ export function ProjectModal({
   const router = useRouter();
   const [view, setView] = useState<View>("form");
 
-  // The project list no longer returns members, so an existing project has to
-  // load them separately.
   const { data: projectDetails, isLoading: isDetailsLoading } =
     useProjectDetails(project?.id);
 
@@ -110,20 +108,15 @@ export function ProjectModal({
     [savedMembers],
   );
 
-  // The member list is scoped to the viewer while the count is the project's
-  // true size, so the difference is what a manager may not read.
   const hiddenMembersCount = Math.max(
     (projectDetails?.membersCount ?? 0) - savedUserIds.length,
     0,
   );
 
-  // Fall back to the saved members until the user picks their own selection.
   const selectedUserIds = pickedUserIds ?? savedUserIds;
 
   const isMembersLoading = isDetailsLoading || isUsersLoading;
 
-  // Current members first: an archived one is not in the assignable list, and
-  // dropping out of this pool would silently drop them from the save.
   const users = useMemo(
     () => dedupeById([...savedMembers, ...rawUsers]),
     [savedMembers, rawUsers],
@@ -289,7 +282,7 @@ export function ProjectModal({
                   ) : (
                     <Archive className="size-4" />
                   )}
-                  {isArchived ? "Unarchive" : "Archive"}
+                  {isArchived ? "Restore" : "Archive"}
                 </Button>
               ) : (
                 <span />
@@ -355,7 +348,9 @@ export function ProjectModal({
             getId={(user) => user.id}
             getLabel={fullName}
             getSubtitle={(user) =>
-              isArchivedUser(user) ? `${user.email} · Archived` : user.email
+              isDeactivatedUser(user)
+                ? `${user.email} · Deactivated`
+                : user.email
             }
             getAvatarText={initials}
             isLoading={isUsersLoading}

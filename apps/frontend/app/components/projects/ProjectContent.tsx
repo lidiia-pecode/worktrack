@@ -14,7 +14,7 @@ import { hasManagerAccess } from "@/lib/utils/user";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
-import { ResourcePage } from "../shared/resourse/ResourcePage";
+import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ProjectCard } from "./ProjectCard";
 import { ProjectModal } from "./ProjectModal";
 

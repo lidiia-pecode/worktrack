@@ -16,7 +16,7 @@ import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSection } from "../../shared/FormSection";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateInput } from "../../shared/inputs";
-import { ResourceFormModal } from "../../shared/resourse/ResourceFormModal";
+import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "absence-form";
 

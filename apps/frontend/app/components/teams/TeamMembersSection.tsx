@@ -15,7 +15,7 @@ import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
 import { fullName } from "@/lib/utils/user";
 import { formatDayMonthYearLabel } from "@/lib/utils/date";
 
-import { AssignedList } from "../shared/resourse/AssignedList";
+import { AssignedList } from "../shared/resource/AssignedList";
 import { Avatar } from "../shared/Avatar";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import Select from "../shared/Select";

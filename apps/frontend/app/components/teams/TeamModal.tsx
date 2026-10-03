@@ -23,8 +23,8 @@ import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 import { fullName, initials } from "@/lib/utils/user";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
-import { ResourceFormModal } from "../shared/resourse/ResourceFormModal";
-import { EntityPicker } from "../shared/resourse/EntityPicker";
+import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { EntityPicker } from "../shared/resource/EntityPicker";
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
 
@@ -326,7 +326,7 @@ export function TeamModal({
                     <Archive className="size-4" />
                   )}
 
-                  {isArchived ? "Unarchive" : "Archive"}
+                  {isArchived ? "Restore" : "Archive"}
                 </Button>
               ) : (
                 <span />

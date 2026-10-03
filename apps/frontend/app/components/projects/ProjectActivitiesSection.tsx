@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 import { Activity } from "@/types";
 
-import { AssignedList } from "../shared/resourse/AssignedList";
+import { AssignedList } from "../shared/resource/AssignedList";
 
 interface ProjectActivitiesSectionProps {
   activities: Activity[];
