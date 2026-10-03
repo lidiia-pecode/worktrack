@@ -79,6 +79,23 @@ function DialogContent({
   );
 }
 
+/** A full-height panel that slides in from the left, such as the phone menu. */
+function DialogSidePanel({ className, ...props }: DialogPrimitive.Popup.Props) {
+  return (
+    <DialogPortal>
+      <DialogOverlay />
+      <DialogPrimitive.Popup
+        data-slot="dialog-side-panel"
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-80 max-w-full flex-col bg-popover text-popover-foreground shadow-xl duration-200 outline-none data-open:animate-in data-open:slide-in-from-left data-closed:animate-out data-closed:slide-out-to-left",
+          className,
+        )}
+        {...props}
+      />
+    </DialogPortal>
+  );
+}
+
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -154,6 +171,7 @@ export {
   DialogHeader,
   DialogOverlay,
   DialogPortal,
+  DialogSidePanel,
   DialogTitle,
   DialogTrigger,
 };

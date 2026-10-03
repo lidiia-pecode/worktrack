@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bell, LogOut, MoreHorizontal, User } from "lucide-react";
 
 import {
@@ -101,7 +102,7 @@ export function UserMenu() {
           sideOffset={8}
           className="w-56 p-0"
         >
-          <DropdownMenuItem onClick={() => router.push("/settings")}>
+          <DropdownMenuItem render={<Link href="/settings" />}>
             <User />
             Settings
           </DropdownMenuItem>
