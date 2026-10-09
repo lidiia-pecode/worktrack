@@ -221,6 +221,7 @@ describe('PlanningService', () => {
         dataSource.getRepository(User),
         teamVisibility,
         dataSource,
+        stub<CapacityService>({}),
       ),
       teamVisibility,
       service,

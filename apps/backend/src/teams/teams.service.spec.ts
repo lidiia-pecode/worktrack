@@ -340,6 +340,76 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('a deactivated person', () => {
+    let gone: AuthUser;
+
+    beforeAll(async () => {
+      gone = await createUser('deactivated', UserRole.EMPLOYEE);
+      await dataSource
+        .getRepository(User)
+        .update(gone.id, { status: UserStatus.DEACTIVATED });
+    });
+
+    it('cannot be added to a team', async () => {
+      await expect(
+        service.addMember(alpha, companyId, {
+          userId: gone.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: TODAY,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(gone.id);
+    });
+
+    it('cannot have a closed membership reopened', async () => {
+      const closed = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alpha,
+        userId: gone.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+        leftAt: '2026-02-01',
+      });
+
+      await expect(
+        service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('stays on a team they were on, and can still be removed', async () => {
+      const membershipId = await addToTeam(beta, gone);
+      await expect(activeMemberIds(beta)).resolves.toContain(gone.id);
+
+      await service.removeMember(membershipId, companyId, beta, owner);
+
+      await expect(activeMemberIds(beta)).resolves.not.toContain(gone.id);
+    });
+  });
+
+  describe('team search', () => {
+    const foundNames = async (search: string, caller: AuthUser = owner) => {
+      const { results } = await service.list(
+        companyId,
+        { offset: 0, limit: 50, search } as never,
+        caller,
+      );
+      return results.map((team) => team.name);
+    };
+
+    it('matches part of a name, ignoring case', async () => {
+      expect(await foundNames(`ALPHA ${RUN}`)).toEqual([`Alpha ${RUN}`]);
+    });
+
+    it('reads % and _ as plain characters', async () => {
+      expect(await foundNames('%')).toEqual([]);
+      expect(await foundNames('Alph_')).toEqual([]);
+    });
+
+    it('stays within the teams a manager leads', async () => {
+      expect(await foundNames(`Beta ${RUN}`, alphaManager)).toEqual([]);
+    });
+  });
+
   describe('overlapping memberships', () => {
     const closedMembership = (joinedAt: string, leftAt: string) =>
       dataSource.getRepository(TeamMembership).save({

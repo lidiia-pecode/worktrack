@@ -33,6 +33,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 
 /**
  * What a project offers people to log against. A removed link is kept for the
@@ -337,6 +338,14 @@ export class ProjectsService {
 
     if (query.status) {
       qb.andWhere('project.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(
+        qb,
+        ['project.name', 'project.clientName'],
+        query.search,
+      );
     }
 
     const [results, count] = await qb

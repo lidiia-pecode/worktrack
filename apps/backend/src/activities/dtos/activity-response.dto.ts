@@ -31,6 +31,13 @@ export class ActivityResponse {
   updatedAt!: Date;
 }
 
+@Exclude()
+export class ActivityListItemResponse extends ActivityResponse {
+  /** Active projects offering it; absent for an employee. */
+  @Expose()
+  projectsCount?: number;
+}
+
 export class ActivityArchiveImpactResponse {
   @Expose()
   @Type(() => ArchiveImpactProjectResponse)

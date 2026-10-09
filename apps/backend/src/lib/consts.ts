@@ -1,2 +1,3 @@
 export const DEFAULT_PAGINATION_PAGE_SIZE = 100;
 export const MAX_PAGINATION_PAGE_SIZE = 100;
+export const MAX_SEARCH_LENGTH = 100;

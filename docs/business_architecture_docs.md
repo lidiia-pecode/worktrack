@@ -588,7 +588,8 @@ revokes its pending invitations and closes the team (§5).
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, and only an OWNER may modify another OWNER or grant the
-OWNER role.
+OWNER role. A deactivated person keeps their teams and projects but cannot be
+added to a team or a project.
 
 ---
 

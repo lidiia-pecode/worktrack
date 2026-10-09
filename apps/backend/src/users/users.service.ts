@@ -18,6 +18,19 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { Team } from 'src/teams/entities/team.entity';
+
+type UserTeam = Pick<Team, 'id' | 'name'>;
+
+const PERSON_SEARCH_COLUMNS = [
+  'u.first_name',
+  'u.last_name',
+  'u.email',
+  'u.position',
+];
 
 @Injectable()
 export class UsersService {
@@ -26,6 +39,7 @@ export class UsersService {
     private readonly repo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
+    private readonly capacity: CapacityService,
   ) {}
 
   private getRepository(manager?: EntityManager): Repository<User> {
@@ -127,22 +141,103 @@ export class UsersService {
   ) {
     const qb = this.getRepository(manager)
       .createQueryBuilder('u')
-      .where('u.company_id = :companyId', { companyId });
+      .where('u.company_id = :companyId', { companyId })
+      // Nobody manages the owner's account from this list.
+      .andWhere('u.role != :owner', { owner: UserRole.OWNER })
+      .loadRelationCountAndMap(
+        'u.projectsCount',
+        'u.projects',
+        'project',
+        (projects) =>
+          projects.andWhere('project.status = :activeProject', {
+            activeProject: ProjectStatus.ACTIVE,
+          }),
+      );
 
     if (query.status) {
       qb.andWhere('u.status = :status', { status: query.status });
     }
 
+    if (query.search) {
+      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
+    }
+
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user);
 
-    const [results, count] = await qb
+    const [users, count] = await qb
       .orderBy('u.created_at', 'DESC')
       .addOrderBy('u.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
 
+    const userIds = users.map((listed) => listed.id);
+    const [teamsByUser, weeklyMinutesByUser] = await Promise.all([
+      this.openTeamsFor(companyId, userIds, user),
+      user.role === UserRole.OWNER
+        ? this.weeklyMinutesFor(companyId, userIds)
+        : null,
+    ]);
+
+    const results = users.map((listed) => ({
+      ...listed,
+      teams: teamsByUser.get(listed.id) ?? [],
+      weeklyMinutes: weeklyMinutesByUser?.get(listed.id),
+    }));
+
     return { results, count };
+  }
+
+  // Only teams the caller can see, so a manager learns no other team's name.
+  private async openTeamsFor(
+    companyId: string,
+    userIds: string[],
+    caller: AuthUser,
+  ): Promise<Map<string, UserTeam[]>> {
+    const teamsByUser = new Map<string, UserTeam[]>(
+      userIds.map((id) => [id, []]),
+    );
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(caller);
+
+    if (!userIds.length || visibleTeamIds?.length === 0) return teamsByUser;
+
+    const memberships = await this.dataSource
+      .getRepository(TeamMembership)
+      .find({
+        where: {
+          companyId,
+          userId: In(userIds),
+          leftAt: IsNull(),
+          team: {
+            status: TeamStatus.ACTIVE,
+            ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
+          },
+        },
+        relations: { team: true },
+        order: { team: { name: 'ASC' } },
+      });
+
+    for (const { userId, team } of memberships) {
+      teamsByUser.get(userId)?.push({ id: team.id, name: team.name });
+    }
+
+    return teamsByUser;
+  }
+
+  private async weeklyMinutesFor(
+    companyId: string,
+    userIds: string[],
+  ): Promise<Map<string, number>> {
+    const today = await this.capacity.today(companyId);
+    const timelines = await this.capacity.timelinesFor(
+      companyId,
+      userIds,
+      today,
+    );
+
+    return new Map(
+      userIds.map((id) => [id, timelines.get(id)!.minutesPerWeekOn(today)]),
+    );
   }
 
   /**
@@ -158,6 +253,10 @@ export class UsersService {
 
     if (query.status) {
       qb.andWhere('u.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {

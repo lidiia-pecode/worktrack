@@ -9,7 +9,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UserDetailsResponse, UserResponse } from './dtos/user-response.dto';
+import {
+  UserDetailsResponse,
+  UserListItemResponse,
+  UserResponse,
+} from './dtos/user-response.dto';
 import { AssignableUserResponse } from './dtos/assignable-user-response.dto';
 import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
@@ -47,7 +51,7 @@ export class UsersController {
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
   @Get()
-  @SerializeList(UserResponse)
+  @SerializeList(UserListItemResponse)
   async getAllUsersPaginated(
     @CurrentUser() authUser: AuthUser,
     @Query() query: UsersQuery,
@@ -102,6 +106,7 @@ export class UsersController {
 
   @Role(UserRole.OWNER)
   @Patch(':id/archive')
+  @Serialize(UserResponse)
   async archive(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
@@ -111,6 +116,7 @@ export class UsersController {
 
   @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
+  @Serialize(UserResponse)
   async unarchive(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,

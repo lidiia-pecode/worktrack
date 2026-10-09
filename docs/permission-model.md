@@ -194,7 +194,8 @@ Three further rules follow from §3.4 and are settled:
   team and therefore sees nobody. Otherwise they would still have no project to
   log time against, which is the whole reason managers become members at all.
 - **Active status gates joining, not staying.** Only an ACTIVE user may be newly
-  assigned. Archiving someone leaves their existing project memberships — and
+  assigned, to a project or to a team, and a closed team membership is not
+  reopened for someone deactivated. Archiving someone leaves their existing project memberships — and
   their team memberships — exactly as they are, un-archiving restores nothing
   because nothing was taken, and only a deliberate removal ever changes them.
   This is "archive, never delete" (business §8) applied to `project_users`.

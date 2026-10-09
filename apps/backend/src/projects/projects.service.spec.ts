@@ -21,6 +21,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import { PlanningService } from 'src/planning/planning.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -163,6 +164,7 @@ describe('ProjectsService membership scope', () => {
         dataSource.getRepository(User),
         teamVisibility,
         dataSource,
+        stub<CapacityService>({}),
       ),
       teamVisibility,
       stub<PlanningService>({
@@ -800,6 +802,34 @@ describe('ProjectsService membership scope', () => {
       await expect(
         service.create({ name: `  Alpha name ${RUN}  ` }, alphaManager),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+  describe('search', () => {
+    const foundNames = async (search: string) => {
+      const { results } = await service.list(
+        { offset: 0, limit: 50, search } as never,
+        owner,
+      );
+      return results.map((project) => project.name);
+    };
+
+    beforeAll(async () => {
+      await service.create(
+        { name: `Harbour site ${RUN}`, clientName: 'Northwind Traders' },
+        owner,
+      );
+    });
+
+    it('matches part of a name or a client, ignoring case', async () => {
+      expect(await foundNames(`HARBOUR SITE ${RUN}`)).toEqual([
+        `Harbour site ${RUN}`,
+      ]);
+      expect(await foundNames('northwind')).toEqual([`Harbour site ${RUN}`]);
+    });
+
+    it('reads % and _ as plain characters', async () => {
+      expect(await foundNames('North_ind')).toEqual([]);
+      expect(await foundNames('100%')).toEqual([]);
     });
   });
 });

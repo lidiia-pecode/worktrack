@@ -45,6 +45,31 @@ export class UserResponse {
 }
 
 @Exclude()
+export class UserTeamResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+}
+
+@Exclude()
+export class UserListItemResponse extends UserResponse {
+  /** Open memberships in active teams the caller can see. */
+  @Expose()
+  @Type(() => UserTeamResponse)
+  teams!: UserTeamResponse[];
+
+  /** Active projects only. */
+  @Expose()
+  projectsCount!: number;
+
+  /** Today's capacity; owner only. */
+  @Expose()
+  weeklyMinutes?: number;
+}
+
+@Exclude()
 export class UserProjectResponse {
   @Expose()
   id!: string;

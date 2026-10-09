@@ -15,6 +15,9 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import { ActivityStatus } from './enums/activity-status.enum';
 import { ActiveActivitiesAction } from 'src/activity-categories/enums/active-activities-action.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
+import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { randomUUID } from 'node:crypto';
 
 /**
  * Runs against the development database, so it needs the Docker stack. The
@@ -33,6 +36,30 @@ describe('Activity and category names', () => {
   let companyId: string;
   let categoryId: string;
   let otherCategoryId: string;
+
+  const createProject = async (
+    name: string,
+    activityId: string,
+    { linkActive = true, status = ProjectStatus.ACTIVE } = {},
+  ): Promise<void> => {
+    const project = await dataSource
+      .getRepository(Project)
+      .save({ companyId, name: `${name} ${RUN}`, status });
+
+    await dataSource.getRepository(ProjectActivity).save({
+      companyId,
+      projectId: project.id,
+      activityId,
+      isActive: linkActive,
+    });
+  };
+
+  const callerWith = (role: UserRole): AuthUser => ({
+    id: randomUUID(),
+    email: `${role}-${RUN}@activities.test`,
+    companyId,
+    role,
+  });
 
   beforeAll(async () => {
     dataSource = await new DataSource({
@@ -325,23 +352,6 @@ describe('Activity and category names', () => {
   });
 
   describe('archive impact', () => {
-    const createProject = async (
-      name: string,
-      activityId: string,
-      { linkActive = true, status = ProjectStatus.ACTIVE } = {},
-    ): Promise<void> => {
-      const project = await dataSource
-        .getRepository(Project)
-        .save({ companyId, name: `${name} ${RUN}`, status });
-
-      await dataSource.getRepository(ProjectActivity).save({
-        companyId,
-        projectId: project.id,
-        activityId,
-        isActive: linkActive,
-      });
-    };
-
     it('lists the active projects that offer the activity now', async () => {
       const { id } = await activities.create(
         { name: 'Research', categoryId },
@@ -359,6 +369,91 @@ describe('Activity and category names', () => {
         `Atlas ${RUN}`,
         `Zephyr ${RUN}`,
       ]);
+    });
+  });
+  describe('lists', () => {
+    const searchFor = (search: string) =>
+      ({ offset: 0, limit: 50, search }) as never;
+
+    let listedId: string;
+
+    beforeAll(async () => {
+      listedId = (
+        await activities.create({ name: 'Listed Work', categoryId }, companyId)
+      ).id;
+
+      await createProject('Listing one', listedId);
+      await createProject('Listing two', listedId);
+      await createProject('Listing removed', listedId, { linkActive: false });
+      await createProject('Listing archived', listedId, {
+        status: ProjectStatus.ARCHIVED,
+      });
+    });
+
+    it('finds an activity by part of its name, ignoring case', async () => {
+      const { results } = await activities.list(
+        callerWith(UserRole.OWNER),
+        searchFor('LISTED'),
+      );
+
+      expect(results.map((activity) => activity.id)).toEqual([listedId]);
+    });
+
+    it('counts the active projects that offer each activity', async () => {
+      const { results } = await activities.list(
+        callerWith(UserRole.MANAGER),
+        searchFor('Listed Work'),
+      );
+
+      expect(results[0]).toMatchObject({ id: listedId, projectsCount: 2 });
+    });
+
+    it('gives an employee no project count', async () => {
+      const { results } = await activities.list(
+        callerWith(UserRole.EMPLOYEE),
+        searchFor('Listed Work'),
+      );
+
+      expect(results[0]).not.toHaveProperty('projectsCount');
+    });
+
+    it('counts the active activities in each category', async () => {
+      const counted = await categories.create(
+        { name: `Counted ${RUN}` },
+        companyId,
+      );
+      await activities.create(
+        { name: 'Counted one', categoryId: counted.id },
+        companyId,
+      );
+      const archived = await activities.create(
+        { name: 'Counted archived', categoryId: counted.id },
+        companyId,
+      );
+      await activities.archive(archived.id, companyId);
+
+      const { results } = await categories.list(
+        callerWith(UserRole.MANAGER),
+        searchFor('counted'),
+      );
+
+      expect(results).toEqual([
+        expect.objectContaining({ id: counted.id, activitiesCount: 1 }),
+      ]);
+    });
+
+    it('reads % and _ as plain characters in a search', async () => {
+      const owner = callerWith(UserRole.OWNER);
+      const namesFound = async (search: string) =>
+        (await activities.list(owner, searchFor(search))).results.map(
+          (activity) => activity.name,
+        );
+
+      expect(await namesFound('B%c')).toEqual(['B%c']);
+      expect(await namesFound('B_c')).toEqual(['B_c']);
+      expect(
+        (await categories.list(owner, searchFor('Deliver_'))).results,
+      ).toEqual([]);
     });
   });
 });

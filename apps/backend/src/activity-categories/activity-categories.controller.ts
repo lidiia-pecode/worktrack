@@ -16,6 +16,7 @@ import { CurrentUser, Role } from 'src/lib/decorators';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   ActivityCategoryArchiveImpactResponse,
+  ActivityCategoryListItemResponse,
   ActivityCategoryResponse,
 } from './dtos/activities-category-response.dto';
 import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
@@ -29,7 +30,7 @@ export class ActCategoriesController {
   constructor(private readonly service: ActCategoriesService) {}
 
   @Get()
-  @SerializeList(ActivityCategoryResponse)
+  @SerializeList(ActivityCategoryListItemResponse)
   list(@Query() query: ActivityCategoriesQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(user, query);
   }

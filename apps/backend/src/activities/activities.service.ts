@@ -18,6 +18,8 @@ import { ActivitiesQuery } from './dtos/activities-query.dto';
 import { ActivityStatus } from './enums/activity-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { containsText } from 'src/lib/utils/contains-text.util';
+import { UserRole } from 'src/users/enums/user-role.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { findOfferingProjects, OfferingProject } from './offering-projects';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
@@ -115,9 +117,10 @@ export class ActivitiesService {
     const where: FindOptionsWhere<Activity> = {
       companyId: user.companyId,
       ...(query.status ? { status: query.status } : {}),
+      ...(query.search ? { name: containsText(query.search) } : {}),
     };
 
-    const [results, count] = await this.repo.findAndCount({
+    const [activities, count] = await this.repo.findAndCount({
       where,
       relations: {
         category: true,
@@ -128,6 +131,21 @@ export class ActivitiesService {
         name: 'ASC',
       },
     });
+
+    // An employee sees only their own projects, so they get no project count.
+    if (user.role === UserRole.EMPLOYEE) {
+      return { results: activities, count };
+    }
+
+    const offeringProjects = await findOfferingProjects(
+      this.projectActivityRepo,
+      user.companyId,
+      activities.map((activity) => activity.id),
+    );
+    const results = activities.map((activity) => ({
+      ...activity,
+      projectsCount: offeringProjects.get(activity.id)?.length ?? 0,
+    }));
 
     return { results, count };
   }

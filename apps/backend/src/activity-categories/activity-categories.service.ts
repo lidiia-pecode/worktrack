@@ -5,14 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  EntityManager,
-  FindOptionsWhere,
-  In,
-  Not,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { sameName } from 'src/lib/utils/same-name.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ActCategory } from './entities/activities-category.entity';
@@ -20,6 +13,7 @@ import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto'
 import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
 import { ActCategoryStatus } from './enums/category-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import {
@@ -114,19 +108,35 @@ export class ActCategoriesService {
   }
 
   async list(user: AuthUser, query: ActivityCategoriesQuery) {
-    const where: FindOptionsWhere<ActCategory> = {
-      companyId: user.companyId,
-      ...(query.status ? { status: query.status } : {}),
-    };
+    const qb = this.repo
+      .createQueryBuilder('category')
+      .loadRelationCountAndMap(
+        'category.activitiesCount',
+        'category.activities',
+        'activity',
+        (activities) =>
+          activities.andWhere('activity.status = :activeActivity', {
+            activeActivity: ActivityStatus.ACTIVE,
+          }),
+      )
+      .where('category.companyId = :companyId', {
+        companyId: user.companyId,
+      });
 
-    const [results, count] = await this.repo.findAndCount({
-      where,
-      skip: query.offset,
-      take: query.limit,
-      order: {
-        name: 'ASC',
-      },
-    });
+    if (query.status) {
+      qb.andWhere('category.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(qb, ['category.name'], query.search);
+    }
+
+    const [results, count] = await qb
+      .orderBy('category.name', 'ASC')
+      .addOrderBy('category.id', 'ASC')
+      .skip(query.offset)
+      .take(query.limit)
+      .getManyAndCount();
 
     return { results, count };
   }

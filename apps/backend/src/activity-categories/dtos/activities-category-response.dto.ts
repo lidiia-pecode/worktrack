@@ -23,6 +23,13 @@ export class ActivityCategoryResponse {
   updatedAt!: Date;
 }
 
+@Exclude()
+export class ActivityCategoryListItemResponse extends ActivityCategoryResponse {
+  /** Active activities only. */
+  @Expose()
+  activitiesCount!: number;
+}
+
 class ArchiveImpactActivityResponse {
   @Expose()
   id!: string;

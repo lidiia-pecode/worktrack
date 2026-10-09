@@ -20,6 +20,7 @@ import {
 } from './dtos/activity-payload.dto';
 import {
   ActivityArchiveImpactResponse,
+  ActivityListItemResponse,
   ActivityResponse,
 } from './dtos/activity-response.dto';
 import { ActivitiesQuery } from './dtos/activities-query.dto';
@@ -32,7 +33,7 @@ export class ActivitiesController {
   constructor(private readonly service: ActivitiesService) {}
 
   @Get()
-  @SerializeList(ActivityResponse)
+  @SerializeList(ActivityListItemResponse)
   list(@Query() query: ActivitiesQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(user, query);
   }
