@@ -16,6 +16,7 @@ import { CurrentUser, Role } from 'src/lib/decorators';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   ActivityCategoryArchiveImpactResponse,
+  ActivityCategoryDetailsResponse,
   ActivityCategoryListItemResponse,
   ActivityCategoryResponse,
 } from './dtos/activities-category-response.dto';
@@ -36,12 +37,12 @@ export class ActCategoriesController {
   }
 
   @Get(':id')
-  @Serialize(ActivityCategoryResponse)
+  @Serialize(ActivityCategoryDetailsResponse)
   getById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.getById(id, user.companyId);
+    return this.service.getDetails(id, user.companyId);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

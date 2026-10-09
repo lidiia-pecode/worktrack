@@ -25,6 +25,10 @@ import { Team } from 'src/teams/entities/team.entity';
 
 type UserTeam = Pick<Team, 'id' | 'name'>;
 
+type UserTeamMembership = UserTeam &
+  Pick<Team, 'status'> &
+  Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
+
 const PERSON_SEARCH_COLUMNS = [
   'u.first_name',
   'u.last_name',
@@ -172,12 +176,19 @@ export class UsersService {
       .getManyAndCount();
 
     const userIds = users.map((listed) => listed.id);
-    const [teamsByUser, weeklyMinutesByUser] = await Promise.all([
-      this.openTeamsFor(companyId, userIds, user),
+    const [memberships, weeklyMinutesByUser] = await Promise.all([
+      this.openMembershipsFor(companyId, userIds, user),
       user.role === UserRole.OWNER
         ? this.weeklyMinutesFor(companyId, userIds)
         : null,
     ]);
+
+    const teamsByUser = new Map<string, UserTeam[]>();
+    for (const { userId, team } of memberships) {
+      const teams = teamsByUser.get(userId) ?? [];
+      teams.push({ id: team.id, name: team.name });
+      teamsByUser.set(userId, teams);
+    }
 
     const results = users.map((listed) => ({
       ...listed,
@@ -189,39 +200,28 @@ export class UsersService {
   }
 
   // Only teams the caller can see, so a manager learns no other team's name.
-  private async openTeamsFor(
+  private async openMembershipsFor(
     companyId: string,
     userIds: string[],
     caller: AuthUser,
-  ): Promise<Map<string, UserTeam[]>> {
-    const teamsByUser = new Map<string, UserTeam[]>(
-      userIds.map((id) => [id, []]),
-    );
+  ): Promise<TeamMembership[]> {
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(caller);
 
-    if (!userIds.length || visibleTeamIds?.length === 0) return teamsByUser;
+    if (!userIds.length || visibleTeamIds?.length === 0) return [];
 
-    const memberships = await this.dataSource
-      .getRepository(TeamMembership)
-      .find({
-        where: {
-          companyId,
-          userId: In(userIds),
-          leftAt: IsNull(),
-          team: {
-            status: TeamStatus.ACTIVE,
-            ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
-          },
+    return this.dataSource.getRepository(TeamMembership).find({
+      where: {
+        companyId,
+        userId: In(userIds),
+        leftAt: IsNull(),
+        team: {
+          status: TeamStatus.ACTIVE,
+          ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
         },
-        relations: { team: true },
-        order: { team: { name: 'ASC' } },
-      });
-
-    for (const { userId, team } of memberships) {
-      teamsByUser.get(userId)?.push({ id: team.id, name: team.name });
-    }
-
-    return teamsByUser;
+      },
+      relations: { team: true },
+      order: { team: { name: 'ASC' } },
+    });
   }
 
   private async weeklyMinutesFor(
@@ -310,7 +310,13 @@ export class UsersService {
     companyId: string,
     caller: AuthUser,
     manager?: EntityManager,
-  ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
+  ): Promise<
+    User & {
+      hasPassword: boolean;
+      googleLinked: boolean;
+      teams: UserTeamMembership[];
+    }
+  > {
     const user = await this.getRepository(manager).findOne({
       where: {
         id,
@@ -336,10 +342,19 @@ export class UsersService {
       );
     }
 
+    const memberships = await this.openMembershipsFor(companyId, [id], caller);
+
     return {
       ...user,
       hasPassword: Boolean(user.passwordHash),
       googleLinked: Boolean(user.googleId),
+      teams: memberships.map(({ team, roleInTeam, joinedAt }) => ({
+        id: team.id,
+        name: team.name,
+        status: team.status,
+        roleInTeam,
+        joinedAt,
+      })),
     };
   }
 

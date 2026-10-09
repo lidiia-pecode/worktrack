@@ -103,8 +103,19 @@ export class ActCategoriesService {
     return category;
   }
 
-  async getById(id: string, companyId: string): Promise<ActCategory> {
-    return this.findRaw(id, companyId);
+  /** With all of its activities, archived ones included. */
+  async getDetails(id: string, companyId: string): Promise<ActCategory> {
+    const category = await this.repo.findOne({
+      where: { id, companyId },
+      relations: { activities: true },
+      order: { activities: { name: 'ASC' } },
+    });
+
+    if (!category) {
+      throw new NotFoundException('Activity category not found');
+    }
+
+    return category;
   }
 
   async list(user: AuthUser, query: ActivityCategoriesQuery) {

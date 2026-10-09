@@ -456,4 +456,72 @@ describe('Activity and category names', () => {
       ).toEqual([]);
     });
   });
+
+  describe('details', () => {
+    let detailedId: string;
+
+    beforeAll(async () => {
+      detailedId = (
+        await activities.create(
+          { name: 'Detailed Work', categoryId },
+          companyId,
+        )
+      ).id;
+
+      await createProject('Detail offered', detailedId);
+      await createProject('Detail removed', detailedId, { linkActive: false });
+      await createProject('Detail archived', detailedId, {
+        status: ProjectStatus.ARCHIVED,
+      });
+    });
+
+    it('names the projects that offer an activity, archived ones included', async () => {
+      const activity = await activities.getDetails(
+        detailedId,
+        callerWith(UserRole.MANAGER),
+      );
+
+      expect(
+        activity.projects?.map(({ name, status }) => ({ name, status })),
+      ).toEqual([
+        { name: `Detail archived ${RUN}`, status: ProjectStatus.ARCHIVED },
+        { name: `Detail offered ${RUN}`, status: ProjectStatus.ACTIVE },
+      ]);
+    });
+
+    it('gives an employee no projects', async () => {
+      const activity = await activities.getDetails(
+        detailedId,
+        callerWith(UserRole.EMPLOYEE),
+      );
+
+      expect(activity).not.toHaveProperty('projects');
+    });
+
+    it('names every activity in a category, archived ones included', async () => {
+      const category = await categories.create(
+        { name: `Detailed ${RUN}` },
+        companyId,
+      );
+      const kept = await activities.create(
+        { name: 'Kept detail', categoryId: category.id },
+        companyId,
+      );
+      const archived = await activities.create(
+        { name: 'Archived detail', categoryId: category.id },
+        companyId,
+      );
+      await activities.archive(archived.id, companyId);
+
+      const { activities: listed } = await categories.getDetails(
+        category.id,
+        companyId,
+      );
+
+      expect(listed.map(({ id, status }) => ({ id, status }))).toEqual([
+        { id: archived.id, status: ActivityStatus.ARCHIVED },
+        { id: kept.id, status: ActivityStatus.ACTIVE },
+      ]);
+    });
+  });
 });

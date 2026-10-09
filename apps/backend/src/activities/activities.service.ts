@@ -23,6 +23,9 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { findOfferingProjects, OfferingProject } from './offering-projects';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
+import type { Project } from 'src/projects/entities/project.entity';
+
+type ActivityProject = Pick<Project, 'id' | 'name' | 'status'>;
 
 @Injectable()
 export class ActivitiesService {
@@ -156,6 +159,34 @@ export class ActivitiesService {
     repo: Repository<Activity> = this.repo,
   ): Promise<Activity> {
     return this.findRaw(id, companyId, repo);
+  }
+
+  /**
+   * With the projects offering it, of any status; none for an employee, who
+   * sees only their own.
+   */
+  async getDetails(
+    id: string,
+    user: AuthUser,
+  ): Promise<Activity & { projects?: ActivityProject[] }> {
+    const activity = await this.findRaw(id, user.companyId);
+
+    if (user.role === UserRole.EMPLOYEE) return activity;
+
+    const links = await this.projectActivityRepo.find({
+      where: { companyId: user.companyId, activityId: id, isActive: true },
+      relations: { project: true },
+      order: { project: { name: 'ASC' } },
+    });
+
+    return {
+      ...activity,
+      projects: links.map(({ project }) => ({
+        id: project.id,
+        name: project.name,
+        status: project.status,
+      })),
+    };
   }
 
   async create(payload: ActivityPayload, companyId: string): Promise<Activity> {

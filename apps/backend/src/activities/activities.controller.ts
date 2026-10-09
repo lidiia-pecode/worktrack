@@ -20,6 +20,7 @@ import {
 } from './dtos/activity-payload.dto';
 import {
   ActivityArchiveImpactResponse,
+  ActivityDetailsResponse,
   ActivityListItemResponse,
   ActivityResponse,
 } from './dtos/activity-response.dto';
@@ -39,12 +40,12 @@ export class ActivitiesController {
   }
 
   @Get(':id')
-  @Serialize(ActivityResponse)
+  @Serialize(ActivityDetailsResponse)
   getById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.getById(id, user.companyId);
+    return this.service.getDetails(id, user);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

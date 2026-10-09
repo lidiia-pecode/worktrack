@@ -341,6 +341,33 @@ describe('UsersService scope', () => {
         service.getUserDetailsById(outsider.id, companyId, manager),
       ).rejects.toThrow(NotFoundException);
     });
+
+    it('names their teams with the role and joining date', async () => {
+      const { teams } = await service.getUserDetailsById(
+        member.id,
+        companyId,
+        owner,
+      );
+
+      expect(teams).toContainEqual({
+        id: alphaId,
+        name: `Alpha ${RUN}`,
+        status: TeamStatus.ACTIVE,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+    });
+
+    it('names only the teams a manager leads', async () => {
+      // The member is also in "Beta", which the list rows above put them in.
+      const { teams } = await service.getUserDetailsById(
+        member.id,
+        companyId,
+        manager,
+      );
+
+      expect(teams.map((team) => team.id)).toEqual([alphaId]);
+    });
   });
 
   describe('an employee removed from their last team', () => {

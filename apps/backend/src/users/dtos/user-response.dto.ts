@@ -1,6 +1,8 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import { UserRole, UserStatus } from '../enums/user-role.enum';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 
 @Exclude()
 export class UserResponse {
@@ -82,8 +84,25 @@ export class UserProjectResponse {
 }
 
 @Exclude()
+export class UserTeamMembershipResponse extends UserTeamResponse {
+  @Expose()
+  status!: TeamStatus;
+
+  @Expose()
+  roleInTeam!: TeamRole;
+
+  @Expose()
+  joinedAt!: string;
+}
+
+@Exclude()
 export class UserDetailsResponse extends UserResponse {
   @Expose()
   @Type(() => UserProjectResponse)
   projects!: UserProjectResponse[];
+
+  /** Open memberships in active teams the caller can see. */
+  @Expose()
+  @Type(() => UserTeamMembershipResponse)
+  teams!: UserTeamMembershipResponse[];
 }

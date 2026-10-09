@@ -1,5 +1,6 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import { ArchiveImpactProjectResponse } from 'src/activities/dtos/archive-impact-project-response.dto';
+import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ActCategoryStatus } from '../enums/category-status.enum';
 
 @Exclude()
@@ -28,6 +29,26 @@ export class ActivityCategoryListItemResponse extends ActivityCategoryResponse {
   /** Active activities only. */
   @Expose()
   activitiesCount!: number;
+}
+
+@Exclude()
+export class CategoryActivityResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+
+  @Expose()
+  status!: ActivityStatus;
+}
+
+@Exclude()
+export class ActivityCategoryDetailsResponse extends ActivityCategoryResponse {
+  /** Every activity in it, archived ones included. */
+  @Expose()
+  @Type(() => CategoryActivityResponse)
+  activities!: CategoryActivityResponse[];
 }
 
 class ArchiveImpactActivityResponse {
