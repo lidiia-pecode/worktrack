@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ActivityListItem,
   ActivityPayload,
   ActivityQuery,
   UpdateActivityPayload,
@@ -21,7 +22,10 @@ import { queryKeys } from "./shared/queryKeys";
 
 type ActivityQueryParams = Omit<ActivityQuery, "page">;
 
-const activitiesQueries = createEntityQuery<Activity, ActivityQueryParams>({
+const activitiesQueries = createEntityQuery<
+  ActivityListItem,
+  ActivityQueryParams
+>({
   queryKey: queryKeys.activities,
 
   api: {
@@ -33,7 +37,7 @@ export const useActivitiesQuery = activitiesQueries.useQuery;
 
 export const useActivitiesInfiniteQuery = activitiesQueries.useInfiniteQuery;
 
-const useActivitiesMutations = createEntityMutations<
+export const useActivitiesMutations = createEntityMutations<
   Activity,
   ActivityPayload,
   UpdateActivityPayload,
@@ -58,17 +62,6 @@ const useActivitiesMutations = createEntityMutations<
     unarchive: "Activity restored successfully",
   },
 });
-
-export function useActivities(page = 1, params?: ActivityQueryParams) {
-  const query = useActivitiesQuery(page, params);
-
-  const actions = useActivitiesMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
 
 /** The projects archiving an activity would take it off, read when about to. */
 export const useActivityArchiveImpact = (

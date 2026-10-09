@@ -2,6 +2,7 @@
 
 import {
   ActivityCategory,
+  ActivityCategoryListItem,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
   ArchiveActivityCategoryPayload,
@@ -20,7 +21,7 @@ import { queryKeys } from "./shared/queryKeys";
 type ActivityCategoryQueryParams = Omit<ActivityCategoryQuery, "page">;
 
 const activityCategoriesQueries = createEntityQuery<
-  ActivityCategory,
+  ActivityCategoryListItem,
   ActivityCategoryQueryParams
 >({
   queryKey: queryKeys.activityCategories,
@@ -61,20 +62,6 @@ export const useActivityCategoriesMutations = createEntityMutations<
     unarchive: "Category restored successfully",
   },
 });
-
-export function useActivityCategories(
-  page = 1,
-  params?: ActivityCategoryQueryParams,
-) {
-  const query = useActivityCategoriesQuery(page, params);
-
-  const actions = useActivityCategoriesMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
 
 /** The active activities archiving a category would block on, read when about to. */
 export const useActivityCategoryArchiveImpact = (

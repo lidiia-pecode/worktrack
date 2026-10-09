@@ -1,4 +1,4 @@
-import { PaginatedResponse, PaginationParams } from ".";
+import { PaginatedResponse, SearchablePaginationParams } from ".";
 import { ProjectStatus, UserRole, UserStatus } from "./enums";
 
 export interface User {
@@ -17,10 +17,6 @@ export interface User {
   updatedAt: string;
 }
 
-export interface UserQuery extends PaginationParams {
-  status?: UserStatus;
-}
-
 export interface UpdateUserPayload {
   firstName?: string;
   lastName?: string;
@@ -34,7 +30,21 @@ export interface UpdateProfilePayload {
   avatarUrl?: string;
 }
 
-export type UserListResponse = PaginatedResponse<User>;
+export interface UserTeam {
+  id: string;
+  name: string;
+}
+
+export interface UserListItem extends User {
+  /** Open memberships in active teams the viewer can see. */
+  teams: UserTeam[];
+  /** Active projects only. */
+  projectsCount: number;
+  /** Today's capacity; sent to an owner only. */
+  weeklyMinutes?: number;
+}
+
+export type UserListResponse = PaginatedResponse<UserListItem>;
 
 /**
  * Who can be put on a team or project. Narrower than `User` because the API
@@ -54,7 +64,7 @@ export interface AssignableUser {
 
 export type AssignableUserListResponse = PaginatedResponse<AssignableUser>;
 
-export interface UsersQuery extends PaginationParams {
+export interface UsersQuery extends SearchablePaginationParams {
   status?: UserStatus;
 }
 

@@ -10,8 +10,9 @@ import {
   UserX,
 } from "lucide-react";
 
-import { User } from "@/types";
+import { User, UserProject } from "@/types";
 
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import {
@@ -32,7 +33,7 @@ import { AssignedList } from "../shared/resource/AssignedList";
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { UserForm, UserFormData } from "./UserForm";
-import { ProjectStatus, UserStatus } from "@/types/enums";
+import { ProjectStatus, UserRole, UserStatus } from "@/types/enums";
 
 type Props = {
   user: User;
@@ -41,11 +42,18 @@ type Props = {
 
 type View = "form" | "projects";
 
+const projectStatusLabel = (project: UserProject) =>
+  project.status === ProjectStatus.ARCHIVED ? "Archived" : "Active";
+
 export const UpdateUserModal = ({ user, onClose }: Props) => {
   const [view, setView] = useState<View>("form");
   const [edit, setEdit] = useState(false);
   const [pendingProjectIds, setPendingProjectIds] = useState<string[]>([]);
   const [isSavingProjects, setIsSavingProjects] = useState(false);
+
+  const { user: viewer } = useAuth();
+  // Editing a person, their working hours and deactivating them are the owner's.
+  const isOwner = viewer?.role === UserRole.OWNER;
 
   const { data: userDetails, isLoading: isLoadingDetails } = useUserDetails(
     user.id,
@@ -53,7 +61,10 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const { update, archive, unarchive } = useUsersMutations();
 
-  const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(user.id);
+  const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(
+    user.id,
+    isOwner,
+  );
   const setCapacity = useSetCapacity();
 
   const { update: updateProject } = useProjectsMutations();
@@ -71,14 +82,13 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
   const fullName = `${user.firstName} ${user.lastName}`;
 
-  const projectIds = userDetails?.projects.map((project) => project.id) ?? [];
-
-  const assignedProjects = allProjects.filter((project) =>
-    projectIds.includes(project.id),
-  );
+  // From the person's own details, so archived projects and ones beyond the
+  // loaded picker pages are listed too.
+  const userProjects = userDetails?.projects ?? [];
+  const projectIds = userProjects.map((project) => project.id);
 
   const projectName = (projectId: string) =>
-    allProjects.find((project) => project.id === projectId)?.name ??
+    userProjects.find((project) => project.id === projectId)?.name ??
     "this project";
 
   const handleSave = async (data: UserFormData) => {
@@ -215,7 +225,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                 Apply{pendingCount > 0 ? ` (${pendingCount})` : ""}
               </Button>
             </>
-          ) : (
+          ) : isOwner ? (
             <>
               <Button
                 type="button"
@@ -271,6 +281,15 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                 </Button>
               )}
             </>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCloseModal}
+            >
+              Close
+            </Button>
           )
         }
       >
@@ -300,7 +319,9 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   User information
                 </h3>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Manage this user&apos;s role and position.
+                  {isOwner
+                    ? "Manage this user's role, position and working hours."
+                    : "This user's role and position."}
                 </p>
               </div>
 
@@ -316,6 +337,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                   capacityValidFrom: todayISODate(),
                 }}
                 isEditMode={edit}
+                showsWorkingHours={isOwner}
                 capacity={capacity}
                 onSubmit={handleSave}
               />
@@ -345,12 +367,12 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
 
               <div className="rounded-xl border border-border bg-card overflow-hidden">
                 <AssignedList
-                  items={assignedProjects}
+                  items={userProjects}
                   isLoading={isLoadingDetails}
                   loadingMessage="Loading projects..."
                   getId={(project) => project.id}
                   getPrimary={(project) => project.name}
-                  getSecondary={(project) => project.status}
+                  getSecondary={projectStatusLabel}
                   renderLeading={() => (
                     <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
                       <FolderKanban className="size-4" />

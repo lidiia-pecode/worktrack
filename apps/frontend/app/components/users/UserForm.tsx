@@ -35,6 +35,8 @@ type UserFormProps = {
   formId: string;
   defaultValues: UserFormData;
   isEditMode: boolean;
+  /** Working hours are the owner's to read. */
+  showsWorkingHours: boolean;
   capacity: Capacity | null;
   onSubmit: (data: UserFormData) => void;
 };
@@ -67,6 +69,7 @@ export const UserForm = ({
   formId,
   defaultValues,
   isEditMode,
+  showsWorkingHours,
   capacity,
   onSubmit,
 }: UserFormProps) => {
@@ -97,12 +100,14 @@ export const UserForm = ({
           </dd>
         </div>
 
-        <div>
-          <dt className={fieldLabelClassName}>Working hours</dt>
-          <dd className="text-sm text-foreground">
-            {describeCapacity(capacity)}
-          </dd>
-        </div>
+        {showsWorkingHours && (
+          <div>
+            <dt className={fieldLabelClassName}>Working hours</dt>
+            <dd className="text-sm text-foreground">
+              {describeCapacity(capacity)}
+            </dd>
+          </div>
+        )}
       </dl>
     );
   }

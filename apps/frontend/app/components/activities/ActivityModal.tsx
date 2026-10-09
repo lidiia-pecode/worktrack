@@ -8,15 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Activity } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
-import { useActivities, useActivityArchiveImpact } from "@/hooks/useActivities";
+import { useActivitiesMutations } from "@/hooks/useActivities";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 
+import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
-import { archiveImpactMessage } from "./archive-impact";
 import { useRouter } from "next/navigation";
 
 import { GETTING_STARTED_PATH } from "@/lib/constants";
@@ -37,9 +36,7 @@ export const ActivityModal = ({
   isOnboarding = false,
 }: ActivityModalProps) => {
   const router = useRouter();
-  const {
-    actions: { create, update, archive, unarchive },
-  } = useActivities();
+  const { create, update, unarchive } = useActivitiesMutations();
 
   const { items: categories, isLoading: categoriesLoading } =
     useActivityCategoriesInfiniteQuery({
@@ -50,22 +47,6 @@ export const ActivityModal = ({
 
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
   const [isChoosingRestore, setIsChoosingRestore] = useState(false);
-  const archiveImpact = useActivityArchiveImpact(
-    activity?.id ?? "",
-    isConfirmingArchive,
-  );
-
-  const confirmArchive = () => {
-    if (!activity || !archiveImpact.data) return;
-
-    archive.mutate(activity.id, {
-      onSuccess: () => {
-        setIsConfirmingArchive(false);
-        onClose();
-      },
-    });
-  };
-
   const isArchived = activity?.status === ActivityStatus.ARCHIVED;
   const isCategoryArchived =
     activity?.category.status === ActCategoryStatus.ARCHIVED;
@@ -132,7 +113,7 @@ export const ActivityModal = ({
                 onClick={() =>
                   isArchived ? restore() : setIsConfirmingArchive(true)
                 }
-                isLoading={archive.isPending || unarchive.isPending}
+                isLoading={unarchive.isPending}
               >
                 {isArchived ? (
                   <ArchiveRestore className="size-4" />
@@ -187,20 +168,10 @@ export const ActivityModal = ({
         )}
       </ResourceFormModal>
 
-      <ConfirmModal
-        isOpen={isConfirmingArchive}
-        title={activity ? `Archive ${activity.name}?` : ""}
-        message={
-          archiveImpact.isError
-            ? "Could not check which projects use it. Close this and try again."
-            : archiveImpactMessage(archiveImpact.data)
-        }
-        confirmText="Archive"
-        variant="danger"
-        onConfirm={confirmArchive}
+      <ActivityArchiveDialog
+        activity={isConfirmingArchive && activity ? activity : null}
         onClose={() => setIsConfirmingArchive(false)}
-        loading={archive.isPending}
-        confirmDisabled={!archiveImpact.data}
+        onArchived={onClose}
       />
 
       {activity && isCategoryArchived && (

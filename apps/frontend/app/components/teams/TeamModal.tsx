@@ -9,7 +9,6 @@ import { Archive, ArchiveRestore, ArrowLeft, UsersRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import {
-  useTeamArchiveImpact,
   useTeamDetails,
   useTeamMembers,
   useTeamsMutations,
@@ -18,13 +17,13 @@ import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { todayISODate } from "@/lib/utils/date";
 
-import { Team, TeamArchiveImpact, TeamUser } from "@/types/Team";
+import { Team } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 import { fullName, initials } from "@/lib/utils/user";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { EntityPicker } from "../shared/resource/EntityPicker";
+import { TeamArchiveDialog } from "./TeamArchiveDialog";
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { TeamMembersSection } from "./TeamMembersSection";
 
@@ -38,31 +37,6 @@ interface TeamModalProps {
 type View = "form" | "members";
 
 const FORM_ID = "team-details-form";
-
-const namesOf = (users: TeamUser[]) =>
-  new Intl.ListFormat("en", { type: "conjunction" }).format(
-    users.map(fullName),
-  );
-
-const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
-  if (!impact) return "Checking who this affects...";
-
-  const { managers, peopleLeftWithoutTeam } = impact;
-  const effects = [
-    managers.length > 0 &&
-      `${namesOf(managers)} will no longer manage this team.`,
-    peopleLeftWithoutTeam.length > 0 &&
-      `${namesOf(peopleLeftWithoutTeam)} will be left without a team, for you to place in another one.`,
-    managers.length === 0 &&
-      peopleLeftWithoutTeam.length === 0 &&
-      "Nobody will be left without a team.",
-  ].filter(Boolean);
-
-  return [
-    ...effects,
-    "Time, absences and plans stay as they are. Restoring the team later brings it back with no members.",
-  ].join(" ");
-};
 
 export const TeamModal = ({
   open,
@@ -88,7 +62,7 @@ export const TeamModal = ({
   const { data: createdTeamDetails } = useTeamDetails(createdTeam?.id ?? null);
   const team = teamProp ?? createdTeamDetails ?? createdTeam ?? undefined;
 
-  const { create, update, archive, unarchive } = useTeamsMutations();
+  const { create, update, unarchive } = useTeamsMutations();
 
   const { addMember } = useTeamMembers(team?.id ?? "");
 
@@ -109,13 +83,8 @@ export const TeamModal = ({
   const isPicking = view === "members";
   const canEdit = isOwner && !isArchived;
 
-  const archiveImpact = useTeamArchiveImpact(
-    team?.id ?? "",
-    isConfirmingArchive,
-  );
-
   const isSubmitting = create.isPending || update.isPending;
-  const isArchiving = archive.isPending || unarchive.isPending;
+  const isArchiving = unarchive.isPending;
 
   const assignRole = assignRoleOverride ?? TeamRole.MANAGER;
 
@@ -227,17 +196,6 @@ export const TeamModal = ({
     }
 
     setIsConfirmingArchive(true);
-  };
-
-  const confirmArchive = () => {
-    if (!team || !archiveImpact.data) return;
-
-    archive.mutate(team.id, {
-      onSuccess: () => {
-        setIsConfirmingArchive(false);
-        handleCloseModal();
-      },
-    });
   };
 
   const handleCloseModal = () => {
@@ -434,20 +392,10 @@ export const TeamModal = ({
         )}
       </ResourceFormModal>
 
-      <ConfirmModal
-        isOpen={isConfirmingArchive}
-        title={team ? `Archive ${team.name}?` : ""}
-        message={
-          archiveImpact.isError
-            ? "Could not check who this affects. Close this and try again."
-            : archiveImpactMessage(archiveImpact.data)
-        }
-        confirmText="Archive"
-        variant="danger"
-        onConfirm={confirmArchive}
+      <TeamArchiveDialog
+        team={isConfirmingArchive && team ? team : null}
         onClose={() => setIsConfirmingArchive(false)}
-        loading={archive.isPending}
-        confirmDisabled={!archiveImpact.data}
+        onArchived={handleCloseModal}
       />
     </>
   );

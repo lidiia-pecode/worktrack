@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ActivityCategory } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import { useActivityCategories } from "@/hooks/useActivityCategories";
+import { useActivityCategoriesMutations } from "@/hooks/useActivityCategories";
 
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
@@ -36,9 +36,7 @@ export const ActivityCategoryModal = ({
   isOnboarding = false,
 }: ActivityCategoryModalProps) => {
   const router = useRouter();
-  const {
-    actions: { create, update, unarchive },
-  } = useActivityCategories();
+  const { create, update, unarchive } = useActivityCategoriesMutations();
 
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
 

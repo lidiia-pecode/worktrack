@@ -83,11 +83,12 @@ export function createEntityQuery<
 
   const useEntityInfiniteQuery = (
     params?: TParams,
-    options: { enabled?: boolean } = {},
+    options: { enabled?: boolean; keepPreviousData?: boolean } = {},
   ) => {
     const query = useInfiniteQuery({
       queryKey: config.queryKey.infinite(params),
       enabled: options.enabled,
+      placeholderData: options.keepPreviousData ? keepPreviousData : undefined,
       queryFn: ({ pageParam }) =>
         config.api.getAll({
           ...params,
@@ -114,6 +115,7 @@ export function createEntityQuery<
       query,
       isLoading: query.isLoading,
       isFetching: query.isFetching,
+      isPlaceholderData: query.isPlaceholderData,
       isError: query.isError,
       error: query.error ?? null,
       refetch: query.refetch,

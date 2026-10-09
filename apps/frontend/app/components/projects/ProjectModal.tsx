@@ -20,7 +20,7 @@ import {
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
 
-import { Project } from "@/types";
+import { Activity, Project } from "@/types";
 import { ActivityStatus, ProjectStatus, UserStatus } from "@/types/enums";
 
 import { fullName, initials, isDeactivatedUser } from "@/lib/utils/user";
@@ -122,7 +122,20 @@ export const ProjectModal = ({
     [savedMembers, rawUsers],
   );
 
-  const activities = useMemo(() => dedupeById(rawActivities), [rawActivities]);
+  const offeredActivities = useMemo(
+    () =>
+      (projectDetails ?? project)?.projectActivities
+        ?.map((projectActivity) => projectActivity.activity)
+        .filter((activity): activity is Activity => Boolean(activity)) ?? [],
+    [projectDetails, project],
+  );
+
+  // The project's own activities come first, as its members do, so one that is
+  // not on the catalogue pages loaded so far still shows.
+  const activities = useMemo(
+    () => dedupeById([...offeredActivities, ...rawActivities]),
+    [offeredActivities, rawActivities],
+  );
 
   const isArchived = project?.status === ProjectStatus.ARCHIVED;
   const isPicking = view !== "form";

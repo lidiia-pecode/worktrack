@@ -1,7 +1,7 @@
 import {
   ActivityCategoryResponse,
   PaginatedResponse,
-  PaginationParams,
+  SearchablePaginationParams,
 } from ".";
 import { ActivityStatus } from "./enums";
 
@@ -22,12 +22,17 @@ export interface ActivityPayload {
   defaultBillable?: boolean;
 }
 
-export interface ActivityQuery extends PaginationParams {
+export interface ActivityQuery extends SearchablePaginationParams {
   status?: ActivityStatus;
 }
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;
-export type ActivityListResponse = PaginatedResponse<Activity>;
+export interface ActivityListItem extends Activity {
+  /** Active projects offering it; not sent to an employee. */
+  projectsCount?: number;
+}
+
+export type ActivityListResponse = PaginatedResponse<ActivityListItem>;
 
 /** The active projects that offer an activity now, which archiving takes it off. */
 export interface RestoreActivityPayload {

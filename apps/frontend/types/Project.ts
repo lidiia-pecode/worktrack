@@ -1,4 +1,8 @@
-import { PaginatedResponse, PaginationParams, ProjectActivity } from ".";
+import {
+  PaginatedResponse,
+  ProjectActivity,
+  SearchablePaginationParams,
+} from ".";
 import { Company } from "./Company";
 import { ProjectStatus } from "./enums";
 import { AssignableUser } from "./User";
@@ -34,7 +38,7 @@ export interface ProjectPayload {
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;
 
-export interface ProjectsQuery extends PaginationParams {
+export interface ProjectsQuery extends SearchablePaginationParams {
   status?: ProjectStatus;
 }
 

@@ -1,4 +1,4 @@
-import { Activity, PaginatedResponse, PaginationParams } from ".";
+import { Activity, PaginatedResponse, SearchablePaginationParams } from ".";
 import { Company } from "./Company";
 import { ActCategoryStatus, ActiveActivitiesAction } from "./enums";
 
@@ -25,7 +25,7 @@ export interface ActivityCategoryPayload {
   name: string;
 }
 
-export interface ActivityCategoryQuery extends PaginationParams {
+export interface ActivityCategoryQuery extends SearchablePaginationParams {
   status?: ActCategoryStatus;
 }
 
@@ -43,4 +43,10 @@ export interface ActivityCategoryArchiveImpact {
 }
 
 export type UpdateActivityCategoryPayload = Partial<ActivityCategoryPayload>;
-export type ActivityCategoryListResponse = PaginatedResponse<ActivityCategory>;
+export interface ActivityCategoryListItem extends ActivityCategory {
+  /** Active activities only. */
+  activitiesCount: number;
+}
+
+export type ActivityCategoryListResponse =
+  PaginatedResponse<ActivityCategoryListItem>;
