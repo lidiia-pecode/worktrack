@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { useServerSearch } from "@/hooks/useManageListState";
 import { createFirstLink, useIsOnboarding } from "@/hooks/useSetupLink";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
+import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { initials, fullName } from "@/lib/utils/user";
 import { Activity, Project } from "@/types";
 import { ActivityStatus, UserRole, UserStatus } from "@/types/enums";
@@ -23,6 +25,19 @@ interface ProjectPickerProps {
   changes: ReturnType<typeof useProjectLinkChanges>;
 }
 
+// From the setup checklist, adding is the step, so Done returns to it.
+const useSetupDone = () => {
+  const router = useRouter();
+  const isOnboarding = useIsOnboarding();
+
+  return isOnboarding
+    ? {
+        label: "Back to Getting started",
+        onClick: () => router.push(GETTING_STARTED_PATH),
+      }
+    : undefined;
+};
+
 /** Offered activities, which a project's details list with their category. */
 export const offeredActivities = (project: Project): Activity[] =>
   (project.projectActivities ?? [])
@@ -34,6 +49,7 @@ export const ProjectPeoplePicker = ({
   changes,
 }: ProjectPickerProps) => {
   const { user } = useAuth();
+  const done = useSetupDone();
   const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery(
     { status: UserStatus.ACTIVE, search: searchQuery },
@@ -52,6 +68,7 @@ export const ProjectPeoplePicker = ({
   return (
     <PanelView
       title={`Add people to ${project.name}`}
+      done={done}
       description={
         user?.role === UserRole.OWNER
           ? "Each choice saves at once. Choose someone again to remove them."
@@ -83,6 +100,7 @@ export const ProjectActivitiesPicker = ({
   changes,
 }: ProjectPickerProps) => {
   const isOnboarding = useIsOnboarding();
+  const done = useSetupDone();
   const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useActivitiesInfiniteQuery(
     { status: ActivityStatus.ACTIVE, search: searchQuery },
@@ -101,6 +119,7 @@ export const ProjectActivitiesPicker = ({
   return (
     <PanelView
       title={`Add activities to ${project.name}`}
+      done={done}
       description="People on the project log time against these. Each choice saves at once."
     >
       <EntityPicker

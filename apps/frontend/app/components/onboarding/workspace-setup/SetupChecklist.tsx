@@ -93,7 +93,7 @@ const requiredSteps = ({
     {
       id: "projectActivities",
       title: "Add activities to a project",
-      description: `${TOPIC_TEXT.project} In the project, choose Add activities and save.`,
+      description: `${TOPIC_TEXT.project} In the project, choose Add activities.`,
       icon: FolderKanban,
       completed: steps.addProjectActivities,
       locked: !steps.createActivity,
@@ -107,7 +107,7 @@ const requiredSteps = ({
     {
       id: "projectPeople",
       title: "Put people on the project",
-      description: `${TOPIC_TEXT.projectPeople} In the project, choose Add members and save.`,
+      description: `${TOPIC_TEXT.projectPeople} In the project, choose Add people.`,
       icon: UserCheck,
       completed: steps.addProjectPeople,
       locked: !steps.addProjectActivities,

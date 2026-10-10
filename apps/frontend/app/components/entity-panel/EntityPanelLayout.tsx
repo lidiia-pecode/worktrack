@@ -173,11 +173,18 @@ export const PanelEditForm = ({
 interface PanelViewProps {
   title: string;
   description: ReactNode;
+  /** Where Done leads instead of back to the entity, such as back to setup. */
+  done?: { label: string; onClick: () => void };
   children: ReactNode;
 }
 
 /** A view of the entity, such as a picker, which Done or Back leaves. */
-export const PanelView = ({ title, description, children }: PanelViewProps) => {
+export const PanelView = ({
+  title,
+  description,
+  done,
+  children,
+}: PanelViewProps) => {
   const titleId = useContext(PanelTitleIdContext);
   const panel = useEntityPanel();
 
@@ -194,8 +201,8 @@ export const PanelView = ({ title, description, children }: PanelViewProps) => {
       <div className="mt-5">{children}</div>
 
       <div className="mt-6 flex justify-end">
-        <Button type="button" size="sm" onClick={panel.back}>
-          Done
+        <Button type="button" size="sm" onClick={done?.onClick ?? panel.back}>
+          {done?.label ?? "Done"}
         </Button>
       </div>
     </>

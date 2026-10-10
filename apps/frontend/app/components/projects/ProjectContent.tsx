@@ -19,7 +19,7 @@ import {
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ProjectModal } from "./ProjectModal";
+import { ProjectCreateDialog } from "./ProjectCreateDialog";
 import { useProjectActions } from "./useProjectActions";
 
 const activitiesCount = (project: Project) =>
@@ -114,10 +114,11 @@ export const ProjectsContent = () => {
         />
       </ResourcePage>
 
-      <ProjectModal
+      <ProjectCreateDialog
         isOnboarding={isOnboarding}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(project) => panel.open({ type: "project", id: project.id })}
       />
 
       {projectActions.dialogs}
