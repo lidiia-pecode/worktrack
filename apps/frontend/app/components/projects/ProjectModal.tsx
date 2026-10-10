@@ -27,7 +27,7 @@ import { fullName, initials, isDeactivatedUser } from "@/lib/utils/user";
 import { toggleSelection } from "@/lib/utils/toggle-selection";
 
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 
 import { ProjectArchiveDialog } from "./ProjectArchiveDialog";
@@ -65,6 +65,10 @@ export const ProjectModal = ({
   const router = useRouter();
   const [view, setView] = useState<View>("form");
   const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
+  const [activityRemoval, setActivityRemoval] = useState<{
+    names: string[];
+    proceed: () => void;
+  } | null>(null);
 
   const { data: projectDetails, isLoading: isDetailsLoading } =
     useProjectDetails(project?.id);
@@ -183,18 +187,33 @@ export const ProjectModal = ({
         (id) => !selectedUserIds.includes(id),
       );
 
-      void confirmRemoval({
-        projectIds: [project.id],
-        userIds: removedIds,
-        title: `Remove ${removedIds.length} ${
-          removedIds.length === 1 ? "person" : "people"
-        } from ${project.name}?`,
-        proceed: () =>
-          update.mutate(
-            { id: project.id, data: payload },
-            { onSuccess: handleSaved },
-          ),
-      });
+      const saveCheckingPlans = () =>
+        void confirmRemoval({
+          projectIds: [project.id],
+          userIds: removedIds,
+          title: `Remove ${removedIds.length} ${
+            removedIds.length === 1 ? "person" : "people"
+          } from ${project.name}?`,
+          proceed: () =>
+            update.mutate(
+              { id: project.id, data: payload },
+              { onSuccess: handleSaved },
+            ),
+        });
+
+      const removedActivityNames = offeredActivities
+        .filter((activity) => !selectedActivityIds.includes(activity.id))
+        .map((activity) => activity.name);
+
+      if (removedActivityNames.length > 0) {
+        setActivityRemoval({
+          names: removedActivityNames,
+          proceed: saveCheckingPlans,
+        });
+        return;
+      }
+
+      saveCheckingPlans();
       return;
     }
 
@@ -409,7 +428,37 @@ export const ProjectModal = ({
         </div>
       </ResourceFormModal>
 
-      <ConfirmModal {...confirmProps} />
+      <ImpactDialog {...confirmProps} />
+
+      <ImpactDialog
+        isOpen={Boolean(activityRemoval)}
+        title={
+          activityRemoval && project
+            ? `Remove ${
+                activityRemoval.names.length === 1
+                  ? activityRemoval.names[0]
+                  : `${activityRemoval.names.length} activities`
+              } from ${project.name}?`
+            : ""
+        }
+        description={
+          activityRemoval
+            ? `Nobody can log new time on ${new Intl.ListFormat("en", {
+                type: "conjunction",
+              }).format(
+                activityRemoval.names,
+              )} in this project. Time already logged stays in reports.`
+            : ""
+        }
+        confirmText="Remove"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          const proceed = activityRemoval?.proceed;
+          setActivityRemoval(null);
+          proceed?.();
+        }}
+        onClose={() => setActivityRemoval(null)}
+      />
 
       <ProjectArchiveDialog
         project={isConfirmingArchive && project ? project : null}

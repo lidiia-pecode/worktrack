@@ -31,10 +31,10 @@ import { Button } from "@/components/ui/button";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 import { AssignedList } from "../shared/resource/AssignedList";
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { UserDeactivateDialog } from "./UserDeactivateDialog";
 import { UserForm, UserFormData } from "./UserForm";
-import { ProjectStatus, UserRole, UserStatus } from "@/types/enums";
+import { ProjectStatus, TeamRole, UserRole, UserStatus } from "@/types/enums";
 
 type Props = {
   user: User;
@@ -53,6 +53,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   const [isSavingProjects, setIsSavingProjects] = useState(false);
   const [isConfirmingDeactivation, setIsConfirmingDeactivation] =
     useState(false);
+  const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
   const { user: viewer } = useAuth();
   // Editing a person, their working hours and deactivating them are the owner's.
@@ -94,8 +95,21 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     userProjects.find((project) => project.id === projectId)?.name ??
     "this project";
 
+  // A Manager who leads a team stays one until the team has another manager;
+  // the API refuses too, but saying so first names the teams.
+  const managedTeams = (userDetails?.teams ?? []).filter(
+    (team) => team.roleInTeam === TeamRole.MANAGER,
+  );
+
   const handleSave = async (data: UserFormData) => {
     const { capacityHoursPerWeek, capacityValidFrom, ...userData } = data;
+
+    const becomesEmployee =
+      user.role === UserRole.MANAGER && userData.role === UserRole.EMPLOYEE;
+    if (becomesEmployee && managedTeams.length > 0) {
+      setIsRoleChangeBlocked(true);
+      return;
+    }
 
     const minutesPerWeek = Math.round(capacityHoursPerWeek * 60);
     const hoursChanged =
@@ -404,7 +418,29 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
         )}
       </ResourceFormModal>
 
-      <ConfirmModal {...confirmProps} />
+      <ImpactDialog {...confirmProps} />
+
+      <ImpactDialog
+        isOpen={isRoleChangeBlocked}
+        title={`${fullName} still manages ${managedTeams.length === 1 ? "a team" : "teams"}`}
+        description="A Manager who leads a team can't become an Employee."
+        affected={[
+          {
+            label: "Manages",
+            entities: managedTeams.map((team) => ({
+              entity: { type: "team", id: team.id },
+              name: team.name,
+            })),
+          },
+        ]}
+        blocker="Make someone else the manager of these teams first, or make them a member."
+        onConfirm={() => setIsRoleChangeBlocked(false)}
+        onClose={() => setIsRoleChangeBlocked(false)}
+        onNavigate={() => {
+          setIsRoleChangeBlocked(false);
+          handleCloseModal();
+        }}
+      />
 
       <UserDeactivateDialog
         user={isConfirmingDeactivation ? user : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -82,6 +82,9 @@ export const UserForm = ({
     resolver: zodResolver(userSchema),
     defaultValues,
   });
+  const role = useWatch({ control, name: "role" });
+  const losesManagerAccess =
+    defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
 
   if (!isEditMode) {
     return (
@@ -130,6 +133,10 @@ export const UserForm = ({
             value={field.value}
             onValueChange={field.onChange}
             options={roleOptions}
+            description={
+              losesManagerAccess &&
+              "As an Employee they lose Team time, Planning, Reports and Manage."
+            }
             error={fieldState.error?.message}
           />
         )}

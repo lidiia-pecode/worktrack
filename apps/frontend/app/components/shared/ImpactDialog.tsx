@@ -33,10 +33,13 @@ interface ImpactDialogProps {
   choice?: ReactNode;
   /** Why the action cannot go ahead; the dialog then only explains. */
   blocker?: ReactNode;
-  confirmText: string;
+  /** Not shown while a blocker explains why the action cannot go ahead. */
+  confirmText?: string;
   confirmVariant?: "primary" | "warning" | "destructive" | "success";
   onConfirm: () => void;
   onClose: () => void;
+  /** Following a link; closes the dialog unless given, such as to close the modal under it too. */
+  onNavigate?: () => void;
   loading?: boolean;
   confirmDisabled?: boolean;
 }
@@ -81,10 +84,11 @@ export const ImpactDialog = ({
   affected = [],
   choice,
   blocker,
-  confirmText,
+  confirmText = "Confirm",
   confirmVariant = "primary",
   onConfirm,
   onClose,
+  onNavigate = onClose,
   loading = false,
   confirmDisabled = false,
 }: ImpactDialogProps) => {
@@ -103,7 +107,7 @@ export const ImpactDialog = ({
             <AffectedEntities
               key={group.label}
               group={group}
-              onNavigate={onClose}
+              onNavigate={onNavigate}
             />
           ))}
 

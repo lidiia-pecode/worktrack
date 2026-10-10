@@ -77,14 +77,15 @@ export function usePlanningRemovalGuard() {
   return {
     confirmRemoval,
     isChecking,
+    // Props for `ImpactDialog`.
     confirmProps: {
       isOpen: pending !== null,
-      title: pending?.title,
-      message: pending
+      title: pending?.title ?? "",
+      description: pending
         ? `This will also delete ${plannedEntries(pending.count)} from today onwards. Past plans are kept.`
-        : undefined,
+        : "",
       confirmText: "Remove",
-      variant: "danger" as const,
+      confirmVariant: "destructive" as const,
       loading: isProceeding,
       onConfirm: handleConfirm,
       onClose: () => setPending(null),

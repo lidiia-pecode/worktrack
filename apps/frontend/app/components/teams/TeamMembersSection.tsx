@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
-import { useUsersMutations } from "@/hooks/useUsers";
+import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { Team, TeamUser } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
@@ -18,8 +18,10 @@ import { formatDayMonthYearLabel } from "@/lib/utils/date";
 
 import { AssignedList } from "../shared/resource/AssignedList";
 import { Avatar } from "../shared/Avatar";
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { FormSelect } from "../shared/FormSelect";
+import { MemberChange, memberChangeCopy } from "./team-member-changes";
+import { currentMemberships } from "./team-memberships";
 
 const roleOptions = [TeamRole.MEMBER, TeamRole.MANAGER].map((value) => ({
   label: TEAM_ROLE_LABELS[value],
@@ -41,6 +43,11 @@ export const TeamMembersSection = ({
   const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
   const [personToPromote, setPersonToPromote] = useState<TeamUser | null>(null);
+  const [change, setChange] = useState<MemberChange | null>(null);
+  // Whether a removal leaves them in no team the viewer can see.
+  const changedPerson = useUserDetails(
+    change?.kind === "remove" ? change.membership.userId : "",
+  );
 
   const isOwner = user?.role === UserRole.OWNER;
 
@@ -57,10 +64,34 @@ export const TeamMembersSection = ({
     );
   };
 
-  const activeMembers = (team.memberships ?? []).filter(
-    (m): m is typeof m & { user: NonNullable<typeof m.user> } =>
-      !m.leftAt && !!m.user,
-  );
+  const activeMembers = currentMemberships(team);
+
+  const changeCopy =
+    change &&
+    memberChangeCopy(change, team, {
+      isOwner,
+      otherTeamsCount: (changedPerson.data?.teams ?? []).filter(
+        (personTeam) => personTeam.id !== team.id,
+      ).length,
+    });
+
+  const confirmChange = () => {
+    if (!change) return;
+    const done = { onSuccess: () => setChange(null) };
+
+    if (change.kind === "remove") {
+      removeMember.mutate(change.membership.id, done);
+      return;
+    }
+
+    updateMember.mutate(
+      {
+        membershipId: change.membership.id,
+        data: { roleInTeam: change.roleInTeam },
+      },
+      done,
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -110,9 +141,10 @@ export const TeamMembersSection = ({
                   value={membership.roleInTeam}
                   options={roleOptions}
                   onValueChange={(roleInTeam) =>
-                    updateMember.mutate({
-                      membershipId: membership.id,
-                      data: { roleInTeam: roleInTeam as TeamRole },
+                    setChange({
+                      kind: "role",
+                      membership,
+                      roleInTeam: roleInTeam as TeamRole,
                     })
                   }
                   disabled={updateMember.isPending}
@@ -140,7 +172,7 @@ export const TeamMembersSection = ({
                 variant="ghost"
                 size="iconSm"
                 aria-label={`Remove ${membership.user.firstName}`}
-                onClick={() => removeMember.mutate(membership.id)}
+                onClick={() => setChange({ kind: "remove", membership })}
                 disabled={removeMember.isPending}
               >
                 <X className="size-4" />
@@ -150,16 +182,28 @@ export const TeamMembersSection = ({
         />
       </div>
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={Boolean(personToPromote)}
         title={
           personToPromote ? `Make ${fullName(personToPromote)} a Manager?` : ""
         }
-        message="A Manager can lead teams. They see and correct the time, absences and plans of the people in the teams they lead, and read their reports. You can then make them this team's manager."
+        description="A Manager can lead teams. They see and correct the time, absences and plans of the people in the teams they lead, and read their reports. You can then make them this team's manager."
         confirmText="Make Manager"
         onConfirm={confirmPromotion}
         onClose={() => setPersonToPromote(null)}
         loading={updateUser.isPending}
+      />
+
+      <ImpactDialog
+        isOpen={Boolean(change)}
+        title={changeCopy?.title ?? ""}
+        description={changeCopy?.description ?? ""}
+        confirmText={changeCopy?.confirmText ?? ""}
+        confirmVariant={change?.kind === "remove" ? "destructive" : "primary"}
+        onConfirm={confirmChange}
+        onClose={() => setChange(null)}
+        loading={updateMember.isPending || removeMember.isPending}
+        confirmDisabled={change?.kind === "remove" && !changedPerson.data}
       />
     </div>
   );
