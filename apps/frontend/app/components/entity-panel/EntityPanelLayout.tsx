@@ -6,9 +6,8 @@ import {
   Fragment,
   ReactNode,
   useContext,
-  useState,
 } from "react";
-import { Pencil, Plus, X } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,8 +21,6 @@ import {
   PanelEntityContext,
   PanelTitleIdContext,
 } from "./entity-panel-context";
-
-const VISIBLE_ITEMS = 8;
 
 interface EntityPanelLayoutProps {
   /** What the entity is, such as "Project", above its name. */
@@ -221,7 +218,7 @@ export interface PanelDetail {
 }
 
 /** A section's heading, with how many it holds and what adds to it. */
-const PanelSectionHeading = ({
+export const PanelSectionHeading = ({
   title,
   count,
   action,
@@ -386,110 +383,6 @@ export const PanelView = ({
         </Button>
       </div>
     </>
-  );
-};
-
-/** Ends one relationship from its row, such as a person's place on a project. */
-export const PanelRemoveButton = ({
-  label,
-  onClick,
-}: {
-  label: string;
-  onClick: () => void;
-}) => (
-  <Button
-    type="button"
-    variant="ghost"
-    size="iconSm"
-    aria-label={label}
-    title={label}
-    onClick={onClick}
-    className="text-muted-foreground group-hover:text-foreground"
-  >
-    <X className="size-4" />
-  </Button>
-);
-
-export interface PanelListRow {
-  label: ReactNode;
-  /** A quieter line under the label, such as a role or a category. */
-  detail?: ReactNode;
-  /** At the row's end, such as an Archived badge or a remove button. */
-  badge?: ReactNode;
-}
-
-interface PanelListProps<T> {
-  title: string;
-  items: T[];
-  getKey: (item: T) => string;
-  renderRow: (item: T) => PanelListRow;
-  emptyText: ReactNode;
-  /** Under the title, such as how many members the viewer cannot see. */
-  note?: ReactNode;
-  /** Beside the title, such as a button that adds to the section. */
-  action?: ReactNode;
-}
-
-/** A relationship section: the first few related entities, and the rest on request. */
-export const PanelList = <T,>({
-  title,
-  items,
-  getKey,
-  renderRow,
-  emptyText,
-  note,
-  action,
-}: PanelListProps<T>) => {
-  const [showsAll, setShowsAll] = useState(false);
-  const shownItems = showsAll ? items : items.slice(0, VISIBLE_ITEMS);
-  const hiddenCount = items.length - shownItems.length;
-
-  return (
-    <section>
-      <PanelSectionHeading title={title} count={items.length} action={action} />
-
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
-
-      {items.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>
-      ) : (
-        <ul className="mt-2 divide-y divide-border rounded-xl border border-border">
-          {shownItems.map((item) => {
-            const row = renderRow(item);
-
-            return (
-              <li
-                key={getKey(item)}
-                className="group flex items-center justify-between gap-3 px-3 py-2.5 text-sm"
-              >
-                <div className="min-w-0">
-                  <div className="truncate">{row.label}</div>
-                  {row.detail && (
-                    <div className="truncate text-xs text-muted-foreground">
-                      {row.detail}
-                    </div>
-                  )}
-                </div>
-
-                {row.badge && <div className="shrink-0">{row.badge}</div>}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {hiddenCount > 0 && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowsAll(true)}
-          className="mt-1"
-        >
-          Show all {items.length}
-        </Button>
-      )}
-    </section>
   );
 };
 

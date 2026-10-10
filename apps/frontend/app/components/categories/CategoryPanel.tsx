@@ -13,16 +13,14 @@ import { useActivitiesMutations } from "@/hooks/useActivities";
 import { ActivityCategoryDetails, CategoryActivity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 
-import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
-  PanelList,
   PanelQueryState,
-  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import { PanelList } from "../entity-panel/PanelList";
 import {
   ActivityCategoryForm,
   ActivityCategoryFormData,
@@ -111,30 +109,27 @@ export const CategoryPanel = ({ id }: { id: string }) => {
           title="Activities"
           items={category.activities}
           getKey={(activity) => activity.id}
-          renderRow={(activity) => ({
-            label: (
-              <EntityLink entity={{ type: "activity", id: activity.id }}>
-                {activity.name}
-              </EntityLink>
-            ),
+          renderRow={(activity) => {
             // An archived activity is read-only, so it keeps its category.
-            badge:
-              activity.status === ActivityStatus.ARCHIVED ? (
-                <Badge variant="neutral">Archived</Badge>
-              ) : (
-                canAddActivity && (
-                  <PanelRemoveButton
-                    // On a project it can only move; the label says so before the click.
-                    label={
-                      activity.isInUse
+            const isArchived = activity.status === ActivityStatus.ARCHIVED;
+
+            return {
+              entity: { type: "activity", id: activity.id },
+              name: activity.name,
+              isInactive: isArchived,
+              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              remove:
+                canAddActivity && !isArchived
+                  ? {
+                      // On a project it can only move; the label says so before the click.
+                      label: activity.isInUse
                         ? `Move ${activity.name} out of ${category.name} (it's on a project)`
-                        : `Remove ${activity.name} from ${category.name}`
+                        : `Remove ${activity.name} from ${category.name}`,
+                      onClick: () => !update.isPending && setRemoving(activity),
                     }
-                    onClick={() => !update.isPending && setRemoving(activity)}
-                  />
-                )
-              ),
-          })}
+                  : undefined,
+            };
+          }}
           emptyText="No activities in it yet."
           action={
             canAddActivity && (

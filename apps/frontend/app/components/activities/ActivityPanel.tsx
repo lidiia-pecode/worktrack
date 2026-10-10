@@ -16,12 +16,11 @@ import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
-  PanelList,
   PanelQueryState,
-  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import { PanelList } from "../entity-panel/PanelList";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
@@ -121,8 +120,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
             value: activity.category ? (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
-                tone="plain"
-                className="inline-flex items-center gap-1.5 font-medium"
+                tone="chip"
               >
                 <Tags
                   aria-hidden="true"
@@ -154,25 +152,24 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
           title="Projects"
           items={activity.projects ?? []}
           getKey={(project) => project.id}
-          renderRow={(project) => ({
-            label: (
-              <EntityLink entity={{ type: "project", id: project.id }}>
-                {project.name}
-              </EntityLink>
-            ),
+          renderRow={(project) => {
             // An archived project is read-only, so it keeps the activity.
-            badge:
-              project.status === ProjectStatus.ARCHIVED ? (
-                <Badge variant="neutral">Archived</Badge>
-              ) : (
-                canChangeProjects && (
-                  <PanelRemoveButton
-                    label={`Remove ${activity.name} from ${project.name}`}
-                    onClick={() => projectChanges.removeFromProject(project)}
-                  />
-                )
-              ),
-          })}
+            const isArchived = project.status === ProjectStatus.ARCHIVED;
+
+            return {
+              entity: { type: "project", id: project.id },
+              name: project.name,
+              isInactive: isArchived,
+              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              remove:
+                canChangeProjects && !isArchived
+                  ? {
+                      label: `Remove ${activity.name} from ${project.name}`,
+                      onClick: () => projectChanges.removeFromProject(project),
+                    }
+                  : undefined,
+            };
+          }}
           emptyText={
             isDraft
               ? "None yet. A project can offer it once it has a category."

@@ -18,16 +18,14 @@ import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Capacity, UserDetails } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
-import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
-  PanelList,
   PanelQueryState,
-  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import { PanelList } from "../entity-panel/PanelList";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
@@ -215,15 +213,11 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
       >
         <PanelList
           title="Team"
-          note={user.teams.length > 0 && "Membership is changed from the team."}
           items={user.teams}
           getKey={(team) => team.id}
           renderRow={(team) => ({
-            label: (
-              <EntityLink entity={{ type: "team", id: team.id }}>
-                {team.name}
-              </EntityLink>
-            ),
+            entity: { type: "team", id: team.id },
+            name: team.name,
             detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
           })}
           emptyText={
@@ -238,25 +232,24 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           title="Projects"
           items={user.projects}
           getKey={(project) => project.id}
-          renderRow={(project) => ({
-            label: (
-              <EntityLink entity={{ type: "project", id: project.id }}>
-                {project.name}
-              </EntityLink>
-            ),
+          renderRow={(project) => {
             // An archived project is read-only, so it keeps them.
-            badge:
-              project.status === ProjectStatus.ARCHIVED ? (
-                <Badge variant="neutral">Archived</Badge>
-              ) : (
-                canChangeProjects && (
-                  <PanelRemoveButton
-                    label={`Remove ${fullName(user)} from ${project.name}`}
-                    onClick={() => projectChanges.removeFromProject(project)}
-                  />
-                )
-              ),
-          })}
+            const isArchived = project.status === ProjectStatus.ARCHIVED;
+
+            return {
+              entity: { type: "project", id: project.id },
+              name: project.name,
+              isInactive: isArchived,
+              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              remove:
+                canChangeProjects && !isArchived
+                  ? {
+                      label: `Remove ${fullName(user)} from ${project.name}`,
+                      onClick: () => projectChanges.removeFromProject(project),
+                    }
+                  : undefined,
+            };
+          }}
           emptyText="Not on any projects yet."
           action={
             canChangeProjects && (

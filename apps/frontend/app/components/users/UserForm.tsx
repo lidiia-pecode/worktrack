@@ -93,7 +93,7 @@ export const UserForm = ({
         )}
       />
 
-      <Field id="user-working-hours" label="Working hours" group>
+      <Field id="user-working-hours" group>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             {...register("capacityHoursPerWeek", { valueAsNumber: true })}

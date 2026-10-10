@@ -1,9 +1,16 @@
 "use client";
 
-import { UserPlus } from "lucide-react";
+import { ChevronDown, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
@@ -17,13 +24,11 @@ import { Avatar } from "../shared/Avatar";
 import {
   EntityPanelLayout,
   PanelEditForm,
-  PanelList,
   PanelQueryState,
-  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import { FormSelect } from "../shared/FormSelect";
+import { PanelList } from "../entity-panel/PanelList";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { TeamForm, TeamFormData } from "./TeamForm";
 import { MEMBERS_PICKER, TeamMembersPicker } from "./TeamMembersPicker";
@@ -51,6 +56,53 @@ const membershipPeriod = (membership: TeamMembership) => {
     ? `${joined} – ${formatDayMonthYearLabel(membership.leftAt)}`
     : `Since ${joined}`;
 };
+
+interface TeamRoleMenuProps {
+  membership: CurrentMembership;
+  teamName: string;
+  onChange: (roleInTeam: TeamRole) => void;
+}
+
+/** A member's role in the team, shown and changed in one quiet control. */
+const TeamRoleMenu = ({
+  membership,
+  teamName,
+  onChange,
+}: TeamRoleMenuProps) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      render={
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          aria-label={`Role of ${fullName(membership.user)} in ${teamName}: ${TEAM_ROLE_LABELS[membership.roleInTeam]}`}
+          className="gap-1 text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
+        >
+          {TEAM_ROLE_LABELS[membership.roleInTeam]}
+          <ChevronDown className="size-3.5" />
+        </Button>
+      }
+    />
+
+    <DropdownMenuContent align="end" className="w-44">
+      <DropdownMenuRadioGroup
+        value={membership.roleInTeam}
+        onValueChange={(value) => onChange(value as TeamRole)}
+      >
+        {roleOptions.map((option) => (
+          <DropdownMenuRadioItem
+            key={option.value}
+            value={option.value}
+            closeOnClick
+          >
+            {option.label}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 const TeamEditForm = ({ team }: { team: Team }) => {
   const panel = useEntityPanel();
@@ -96,48 +148,20 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   }
 
   // The owner sets roles; a manager only removes, from a team they lead.
-  // Leading a team takes the Manager role, which an employee is given first.
   // A deactivated member can only be removed.
   const canChangeRole = (membership: CurrentMembership) =>
     isOwner && !isEditing && !isDeactivatedUser(membership.user);
 
-  const setsRole = (membership: CurrentMembership) =>
-    canChangeRole(membership) && membership.user.role === UserRole.MANAGER;
+  // Leading a team takes the Manager role, which an employee is given first.
+  const changeRole = (membership: CurrentMembership, roleInTeam: TeamRole) => {
+    if (roleInTeam === membership.roleInTeam) return;
 
-  const roleControl = (membership: CurrentMembership) => {
-    if (setsRole(membership)) {
-      return (
-        <FormSelect
-          aria-label={`Role of ${fullName(membership.user)} in ${team.name}`}
-          value={membership.roleInTeam}
-          options={roleOptions}
-          onValueChange={(roleInTeam) =>
-            changes.changeRole(membership, roleInTeam as TeamRole)
-          }
-          className="w-auto"
-          triggerClassName="h-8 w-auto gap-2 px-2.5 text-xs"
-        />
-      );
-    }
+    const needsPromotion =
+      roleInTeam === TeamRole.MANAGER &&
+      membership.user.role === UserRole.EMPLOYEE;
 
-    if (
-      !canChangeRole(membership) ||
-      membership.user.role !== UserRole.EMPLOYEE
-    ) {
-      return null;
-    }
-
-    return (
-      <Button
-        type="button"
-        variant="outline"
-        size="xs"
-        aria-label={`Make Manager: ${fullName(membership.user)}`}
-        onClick={() => changes.promote(membership.user)}
-      >
-        Make Manager
-      </Button>
-    );
+    if (needsPromotion) changes.promote(membership);
+    else changes.changeRole(membership, roleInTeam);
   };
 
   return (
@@ -158,10 +182,9 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
                 <EntityLink
                   key={manager.id}
                   entity={{ type: "user", id: manager.id }}
-                  tone="plain"
-                  className="inline-flex items-center gap-1.5 font-medium"
+                  tone="chip"
                 >
-                  <Avatar user={manager} size="xs" />
+                  <Avatar user={manager} size="xs" className="size-5 ring-0" />
                   {fullName(manager)}
                 </EntityLink>
               ))}
@@ -178,29 +201,29 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
           items={currentMemberships(team)}
           getKey={(membership) => membership.id}
           renderRow={(membership) => ({
-            label: (
-              <EntityLink entity={{ type: "user", id: membership.user.id }}>
-                {fullName(membership.user)}
-              </EntityLink>
-            ),
-            // The role select already shows the role.
-            detail: setsRole(membership)
+            entity: { type: "user", id: membership.user.id },
+            name: fullName(membership.user),
+            leading: <Avatar user={membership.user} />,
+            // Where the role can change, its menu shows it.
+            detail: canChangeRole(membership)
               ? membershipPeriod(membership)
               : `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
-            badge: (
-              <div className="flex items-center gap-2">
-                {isDeactivatedUser(membership.user) && (
-                  <Badge variant="neutral">Deactivated</Badge>
-                )}
-                {roleControl(membership)}
-                {!isEditing && (
-                  <PanelRemoveButton
-                    label={`Remove ${fullName(membership.user)} from ${team.name}`}
-                    onClick={() => changes.remove(membership)}
-                  />
-                )}
-              </div>
+            status: isDeactivatedUser(membership.user) && (
+              <Badge variant="neutral">Deactivated</Badge>
             ),
+            control: canChangeRole(membership) && (
+              <TeamRoleMenu
+                membership={membership}
+                teamName={team.name}
+                onChange={(roleInTeam) => changeRole(membership, roleInTeam)}
+              />
+            ),
+            remove: isEditing
+              ? undefined
+              : {
+                  label: `Remove ${fullName(membership.user)} from ${team.name}`,
+                  onClick: () => changes.remove(membership),
+                },
           })}
           emptyText={
             isOwner
@@ -252,13 +275,12 @@ const ArchivedTeamView = ({ team }: { team: Team }) => {
           items={formerMembers}
           getKey={(membership) => membership.id}
           renderRow={(membership) => ({
-            label: (
-              <EntityLink entity={{ type: "user", id: membership.user.id }}>
-                {fullName(membership.user)}
-              </EntityLink>
-            ),
+            entity: { type: "user", id: membership.user.id },
+            name: fullName(membership.user),
+            leading: <Avatar user={membership.user} />,
             detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
-            badge: isDeactivatedUser(membership.user) && (
+            isInactive: isDeactivatedUser(membership.user),
+            status: isDeactivatedUser(membership.user) && (
               <Badge variant="neutral">Deactivated</Badge>
             ),
           })}

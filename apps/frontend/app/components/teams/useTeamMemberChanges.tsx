@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { fullName } from "@/lib/utils/user";
-import { Team, TeamUser } from "@/types/Team";
+import { Team } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
@@ -22,7 +22,8 @@ export const useTeamMemberChanges = (team: Team) => {
   const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
   const [change, setChange] = useState<MemberChange | null>(null);
-  const [personToPromote, setPersonToPromote] = useState<TeamUser | null>(null);
+  const [membershipToPromote, setMembershipToPromote] =
+    useState<CurrentMembership | null>(null);
   // Whether a removal leaves them in no team the viewer can see.
   const changedPerson = useUserDetails(
     change?.kind === "remove" ? change.membership.userId : "",
@@ -66,12 +67,23 @@ export const useTeamMemberChanges = (team: Team) => {
     );
   };
 
+  // Leading a team takes the Manager role, so an employee gets it first.
   const confirmPromotion = () => {
-    if (!personToPromote) return;
+    if (!membershipToPromote) return;
+    const done = { onSuccess: () => setMembershipToPromote(null) };
 
     updateUser.mutate(
-      { id: personToPromote.id, data: { role: UserRole.MANAGER } },
-      { onSuccess: () => setPersonToPromote(null) },
+      { id: membershipToPromote.user.id, data: { role: UserRole.MANAGER } },
+      {
+        onSuccess: () =>
+          updateMember.mutate(
+            {
+              membershipId: membershipToPromote.id,
+              data: { roleInTeam: TeamRole.MANAGER },
+            },
+            done,
+          ),
+      },
     );
   };
 
@@ -94,15 +106,17 @@ export const useTeamMemberChanges = (team: Team) => {
       />
 
       <ImpactDialog
-        isOpen={Boolean(personToPromote)}
+        isOpen={Boolean(membershipToPromote)}
         title={
-          personToPromote ? `Make ${fullName(personToPromote)} a Manager?` : ""
+          membershipToPromote
+            ? `Make ${fullName(membershipToPromote.user)} a Manager and the manager of ${team.name}?`
+            : ""
         }
-        description="A Manager can lead teams. They see and correct the time, absences and plans of the people in the teams they lead, and read their reports. You can then make them this team's manager."
-        confirmText="Make Manager"
+        description="Only a Manager can lead a team, so they get the Manager role first. A Manager sees and corrects the time, absences and plans of the people in the teams they lead, and reads their reports."
+        confirmText="Make manager"
         onConfirm={confirmPromotion}
-        onClose={() => setPersonToPromote(null)}
-        loading={updateUser.isPending}
+        onClose={() => setMembershipToPromote(null)}
+        loading={updateUser.isPending || updateMember.isPending}
       />
     </>
   );
@@ -110,7 +124,9 @@ export const useTeamMemberChanges = (team: Team) => {
   return {
     changeRole,
     remove,
-    promote: setPersonToPromote,
+    promote: (membership: CurrentMembership) => {
+      if (!isBusy) setMembershipToPromote(membership);
+    },
     dialogs,
   };
 };

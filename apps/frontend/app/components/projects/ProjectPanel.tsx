@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plus, UserPlus } from "lucide-react";
+import { Building2, Plus, Tags, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,12 +16,12 @@ import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
-  PanelList,
   PanelQueryState,
-  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import { PanelList } from "../entity-panel/PanelList";
+import { Avatar } from "../shared/Avatar";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import {
   ACTIVITIES_PICKER,
@@ -85,7 +85,12 @@ const ProjectDetails = ({ project }: { project: Project }) => {
 
   const members = project.users ?? [];
   const hiddenCount = Math.max((project.membersCount ?? 0) - members.length, 0);
-  const activities = offeredActivities(project);
+  // Grouped under their categories, in name order.
+  const activities = offeredActivities(project).sort(
+    (first, second) =>
+      (first.category?.name ?? "").localeCompare(second.category?.name ?? "") ||
+      first.name.localeCompare(second.name),
+  );
 
   if (isActive && panel.view === PEOPLE_PICKER) {
     return (
@@ -140,25 +145,19 @@ const ProjectDetails = ({ project }: { project: Project }) => {
           getKey={(member) => member.id}
           note={hiddenMembersNote(hiddenCount)}
           renderRow={(member) => ({
-            label: (
-              <EntityLink entity={{ type: "user", id: member.id }}>
-                {fullName(member)}
-              </EntityLink>
-            ),
+            entity: { type: "user", id: member.id },
+            name: fullName(member),
+            leading: <Avatar user={member} />,
             detail: member.position,
-            badge: (
-              <div className="flex items-center gap-2">
-                {isDeactivatedUser(member) && (
-                  <Badge variant="neutral">Deactivated</Badge>
-                )}
-                {canChangeLinks && (
-                  <PanelRemoveButton
-                    label={`Remove ${fullName(member)} from ${project.name}`}
-                    onClick={() => changes.removeMember(member)}
-                  />
-                )}
-              </div>
+            status: isDeactivatedUser(member) && (
+              <Badge variant="neutral">Deactivated</Badge>
             ),
+            remove: canChangeLinks
+              ? {
+                  label: `Remove ${fullName(member)} from ${project.name}`,
+                  onClick: () => changes.removeMember(member),
+                }
+              : undefined,
           })}
           emptyText={
             hiddenCount > 0
@@ -185,27 +184,28 @@ const ProjectDetails = ({ project }: { project: Project }) => {
           title="Activities"
           items={activities}
           getKey={(activity) => activity.id}
-          renderRow={(activity) => ({
-            label: (
-              <EntityLink entity={{ type: "activity", id: activity.id }}>
-                {activity.name}
-              </EntityLink>
-            ),
-            detail: activity.category && (
+          groupBy={(activity) => ({
+            key: activity.category?.id ?? "",
+            heading: activity.category && (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
                 tone="plain"
-                className="text-muted-foreground"
+                className="inline-flex items-center gap-1.5 text-muted-foreground"
               >
+                <Tags aria-hidden="true" className="size-3.5" />
                 {activity.category.name}
               </EntityLink>
             ),
-            badge: canChangeLinks && (
-              <PanelRemoveButton
-                label={`Remove ${activity.name} from ${project.name}`}
-                onClick={() => changes.removeActivity(activity)}
-              />
-            ),
+          })}
+          renderRow={(activity) => ({
+            entity: { type: "activity", id: activity.id },
+            name: activity.name,
+            remove: canChangeLinks
+              ? {
+                  label: `Remove ${activity.name} from ${project.name}`,
+                  onClick: () => changes.removeActivity(activity),
+                }
+              : undefined,
           })}
           emptyText="No activities yet, so nobody can log time on it."
           action={

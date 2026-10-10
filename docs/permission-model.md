@@ -96,8 +96,8 @@ company role to MANAGER, then makes them the team's manager. The API refuses
 A Manager who manages no team may be changed to Employee or Owner; one who
 manages a team may not, and the refusal names the teams — memberships never
 change as a side effect. A closed manager membership cannot be reopened for
-someone who is no longer a Manager either. The member list offers the Owner a "make Manager" step for an
-employee, which changes only the company role. The Owner may also invite a new
+someone who is no longer a Manager either. In the member list, choosing Manager for an employee asks once,
+then makes them a Manager and then the team's manager, as two separate changes. The Owner may also invite a new
 Manager to lead a team; accepting makes them its manager. That is still the
 Owner appointing a team's manager, since nobody else can invite a Manager.
 
