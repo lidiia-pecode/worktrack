@@ -1,14 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Tags } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { useActivityCategoriesMutations } from "@/hooks/useActivityCategories";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { ActivityCategory } from "@/types";
 
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { CreateDialog } from "../shared/resource/CreateDialog";
 import {
   ActivityCategoryForm,
   ActivityCategoryFormData,
@@ -34,7 +31,7 @@ export const CategoryCreateDialog = ({
   const { create } = useActivityCategoriesMutations();
 
   const handleSubmit = (data: ActivityCategoryFormData) =>
-    create.mutate(data, {
+    create.mutateAsync(data, {
       onSuccess: (category) => {
         onClose();
 
@@ -44,40 +41,20 @@ export const CategoryCreateDialog = ({
     });
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Create activity category"
-      description="Create a category to organize your activities."
-      icon={<Tags className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-          >
-            Create category
-          </Button>
-        </>
-      }
+      title="New category"
+      next="Next, add its activities."
+      formId={FORM_ID}
+      submitLabel="Create category"
+      isSubmitting={create.isPending}
     >
       <ActivityCategoryForm
         formId={FORM_ID}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}
       />
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };

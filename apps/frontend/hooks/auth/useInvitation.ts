@@ -20,6 +20,8 @@ export const useInvitations = () => {
     });
 
   const create = useMutation({
+    // The form shows an email already in use under the field.
+    meta: { conflictShownInForm: true },
     mutationFn: InvitationsClientApi.create,
 
     onSuccess: () => {

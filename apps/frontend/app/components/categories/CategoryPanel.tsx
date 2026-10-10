@@ -53,7 +53,6 @@ const CategoryEditForm = ({
     >
       <ActivityCategoryForm
         formId={EDIT_FORM_ID}
-        mode="edit"
         defaultValues={{ name: category.name }}
         onSubmit={save}
         isSubmitting={update.isPending}

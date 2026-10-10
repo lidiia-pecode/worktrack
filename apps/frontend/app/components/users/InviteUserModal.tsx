@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MailPlus } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
-
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { CreateDialog } from "../shared/resource/CreateDialog";
 import { InviteUserForm } from "./InviteUserForm";
 import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
 import { useRouter } from "next/navigation";
@@ -33,8 +29,8 @@ export const InviteUserModal = ({
   const router = useRouter();
   const [canSubmit, setCanSubmit] = useState(true);
 
-  const handleSubmit = (data: InviteUserFormData) => {
-    create.mutate(data, {
+  const handleSubmit = (data: InviteUserFormData) =>
+    create.mutateAsync(data, {
       onSuccess: () => {
         onClose();
 
@@ -43,38 +39,17 @@ export const InviteUserModal = ({
         }
       },
     });
-  };
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Invite user"
-      description="Send an invitation to join your workspace."
-      icon={<MailPlus className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-            disabled={!canSubmit}
-          >
-            Send invitation
-          </Button>
-        </>
-      }
+      title="Invite someone"
+      next="They get an email with a link to join."
+      formId={FORM_ID}
+      submitLabel="Send invitation"
+      isSubmitting={create.isPending}
+      submitDisabled={!canSubmit}
     >
       <InviteUserForm
         formId={FORM_ID}
@@ -82,6 +57,6 @@ export const InviteUserModal = ({
         onCanSubmitChange={setCanSubmit}
         isSubmitting={create.isPending}
       />
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };

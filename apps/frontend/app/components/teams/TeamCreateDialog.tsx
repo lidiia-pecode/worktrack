@@ -1,14 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { UsersRound } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { useTeamsMutations } from "@/hooks/useTeams";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Team } from "@/types/Team";
 
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { CreateDialog } from "../shared/resource/CreateDialog";
 import { TeamForm, TeamFormData } from "./TeamForm";
 
 interface TeamCreateDialogProps {
@@ -32,7 +29,7 @@ export const TeamCreateDialog = ({
   const { create } = useTeamsMutations();
 
   const handleSubmit = (data: TeamFormData) =>
-    create.mutate(data, {
+    create.mutateAsync(data, {
       onSuccess: (team) => {
         onClose();
 
@@ -42,40 +39,20 @@ export const TeamCreateDialog = ({
     });
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Create team"
-      description="Name the team. You add its manager and members next."
-      icon={<UsersRound className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-          >
-            Create team
-          </Button>
-        </>
-      }
+      title="New team"
+      next="Next, add its manager and members."
+      formId={FORM_ID}
+      submitLabel="Create team"
+      isSubmitting={create.isPending}
     >
       <TeamForm
         formId={FORM_ID}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}
       />
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };

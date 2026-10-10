@@ -53,7 +53,6 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
     >
       <ActivityForm
         formId={EDIT_FORM_ID}
-        mode="edit"
         categories={categories}
         defaultValues={{
           name: activity.name,

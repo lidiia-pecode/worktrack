@@ -119,7 +119,6 @@ const TeamEditForm = ({ team }: { team: Team }) => {
     >
       <TeamForm
         formId={EDIT_FORM_ID}
-        mode="edit"
         defaultValues={{ name: team.name }}
         onSubmit={save}
         isSubmitting={update.isPending}

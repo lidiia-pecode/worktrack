@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import Input from "@/components/ui/input";
+import { isConflictError } from "@/lib/api";
+
 import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 export const teamFormSchema = z.object({
@@ -21,8 +22,7 @@ export type TeamFormData = z.infer<typeof teamFormSchema>;
 interface TeamFormProps {
   formId?: string;
   defaultValues?: Partial<TeamFormData>;
-  mode?: "create" | "edit";
-  onSubmit: (data: TeamFormData) => void;
+  onSubmit: (data: TeamFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
 }
@@ -30,7 +30,6 @@ interface TeamFormProps {
 export const TeamForm = ({
   formId = "team-form",
   defaultValues,
-  mode = "create",
   onSubmit,
   isSubmitting = false,
   onDirtyChange,
@@ -38,6 +37,7 @@ export const TeamForm = ({
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isDirty },
   } = useForm<TeamFormData>({
     resolver: zodResolver(teamFormSchema),
@@ -51,38 +51,29 @@ export const TeamForm = ({
     return () => onDirtyChange?.(false);
   }, [isDirty, onDirtyChange]);
 
-  const isEditMode = mode === "edit";
+  // Names are unique, so a taken one is said where it was typed.
+  const submit = async (data: TeamFormData) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("name", { message: "A team with this name already exists" });
+      }
+    }
+  };
 
-  // In the panel the name stands alone, as the heading does.
-  const description =
-    errors.name || isEditMode
-      ? undefined
-      : "Choose a clear name that helps people understand what this team is responsible for.";
-
+  // The name is set as the heading it becomes, in the panel and on creating.
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      {/* In the panel the name takes the heading's place. */}
-      {isEditMode ? (
-        <PanelTitleInput
-          id="team-name"
-          aria-label="Team name"
-          placeholder="e.g. Engineering"
-          autoFocus
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      ) : (
-        <Input
-          id="team-name"
-          label="Team name"
-          placeholder="e.g. Engineering"
-          {...register("name")}
-          error={errors.name?.message}
-          description={description}
-          disabled={isSubmitting}
-        />
-      )}
+    <form id={formId} onSubmit={handleSubmit(submit)}>
+      <PanelTitleInput
+        id="team-name"
+        aria-label="Team name"
+        placeholder="e.g. Engineering"
+        autoFocus
+        {...register("name")}
+        error={errors.name?.message}
+        disabled={isSubmitting}
+      />
     </form>
   );
 };

@@ -5,7 +5,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
-import Input from "@/components/ui/input";
+import { isConflictError } from "@/lib/api";
+
 import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 const activityCategoryFormSchema = z.object({
@@ -23,8 +24,7 @@ export type ActivityCategoryFormData = z.infer<
 interface ActivityCategoryFormProps {
   formId?: string;
   defaultValues?: Partial<ActivityCategoryFormData>;
-  mode?: "create" | "edit";
-  onSubmit: (data: ActivityCategoryFormData) => void;
+  onSubmit: (data: ActivityCategoryFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
 }
@@ -32,7 +32,6 @@ interface ActivityCategoryFormProps {
 export const ActivityCategoryForm = ({
   formId = "activity-category-form",
   defaultValues,
-  mode = "create",
   onSubmit,
   isSubmitting = false,
   onDirtyChange,
@@ -40,6 +39,7 @@ export const ActivityCategoryForm = ({
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isDirty },
   } = useForm<ActivityCategoryFormData>({
     resolver: zodResolver(activityCategoryFormSchema),
@@ -53,38 +53,31 @@ export const ActivityCategoryForm = ({
     return () => onDirtyChange?.(false);
   }, [isDirty, onDirtyChange]);
 
-  const isEditMode = mode === "edit";
+  // Names are unique, so a taken one is said where it was typed.
+  const submit = async (data: ActivityCategoryFormData) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("name", {
+          message: "A category with this name already exists",
+        });
+      }
+    }
+  };
 
-  // In the panel the name stands alone, as the heading does.
-  const description =
-    errors.name || isEditMode
-      ? undefined
-      : "Choose a clear name for this activity category.";
-
+  // The name is set as the heading it becomes, in the panel and on creating.
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      {/* In the panel the name takes the heading's place. */}
-      {isEditMode ? (
-        <PanelTitleInput
-          id="activity-category-name"
-          aria-label="Category name"
-          placeholder="e.g. Development"
-          autoFocus
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      ) : (
-        <Input
-          id="activity-category-name"
-          label="Category name"
-          placeholder="e.g. Development"
-          {...register("name")}
-          error={errors.name?.message}
-          description={description}
-          disabled={isSubmitting}
-        />
-      )}
+    <form id={formId} onSubmit={handleSubmit(submit)}>
+      <PanelTitleInput
+        id="activity-category-name"
+        aria-label="Category name"
+        placeholder="e.g. Development"
+        autoFocus
+        {...register("name")}
+        error={errors.name?.message}
+        disabled={isSubmitting}
+      />
     </form>
   );
 };

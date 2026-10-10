@@ -84,6 +84,7 @@ export const useProjectsMutations = createEntityMutations<
     archive: "Project archived successfully",
     unarchive: "Project restored successfully",
   },
+  createConflictInForm: true,
 });
 
 export const useProjectDetails = (id?: string) =>

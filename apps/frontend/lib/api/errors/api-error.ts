@@ -42,6 +42,11 @@ export function isClientError(error: unknown): boolean {
   );
 }
 
+/** The API refused it as taken, such as a name already in use. */
+export function isConflictError(error: unknown): boolean {
+  return isApiMessageError(error) && error.statusCode === 409;
+}
+
 /** For a read by id: the entity doesn't exist, or the id isn't one (400). */
 export function isMissingEntityError(error: unknown): boolean {
   return (

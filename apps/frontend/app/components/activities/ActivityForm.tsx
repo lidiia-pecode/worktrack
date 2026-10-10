@@ -5,12 +5,14 @@ import Link from "next/link";
 
 import { createFirstLink } from "@/hooks/useSetupLink";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { ActivityCategory } from "@/types";
 
-import Input from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { isConflictError } from "@/lib/api";
+
 import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 import { FormSelect } from "../shared/FormSelect";
@@ -40,8 +42,7 @@ interface ActivityFormProps {
   formId?: string;
   defaultValues?: Partial<ActivityFormData>;
   categories: ActivityCategory[];
-  mode?: "create" | "edit";
-  onSubmit: (data: ActivityFormData) => void;
+  onSubmit: (data: ActivityFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
   isOnboarding?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
@@ -53,7 +54,6 @@ export const ActivityForm = ({
   formId = "activity-form",
   defaultValues,
   categories,
-  mode = "create",
   onSubmit,
   isSubmitting = false,
   isOnboarding = false,
@@ -80,16 +80,27 @@ export const ActivityForm = ({
     },
   });
 
-  const submit = ({ categoryId, ...values }: ActivityFormValues) => {
+  const selectedCategory = useWatch({ control, name: "categoryId" });
+
+  const submit = async ({ categoryId, ...values }: ActivityFormValues) => {
     if (!categoryId || (requiresCategory && categoryId === NO_CATEGORY)) {
       setError("categoryId", { message: "Choose a category" });
       return;
     }
 
-    onSubmit({
-      ...values,
-      categoryId: categoryId === NO_CATEGORY ? null : categoryId,
-    });
+    // Names are unique, so a taken one is said where it was typed.
+    try {
+      await onSubmit({
+        ...values,
+        categoryId: categoryId === NO_CATEGORY ? null : categoryId,
+      });
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("name", {
+          message: "An activity with this name already exists",
+        });
+      }
+    }
   };
 
   useEffect(() => {
@@ -132,32 +143,22 @@ export const ActivityForm = ({
       to put it on projects.
     </>
   ) : (
-    "Without a category it is a draft: it can't be added to a project yet."
+    selectedCategory === NO_CATEGORY &&
+    "A draft can't go on a project until it has a category."
   );
 
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
-      {/* In the panel the name takes the heading's place. */}
-      {mode === "edit" ? (
-        <PanelTitleInput
-          id="activity-name"
-          aria-label="Activity name"
-          placeholder="e.g. Frontend development"
-          autoFocus
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      ) : (
-        <Input
-          id="activity-name"
-          label="Activity name"
-          placeholder="e.g. Frontend development"
-          {...register("name")}
-          error={errors.name?.message}
-          disabled={isSubmitting}
-        />
-      )}
+      {/* The name is set as the heading it becomes, in the panel and on creating. */}
+      <PanelTitleInput
+        id="activity-name"
+        aria-label="Activity name"
+        placeholder="e.g. Frontend development"
+        autoFocus
+        {...register("name")}
+        error={errors.name?.message}
+        disabled={isSubmitting}
+      />
 
       <Controller
         control={control}
@@ -176,21 +177,18 @@ export const ActivityForm = ({
         )}
       />
 
-      <div>
-        <label className="flex cursor-pointer select-none items-center gap-2.5">
-          <input
-            type="checkbox"
-            {...register("defaultBillable")}
-            disabled={isSubmitting}
-            className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <span className="text-sm text-foreground">Billable by default</span>
-        </label>
-        <p className="mt-1.5 pl-6.5 text-xs text-muted-foreground">
-          New time entries for this activity start as billable. People can still
-          change it on each entry.
-        </p>
-      </div>
+      <label className="flex cursor-pointer items-center justify-between gap-4 select-none">
+        <span>
+          <span className="block text-sm font-medium text-foreground">
+            Billable by default
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            New time entries start billable. People can change each one.
+          </span>
+        </span>
+
+        <Switch {...register("defaultBillable")} disabled={isSubmitting} />
+      </label>
     </form>
   );
 };

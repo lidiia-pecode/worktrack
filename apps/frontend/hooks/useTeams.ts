@@ -96,6 +96,7 @@ export const useTeamsMutations = createEntityMutations<
         : `Team archived. Pending invitations revoked: ${revokedInvitationCount}.`,
     unarchive: "Team restored successfully!",
   },
+  createConflictInForm: true,
 });
 
 export function useTeamMembers(teamId: string) {

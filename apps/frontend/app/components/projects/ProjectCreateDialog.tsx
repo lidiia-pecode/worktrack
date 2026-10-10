@@ -1,9 +1,6 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { FolderKanban } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import {
   useClientNameSuggestions,
   useProjectsMutations,
@@ -11,7 +8,7 @@ import {
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Project } from "@/types";
 
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { CreateDialog } from "../shared/resource/CreateDialog";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 
 interface ProjectCreateDialogProps {
@@ -36,7 +33,7 @@ export const ProjectCreateDialog = ({
   const clientSuggestions = useClientNameSuggestions();
 
   const handleSubmit = (data: ProjectFormData) =>
-    create.mutate(data, {
+    create.mutateAsync(data, {
       onSuccess: (project) => {
         onClose();
 
@@ -46,34 +43,14 @@ export const ProjectCreateDialog = ({
     });
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Create project"
-      description="Name the work time goes to. You add its people and activities next."
-      icon={<FolderKanban className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-          >
-            Create project
-          </Button>
-        </>
-      }
+      title="New project"
+      next="Next, add its people and activities."
+      formId={FORM_ID}
+      submitLabel="Create project"
+      isSubmitting={create.isPending}
     >
       <ProjectForm
         formId={FORM_ID}
@@ -81,6 +58,6 @@ export const ProjectCreateDialog = ({
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}
       />
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };

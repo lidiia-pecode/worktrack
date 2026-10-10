@@ -53,6 +53,9 @@ type CreateEntityMutationsConfig<
   >;
 
   messages?: MutationMessages<TDeleteResult>;
+
+  /** Its create form shows a taken name under the field, so no toast says it too. */
+  createConflictInForm?: boolean;
 };
 
 export type EntityMutations<
@@ -105,6 +108,7 @@ export function createEntityMutations<
       );
     };
     const create = useMutation({
+      meta: { conflictShownInForm: config.createConflictInForm },
       mutationFn:
         config.api.create ??
         (() => {

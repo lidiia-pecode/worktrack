@@ -66,6 +66,7 @@ export const useActivitiesMutations = createEntityMutations<
     archive: "Activity archived successfully",
     unarchive: "Activity restored successfully",
   },
+  createConflictInForm: true,
 });
 
 export const activityDetailsQuery = (id: string) => ({

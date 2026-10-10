@@ -65,6 +65,7 @@ export const useActivityCategoriesMutations = createEntityMutations<
     archive: "Category archived successfully",
     unarchive: "Category restored successfully",
   },
+  createConflictInForm: true,
 });
 
 export const activityCategoryDetailsQuery = (id: string) => ({

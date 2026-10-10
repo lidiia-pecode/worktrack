@@ -1,16 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ClipboardList } from "lucide-react";
-
-import { Button } from "@/components/ui/button";
 import { useActivitiesMutations } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Activity } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
+import { CreateDialog } from "../shared/resource/CreateDialog";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 
 interface ActivityCreateDialogProps {
@@ -44,7 +41,7 @@ export const ActivityCreateDialog = ({
     );
 
   const handleSubmit = (data: ActivityFormData) =>
-    create.mutate(data, {
+    create.mutateAsync(data, {
       onSuccess: (activity) => {
         onClose();
 
@@ -54,36 +51,15 @@ export const ActivityCreateDialog = ({
     });
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Create activity"
-      description="Create an activity that can be assigned to projects."
-      icon={<ClipboardList className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-            disabled={
-              requiresCategory && !categoriesLoading && categories.length === 0
-            }
-          >
-            Create activity
-          </Button>
-        </>
+      title="New activity"
+      formId={FORM_ID}
+      submitLabel="Create activity"
+      isSubmitting={create.isPending}
+      submitDisabled={
+        requiresCategory && !categoriesLoading && categories.length === 0
       }
     >
       {!categoriesLoading && (
@@ -97,6 +73,6 @@ export const ActivityCreateDialog = ({
           isOnboarding={isOnboarding}
         />
       )}
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };
