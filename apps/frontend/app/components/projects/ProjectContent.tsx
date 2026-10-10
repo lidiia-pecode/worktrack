@@ -16,6 +16,7 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
+  ManageCount,
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
@@ -31,20 +32,24 @@ const COLUMNS: ManageColumn<Project>[] = [
   {
     header: "Client",
     width: "w-56",
-    cell: (project) => project.clientName || "Internal",
+    // Internal is the absence of a client, so it reads quieter than a name.
+    cell: (project) =>
+      project.clientName || (
+        <span className="text-muted-foreground">Internal</span>
+      ),
   },
   {
     header: "People",
     width: "w-24",
     numeric: true,
-    cell: membersCount,
+    cell: (project) => <ManageCount count={membersCount(project)} />,
     summary: (project) => countLabel(membersCount(project), "person", "people"),
   },
   {
     header: "Activities",
     width: "w-28",
     numeric: true,
-    cell: activitiesCount,
+    cell: (project) => <ManageCount count={activitiesCount(project)} />,
     summary: (project) =>
       countLabel(activitiesCount(project), "activity", "activities"),
   },

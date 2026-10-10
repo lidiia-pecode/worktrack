@@ -51,6 +51,8 @@ export interface ManageRowDefinition<T> {
   getName: (item: T) => string;
   /** A quieter line under the name, such as an email. */
   getDetail?: (item: T) => ReactNode;
+  /** Before the name, such as a person's avatar; decorative, since the name says it. */
+  getLeading?: (item: T) => ReactNode;
   /** What the row and its name open in the entity panel. */
   getEntity: (item: T) => EntityRef;
   /** Opens the entity's form, the menu's first item, where `canEdit` allows. */
@@ -64,6 +66,13 @@ export interface ManageRowDefinition<T> {
 /** "1 project", "3 projects". */
 export const countLabel = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
+
+/** A count in a column; none recedes, so the rows that have some stand out. */
+export const ManageCount = ({ count }: { count: number }) => (
+  <span className={count === 0 ? "text-muted-foreground" : undefined}>
+    {count}
+  </span>
+);
 
 interface ManageWarningProps {
   children: ReactNode;
@@ -90,24 +99,41 @@ interface RowPartProps<T> {
   row: ManageRowDefinition<T>;
 }
 
-const RowName = <T,>({ item, row }: RowPartProps<T>) => {
+// The name keeps the text colour: the row's hover already says it opens.
+const RowName = <T,>({
+  item,
+  row,
+  children,
+}: RowPartProps<T> & { children?: ReactNode }) => {
   const detail = row.getDetail?.(item);
+  const leading = row.getLeading?.(item);
 
   return (
-    <>
-      <EntityLink
-        entity={row.getEntity(item)}
-        className="block max-w-full truncate"
-      >
-        {row.getName(item)}
-      </EntityLink>
-
-      {detail && (
-        <span className="block truncate text-xs font-normal text-muted-foreground">
-          {detail}
+    <div className="flex min-w-0 items-center gap-3">
+      {leading && (
+        <span aria-hidden="true" className="shrink-0">
+          {leading}
         </span>
       )}
-    </>
+
+      <div className="min-w-0 flex-1">
+        <EntityLink
+          entity={row.getEntity(item)}
+          tone="plain"
+          className="block max-w-full truncate font-medium"
+        >
+          {row.getName(item)}
+        </EntityLink>
+
+        {detail && (
+          <span className="block truncate text-xs font-normal text-muted-foreground">
+            {detail}
+          </span>
+        )}
+
+        {children}
+      </div>
+    </div>
   );
 };
 
@@ -136,6 +162,7 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
               size="iconSm"
               ref={triggerRef}
               aria-label={`Actions for ${row.getName(item)}`}
+              className="text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
             >
               <MoreHorizontal className="size-4" />
             </Button>
@@ -196,7 +223,14 @@ interface ManageListProps<T> {
   row: ManageRowDefinition<T>;
 }
 
-const ROW_HOVER = "cursor-pointer transition-colors hover:bg-muted/30";
+const ROW_HOVER = "group cursor-pointer transition-colors hover:bg-muted/30";
+
+// One height for every Manage table, whether its rows have a second line or
+// not, and the same inset at both edges of the header and the rows.
+const ROW_HEIGHT = "h-14";
+const HEAD_HEIGHT = "h-10 py-0";
+const EDGE_START = "pl-5";
+const EDGE_END = "pr-4";
 
 /**
  * A table from `lg` up and a two-line list below it: the sidebar takes its
@@ -218,19 +252,19 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
       <div className={cn("hidden", isBesidePanel ? "2xl:block" : "lg:block")}>
         <Table aria-label={label} className="table-fixed">
           <TableHeader>
-            <TableHead>Name</TableHead>
+            <TableHead className={cn(HEAD_HEIGHT, EDGE_START)}>Name</TableHead>
 
             {row.columns.map((column) => (
               <TableHead
                 key={column.header}
                 numeric={column.numeric}
-                className={column.width}
+                className={cn(HEAD_HEIGHT, column.width)}
               >
                 {column.header}
               </TableHead>
             ))}
 
-            <TableHead className="w-14">
+            <TableHead className={cn(HEAD_HEIGHT, "w-16", EDGE_END)}>
               <span className="sr-only">Actions</span>
             </TableHead>
           </TableHeader>
@@ -240,19 +274,23 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
               <TableRow
                 key={row.getKey(item)}
                 onClick={(event) => openRow(event, item)}
-                className={ROW_HOVER}
+                className={cn(ROW_HOVER, ROW_HEIGHT)}
               >
-                <TableRowHeader>
+                <TableRowHeader className={cn("py-2", EDGE_START)}>
                   <RowName item={item} row={row} />
                 </TableRowHeader>
 
                 {row.columns.map((column) => (
-                  <TableCell key={column.header} numeric={column.numeric}>
+                  <TableCell
+                    key={column.header}
+                    numeric={column.numeric}
+                    className="py-2"
+                  >
                     {column.cell(item)}
                   </TableCell>
                 ))}
 
-                <TableCell className="py-1.5 text-right">
+                <TableCell className={cn("py-2 text-right", EDGE_END)}>
                   <RowMenu item={item} row={row} />
                 </TableCell>
               </TableRow>
@@ -275,9 +313,9 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
             className={cn("flex items-center gap-2 py-3 pr-2 pl-4", ROW_HOVER)}
           >
             <div className="min-w-0 flex-1 text-sm">
-              <RowName item={item} row={row} />
-
-              <RowSummary item={item} row={row} />
+              <RowName item={item} row={row}>
+                <RowSummary item={item} row={row} />
+              </RowName>
             </div>
 
             <RowMenu item={item} row={row} />

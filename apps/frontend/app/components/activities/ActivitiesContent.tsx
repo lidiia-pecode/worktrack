@@ -17,6 +17,7 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
+  ManageCount,
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
@@ -27,7 +28,10 @@ const projectsCount = (activity: ActivityListItem) =>
   activity.projectsCount ?? 0;
 
 const CategoryLink = ({ activity }: { activity: ActivityListItem }) => (
-  <EntityLink entity={{ type: "category", id: activity.category.id }}>
+  <EntityLink
+    entity={{ type: "category", id: activity.category.id }}
+    tone="plain"
+  >
     {activity.category.name}
   </EntityLink>
 );
@@ -41,7 +45,19 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Billable by default",
     width: "w-40",
-    cell: (activity) => (activity.defaultBillable ? "Yes" : "No"),
+    // Yes carries a dot so the billable rows can be picked out down the column.
+    cell: (activity) =>
+      activity.defaultBillable ? (
+        <span className="inline-flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="size-1.5 rounded-full bg-success"
+          />
+          Yes
+        </span>
+      ) : (
+        <span className="text-muted-foreground">No</span>
+      ),
     summary: (activity) =>
       activity.defaultBillable ? "Billable" : "Non-billable",
   },
@@ -49,7 +65,7 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
     header: "Projects",
     width: "w-24",
     numeric: true,
-    cell: projectsCount,
+    cell: (activity) => <ManageCount count={projectsCount(activity)} />,
     summary: (activity) =>
       countLabel(projectsCount(activity), "project", "projects"),
   },

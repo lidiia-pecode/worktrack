@@ -16,6 +16,7 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
+  ManageCount,
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
@@ -27,7 +28,7 @@ const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
     header: "Activities",
     width: "w-28",
     numeric: true,
-    cell: (category) => category.activitiesCount,
+    cell: (category) => <ManageCount count={category.activitiesCount} />,
     summary: (category) =>
       countLabel(category.activitiesCount, "activity", "activities"),
   },

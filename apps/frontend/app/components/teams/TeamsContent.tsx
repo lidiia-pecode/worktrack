@@ -12,11 +12,13 @@ import { fullName, hasManagerAccess } from "@/lib/utils/user";
 import { Team, TeamUser } from "@/types/Team";
 import { TeamStatus, UserRole } from "@/types/enums";
 
-import { EntityLinks } from "../entity-panel/EntityLink";
+import { EntityLink, EntityLinks } from "../entity-panel/EntityLink";
+import { Avatar } from "../shared/Avatar";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
+  ManageCount,
   ManageList,
   ManageWarning,
 } from "../shared/resource/ManageList";
@@ -33,11 +35,32 @@ const NO_ACTIVE_MANAGER = "No active manager";
 
 const PeopleLinks = ({ people }: { people: TeamUser[] }) => (
   <EntityLinks
+    tone="plain"
     entities={people.map((person) => ({
       entity: { type: "user", id: person.id },
       name: fullName(person),
     }))}
   />
+);
+
+// In the table, each manager with their avatar, as people appear on Users.
+const ManagerList = ({ people }: { people: TeamUser[] }) => (
+  <div className="flex min-w-0 flex-col gap-1">
+    {people.map((person) => (
+      <span key={person.id} className="flex min-w-0 items-center gap-2">
+        <span aria-hidden="true" className="shrink-0">
+          <Avatar user={person} size="xs" />
+        </span>
+        <EntityLink
+          entity={{ type: "user", id: person.id }}
+          tone="plain"
+          className="truncate"
+        >
+          {fullName(person)}
+        </EntityLink>
+      </span>
+    ))}
+  </div>
 );
 
 // Archiving closes every membership, so an archived team has no manager to flag.
@@ -50,7 +73,7 @@ const COLUMNS: ManageColumn<Team>[] = [
 
       const managers = activeManagers(team);
       return managers.length > 0 ? (
-        <PeopleLinks people={managers} />
+        <ManagerList people={managers} />
       ) : (
         <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
       );
@@ -77,7 +100,7 @@ const COLUMNS: ManageColumn<Team>[] = [
 
       return (
         <>
-          {currentMemberships(team).length}
+          <ManageCount count={currentMemberships(team).length} />
           {deactivatedCount > 0 && (
             <span className="block text-xs text-muted-foreground">
               {deactivatedCount} deactivated

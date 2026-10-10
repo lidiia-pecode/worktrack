@@ -13,6 +13,8 @@ interface EntityLinkProps {
   className?: string;
   /** Called when the link opens the panel, such as to close the dialog it sits in. */
   onNavigate?: () => void;
+  /** `plain` in a table, where the row carries the colour and a link shows on hover. */
+  tone?: "brand" | "plain";
 }
 
 const opensElsewhere = (event: MouseEvent) =>
@@ -27,6 +29,7 @@ export const EntityLink = ({
   children,
   className,
   onNavigate,
+  tone = "brand",
 }: EntityLinkProps) => {
   const panel = useEntityPanel();
   const panelEntity = useContext(PanelEntityContext);
@@ -48,7 +51,10 @@ export const EntityLink = ({
       href={panel.hrefFor(entity)}
       onClick={handleClick}
       className={cn(
-        "rounded-sm font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        tone === "brand"
+          ? "font-medium text-brand"
+          : "text-foreground hover:text-brand",
         className,
       )}
     >
@@ -62,11 +68,18 @@ export interface LinkedEntity {
   name: string;
 }
 
+interface EntityLinksProps {
+  entities: LinkedEntity[];
+  tone?: EntityLinkProps["tone"];
+}
+
 /** Several related names, such as a person's teams, comma-separated. */
-export const EntityLinks = ({ entities }: { entities: LinkedEntity[] }) =>
+export const EntityLinks = ({ entities, tone }: EntityLinksProps) =>
   entities.map(({ entity, name }, index) => (
     <Fragment key={entity.id}>
       {index > 0 && ", "}
-      <EntityLink entity={entity}>{name}</EntityLink>
+      <EntityLink entity={entity} tone={tone}>
+        {name}
+      </EntityLink>
     </Fragment>
   ));

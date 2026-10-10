@@ -16,10 +16,12 @@ import { UserRole, UserStatus } from "@/types/enums";
 import {
   countLabel,
   ManageColumn,
+  ManageCount,
   ManageList,
   ManageWarning,
 } from "../shared/resource/ManageList";
 import { EntityLinks } from "../entity-panel/EntityLink";
+import { Avatar } from "../shared/Avatar";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
 import { PendingInvitations } from "./PendingInvitations";
@@ -27,6 +29,7 @@ import { useUserActions } from "./useUserActions";
 
 const UserTeams = ({ user }: { user: UserListItem }) => (
   <EntityLinks
+    tone="plain"
     entities={user.teams.map((team) => ({
       entity: { type: "team", id: team.id },
       name: team.name,
@@ -61,7 +64,7 @@ const COLUMNS: ManageColumn<UserListItem>[] = [
     header: "Projects",
     width: "w-24",
     numeric: true,
-    cell: (user) => user.projectsCount,
+    cell: (user) => <ManageCount count={user.projectsCount} />,
     summary: (user) => countLabel(user.projectsCount, "project", "projects"),
   },
 ];
@@ -132,6 +135,7 @@ export const UsersContent = () => {
             getKey: (listed) => listed.id,
             getName: fullName,
             getDetail: (listed) => listed.email,
+            getLeading: (listed) => <Avatar user={listed} />,
             getEntity: (listed) => ({ type: "user", id: listed.id }),
             onEdit: userActions.edit,
             canEdit: userActions.canEdit,
