@@ -539,7 +539,8 @@ moves its active activities to another active category, archives them with it,
 or, when no project links any of them, leaves them as drafts. An activity whose
 category is archived is restored by restoring the category too or moving it to
 another, or, when no project links it, as a draft. Restoring a category can
-restore all of its archived activities with it, or the category alone. Archived projects, activities and categories, like archived teams, are
+restore all of its archived activities with it, or the category alone.
+Archived projects, activities and categories, like archived teams, are
 read-only until they are restored.
 
 Project, client, activity, category and team names are trimmed and keep their
