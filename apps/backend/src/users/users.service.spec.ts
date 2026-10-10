@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -463,7 +467,7 @@ describe('UsersService scope', () => {
         user.id,
         companyId,
         { role: UserRole.EMPLOYEE },
-        UserRole.OWNER,
+        owner,
       );
 
     it('is allowed for a Manager who manages no team', async () => {
@@ -512,6 +516,20 @@ describe('UsersService scope', () => {
       });
     });
 
+    it("is refused for the owner's own role", async () => {
+      await expect(
+        service.updateUser(
+          owner.id,
+          companyId,
+          { role: UserRole.EMPLOYEE },
+          owner,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.updateUser(owner.id, companyId, { position: 'Founder' }, owner),
+      ).resolves.toMatchObject({ role: UserRole.OWNER });
+    });
+
     it('is refused for making a team manager an Owner too', async () => {
       const leader = await createUser('ownerbound', UserRole.MANAGER);
       await leadTeam(leader, 'Theta');
@@ -521,7 +539,7 @@ describe('UsersService scope', () => {
           leader.id,
           companyId,
           { role: UserRole.OWNER },
-          UserRole.OWNER,
+          owner,
         ),
       ).rejects.toThrow(BadRequestException);
     });

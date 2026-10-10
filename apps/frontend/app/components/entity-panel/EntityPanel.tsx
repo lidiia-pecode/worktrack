@@ -97,13 +97,15 @@ export const EntityPanel = () => {
       }
     };
 
+    // On a screen wider than the app, it stays at the app's right edge.
     return (
       <aside
         ref={asideRef}
+        data-entity-panel
         aria-labelledby={titleId}
         tabIndex={-1}
         onKeyDown={closeOnEscape}
-        className="fixed inset-y-0 right-0 z-30 flex w-120 max-w-full flex-col border-l border-border bg-card shadow-raised outline-none"
+        className="fixed inset-y-0 right-0 z-30 flex w-120 max-w-full flex-col border-l border-border bg-card shadow-raised outline-none 3xl:right-[calc((100vw-var(--container-shell))/2)] 3xl:border-r"
       >
         {body}
       </aside>

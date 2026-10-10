@@ -97,12 +97,7 @@ export class UsersController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateUserPayload,
   ): Promise<User> {
-    return this.usersService.updateUser(
-      id,
-      authUser.companyId,
-      body,
-      authUser.role,
-    );
+    return this.usersService.updateUser(id, authUser.companyId, body, authUser);
   }
 
   @Role(UserRole.OWNER)

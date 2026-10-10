@@ -200,10 +200,12 @@ const ROW_HOVER = "cursor-pointer transition-colors hover:bg-muted/30";
 
 /**
  * A table from `lg` up and a two-line list below it: the sidebar takes its
- * space from `md`, which leaves too little room for the columns.
+ * space from `md`, which leaves too little room for the columns. An open
+ * panel takes as much again, so beside it the table waits for `2xl`.
  */
 export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
   const panel = useEntityPanel();
+  const isBesidePanel = Boolean(panel.current);
 
   // A click on the row moves focus to its name, which closing the panel returns to.
   const openRow = (event: MouseEvent<HTMLElement>, item: T) => {
@@ -213,7 +215,7 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
 
   return (
     <Card>
-      <div className="hidden lg:block">
+      <div className={cn("hidden", isBesidePanel ? "2xl:block" : "lg:block")}>
         <Table aria-label={label} className="table-fixed">
           <TableHeader>
             <TableHead>Name</TableHead>
@@ -259,7 +261,13 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
         </Table>
       </div>
 
-      <ul aria-label={label} className="divide-y divide-border lg:hidden">
+      <ul
+        aria-label={label}
+        className={cn(
+          "divide-y divide-border",
+          isBesidePanel ? "2xl:hidden" : "lg:hidden",
+        )}
+      >
         {items.map((item) => (
           <li
             key={row.getKey(item)}

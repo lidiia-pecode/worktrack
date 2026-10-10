@@ -438,12 +438,22 @@ export class UsersService {
     id: string,
     companyId: string,
     payload: UpdateUserPayload,
-    currentRole: UserRole,
+    caller: AuthUser,
     manager?: EntityManager,
   ): Promise<User> {
+    const currentRole = caller.role;
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
       const user = await this.getUserById(id, companyId, man);
+
+      // Otherwise the company could be left with no owner.
+      if (
+        user.id === caller.id &&
+        payload.role !== undefined &&
+        payload.role !== user.role
+      ) {
+        throw new ForbiddenException('You cannot change your own role');
+      }
 
       if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
         throw new ForbiddenException(
