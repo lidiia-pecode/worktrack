@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -96,6 +97,50 @@ export class ProjectsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.unarchive(id, user);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Post(':id/members/:userId')
+  @Serialize(ProjectResponse)
+  addMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.addMember(id, userId, user);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Delete(':id/members/:userId')
+  @Serialize(ProjectResponse)
+  removeMember(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.removeMember(id, userId, user);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Post(':id/activities/:activityId')
+  @Serialize(ProjectResponse)
+  addActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('activityId', ParseUUIDPipe) activityId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.addActivity(id, activityId, user);
+  }
+
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Delete(':id/activities/:activityId')
+  @Serialize(ProjectResponse)
+  removeActivity(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('activityId', ParseUUIDPipe) activityId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.removeActivity(id, activityId, user);
   }
 
   // Open to everyone: employees need it for the timesheet picker, and it only

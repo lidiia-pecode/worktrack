@@ -62,6 +62,8 @@ describe('ProjectsService membership scope', () => {
 
   let activityId: string;
 
+  const deleteForRemovedMembers = jest.fn(() => Promise.resolve());
+
   const createUser = async (
     name: string,
     role: UserRole,
@@ -168,9 +170,7 @@ describe('ProjectsService membership scope', () => {
         stub<CapacityService>({}),
       ),
       teamVisibility,
-      stub<PlanningService>({
-        deleteForRemovedMembers: () => Promise.resolve(),
-      }),
+      stub<PlanningService>({ deleteForRemovedMembers }),
       dataSource,
     );
 
@@ -738,6 +738,113 @@ describe('ProjectsService membership scope', () => {
       await expect(offeredIds(projectId)).resolves.toEqual(
         [kept, retired].sort(),
       );
+    });
+
+    it('adds and removes one activity, keeping its link for logged time', async () => {
+      const kept = await createActivity('Linked one');
+      const toggled = await createActivity('Toggled one');
+      const projectId = await createProject('One activity', []);
+
+      await service.addActivity(projectId, kept, owner);
+      await service.addActivity(projectId, toggled, owner);
+      await service.removeActivity(projectId, toggled, owner);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([kept]);
+      await expect(linkIsActive(projectId, toggled)).resolves.toBe(false);
+
+      // Adding it again brings back the same link rather than a second one.
+      const project = await service.addActivity(projectId, toggled, owner);
+
+      expect(
+        project.projectActivities.map((pa) => pa.activityId).sort(),
+      ).toEqual([kept, toggled].sort());
+      await expect(
+        dataSource
+          .getRepository(ProjectActivity)
+          .countBy({ projectId, activityId: toggled }),
+      ).resolves.toBe(1);
+    });
+  });
+
+  describe('one member at a time', () => {
+    it('adds someone from a team the manager leads', async () => {
+      const projectId = await createProject('add one', [alphaManager]);
+
+      const project = await service.addMember(
+        projectId,
+        alphaMember.id,
+        alphaManager,
+      );
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaManager, alphaMember),
+      );
+      expect(project.membersCount).toBe(2);
+    });
+
+    it("refuses someone from another manager's team", async () => {
+      const projectId = await createProject('add other', []);
+
+      await expect(
+        service.addMember(projectId, betaMember.id, alphaManager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(memberIds(projectId)).resolves.toEqual([]);
+    });
+
+    it('refuses a deactivated person, but keeps one already on it', async () => {
+      const projectId = await createProject('add deactivated', [leaver]);
+      const otherId = await createProject('add deactivated 2', []);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      await service.addMember(projectId, leaver.id, alphaManager);
+      await expect(
+        service.addMember(otherId, leaver.id, alphaManager),
+      ).rejects.toThrow(NotFoundException);
+
+      await setStatus(leaver, UserStatus.ACTIVE);
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(leaver));
+      await expect(memberIds(otherId)).resolves.toEqual([]);
+    });
+
+    it('removes someone and their future plans on the project', async () => {
+      const projectId = await createProject('remove one', [
+        alphaMember,
+        betaMember,
+      ]);
+      deleteForRemovedMembers.mockClear();
+
+      await service.removeMember(projectId, alphaMember.id, alphaManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
+      expect(deleteForRemovedMembers).toHaveBeenCalledWith(
+        expect.anything(),
+        companyId,
+        projectId,
+        [alphaMember.id],
+      );
+    });
+
+    it('refuses removing someone the manager cannot see', async () => {
+      const projectId = await createProject('remove other', [betaMember]);
+
+      await expect(
+        service.removeMember(projectId, betaMember.id, alphaManager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
+    });
+
+    it('changes nothing on an archived project', async () => {
+      const projectId = await createProject('archived links', []);
+      await dataSource
+        .getRepository(Project)
+        .update(projectId, { status: ProjectStatus.ARCHIVED });
+
+      await expect(
+        service.addMember(projectId, alphaMember.id, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.addActivity(projectId, activityId, owner),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 
