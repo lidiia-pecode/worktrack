@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -24,6 +25,7 @@ interface ActivityCategoryFormProps {
   mode?: "create" | "edit";
   onSubmit: (data: ActivityCategoryFormData) => void;
   isSubmitting?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const ActivityCategoryForm = ({
@@ -32,17 +34,23 @@ export const ActivityCategoryForm = ({
   mode = "create",
   onSubmit,
   isSubmitting = false,
+  onDirtyChange,
 }: ActivityCategoryFormProps) => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ActivityCategoryFormData>({
     resolver: zodResolver(activityCategoryFormSchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
     },
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   const isEditMode = mode === "edit";
 
@@ -59,6 +67,7 @@ export const ActivityCategoryForm = ({
         label="Category name"
         type="text"
         placeholder="e.g. Development"
+        autoFocus={isEditMode}
         {...register("name")}
         error={errors.name?.message}
         description={description}

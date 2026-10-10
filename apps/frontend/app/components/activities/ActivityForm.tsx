@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 
 import { createFirstLink } from "@/hooks/useSetupLink";
@@ -35,21 +36,24 @@ interface ActivityFormProps {
   onSubmit: (data: ActivityFormData) => void;
   isSubmitting?: boolean;
   isOnboarding?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const ActivityForm = ({
   formId = "activity-form",
   defaultValues,
   categories,
+  mode = "create",
   onSubmit,
   isSubmitting = false,
   isOnboarding = false,
+  onDirtyChange,
 }: ActivityFormProps) => {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ActivityFormData>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
@@ -58,6 +62,11 @@ export const ActivityForm = ({
       defaultBillable: defaultValues?.defaultBillable ?? true,
     },
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   const categoryOptions = categories.map((category) => ({
     value: category.id,
@@ -72,6 +81,7 @@ export const ActivityForm = ({
         id="activity-name"
         label="Activity name"
         placeholder="e.g. Frontend development"
+        autoFocus={mode === "edit"}
         {...register("name")}
         error={errors.name?.message}
         disabled={isSubmitting}

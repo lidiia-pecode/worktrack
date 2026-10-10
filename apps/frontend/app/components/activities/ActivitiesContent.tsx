@@ -20,7 +20,7 @@ import {
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ActivityModal } from "./ActivityModal";
+import { ActivityCreateDialog } from "./ActivityCreateDialog";
 import { useActivityActions } from "./useActivityActions";
 
 const projectsCount = (activity: ActivityListItem) =>
@@ -119,10 +119,13 @@ export const ActivitiesContent = () => {
         />
       </ResourcePage>
 
-      <ActivityModal
+      <ActivityCreateDialog
         isOnboarding={isOnboarding}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(activity) =>
+          panel.open({ type: "activity", id: activity.id })
+        }
       />
 
       {activityActions.dialogs}

@@ -8,12 +8,11 @@ import {
   activityCategoryDetailsQuery,
   useActivityCategoriesMutations,
 } from "@/hooks/useActivityCategories";
-import { useIsOnboarding } from "@/hooks/useSetupLink";
 import { ActivityCategoryDetails, ActivityCategorySummary } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import type { ManageRowAction } from "../shared/resource/ManageList";
-import { ActivityCategoryModal } from "./ActivityCategoryModal";
 import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 import { CategoryRestoreDialog } from "./CategoryRestoreDialog";
 
@@ -22,10 +21,8 @@ export const isActiveCategory = (category: ActivityCategorySummary) =>
 
 /** What the viewer can do with a category, from a list row or the panel. */
 export const useCategoryActions = () => {
-  const isOnboarding = useIsOnboarding();
+  const panel = useEntityPanel();
   const { unarchive } = useActivityCategoriesMutations();
-  const [editingCategory, setEditingCategory] =
-    useState<ActivityCategorySummary | null>(null);
   const [archivingCategory, setArchivingCategory] =
     useState<ActivityCategorySummary | null>(null);
   const [restoringCategory, setRestoringCategory] =
@@ -65,13 +62,6 @@ export const useCategoryActions = () => {
 
   const dialogs = (
     <>
-      <ActivityCategoryModal
-        open={Boolean(editingCategory)}
-        category={editingCategory ?? undefined}
-        onClose={() => setEditingCategory(null)}
-        isOnboarding={isOnboarding}
-      />
-
       <CategoryArchiveDialog
         category={archivingCategory}
         onClose={() => setArchivingCategory(null)}
@@ -87,7 +77,8 @@ export const useCategoryActions = () => {
   return {
     // An archived category is read-only.
     canEdit: isActiveCategory,
-    edit: setEditingCategory,
+    edit: (category: ActivityCategorySummary) =>
+      panel.edit({ type: "category", id: category.id }),
     actionsFor,
     dialogs,
   };

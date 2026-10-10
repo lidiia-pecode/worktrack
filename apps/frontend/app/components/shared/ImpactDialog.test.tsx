@@ -17,6 +17,10 @@ const panel: EntityPanelContextValue = {
   back: vi.fn(),
   close: vi.fn(),
   hrefFor: (ref) => `?open=${ref.type}:${ref.id}`,
+  isEditing: false,
+  edit: vi.fn(),
+  stopEditing: vi.fn(),
+  setHasUnsavedChanges: vi.fn(),
 };
 
 const WEBSITE = {

@@ -19,7 +19,7 @@ import {
   ManageList,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ActivityCategoryModal } from "./ActivityCategoryModal";
+import { CategoryCreateDialog } from "./CategoryCreateDialog";
 import { useCategoryActions } from "./useCategoryActions";
 
 const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
@@ -97,9 +97,12 @@ export const ActivityCategoriesContent = () => {
         />
       </ResourcePage>
 
-      <ActivityCategoryModal
+      <CategoryCreateDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(category) =>
+          panel.open({ type: "category", id: category.id })
+        }
         isOnboarding={isOnboarding}
       />
 

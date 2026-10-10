@@ -90,6 +90,10 @@ const panel: EntityPanelContextValue = {
   back: vi.fn(),
   close: vi.fn(),
   hrefFor: () => "#",
+  isEditing: false,
+  edit: vi.fn(),
+  stopEditing: vi.fn(),
+  setHasUnsavedChanges: vi.fn(),
 };
 
 describe("UserDeactivateDialog", () => {

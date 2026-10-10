@@ -57,7 +57,12 @@ const Probe = () => {
         {panel.current ? formatEntityRef(panel.current) : ""}
       </output>
       <output aria-label="Back to">{panel.previous?.name ?? ""}</output>
+      <output aria-label="Editing">{panel.isEditing ? "yes" : ""}</output>
       <button onClick={() => panel.open(TEAM)}>Open team row</button>
+      <button onClick={() => panel.edit(TEAM)}>Edit team row</button>
+      <button onClick={() => panel.setHasUnsavedChanges(true)}>
+        Change a field
+      </button>
       <button onClick={() => panel.open(PROJECT)}>Open project row</button>
       <button onClick={() => panel.follow(PERSON, "Core team")}>
         Follow person
@@ -80,6 +85,7 @@ const renderPanel = () =>
 
 const shown = () => screen.getByRole("status", { name: "Open" });
 const backTo = () => screen.getByRole("status", { name: "Back to" });
+const editing = () => screen.getByRole("status", { name: "Editing" });
 
 describe("EntityPanelProvider", () => {
   let historyEntries: string[];
@@ -167,5 +173,40 @@ describe("EntityPanelProvider", () => {
       "",
       PATHNAME,
     );
+  });
+
+  it("opens an entity in its form from a row, and leaving it ends the edit", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Edit team row" }));
+    expect(shown()).toHaveTextContent("team:t-1");
+    expect(editing()).toHaveTextContent("yes");
+
+    await user.click(screen.getByRole("button", { name: "Follow person" }));
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(shown()).toHaveTextContent("team:t-1");
+    expect(editing()).toBeEmptyDOMElement();
+  });
+
+  it("asks before leaving unsaved changes", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Edit team row" }));
+    await user.click(screen.getByRole("button", { name: "Change a field" }));
+    await user.click(screen.getByRole("button", { name: "Follow person" }));
+
+    expect(
+      await screen.findByRole("dialog", { name: "Discard your changes?" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(shown()).toHaveTextContent("team:t-1");
+    expect(editing()).toHaveTextContent("yes");
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(await screen.findByRole("button", { name: "Discard" }));
+    expect(shown()).toBeEmptyDOMElement();
+    expect(editing()).toBeEmptyDOMElement();
   });
 });

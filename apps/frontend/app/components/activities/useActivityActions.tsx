@@ -4,13 +4,12 @@ import { useState } from "react";
 import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useActivitiesMutations } from "@/hooks/useActivities";
-import { useIsOnboarding } from "@/hooks/useSetupLink";
 import { Activity } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import type { ManageRowAction } from "../shared/resource/ManageList";
 import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
-import { ActivityModal } from "./ActivityModal";
 import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
 
 export const isActiveActivity = (activity: Activity) =>
@@ -18,9 +17,8 @@ export const isActiveActivity = (activity: Activity) =>
 
 /** What the viewer can do with an activity, from a list row or the panel. */
 export const useActivityActions = () => {
-  const isOnboarding = useIsOnboarding();
+  const panel = useEntityPanel();
   const { unarchive } = useActivitiesMutations();
-  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [archivingActivity, setArchivingActivity] = useState<Activity | null>(
     null,
   );
@@ -59,13 +57,6 @@ export const useActivityActions = () => {
 
   const dialogs = (
     <>
-      <ActivityModal
-        isOnboarding={isOnboarding}
-        open={Boolean(editingActivity)}
-        onClose={() => setEditingActivity(null)}
-        activity={editingActivity ?? undefined}
-      />
-
       <ActivityArchiveDialog
         activity={archivingActivity}
         onClose={() => setArchivingActivity(null)}
@@ -81,7 +72,8 @@ export const useActivityActions = () => {
   return {
     // An archived activity is read-only.
     canEdit: isActiveActivity,
-    edit: setEditingActivity,
+    edit: (activity: Activity) =>
+      panel.edit({ type: "activity", id: activity.id }),
     actionsFor,
     dialogs,
   };

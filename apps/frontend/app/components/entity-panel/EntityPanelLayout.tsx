@@ -26,6 +26,8 @@ interface EntityPanelLayoutProps {
   /** Opens the entity's form; left out when the viewer cannot edit it. */
   onEdit?: () => void;
   actions?: ManageRowAction[];
+  /** While the form is open, the header's actions wait for Save or Cancel. */
+  isEditing?: boolean;
   children: ReactNode;
 }
 
@@ -35,9 +37,11 @@ export const EntityPanelLayout = ({
   status,
   onEdit,
   actions = [],
+  isEditing = false,
   children,
 }: EntityPanelLayoutProps) => {
   const titleId = useContext(PanelTitleIdContext);
+  const hasHeaderActions = !isEditing && (onEdit || actions.length > 0);
 
   return (
     <PanelEntityContext.Provider value={{ name }}>
@@ -60,7 +64,7 @@ export const EntityPanelLayout = ({
           <div className="shrink-0 pt-1">{status}</div>
         </div>
 
-        {(onEdit || actions.length > 0) && (
+        {hasHeaderActions && (
           <div className="mt-4 flex flex-wrap gap-2">
             {onEdit && (
               <Button
@@ -130,6 +134,41 @@ export const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
   </dl>
 );
 
+interface PanelEditFormProps {
+  formId: string;
+  isSaving: boolean;
+  onCancel: () => void;
+  children: ReactNode;
+}
+
+/** The entity's form in place of its fields, with its own Save and Cancel. */
+export const PanelEditForm = ({
+  formId,
+  isSaving,
+  onCancel,
+  children,
+}: PanelEditFormProps) => (
+  <section aria-label="Edit details">
+    {children}
+
+    <div className="mt-6 flex justify-end gap-2">
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={onCancel}
+        disabled={isSaving}
+      >
+        Cancel
+      </Button>
+
+      <Button type="submit" form={formId} size="sm" isLoading={isSaving}>
+        Save changes
+      </Button>
+    </div>
+  </section>
+);
+
 export interface PanelListRow {
   label: ReactNode;
   /** A quieter line under the label, such as a role or a category. */
@@ -146,6 +185,8 @@ interface PanelListProps<T> {
   emptyText: ReactNode;
   /** Under the title, such as how many members the viewer cannot see. */
   note?: ReactNode;
+  /** Beside the title, such as a button that adds to the section. */
+  action?: ReactNode;
 }
 
 /** A relationship section: the first few related entities, and the rest on request. */
@@ -156,6 +197,7 @@ export const PanelList = <T,>({
   renderRow,
   emptyText,
   note,
+  action,
 }: PanelListProps<T>) => {
   const [showsAll, setShowsAll] = useState(false);
   const shownItems = showsAll ? items : items.slice(0, VISIBLE_ITEMS);
@@ -163,12 +205,16 @@ export const PanelList = <T,>({
 
   return (
     <section>
-      <h3 className="text-sm font-semibold text-foreground">
-        {title}
-        <span className="ml-1.5 font-normal text-muted-foreground">
-          {items.length}
-        </span>
-      </h3>
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">
+          {title}
+          <span className="ml-1.5 font-normal text-muted-foreground">
+            {items.length}
+          </span>
+        </h3>
+
+        {action}
+      </div>
 
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
 
