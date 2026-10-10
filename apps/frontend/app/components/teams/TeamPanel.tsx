@@ -104,7 +104,7 @@ export const TeamPanel = ({ id }: { id: string }) => {
           })}
           emptyText={
             isActive
-              ? "Nobody is on this team yet."
+              ? "Nobody is on this team. A restored team comes back with no members."
               : "Nobody was on this team."
           }
         />

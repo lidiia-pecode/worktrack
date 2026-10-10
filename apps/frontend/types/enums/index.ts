@@ -92,3 +92,7 @@ export enum UnusableInvitationCode {
 export enum NotificationType {
   INVITATION_ACCEPTED = "INVITATION_ACCEPTED",
 }
+
+export enum ArchivedActivitiesAction {
+  RESTORE = "RESTORE",
+}

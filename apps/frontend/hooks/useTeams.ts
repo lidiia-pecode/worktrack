@@ -51,12 +51,13 @@ export function useTeamOptions() {
   return { options, isLoading, isError };
 }
 
+export const teamDetailsQuery = (teamId: string) => ({
+  queryKey: queryKeys.teams.detail(teamId),
+  queryFn: () => TeamsClientApi.getById(teamId),
+});
+
 export const useTeamDetails = (teamId: string | null) =>
-  useQuery({
-    queryKey: queryKeys.teams.detail(teamId ?? ""),
-    queryFn: () => TeamsClientApi.getById(teamId!),
-    enabled: Boolean(teamId),
-  });
+  useQuery({ ...teamDetailsQuery(teamId ?? ""), enabled: Boolean(teamId) });
 
 /** Who archiving a team would affect, read when the owner is about to. */
 export const useTeamArchiveImpact = (teamId: string, enabled: boolean) =>

@@ -174,17 +174,11 @@ export const ActivityModal = ({
         onArchived={onClose}
       />
 
-      {activity && isCategoryArchived && (
-        <ActivityRestoreDialog
-          isOpen={isChoosingRestore}
-          activity={activity}
-          onClose={() => setIsChoosingRestore(false)}
-          onRestored={() => {
-            setIsChoosingRestore(false);
-            onClose();
-          }}
-        />
-      )}
+      <ActivityRestoreDialog
+        activity={isChoosingRestore && activity ? activity : null}
+        onClose={() => setIsChoosingRestore(false)}
+        onRestored={onClose}
+      />
     </>
   );
 };

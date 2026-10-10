@@ -11,6 +11,8 @@ interface EntityLinkProps {
   entity: EntityRef;
   children: ReactNode;
   className?: string;
+  /** Called when the link opens the panel, such as to close the dialog it sits in. */
+  onNavigate?: () => void;
 }
 
 const opensElsewhere = (event: MouseEvent) =>
@@ -24,6 +26,7 @@ export const EntityLink = ({
   entity,
   children,
   className,
+  onNavigate,
 }: EntityLinkProps) => {
   const panel = useEntityPanel();
   const panelEntity = useContext(PanelEntityContext);
@@ -34,6 +37,7 @@ export const EntityLink = ({
     if (opensElsewhere(event)) return;
 
     event.preventDefault();
+    onNavigate?.();
 
     if (panelEntity) panel.follow(entity, panelEntity.name);
     else panel.open(entity);

@@ -9,6 +9,7 @@ import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
 import type { ManageRowAction } from "../shared/resource/ManageList";
+import { ProjectArchiveDialog } from "./ProjectArchiveDialog";
 import { ProjectModal } from "./ProjectModal";
 
 export const isActiveProject = (project: Project) =>
@@ -17,8 +18,11 @@ export const isActiveProject = (project: Project) =>
 /** What the viewer can do with a project, from a list row or the panel. */
 export const useProjectActions = () => {
   const isOnboarding = useIsOnboarding();
-  const { archive, unarchive } = useProjectsMutations();
+  const { unarchive } = useProjectsMutations();
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [archivingProject, setArchivingProject] = useState<Project | null>(
+    null,
+  );
 
   const actionsFor = (project: Project): ManageRowAction[] =>
     isActiveProject(project)
@@ -27,7 +31,7 @@ export const useProjectActions = () => {
             label: "Archive",
             icon: Archive,
             destructive: true,
-            onSelect: () => archive.mutate(project.id),
+            onSelect: () => setArchivingProject(project),
           },
         ]
       : [
@@ -39,13 +43,20 @@ export const useProjectActions = () => {
         ];
 
   const dialogs = (
-    <ProjectModal
-      key={editingProject?.id ?? "edit"}
-      isOnboarding={isOnboarding}
-      project={editingProject ?? undefined}
-      open={Boolean(editingProject)}
-      onClose={() => setEditingProject(null)}
-    />
+    <>
+      <ProjectModal
+        key={editingProject?.id ?? "edit"}
+        isOnboarding={isOnboarding}
+        project={editingProject ?? undefined}
+        open={Boolean(editingProject)}
+        onClose={() => setEditingProject(null)}
+      />
+
+      <ProjectArchiveDialog
+        project={archivingProject}
+        onClose={() => setArchivingProject(null)}
+      />
+    </>
   );
 
   return {

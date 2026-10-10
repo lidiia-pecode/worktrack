@@ -30,6 +30,7 @@ import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 
+import { ProjectArchiveDialog } from "./ProjectArchiveDialog";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import { ProjectMembersSection } from "./ProjectMembersSection";
 import { ProjectActivitiesSection } from "./ProjectActivitiesSection";
@@ -63,6 +64,7 @@ export const ProjectModal = ({
 }: ProjectModalProps) => {
   const router = useRouter();
   const [view, setView] = useState<View>("form");
+  const [isConfirmingArchive, setIsConfirmingArchive] = useState(false);
 
   const { data: projectDetails, isLoading: isDetailsLoading } =
     useProjectDetails(project?.id);
@@ -76,7 +78,7 @@ export const ProjectModal = ({
         .filter((id): id is string => Boolean(id)) ?? [],
   );
 
-  const { create, update, archive, unarchive } = useProjectsMutations();
+  const { create, update, unarchive } = useProjectsMutations();
   const clientSuggestions = useClientNameSuggestions();
 
   const { confirmRemoval, isChecking, confirmProps } =
@@ -219,10 +221,7 @@ export const ProjectModal = ({
     setView("form");
   };
 
-  const handleArchive = () => {
-    if (!project) return;
-    archive.mutate(project.id, { onSuccess: onClose });
-  };
+  const handleArchive = () => setIsConfirmingArchive(true);
 
   const handleUnarchive = () => {
     if (!project) return;
@@ -288,7 +287,7 @@ export const ProjectModal = ({
                   size="sm"
                   className="mr-auto gap-1.5"
                   onClick={isArchived ? handleUnarchive : handleArchive}
-                  isLoading={archive.isPending || unarchive.isPending}
+                  isLoading={unarchive.isPending}
                 >
                   {isArchived ? (
                     <ArchiveRestore className="size-4" />
@@ -411,6 +410,12 @@ export const ProjectModal = ({
       </ResourceFormModal>
 
       <ConfirmModal {...confirmProps} />
+
+      <ProjectArchiveDialog
+        project={isConfirmingArchive && project ? project : null}
+        onClose={() => setIsConfirmingArchive(false)}
+        onArchived={onClose}
+      />
     </>
   );
 };

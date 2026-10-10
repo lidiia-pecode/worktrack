@@ -2,34 +2,15 @@
 
 import { useTeamArchiveImpact, useTeamsMutations } from "@/hooks/useTeams";
 import { fullName } from "@/lib/utils/user";
-import { Team, TeamArchiveImpact, TeamUser } from "@/types/Team";
+import { Team, TeamUser } from "@/types/Team";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 
-const namesOf = (users: TeamUser[]) =>
-  new Intl.ListFormat("en", { type: "conjunction" }).format(
-    users.map(fullName),
-  );
-
-const archiveImpactMessage = (impact?: TeamArchiveImpact) => {
-  if (!impact) return "Checking who this affects...";
-
-  const { managers, peopleLeftWithoutTeam } = impact;
-  const effects = [
-    managers.length > 0 &&
-      `${namesOf(managers)} will no longer manage this team.`,
-    peopleLeftWithoutTeam.length > 0 &&
-      `${namesOf(peopleLeftWithoutTeam)} will be left without a team, for you to place in another one.`,
-    managers.length === 0 &&
-      peopleLeftWithoutTeam.length === 0 &&
-      "Nobody will be left without a team.",
-  ].filter(Boolean);
-
-  return [
-    ...effects,
-    "Time, absences and plans stay as they are. Restoring the team later brings it back with no members.",
-  ].join(" ");
-};
+const asPeople = (users: TeamUser[]) =>
+  users.map((user) => ({
+    entity: { type: "user" as const, id: user.id },
+    name: fullName(user),
+  }));
 
 interface TeamArchiveDialogProps {
   /** The team to archive; the dialog is open while one is given. */
@@ -44,10 +25,10 @@ export const TeamArchiveDialog = ({
   onArchived,
 }: TeamArchiveDialogProps) => {
   const { archive } = useTeamsMutations();
-  const archiveImpact = useTeamArchiveImpact(team?.id ?? "", Boolean(team));
+  const impact = useTeamArchiveImpact(team?.id ?? "", Boolean(team));
 
   const confirmArchive = () => {
-    if (!team || !archiveImpact.data) return;
+    if (!team || !impact.data) return;
 
     archive.mutate(team.id, {
       onSuccess: () => {
@@ -57,21 +38,33 @@ export const TeamArchiveDialog = ({
     });
   };
 
+  const description = impact.isError
+    ? "Could not check who this affects. Close this and try again."
+    : !impact.data
+      ? "Checking who this affects..."
+      : "Everyone leaves the team today and its pending invitations are revoked. Time, absences and plans stay as they are, and restoring it brings it back with no members.";
+
   return (
-    <ConfirmModal
+    <ImpactDialog
       isOpen={Boolean(team)}
       title={team ? `Archive ${team.name}?` : ""}
-      message={
-        archiveImpact.isError
-          ? "Could not check who this affects. Close this and try again."
-          : archiveImpactMessage(archiveImpact.data)
-      }
+      description={description}
+      affected={[
+        {
+          label: "No longer managing it",
+          entities: asPeople(impact.data?.managers ?? []),
+        },
+        {
+          label: "Left without a team, so only you see them",
+          entities: asPeople(impact.data?.peopleLeftWithoutTeam ?? []),
+        },
+      ]}
       confirmText="Archive"
-      variant="danger"
+      confirmVariant="destructive"
       onConfirm={confirmArchive}
       onClose={onClose}
       loading={archive.isPending}
-      confirmDisabled={!archiveImpact.data}
+      confirmDisabled={!impact.data}
     />
   );
 };

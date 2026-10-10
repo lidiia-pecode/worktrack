@@ -32,6 +32,7 @@ import { EntityPicker } from "../shared/resource/EntityPicker";
 import { AssignedList } from "../shared/resource/AssignedList";
 import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
 import { ConfirmModal } from "../shared/ConfirmModal";
+import { UserDeactivateDialog } from "./UserDeactivateDialog";
 import { UserForm, UserFormData } from "./UserForm";
 import { ProjectStatus, UserRole, UserStatus } from "@/types/enums";
 
@@ -50,6 +51,8 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
   const [edit, setEdit] = useState(false);
   const [pendingProjectIds, setPendingProjectIds] = useState<string[]>([]);
   const [isSavingProjects, setIsSavingProjects] = useState(false);
+  const [isConfirmingDeactivation, setIsConfirmingDeactivation] =
+    useState(false);
 
   const { user: viewer } = useAuth();
   // Editing a person, their working hours and deactivating them are the owner's.
@@ -59,7 +62,7 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
     user.id,
   );
 
-  const { update, archive, unarchive } = useUsersMutations();
+  const { update, unarchive } = useUsersMutations();
 
   const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(
     user.id,
@@ -235,9 +238,9 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                 onClick={() =>
                   isDeactivated
                     ? unarchive.mutate(user.id, { onSuccess: onClose })
-                    : archive.mutate(user.id, { onSuccess: onClose })
+                    : setIsConfirmingDeactivation(true)
                 }
-                isLoading={archive.isPending || unarchive.isPending}
+                isLoading={unarchive.isPending}
               >
                 {isDeactivated ? (
                   <UserCheck className="size-4" />
@@ -402,6 +405,12 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
       </ResourceFormModal>
 
       <ConfirmModal {...confirmProps} />
+
+      <UserDeactivateDialog
+        user={isConfirmingDeactivation ? user : null}
+        onClose={() => setIsConfirmingDeactivation(false)}
+        onDeactivated={onClose}
+      />
     </>
   );
 };

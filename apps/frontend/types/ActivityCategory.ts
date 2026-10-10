@@ -4,6 +4,7 @@ import {
   ActCategoryStatus,
   ActiveActivitiesAction,
   ActivityStatus,
+  ArchivedActivitiesAction,
 } from "./enums";
 
 export interface ActivityCategoryResponse {
@@ -36,6 +37,11 @@ export interface ActivityCategoryQuery extends SearchablePaginationParams {
 export interface ArchiveActivityCategoryPayload {
   activities?: ActiveActivitiesAction;
   moveToCategoryId?: string;
+}
+
+/** Without `activities`, the category comes back alone. */
+export interface RestoreActivityCategoryPayload {
+  activities?: ArchivedActivitiesAction;
 }
 
 export interface ActivityCategoryArchiveImpact {

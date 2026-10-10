@@ -6,6 +6,7 @@ import {
   ActivityCategoryPayload,
   ActivityCategoryQuery,
   ArchiveActivityCategoryPayload,
+  RestoreActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types";
 
@@ -66,12 +67,13 @@ export const useActivityCategoriesMutations = createEntityMutations<
   },
 });
 
+export const activityCategoryDetailsQuery = (id: string) => ({
+  queryKey: queryKeys.activityCategories.detail(id),
+  queryFn: () => ActivityCategoriesClientApi.getById(id),
+});
+
 export const useActivityCategoryDetails = (id: string) =>
-  useQuery({
-    queryKey: queryKeys.activityCategories.detail(id),
-    queryFn: () => ActivityCategoriesClientApi.getById(id),
-    enabled: Boolean(id),
-  });
+  useQuery({ ...activityCategoryDetailsQuery(id), enabled: Boolean(id) });
 
 /** The active activities archiving a category would block on, read when about to. */
 export const useActivityCategoryArchiveImpact = (
@@ -107,6 +109,31 @@ export const useArchiveActivityCategory = () => {
       ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
 
       toast.success("Category archived successfully");
+    },
+  });
+};
+
+export const useRestoreActivityCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: RestoreActivityCategoryPayload;
+    }) => ActivityCategoriesClientApi.unarchive(id, payload),
+
+    onSuccess: () => {
+      [
+        queryKeys.activityCategories.all,
+        queryKeys.activities.all,
+        queryKeys.projects.all,
+        queryKeys.projectActivities.all,
+      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+
+      toast.success("Category restored successfully");
     },
   });
 };

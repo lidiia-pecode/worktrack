@@ -71,14 +71,10 @@ export const useActivityActions = () => {
         onClose={() => setArchivingActivity(null)}
       />
 
-      {restoringActivity && (
-        <ActivityRestoreDialog
-          isOpen
-          activity={restoringActivity}
-          onClose={() => setRestoringActivity(null)}
-          onRestored={() => setRestoringActivity(null)}
-        />
-      )}
+      <ActivityRestoreDialog
+        activity={restoringActivity}
+        onClose={() => setRestoringActivity(null)}
+      />
     </>
   );
 

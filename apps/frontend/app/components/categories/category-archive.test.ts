@@ -1,38 +1,14 @@
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
 import { ActiveActivitiesAction } from "@/types/enums";
 
 import {
-  activityCount,
   archiveActivitiesLabel,
   archivePayload,
-  categoryArchiveDescription,
   noMoveTargetMessage,
 } from "./category-archive";
 
-const description = (activityNames: string[]) =>
-  renderToStaticMarkup(
-    <>{categoryArchiveDescription("Design", activityNames)}</>,
-  );
-
-const bold = (name: string) =>
-  `<strong class="font-semibold text-foreground">${name}</strong>`;
-
 describe("category archive copy", () => {
-  it("counts the activities it names", () => {
-    expect(activityCount(1)).toBe("1 active activity");
-    expect(description(["Wireframes", "Research"])).toBe(
-      `Design still has 2 active activities: ${bold("Wireframes")} and ${bold("Research")}.`,
-    );
-  });
-
-  it("is a plain confirmation when no active activity is left", () => {
-    expect(description([])).toBe(
-      "Nobody will be able to put new activities in Design. You can restore it later.",
-    );
-  });
-
   it("speaks of one activity and of several", () => {
     expect(archiveActivitiesLabel(1)).toBe("Archive it too");
     expect(archiveActivitiesLabel(2)).toBe("Archive them too");

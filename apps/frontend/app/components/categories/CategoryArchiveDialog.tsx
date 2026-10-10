@@ -2,16 +2,6 @@
 
 import { useState } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-
 import { ActivityCategorySummary } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
@@ -22,30 +12,30 @@ import {
 } from "@/hooks/useActivityCategories";
 
 import { FormSelect } from "../shared/FormSelect";
-import { activitiesArchiveImpactMessage } from "../activities/archive-impact";
+import { ImpactDialog } from "../shared/ImpactDialog";
+import { distinctProjects } from "../activities/archive-impact";
 
 import {
   ARCHIVE_ACTIVITIES_OPTION,
   archiveActivitiesLabel,
   archivePayload,
-  categoryArchiveDescription,
   noMoveTargetMessage,
 } from "./category-archive";
 
 interface CategoryArchiveDialogProps {
-  isOpen: boolean;
-  category: ActivityCategorySummary;
+  /** The category to archive; the dialog is open while one is given. */
+  category: ActivityCategorySummary | null;
   onClose: () => void;
-  onArchived: () => void;
+  onArchived?: () => void;
 }
 
 export const CategoryArchiveDialog = ({
-  isOpen,
   category,
   onClose,
   onArchived,
 }: CategoryArchiveDialogProps) => {
-  const impact = useActivityCategoryArchiveImpact(category.id, isOpen);
+  const isOpen = Boolean(category);
+  const impact = useActivityCategoryArchiveImpact(category?.id ?? "", isOpen);
   const activeCategories = useActivityCategoriesAllPagesQuery(
     { status: ActCategoryStatus.ACTIVE },
     { enabled: isOpen },
@@ -58,7 +48,7 @@ export const CategoryArchiveDialog = ({
   const hasActiveActivities = activities.length > 0;
 
   const moveTargets = activeCategories.items.filter(
-    (target) => target.id !== category.id,
+    (target) => target.id !== category?.id,
   );
   const selectedOption =
     chosenOption ?? moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION;
@@ -84,6 +74,8 @@ export const CategoryArchiveDialog = ({
   };
 
   const confirm = () => {
+    if (!category) return;
+
     archive.mutate(
       {
         id: category.id,
@@ -95,75 +87,69 @@ export const CategoryArchiveDialog = ({
       },
       {
         onSuccess: () => {
-          setChosenOption(undefined);
-          onArchived();
+          close();
+          onArchived?.();
         },
       },
     );
   };
 
+  const description = impact.isError
+    ? "Could not check its activities. Close this and try again."
+    : !impact.data
+      ? "Checking its activities..."
+      : hasActiveActivities
+        ? "An active activity needs an active category, so these move to another one or are archived with it."
+        : "Nobody will be able to put new activities in it. You can restore it later.";
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <div className="grid gap-4 p-6">
-          <DialogHeader className="pr-6">
-            <DialogTitle>Archive {category.name}?</DialogTitle>
-            <DialogDescription>
-              {impact.isError
-                ? "Could not check its activities. Close this and try again."
-                : impact.data
-                  ? categoryArchiveDescription(
-                      category.name,
-                      activities.map((activity) => activity.name),
-                    )
-                  : "Checking its activities..."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {isReady && hasActiveActivities && (
-            <div className="space-y-3 text-sm text-muted-foreground">
-              {moveTargets.length > 0 ? (
-                <FormSelect
-                  label="Its activities"
-                  value={selectedOption}
-                  options={options}
-                  onValueChange={setChosenOption}
-                  disabled={archive.isPending}
-                />
-              ) : (
-                <p>{noMoveTargetMessage(activities.length)}</p>
-              )}
-
-              {archivesActivities && (
-                <p>{activitiesArchiveImpactMessage(activities)}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={close}
+    <ImpactDialog
+      isOpen={isOpen}
+      title={category ? `Archive ${category.name}?` : ""}
+      description={description}
+      affected={[
+        {
+          label: "Its active activities",
+          entities: activities.map((activity) => ({
+            entity: { type: "activity", id: activity.id },
+            name: activity.name,
+          })),
+        },
+        {
+          label: "Projects that lose them",
+          entities: archivesActivities
+            ? distinctProjects(
+                activities.flatMap((activity) => activity.projects),
+              ).map((project) => ({
+                entity: { type: "project", id: project.id },
+                name: project.name,
+              }))
+            : [],
+        },
+      ]}
+      choice={
+        isReady &&
+        hasActiveActivities &&
+        (moveTargets.length > 0 ? (
+          <FormSelect
+            label="Its activities"
+            value={selectedOption}
+            options={options}
+            onValueChange={setChosenOption}
             disabled={archive.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="button"
-            variant={archivesActivities ? "destructive" : "warning"}
-            size="sm"
-            onClick={confirm}
-            isLoading={archive.isPending}
-            disabled={!isReady}
-          >
-            Archive
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {noMoveTargetMessage(activities.length)}
+          </p>
+        ))
+      }
+      confirmText="Archive"
+      confirmVariant={archivesActivities ? "destructive" : "warning"}
+      onConfirm={confirm}
+      onClose={close}
+      loading={archive.isPending}
+      confirmDisabled={!isReady}
+    />
   );
 };

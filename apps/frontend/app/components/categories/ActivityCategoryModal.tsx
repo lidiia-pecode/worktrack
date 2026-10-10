@@ -144,17 +144,11 @@ export const ActivityCategoryModal = ({
         />
       </ResourceFormModal>
 
-      {category && (
-        <CategoryArchiveDialog
-          isOpen={isConfirmingArchive}
-          category={category}
-          onClose={() => setIsConfirmingArchive(false)}
-          onArchived={() => {
-            setIsConfirmingArchive(false);
-            onClose();
-          }}
-        />
-      )}
+      <CategoryArchiveDialog
+        category={isConfirmingArchive && category ? category : null}
+        onClose={() => setIsConfirmingArchive(false)}
+        onArchived={onClose}
+      />
     </>
   );
 };
