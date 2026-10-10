@@ -26,7 +26,7 @@ import {
   currentMemberships,
   deactivatedMembersCount,
 } from "./team-memberships";
-import { TeamModal } from "./TeamModal";
+import { TeamCreateDialog } from "./TeamCreateDialog";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
 
 const NO_ACTIVE_MANAGER = "No active manager";
@@ -168,10 +168,11 @@ export const TeamsContent = () => {
         />
       </ResourcePage>
 
-      <TeamModal
+      <TeamCreateDialog
         isOnboarding={isOnboarding}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(team) => panel.open({ type: "team", id: team.id })}
       />
 
       {teamActions.dialogs}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,13 +17,11 @@ export interface EntityPickerProps<T> {
   getLabel: (item: T) => string;
   getSubtitle?: (item: T) => string | null | undefined;
   getAvatarText?: (item: T) => string;
-  renderIcon?: (item: T) => React.ReactNode;
 
   emptyMessage: ReactNode;
   searchPlaceholder?: string;
-  filterItem?: (item: T, query: string) => boolean;
-  /** Searches on the server instead: `items` are then already the matches. */
-  onSearchChange?: (query: string) => void;
+  /** Searches on the server: `items` are already the matches. */
+  onSearchChange: (query: string) => void;
 
   isLoading?: boolean;
   hasNextPage?: boolean;
@@ -41,10 +39,8 @@ export const EntityPicker = <T,>({
   getLabel,
   getSubtitle,
   getAvatarText,
-  renderIcon,
   emptyMessage,
   searchPlaceholder = "Search...",
-  filterItem,
   onSearchChange,
   isLoading = false,
   hasNextPage = false,
@@ -55,20 +51,9 @@ export const EntityPicker = <T,>({
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    if (!query || onSearchChange) return items;
-
-    return items.filter((item) =>
-      filterItem
-        ? filterItem(item, query)
-        : getLabel(item).toLowerCase().includes(query),
-    );
-  }, [items, search, filterItem, getLabel, onSearchChange]);
-
   const changeSearch = (value: string) => {
     setSearch(value);
-    onSearchChange?.(value);
+    onSearchChange(value);
   };
 
   useEffect(() => {
@@ -118,14 +103,14 @@ export const EntityPicker = <T,>({
               <Skeleton key={i} className="h-11 rounded-xl" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
+        ) : items.length === 0 ? (
           <EmptyState
             size="compact"
             title={search ? `No results for "${search}".` : emptyMessage}
           />
         ) : (
           <div className="space-y-0.5">
-            {filtered.map((item) => {
+            {items.map((item) => {
               const id = getId(item);
 
               return (
@@ -134,7 +119,6 @@ export const EntityPicker = <T,>({
                   label={getLabel(item)}
                   subtitle={getSubtitle?.(item)}
                   avatarText={getAvatarText?.(item) ?? getLabel(item).charAt(0)}
-                  icon={renderIcon?.(item)}
                   selected={selectedIds.includes(id)}
                   onToggle={() => onToggle(id)}
                 />
