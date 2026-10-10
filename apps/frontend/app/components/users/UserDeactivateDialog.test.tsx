@@ -6,10 +6,8 @@ import { User, UserDetails } from "@/types";
 import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 
-import {
-  EntityPanelContext,
-  EntityPanelContextValue,
-} from "../entity-panel/entity-panel-context";
+import { EntityPanelContext } from "../entity-panel/entity-panel-context";
+import { mockEntityPanel } from "../entity-panel/mock-entity-panel";
 import { UserDeactivateDialog } from "./UserDeactivateDialog";
 
 const emma: User = {
@@ -82,19 +80,7 @@ vi.mock("@/hooks/useTeams", () => ({
   }),
 }));
 
-const panel: EntityPanelContextValue = {
-  current: null,
-  previous: null,
-  open: vi.fn(),
-  follow: vi.fn(),
-  back: vi.fn(),
-  close: vi.fn(),
-  hrefFor: () => "#",
-  isEditing: false,
-  edit: vi.fn(),
-  stopEditing: vi.fn(),
-  setHasUnsavedChanges: vi.fn(),
-};
+const panel = mockEntityPanel();
 
 describe("UserDeactivateDialog", () => {
   it("names only the teams they manage alone, once those have loaded", async () => {

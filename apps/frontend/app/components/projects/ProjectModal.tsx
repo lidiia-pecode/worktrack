@@ -400,8 +400,6 @@ export const ProjectModal = ({
               description: project?.description ?? "",
             }}
             clientSuggestions={clientSuggestions}
-            membersCount={selectedUsers.length + hiddenMembersCount}
-            activitiesCount={selectedActivities.length}
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />

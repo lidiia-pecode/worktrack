@@ -9,7 +9,7 @@ export type ResourceTab = "active" | "archived";
 
 const TAB_PARAM = "tab";
 const ARCHIVED_TAB: ResourceTab = "archived";
-const SEARCH_DEBOUNCE_MS = 300;
+export const SEARCH_DEBOUNCE_MS = 300;
 
 /**
  * A Manage list's tab, kept in `?tab=` so a reload stays on it, and its

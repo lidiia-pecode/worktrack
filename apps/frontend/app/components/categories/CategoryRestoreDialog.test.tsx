@@ -9,10 +9,8 @@ import {
   ArchivedActivitiesAction,
 } from "@/types/enums";
 
-import {
-  EntityPanelContext,
-  EntityPanelContextValue,
-} from "../entity-panel/entity-panel-context";
+import { EntityPanelContext } from "../entity-panel/entity-panel-context";
+import { mockEntityPanel } from "../entity-panel/mock-entity-panel";
 import { CategoryRestoreDialog } from "./CategoryRestoreDialog";
 
 const restore = vi.hoisted(() => ({ mutate: vi.fn(), isPending: false }));
@@ -21,19 +19,7 @@ vi.mock("@/hooks/useActivityCategories", () => ({
   useRestoreActivityCategory: () => restore,
 }));
 
-const panel: EntityPanelContextValue = {
-  current: null,
-  previous: null,
-  open: vi.fn(),
-  follow: vi.fn(),
-  back: vi.fn(),
-  close: vi.fn(),
-  hrefFor: () => "#",
-  isEditing: false,
-  edit: vi.fn(),
-  stopEditing: vi.fn(),
-  setHasUnsavedChanges: vi.fn(),
-};
+const panel = mockEntityPanel();
 
 const design: ActivityCategoryDetails = {
   id: "c-1",

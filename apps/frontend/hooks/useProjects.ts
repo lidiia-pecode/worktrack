@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   Project,
@@ -89,3 +89,54 @@ export const useOwnProjects = () =>
     queryKey: queryKeys.projects.mine(),
     queryFn: ProjectsClientApi.getMine,
   });
+
+/**
+ * Adds or removes one person or activity, saved at once. The response is the
+ * project's new details; the rest goes stale, since a person's projects, an
+ * activity's projects and the plans of someone removed all follow from it.
+ */
+export const useProjectLinks = (projectId: string) => {
+  const queryClient = useQueryClient();
+
+  const onSuccess = (project: Project) => {
+    queryClient.setQueryData(queryKeys.projects.detail(projectId), project);
+
+    [
+      queryKeys.projects.all,
+      queryKeys.users.all,
+      queryKeys.activities.all,
+      queryKeys.planning.all,
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+  };
+
+  const addMember = useMutation({
+    mutationFn: (userId: string) =>
+      ProjectsClientApi.addMember(projectId, userId),
+    onSuccess,
+  });
+  const removeMember = useMutation({
+    mutationFn: (userId: string) =>
+      ProjectsClientApi.removeMember(projectId, userId),
+    onSuccess,
+  });
+  const addActivity = useMutation({
+    mutationFn: (activityId: string) =>
+      ProjectsClientApi.addActivity(projectId, activityId),
+    onSuccess,
+  });
+  const removeActivity = useMutation({
+    mutationFn: (activityId: string) =>
+      ProjectsClientApi.removeActivity(projectId, activityId),
+    onSuccess,
+  });
+
+  return {
+    addMember,
+    removeMember,
+    addActivity,
+    removeActivity,
+    isSaving: [addMember, removeMember, addActivity, removeActivity].some(
+      (mutation) => mutation.isPending,
+    ),
+  };
+};

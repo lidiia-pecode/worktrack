@@ -22,6 +22,8 @@ export interface EntityPickerProps<T> {
   emptyMessage: ReactNode;
   searchPlaceholder?: string;
   filterItem?: (item: T, query: string) => boolean;
+  /** Searches on the server instead: `items` are then already the matches. */
+  onSearchChange?: (query: string) => void;
 
   isLoading?: boolean;
   hasNextPage?: boolean;
@@ -43,6 +45,7 @@ export const EntityPicker = <T,>({
   emptyMessage,
   searchPlaceholder = "Search...",
   filterItem,
+  onSearchChange,
   isLoading = false,
   hasNextPage = false,
   isFetchingNextPage = false,
@@ -54,14 +57,19 @@ export const EntityPicker = <T,>({
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) return items;
+    if (!query || onSearchChange) return items;
 
     return items.filter((item) =>
       filterItem
         ? filterItem(item, query)
         : getLabel(item).toLowerCase().includes(query),
     );
-  }, [items, search, filterItem, getLabel]);
+  }, [items, search, filterItem, getLabel, onSearchChange]);
+
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    onSearchChange?.(value);
+  };
 
   useEffect(() => {
     const el = listRef.current;
@@ -93,7 +101,7 @@ export const EntityPicker = <T,>({
     <div className={className}>
       <SearchInput
         value={search}
-        onChange={setSearch}
+        onChange={changeSearch}
         placeholder={searchPlaceholder}
         autoFocus
       />

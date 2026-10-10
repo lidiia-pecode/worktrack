@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useContext, useState } from "react";
-import { Pencil } from "lucide-react";
+import { Pencil, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import type { ManageRowAction } from "../shared/resource/ManageList";
 import {
   PanelEntityContext,
   PanelTitleIdContext,
+  useEntityPanel,
 } from "./entity-panel-context";
 
 const VISIBLE_ITEMS = 8;
@@ -169,11 +170,63 @@ export const PanelEditForm = ({
   </section>
 );
 
+interface PanelViewProps {
+  title: string;
+  description: ReactNode;
+  children: ReactNode;
+}
+
+/** A view of the entity, such as a picker, which Done or Back leaves. */
+export const PanelView = ({ title, description, children }: PanelViewProps) => {
+  const titleId = useContext(PanelTitleIdContext);
+  const panel = useEntityPanel();
+
+  return (
+    <>
+      <h2
+        id={titleId}
+        className="text-lg font-semibold tracking-tight break-words text-foreground"
+      >
+        {title}
+      </h2>
+      <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+
+      <div className="mt-5">{children}</div>
+
+      <div className="mt-6 flex justify-end">
+        <Button type="button" size="sm" onClick={panel.back}>
+          Done
+        </Button>
+      </div>
+    </>
+  );
+};
+
+/** Ends one relationship from its row, such as a person's place on a project. */
+export const PanelRemoveButton = ({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) => (
+  <Button
+    type="button"
+    variant="ghost"
+    size="iconSm"
+    aria-label={label}
+    title={label}
+    onClick={onClick}
+  >
+    <X className="size-4" />
+  </Button>
+);
+
 export interface PanelListRow {
   label: ReactNode;
   /** A quieter line under the label, such as a role or a category. */
   detail?: ReactNode;
-  /** At the row's end, such as an Archived badge. */
+  /** At the row's end, such as an Archived badge or a remove button. */
   badge?: ReactNode;
 }
 

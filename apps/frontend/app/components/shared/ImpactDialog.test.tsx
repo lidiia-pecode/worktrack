@@ -3,25 +3,13 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  EntityPanelContext,
-  EntityPanelContextValue,
-} from "../entity-panel/entity-panel-context";
+import { EntityPanelContext } from "../entity-panel/entity-panel-context";
+import { mockEntityPanel } from "../entity-panel/mock-entity-panel";
 import { ImpactDialog } from "./ImpactDialog";
 
-const panel: EntityPanelContextValue = {
-  current: null,
-  previous: null,
-  open: vi.fn(),
-  follow: vi.fn(),
-  back: vi.fn(),
-  close: vi.fn(),
+const panel = mockEntityPanel({
   hrefFor: (ref) => `?open=${ref.type}:${ref.id}`,
-  isEditing: false,
-  edit: vi.fn(),
-  stopEditing: vi.fn(),
-  setHasUnsavedChanges: vi.fn(),
-};
+});
 
 const WEBSITE = {
   entity: { type: "project", id: "p-1" },

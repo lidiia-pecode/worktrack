@@ -36,7 +36,7 @@ const PanelContent = ({ entity }: { entity: EntityRef }) => {
 };
 
 export const EntityPanel = () => {
-  const { current, previous, back, close } = useEntityPanel();
+  const { current, view, previous, back, close } = useEntityPanel();
   const isDesktop = useMediaQuery(DESKTOP_MEDIA_QUERY);
   const titleId = useId();
   const asideRef = useRef<HTMLElement>(null);
@@ -46,6 +46,13 @@ export const EntityPanel = () => {
   useEffect(() => {
     if (currentKey) asideRef.current?.focus();
   }, [currentKey]);
+
+  // A view, such as a picker, focuses its own field; leaving one returns to
+  // the heading unless focus is still in the panel.
+  useEffect(() => {
+    const aside = asideRef.current;
+    if (aside && !aside.contains(document.activeElement)) aside.focus();
+  }, [view]);
 
   if (!current || !currentKey) return null;
 

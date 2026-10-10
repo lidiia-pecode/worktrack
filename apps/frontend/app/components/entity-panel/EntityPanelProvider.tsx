@@ -23,9 +23,10 @@ interface Trail {
   /** The `?open=` value the trail leads to. */
   openValue: string | null;
   entries: TrailEntry[];
+  view: string | null;
 }
 
-const EMPTY_TRAIL: Trail = { openValue: null, entries: [] };
+const EMPTY_TRAIL: Trail = { openValue: null, entries: [], view: null };
 
 /**
  * The entity panel of a Manage page, kept in `?open=<type>:<id>`.
@@ -43,7 +44,9 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
 
   const [trail, setTrail] = useState<Trail>(EMPTY_TRAIL);
   // Any other change of `?open=` (another row, browser Back) starts afresh.
-  const entries = trail.openValue === openValue ? trail.entries : [];
+  const isTrailCurrent = trail.openValue === openValue;
+  const entries = isTrailCurrent ? trail.entries : [];
+  const view = isTrailCurrent ? trail.view : null;
 
   // Any change of `?open=` ends editing, as the trail above does.
   const [editingOpenValue, setEditingOpenValue] = useState<string | null>(null);
@@ -68,8 +71,16 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
     else window.history.replaceState(null, "", url);
   };
 
-  const showWithTrail = (ref: EntityRef, nextEntries: TrailEntry[]) => {
-    setTrail({ openValue: formatEntityRef(ref), entries: nextEntries });
+  const showWithTrail = (
+    ref: EntityRef,
+    nextEntries: TrailEntry[],
+    nextView: string | null = null,
+  ) => {
+    setTrail({
+      openValue: formatEntityRef(ref),
+      entries: nextEntries,
+      view: nextView,
+    });
     writeUrl(ref, "replace");
   };
 
@@ -113,16 +124,34 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
   const follow = (ref: EntityRef, fromName: string) =>
     leave(() => {
       if (current) {
-        showWithTrail(ref, [...entries, { ref: current, name: fromName }]);
+        showWithTrail(ref, [
+          ...entries,
+          { ref: current, name: fromName, view },
+        ]);
       } else {
         show(ref);
       }
     });
 
+  const openView = (nextView: string, fromName: string) => {
+    if (current) {
+      leave(() =>
+        showWithTrail(
+          current,
+          [...entries, { ref: current, name: fromName, view }],
+          nextView,
+        ),
+      );
+    }
+  };
+
   const back = () => {
     const previous = entries.at(-1);
-    if (previous)
-      leave(() => showWithTrail(previous.ref, entries.slice(0, -1)));
+    if (previous) {
+      leave(() =>
+        showWithTrail(previous.ref, entries.slice(0, -1), previous.view),
+      );
+    }
   };
 
   const close = () =>
@@ -161,6 +190,8 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
     previous: entries.at(-1) ?? null,
     open,
     follow,
+    view,
+    openView,
     back,
     close,
     hrefFor: (ref) => urlWithOpenEntity(pathname, searchParams, ref),

@@ -7,6 +7,8 @@ import type { EntityRef } from "@/lib/utils/entity-ref";
 export interface TrailEntry {
   ref: EntityRef;
   name: string;
+  /** A view of that entity, such as a picker, rather than the entity itself. */
+  view: string | null;
 }
 
 export interface EntityPanelContextValue {
@@ -17,6 +19,10 @@ export interface EntityPanelContextValue {
   open: (ref: EntityRef) => void;
   /** From a link inside the panel: the entity shown now joins the trail. */
   follow: (ref: EntityRef, fromName: string) => void;
+  /** A view of the entity shown, such as a picker; null for the entity itself. */
+  view: string | null;
+  /** Shows a view of the entity shown, which Back returns from. */
+  openView: (view: string, fromName: string) => void;
   back: () => void;
   close: () => void;
   hrefFor: (ref: EntityRef) => string;

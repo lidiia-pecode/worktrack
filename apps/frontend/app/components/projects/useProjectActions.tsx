@@ -4,22 +4,20 @@ import { useState } from "react";
 import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useProjectsMutations } from "@/hooks/useProjects";
-import { useIsOnboarding } from "@/hooks/useSetupLink";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import type { ManageRowAction } from "../shared/resource/ManageList";
 import { ProjectArchiveDialog } from "./ProjectArchiveDialog";
-import { ProjectModal } from "./ProjectModal";
 
 export const isActiveProject = (project: Project) =>
   project.status === ProjectStatus.ACTIVE;
 
 /** What the viewer can do with a project, from a list row or the panel. */
 export const useProjectActions = () => {
-  const isOnboarding = useIsOnboarding();
+  const panel = useEntityPanel();
   const { unarchive } = useProjectsMutations();
-  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [archivingProject, setArchivingProject] = useState<Project | null>(
     null,
   );
@@ -43,26 +41,16 @@ export const useProjectActions = () => {
         ];
 
   const dialogs = (
-    <>
-      <ProjectModal
-        key={editingProject?.id ?? "edit"}
-        isOnboarding={isOnboarding}
-        project={editingProject ?? undefined}
-        open={Boolean(editingProject)}
-        onClose={() => setEditingProject(null)}
-      />
-
-      <ProjectArchiveDialog
-        project={archivingProject}
-        onClose={() => setArchivingProject(null)}
-      />
-    </>
+    <ProjectArchiveDialog
+      project={archivingProject}
+      onClose={() => setArchivingProject(null)}
+    />
   );
 
   return {
     // An archived project is read-only.
     canEdit: isActiveProject,
-    edit: setEditingProject,
+    edit: (project: Project) => panel.edit({ type: "project", id: project.id }),
     actionsFor,
     dialogs,
   };

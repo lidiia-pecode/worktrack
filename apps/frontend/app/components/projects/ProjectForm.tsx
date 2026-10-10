@@ -1,18 +1,14 @@
 "use client";
 
+import { useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Activity, Users } from "lucide-react";
 
 import Input from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-import {
-  Field,
-  fieldLabelClassName,
-  fieldMessageId,
-} from "@/components/ui/field";
+import { Field, fieldMessageId } from "@/components/ui/field";
 import { DescriptionEditor } from "./DescriptionEditor";
 
 const projectFormSchema = z
@@ -54,27 +50,25 @@ interface ProjectFormProps {
   defaultValues?: Partial<ProjectFormData>;
   clientSuggestions?: string[];
   mode?: "create" | "edit";
-  membersCount?: number;
-  activitiesCount?: number;
   onSubmit: (data: ProjectFormData) => void;
   isSubmitting?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const ProjectForm = ({
   formId = "project-form",
   defaultValues,
   mode = "create",
-  membersCount = 0,
-  activitiesCount = 0,
   clientSuggestions = [],
   onSubmit,
   isSubmitting = false,
+  onDirtyChange,
 }: ProjectFormProps) => {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
@@ -89,6 +83,11 @@ export const ProjectForm = ({
   const workType = useWatch({ control, name: "workType" });
   const isEditMode = mode === "edit";
 
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
+
   const submit = ({ workType, clientName, ...rest }: ProjectFormValues) =>
     onSubmit({
       ...rest,
@@ -102,6 +101,7 @@ export const ProjectForm = ({
         label="Project name"
         {...register("name")}
         placeholder="e.g. Website redesign"
+        autoFocus={isEditMode}
         description={
           isEditMode
             ? "Update the name used to identify this project."
@@ -195,38 +195,6 @@ export const ProjectForm = ({
           )}
         />
       </Field>
-
-      {isEditMode && (
-        <section aria-labelledby="project-overview-title">
-          <h3 id="project-overview-title" className={fieldLabelClassName}>
-            Project overview
-          </h3>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
-              <Users className="size-4 text-muted-foreground" />
-
-              <div>
-                <p className="text-xs text-muted-foreground">Members</p>
-                <p className="text-sm font-medium text-foreground">
-                  {membersCount}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
-              <Activity className="size-4 text-muted-foreground" />
-
-              <div>
-                <p className="text-xs text-muted-foreground">Activities</p>
-                <p className="text-sm font-medium text-foreground">
-                  {activitiesCount}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
     </form>
   );
 };

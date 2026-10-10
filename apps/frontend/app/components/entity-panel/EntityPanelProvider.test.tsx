@@ -58,6 +58,10 @@ const Probe = () => {
       </output>
       <output aria-label="Back to">{panel.previous?.name ?? ""}</output>
       <output aria-label="Editing">{panel.isEditing ? "yes" : ""}</output>
+      <output aria-label="View">{panel.view ?? ""}</output>
+      <button onClick={() => panel.openView("add-people", "Core team")}>
+        Add people
+      </button>
       <button onClick={() => panel.open(TEAM)}>Open team row</button>
       <button onClick={() => panel.edit(TEAM)}>Edit team row</button>
       <button onClick={() => panel.setHasUnsavedChanges(true)}>
@@ -86,6 +90,7 @@ const renderPanel = () =>
 const shown = () => screen.getByRole("status", { name: "Open" });
 const backTo = () => screen.getByRole("status", { name: "Back to" });
 const editing = () => screen.getByRole("status", { name: "Editing" });
+const view = () => screen.getByRole("status", { name: "View" });
 
 describe("EntityPanelProvider", () => {
   let historyEntries: string[];
@@ -208,5 +213,27 @@ describe("EntityPanelProvider", () => {
     await user.click(await screen.findByRole("button", { name: "Discard" }));
     expect(shown()).toBeEmptyDOMElement();
     expect(editing()).toBeEmptyDOMElement();
+  });
+
+  it("puts a view such as a picker on the trail, which Back leaves", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Open team row" }));
+    await user.click(screen.getByRole("button", { name: "Add people" }));
+    expect(shown()).toHaveTextContent("team:t-1");
+    expect(view()).toHaveTextContent("add-people");
+    expect(backTo()).toHaveTextContent("Core team");
+
+    // A link from the picker comes back to it.
+    await user.click(screen.getByRole("button", { name: "Follow person" }));
+    expect(view()).toBeEmptyDOMElement();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(view()).toHaveTextContent("add-people");
+
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    expect(shown()).toHaveTextContent("team:t-1");
+    expect(view()).toBeEmptyDOMElement();
+    expect(backTo()).toBeEmptyDOMElement();
   });
 });
