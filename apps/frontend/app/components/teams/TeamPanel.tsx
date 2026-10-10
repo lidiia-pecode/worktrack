@@ -174,25 +174,33 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
         actions={teamActions.actionsFor(team)}
-        meta={
-          managers.length > 0 ? (
-            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-              Managed by
-              {managers.map((manager) => (
-                <EntityLink
-                  key={manager.id}
-                  entity={{ type: "user", id: manager.id }}
-                  tone="chip"
-                >
-                  <Avatar user={manager} size="xs" className="size-5 ring-0" />
-                  {fullName(manager)}
-                </EntityLink>
-              ))}
-            </span>
-          ) : (
-            <ManageWarning>No active manager</ManageWarning>
-          )
-        }
+        details={[
+          {
+            label: managers.length === 1 ? "Manager" : "Managers",
+            value:
+              managers.length > 0 ? (
+                <span className="flex flex-wrap gap-1.5">
+                  {managers.map((manager) => (
+                    <EntityLink
+                      key={manager.id}
+                      entity={{ type: "user", id: manager.id }}
+                      tone="chip"
+                    >
+                      <Avatar
+                        user={manager}
+                        size="xs"
+                        className="size-5 ring-0"
+                      />
+                      {fullName(manager)}
+                    </EntityLink>
+                  ))}
+                </span>
+              ) : (
+                <ManageWarning>No active manager</ManageWarning>
+              ),
+            wide: true,
+          },
+        ]}
         editForm={isEditing && <TeamEditForm team={team} />}
         editsName
       >

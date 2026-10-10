@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, Plus, Tags, UserPlus } from "lucide-react";
+import { Plus, Tags, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -120,25 +120,30 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             : undefined
         }
         actions={projectActions.actionsFor(project)}
-        meta={
-          project.clientName ? (
-            <span className="inline-flex items-center gap-1.5">
-              <Building2 aria-hidden="true" className="size-3.5" />
-              <span className="text-foreground">{project.clientName}</span>
-            </span>
-          ) : (
-            <span>Internal project</span>
-          )
-        }
+        details={[
+          {
+            label: "Client",
+            value: project.clientName || (
+              <span className="text-muted-foreground">Internal project</span>
+            ),
+          },
+          ...(project.description
+            ? [
+                {
+                  label: "Description",
+                  value: (
+                    <span className="whitespace-pre-line">
+                      {project.description}
+                    </span>
+                  ),
+                  wide: true,
+                },
+              ]
+            : []),
+        ]}
         editForm={isEditing && <ProjectEditForm project={project} />}
         editsName
       >
-        {project.description && (
-          <p className="-mt-2 text-sm whitespace-pre-line text-foreground/80">
-            {project.description}
-          </p>
-        )}
-
         <PanelList
           title="People"
           items={members}

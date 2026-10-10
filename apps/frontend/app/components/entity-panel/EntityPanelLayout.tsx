@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ComponentProps,
-  forwardRef,
-  Fragment,
-  ReactNode,
-  useContext,
-} from "react";
+import { ComponentProps, forwardRef, ReactNode, useContext } from "react";
 import { Pencil, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,13 +23,11 @@ interface EntityPanelLayoutProps {
   /** A line under the name, such as a person's position. */
   subtitle?: ReactNode;
   status: ReactNode;
-  /** Beside the status, such as a role, a client or the team's manager. */
-  meta?: ReactNode;
   /** Opens the entity's form; left out when the viewer cannot edit it. */
   onEdit?: () => void;
   /** Its lifecycle, such as Archive or Restore, beside Edit. */
   actions?: ManageRowAction[];
-  /** The entity's own fields, for those with more than its header can carry. */
+  /** The entity's own facts under its name, such as a client or a category. */
   details?: PanelDetail[];
   /** The open form: it takes the panel until Save or Cancel. */
   editForm?: ReactNode;
@@ -48,18 +40,17 @@ interface EntityPanelLayoutProps {
 const TOOLBAR_BUTTON = "rounded-none first:rounded-l-md last:rounded-r-md";
 
 /**
- * The entity's identity in the header, with its actions in a quiet toolbar
- * above the name; its own fields under Details where the header cannot carry
- * them, which Edit changes; and its relationships below, each changed in its
- * own section. While the form is open it is the whole panel, so what Edit
- * covers is never in doubt.
+ * The entity's identity in the header: its actions in a quiet toolbar above
+ * the name, its status, and its own facts, which Edit changes, in the same
+ * grid on every panel. Its relationships follow, each changed in its own
+ * section. While the form is open it is the whole panel, so what Edit covers
+ * is never in doubt.
  */
 export const EntityPanelLayout = ({
   type,
   name,
   subtitle,
   status,
-  meta,
   onEdit,
   actions = [],
   details = [],
@@ -136,10 +127,9 @@ export const EntityPanelLayout = ({
                 <p className="mt-0.5 text-sm text-foreground/80">{subtitle}</p>
               )}
 
-              <div className="mt-2.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-muted-foreground">
-                {status}
-                {meta}
-              </div>
+              <div className="mt-2.5 flex">{status}</div>
+
+              {details.length > 0 && <PanelDetails details={details} />}
             </>
           )}
         </div>
@@ -148,14 +138,7 @@ export const EntityPanelLayout = ({
       <div
         className={cn("flex flex-col gap-7", hidesHeading ? "mt-1" : "mt-7")}
       >
-        {isEditing ? (
-          editForm
-        ) : (
-          <>
-            {details.length > 0 && <PanelDetails details={details} />}
-            {children}
-          </>
-        )}
+        {isEditing ? editForm : children}
       </div>
     </PanelEntityContext.Provider>
   );
@@ -213,7 +196,7 @@ export const PanelStatus = ({
 export interface PanelDetail {
   label: string;
   value: ReactNode;
-  /** A long value, such as a description, under its label rather than beside it. */
+  /** A long value, such as a description or an email, across both columns. */
   wide?: boolean;
 }
 
@@ -241,34 +224,21 @@ export const PanelSectionHeading = ({
   </div>
 );
 
-/** An entity's own fields, a label beside each value. */
-export const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <section>
-    <PanelSectionHeading title="Details" />
-
-    <dl className="mt-2 grid grid-cols-3 gap-x-4 gap-y-3">
-      {details.map((detail) => (
-        <Fragment key={detail.label}>
-          <dt
-            className={cn(
-              "text-sm text-muted-foreground",
-              detail.wide && "col-span-3",
-            )}
-          >
-            {detail.label}
-          </dt>
-          <dd
-            className={cn(
-              "min-w-0 text-sm break-words text-foreground",
-              detail.wide ? "col-span-3 -mt-2" : "col-span-2",
-            )}
-          >
-            {detail.value}
-          </dd>
-        </Fragment>
-      ))}
-    </dl>
-  </section>
+/** An entity's own facts, each label above its value, two to a row. */
+const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
+  <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
+    {details.map((detail) => (
+      <div
+        key={detail.label}
+        className={cn("min-w-0", detail.wide && "col-span-2")}
+      >
+        <dt className="text-xs text-muted-foreground">{detail.label}</dt>
+        <dd className="mt-1 text-sm break-words text-foreground">
+          {detail.value}
+        </dd>
+      </div>
+    ))}
+  </dl>
 );
 
 interface PanelEditFormProps {

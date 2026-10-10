@@ -104,10 +104,6 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
             <PanelStatus isActive={isActive} />
           )
         }
-        meta={
-          isActive &&
-          isDraft && <span>Give it a category to put it on projects.</span>
-        }
         onEdit={
           activityActions.canEdit(activity)
             ? () => activityActions.edit(activity)

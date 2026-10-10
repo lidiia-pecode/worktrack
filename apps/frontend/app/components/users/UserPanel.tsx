@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Clock, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,20 +46,15 @@ const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
     : capacity?.validFrom &&
       `since ${formatDayMonthYearLabel(capacity.validFrom)}`;
 
+  if (!capacity) {
+    return <span className="text-muted-foreground">Not set</span>;
+  }
+
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <Clock aria-hidden="true" className="size-3.5" />
-      {capacity ? (
-        <>
-          <span className="text-foreground">
-            {formatDuration(capacity.minutesPerWeek)} a week
-          </span>
-          {source && <span>({source})</span>}
-        </>
-      ) : (
-        "No working hours set"
-      )}
-    </span>
+    <>
+      {formatDuration(capacity.minutesPerWeek)} a week
+      {source && <span className="text-muted-foreground"> · {source}</span>}
+    </>
   );
 };
 
@@ -191,14 +186,19 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         onEdit={
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }
-        meta={
-          <>
-            <Badge>{ROLE_LABELS[user.role]}</Badge>
-            <span className="min-w-0 truncate">{user.email}</span>
-            {/* Working hours are the owner's to read. */}
-            {isOwner && <WorkingHours capacity={capacity} />}
-          </>
-        }
+        details={[
+          { label: "Role", value: ROLE_LABELS[user.role] },
+          // Working hours are the owner's to read.
+          ...(isOwner
+            ? [
+                {
+                  label: "Working hours",
+                  value: <WorkingHours capacity={capacity} />,
+                },
+              ]
+            : []),
+          { label: "Email", value: user.email, wide: true },
+        ]}
         actions={userActions.actionsFor(user)}
         // A person's name is theirs to change, in their profile; the form
         // leaves the heading as it is.
