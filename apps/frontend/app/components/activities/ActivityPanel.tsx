@@ -1,6 +1,9 @@
 "use client";
 
+import { Plus } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   useActivitiesMutations,
   useActivityDetails,
@@ -16,11 +19,17 @@ import {
   PanelEditForm,
   PanelList,
   PanelQueryState,
+  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { LoadingState } from "../shared/LoadingState";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
+import {
+  ActivityProjectsPicker,
+  PROJECTS_PICKER,
+  useActivityProjectChanges,
+} from "./ActivityProjectsPicker";
 import { isActiveActivity, useActivityActions } from "./useActivityActions";
 
 const EDIT_FORM_ID = "activity-edit-form";
@@ -60,25 +69,30 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
   );
 };
 
-export const ActivityPanel = ({ id }: { id: string }) => {
-  const { data: activity, isLoading, error, refetch } = useActivityDetails(id);
+const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   const activityActions = useActivityActions();
   const panel = useEntityPanel();
+  const projectChanges = useActivityProjectChanges(activity);
 
-  if (!activity) {
+  const isActive = isActiveActivity(activity);
+  // Archiving it elsewhere, such as from its row, ends the edit.
+  const isEditing = panel.isEditing && isActive;
+  const canChangeProjects = isActive && !isEditing;
+
+  if (isActive && panel.view === PROJECTS_PICKER) {
     return (
-      <PanelQueryState isLoading={isLoading} error={error} onRetry={refetch} />
+      <>
+        <ActivityProjectsPicker activity={activity} changes={projectChanges} />
+        {projectChanges.dialogs}
+      </>
     );
   }
-
-  // Archiving it elsewhere, such as from its row, ends the edit.
-  const isEditing = panel.isEditing && activityActions.canEdit(activity);
 
   return (
     <>
       <EntityPanelLayout
         name={activity.name}
-        status={<PanelStatus isActive={isActiveActivity(activity)} />}
+        status={<PanelStatus isActive={isActive} />}
         onEdit={
           activityActions.canEdit(activity)
             ? () => activityActions.edit(activity)
@@ -120,15 +134,51 @@ export const ActivityPanel = ({ id }: { id: string }) => {
                 {project.name}
               </EntityLink>
             ),
-            badge: project.status === ProjectStatus.ARCHIVED && (
-              <Badge variant="neutral">Archived</Badge>
-            ),
+            // An archived project is read-only, so it keeps the activity.
+            badge:
+              project.status === ProjectStatus.ARCHIVED ? (
+                <Badge variant="neutral">Archived</Badge>
+              ) : (
+                canChangeProjects && (
+                  <PanelRemoveButton
+                    label={`Remove ${activity.name} from ${project.name}`}
+                    onClick={() => projectChanges.removeFromProject(project)}
+                  />
+                )
+              ),
           })}
           emptyText="No project offers it yet."
+          action={
+            canChangeProjects && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => panel.openView(PROJECTS_PICKER, activity.name)}
+                className="gap-1.5"
+              >
+                <Plus className="size-4" />
+                Add to projects
+              </Button>
+            )
+          }
         />
       </EntityPanelLayout>
 
       {activityActions.dialogs}
+      {projectChanges.dialogs}
     </>
   );
+};
+
+export const ActivityPanel = ({ id }: { id: string }) => {
+  const { data: activity, isLoading, error, refetch } = useActivityDetails(id);
+
+  if (!activity) {
+    return (
+      <PanelQueryState isLoading={isLoading} error={error} onRetry={refetch} />
+    );
+  }
+
+  return <ActivityDetailsView activity={activity} />;
 };

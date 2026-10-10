@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
-import { useDebouncedValue } from "@/hooks/useDebouncedValue";
-import { SEARCH_DEBOUNCE_MS } from "@/hooks/useManageListState";
+import { useServerSearch } from "@/hooks/useManageListState";
 import { createFirstLink, useIsOnboarding } from "@/hooks/useSetupLink";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { initials, fullName } from "@/lib/utils/user";
@@ -25,13 +23,6 @@ interface ProjectPickerProps {
   changes: ReturnType<typeof useProjectLinkChanges>;
 }
 
-const useServerSearch = () => {
-  const [search, setSearch] = useState("");
-  const query = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
-
-  return { search: query || undefined, setSearch };
-};
-
 /** Offered activities, which a project's details list with their category. */
 export const offeredActivities = (project: Project): Activity[] =>
   (project.projectActivities ?? [])
@@ -43,9 +34,9 @@ export const ProjectPeoplePicker = ({
   changes,
 }: ProjectPickerProps) => {
   const { user } = useAuth();
-  const { search, setSearch } = useServerSearch();
+  const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery(
-    { status: UserStatus.ACTIVE, search },
+    { status: UserStatus.ACTIVE, search: searchQuery },
     { keepPreviousData: true },
   );
   const memberIds = (project.users ?? []).map((member) => member.id);
@@ -92,9 +83,9 @@ export const ProjectActivitiesPicker = ({
   changes,
 }: ProjectPickerProps) => {
   const isOnboarding = useIsOnboarding();
-  const { search, setSearch } = useServerSearch();
+  const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useActivitiesInfiniteQuery(
-    { status: ActivityStatus.ACTIVE, search },
+    { status: ActivityStatus.ACTIVE, search: searchQuery },
     { keepPreviousData: true },
   );
   const offeredIds = offeredActivities(project).map((activity) => activity.id);

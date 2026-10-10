@@ -8,6 +8,10 @@ import { fullName } from "@/lib/utils/user";
 import { Activity, AssignableUser, Project } from "@/types";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
+import {
+  ProjectActivityRemoval,
+  RemoveProjectActivityDialog,
+} from "./RemoveProjectActivityDialog";
 
 /**
  * Adds and removes a project's people and activities, each saved at once.
@@ -15,30 +19,30 @@ import { ImpactDialog } from "../shared/ImpactDialog";
  * removing an activity always says that past time stays.
  */
 export const useProjectLinkChanges = (project: Project) => {
-  const links = useProjectLinks(project.id);
+  const links = useProjectLinks();
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
-  const [removingActivity, setRemovingActivity] = useState<Activity | null>(
-    null,
-  );
+  const [activityRemoval, setActivityRemoval] =
+    useState<ProjectActivityRemoval | null>(null);
 
   // A second click while one change saves would act on stale details.
   const isBusy = links.isSaving || isChecking;
+  const projectId = project.id;
 
   const addMember = (userId: string) => {
-    if (!isBusy) links.addMember.mutate(userId);
+    if (!isBusy) links.addMember.mutate({ projectId, userId });
   };
 
   const removeMember = (member: AssignableUser) => {
     if (isBusy) return;
 
     void confirmRemoval({
-      projectIds: [project.id],
+      projectIds: [projectId],
       userIds: [member.id],
       title: `Remove ${fullName(member)} from ${project.name}?`,
       // A failure is reported by the global mutation handler.
       proceed: () =>
-        links.removeMember.mutateAsync(member.id).then(
+        links.removeMember.mutateAsync({ projectId, userId: member.id }).then(
           () => undefined,
           () => undefined,
         ),
@@ -46,39 +50,20 @@ export const useProjectLinkChanges = (project: Project) => {
   };
 
   const addActivity = (activityId: string) => {
-    if (!isBusy) links.addActivity.mutate(activityId);
+    if (!isBusy) links.addActivity.mutate({ projectId, activityId });
   };
 
   const removeActivity = (activity: Activity) => {
-    if (!isBusy) setRemovingActivity(activity);
+    if (!isBusy) setActivityRemoval({ project, activity });
   };
 
   const dialogs = (
     <>
       <ImpactDialog {...confirmProps} />
 
-      <ImpactDialog
-        isOpen={Boolean(removingActivity)}
-        title={
-          removingActivity
-            ? `Remove ${removingActivity.name} from ${project.name}?`
-            : ""
-        }
-        description={
-          removingActivity
-            ? `Nobody can log new time on ${removingActivity.name} in this project. Time already logged stays in reports.`
-            : ""
-        }
-        confirmText="Remove"
-        confirmVariant="destructive"
-        loading={links.removeActivity.isPending}
-        onConfirm={() =>
-          removingActivity &&
-          links.removeActivity.mutate(removingActivity.id, {
-            onSettled: () => setRemovingActivity(null),
-          })
-        }
-        onClose={() => setRemovingActivity(null)}
+      <RemoveProjectActivityDialog
+        removal={activityRemoval}
+        onClose={() => setActivityRemoval(null)}
       />
     </>
   );

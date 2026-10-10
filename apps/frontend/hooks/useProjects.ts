@@ -90,16 +90,27 @@ export const useOwnProjects = () =>
     queryFn: ProjectsClientApi.getMine,
   });
 
+interface MemberLink {
+  projectId: string;
+  userId: string;
+}
+
+interface ActivityLink {
+  projectId: string;
+  activityId: string;
+}
+
 /**
- * Adds or removes one person or activity, saved at once. The response is the
- * project's new details; the rest goes stale, since a person's projects, an
- * activity's projects and the plans of someone removed all follow from it.
+ * Adds or removes one person or activity on a project, saved at once. The
+ * response is the project's new details; the rest goes stale, since a person's
+ * projects, an activity's projects and the plans of someone removed all follow
+ * from it.
  */
-export const useProjectLinks = (projectId: string) => {
+export const useProjectLinks = () => {
   const queryClient = useQueryClient();
 
   const onSuccess = (project: Project) => {
-    queryClient.setQueryData(queryKeys.projects.detail(projectId), project);
+    queryClient.setQueryData(queryKeys.projects.detail(project.id), project);
 
     [
       queryKeys.projects.all,
@@ -110,22 +121,22 @@ export const useProjectLinks = (projectId: string) => {
   };
 
   const addMember = useMutation({
-    mutationFn: (userId: string) =>
+    mutationFn: ({ projectId, userId }: MemberLink) =>
       ProjectsClientApi.addMember(projectId, userId),
     onSuccess,
   });
   const removeMember = useMutation({
-    mutationFn: (userId: string) =>
+    mutationFn: ({ projectId, userId }: MemberLink) =>
       ProjectsClientApi.removeMember(projectId, userId),
     onSuccess,
   });
   const addActivity = useMutation({
-    mutationFn: (activityId: string) =>
+    mutationFn: ({ projectId, activityId }: ActivityLink) =>
       ProjectsClientApi.addActivity(projectId, activityId),
     onSuccess,
   });
   const removeActivity = useMutation({
-    mutationFn: (activityId: string) =>
+    mutationFn: ({ projectId, activityId }: ActivityLink) =>
       ProjectsClientApi.removeActivity(projectId, activityId),
     onSuccess,
   });

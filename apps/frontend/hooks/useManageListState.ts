@@ -9,7 +9,20 @@ export type ResourceTab = "active" | "archived";
 
 const TAB_PARAM = "tab";
 const ARCHIVED_TAB: ResourceTab = "archived";
-export const SEARCH_DEBOUNCE_MS = 300;
+const SEARCH_DEBOUNCE_MS = 300;
+
+/** What is typed, and what goes to the server once typing pauses. */
+export const useServerSearch = () => {
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+
+  return {
+    search,
+    setSearch,
+    /** What was last asked for; undefined while nothing is searched. */
+    searchQuery: debouncedSearch || undefined,
+  };
+};
 
 /**
  * A Manage list's tab, kept in `?tab=` so a reload stays on it, and its
@@ -18,8 +31,7 @@ export const SEARCH_DEBOUNCE_MS = 300;
 export const useManageListState = () => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebouncedValue(search.trim(), SEARCH_DEBOUNCE_MS);
+  const serverSearch = useServerSearch();
 
   const tab: ResourceTab =
     searchParams.get(TAB_PARAM) === ARCHIVED_TAB ? ARCHIVED_TAB : "active";
@@ -41,10 +53,7 @@ export const useManageListState = () => {
   return {
     tab,
     setTab,
-    search,
-    setSearch,
-    /** What the list was last asked for; undefined while nothing is searched. */
-    searchQuery: debouncedSearch || undefined,
+    ...serverSearch,
   };
 };
 
