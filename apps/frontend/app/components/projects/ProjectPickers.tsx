@@ -72,7 +72,7 @@ export const ProjectPeoplePicker = ({
       description={
         user?.role === UserRole.OWNER
           ? "Each choice saves at once. Choose someone again to remove them."
-          : "Each choice saves at once. You can add yourself and people in teams you manage."
+          : "You can add yourself and people in teams you manage. Each choice saves at once. Choose someone again to remove them."
       }
     >
       <EntityPicker
@@ -120,7 +120,7 @@ export const ProjectActivitiesPicker = ({
     <PanelView
       title={`Add activities to ${project.name}`}
       done={done}
-      description="People on the project log time against these. Each choice saves at once."
+      description="People on the project log time against these. Each choice saves at once. Choose one again to remove it."
     >
       <EntityPicker
         items={items}

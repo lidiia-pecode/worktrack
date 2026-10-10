@@ -17,14 +17,12 @@ interface ActivityRestoreDialogProps {
   /** An activity whose category is archived; the dialog is open while one is given. */
   activity: Activity | null;
   onClose: () => void;
-  onRestored?: () => void;
 }
 
 /** An active activity needs an active category, so restoring one asks where it goes. */
 export const ActivityRestoreDialog = ({
   activity,
   onClose,
-  onRestored,
 }: ActivityRestoreDialogProps) => {
   const activeCategories = useActivityCategoriesAllPagesQuery(
     { status: ActCategoryStatus.ACTIVE },
@@ -59,10 +57,7 @@ export const ActivityRestoreDialog = ({
         ? { id: activity.id, restoreCategoryId: activity.category.id }
         : { id: activity.id, moveToCategoryId: selectedOption },
       {
-        onSuccess: () => {
-          close();
-          onRestored?.();
-        },
+        onSuccess: close,
       },
     );
   };

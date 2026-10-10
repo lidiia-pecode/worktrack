@@ -77,6 +77,9 @@ export const useTeamsMutations = createEntityMutations<
 >({
   queryKey: queryKeys.teams.all,
 
+  // A person's row and panel name their team.
+  alsoInvalidate: [queryKeys.users.all],
+
   api: {
     create: TeamsClientApi.create,
     update: TeamsClientApi.update,

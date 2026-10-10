@@ -16,13 +16,11 @@ interface TeamArchiveDialogProps {
   /** The team to archive; the dialog is open while one is given. */
   team: Team | null;
   onClose: () => void;
-  onArchived?: () => void;
 }
 
 export const TeamArchiveDialog = ({
   team,
   onClose,
-  onArchived,
 }: TeamArchiveDialogProps) => {
   const { archive } = useTeamsMutations();
   const impact = useTeamArchiveImpact(team?.id ?? "", Boolean(team));
@@ -31,10 +29,7 @@ export const TeamArchiveDialog = ({
     if (!team || !impact.data) return;
 
     archive.mutate(team.id, {
-      onSuccess: () => {
-        onClose();
-        onArchived?.();
-      },
+      onSuccess: onClose,
     });
   };
 

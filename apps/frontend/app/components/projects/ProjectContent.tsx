@@ -104,8 +104,7 @@ export const ProjectsContent = () => {
           row={{
             getKey: (project) => project.id,
             getName: (project) => project.name,
-            onOpen: (project) =>
-              panel.open({ type: "project", id: project.id }),
+            getEntity: (project) => ({ type: "project", id: project.id }),
             onEdit: projectActions.edit,
             canEdit: projectActions.canEdit,
             columns: COLUMNS,

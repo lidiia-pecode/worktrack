@@ -240,7 +240,8 @@ behind it is unchecked would be a hidden button rather than a permission.
 
 **The rule that replaces it was settled on 21 September 2026** and is now
 enforced: a manager assigns only the people they manage, plus themselves, both
-in `GET /users/assignable` and in `syncProjectUsers`; their save changes nobody
+in `GET /users/assignable`, in `syncProjectUsers` and in the one-person
+project links; their save changes nobody
 outside that set; and that same set is all they see of a project's membership,
 so sharing a project discloses nobody. See
 [`permission-model.md`](./permission-model.md) §3.4 and §3.5.

@@ -159,7 +159,7 @@ export const TeamsContent = () => {
           row={{
             getKey: (team) => team.id,
             getName: (team) => team.name,
-            onOpen: (team) => panel.open({ type: "team", id: team.id }),
+            getEntity: (team) => ({ type: "team", id: team.id }),
             onEdit: teamActions.edit,
             canEdit: teamActions.canEdit,
             columns: COLUMNS,

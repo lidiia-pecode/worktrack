@@ -1,4 +1,4 @@
-import { fullName } from "@/lib/utils/user";
+import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 import { TeamRole } from "@/types/enums";
 
@@ -14,8 +14,10 @@ interface ChangeContext {
   otherTeamsCount: number;
 }
 
+// A deactivated manager already leaves the team without an active one.
 const isOnlyActiveManager = (team: Team, membership: CurrentMembership) =>
   membership.roleInTeam === TeamRole.MANAGER &&
+  !isDeactivatedUser(membership.user) &&
   activeManagers(team).every((manager) => manager.id === membership.user.id);
 
 /** What a change to someone's place in a team means, for its confirmation. */

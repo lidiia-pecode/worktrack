@@ -106,8 +106,6 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
     canChangeRole(membership) && membership.user.role === UserRole.MANAGER;
 
   const roleControl = (membership: CurrentMembership) => {
-    if (!canChangeRole(membership)) return null;
-
     if (setsRole(membership)) {
       return (
         <FormSelect
@@ -123,12 +121,19 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       );
     }
 
+    if (
+      !canChangeRole(membership) ||
+      membership.user.role !== UserRole.EMPLOYEE
+    ) {
+      return null;
+    }
+
     return (
       <Button
         type="button"
         variant="outline"
         size="xs"
-        aria-label={`Make ${fullName(membership.user)} a Manager`}
+        aria-label={`Make Manager: ${fullName(membership.user)}`}
         onClick={() => changes.promote(membership.user)}
       >
         Make Manager

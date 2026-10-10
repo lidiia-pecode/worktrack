@@ -103,16 +103,21 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
     setPendingLeave(null);
   };
 
+  // From a list or a link outside the panel: a fresh start, whatever this
+  // entity showed when it was last open, and focus later returns to the opener.
   const show = (ref: EntityRef) => {
+    setTrail(EMPTY_TRAIL);
+    setEditingOpenValue(null);
+    returnFocusTo.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+
     if (current) {
       writeUrl(ref, "replace");
       return;
     }
 
-    returnFocusTo.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
     openedWithHistoryEntry.current = true;
     writeUrl(ref, "push");
   };
@@ -163,7 +168,8 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
         writeUrl(null, "replace");
       }
 
-      returnFocusTo.current?.focus();
+      // A menu item that opened it has gone with its menu.
+      if (returnFocusTo.current?.isConnected) returnFocusTo.current.focus();
       returnFocusTo.current = null;
     });
 
@@ -172,6 +178,8 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
 
     leave(() => {
       if (!isShown(ref)) show(ref);
+      // The form replaces a picker the entity may be showing.
+      else if (view) showWithTrail(ref, entries);
       setEditingOpenValue(formatEntityRef(ref));
     });
   };

@@ -12,13 +12,11 @@ interface ActivityArchiveDialogProps {
   /** The activity to archive; the dialog is open while one is given. */
   activity: Activity | null;
   onClose: () => void;
-  onArchived?: () => void;
 }
 
 export const ActivityArchiveDialog = ({
   activity,
   onClose,
-  onArchived,
 }: ActivityArchiveDialogProps) => {
   const { archive } = useActivitiesMutations();
   const impact = useActivityArchiveImpact(
@@ -31,10 +29,7 @@ export const ActivityArchiveDialog = ({
     if (!activity || !impact.data) return;
 
     archive.mutate(activity.id, {
-      onSuccess: () => {
-        onClose();
-        onArchived?.();
-      },
+      onSuccess: onClose,
     });
   };
 

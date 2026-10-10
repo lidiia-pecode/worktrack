@@ -22,13 +22,15 @@ export const useUserActions = () => {
 
   const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
 
-  // A person's fields and hours are the owner's; a deactivated person is
-  // read-only for everyone.
-  const canEdit = (user: User) => isOwner && !isDeactivatedUser(user);
+  // An owner, the viewer included, is reached only through a project link.
+  // The form can't keep the Owner role and the API refuses to deactivate one.
+  const managesPerson = (user: User) => isOwner && user.role !== UserRole.OWNER;
 
-  // Deactivating and reactivating are the owner's.
+  const canEdit = (user: User) =>
+    managesPerson(user) && !isDeactivatedUser(user);
+
   const actionsFor = (user: User): ManageRowAction[] => {
-    if (!isOwner) return [];
+    if (!managesPerson(user)) return [];
 
     return isDeactivatedUser(user)
       ? [

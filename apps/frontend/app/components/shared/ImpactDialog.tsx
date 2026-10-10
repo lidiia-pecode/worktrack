@@ -33,7 +33,6 @@ interface ImpactDialogProps {
   confirmVariant?: "primary" | "warning" | "destructive" | "success";
   onConfirm: () => void;
   onClose: () => void;
-  onNavigate?: () => void;
   loading?: boolean;
   confirmDisabled?: boolean;
 }
@@ -82,7 +81,6 @@ export const ImpactDialog = ({
   confirmVariant = "primary",
   onConfirm,
   onClose,
-  onNavigate = onClose,
   loading = false,
   confirmDisabled = false,
 }: ImpactDialogProps) => {
@@ -101,7 +99,7 @@ export const ImpactDialog = ({
             <AffectedEntities
               key={group.label}
               group={group}
-              onNavigate={onNavigate}
+              onNavigate={onClose}
             />
           ))}
 

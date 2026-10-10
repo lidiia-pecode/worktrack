@@ -70,7 +70,6 @@ export const useActivityActions = () => {
   );
 
   return {
-    // An archived activity is read-only.
     canEdit: isActiveActivity,
     edit: (activity: Activity) =>
       panel.edit({ type: "activity", id: activity.id }),

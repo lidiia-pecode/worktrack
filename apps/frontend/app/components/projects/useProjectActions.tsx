@@ -48,7 +48,6 @@ export const useProjectActions = () => {
   );
 
   return {
-    // An archived project is read-only.
     canEdit: isActiveProject,
     edit: (project: Project) => panel.edit({ type: "project", id: project.id }),
     actionsFor,

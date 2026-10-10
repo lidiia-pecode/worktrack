@@ -833,6 +833,33 @@ describe('ProjectsService membership scope', () => {
       await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
     });
 
+    it('changes nothing for someone already on it, or not on it', async () => {
+      const projectId = await createProject('no change', [alphaMember]);
+      deleteForRemovedMembers.mockClear();
+
+      await service.addMember(projectId, alphaMember.id, alphaManager);
+      await service.removeMember(projectId, leaver.id, alphaManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(alphaMember));
+      expect(deleteForRemovedMembers).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone from another company, even for an owner', async () => {
+      const projectId = await createProject('other company', []);
+
+      await expect(
+        service.addMember(projectId, randomUUID(), owner),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('lets a manager who leads no team add themselves', async () => {
+      const projectId = await createProject('lone self', []);
+
+      await service.addMember(projectId, loneManager.id, loneManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(loneManager));
+    });
+
     it('changes nothing on an archived project', async () => {
       const projectId = await createProject('archived links', []);
       await dataSource

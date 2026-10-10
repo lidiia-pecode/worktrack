@@ -87,8 +87,7 @@ export const ActivityCategoriesContent = () => {
           row={{
             getKey: (category) => category.id,
             getName: (category) => category.name,
-            onOpen: (category) =>
-              panel.open({ type: "category", id: category.id }),
+            getEntity: (category) => ({ type: "category", id: category.id }),
             onEdit: categoryActions.edit,
             canEdit: categoryActions.canEdit,
             columns: COLUMNS,

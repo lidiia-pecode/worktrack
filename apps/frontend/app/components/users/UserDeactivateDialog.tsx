@@ -15,7 +15,6 @@ interface UserDeactivateDialogProps {
   /** The person to deactivate; the dialog is open while one is given. */
   user: User | null;
   onClose: () => void;
-  onDeactivated?: () => void;
 }
 
 /**
@@ -25,7 +24,6 @@ interface UserDeactivateDialogProps {
 export const UserDeactivateDialog = ({
   user,
   onClose,
-  onDeactivated,
 }: UserDeactivateDialogProps) => {
   const { archive } = useUsersMutations();
   const details = useUserDetails(user?.id ?? "");
@@ -50,10 +48,7 @@ export const UserDeactivateDialog = ({
     if (!user) return;
 
     archive.mutate(user.id, {
-      onSuccess: () => {
-        onClose();
-        onDeactivated?.();
-      },
+      onSuccess: onClose,
     });
   };
 
@@ -62,7 +57,7 @@ export const UserDeactivateDialog = ({
       isOpen={Boolean(user)}
       title={user ? `Deactivate ${fullName(user)}?` : ""}
       description={
-        details.isError
+        details.isError || managedTeamDetails.some((query) => query.isError)
           ? "Could not check which teams they manage. Close this and try again."
           : "They can no longer sign in. They stay in their team and on their projects, and their plans are kept. Reactivating them brings their access back."
       }

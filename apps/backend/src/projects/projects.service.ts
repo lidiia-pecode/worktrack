@@ -329,21 +329,31 @@ export class ProjectsService {
   }
 
   /**
-   * One change to a project's people or activities. Changes to the same
-   * project wait for each other, so two at once cannot both add one link.
+   * The project, locked until the transaction ends, so changes to it run one
+   * after the other and two at once cannot both add one link. The lock is its
+   * own query: Postgres refuses FOR UPDATE on the outer joins `findOrFail` uses.
    */
+  private async findLockedOrFail(
+    id: string,
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<Project> {
+    await manager.findOne(Project, {
+      where: { id, companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    return this.findOrFail(id, companyId, manager);
+  }
+
+  /** One change to a project's people or activities. */
   private changeLinks(
     id: string,
     user: AuthUser,
     change: (project: Project, manager: EntityManager) => Promise<void>,
   ): Promise<Project> {
     return this.dataSource.transaction(async (manager) => {
-      await manager.findOne(Project, {
-        where: { id, companyId: user.companyId },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      const project = await this.findOrFail(id, user.companyId, manager);
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
       assertChangeable(project);
 
       await change(project, manager);
@@ -489,7 +499,7 @@ export class ProjectsService {
   ): Promise<Project> {
     return this.dataSource.transaction(async (manager) => {
       const projectRepo = manager.getRepository(Project);
-      const project = await this.findOrFail(id, user.companyId, manager);
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
       assertChangeable(project);
 
       if (payload.name !== undefined) {
@@ -563,14 +573,19 @@ export class ProjectsService {
     user: AuthUser,
   ): Promise<Project> {
     return this.changeLinks(id, user, async (project, manager) => {
-      if (await this.isMember(project.id, userId, manager)) return;
-
-      // Only someone joining must be active; this also rejects another company's id.
-      await this.usersService.findActiveOnlyMany([userId], project.companyId);
+      // Scope first, so the answer says nothing about people outside it.
       await this.assertCanAssign(
         userId,
         user,
         'You can only assign yourself and users in teams you manage',
+      );
+      if (await this.isMember(project.id, userId, manager)) return;
+
+      // Only someone joining must be active; this also rejects another company's id.
+      await this.usersService.findActiveOnlyMany(
+        [userId],
+        project.companyId,
+        manager,
       );
 
       await manager
@@ -588,13 +603,12 @@ export class ProjectsService {
     user: AuthUser,
   ): Promise<Project> {
     return this.changeLinks(id, user, async (project, manager) => {
-      if (!(await this.isMember(project.id, userId, manager))) return;
-
       await this.assertCanAssign(
         userId,
         user,
         'You can only remove yourself and users in teams you manage',
       );
+      if (!(await this.isMember(project.id, userId, manager))) return;
 
       await this.planning.deleteForRemovedMembers(
         manager,

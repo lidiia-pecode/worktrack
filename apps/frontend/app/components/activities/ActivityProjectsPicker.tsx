@@ -69,7 +69,7 @@ export const ActivityProjectsPicker = ({
   return (
     <PanelView
       title={`Add ${activity.name} to projects`}
-      description="People on these projects can log time on it. Each choice saves at once."
+      description="People on these projects can log time on it. Each choice saves at once. Choose a project again to remove it."
     >
       <EntityPicker
         items={items}

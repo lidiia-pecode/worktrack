@@ -68,6 +68,7 @@ const Probe = () => {
         Change a field
       </button>
       <button onClick={() => panel.open(PROJECT)}>Open project row</button>
+      <button onClick={() => panel.open(PERSON)}>Open person row</button>
       <button onClick={() => panel.follow(PERSON, "Core team")}>
         Follow person
       </button>
@@ -235,5 +236,28 @@ describe("EntityPanelProvider", () => {
     expect(shown()).toHaveTextContent("team:t-1");
     expect(view()).toBeEmptyDOMElement();
     expect(backTo()).toBeEmptyDOMElement();
+  });
+
+  it("starts afresh when an entity is opened again after closing", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Open team row" }));
+    await user.click(screen.getByRole("button", { name: "Follow person" }));
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Open person row" }));
+    expect(shown()).toHaveTextContent("user:u-1");
+    expect(backTo()).toBeEmptyDOMElement();
+
+    await user.click(screen.getByRole("button", { name: "Open team row" }));
+    await user.click(screen.getByRole("button", { name: "Add people" }));
+    await user.click(screen.getByRole("button", { name: "Edit team row" }));
+    // The form takes the picker's place.
+    expect(view()).toBeEmptyDOMElement();
+    expect(editing()).toHaveTextContent("yes");
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    await user.click(screen.getByRole("button", { name: "Open team row" }));
+    expect(editing()).toBeEmptyDOMElement();
   });
 });

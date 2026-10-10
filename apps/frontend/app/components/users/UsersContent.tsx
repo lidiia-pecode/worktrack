@@ -20,7 +20,6 @@ import {
   ManageWarning,
 } from "../shared/resource/ManageList";
 import { EntityLinks } from "../entity-panel/EntityLink";
-import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
 import { PendingInvitations } from "./PendingInvitations";
@@ -83,7 +82,6 @@ export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [inviteOpen, setInviteOpen] = useState(opensCreateForm);
   const listState = useManageListState();
-  const panel = useEntityPanel();
   const userActions = useUserActions();
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
@@ -134,7 +132,7 @@ export const UsersContent = () => {
             getKey: (listed) => listed.id,
             getName: fullName,
             getDetail: (listed) => listed.email,
-            onOpen: (listed) => panel.open({ type: "user", id: listed.id }),
+            getEntity: (listed) => ({ type: "user", id: listed.id }),
             onEdit: userActions.edit,
             canEdit: userActions.canEdit,
             columns: user?.role === UserRole.OWNER ? OWNER_COLUMNS : COLUMNS,

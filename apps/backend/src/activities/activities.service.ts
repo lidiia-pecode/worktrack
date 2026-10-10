@@ -153,14 +153,6 @@ export class ActivitiesService {
     return { results, count };
   }
 
-  async getById(
-    id: string,
-    companyId: string,
-    repo: Repository<Activity> = this.repo,
-  ): Promise<Activity> {
-    return this.findRaw(id, companyId, repo);
-  }
-
   /**
    * With the projects offering it, of any status; none for an employee, who
    * sees only their own.

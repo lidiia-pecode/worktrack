@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import { Archive } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 
+import { EntityPanelContext } from "../../entity-panel/entity-panel-context";
+import { mockEntityPanel } from "../../entity-panel/mock-entity-panel";
 import { countLabel, ManageList, ManageRowDefinition } from "./ManageList";
 
 interface Project {
@@ -22,7 +24,7 @@ const buildRow = (
 ): ManageRowDefinition<Project> => ({
   getKey: (project) => project.id,
   getName: (project) => project.name,
-  onOpen: vi.fn(),
+  getEntity: (project) => ({ type: "project", id: project.id }),
   onEdit: vi.fn(),
   columns: [
     {
@@ -45,13 +47,27 @@ const buildRow = (
   ...overrides,
 });
 
+const renderList = (row: ManageRowDefinition<Project>) => {
+  const panel = mockEntityPanel({
+    hrefFor: (ref) => `?open=${ref.type}:${ref.id}`,
+  });
+
+  render(
+    <EntityPanelContext.Provider value={panel}>
+      <ManageList label="Projects" items={projects} row={row} />
+    </EntityPanelContext.Provider>,
+  );
+
+  return panel;
+};
+
 // jsdom ignores the breakpoint classes, so both layouts are in the document.
 const table = () => screen.getByRole("table", { name: "Projects" });
 const phoneList = () => screen.getByRole("list", { name: "Projects" });
 
 describe("ManageList", () => {
   it("renders the table and the phone list from one row definition", () => {
-    render(<ManageList label="Projects" items={projects} row={buildRow()} />);
+    renderList(buildRow());
 
     expect(
       within(table())
@@ -71,15 +87,21 @@ describe("ManageList", () => {
 
   it("opens the entity from the row or its name, once per click", async () => {
     const user = userEvent.setup();
-    const row = buildRow();
-    render(<ManageList label="Projects" items={projects} row={row} />);
+    const panel = renderList(buildRow());
 
     await user.click(within(table()).getByText("Acme"));
-    expect(row.onOpen).toHaveBeenLastCalledWith(projects[0]);
+    expect(panel.open).toHaveBeenLastCalledWith({ type: "project", id: "p-1" });
+    // Focus goes to the name, which closing the panel returns to.
+    expect(
+      within(table()).getByRole("link", { name: "Website" }),
+    ).toHaveFocus();
 
-    await user.click(within(table()).getByRole("button", { name: "Handbook" }));
-    expect(row.onOpen).toHaveBeenLastCalledWith(projects[1]);
-    expect(row.onOpen).toHaveBeenCalledTimes(2);
+    const handbook = within(table()).getByRole("link", { name: "Handbook" });
+    expect(handbook).toHaveAttribute("href", "?open=project:p-2");
+
+    await user.click(handbook);
+    expect(panel.open).toHaveBeenLastCalledWith({ type: "project", id: "p-2" });
+    expect(panel.open).toHaveBeenCalledTimes(2);
   });
 
   it("offers Edit and the row's actions without opening the row", async () => {
@@ -90,7 +112,7 @@ describe("ManageList", () => {
         { label: "Archive", icon: Archive, onSelect: onArchive },
       ],
     });
-    render(<ManageList label="Projects" items={projects} row={row} />);
+    const panel = renderList(row);
 
     await user.click(
       within(table()).getByRole("button", { name: "Actions for Website" }),
@@ -103,18 +125,12 @@ describe("ManageList", () => {
     await user.click(screen.getByRole("menuitem", { name: "Archive" }));
 
     expect(onArchive).toHaveBeenCalledOnce();
-    expect(row.onOpen).not.toHaveBeenCalled();
+    expect(panel.open).not.toHaveBeenCalled();
     expect(row.onEdit).not.toHaveBeenCalled();
   });
 
   it("shows no menu when the viewer can do nothing with the row", () => {
-    render(
-      <ManageList
-        label="Projects"
-        items={projects}
-        row={buildRow({ canEdit: () => false, getActions: () => [] })}
-      />,
-    );
+    renderList(buildRow({ canEdit: () => false, getActions: () => [] }));
 
     expect(
       within(table()).queryByRole("button", { name: "Actions for Website" }),

@@ -9,13 +9,11 @@ interface ProjectArchiveDialogProps {
   /** The project to archive; the dialog is open while one is given. */
   project: Project | null;
   onClose: () => void;
-  onArchived?: () => void;
 }
 
 export const ProjectArchiveDialog = ({
   project,
   onClose,
-  onArchived,
 }: ProjectArchiveDialogProps) => {
   const { archive } = useProjectsMutations();
 
@@ -23,10 +21,7 @@ export const ProjectArchiveDialog = ({
     if (!project) return;
 
     archive.mutate(project.id, {
-      onSuccess: () => {
-        onClose();
-        onArchived?.();
-      },
+      onSuccess: onClose,
     });
   };
 

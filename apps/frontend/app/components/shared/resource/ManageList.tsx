@@ -1,6 +1,6 @@
 "use client";
 
-import type { MouseEvent, ReactNode } from "react";
+import { useRef, type MouseEvent, type ReactNode } from "react";
 import { MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,10 @@ import {
   TableRowHeader,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
+import type { EntityRef } from "@/lib/utils/entity-ref";
+
+import { EntityLink } from "../../entity-panel/EntityLink";
+import { useEntityPanel } from "../../entity-panel/entity-panel-context";
 
 export interface ManageColumn<T> {
   header: string;
@@ -47,8 +51,8 @@ export interface ManageRowDefinition<T> {
   getName: (item: T) => string;
   /** A quieter line under the name, such as an email. */
   getDetail?: (item: T) => ReactNode;
-  /** Shows the entity's details, from the row or its name. */
-  onOpen: (item: T) => void;
+  /** What the row and its name open in the entity panel. */
+  getEntity: (item: T) => EntityRef;
   /** Opens the entity's form, the menu's first item, where `canEdit` allows. */
   onEdit?: (item: T) => void;
   canEdit?: (item: T) => boolean;
@@ -91,16 +95,12 @@ const RowName = <T,>({ item, row }: RowPartProps<T>) => {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={(event) => {
-          stopRowClick(event);
-          row.onOpen(item);
-        }}
-        className="block max-w-full truncate rounded-sm text-left font-medium text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      <EntityLink
+        entity={row.getEntity(item)}
+        className="block max-w-full truncate"
       >
         {row.getName(item)}
-      </button>
+      </EntityLink>
 
       {detail && (
         <span className="block truncate text-xs font-normal text-muted-foreground">
@@ -112,11 +112,18 @@ const RowName = <T,>({ item, row }: RowPartProps<T>) => {
 };
 
 const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const actions = row.getActions?.(item) ?? [];
   const onEdit = row.onEdit;
   const canEdit = Boolean(onEdit) && (row.canEdit?.(item) ?? true);
 
   if (!canEdit && actions.length === 0) return null;
+
+  // The item goes with its menu, so what it opens returns focus to the trigger.
+  const select = (action: () => void) => {
+    triggerRef.current?.focus();
+    action();
+  };
 
   return (
     <div onClick={stopRowClick}>
@@ -127,6 +134,7 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
               type="button"
               variant="ghost"
               size="iconSm"
+              ref={triggerRef}
               aria-label={`Actions for ${row.getName(item)}`}
             >
               <MoreHorizontal className="size-4" />
@@ -136,7 +144,7 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
 
         <DropdownMenuContent align="end" className="w-44 p-0">
           {canEdit && (
-            <DropdownMenuItem onClick={() => onEdit?.(item)}>
+            <DropdownMenuItem onClick={() => select(() => onEdit?.(item))}>
               <Pencil />
               Edit
             </DropdownMenuItem>
@@ -150,7 +158,7 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
             <DropdownMenuItem
               key={action.label}
               variant={action.destructive ? "destructive" : "default"}
-              onClick={action.onSelect}
+              onClick={() => select(action.onSelect)}
             >
               <action.icon />
               {action.label}
@@ -194,70 +202,80 @@ const ROW_HOVER = "cursor-pointer transition-colors hover:bg-muted/30";
  * A table from `lg` up and a two-line list below it: the sidebar takes its
  * space from `md`, which leaves too little room for the columns.
  */
-export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => (
-  <Card>
-    <div className="hidden lg:block">
-      <Table aria-label={label} className="table-fixed">
-        <TableHeader>
-          <TableHead>Name</TableHead>
+export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
+  const panel = useEntityPanel();
 
-          {row.columns.map((column) => (
-            <TableHead
-              key={column.header}
-              numeric={column.numeric}
-              className={column.width}
-            >
-              {column.header}
+  // A click on the row moves focus to its name, which closing the panel returns to.
+  const openRow = (event: MouseEvent<HTMLElement>, item: T) => {
+    event.currentTarget.querySelector<HTMLElement>("a")?.focus();
+    panel.open(row.getEntity(item));
+  };
+
+  return (
+    <Card>
+      <div className="hidden lg:block">
+        <Table aria-label={label} className="table-fixed">
+          <TableHeader>
+            <TableHead>Name</TableHead>
+
+            {row.columns.map((column) => (
+              <TableHead
+                key={column.header}
+                numeric={column.numeric}
+                className={column.width}
+              >
+                {column.header}
+              </TableHead>
+            ))}
+
+            <TableHead className="w-14">
+              <span className="sr-only">Actions</span>
             </TableHead>
-          ))}
+          </TableHeader>
 
-          <TableHead className="w-14">
-            <span className="sr-only">Actions</span>
-          </TableHead>
-        </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow
+                key={row.getKey(item)}
+                onClick={(event) => openRow(event, item)}
+                className={ROW_HOVER}
+              >
+                <TableRowHeader>
+                  <RowName item={item} row={row} />
+                </TableRowHeader>
 
-        <TableBody>
-          {items.map((item) => (
-            <TableRow
-              key={row.getKey(item)}
-              onClick={() => row.onOpen(item)}
-              className={ROW_HOVER}
-            >
-              <TableRowHeader>
-                <RowName item={item} row={row} />
-              </TableRowHeader>
+                {row.columns.map((column) => (
+                  <TableCell key={column.header} numeric={column.numeric}>
+                    {column.cell(item)}
+                  </TableCell>
+                ))}
 
-              {row.columns.map((column) => (
-                <TableCell key={column.header} numeric={column.numeric}>
-                  {column.cell(item)}
+                <TableCell className="py-1.5 text-right">
+                  <RowMenu item={item} row={row} />
                 </TableCell>
-              ))}
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
 
-              <TableCell className="py-1.5 text-right">
-                <RowMenu item={item} row={row} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
+      <ul aria-label={label} className="divide-y divide-border lg:hidden">
+        {items.map((item) => (
+          <li
+            key={row.getKey(item)}
+            onClick={(event) => openRow(event, item)}
+            className={cn("flex items-center gap-2 py-3 pr-2 pl-4", ROW_HOVER)}
+          >
+            <div className="min-w-0 flex-1 text-sm">
+              <RowName item={item} row={row} />
 
-    <ul aria-label={label} className="divide-y divide-border lg:hidden">
-      {items.map((item) => (
-        <li
-          key={row.getKey(item)}
-          onClick={() => row.onOpen(item)}
-          className={cn("flex items-center gap-2 py-3 pr-2 pl-4", ROW_HOVER)}
-        >
-          <div className="min-w-0 flex-1 text-sm">
-            <RowName item={item} row={row} />
+              <RowSummary item={item} row={row} />
+            </div>
 
-            <RowSummary item={item} row={row} />
-          </div>
-
-          <RowMenu item={item} row={row} />
-        </li>
-      ))}
-    </ul>
-  </Card>
-);
+            <RowMenu item={item} row={row} />
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+};

@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  hashKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   Project,
@@ -59,8 +64,12 @@ export const useProjectsMutations = createEntityMutations<
   queryKey: queryKeys.projects.all,
 
   // Removing somebody from a project deletes their future plans for it, and a
-  // person's details list the projects they are on.
-  alsoInvalidate: [queryKeys.planning.all, queryKeys.users.all],
+  // person's and an activity's details list the projects they are on.
+  alsoInvalidate: [
+    queryKeys.planning.all,
+    queryKeys.users.all,
+    queryKeys.activities.all,
+  ],
 
   api: {
     create: ProjectsClientApi.create,
@@ -110,12 +119,18 @@ export const useProjectLinks = () => {
   const queryClient = useQueryClient();
 
   const onSuccess = (project: Project) => {
-    queryClient.setQueryData(queryKeys.projects.detail(project.id), project);
+    const detailKey = queryKeys.projects.detail(project.id);
+    queryClient.setQueryData(detailKey, project);
 
+    // The project's other queries go stale; its details are fresh already.
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.all,
+      predicate: (query) => query.queryHash !== hashKey(detailKey),
+    });
     [
-      queryKeys.projects.all,
       queryKeys.users.all,
       queryKeys.activities.all,
+      queryKeys.projectActivities.all,
       queryKeys.planning.all,
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   };

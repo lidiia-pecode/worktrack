@@ -237,8 +237,8 @@ describe('Activity and category names', () => {
         moveToCategoryId: target.id,
       });
 
-      const moved = await activities.getById(kept.id, companyId);
-      const untouched = await activities.getById(archived.id, companyId);
+      const moved = await activities.findRaw(kept.id, companyId);
+      const untouched = await activities.findRaw(archived.id, companyId);
       expect(moved).toMatchObject({
         categoryId: target.id,
         status: ActivityStatus.ACTIVE,
@@ -258,7 +258,7 @@ describe('Activity and category names', () => {
       });
 
       await expect(
-        activities.getById(activity.id, companyId),
+        activities.findRaw(activity.id, companyId),
       ).resolves.toMatchObject({ status: ActivityStatus.ARCHIVED });
     });
 
@@ -293,7 +293,7 @@ describe('Activity and category names', () => {
       ).rejects.toThrow(BadRequestException);
 
       await expect(
-        activities.getById(activity.id, companyId),
+        activities.findRaw(activity.id, companyId),
       ).resolves.toMatchObject({
         categoryId: category.id,
         status: ActivityStatus.ACTIVE,
@@ -315,7 +315,7 @@ describe('Activity and category names', () => {
       });
 
       await expect(
-        activities.getById(activity.id, companyId),
+        activities.findRaw(activity.id, companyId),
       ).resolves.toMatchObject({
         categoryId: target.id,
         status: ActivityStatus.ACTIVE,
@@ -574,7 +574,7 @@ describe('Activity and category names', () => {
         activities: ArchivedActivitiesAction.RESTORE,
       });
 
-      expect((await activities.getById(activityId, companyId)).status).toBe(
+      expect((await activities.findRaw(activityId, companyId)).status).toBe(
         ActivityStatus.ACTIVE,
       );
     });
@@ -585,7 +585,7 @@ describe('Activity and category names', () => {
 
       await categories.unarchive(categoryId, companyId);
 
-      expect((await activities.getById(activityId, companyId)).status).toBe(
+      expect((await activities.findRaw(activityId, companyId)).status).toBe(
         ActivityStatus.ARCHIVED,
       );
     });

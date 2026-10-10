@@ -26,13 +26,11 @@ interface CategoryArchiveDialogProps {
   /** The category to archive; the dialog is open while one is given. */
   category: ActivityCategorySummary | null;
   onClose: () => void;
-  onArchived?: () => void;
 }
 
 export const CategoryArchiveDialog = ({
   category,
   onClose,
-  onArchived,
 }: CategoryArchiveDialogProps) => {
   const isOpen = Boolean(category);
   const impact = useActivityCategoryArchiveImpact(category?.id ?? "", isOpen);
@@ -86,10 +84,7 @@ export const CategoryArchiveDialog = ({
         ),
       },
       {
-        onSuccess: () => {
-          close();
-          onArchived?.();
-        },
+        onSuccess: close,
       },
     );
   };

@@ -74,6 +74,21 @@ describe("memberChangeCopy", () => {
     ).not.toContain("without an active manager");
   });
 
+  it("does not warn when the manager removed was already deactivated", () => {
+    const deactivated = {
+      ...emma,
+      user: { ...emma.user, status: UserStatus.DEACTIVATED },
+    };
+
+    expect(
+      memberChangeCopy(
+        { kind: "remove", membership: deactivated },
+        teamOf([deactivated, john]),
+        asOwner,
+      ).description,
+    ).toBe("They leave the team today.");
+  });
+
   it("tells the owner a person left in no team is theirs alone to see", () => {
     const copy = memberChangeCopy(
       { kind: "remove", membership: john },

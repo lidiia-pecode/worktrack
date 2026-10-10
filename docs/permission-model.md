@@ -187,7 +187,8 @@ Three further rules follow from §3.4 and are settled:
 
 - **A manager changes only what they were shown.** Because their member list is
   scoped, their save adds and removes inside that scope and leaves everyone else
-  untouched. They cannot remove another manager's person from a project, even
+  untouched; adding or removing one person on its own
+  (`POST`/`DELETE /projects/:id/members/:userId`) outside it is refused. They cannot remove another manager's person from a project, even
   one who has clearly rolled off — that is the Owner's call, or that person's
   manager's.
 - **A manager may always add themselves**, including one who currently leads no

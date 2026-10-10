@@ -27,7 +27,6 @@ export const useTeamActions = () => {
   // manager removes members from the panel's rows.
   const canEdit = (team: Team) => isOwner && isActiveTeam(team);
 
-  // Archiving and restoring a team are the owner's.
   const actionsFor = (team: Team): ManageRowAction[] => {
     if (!isOwner) return [];
 

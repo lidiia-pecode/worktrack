@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Archive, ArchiveRestore } from "lucide-react";
+import { toast } from "sonner";
 
 import {
   activityCategoryDetailsQuery,
   useActivityCategoriesMutations,
 } from "@/hooks/useActivityCategories";
 import { ActivityCategoryDetails, ActivityCategorySummary } from "@/types";
+import { getErrorMessage } from "@/lib/api";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -29,17 +31,28 @@ export const useCategoryActions = () => {
     useState<ActivityCategoryDetails | null>(null);
   const queryClient = useQueryClient();
 
+  const [isCheckingRestore, setIsCheckingRestore] = useState(false);
+
   // Restoring asks about its archived activities only when it has some.
   const restore = async (category: ActivityCategorySummary) => {
-    const details = await queryClient.fetchQuery(
-      activityCategoryDetailsQuery(category.id),
-    );
-    const hasArchivedActivities = details.activities.some(
-      (activity) => activity.status === ActivityStatus.ARCHIVED,
-    );
+    if (isCheckingRestore || unarchive.isPending) return;
 
-    if (hasArchivedActivities) setRestoringCategory(details);
-    else unarchive.mutate(category.id);
+    setIsCheckingRestore(true);
+    try {
+      const details = await queryClient.fetchQuery(
+        activityCategoryDetailsQuery(category.id),
+      );
+      const hasArchivedActivities = details.activities.some(
+        (activity) => activity.status === ActivityStatus.ARCHIVED,
+      );
+
+      if (hasArchivedActivities) setRestoringCategory(details);
+      else unarchive.mutate(category.id);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsCheckingRestore(false);
+    }
   };
 
   const actionsFor = (category: ActivityCategorySummary): ManageRowAction[] =>
@@ -75,7 +88,6 @@ export const useCategoryActions = () => {
   );
 
   return {
-    // An archived category is read-only.
     canEdit: isActiveCategory,
     edit: (category: ActivityCategorySummary) =>
       panel.edit({ type: "category", id: category.id }),

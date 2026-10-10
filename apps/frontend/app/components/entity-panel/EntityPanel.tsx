@@ -43,9 +43,10 @@ export const EntityPanel = () => {
   const currentKey = current ? formatEntityRef(current) : null;
 
   // Each entity the panel shows starts at its heading for a keyboard user.
+  // The aside exists only once the media query has resolved after a reload.
   useEffect(() => {
     if (currentKey) asideRef.current?.focus();
-  }, [currentKey]);
+  }, [currentKey, isDesktop]);
 
   // A view, such as a picker, focuses its own field; leaving one returns to
   // the heading unless focus is still in the panel.

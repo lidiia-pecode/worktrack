@@ -109,8 +109,7 @@ export const ActivitiesContent = () => {
           row={{
             getKey: (activity) => activity.id,
             getName: (activity) => activity.name,
-            onOpen: (activity) =>
-              panel.open({ type: "activity", id: activity.id }),
+            getEntity: (activity) => ({ type: "activity", id: activity.id }),
             onEdit: activityActions.edit,
             canEdit: activityActions.canEdit,
             columns: COLUMNS,

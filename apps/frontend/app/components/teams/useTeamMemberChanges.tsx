@@ -94,7 +94,11 @@ export const useTeamMemberChanges = (team: Team) => {
       <ImpactDialog
         isOpen={Boolean(change)}
         title={changeCopy?.title ?? ""}
-        description={changeCopy?.description ?? ""}
+        description={
+          change?.kind === "remove" && changedPerson.isError
+            ? "Could not check their other teams. Close this and try again."
+            : (changeCopy?.description ?? "")
+        }
         confirmText={changeCopy?.confirmText ?? ""}
         confirmVariant={change?.kind === "remove" ? "destructive" : "primary"}
         onConfirm={confirmChange}
