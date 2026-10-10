@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,8 +9,7 @@ import { Capacity } from "@/types";
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils/date";
-import { Badge } from "@/components/ui/badge";
-import { Field, fieldLabelClassName } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
 
 import { FormSelect } from "../shared/FormSelect";
@@ -34,11 +34,8 @@ export type UserFormData = z.infer<typeof userSchema>;
 type UserFormProps = {
   formId: string;
   defaultValues: UserFormData;
-  isEditMode: boolean;
-  /** Working hours are the owner's to read. */
-  showsWorkingHours: boolean;
-  capacity: Capacity | null;
   onSubmit: (data: UserFormData) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 const roleOptions = [
@@ -68,16 +65,14 @@ export const describeCapacity = (capacity: Capacity | null) => {
 export const UserForm = ({
   formId,
   defaultValues,
-  isEditMode,
-  showsWorkingHours,
-  capacity,
   onSubmit,
+  onDirtyChange,
 }: UserFormProps) => {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues,
@@ -86,34 +81,10 @@ export const UserForm = ({
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
 
-  if (!isEditMode) {
-    return (
-      <dl className="space-y-6">
-        <div>
-          <dt className={fieldLabelClassName}>Position</dt>
-          <dd className="text-sm text-foreground">
-            {defaultValues.position || "Not specified"}
-          </dd>
-        </div>
-
-        <div>
-          <dt className={fieldLabelClassName}>Role</dt>
-          <dd>
-            <Badge>{ROLE_LABELS[defaultValues.role]}</Badge>
-          </dd>
-        </div>
-
-        {showsWorkingHours && (
-          <div>
-            <dt className={fieldLabelClassName}>Working hours</dt>
-            <dd className="text-sm text-foreground">
-              {describeCapacity(capacity)}
-            </dd>
-          </div>
-        )}
-      </dl>
-    );
-  }
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -121,6 +92,7 @@ export const UserForm = ({
         label="Position"
         {...register("position")}
         placeholder="e.g. Frontend Developer"
+        autoFocus
         error={errors.position?.message}
       />
 
