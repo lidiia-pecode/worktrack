@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
@@ -432,6 +433,19 @@ describe('ProjectsService membership scope', () => {
       await expect(memberIds(projectId)).resolves.toEqual(
         sorted(alphaMember, betaMember),
       );
+    });
+
+    it('refuses any change to an archived project', async () => {
+      const projectId = await createProject('archived edit', [alphaMember]);
+      await service.archive(projectId, owner);
+
+      await expect(
+        service.update(projectId, { name: `Renamed ${RUN}` }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(projectId, { userIds: [] }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(memberIds(projectId)).resolves.toEqual([alphaMember.id]);
     });
   });
 

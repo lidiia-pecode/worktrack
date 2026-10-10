@@ -378,18 +378,21 @@ export const UpdateUserModal = ({ user, onClose }: Props) => {
                       <FolderKanban className="size-4" />
                     </div>
                   )}
-                  renderTrailing={(project) => (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="iconSm"
-                      aria-label={`Remove ${project.name}`}
-                      onClick={() => removeProject(project.id)}
-                      disabled={updateProject.isPending || isChecking}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  )}
+                  // An archived project is read-only until it is restored.
+                  renderTrailing={(project) =>
+                    project.status !== ProjectStatus.ARCHIVED && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="iconSm"
+                        aria-label={`Remove ${project.name}`}
+                        onClick={() => removeProject(project.id)}
+                        disabled={updateProject.isPending || isChecking}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    )
+                  }
                   emptyMessage="No projects assigned yet."
                 />
               </div>

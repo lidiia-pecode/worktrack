@@ -430,6 +430,10 @@ export class ProjectsService {
       const projectRepo = manager.getRepository(Project);
       const project = await this.findOrFail(id, user.companyId, manager);
 
+      if (project.status === ProjectStatus.ARCHIVED) {
+        throw new BadRequestException('An archived project cannot be changed');
+      }
+
       if (payload.name !== undefined) {
         await this.assertUniqueName(user.companyId, payload.name, id, manager);
         project.name = payload.name;

@@ -529,7 +529,10 @@ empty one.
 An active activity always belongs to an active category. A category that still
 has active activities is archived only by moving them to another active category
 or archiving them with it, and an activity whose category is archived is
-restored only by restoring the category too or moving the activity.
+restored only by restoring the category too or moving the activity. Restoring a
+category can restore all of its archived activities with it, or the category
+alone. Archived projects, activities and categories, like archived teams, are
+read-only until they are restored.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;

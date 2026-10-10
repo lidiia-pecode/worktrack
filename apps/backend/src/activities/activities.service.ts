@@ -230,6 +230,10 @@ export class ActivitiesService {
       const repo = manager.getRepository(Activity);
       const activity = await this.findRaw(id, companyId, repo);
 
+      if (activity.status === ActivityStatus.ARCHIVED) {
+        throw new BadRequestException('An archived activity cannot be changed');
+      }
+
       if (payload.name !== undefined && payload.name !== activity.name) {
         await this.assertUniqueName(companyId, payload.name, id, repo);
         activity.name = payload.name;

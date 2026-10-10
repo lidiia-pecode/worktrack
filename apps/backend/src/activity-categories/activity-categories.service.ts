@@ -12,6 +12,8 @@ import { ActCategory } from './entities/activities-category.entity';
 import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
 import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
 import { ActCategoryStatus } from './enums/category-status.enum';
+import { ArchivedActivitiesAction } from './enums/archived-activities-action.enum';
+import { RestoreCategoryPayload } from './dtos/restore-category-payload.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Activity } from 'src/activities/entities/activity.entity';
@@ -183,6 +185,10 @@ export class ActCategoriesService {
   ): Promise<ActCategory> {
     const category = await this.findRaw(id, companyId);
 
+    if (category.status === ActCategoryStatus.ARCHIVED) {
+      throw new BadRequestException('An archived category cannot be changed');
+    }
+
     if (payload.name !== category.name) {
       await this.assertUniqueName(companyId, payload.name, id);
       category.name = payload.name;
@@ -314,14 +320,41 @@ export class ActCategoriesService {
     );
   }
 
-  async unarchive(id: string, companyId: string): Promise<ActCategory> {
-    const category = await this.findRaw(id, companyId);
+  /**
+   * Nothing records which activities were archived with the category, so
+   * restoring them brings back all of its archived activities.
+   */
+  async unarchive(
+    id: string,
+    companyId: string,
+    payload: RestoreCategoryPayload = {},
+  ): Promise<ActCategory> {
+    return this.dataSource.transaction(async (manager) => {
+      const category = await manager.findOne(ActCategory, {
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
 
-    if (category.status === ActCategoryStatus.ACTIVE) {
-      throw new BadRequestException('Category is already active');
-    }
+      if (!category) {
+        throw new NotFoundException('Activity category not found');
+      }
 
-    category.status = ActCategoryStatus.ACTIVE;
-    return this.repo.save(category);
+      if (category.status === ActCategoryStatus.ACTIVE) {
+        throw new BadRequestException('Category is already active');
+      }
+
+      category.status = ActCategoryStatus.ACTIVE;
+      const restored = await manager.save(category);
+
+      if (payload.activities === ArchivedActivitiesAction.RESTORE) {
+        await manager.update(
+          Activity,
+          { companyId, categoryId: id, status: ActivityStatus.ARCHIVED },
+          { status: ActivityStatus.ACTIVE },
+        );
+      }
+
+      return restored;
+    });
   }
 }

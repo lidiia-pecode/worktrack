@@ -15,6 +15,7 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import { ActivityStatus } from './enums/activity-status.enum';
 import { ActiveActivitiesAction } from 'src/activity-categories/enums/active-activities-action.enum';
+import { ArchivedActivitiesAction } from 'src/activity-categories/enums/archived-activities-action.enum';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { randomUUID } from 'node:crypto';
@@ -522,6 +523,71 @@ describe('Activity and category names', () => {
         { id: archived.id, status: ActivityStatus.ARCHIVED },
         { id: kept.id, status: ActivityStatus.ACTIVE },
       ]);
+    });
+  });
+
+  describe('archived is read-only', () => {
+    it('refuses to change an archived activity or category', async () => {
+      const category = await categories.create(
+        { name: `Frozen ${RUN}` },
+        companyId,
+      );
+      const activity = await activities.create(
+        { name: 'Frozen work', categoryId: category.id },
+        companyId,
+      );
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.ARCHIVE,
+      });
+
+      await expect(
+        activities.update(activity.id, { defaultBillable: false }, companyId),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        categories.update(category.id, { name: `Thawed ${RUN}` }, companyId),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('restoring a category', () => {
+    const archivedWithActivities = async (name: string) => {
+      const category = await categories.create(
+        { name: `${name} ${RUN}` },
+        companyId,
+      );
+      const activity = await activities.create(
+        { name: `${name} work`, categoryId: category.id },
+        companyId,
+      );
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.ARCHIVE,
+      });
+
+      return { categoryId: category.id, activityId: activity.id };
+    };
+
+    it('brings back its archived activities when asked', async () => {
+      const { categoryId, activityId } =
+        await archivedWithActivities('Restored together');
+
+      await categories.unarchive(categoryId, companyId, {
+        activities: ArchivedActivitiesAction.RESTORE,
+      });
+
+      expect((await activities.getById(activityId, companyId)).status).toBe(
+        ActivityStatus.ACTIVE,
+      );
+    });
+
+    it('comes back alone otherwise', async () => {
+      const { categoryId, activityId } =
+        await archivedWithActivities('Restored alone');
+
+      await categories.unarchive(categoryId, companyId);
+
+      expect((await activities.getById(activityId, companyId)).status).toBe(
+        ActivityStatus.ARCHIVED,
+      );
     });
   });
 });

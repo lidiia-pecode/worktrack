@@ -21,6 +21,7 @@ import {
   ActivityCategoryResponse,
 } from './dtos/activities-category-response.dto';
 import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
+import { RestoreCategoryPayload } from './dtos/restore-category-payload.dto';
 import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
 import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -92,8 +93,9 @@ export class ActCategoriesController {
   @Serialize(ActivityCategoryResponse)
   unarchive(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: RestoreCategoryPayload,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.unarchive(id, user.companyId);
+    return this.service.unarchive(id, user.companyId, payload);
   }
 }
