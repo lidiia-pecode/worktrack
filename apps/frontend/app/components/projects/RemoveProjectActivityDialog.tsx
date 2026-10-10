@@ -1,54 +1,60 @@
 "use client";
 
-import { useProjectLinks } from "@/hooks/useProjects";
-
+import type { Choice } from "../entity-panel/use-staged-selection";
 import { ImpactDialog } from "../shared/ImpactDialog";
 
-interface Named {
-  id: string;
-  name: string;
-}
-
 export interface ProjectActivityRemoval {
-  project: Named;
-  activity: Named;
+  projects: Choice[];
+  activities: Choice[];
 }
 
 interface RemoveProjectActivityDialogProps {
   removal: ProjectActivityRemoval | null;
+  onConfirm: () => void;
   onClose: () => void;
+  loading?: boolean;
 }
 
-/** From the project's side or the activity's: past time stays either way. */
+const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+
+// One by name, several by count, as a title reads best.
+const names = (choices: Choice[], plural: string) =>
+  choices.length === 1 ? choices[0].name : `${choices.length} ${plural}`;
+
+/**
+ * From the project's side or the activity's, for one link or several: past
+ * time stays either way.
+ */
 export const RemoveProjectActivityDialog = ({
   removal,
+  onConfirm,
   onClose,
+  loading = false,
 }: RemoveProjectActivityDialogProps) => {
-  const { removeActivity } = useProjectLinks();
+  const activities = removal?.activities ?? [];
+  const projects = removal?.projects ?? [];
 
   return (
     <ImpactDialog
       isOpen={Boolean(removal)}
       title={
         removal
-          ? `Remove ${removal.activity.name} from ${removal.project.name}?`
+          ? `Remove ${names(activities, "activities")} from ${names(projects, "projects")}?`
           : ""
       }
       description={
         removal
-          ? `Nobody can log new time on ${removal.activity.name} in this project. Time already logged stays in reports.`
+          ? `Nobody can log new time on ${listFormat.format(
+              activities.map((activity) => activity.name),
+            )} in ${listFormat.format(
+              projects.map((project) => project.name),
+            )}. Time already logged stays in reports.`
           : ""
       }
       confirmText="Remove"
       confirmVariant="destructive"
-      loading={removeActivity.isPending}
-      onConfirm={() =>
-        removal &&
-        removeActivity.mutate(
-          { projectId: removal.project.id, activityId: removal.activity.id },
-          { onSettled: onClose },
-        )
-      }
+      loading={loading}
+      onConfirm={onConfirm}
       onClose={onClose}
     />
   );

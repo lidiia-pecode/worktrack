@@ -5,16 +5,24 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fieldLabelClassName } from "@/components/ui/field";
 import { useServerSearch } from "@/hooks/useManageListState";
+import { useTeamMembers } from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
+import { todayISODate } from "@/lib/utils/date";
 import { fullName, initials } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 import { TeamRole, UserRole, UserStatus } from "@/types/enums";
 
 import { PanelView } from "../entity-panel/EntityPanelLayout";
+import {
+  Choice,
+  useStagedSelection,
+} from "../entity-panel/use-staged-selection";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
+import { InviteHint } from "../users/InviteHint";
 import { activeManagers, currentMemberships } from "./team-memberships";
-import type { useTeamMemberChanges } from "./useTeamMemberChanges";
 
 export const MEMBERS_PICKER = "add-members";
 
@@ -26,15 +34,19 @@ const USER_ROLE_FOR: Record<TeamRole, UserRole> = {
   [TeamRole.MEMBER]: UserRole.EMPLOYEE,
 };
 
-interface TeamMembersPickerProps {
-  team: Team;
-  changes: ReturnType<typeof useTeamMemberChanges>;
+/** Someone on the team now, by their membership, or joining in a role. */
+interface MemberChoice extends Choice {
+  membershipId?: string;
+  roleInTeam?: TeamRole;
 }
 
-export const TeamMembersPicker = ({
-  team,
-  changes,
-}: TeamMembersPickerProps) => {
+const peopleCount = (count: number) =>
+  `${count} ${count === 1 ? "person" : "people"}`;
+
+export const TeamMembersPicker = ({ team }: { team: Team }) => {
+  const { timezone } = useWorkSettings();
+  const { addMember, removeMember } = useTeamMembers(team.id);
+  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
   // A team without a manager most likely needs one first.
   const [roleInTeam, setRoleInTeam] = useState(
     activeManagers(team).length === 0 ? TeamRole.MANAGER : TeamRole.MEMBER,
@@ -49,63 +61,140 @@ export const TeamMembersPicker = ({
     { keepPreviousData: true },
   );
 
-  const memberships = currentMemberships(team);
-  const memberIds = memberships.map((membership) => membership.userId);
+  const staged = useStagedSelection<MemberChoice>(
+    currentMemberships(team).map((membership) => ({
+      id: membership.userId,
+      name: fullName(membership.user),
+      membershipId: membership.id,
+    })),
+  );
 
   const toggle = (userId: string) => {
-    const membership = memberships.find((item) => item.userId === userId);
+    const person = items.find((item) => item.id === userId);
+    if (person) {
+      staged.toggle({ id: person.id, name: fullName(person), roleInTeam });
+    }
+  };
 
-    if (membership) changes.remove(membership);
-    else changes.add(userId, roleInTeam);
+  const joiningAs = (userId: string) =>
+    staged.toAdd.find((choice) => choice.id === userId)?.roleInTeam;
+
+  const managerIds = activeManagers(team).map((manager) => manager.id);
+  const leavesNoManager =
+    managerIds.length > 0 &&
+    managerIds.every((id) =>
+      staged.toRemove.some((choice) => choice.id === id),
+    ) &&
+    !staged.toAdd.some((choice) => choice.roleInTeam === TeamRole.MANAGER);
+
+  const applyAll = () => {
+    const joinedAt = todayISODate(timezone);
+
+    return staged.apply([
+      ...staged.toAdd.map((choice) =>
+        addMember.mutateAsync({
+          userId: choice.id,
+          roleInTeam: choice.roleInTeam ?? TeamRole.MEMBER,
+          joinedAt,
+        }),
+      ),
+      ...staged.toRemove.map((choice) =>
+        removeMember.mutateAsync(choice.membershipId!),
+      ),
+    ]);
+  };
+
+  // Leaving the team is confirmed; joining it is not.
+  const done = () => {
+    if (staged.toRemove.length > 0) setIsConfirmingRemoval(true);
+    else void applyAll();
   };
 
   return (
-    <PanelView
-      title={`Add members to ${team.name}`}
-      description="Each choice saves at once. Choose someone again to remove them."
-    >
-      <div role="group" aria-labelledby="team-picker-role">
-        <p id="team-picker-role" className={fieldLabelClassName}>
-          Add as
-        </p>
-
-        <div className="flex gap-2">
-          {TEAM_ROLES.map((role) => (
-            <Button
-              key={role}
-              type="button"
-              size="sm"
-              variant={role === roleInTeam ? "primary" : "outline"}
-              aria-pressed={role === roleInTeam}
-              onClick={() => setRoleInTeam(role)}
-            >
-              {TEAM_ROLE_LABELS[role]}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <EntityPicker
-        className="mt-4"
-        items={items}
-        selectedIds={memberIds}
-        onToggle={toggle}
-        getId={(person) => person.id}
-        getLabel={fullName}
-        getSubtitle={(person) => person.email}
-        getAvatarText={initials}
-        onSearchChange={setSearch}
-        isLoading={isLoading}
-        hasNextPage={pagination.hasNextPage}
-        isFetchingNextPage={pagination.isFetchingNextPage}
-        onFetchNextPage={pagination.fetchNextPage}
-        emptyMessage={
-          roleInTeam === TeamRole.MANAGER
-            ? "Nobody has the Manager role yet. Change someone's role in their panel first."
-            : "No employees to add yet."
+    <>
+      <PanelView
+        title={`Add members to ${team.name}`}
+        description={
+          <>
+            Choose who is on it, then Done; choose someone again to take them
+            off. <InviteHint />
+          </>
         }
-        searchPlaceholder="Search people..."
+        pendingCount={staged.pendingCount}
+        isApplying={staged.isApplying}
+        onDone={done}
+        onCancel={staged.cancel}
+      >
+        <div role="group" aria-labelledby="team-picker-role">
+          <p id="team-picker-role" className={fieldLabelClassName}>
+            Add as
+          </p>
+
+          <div className="flex gap-2">
+            {TEAM_ROLES.map((role) => (
+              <Button
+                key={role}
+                type="button"
+                size="sm"
+                variant={role === roleInTeam ? "primary" : "outline"}
+                aria-pressed={role === roleInTeam}
+                onClick={() => setRoleInTeam(role)}
+              >
+                {TEAM_ROLE_LABELS[role]}
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        <EntityPicker
+          className="mt-4"
+          items={items}
+          selectedIds={staged.selectedIds}
+          onToggle={toggle}
+          getId={(person) => person.id}
+          getLabel={fullName}
+          getSubtitle={(person) => {
+            const role = joiningAs(person.id);
+            return role ? `Joins as ${TEAM_ROLE_LABELS[role]}` : person.email;
+          }}
+          getAvatarText={initials}
+          onSearchChange={setSearch}
+          isLoading={isLoading}
+          hasNextPage={pagination.hasNextPage}
+          isFetchingNextPage={pagination.isFetchingNextPage}
+          onFetchNextPage={pagination.fetchNextPage}
+          emptyMessage={
+            roleInTeam === TeamRole.MANAGER
+              ? "Nobody has the Manager role yet. Change someone's role in their panel first."
+              : "No employees to add yet."
+          }
+          searchPlaceholder="Search people..."
+        />
+      </PanelView>
+
+      <ImpactDialog
+        isOpen={isConfirmingRemoval}
+        title={
+          staged.toRemove.length === 1
+            ? `Remove ${staged.toRemove[0].name} from ${team.name}?`
+            : `Remove ${peopleCount(staged.toRemove.length)} from ${team.name}?`
+        }
+        description={[
+          "They leave the team today.",
+          leavesNoManager &&
+            `${team.name} is then left without an active manager.`,
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        confirmText="Remove"
+        confirmVariant="destructive"
+        loading={staged.isApplying}
+        onConfirm={() => {
+          setIsConfirmingRemoval(false);
+          void applyAll();
+        }}
+        onClose={() => setIsConfirmingRemoval(false)}
       />
-    </PanelView>
+    </>
   );
 };

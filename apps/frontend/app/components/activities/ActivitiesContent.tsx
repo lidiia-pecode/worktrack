@@ -19,6 +19,7 @@ import {
   ManageColumn,
   ManageCount,
   ManageList,
+  ManageWarning,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCreateDialog } from "./ActivityCreateDialog";
@@ -27,20 +28,35 @@ import { useActivityActions } from "./useActivityActions";
 const projectsCount = (activity: ActivityListItem) =>
   activity.projectsCount ?? 0;
 
-const CategoryLink = ({ activity }: { activity: ActivityListItem }) => (
-  <EntityLink
-    entity={{ type: "category", id: activity.category.id }}
-    tone="plain"
-  >
-    {activity.category.name}
-  </EntityLink>
-);
+// A draft has no category, so it cannot go on a project until it gets one.
+const NO_CATEGORY = "No category";
+
+const CategoryLink = ({ activity }: { activity: ActivityListItem }) =>
+  activity.category && (
+    <EntityLink
+      entity={{ type: "category", id: activity.category.id }}
+      tone="plain"
+    >
+      {activity.category.name}
+    </EntityLink>
+  );
 
 const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Category",
     width: "w-48",
-    cell: (activity) => <CategoryLink activity={activity} />,
+    cell: (activity) =>
+      activity.category ? (
+        <CategoryLink activity={activity} />
+      ) : (
+        <ManageWarning>{NO_CATEGORY}</ManageWarning>
+      ),
+    summary: (activity) =>
+      activity.category ? (
+        <CategoryLink activity={activity} />
+      ) : (
+        <ManageWarning inline>{NO_CATEGORY}</ManageWarning>
+      ),
   },
   {
     header: "Billable by default",

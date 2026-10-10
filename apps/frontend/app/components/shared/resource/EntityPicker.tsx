@@ -22,6 +22,8 @@ export interface EntityPickerProps<T> {
   searchPlaceholder?: string;
   /** Searches on the server: `items` are already the matches. */
   onSearchChange: (query: string) => void;
+  /** A row that cannot be chosen, such as a draft activity on a project. */
+  isDisabled?: (item: T) => boolean;
 
   isLoading?: boolean;
   hasNextPage?: boolean;
@@ -42,6 +44,7 @@ export const EntityPicker = <T,>({
   emptyMessage,
   searchPlaceholder = "Search...",
   onSearchChange,
+  isDisabled,
   isLoading = false,
   hasNextPage = false,
   isFetchingNextPage = false,
@@ -121,6 +124,7 @@ export const EntityPicker = <T,>({
                   avatarText={getAvatarText?.(item) ?? getLabel(item).charAt(0)}
                   selected={selectedIds.includes(id)}
                   onToggle={() => onToggle(id)}
+                  disabled={isDisabled?.(item)}
                 />
               );
             })}

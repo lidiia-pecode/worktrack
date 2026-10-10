@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import Input from "@/components/ui/input";
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 export const teamFormSchema = z.object({
   name: z
@@ -52,25 +53,36 @@ export const TeamForm = ({
 
   const isEditMode = mode === "edit";
 
-  const description = errors.name
-    ? undefined
-    : isEditMode
-      ? "Update the name used to identify this team."
+  // In the panel the name stands alone, as the heading does.
+  const description =
+    errors.name || isEditMode
+      ? undefined
       : "Choose a clear name that helps people understand what this team is responsible for.";
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      <Input
-        id="team-name"
-        label="Team name"
-        type="text"
-        placeholder="e.g. Engineering"
-        autoFocus={isEditMode}
-        {...register("name")}
-        error={errors.name?.message}
-        description={description}
-        disabled={isSubmitting}
-      />
+      {/* In the panel the name takes the heading's place. */}
+      {isEditMode ? (
+        <PanelTitleInput
+          id="team-name"
+          aria-label="Team name"
+          placeholder="e.g. Engineering"
+          autoFocus
+          {...register("name")}
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
+      ) : (
+        <Input
+          id="team-name"
+          label="Team name"
+          placeholder="e.g. Engineering"
+          {...register("name")}
+          error={errors.name?.message}
+          description={description}
+          disabled={isSubmitting}
+        />
+      )}
     </form>
   );
 };

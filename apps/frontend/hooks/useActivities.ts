@@ -68,12 +68,13 @@ export const useActivitiesMutations = createEntityMutations<
   },
 });
 
+export const activityDetailsQuery = (id: string) => ({
+  queryKey: queryKeys.activities.detail(id),
+  queryFn: () => ActivitiesClientApi.getById(id),
+});
+
 export const useActivityDetails = (id: string) =>
-  useQuery({
-    queryKey: queryKeys.activities.detail(id),
-    queryFn: () => ActivitiesClientApi.getById(id),
-    enabled: Boolean(id),
-  });
+  useQuery({ ...activityDetailsQuery(id), enabled: Boolean(id) });
 
 /** The projects archiving an activity would take it off, read when about to. */
 export const useActivityArchiveImpact = (
@@ -89,9 +90,13 @@ export const useActivityArchiveImpact = (
 
 type RestoreActivityVariables =
   | { id: string; restoreCategoryId: string }
-  | { id: string; moveToCategoryId: string };
+  | { id: string; moveToCategoryId: string }
+  | { id: string; withoutCategory: true };
 
-/** Restores an activity whose category is archived, by restoring the category or moving it. */
+/**
+ * Restores an activity whose category is archived: by restoring the category,
+ * by moving it, or as a draft when no project links it.
+ */
 export const useRestoreActivityWithCategory = () => {
   const queryClient = useQueryClient();
 
@@ -102,6 +107,12 @@ export const useRestoreActivityWithCategory = () => {
           variables.restoreCategoryId,
         );
         return ActivitiesClientApi.unarchive(variables.id);
+      }
+
+      if ("withoutCategory" in variables) {
+        return ActivitiesClientApi.unarchive(variables.id, {
+          withoutCategory: true,
+        });
       }
 
       return ActivitiesClientApi.unarchive(variables.id, {

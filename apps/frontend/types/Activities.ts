@@ -11,14 +11,16 @@ export interface Activity {
   name: string;
   defaultBillable: boolean;
   status: ActivityStatus;
-  category: ActivityCategoryResponse;
+  /** None while it is a draft, which cannot go on a project yet. */
+  category: ActivityCategoryResponse | null;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ActivityPayload {
   name: string;
-  categoryId: string;
+  /** Null for a draft; on an update, null takes the category away. */
+  categoryId: string | null;
   defaultBillable?: boolean;
 }
 
@@ -48,6 +50,8 @@ export type ActivityListResponse = PaginatedResponse<ActivityListItem>;
 /** The active projects that offer an activity now, which archiving takes it off. */
 export interface RestoreActivityPayload {
   categoryId?: string;
+  /** Back as a draft, which only an activity on no project may be. */
+  withoutCategory?: boolean;
 }
 
 export interface ActivityArchiveImpact {

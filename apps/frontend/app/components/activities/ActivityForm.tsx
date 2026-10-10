@@ -11,6 +11,7 @@ import { z } from "zod";
 import { ActivityCategory } from "@/types";
 
 import Input from "@/components/ui/input";
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 import { FormSelect } from "../shared/FormSelect";
 
@@ -21,12 +22,19 @@ const activitySchema = z.object({
     .min(2, "Activity name must be at least 2 characters")
     .max(100, "Activity name must be at most 100 characters"),
 
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.string(),
 
   defaultBillable: z.boolean(),
 });
 
-export type ActivityFormData = z.infer<typeof activitySchema>;
+type ActivityFormValues = z.infer<typeof activitySchema>;
+
+/** A draft has no category: it is kept, but cannot go on a project yet. */
+export type ActivityFormData = Omit<ActivityFormValues, "categoryId"> & {
+  categoryId: string | null;
+};
+
+const NO_CATEGORY = "none";
 
 interface ActivityFormProps {
   formId?: string;
@@ -37,6 +45,8 @@ interface ActivityFormProps {
   isSubmitting?: boolean;
   isOnboarding?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** It is on a project, or about to be, so it cannot be left a draft. */
+  requiresCategory?: boolean;
 }
 
 export const ActivityForm = ({
@@ -48,44 +58,106 @@ export const ActivityForm = ({
   isSubmitting = false,
   isOnboarding = false,
   onDirtyChange,
+  requiresCategory = false,
 }: ActivityFormProps) => {
+  const hasNoCategories = categories.length === 0;
+  // A new activity starts as a draft, unless it is for a project.
+  const initialCategory =
+    defaultValues?.categoryId ?? (requiresCategory ? "" : NO_CATEGORY);
+
   const {
     register,
     control,
     handleSubmit,
+    setError,
     formState: { errors, isDirty },
-  } = useForm<ActivityFormData>({
+  } = useForm<ActivityFormValues>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
-      categoryId: defaultValues?.categoryId ?? "",
+      categoryId: initialCategory,
       defaultBillable: defaultValues?.defaultBillable ?? true,
     },
   });
+
+  const submit = ({ categoryId, ...values }: ActivityFormValues) => {
+    if (!categoryId || (requiresCategory && categoryId === NO_CATEGORY)) {
+      setError("categoryId", { message: "Choose a category" });
+      return;
+    }
+
+    onSubmit({
+      ...values,
+      categoryId: categoryId === NO_CATEGORY ? null : categoryId,
+    });
+  };
 
   useEffect(() => {
     onDirtyChange?.(isDirty);
     return () => onDirtyChange?.(false);
   }, [isDirty, onDirtyChange]);
 
-  const categoryOptions = categories.map((category) => ({
-    value: category.id,
-    label: category.name,
-  }));
+  const categoryOptions = [
+    ...(requiresCategory
+      ? []
+      : [{ value: NO_CATEGORY, label: "No category (draft)" }]),
+    ...categories.map((category) => ({
+      value: category.id,
+      label: category.name,
+    })),
+  ];
 
-  const hasNoCategories = categories.length === 0;
+  const categoryHint = requiresCategory ? (
+    hasNoCategories && (
+      <>
+        A project needs categorised activities.{" "}
+        <Link
+          href={createFirstLink("/admin/categories", isOnboarding)}
+          className="font-medium text-brand hover:underline"
+        >
+          Create a category first
+        </Link>
+        .
+      </>
+    )
+  ) : hasNoCategories ? (
+    <>
+      There is no active category yet, so it starts as a draft.{" "}
+      <Link
+        href={createFirstLink("/admin/categories", isOnboarding)}
+        className="font-medium text-brand hover:underline"
+      >
+        Create a category
+      </Link>{" "}
+      to put it on projects.
+    </>
+  ) : (
+    "Without a category it is a draft: it can't be added to a project yet."
+  );
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <Input
-        id="activity-name"
-        label="Activity name"
-        placeholder="e.g. Frontend development"
-        autoFocus={mode === "edit"}
-        {...register("name")}
-        error={errors.name?.message}
-        disabled={isSubmitting}
-      />
+    <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
+      {/* In the panel the name takes the heading's place. */}
+      {mode === "edit" ? (
+        <PanelTitleInput
+          id="activity-name"
+          aria-label="Activity name"
+          placeholder="e.g. Frontend development"
+          autoFocus
+          {...register("name")}
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
+      ) : (
+        <Input
+          id="activity-name"
+          label="Activity name"
+          placeholder="e.g. Frontend development"
+          {...register("name")}
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
+      )}
 
       <Controller
         control={control}
@@ -96,25 +168,10 @@ export const ActivityForm = ({
             value={field.value}
             onValueChange={field.onChange}
             options={categoryOptions}
-            placeholder={
-              hasNoCategories ? "No active categories" : "Select category"
-            }
-            description={
-              hasNoCategories && (
-                <>
-                  Every activity belongs to a category.{" "}
-                  <Link
-                    href={createFirstLink("/admin/categories", isOnboarding)}
-                    className="font-medium text-brand hover:underline"
-                  >
-                    Create a category first
-                  </Link>
-                  .
-                </>
-              )
-            }
+            placeholder="Select category"
+            description={categoryHint}
             error={errors.categoryId?.message}
-            disabled={isSubmitting || hasNoCategories}
+            disabled={isSubmitting || (requiresCategory && hasNoCategories)}
           />
         )}
       />

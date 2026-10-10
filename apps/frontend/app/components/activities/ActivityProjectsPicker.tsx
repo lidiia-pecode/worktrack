@@ -9,6 +9,11 @@ import { ProjectStatus } from "@/types/enums";
 
 import { PanelView } from "../entity-panel/EntityPanelLayout";
 import {
+  Choice,
+  useStagedSelection,
+} from "../entity-panel/use-staged-selection";
+import { ProjectCreateDialog } from "../projects/ProjectCreateDialog";
+import {
   ProjectActivityRemoval,
   RemoveProjectActivityDialog,
 } from "../projects/RemoveProjectActivityDialog";
@@ -16,76 +21,130 @@ import { EntityPicker } from "../shared/resource/EntityPicker";
 
 export const PROJECTS_PICKER = "add-projects";
 
-/** Puts an activity on projects or takes it off, through the project's links. */
+/** Takes an activity off one project from its row, saved at once. */
 export const useActivityProjectChanges = (activity: ActivityDetails) => {
   const links = useProjectLinks();
-  const [removal, setRemoval] = useState<ProjectActivityRemoval | null>(null);
+  const [removing, setRemoving] = useState<Choice | null>(null);
 
-  // A second click while one change saves would act on stale details.
-  const addToProject = (projectId: string) => {
-    if (!links.isSaving) {
-      links.addActivity.mutate({ projectId, activityId: activity.id });
-    }
-  };
-
-  const removeFromProject = (project: { id: string; name: string }) => {
-    if (!links.isSaving) setRemoval({ project, activity });
+  const removeFromProject = (project: Choice) => {
+    if (!links.isSaving) setRemoving(project);
   };
 
   const dialogs = (
     <RemoveProjectActivityDialog
-      removal={removal}
-      onClose={() => setRemoval(null)}
+      removal={removing && { projects: [removing], activities: [activity] }}
+      loading={links.removeActivity.isPending}
+      onConfirm={() =>
+        removing &&
+        links.removeActivity.mutate(
+          { projectId: removing.id, activityId: activity.id },
+          { onSettled: () => setRemoving(null) },
+        )
+      }
+      onClose={() => setRemoving(null)}
     />
   );
 
-  return { addToProject, removeFromProject, dialogs };
+  return { removeFromProject, dialogs };
 };
-
-interface ActivityProjectsPickerProps {
-  activity: ActivityDetails;
-  changes: ReturnType<typeof useActivityProjectChanges>;
-}
 
 export const ActivityProjectsPicker = ({
   activity,
-  changes,
-}: ActivityProjectsPickerProps) => {
+}: {
+  activity: ActivityDetails;
+}) => {
+  const links = useProjectLinks();
+  const [isCreating, setIsCreating] = useState(false);
+  const [removal, setRemoval] = useState<ProjectActivityRemoval | null>(null);
   const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useProjectsInfiniteQuery(
     { status: ProjectStatus.ACTIVE, search: searchQuery },
     { keepPreviousData: true },
   );
-  const projectIds = (activity.projects ?? []).map((project) => project.id);
+
+  // An archived project is read-only, so it keeps the activity and is not offered.
+  const staged = useStagedSelection(
+    (activity.projects ?? [])
+      .filter((project) => project.status === ProjectStatus.ACTIVE)
+      .map(({ id, name }) => ({ id, name })),
+  );
 
   const toggle = (projectId: string) => {
     const project = items.find((item) => item.id === projectId);
-    if (!project) return;
+    if (project) staged.toggle({ id: project.id, name: project.name });
+  };
 
-    if (projectIds.includes(projectId)) changes.removeFromProject(project);
-    else changes.addToProject(projectId);
+  const applyAll = () =>
+    staged.apply([
+      ...staged.toAdd.map((project) =>
+        links.addActivity.mutateAsync({
+          projectId: project.id,
+          activityId: activity.id,
+        }),
+      ),
+      ...staged.toRemove.map((project) =>
+        links.removeActivity.mutateAsync({
+          projectId: project.id,
+          activityId: activity.id,
+        }),
+      ),
+    ]);
+
+  const done = () => {
+    if (staged.toRemove.length > 0) {
+      setRemoval({ projects: staged.toRemove, activities: [activity] });
+      return;
+    }
+
+    void applyAll();
   };
 
   return (
-    <PanelView
-      title={`Add ${activity.name} to projects`}
-      description="People on these projects can log time on it. Each choice saves at once. Choose a project again to remove it."
-    >
-      <EntityPicker
-        items={items}
-        selectedIds={projectIds}
-        onToggle={toggle}
-        getId={(project) => project.id}
-        getLabel={(project) => project.name}
-        getSubtitle={(project) => project.clientName || "Internal"}
-        onSearchChange={setSearch}
-        isLoading={isLoading}
-        hasNextPage={pagination.hasNextPage}
-        isFetchingNextPage={pagination.isFetchingNextPage}
-        onFetchNextPage={pagination.fetchNextPage}
-        emptyMessage="No active projects yet."
-        searchPlaceholder="Search projects..."
+    <>
+      <PanelView
+        title={`Add ${activity.name} to projects`}
+        description="People on these projects can log time on it. Choose them, then Done; choose one again to take it off."
+        create={{ label: "New project", onClick: () => setIsCreating(true) }}
+        pendingCount={staged.pendingCount}
+        isApplying={staged.isApplying}
+        onDone={done}
+        onCancel={staged.cancel}
+      >
+        <EntityPicker
+          items={items}
+          selectedIds={staged.selectedIds}
+          onToggle={toggle}
+          getId={(project) => project.id}
+          getLabel={(project) => project.name}
+          getSubtitle={(project) => project.clientName || "Internal"}
+          onSearchChange={setSearch}
+          isLoading={isLoading}
+          hasNextPage={pagination.hasNextPage}
+          isFetchingNextPage={pagination.isFetchingNextPage}
+          onFetchNextPage={pagination.fetchNextPage}
+          emptyMessage="No active projects yet. Make the first with New project."
+          searchPlaceholder="Search projects..."
+        />
+      </PanelView>
+
+      {/* A new project joins the choices, applied with them on Done. */}
+      <ProjectCreateDialog
+        open={isCreating}
+        onClose={() => setIsCreating(false)}
+        onCreated={(project) =>
+          staged.select({ id: project.id, name: project.name })
+        }
       />
-    </PanelView>
+
+      <RemoveProjectActivityDialog
+        removal={removal}
+        loading={staged.isApplying}
+        onConfirm={() => {
+          setRemoval(null);
+          void applyAll();
+        }}
+        onClose={() => setRemoval(null)}
+      />
+    </>
   );
 };

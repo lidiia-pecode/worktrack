@@ -12,10 +12,10 @@ import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team, TeamMembership, TeamUser } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
 
-import { EntityLink, EntityLinks } from "../entity-panel/EntityLink";
+import { EntityLink } from "../entity-panel/EntityLink";
+import { Avatar } from "../shared/Avatar";
 import {
   EntityPanelLayout,
-  PanelDetails,
   PanelEditForm,
   PanelList,
   PanelQueryState,
@@ -90,8 +90,7 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   if (isOwner && panel.view === MEMBERS_PICKER) {
     return (
       <>
-        <TeamMembersPicker team={team} changes={changes} />
-        {changes.dialogs}
+        <TeamMembersPicker team={team} />
       </>
     );
   }
@@ -144,37 +143,36 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   return (
     <>
       <EntityPanelLayout
+        type="Team"
         name={team.name}
         status={<PanelStatus isActive />}
         onEdit={
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
         actions={teamActions.actionsFor(team)}
-        isEditing={isEditing}
+        meta={
+          managers.length > 0 ? (
+            <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+              Managed by
+              {managers.map((manager) => (
+                <EntityLink
+                  key={manager.id}
+                  entity={{ type: "user", id: manager.id }}
+                  tone="plain"
+                  className="inline-flex items-center gap-1.5 font-medium"
+                >
+                  <Avatar user={manager} size="xs" />
+                  {fullName(manager)}
+                </EntityLink>
+              ))}
+            </span>
+          ) : (
+            <ManageWarning>No active manager</ManageWarning>
+          )
+        }
+        editForm={isEditing && <TeamEditForm team={team} />}
+        editsName
       >
-        {isEditing ? (
-          <TeamEditForm team={team} />
-        ) : (
-          <PanelDetails
-            details={[
-              {
-                label: "Manager",
-                value:
-                  managers.length > 0 ? (
-                    <EntityLinks
-                      entities={managers.map((manager) => ({
-                        entity: { type: "user", id: manager.id },
-                        name: fullName(manager),
-                      }))}
-                    />
-                  ) : (
-                    <ManageWarning>No active manager</ManageWarning>
-                  ),
-              },
-            ]}
-          />
-        )}
-
         <PanelList
           title="Members"
           items={currentMemberships(team)}
@@ -243,6 +241,7 @@ const ArchivedTeamView = ({ team }: { team: Team }) => {
   return (
     <>
       <EntityPanelLayout
+        type="Team"
         name={team.name}
         status={<PanelStatus isActive={false} />}
         actions={teamActions.actionsFor(team)}

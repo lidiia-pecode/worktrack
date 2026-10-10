@@ -19,6 +19,7 @@ import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import {
+  findActivitiesInUse,
   findOfferingProjects,
   OfferingProject,
 } from 'src/activities/offering-projects';
@@ -30,6 +31,8 @@ type CategoryImpactActivity = {
   id: string;
   name: string;
   projects: OfferingProject[];
+  /** On a project, archived ones too, so it cannot be left without a category. */
+  isInUse: boolean;
 };
 
 @Injectable()
@@ -105,8 +108,18 @@ export class ActCategoriesService {
     return category;
   }
 
-  /** With all of its activities, archived ones included. */
-  async getDetails(id: string, companyId: string): Promise<ActCategory> {
+  /**
+   * With all of its activities, archived ones included, each saying whether a
+   * project links it and so whether it may be left without a category.
+   */
+  async getDetails(
+    id: string,
+    companyId: string,
+  ): Promise<
+    Omit<ActCategory, 'activities'> & {
+      activities: Array<Activity & { isInUse: boolean }>;
+    }
+  > {
     const category = await this.repo.findOne({
       where: { id, companyId },
       relations: { activities: true },
@@ -117,7 +130,18 @@ export class ActCategoriesService {
       throw new NotFoundException('Activity category not found');
     }
 
-    return category;
+    const inUse = await findActivitiesInUse(
+      this.dataSource.getRepository(ProjectActivity),
+      category.activities.map((activity) => activity.id),
+    );
+
+    return {
+      ...category,
+      activities: category.activities.map((activity) => ({
+        ...activity,
+        isInUse: inUse.has(activity.id),
+      })),
+    };
   }
 
   async list(user: AuthUser, query: ActivityCategoriesQuery) {
@@ -221,22 +245,30 @@ export class ActCategoriesService {
       order: { name: 'ASC' },
     });
 
+    const activityIds = activities.map((activity) => activity.id);
+    const projectActivityRepo = this.dataSource.getRepository(ProjectActivity);
     const projectsByActivity = await findOfferingProjects(
-      this.dataSource.getRepository(ProjectActivity),
+      projectActivityRepo,
       companyId,
-      activities.map((activity) => activity.id),
+      activityIds,
     );
+    const inUse = await findActivitiesInUse(projectActivityRepo, activityIds);
 
     return {
       activities: activities.map((activity) => ({
         id: activity.id,
         name: activity.name,
         projects: projectsByActivity.get(activity.id) ?? [],
+        isInUse: inUse.has(activity.id),
       })),
     };
   }
 
-  /** An active activity always belongs to an active category. */
+  /**
+   * An active activity is never in an archived category: archiving moves its
+   * active activities, archives them, or leaves them as drafts when no
+   * project links them.
+   */
   async archive(
     id: string,
     companyId: string,
@@ -256,9 +288,11 @@ export class ActCategoriesService {
         throw new BadRequestException('Category is already archived');
       }
 
+      // Locked, so none is put on a project while it may be left a draft.
       const activeActivities = await manager.find(Activity, {
         where: { companyId, categoryId: id, status: ActivityStatus.ACTIVE },
         order: { name: 'ASC' },
+        lock: { mode: 'pessimistic_write' },
       });
 
       if (activeActivities.length) {
@@ -311,6 +345,24 @@ export class ActCategoriesService {
         { id: activityIds },
         { status: ActivityStatus.ARCHIVED },
       );
+      return;
+    }
+
+    if (payload.activities === ActiveActivitiesAction.UNCATEGORIZE) {
+      const inUse = await findActivitiesInUse(
+        manager.getRepository(ProjectActivity),
+        activities.map((activity) => activity.id),
+      );
+      const linked = activities.filter((activity) => inUse.has(activity.id));
+
+      if (linked.length) {
+        const names = linked.map((activity) => activity.name).join(', ');
+        throw new ConflictException(
+          `These activities are on projects, so they need a category: ${names}. Move them to another category or archive them instead.`,
+        );
+      }
+
+      await manager.update(Activity, { id: activityIds }, { categoryId: null });
       return;
     }
 

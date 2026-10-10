@@ -18,9 +18,10 @@ export class ActivityResponse {
   @Expose()
   defaultBillable!: boolean;
 
+  /** None while it is a draft. */
   @Expose()
   @Type(() => ActivityCategoryResponse)
-  category!: ActivityCategoryResponse;
+  category!: ActivityCategoryResponse | null;
 
   @Expose()
   status!: ActivityStatus;

@@ -20,6 +20,8 @@ interface ActivityCreateDialogProps {
   onCreated: (activity: Activity) => void;
   /** Where the new activity starts, such as the category it is added from. */
   categoryId?: string;
+  /** Made for a project, so it cannot be a draft. */
+  requiresCategory?: boolean;
   isOnboarding?: boolean;
 }
 
@@ -30,6 +32,7 @@ export const ActivityCreateDialog = ({
   onClose,
   onCreated,
   categoryId,
+  requiresCategory = false,
   isOnboarding = false,
 }: ActivityCreateDialogProps) => {
   const router = useRouter();
@@ -74,7 +77,9 @@ export const ActivityCreateDialog = ({
             form={FORM_ID}
             size="sm"
             isLoading={create.isPending}
-            disabled={!categoriesLoading && categories.length === 0}
+            disabled={
+              requiresCategory && !categoriesLoading && categories.length === 0
+            }
           >
             Create activity
           </Button>
@@ -86,6 +91,7 @@ export const ActivityCreateDialog = ({
           formId={FORM_ID}
           categories={categories}
           defaultValues={{ categoryId }}
+          requiresCategory={requiresCategory}
           onSubmit={handleSubmit}
           isSubmitting={create.isPending}
           isOnboarding={isOnboarding}

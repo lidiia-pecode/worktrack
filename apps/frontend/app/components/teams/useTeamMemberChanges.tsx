@@ -5,8 +5,6 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
-import { useWorkSettings } from "@/hooks/useWorkSettings";
-import { todayISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 import { Team, TeamUser } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
@@ -21,8 +19,7 @@ import { CurrentMembership } from "./team-memberships";
  */
 export const useTeamMemberChanges = (team: Team) => {
   const { user: viewer } = useAuth();
-  const { timezone } = useWorkSettings();
-  const { addMember, updateMember, removeMember } = useTeamMembers(team.id);
+  const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
   const [change, setChange] = useState<MemberChange | null>(null);
   const [personToPromote, setPersonToPromote] = useState<TeamUser | null>(null);
@@ -32,18 +29,7 @@ export const useTeamMemberChanges = (team: Team) => {
   );
 
   // A second click while one change saves would act on stale details.
-  const isBusy =
-    addMember.isPending || updateMember.isPending || removeMember.isPending;
-
-  const add = (userId: string, roleInTeam: TeamRole) => {
-    if (isBusy) return;
-
-    addMember.mutate({
-      userId,
-      roleInTeam,
-      joinedAt: todayISODate(timezone),
-    });
-  };
+  const isBusy = updateMember.isPending || removeMember.isPending;
 
   const changeRole = (membership: CurrentMembership, roleInTeam: TeamRole) => {
     if (!isBusy) setChange({ kind: "role", membership, roleInTeam });
@@ -122,7 +108,6 @@ export const useTeamMemberChanges = (team: Team) => {
   );
 
   return {
-    add,
     changeRole,
     remove,
     promote: setPersonToPromote,

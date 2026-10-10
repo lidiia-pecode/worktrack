@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { Plus, Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { ActCategoryStatus, ProjectStatus } from "@/types/enums";
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
-  PanelDetails,
   PanelEditForm,
   PanelList,
   PanelQueryState,
@@ -24,6 +23,7 @@ import {
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { LoadingState } from "../shared/LoadingState";
+import { ManageWarning } from "../shared/resource/ManageList";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import {
   ActivityProjectsPicker,
@@ -58,9 +58,11 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
         categories={categories}
         defaultValues={{
           name: activity.name,
-          categoryId: activity.category.id,
+          categoryId: activity.category?.id ?? null,
           defaultBillable: activity.defaultBillable,
         }}
+        // On a project it needs its category; it can only move to another.
+        requiresCategory={(activity.projects?.length ?? 0) > 0}
         onSubmit={save}
         isSubmitting={update.isPending}
         onDirtyChange={panel.setHasUnsavedChanges}
@@ -75,15 +77,16 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   const projectChanges = useActivityProjectChanges(activity);
 
   const isActive = isActiveActivity(activity);
+  const isDraft = !activity.category;
   // Archiving it elsewhere, such as from its row, ends the edit.
   const isEditing = panel.isEditing && isActive;
-  const canChangeProjects = isActive && !isEditing;
+  // A draft goes on no project until it has a category.
+  const canChangeProjects = isActive && !isEditing && !isDraft;
 
-  if (isActive && panel.view === PROJECTS_PICKER) {
+  if (canChangeProjects && panel.view === PROJECTS_PICKER) {
     return (
       <>
-        <ActivityProjectsPicker activity={activity} changes={projectChanges} />
-        {projectChanges.dialogs}
+        <ActivityProjectsPicker activity={activity} />
       </>
     );
   }
@@ -91,39 +94,62 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   return (
     <>
       <EntityPanelLayout
+        type="Activity"
         name={activity.name}
-        status={<PanelStatus isActive={isActive} />}
+        status={
+          isActive && isDraft ? (
+            <Badge variant="warning" dot>
+              Draft
+            </Badge>
+          ) : (
+            <PanelStatus isActive={isActive} />
+          )
+        }
+        meta={
+          isActive &&
+          isDraft && <span>Give it a category to put it on projects.</span>
+        }
         onEdit={
           activityActions.canEdit(activity)
             ? () => activityActions.edit(activity)
             : undefined
         }
         actions={activityActions.actionsFor(activity)}
-        isEditing={isEditing}
+        details={[
+          {
+            label: "Category",
+            value: activity.category ? (
+              <EntityLink
+                entity={{ type: "category", id: activity.category.id }}
+                tone="plain"
+                className="inline-flex items-center gap-1.5 font-medium"
+              >
+                <Tags
+                  aria-hidden="true"
+                  className="size-3.5 text-muted-foreground"
+                />
+                {activity.category.name}
+              </EntityLink>
+            ) : (
+              <ManageWarning>No category</ManageWarning>
+            ),
+          },
+          {
+            label: "New time entries",
+            value: activity.defaultBillable ? (
+              <Badge variant="success" dot>
+                Billable
+              </Badge>
+            ) : (
+              <Badge variant="neutral" dot>
+                Not billable
+              </Badge>
+            ),
+          },
+        ]}
+        editForm={isEditing && <ActivityEditForm activity={activity} />}
+        editsName
       >
-        {isEditing ? (
-          <ActivityEditForm activity={activity} />
-        ) : (
-          <PanelDetails
-            details={[
-              {
-                label: "Category",
-                value: (
-                  <EntityLink
-                    entity={{ type: "category", id: activity.category.id }}
-                  >
-                    {activity.category.name}
-                  </EntityLink>
-                ),
-              },
-              {
-                label: "Billable by default",
-                value: activity.defaultBillable ? "Yes" : "No",
-              },
-            ]}
-          />
-        )}
-
         <PanelList
           title="Projects"
           items={activity.projects ?? []}
@@ -147,7 +173,11 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                 )
               ),
           })}
-          emptyText="No project offers it yet."
+          emptyText={
+            isDraft
+              ? "None yet. A project can offer it once it has a category."
+              : "No project offers it yet."
+          }
           action={
             canChangeProjects && (
               <Button

@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import Input from "@/components/ui/input";
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 const activityCategoryFormSchema = z.object({
   name: z
@@ -54,25 +55,36 @@ export const ActivityCategoryForm = ({
 
   const isEditMode = mode === "edit";
 
-  const description = errors.name
-    ? undefined
-    : isEditMode
-      ? "Update the name used to identify this activity category."
+  // In the panel the name stands alone, as the heading does.
+  const description =
+    errors.name || isEditMode
+      ? undefined
       : "Choose a clear name for this activity category.";
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)}>
-      <Input
-        id="activity-category-name"
-        label="Category name"
-        type="text"
-        placeholder="e.g. Development"
-        autoFocus={isEditMode}
-        {...register("name")}
-        error={errors.name?.message}
-        description={description}
-        disabled={isSubmitting}
-      />
+      {/* In the panel the name takes the heading's place. */}
+      {isEditMode ? (
+        <PanelTitleInput
+          id="activity-category-name"
+          aria-label="Category name"
+          placeholder="e.g. Development"
+          autoFocus
+          {...register("name")}
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
+      ) : (
+        <Input
+          id="activity-category-name"
+          label="Category name"
+          placeholder="e.g. Development"
+          {...register("name")}
+          error={errors.name?.message}
+          description={description}
+          disabled={isSubmitting}
+        />
+      )}
     </form>
   );
 };

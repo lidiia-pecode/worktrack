@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, UserPlus } from "lucide-react";
+import { Building2, Plus, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { Project } from "@/types";
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
-  PanelDetails,
   PanelEditForm,
   PanelList,
   PanelQueryState,
@@ -91,8 +90,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   if (isActive && panel.view === PEOPLE_PICKER) {
     return (
       <>
-        <ProjectPeoplePicker project={project} changes={changes} />
-        {changes.dialogs}
+        <ProjectPeoplePicker project={project} />
       </>
     );
   }
@@ -100,8 +98,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   if (isActive && panel.view === ACTIVITIES_PICKER) {
     return (
       <>
-        <ProjectActivitiesPicker project={project} changes={changes} />
-        {changes.dialogs}
+        <ProjectActivitiesPicker project={project} />
       </>
     );
   }
@@ -109,6 +106,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   return (
     <>
       <EntityPanelLayout
+        type="Project"
         name={project.name}
         status={<PanelStatus isActive={isActive} />}
         onEdit={
@@ -117,20 +115,23 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             : undefined
         }
         actions={projectActions.actionsFor(project)}
-        isEditing={isEditing}
+        meta={
+          project.clientName ? (
+            <span className="inline-flex items-center gap-1.5">
+              <Building2 aria-hidden="true" className="size-3.5" />
+              <span className="text-foreground">{project.clientName}</span>
+            </span>
+          ) : (
+            <span>Internal project</span>
+          )
+        }
+        editForm={isEditing && <ProjectEditForm project={project} />}
+        editsName
       >
-        {isEditing ? (
-          <ProjectEditForm project={project} />
-        ) : (
-          <PanelDetails
-            details={[
-              { label: "Client", value: project.clientName || "Internal" },
-              {
-                label: "Description",
-                value: project.description || "No description",
-              },
-            ]}
-          />
+        {project.description && (
+          <p className="-mt-2 text-sm whitespace-pre-line text-foreground/80">
+            {project.description}
+          </p>
         )}
 
         <PanelList
@@ -193,6 +194,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             detail: activity.category && (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
+                tone="plain"
+                className="text-muted-foreground"
               >
                 {activity.category.name}
               </EntityLink>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,11 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
-import { formatDayMonthYearLabel, todayISODate } from "@/lib/utils/date";
+import {
+  formatDayMonthYearLabel,
+  formatDuration,
+  todayISODate,
+} from "@/lib/utils/date";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Capacity, UserDetails } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
@@ -17,8 +21,6 @@ import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
-  PanelDetail,
-  PanelDetails,
   PanelEditForm,
   PanelList,
   PanelQueryState,
@@ -30,7 +32,7 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
-import { describeCapacity, UserForm, UserFormData } from "./UserForm";
+import { UserForm, UserFormData } from "./UserForm";
 import {
   PROJECTS_PICKER,
   UserProjectsPicker,
@@ -38,6 +40,30 @@ import {
 } from "./UserProjectsPicker";
 
 const EDIT_FORM_ID = "user-edit-form";
+
+// The weekly hours first, then where they come from.
+const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
+  const source = capacity?.isCompanyDefault
+    ? "company default"
+    : capacity?.validFrom &&
+      `since ${formatDayMonthYearLabel(capacity.validFrom)}`;
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Clock aria-hidden="true" className="size-3.5" />
+      {capacity ? (
+        <>
+          <span className="text-foreground">
+            {formatDuration(capacity.minutesPerWeek)} a week
+          </span>
+          {source && <span>({source})</span>}
+        </>
+      ) : (
+        "No working hours set"
+      )}
+    </span>
+  );
+};
 
 interface UserEditFormProps {
   user: UserDetails;
@@ -150,44 +176,46 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
     return (
       <>
-        <UserProjectsPicker user={user} changes={projectChanges} />
-        {projectChanges.dialogs}
+        <UserProjectsPicker user={user} />
       </>
     );
-  }
-
-  const details: PanelDetail[] = [
-    { label: "Role", value: ROLE_LABELS[user.role] },
-    { label: "Position", value: user.position || "Not specified" },
-  ];
-  if (isOwner) {
-    details.push({ label: "Working hours", value: describeCapacity(capacity) });
   }
 
   return (
     <>
       <EntityPanelLayout
+        type="Person"
         name={fullName(user)}
-        detail={user.email}
+        subtitle={user.position}
         status={
           <PanelStatus isActive={!isDeactivated} inactiveLabel="Deactivated" />
         }
         onEdit={
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }
+        meta={
+          <>
+            <Badge>{ROLE_LABELS[user.role]}</Badge>
+            <span className="min-w-0 truncate">{user.email}</span>
+            {/* Working hours are the owner's to read. */}
+            {isOwner && <WorkingHours capacity={capacity} />}
+          </>
+        }
         actions={userActions.actionsFor(user)}
-        isEditing={isEditing}
+        // A person's name is theirs to change, in their profile; the form
+        // leaves the heading as it is.
+        editForm={
+          isEditing &&
+          (isLoadingCapacity ? (
+            <LoadingState size="compact" />
+          ) : (
+            <UserEditForm user={user} capacity={capacity} />
+          ))
+        }
       >
-        {!isEditing ? (
-          <PanelDetails details={details} />
-        ) : isLoadingCapacity ? (
-          <LoadingState size="compact" />
-        ) : (
-          <UserEditForm user={user} capacity={capacity} />
-        )}
-
         <PanelList
           title="Team"
+          note={user.teams.length > 0 && "Membership is changed from the team."}
           items={user.teams}
           getKey={(team) => team.id}
           renderRow={(team) => ({

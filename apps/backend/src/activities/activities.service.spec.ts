@@ -342,11 +342,12 @@ describe('Activity and category names', () => {
       const impact = await categories.getArchiveImpact(category.id, companyId);
 
       expect(impact.activities).toEqual([
-        { id: editing.id, name: 'Editing', projects: [] },
+        { id: editing.id, name: 'Editing', projects: [], isInUse: false },
         {
           id: writing.id,
           name: 'Writing',
           projects: [{ id: project.id, name: `Blog ${RUN}` }],
+          isInUse: true,
         },
       ]);
     });
@@ -588,6 +589,191 @@ describe('Activity and category names', () => {
       expect((await activities.findRaw(activityId, companyId)).status).toBe(
         ActivityStatus.ARCHIVED,
       );
+    });
+  });
+
+  describe('draft activities, with no category', () => {
+    it('can be created and given a category later', async () => {
+      const draft = await activities.create({ name: 'Draft idea' }, companyId);
+      expect(draft.categoryId).toBeNull();
+
+      await activities.update(draft.id, { categoryId }, companyId);
+
+      expect((await activities.findRaw(draft.id, companyId)).categoryId).toBe(
+        categoryId,
+      );
+    });
+
+    it('cannot be offered on a project until it has a category', async () => {
+      const draft = await activities.create({ name: 'Unsorted' }, companyId);
+
+      await expect(
+        dataSource.transaction((manager) =>
+          activities.findLinkableMany(
+            [draft.id],
+            companyId,
+            manager.getRepository(Activity),
+          ),
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('loses its category only while no project links it', async () => {
+      const free = await activities.create(
+        { name: 'Unlinked', categoryId },
+        companyId,
+      );
+      await activities.update(free.id, { categoryId: null }, companyId);
+      expect(
+        (await activities.findRaw(free.id, companyId)).categoryId,
+      ).toBeNull();
+
+      const linked = await activities.create(
+        { name: 'Linked', categoryId },
+        companyId,
+      );
+      await createProject('Uses it', linked.id);
+      await expect(
+        activities.update(linked.id, { categoryId: null }, companyId),
+      ).rejects.toThrow(BadRequestException);
+
+      // A move keeps it categorised, so it is always allowed.
+      await activities.update(
+        linked.id,
+        { categoryId: otherCategoryId },
+        companyId,
+      );
+      expect((await activities.findRaw(linked.id, companyId)).categoryId).toBe(
+        otherCategoryId,
+      );
+    });
+
+    it('counts a link on an archived project as in use, but not a removed link', async () => {
+      const onArchived = await activities.create(
+        { name: 'On archived project', categoryId },
+        companyId,
+      );
+      await createProject('Archived user', onArchived.id, {
+        status: ProjectStatus.ARCHIVED,
+      });
+      await expect(
+        activities.update(onArchived.id, { categoryId: null }, companyId),
+      ).rejects.toThrow(BadRequestException);
+
+      // Logged time keeps a removed link, which no longer holds the category.
+      const removed = await activities.create(
+        { name: 'Taken off', categoryId },
+        companyId,
+      );
+      await createProject('Link removed', removed.id, { linkActive: false });
+      await activities.update(removed.id, { categoryId: null }, companyId);
+      expect(
+        (await activities.findRaw(removed.id, companyId)).categoryId,
+      ).toBeNull();
+    });
+
+    it('comes back as a draft from an archived category only when unused', async () => {
+      const category = await categories.create({ name: 'Retired' }, companyId);
+      const free = await activities.create(
+        { name: 'Back as draft', categoryId: category.id },
+        companyId,
+      );
+      const linked = await activities.create(
+        { name: 'Still on a project', categoryId: category.id },
+        companyId,
+      );
+      await createProject('Keeps it', linked.id);
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.ARCHIVE,
+      });
+
+      await activities.unarchive(free.id, companyId, { withoutCategory: true });
+      expect(await activities.findRaw(free.id, companyId)).toMatchObject({
+        categoryId: null,
+        status: ActivityStatus.ACTIVE,
+      });
+
+      await expect(
+        activities.unarchive(linked.id, companyId, { withoutCategory: true }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('restores an archived draft as a draft', async () => {
+      const draft = await activities.create(
+        { name: 'Archived draft' },
+        companyId,
+      );
+      await activities.archive(draft.id, companyId);
+
+      await activities.unarchive(draft.id, companyId);
+
+      expect(await activities.findRaw(draft.id, companyId)).toMatchObject({
+        categoryId: null,
+        status: ActivityStatus.ACTIVE,
+      });
+    });
+
+    it('lets a category archive leave its unused activities as drafts', async () => {
+      const category = await categories.create({ name: 'Loose' }, companyId);
+      const free = await activities.create(
+        { name: 'Left loose', categoryId: category.id },
+        companyId,
+      );
+
+      await categories.archive(category.id, companyId, {
+        activities: ActiveActivitiesAction.UNCATEGORIZE,
+      });
+
+      expect(await activities.findRaw(free.id, companyId)).toMatchObject({
+        categoryId: null,
+        status: ActivityStatus.ACTIVE,
+      });
+    });
+
+    it('refuses that while any of them is on a project, and changes nothing', async () => {
+      const category = await categories.create({ name: 'Mixed' }, companyId);
+      const free = await activities.create(
+        { name: 'Mixed free', categoryId: category.id },
+        companyId,
+      );
+      const linked = await activities.create(
+        { name: 'Mixed linked', categoryId: category.id },
+        companyId,
+      );
+      await createProject('Mixed user', linked.id);
+
+      await expect(
+        categories.archive(category.id, companyId, {
+          activities: ActiveActivitiesAction.UNCATEGORIZE,
+        }),
+      ).rejects.toThrow(ConflictException);
+
+      expect((await activities.findRaw(free.id, companyId)).categoryId).toBe(
+        category.id,
+      );
+      expect((await categories.findRaw(category.id, companyId)).status).toBe(
+        ActCategoryStatus.ACTIVE,
+      );
+    });
+
+    it("says which of a category's activities are in use", async () => {
+      const category = await categories.create({ name: 'Flagged' }, companyId);
+      const free = await activities.create(
+        { name: 'Flag free', categoryId: category.id },
+        companyId,
+      );
+      const linked = await activities.create(
+        { name: 'Flag linked', categoryId: category.id },
+        companyId,
+      );
+      await createProject('Flag user', linked.id);
+
+      const details = await categories.getDetails(category.id, companyId);
+      const inUse = Object.fromEntries(
+        details.activities.map((activity) => [activity.id, activity.isInUse]),
+      );
+
+      expect(inUse).toEqual({ [free.id]: false, [linked.id]: true });
     });
   });
 });

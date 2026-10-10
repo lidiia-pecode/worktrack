@@ -108,7 +108,7 @@ export class ProjectsService {
     const targetIdsSet = new Set(targetActivityIds);
 
     const availableActivities = targetActivityIds.length
-      ? await this.activitiesService.findActiveOnlyMany(
+      ? await this.activitiesService.findLinkableMany(
           targetActivityIds,
           project.companyId,
           activityRepo,
@@ -631,7 +631,7 @@ export class ProjectsService {
     user: AuthUser,
   ): Promise<Project> {
     return this.changeLinks(id, user, async (project, manager) => {
-      const [activity] = await this.activitiesService.findActiveOnlyMany(
+      const [activity] = await this.activitiesService.findLinkableMany(
         [activityId],
         project.companyId,
         manager.getRepository(Activity),

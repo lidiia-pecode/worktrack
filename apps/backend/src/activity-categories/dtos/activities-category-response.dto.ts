@@ -41,6 +41,10 @@ export class CategoryActivityResponse {
 
   @Expose()
   status!: ActivityStatus;
+
+  /** On a project, archived ones too, so it cannot be left without a category. */
+  @Expose()
+  isInUse!: boolean;
 }
 
 @Exclude()
@@ -61,6 +65,9 @@ class ArchiveImpactActivityResponse {
   @Expose()
   @Type(() => ArchiveImpactProjectResponse)
   projects!: ArchiveImpactProjectResponse[];
+
+  @Expose()
+  isInUse!: boolean;
 }
 
 export class ActivityCategoryArchiveImpactResponse {

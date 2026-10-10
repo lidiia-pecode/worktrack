@@ -6,12 +6,13 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
+import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
@@ -50,6 +51,7 @@ const stub = <T>(value: unknown): T => value as T;
 describe('ProjectsService membership scope', () => {
   let dataSource: DataSource;
   let service: ProjectsService;
+  let activities: ActivitiesService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -155,14 +157,21 @@ describe('ProjectsService membership scope', () => {
       dataSource.getRepository(User),
     );
 
+    activities = new ActivitiesService(
+      dataSource.getRepository(Activity),
+      new ActCategoriesService(
+        dataSource.getRepository(ActCategory),
+        dataSource,
+      ),
+      dataSource.getRepository(ProjectActivity),
+      dataSource,
+    );
+
     service = new ProjectsService(
       dataSource.getRepository(Project),
       dataSource.getRepository(ProjectActivity),
       dataSource.getRepository(User),
-      stub<ActivitiesService>({
-        findActiveOnlyMany: (ids: string[]) =>
-          dataSource.getRepository(Activity).findBy({ id: In(ids) }),
-      }),
+      activities,
       new UsersService(
         dataSource.getRepository(User),
         teamVisibility,
@@ -737,6 +746,48 @@ describe('ProjectsService membership scope', () => {
 
       await expect(offeredIds(projectId)).resolves.toEqual(
         [kept, retired].sort(),
+      );
+    });
+
+    it('refuses a draft activity, with no category, wherever it is linked', async () => {
+      const { id: draftId } = await dataSource
+        .getRepository(Activity)
+        .save({ companyId, name: `Draft ${RUN}`, categoryId: null });
+      const projectId = await createProject('Draft links', []);
+
+      await expect(
+        service.addActivity(projectId, draftId, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(projectId, { activityIds: [draftId] }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          { name: `With a draft ${RUN}`, activityIds: [draftId] },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([]);
+    });
+
+    it('never ends with a draft on a project, when both happen at once', async () => {
+      const activityId = await createActivity('Contested');
+      const projectId = await createProject('Contested project', []);
+
+      await Promise.allSettled([
+        service.addActivity(projectId, activityId, owner),
+        activities.update(activityId, { categoryId: null }, companyId),
+      ]);
+
+      const activity = await activities.findRaw(activityId, companyId);
+      const offered = await offeredIds(projectId);
+      // Whichever went first, the other was refused.
+      expect(offered.includes(activityId) && activity.categoryId === null).toBe(
+        false,
+      );
+      expect(offered.includes(activityId) || activity.categoryId === null).toBe(
+        true,
       );
     });
 

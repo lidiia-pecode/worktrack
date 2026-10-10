@@ -9,16 +9,17 @@ import {
   useActivityCategoriesMutations,
   useActivityCategoryDetails,
 } from "@/hooks/useActivityCategories";
-import { ActivityCategoryDetails } from "@/types";
+import { useActivitiesMutations } from "@/hooks/useActivities";
+import { ActivityCategoryDetails, CategoryActivity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 
-import { ActivityCreateDialog } from "../activities/ActivityCreateDialog";
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
   PanelList,
   PanelQueryState,
+  PanelRemoveButton,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -26,6 +27,11 @@ import {
   ActivityCategoryForm,
   ActivityCategoryFormData,
 } from "./ActivityCategoryForm";
+import {
+  ACTIVITIES_PICKER,
+  CategoryActivitiesPicker,
+} from "./CategoryActivitiesPicker";
+import { CategoryActivityMovesDialog } from "./CategoryActivityMovesDialog";
 import { isActiveCategory, useCategoryActions } from "./useCategoryActions";
 
 const EDIT_FORM_ID = "category-edit-form";
@@ -68,7 +74,8 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   } = useActivityCategoryDetails(id);
   const categoryActions = useCategoryActions();
   const panel = useEntityPanel();
-  const [isAddingActivity, setIsAddingActivity] = useState(false);
+  const { update } = useActivitiesMutations();
+  const [removing, setRemoving] = useState<CategoryActivity | null>(null);
 
   if (!category) {
     return (
@@ -79,11 +86,16 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   // Archiving it elsewhere, such as from its row, ends the edit.
   const isEditing = panel.isEditing && categoryActions.canEdit(category);
   // An archived category takes no new activities.
-  const canAddActivity = isActiveCategory(category) && !isEditing;
+  const canAddActivity = isActiveCategory(category);
+
+  if (canAddActivity && panel.view === ACTIVITIES_PICKER) {
+    return <CategoryActivitiesPicker category={category} />;
+  }
 
   return (
     <>
       <EntityPanelLayout
+        type="Category"
         name={category.name}
         status={<PanelStatus isActive={isActiveCategory(category)} />}
         onEdit={
@@ -92,10 +104,9 @@ export const CategoryPanel = ({ id }: { id: string }) => {
             : undefined
         }
         actions={categoryActions.actionsFor(category)}
-        isEditing={isEditing}
+        editForm={isEditing && <CategoryEditForm category={category} />}
+        editsName
       >
-        {isEditing && <CategoryEditForm category={category} />}
-
         <PanelList
           title="Activities"
           items={category.activities}
@@ -106,9 +117,23 @@ export const CategoryPanel = ({ id }: { id: string }) => {
                 {activity.name}
               </EntityLink>
             ),
-            badge: activity.status === ActivityStatus.ARCHIVED && (
-              <Badge variant="neutral">Archived</Badge>
-            ),
+            // An archived activity is read-only, so it keeps its category.
+            badge:
+              activity.status === ActivityStatus.ARCHIVED ? (
+                <Badge variant="neutral">Archived</Badge>
+              ) : (
+                canAddActivity && (
+                  <PanelRemoveButton
+                    // On a project it can only move; the label says so before the click.
+                    label={
+                      activity.isInUse
+                        ? `Move ${activity.name} out of ${category.name} (it's on a project)`
+                        : `Remove ${activity.name} from ${category.name}`
+                    }
+                    onClick={() => !update.isPending && setRemoving(activity)}
+                  />
+                )
+              ),
           })}
           emptyText="No activities in it yet."
           action={
@@ -117,24 +142,35 @@ export const CategoryPanel = ({ id }: { id: string }) => {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => setIsAddingActivity(true)}
+                onClick={() => panel.openView(ACTIVITIES_PICKER, category.name)}
                 className="gap-1.5"
               >
                 <Plus className="size-4" />
-                Add activity
+                Add activities
               </Button>
             )
           }
         />
       </EntityPanelLayout>
 
-      <ActivityCreateDialog
-        open={isAddingActivity}
-        onClose={() => setIsAddingActivity(false)}
-        categoryId={category.id}
-        onCreated={(activity) =>
-          panel.follow({ type: "activity", id: activity.id }, category.name)
+      {/* Taking one off a category leaves it a draft, or moves it if a project links it. */}
+      <CategoryActivityMovesDialog
+        category={category}
+        isOpen={Boolean(removing)}
+        movesOut={removing?.isInUse ? [removing] : []}
+        toDrafts={removing && !removing.isInUse ? [removing] : []}
+        loading={update.isPending}
+        onConfirm={(destinationId) =>
+          removing &&
+          update.mutate(
+            {
+              id: removing.id,
+              data: { categoryId: removing.isInUse ? destinationId : null },
+            },
+            { onSettled: () => setRemoving(null) },
+          )
         }
+        onClose={() => setRemoving(null)}
       />
 
       {categoryActions.dialogs}

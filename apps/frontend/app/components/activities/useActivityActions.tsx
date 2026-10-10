@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useActivitiesMutations } from "@/hooks/useActivities";
-import { Activity } from "@/types";
+import { Activity, ActivityCategoryResponse } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -22,15 +22,18 @@ export const useActivityActions = () => {
   const [archivingActivity, setArchivingActivity] = useState<Activity | null>(
     null,
   );
-  const [restoringActivity, setRestoringActivity] = useState<Activity | null>(
-    null,
-  );
+  const [restoringActivity, setRestoringActivity] = useState<
+    (Activity & { category: ActivityCategoryResponse }) | null
+  >(null);
 
-  // An active activity needs an active category, so restoring one whose
-  // category is archived asks what to do with it first.
+  // An active activity is never in an archived category, so restoring one
+  // whose category is archived asks what to do with it first. A draft just
+  // comes back as a draft.
   const restore = (activity: Activity) => {
-    if (activity.category.status === ActCategoryStatus.ARCHIVED) {
-      setRestoringActivity(activity);
+    const { category } = activity;
+
+    if (category?.status === ActCategoryStatus.ARCHIVED) {
+      setRestoringActivity({ ...activity, category });
       return;
     }
 

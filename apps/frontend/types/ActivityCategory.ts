@@ -49,6 +49,8 @@ export interface ActivityCategoryArchiveImpact {
     id: string;
     name: string;
     projects: { id: string; name: string }[];
+    /** On a project, archived ones too, so it cannot be left without a category. */
+    isInUse: boolean;
   }[];
 }
 
@@ -63,6 +65,8 @@ export interface CategoryActivity {
   id: string;
   name: string;
   status: ActivityStatus;
+  /** On a project, archived ones too, so it cannot be left without a category. */
+  isInUse: boolean;
 }
 
 export interface ActivityCategoryDetails extends Omit<

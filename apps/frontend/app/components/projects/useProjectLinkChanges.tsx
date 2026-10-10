@@ -8,13 +8,10 @@ import { fullName } from "@/lib/utils/user";
 import { Activity, AssignableUser, Project } from "@/types";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
-import {
-  ProjectActivityRemoval,
-  RemoveProjectActivityDialog,
-} from "./RemoveProjectActivityDialog";
+import { RemoveProjectActivityDialog } from "./RemoveProjectActivityDialog";
 
 /**
- * Adds and removes a project's people and activities, each saved at once.
+ * Removing one person or activity from its row on the project, saved at once.
  * Removing someone asks first only when it deletes their future plans here;
  * removing an activity always says that past time stays.
  */
@@ -22,16 +19,13 @@ export const useProjectLinkChanges = (project: Project) => {
   const links = useProjectLinks();
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
-  const [activityRemoval, setActivityRemoval] =
-    useState<ProjectActivityRemoval | null>(null);
+  const [removingActivity, setRemovingActivity] = useState<Activity | null>(
+    null,
+  );
 
   // A second click while one change saves would act on stale details.
   const isBusy = links.isSaving || isChecking;
   const projectId = project.id;
-
-  const addMember = (userId: string) => {
-    if (!isBusy) links.addMember.mutate({ projectId, userId });
-  };
 
   const removeMember = (member: AssignableUser) => {
     if (isBusy) return;
@@ -49,12 +43,8 @@ export const useProjectLinkChanges = (project: Project) => {
     });
   };
 
-  const addActivity = (activityId: string) => {
-    if (!isBusy) links.addActivity.mutate({ projectId, activityId });
-  };
-
   const removeActivity = (activity: Activity) => {
-    if (!isBusy) setActivityRemoval({ project, activity });
+    if (!isBusy) setRemovingActivity(activity);
   };
 
   const dialogs = (
@@ -62,11 +52,24 @@ export const useProjectLinkChanges = (project: Project) => {
       <ImpactDialog {...confirmProps} />
 
       <RemoveProjectActivityDialog
-        removal={activityRemoval}
-        onClose={() => setActivityRemoval(null)}
+        removal={
+          removingActivity && {
+            projects: [project],
+            activities: [removingActivity],
+          }
+        }
+        loading={links.removeActivity.isPending}
+        onConfirm={() =>
+          removingActivity &&
+          links.removeActivity.mutate(
+            { projectId, activityId: removingActivity.id },
+            { onSettled: () => setRemovingActivity(null) },
+          )
+        }
+        onClose={() => setRemovingActivity(null)}
       />
     </>
   );
 
-  return { addMember, removeMember, addActivity, removeActivity, dialogs };
+  return { removeMember, removeActivity, dialogs };
 };

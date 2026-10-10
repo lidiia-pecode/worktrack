@@ -5,10 +5,8 @@ import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Capacity } from "@/types";
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
-import { formatDuration } from "@/lib/utils/date";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
 
@@ -42,25 +40,6 @@ const roleOptions = [
   { value: UserRole.EMPLOYEE, label: ROLE_LABELS[UserRole.EMPLOYEE] },
   { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
 ];
-
-const sinceFormatter = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-export const describeCapacity = (capacity: Capacity | null) => {
-  if (!capacity) return "Not set";
-
-  const hours = formatDuration(capacity.minutesPerWeek);
-
-  if (capacity.isCompanyDefault) return `${hours} per week (company default)`;
-  if (!capacity.validFrom) return `${hours} per week`;
-
-  return `${hours} per week, since ${sinceFormatter.format(
-    new Date(`${capacity.validFrom}T00:00:00`),
-  )}`;
-};
 
 export const UserForm = ({
   formId,

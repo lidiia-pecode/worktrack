@@ -527,12 +527,19 @@ anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
 empty one.
 
-An active activity always belongs to an active category. A category that still
-has active activities is archived only by moving them to another active category
-or archiving them with it, and an activity whose category is archived is
-restored only by restoring the category too or moving the activity. Restoring a
-category can restore all of its archived activities with it, or the category
-alone. Archived projects, activities and categories, like archived teams, are
+An activity is in at most one category, and never in an archived one while it
+is active. Without a category it is a **draft**: it can be edited and archived,
+but no project may offer it, so nobody logs time against it. A category is
+therefore required before an activity goes on a project, and it cannot be taken
+away while any project links the activity, archived projects included, since
+restoring a project brings its links back; a link removed from a project, kept
+for the time logged on it, does not count. Changing an activity's category is
+always allowed, and its time is reported under the new one. Archiving a category
+moves its active activities to another active category, archives them with it,
+or, when no project links any of them, leaves them as drafts. An activity whose
+category is archived is restored by restoring the category too or moving it to
+another, or, when no project links it, as a draft. Restoring a category can
+restore all of its archived activities with it, or the category alone. Archived projects, activities and categories, like archived teams, are
 read-only until they are restored.
 
 Project, client, activity, category and team names are trimmed and keep their

@@ -29,9 +29,24 @@ const design: ActivityCategoryDetails = {
   createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
   activities: [
-    { id: "a-1", name: "Wireframes", status: ActivityStatus.ARCHIVED },
-    { id: "a-2", name: "Research", status: ActivityStatus.ARCHIVED },
-    { id: "a-3", name: "Reviews", status: ActivityStatus.ACTIVE },
+    {
+      id: "a-1",
+      name: "Wireframes",
+      status: ActivityStatus.ARCHIVED,
+      isInUse: false,
+    },
+    {
+      id: "a-2",
+      name: "Research",
+      status: ActivityStatus.ARCHIVED,
+      isInUse: false,
+    },
+    {
+      id: "a-3",
+      name: "Reviews",
+      status: ActivityStatus.ACTIVE,
+      isInUse: true,
+    },
   ],
 };
 

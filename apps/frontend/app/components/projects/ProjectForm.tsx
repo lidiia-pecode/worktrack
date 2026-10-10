@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import Input from "@/components/ui/input";
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 import { Button } from "@/components/ui/button";
 
 import { Field, fieldMessageId } from "@/components/ui/field";
@@ -96,20 +97,28 @@ export const ProjectForm = ({
 
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
-      <Input
-        id="project-name"
-        label="Project name"
-        {...register("name")}
-        placeholder="e.g. Website redesign"
-        autoFocus={isEditMode}
-        description={
-          isEditMode
-            ? "Update the name used to identify this project."
-            : "Choose a clear name that helps people understand what this project is about."
-        }
-        error={errors.name?.message}
-        disabled={isSubmitting}
-      />
+      {/* In the panel the name takes the heading's place. */}
+      {isEditMode ? (
+        <PanelTitleInput
+          id="project-name"
+          aria-label="Project name"
+          placeholder="e.g. Website redesign"
+          autoFocus
+          {...register("name")}
+          error={errors.name?.message}
+          disabled={isSubmitting}
+        />
+      ) : (
+        <Input
+          id="project-name"
+          label="Project name"
+          placeholder="e.g. Website redesign"
+          {...register("name")}
+          error={errors.name?.message}
+          description="Choose a clear name that helps people understand what this project is about."
+          disabled={isSubmitting}
+        />
+      )}
 
       <Field
         id="project-work-type"

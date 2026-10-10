@@ -5,7 +5,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, FindOptionsWhere, In, Not, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  FindOptionsWhere,
+  In,
+  Not,
+  Repository,
+} from 'typeorm';
 import { sameName } from 'src/lib/utils/same-name.util';
 import { Activity } from './entities/activity.entity';
 import {
@@ -21,7 +28,11 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { containsText } from 'src/lib/utils/contains-text.util';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import { findOfferingProjects, OfferingProject } from './offering-projects';
+import {
+  findActivitiesInUse,
+  findOfferingProjects,
+  OfferingProject,
+} from './offering-projects';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import type { Project } from 'src/projects/entities/project.entity';
 
@@ -78,10 +89,15 @@ export class ActivitiesService {
     return entity;
   }
 
-  async findActiveOnlyMany(
+  /**
+   * The activities a project may offer: active, and in a category. Called
+   * inside the linking transaction, it locks them, so taking an activity's
+   * category away cannot slip in between the check and the new link.
+   */
+  async findLinkableMany(
     ids: string[],
     companyId: string,
-    repo: Repository<Activity> = this.repo,
+    repo: Repository<Activity>,
   ): Promise<Activity[]> {
     const uniqueIds = [...new Set(ids)];
     if (!uniqueIds.length) return [];
@@ -91,6 +107,7 @@ export class ActivitiesService {
         id: In(uniqueIds),
         companyId,
       },
+      lock: { mode: 'pessimistic_write' },
     });
 
     const foundIds = new Set(activities.map((activity) => activity.id));
@@ -113,7 +130,48 @@ export class ActivitiesService {
       );
     }
 
+    const drafts = activities.filter((activity) => !activity.categoryId);
+
+    if (drafts.length) {
+      const draftNames = drafts.map((activity) => activity.name).join(', ');
+      throw new BadRequestException(
+        `Give these activities a category before adding them to a project: ${draftNames}`,
+      );
+    }
+
     return activities;
+  }
+
+  /** The activity, locked until the transaction ends, for a change to its category. */
+  private async findLocked(
+    id: string,
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<Activity> {
+    // Its own query: Postgres refuses FOR UPDATE on the outer join to the category.
+    await manager.findOne(Activity, {
+      where: { id, companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    return this.findRaw(id, companyId, manager.getRepository(Activity));
+  }
+
+  /** Only an activity on no project may be without a category. */
+  private async assertNotInUse(
+    activity: Activity,
+    manager: EntityManager,
+  ): Promise<void> {
+    const inUse = await findActivitiesInUse(
+      manager.getRepository(ProjectActivity),
+      [activity.id],
+    );
+
+    if (inUse.has(activity.id)) {
+      throw new BadRequestException(
+        `"${activity.name}" is on a project, so it needs a category. Move it to another category instead.`,
+      );
+    }
   }
 
   async list(user: AuthUser, query: ActivitiesQuery) {
@@ -186,11 +244,13 @@ export class ActivitiesService {
 
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
-      const category = await this.actCategoriesService.findActiveOnly(
-        payload.categoryId,
-        companyId,
-        manager,
-      );
+      const category = payload.categoryId
+        ? await this.actCategoriesService.findActiveOnly(
+            payload.categoryId,
+            companyId,
+            manager,
+          )
+        : null;
 
       const activity = repo.create({
         companyId,
@@ -220,7 +280,7 @@ export class ActivitiesService {
   ): Promise<Activity> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
-      const activity = await this.findRaw(id, companyId, repo);
+      const activity = await this.findLocked(id, companyId, manager);
 
       if (activity.status === ActivityStatus.ARCHIVED) {
         throw new BadRequestException('An archived activity cannot be changed');
@@ -231,7 +291,11 @@ export class ActivitiesService {
         activity.name = payload.name;
       }
 
-      if (payload.categoryId !== undefined) {
+      if (payload.categoryId === null && activity.categoryId) {
+        await this.assertNotInUse(activity, manager);
+        activity.category = null;
+        activity.categoryId = null;
+      } else if (payload.categoryId) {
         activity.category = await this.actCategoriesService.findActiveOnly(
           payload.categoryId,
           companyId,
@@ -297,13 +361,17 @@ export class ActivitiesService {
   ): Promise<Activity> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
-      const activity = await this.findRaw(id, companyId, repo);
+      const activity = await this.findLocked(id, companyId, manager);
 
       if (activity.status === ActivityStatus.ACTIVE) {
         throw new BadRequestException('Activity is already active');
       }
 
-      if (payload.categoryId) {
+      if (payload.withoutCategory) {
+        await this.assertNotInUse(activity, manager);
+        activity.category = null;
+        activity.categoryId = null;
+      } else if (payload.categoryId) {
         const category = await this.actCategoriesService.findActiveOnly(
           payload.categoryId,
           companyId,
@@ -311,7 +379,7 @@ export class ActivitiesService {
         );
         activity.category = category;
         activity.categoryId = category.id;
-      } else {
+      } else if (activity.categoryId) {
         const category = await this.actCategoriesService.findLocked(
           activity.categoryId,
           companyId,

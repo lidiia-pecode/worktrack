@@ -19,6 +19,8 @@ import {
   ARCHIVE_ACTIVITIES_OPTION,
   archiveActivitiesLabel,
   archivePayload,
+  DRAFTS_OPTION,
+  draftsLabel,
   noMoveTargetMessage,
 } from "./category-archive";
 
@@ -45,15 +47,25 @@ export const CategoryArchiveDialog = ({
   const activities = impact.data?.activities ?? [];
   const hasActiveActivities = activities.length > 0;
 
+  // Left without a category, an activity becomes a draft, which a project
+  // may not offer; so that is offered only while no project links any.
+  const canLeaveDrafts =
+    hasActiveActivities && activities.every((activity) => !activity.isInUse);
   const moveTargets = activeCategories.items.filter(
     (target) => target.id !== category?.id,
   );
   const selectedOption =
-    chosenOption ?? moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION;
+    chosenOption ??
+    (canLeaveDrafts ? DRAFTS_OPTION : undefined) ??
+    moveTargets[0]?.id ??
+    ARCHIVE_ACTIVITIES_OPTION;
   const archivesActivities =
     hasActiveActivities && selectedOption === ARCHIVE_ACTIVITIES_OPTION;
 
   const options = [
+    ...(canLeaveDrafts
+      ? [{ value: DRAFTS_OPTION, label: draftsLabel(activities.length) }]
+      : []),
     ...moveTargets.map((target) => ({
       value: target.id,
       label: `Move to ${target.name}`,
@@ -77,11 +89,7 @@ export const CategoryArchiveDialog = ({
     archive.mutate(
       {
         id: category.id,
-        payload: archivePayload(
-          activities.length,
-          archivesActivities,
-          selectedOption,
-        ),
+        payload: archivePayload(activities.length, selectedOption),
       },
       {
         onSuccess: close,
@@ -93,9 +101,11 @@ export const CategoryArchiveDialog = ({
     ? "Could not check its activities. Close this and try again."
     : !impact.data
       ? "Checking its activities..."
-      : hasActiveActivities
-        ? "An active activity needs an active category, so these move to another one or are archived with it."
-        : "Nobody will be able to put new activities in it. You can restore it later.";
+      : canLeaveDrafts
+        ? "No project uses its active activities, so they can stay as drafts without a category, move to another one, or be archived with it."
+        : hasActiveActivities
+          ? "Its active activities are on projects, so they need a category: they move to another one or are archived with it."
+          : "Nobody will be able to put new activities in it. You can restore it later.";
 
   return (
     <ImpactDialog
@@ -125,7 +135,7 @@ export const CategoryArchiveDialog = ({
       choice={
         isReady &&
         hasActiveActivities &&
-        (moveTargets.length > 0 ? (
+        (options.length > 1 ? (
           <FormSelect
             label="Its activities"
             value={selectedOption}
