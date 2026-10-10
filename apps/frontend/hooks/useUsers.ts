@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   AssignableUser,
+  AssignableUsersQuery,
   UpdateUserPayload,
   User,
   UserListItem,
@@ -37,7 +38,7 @@ export const useUsersInfiniteQuery = usersQueries.useInfiniteQuery;
  */
 const assignableUsersQueries = createEntityQuery<
   AssignableUser,
-  UserQueryParams
+  Omit<AssignableUsersQuery, "page">
 >({
   queryKey: queryKeys.users.assignable,
 

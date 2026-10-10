@@ -15,6 +15,7 @@ import {
   UserResponse,
 } from './dtos/user-response.dto';
 import { AssignableUserResponse } from './dtos/assignable-user-response.dto';
+import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
 import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
@@ -65,7 +66,7 @@ export class UsersController {
   @SerializeList(AssignableUserResponse)
   async getAssignableUsers(
     @CurrentUser() authUser: AuthUser,
-    @Query() query: UsersQuery,
+    @Query() query: AssignableUsersQuery,
   ) {
     return this.usersService.listAssignable(
       authUser.companyId,

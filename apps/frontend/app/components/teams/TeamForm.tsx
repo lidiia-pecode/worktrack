@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -22,6 +23,7 @@ interface TeamFormProps {
   mode?: "create" | "edit";
   onSubmit: (data: TeamFormData) => void;
   isSubmitting?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const TeamForm = ({
@@ -30,17 +32,23 @@ export const TeamForm = ({
   mode = "create",
   onSubmit,
   isSubmitting = false,
+  onDirtyChange,
 }: TeamFormProps) => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TeamFormData>({
     resolver: zodResolver(teamFormSchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
     },
   });
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+    return () => onDirtyChange?.(false);
+  }, [isDirty, onDirtyChange]);
 
   const isEditMode = mode === "edit";
 
@@ -57,6 +65,7 @@ export const TeamForm = ({
         label="Team name"
         type="text"
         placeholder="e.g. Engineering"
+        autoFocus={isEditMode}
         {...register("name")}
         error={errors.name?.message}
         description={description}

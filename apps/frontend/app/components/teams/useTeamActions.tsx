@@ -4,32 +4,28 @@ import { useState } from "react";
 import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
-import { useIsOnboarding } from "@/hooks/useSetupLink";
+import { useTeamsMutations } from "@/hooks/useTeams";
 import { Team } from "@/types/Team";
 import { TeamStatus, UserRole } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import type { ManageRowAction } from "../shared/resource/ManageList";
 import { TeamArchiveDialog } from "./TeamArchiveDialog";
-import { TeamModal } from "./TeamModal";
 
 export const isActiveTeam = (team: Team) => team.status === TeamStatus.ACTIVE;
 
 /** What the viewer can do with a team, from a list row or the panel. */
 export const useTeamActions = () => {
-  const isOnboarding = useIsOnboarding();
   const { user } = useAuth();
+  const panel = useEntityPanel();
   const isOwner = user?.role === UserRole.OWNER;
   const { unarchive } = useTeamsMutations();
 
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [archivingTeam, setArchivingTeam] = useState<Team | null>(null);
-  // The form stays open while members change, so it reads the team as it is now.
-  const { data: savedTeam } = useTeamDetails(editingTeam?.id ?? null);
 
-  // A manager opens the form too, to remove someone from their team; an
-  // archived team is read-only.
-  const canEdit = isActiveTeam;
+  // Its name is the owner's to change; an archived team is read-only. A
+  // manager removes members from the panel's rows.
+  const canEdit = (team: Team) => isOwner && isActiveTeam(team);
 
   // Archiving and restoring a team are the owner's.
   const actionsFor = (team: Team): ManageRowAction[] => {
@@ -54,21 +50,16 @@ export const useTeamActions = () => {
   };
 
   const dialogs = (
-    <>
-      <TeamModal
-        key={editingTeam?.id ?? "edit"}
-        isOnboarding={isOnboarding}
-        team={savedTeam ?? editingTeam ?? undefined}
-        open={Boolean(editingTeam)}
-        onClose={() => setEditingTeam(null)}
-      />
-
-      <TeamArchiveDialog
-        team={archivingTeam}
-        onClose={() => setArchivingTeam(null)}
-      />
-    </>
+    <TeamArchiveDialog
+      team={archivingTeam}
+      onClose={() => setArchivingTeam(null)}
+    />
   );
 
-  return { canEdit, edit: setEditingTeam, actionsFor, dialogs };
+  return {
+    canEdit,
+    edit: (team: Team) => panel.edit({ type: "team", id: team.id }),
+    actionsFor,
+    dialogs,
+  };
 };

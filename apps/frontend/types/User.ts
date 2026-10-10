@@ -74,6 +74,10 @@ export interface UsersQuery extends SearchablePaginationParams {
   status?: UserStatus;
 }
 
+export interface AssignableUsersQuery extends UsersQuery {
+  role?: UserRole;
+}
+
 export interface UserProject {
   id: string;
   name: string;

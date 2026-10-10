@@ -304,6 +304,19 @@ describe('UsersService scope', () => {
       expect(await assignableIds(leadNothing)).toEqual([leadNothing.id]);
     });
 
+    it('lists one role at a time, for leading a team or joining one', async () => {
+      const { results } = await service.listAssignable(
+        companyId,
+        { offset: 0, limit: 50, role: UserRole.MANAGER } as never,
+        owner,
+      );
+
+      expect(results.map((user) => user.role)).not.toContain(UserRole.EMPLOYEE);
+      expect(results.map((user) => user.id)).toEqual(
+        expect.arrayContaining([manager.id, leadNothing.id]),
+      );
+    });
+
     it('searches, and keeps owners, who can be put on a project', async () => {
       const { results } = await service.listAssignable(
         companyId,

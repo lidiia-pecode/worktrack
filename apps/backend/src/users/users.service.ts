@@ -11,6 +11,7 @@ import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
 import { UsersQuery } from './dtos/users-query.dto';
+import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
 import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
@@ -246,13 +247,21 @@ export class UsersService {
    * Separate from `list` only because of that "plus themselves" — a manager
    * who leads no team must still be able to pick themselves.
    */
-  async listAssignable(companyId: string, query: UsersQuery, user: AuthUser) {
+  async listAssignable(
+    companyId: string,
+    query: AssignableUsersQuery,
+    user: AuthUser,
+  ) {
     const qb = this.repo
       .createQueryBuilder('u')
       .where('u.company_id = :companyId', { companyId });
 
     if (query.status) {
       qb.andWhere('u.status = :status', { status: query.status });
+    }
+
+    if (query.role) {
+      qb.andWhere('u.role = :role', { role: query.role });
     }
 
     if (query.search) {
