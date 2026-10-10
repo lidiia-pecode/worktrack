@@ -51,12 +51,13 @@ export function useTeamOptions() {
   return { options, isLoading, isError };
 }
 
+export const teamDetailsQuery = (teamId: string) => ({
+  queryKey: queryKeys.teams.detail(teamId),
+  queryFn: () => TeamsClientApi.getById(teamId),
+});
+
 export const useTeamDetails = (teamId: string | null) =>
-  useQuery({
-    queryKey: queryKeys.teams.detail(teamId ?? ""),
-    queryFn: () => TeamsClientApi.getById(teamId!),
-    enabled: Boolean(teamId),
-  });
+  useQuery({ ...teamDetailsQuery(teamId ?? ""), enabled: Boolean(teamId) });
 
 /** Who archiving a team would affect, read when the owner is about to. */
 export const useTeamArchiveImpact = (teamId: string, enabled: boolean) =>
@@ -76,6 +77,9 @@ export const useTeamsMutations = createEntityMutations<
 >({
   queryKey: queryKeys.teams.all,
 
+  // A person's row and panel name their team.
+  alsoInvalidate: [queryKeys.users.all],
+
   api: {
     create: TeamsClientApi.create,
     update: TeamsClientApi.update,
@@ -92,21 +96,23 @@ export const useTeamsMutations = createEntityMutations<
         : `Team archived. Pending invitations revoked: ${revokedInvitationCount}.`,
     unarchive: "Team restored successfully!",
   },
+  conflictShownInForm: true,
 });
 
 export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();
 
-  const invalidateTeams = () =>
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.teams.all,
-    });
+  // A person's row and panel name their team.
+  const invalidate = () =>
+    [queryKeys.teams.all, queryKeys.users.all].forEach((queryKey) =>
+      queryClient.invalidateQueries({ queryKey }),
+    );
 
   const addMember = useMutation({
     mutationFn: (data: AddTeamMemberPayload) =>
       TeamsClientApi.addMember(teamId, data),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   const updateMember = useMutation({
@@ -118,14 +124,14 @@ export function useTeamMembers(teamId: string) {
       data: UpdateTeamMemberPayload;
     }) => TeamsClientApi.updateMember(teamId, membershipId, data),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   const removeMember = useMutation({
     mutationFn: (membershipId: string) =>
       TeamsClientApi.removeMember(teamId, membershipId),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   return {

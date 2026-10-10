@@ -1,5 +1,5 @@
-import { PaginatedResponse, PaginationParams } from ".";
-import { ProjectStatus, UserRole, UserStatus } from "./enums";
+import { PaginatedResponse, ProjectRef, SearchablePaginationParams } from ".";
+import { TeamRole, TeamStatus, UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
@@ -17,10 +17,6 @@ export interface User {
   updatedAt: string;
 }
 
-export interface UserQuery extends PaginationParams {
-  status?: UserStatus;
-}
-
 export interface UpdateUserPayload {
   firstName?: string;
   lastName?: string;
@@ -34,7 +30,21 @@ export interface UpdateProfilePayload {
   avatarUrl?: string;
 }
 
-export type UserListResponse = PaginatedResponse<User>;
+export interface UserTeam {
+  id: string;
+  name: string;
+}
+
+export interface UserListItem extends User {
+  /** Open memberships in active teams the viewer can see. */
+  teams: UserTeam[];
+  /** Active projects only. */
+  projectsCount: number;
+  /** Today's capacity; sent to an owner only. */
+  weeklyMinutes?: number;
+}
+
+export type UserListResponse = PaginatedResponse<UserListItem>;
 
 /**
  * Who can be put on a team or project. Narrower than `User` because the API
@@ -54,18 +64,24 @@ export interface AssignableUser {
 
 export type AssignableUserListResponse = PaginatedResponse<AssignableUser>;
 
-export interface UsersQuery extends PaginationParams {
+export interface UsersQuery extends SearchablePaginationParams {
   status?: UserStatus;
 }
 
-export interface UserProject {
-  id: string;
-  name: string;
-  status: ProjectStatus;
+export interface AssignableUsersQuery extends UsersQuery {
+  role?: UserRole;
+}
+
+export interface UserTeamMembership extends UserTeam {
+  status: TeamStatus;
+  roleInTeam: TeamRole;
+  joinedAt: string;
 }
 
 export interface UserDetails extends User {
-  projects: UserProject[];
+  projects: ProjectRef[];
+  /** Open memberships in active teams the viewer can see. */
+  teams: UserTeamMembership[];
 }
 
 export type AvatarUser = Pick<User, "firstName" | "lastName"> & {

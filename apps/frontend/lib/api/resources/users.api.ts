@@ -2,6 +2,7 @@
 
 import {
   AssignableUserListResponse,
+  AssignableUsersQuery,
   User,
   UserListResponse,
   UsersQuery,
@@ -28,7 +29,7 @@ export const UsersClientApi = {
   getById: crud.getById,
   update: crud.update,
 
-  getAssignable: (params?: UsersQuery) =>
+  getAssignable: (params?: AssignableUsersQuery) =>
     client.get<AssignableUserListResponse>(
       `/assignable${buildQueryString(params)}`,
     ),

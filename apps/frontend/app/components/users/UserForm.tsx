@@ -1,16 +1,14 @@
 "use client";
 
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
-import { Capacity } from "@/types";
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
-import { formatDuration } from "@/lib/utils/date";
-import { Badge } from "@/components/ui/badge";
-import { Field, fieldLabelClassName } from "@/components/ui/field";
+import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DateInput } from "../shared/inputs";
@@ -34,9 +32,8 @@ export type UserFormData = z.infer<typeof userSchema>;
 type UserFormProps = {
   formId: string;
   defaultValues: UserFormData;
-  isEditMode: boolean;
-  capacity: Capacity | null;
-  onSubmit: (data: UserFormData) => void;
+  onSubmit: (data: UserFormData) => void | Promise<unknown>;
+  onDirtyChange?: (isDirty: boolean) => void;
 };
 
 const roleOptions = [
@@ -44,68 +41,26 @@ const roleOptions = [
   { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
 ];
 
-const sinceFormatter = new Intl.DateTimeFormat(undefined, {
-  day: "numeric",
-  month: "long",
-  year: "numeric",
-});
-
-const describeCapacity = (capacity: Capacity | null) => {
-  if (!capacity) return "Not set";
-
-  const hours = formatDuration(capacity.minutesPerWeek);
-
-  if (capacity.isCompanyDefault) return `${hours} per week (company default)`;
-  if (!capacity.validFrom) return `${hours} per week`;
-
-  return `${hours} per week, since ${sinceFormatter.format(
-    new Date(`${capacity.validFrom}T00:00:00`),
-  )}`;
-};
-
 export const UserForm = ({
   formId,
   defaultValues,
-  isEditMode,
-  capacity,
   onSubmit,
+  onDirtyChange,
 }: UserFormProps) => {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
     defaultValues,
   });
+  const role = useWatch({ control, name: "role" });
+  const losesManagerAccess =
+    defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
 
-  if (!isEditMode) {
-    return (
-      <dl className="space-y-6">
-        <div>
-          <dt className={fieldLabelClassName}>Position</dt>
-          <dd className="text-sm text-foreground">
-            {defaultValues.position || "Not specified"}
-          </dd>
-        </div>
-
-        <div>
-          <dt className={fieldLabelClassName}>Role</dt>
-          <dd>
-            <Badge>{ROLE_LABELS[defaultValues.role]}</Badge>
-          </dd>
-        </div>
-
-        <div>
-          <dt className={fieldLabelClassName}>Working hours</dt>
-          <dd className="text-sm text-foreground">
-            {describeCapacity(capacity)}
-          </dd>
-        </div>
-      </dl>
-    );
-  }
+  useReportDirty(isDirty, onDirtyChange);
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -113,6 +68,7 @@ export const UserForm = ({
         label="Position"
         {...register("position")}
         placeholder="e.g. Frontend Developer"
+        autoFocus
         error={errors.position?.message}
       />
 
@@ -125,12 +81,16 @@ export const UserForm = ({
             value={field.value}
             onValueChange={field.onChange}
             options={roleOptions}
+            description={
+              losesManagerAccess &&
+              "As an Employee they lose Team time, Planning, Reports and Manage."
+            }
             error={fieldState.error?.message}
           />
         )}
       />
 
-      <Field id="user-working-hours" label="Working hours" group>
+      <Field id="user-working-hours" group>
         <div className="grid gap-4 sm:grid-cols-2">
           <Input
             {...register("capacityHoursPerWeek", { valueAsNumber: true })}

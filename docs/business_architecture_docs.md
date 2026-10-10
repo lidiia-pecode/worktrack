@@ -240,7 +240,8 @@ behind it is unchecked would be a hidden button rather than a permission.
 
 **The rule that replaces it was settled on 21 September 2026** and is now
 enforced: a manager assigns only the people they manage, plus themselves, both
-in `GET /users/assignable` and in `syncProjectUsers`; their save changes nobody
+in `GET /users/assignable`, in `syncProjectUsers` and in the one-person
+project links; their save changes nobody
 outside that set; and that same set is all they see of a project's membership,
 so sharing a project discloses nobody. See
 [`permission-model.md`](./permission-model.md) §3.4 and §3.5.
@@ -526,10 +527,21 @@ anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
 empty one.
 
-An active activity always belongs to an active category. A category that still
-has active activities is archived only by moving them to another active category
-or archiving them with it, and an activity whose category is archived is
-restored only by restoring the category too or moving the activity.
+An activity is in at most one category, and never in an archived one while it
+is active. Without a category it is a **draft**: it can be edited and archived,
+but no project may offer it, so nobody logs time against it. A category is
+therefore required before an activity goes on a project, and it cannot be taken
+away while any project links the activity, archived projects included, since
+restoring a project brings its links back; a link removed from a project, kept
+for the time logged on it, does not count. Changing an activity's category is
+always allowed, and its time is reported under the new one. Archiving a category
+moves its active activities to another active category, archives them with it,
+or, when no project links any of them, leaves them as drafts. An activity whose
+category is archived is restored by restoring the category too or moving it to
+another, or, when no project links it, as a draft. Restoring a category can
+restore all of its archived activities with it, or the category alone.
+Archived projects, activities and categories, like archived teams, are
+read-only until they are restored.
 
 Project, client, activity, category and team names are trimmed and keep their
 case. Project, activity, category and team names are unique regardless of case;
@@ -587,8 +599,10 @@ revokes its pending invitations and closes the team (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. A user cannot deactivate themselves, an OWNER account
-cannot be deactivated, and only an OWNER may modify another OWNER or grant the
-OWNER role.
+cannot be deactivated, only an OWNER may modify another OWNER or grant the
+OWNER role, and nobody changes their own role, so a company always keeps its
+owner. A deactivated person keeps their teams and projects but cannot be
+added to a team or a project.
 
 ---
 

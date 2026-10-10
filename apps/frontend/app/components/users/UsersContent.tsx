@@ -1,84 +1,148 @@
 "use client";
-import { useMemo, useState } from "react";
+
+import { useState } from "react";
 import { UsersRound } from "lucide-react";
+
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
-import { hasManagerAccess } from "@/lib/utils/user";
-import { User } from "@/types";
+import { ROLE_LABELS } from "@/lib/constants";
+import { formatDuration } from "@/lib/utils/date";
+import { fullName, hasManagerAccess } from "@/lib/utils/user";
+import { UserListItem } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
+
+import {
+  ManageColumn,
+  ManageCount,
+  ManageList,
+  ManageWarning,
+} from "../shared/resource/ManageList";
+import { EntityLinks, linkedEntities } from "../entity-panel/EntityLink";
+import { Avatar } from "../shared/Avatar";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
 import { PendingInvitations } from "./PendingInvitations";
-import { UserCard } from "./UserCard";
+import { useUserActions } from "./useUserActions";
 
-type UserTab = "active" | "archived";
+const UserTeams = ({ user }: { user: UserListItem }) => (
+  <EntityLinks tone="plain" entities={linkedEntities("team", user.teams)} />
+);
+
+const NO_TEAM = "No team";
+
+const weeklyHours = (user: UserListItem) =>
+  formatDuration(user.weeklyMinutes ?? 0);
+
+const COLUMNS: ManageColumn<UserListItem>[] = [
+  { header: "Role", width: "w-28", cell: (user) => ROLE_LABELS[user.role] },
+  {
+    header: "Team",
+    width: "w-48",
+    cell: (user) =>
+      user.teams.length > 0 ? (
+        <UserTeams user={user} />
+      ) : (
+        <ManageWarning>{NO_TEAM}</ManageWarning>
+      ),
+    summary: (user) =>
+      user.teams.length > 0 ? (
+        <UserTeams user={user} />
+      ) : (
+        <ManageWarning inline>{NO_TEAM}</ManageWarning>
+      ),
+  },
+  {
+    header: "Projects",
+    width: "w-24",
+    numeric: true,
+    cell: (user) => <ManageCount count={user.projectsCount} />,
+    summary: (user) => countLabel(user.projectsCount, "project", "projects"),
+  },
+];
+
+// Only an owner reads capacity, so only an owner gets this column.
+const OWNER_COLUMNS: ManageColumn<UserListItem>[] = [
+  ...COLUMNS,
+  {
+    header: "Weekly hours",
+    width: "w-32",
+    numeric: true,
+    cell: weeklyHours,
+    summary: (user) => `${weeklyHours(user)} a week`,
+  },
+];
 
 export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [inviteOpen, setInviteOpen] = useState(opensCreateForm);
-  const [tab, setTab] = useState<UserTab>("active");
+  const listState = useManageListState();
+  const userActions = useUserActions();
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
-  const status = tab === "active" ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;
+  const isActiveTab = listState.tab === "active";
+  const status = isActiveTab ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;
 
   const {
     items: users,
     isLoading,
+    isPlaceholderData,
     isError,
     refetch,
     pagination,
-  } = useUsersInfiniteQuery({ status });
-
-  const visibleUsers = useMemo(
-    () => users.filter((user) => user.role !== UserRole.OWNER),
-    [users],
-  );
-
-  const handleTabChange = (nextTab: UserTab) => {
-    if (nextTab === tab) {
-      return;
-    }
-    setTab(nextTab);
-  };
+  } = useUsersInfiniteQuery({ status, search: listState.searchQuery });
 
   return (
     <>
-      <ResourcePage<User>
+      <ResourcePage
         title="Users"
         description="Manage workspace users, roles and project access."
-        items={visibleUsers}
+        listState={listState}
+        itemCount={users.length}
         isLoading={isLoading}
+        isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        getSearchValue={(user) =>
-          [user.firstName, user.lastName, user.email, user.position]
-            .filter(Boolean)
-            .join(" ")
-        }
         searchPlaceholder="Search users..."
         emptyTitle="No users yet"
         emptyDescription="Invite your first user to start building your workspace."
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Invite user"
         onCreate={() => setInviteOpen(true)}
-        canCreate={canManage && tab === "active"}
+        canCreate={canManage && isActiveTab}
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
-        showArchived
         archivedLabel="Deactivated"
         archiveVerb="deactivate"
-        tab={tab}
-        onTabChange={handleTabChange}
-        renderItem={(user) => <UserCard key={user.id} user={user} />}
-        topContent={canManage && tab === "active" && <PendingInvitations />}
-      />{" "}
+        topContent={canManage && isActiveTab && <PendingInvitations />}
+      >
+        <ManageList
+          label="Users"
+          items={users}
+          row={{
+            getKey: (listed) => listed.id,
+            getName: fullName,
+            getDetail: (listed) => listed.email,
+            getLeading: (listed) => <Avatar user={listed} />,
+            getEntity: (listed) => ({ type: "user", id: listed.id }),
+            onEdit: userActions.edit,
+            canEdit: userActions.canEdit,
+            columns: user?.role === UserRole.OWNER ? OWNER_COLUMNS : COLUMNS,
+            getActions: userActions.actionsFor,
+          }}
+        />
+      </ResourcePage>
+
+      {userActions.dialogs}
+
       <InviteUserModal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         isOnboarding={isOnboarding}
-      />{" "}
+      />
     </>
   );
 };

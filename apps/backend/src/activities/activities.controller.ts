@@ -20,6 +20,8 @@ import {
 } from './dtos/activity-payload.dto';
 import {
   ActivityArchiveImpactResponse,
+  ActivityDetailsResponse,
+  ActivityListItemResponse,
   ActivityResponse,
 } from './dtos/activity-response.dto';
 import { ActivitiesQuery } from './dtos/activities-query.dto';
@@ -32,18 +34,18 @@ export class ActivitiesController {
   constructor(private readonly service: ActivitiesService) {}
 
   @Get()
-  @SerializeList(ActivityResponse)
+  @SerializeList(ActivityListItemResponse)
   list(@Query() query: ActivitiesQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(user, query);
   }
 
   @Get(':id')
-  @Serialize(ActivityResponse)
+  @Serialize(ActivityDetailsResponse)
   getById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.getById(id, user.companyId);
+    return this.service.getDetails(id, user);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

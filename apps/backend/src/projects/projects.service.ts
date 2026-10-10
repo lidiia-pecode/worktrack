@@ -16,7 +16,6 @@ import {
 import { sameName } from 'src/lib/utils/same-name.util';
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
-import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -33,6 +32,7 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 
 /**
  * What a project offers people to log against. A removed link is kept for the
@@ -42,6 +42,12 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 const isOffered = (projectActivity: ProjectActivity): boolean =>
   projectActivity.isActive &&
   projectActivity.activity?.status === ActivityStatus.ACTIVE;
+
+const assertChangeable = (project: Project): void => {
+  if (project.status === ProjectStatus.ARCHIVED) {
+    throw new BadRequestException('An archived project cannot be changed');
+  }
+};
 
 const withOfferedActivities = (project: Project): Project => {
   project.projectActivities = (project.projectActivities ?? []).filter(
@@ -95,16 +101,15 @@ export class ProjectsService {
     manager: EntityManager,
   ): Promise<void> {
     const targetActivityIds = Array.from(new Set(rawActivityIds));
-    const activityRepo = manager.getRepository(Activity);
     const projectActivityRepo = manager.getRepository(ProjectActivity);
 
     const targetIdsSet = new Set(targetActivityIds);
 
     const availableActivities = targetActivityIds.length
-      ? await this.activitiesService.findActiveOnlyMany(
+      ? await this.activitiesService.findLinkableMany(
           targetActivityIds,
           project.companyId,
-          activityRepo,
+          manager,
         )
       : [];
 
@@ -321,6 +326,66 @@ export class ProjectsService {
     return withOfferedActivities(project);
   }
 
+  /** Locked in its own query (Postgres refuses FOR UPDATE with outer joins), so link changes run one at a time. */
+  private async findLockedOrFail(
+    id: string,
+    companyId: string,
+    manager: EntityManager,
+  ): Promise<Project> {
+    await manager.findOne(Project, {
+      where: { id, companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    return this.findOrFail(id, companyId, manager);
+  }
+
+  private changeLinks(
+    id: string,
+    user: AuthUser,
+    change: (project: Project, manager: EntityManager) => Promise<void>,
+  ): Promise<Project> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
+      assertChangeable(project);
+
+      await change(project, manager);
+
+      return this.withScopedMembers(
+        await this.findOrFail(id, user.companyId, manager),
+        user,
+        manager,
+      );
+    });
+  }
+
+  private isMember(
+    projectId: string,
+    userId: string,
+    manager: EntityManager,
+  ): Promise<boolean> {
+    return manager
+      .createQueryBuilder()
+      .from('project_users', 'pu')
+      .where('pu.project_id = :projectId', { projectId })
+      .andWhere('pu.user_id = :userId', { userId })
+      .getExists();
+  }
+
+  private async assertCanAssign(
+    userId: string,
+    user: AuthUser,
+    message: string,
+  ): Promise<void> {
+    const assignable = await this.teamVisibility.filterVisibleUserIds(
+      [userId],
+      user,
+      { includeSelf: true },
+    );
+
+    if (!assignable.has(userId)) throw new ForbiddenException(message);
+  }
+
   // ---------------------------------------------------------------------------
   // PUBLIC METHODS
   // ---------------------------------------------------------------------------
@@ -337,6 +402,14 @@ export class ProjectsService {
 
     if (query.status) {
       qb.andWhere('project.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(
+        qb,
+        ['project.name', 'project.clientName'],
+        query.search,
+      );
     }
 
     const [results, count] = await qb
@@ -419,7 +492,8 @@ export class ProjectsService {
   ): Promise<Project> {
     return this.dataSource.transaction(async (manager) => {
       const projectRepo = manager.getRepository(Project);
-      const project = await this.findOrFail(id, user.companyId, manager);
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
+      assertChangeable(project);
 
       if (payload.name !== undefined) {
         await this.assertUniqueName(user.companyId, payload.name, id, manager);
@@ -483,6 +557,118 @@ export class ProjectsService {
     await this.repo.save(project);
 
     return this.withScopedMembers(project, user);
+  }
+
+  /** Adds one person, under the same rules as `syncProjectUsers`. */
+  async addMember(
+    id: string,
+    userId: string,
+    user: AuthUser,
+  ): Promise<Project> {
+    return this.changeLinks(id, user, async (project, manager) => {
+      // Scope first, so the answer says nothing about people outside it.
+      await this.assertCanAssign(
+        userId,
+        user,
+        'You can only assign yourself and users in teams you manage',
+      );
+      if (await this.isMember(project.id, userId, manager)) return;
+
+      // Only someone joining must be active; this also rejects another company's id.
+      await this.usersService.findActiveOnlyMany(
+        [userId],
+        project.companyId,
+        manager,
+      );
+
+      await manager
+        .createQueryBuilder()
+        .relation(Project, 'users')
+        .of(project.id)
+        .add(userId);
+    });
+  }
+
+  /** Removes one person and their future plans on the project. */
+  async removeMember(
+    id: string,
+    userId: string,
+    user: AuthUser,
+  ): Promise<Project> {
+    return this.changeLinks(id, user, async (project, manager) => {
+      await this.assertCanAssign(
+        userId,
+        user,
+        'You can only remove yourself and users in teams you manage',
+      );
+      if (!(await this.isMember(project.id, userId, manager))) return;
+
+      await this.planning.deleteForRemovedMembers(
+        manager,
+        project.companyId,
+        project.id,
+        [userId],
+      );
+      await manager
+        .createQueryBuilder()
+        .relation(Project, 'users')
+        .of(project.id)
+        .remove(userId);
+    });
+  }
+
+  async addActivity(
+    id: string,
+    activityId: string,
+    user: AuthUser,
+  ): Promise<Project> {
+    return this.changeLinks(id, user, async (project, manager) => {
+      const [activity] = await this.activitiesService.findLinkableMany(
+        [activityId],
+        project.companyId,
+        manager,
+      );
+      const link = project.projectActivities.find(
+        (projectActivity) => projectActivity.activityId === activityId,
+      );
+
+      if (link?.isActive) return;
+
+      const projectActivityRepo = manager.getRepository(ProjectActivity);
+
+      if (link) {
+        link.isActive = true;
+        await projectActivityRepo.save(link);
+        return;
+      }
+
+      await projectActivityRepo.save(
+        projectActivityRepo.create({
+          companyId: project.companyId,
+          project,
+          activity,
+          isActive: true,
+        }),
+      );
+    });
+  }
+
+  /** The time already logged on it stays. */
+  async removeActivity(
+    id: string,
+    activityId: string,
+    user: AuthUser,
+  ): Promise<Project> {
+    return this.changeLinks(id, user, async (project, manager) => {
+      const link = project.projectActivities.find(
+        (projectActivity) => projectActivity.activityId === activityId,
+      );
+
+      if (!link || !isOffered(link)) return;
+
+      link.isActive = false;
+      await manager.getRepository(ProjectActivity).save(link);
+    });
   }
 
   /** The active projects the caller is a member of, loggable or not. */

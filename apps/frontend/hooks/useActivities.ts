@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  ActivityListItem,
   ActivityPayload,
   ActivityQuery,
   UpdateActivityPayload,
@@ -17,11 +18,14 @@ import {
 
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
-import { queryKeys } from "./shared/queryKeys";
+import { CATALOG_QUERY_KEYS, queryKeys } from "./shared/queryKeys";
 
 type ActivityQueryParams = Omit<ActivityQuery, "page">;
 
-const activitiesQueries = createEntityQuery<Activity, ActivityQueryParams>({
+const activitiesQueries = createEntityQuery<
+  ActivityListItem,
+  ActivityQueryParams
+>({
   queryKey: queryKeys.activities,
 
   api: {
@@ -33,7 +37,7 @@ export const useActivitiesQuery = activitiesQueries.useQuery;
 
 export const useActivitiesInfiniteQuery = activitiesQueries.useInfiniteQuery;
 
-const useActivitiesMutations = createEntityMutations<
+export const useActivitiesMutations = createEntityMutations<
   Activity,
   ActivityPayload,
   UpdateActivityPayload,
@@ -42,7 +46,12 @@ const useActivitiesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.activities.all,
 
-  alsoInvalidate: [queryKeys.projects.all, queryKeys.projectActivities.all],
+  // Projects offer activities, and a category's panel lists its activities.
+  alsoInvalidate: [
+    queryKeys.projects.all,
+    queryKeys.projectActivities.all,
+    queryKeys.activityCategories.all,
+  ],
 
   api: {
     create: ActivitiesClientApi.create,
@@ -57,18 +66,16 @@ const useActivitiesMutations = createEntityMutations<
     archive: "Activity archived successfully",
     unarchive: "Activity restored successfully",
   },
+  conflictShownInForm: true,
 });
 
-export function useActivities(page = 1, params?: ActivityQueryParams) {
-  const query = useActivitiesQuery(page, params);
+export const activityDetailsQuery = (id: string) => ({
+  queryKey: queryKeys.activities.detail(id),
+  queryFn: () => ActivitiesClientApi.getById(id),
+});
 
-  const actions = useActivitiesMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
+export const useActivityDetails = (id: string) =>
+  useQuery({ ...activityDetailsQuery(id), enabled: Boolean(id) });
 
 /** The projects archiving an activity would take it off, read when about to. */
 export const useActivityArchiveImpact = (
@@ -84,9 +91,13 @@ export const useActivityArchiveImpact = (
 
 type RestoreActivityVariables =
   | { id: string; restoreCategoryId: string }
-  | { id: string; moveToCategoryId: string };
+  | { id: string; moveToCategoryId: string }
+  | { id: string; withoutCategory: true };
 
-/** Restores an activity whose category is archived, by restoring the category or moving it. */
+/**
+ * Restores an activity whose category is archived: by restoring the category,
+ * by moving it, or as a draft when no project links it.
+ */
 export const useRestoreActivityWithCategory = () => {
   const queryClient = useQueryClient();
 
@@ -99,18 +110,21 @@ export const useRestoreActivityWithCategory = () => {
         return ActivitiesClientApi.unarchive(variables.id);
       }
 
+      if ("withoutCategory" in variables) {
+        return ActivitiesClientApi.unarchive(variables.id, {
+          withoutCategory: true,
+        });
+      }
+
       return ActivitiesClientApi.unarchive(variables.id, {
         categoryId: variables.moveToCategoryId,
       });
     },
 
     onSettled: () => {
-      [
-        queryKeys.activities.all,
-        queryKeys.activityCategories.all,
-        queryKeys.projects.all,
-        queryKeys.projectActivities.all,
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
     },
 
     onSuccess: () => toast.success("Activity restored successfully"),

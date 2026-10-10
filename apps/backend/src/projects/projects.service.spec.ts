@@ -1,16 +1,18 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
+import { ActCategoriesService } from 'src/activity-categories/activity-categories.service';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
@@ -21,6 +23,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import { PlanningService } from 'src/planning/planning.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -48,6 +51,7 @@ const stub = <T>(value: unknown): T => value as T;
 describe('ProjectsService membership scope', () => {
   let dataSource: DataSource;
   let service: ProjectsService;
+  let activities: ActivitiesService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -59,6 +63,8 @@ describe('ProjectsService membership scope', () => {
   let leaver: AuthUser; // in "Alpha", archived by the archiving tests
 
   let activityId: string;
+
+  const deleteForRemovedMembers = jest.fn(() => Promise.resolve());
 
   const createUser = async (
     name: string,
@@ -151,23 +157,29 @@ describe('ProjectsService membership scope', () => {
       dataSource.getRepository(User),
     );
 
+    activities = new ActivitiesService(
+      dataSource.getRepository(Activity),
+      new ActCategoriesService(
+        dataSource.getRepository(ActCategory),
+        dataSource,
+      ),
+      dataSource.getRepository(ProjectActivity),
+      dataSource,
+    );
+
     service = new ProjectsService(
       dataSource.getRepository(Project),
       dataSource.getRepository(ProjectActivity),
       dataSource.getRepository(User),
-      stub<ActivitiesService>({
-        findActiveOnlyMany: (ids: string[]) =>
-          dataSource.getRepository(Activity).findBy({ id: In(ids) }),
-      }),
+      activities,
       new UsersService(
         dataSource.getRepository(User),
         teamVisibility,
         dataSource,
+        stub<CapacityService>({}),
       ),
       teamVisibility,
-      stub<PlanningService>({
-        deleteForRemovedMembers: () => Promise.resolve(),
-      }),
+      stub<PlanningService>({ deleteForRemovedMembers }),
       dataSource,
     );
 
@@ -430,6 +442,19 @@ describe('ProjectsService membership scope', () => {
       await expect(memberIds(projectId)).resolves.toEqual(
         sorted(alphaMember, betaMember),
       );
+    });
+
+    it('refuses any change to an archived project', async () => {
+      const projectId = await createProject('archived edit', [alphaMember]);
+      await service.archive(projectId, owner);
+
+      await expect(
+        service.update(projectId, { name: `Renamed ${RUN}` }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(projectId, { userIds: [] }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(memberIds(projectId)).resolves.toEqual([alphaMember.id]);
     });
   });
 
@@ -723,6 +748,182 @@ describe('ProjectsService membership scope', () => {
         [kept, retired].sort(),
       );
     });
+
+    it('refuses a draft activity, with no category, wherever it is linked', async () => {
+      const { id: draftId } = await dataSource
+        .getRepository(Activity)
+        .save({ companyId, name: `Draft ${RUN}`, categoryId: null });
+      const projectId = await createProject('Draft links', []);
+
+      await expect(
+        service.addActivity(projectId, draftId, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.update(projectId, { activityIds: [draftId] }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(
+          { name: `With a draft ${RUN}`, activityIds: [draftId] },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([]);
+    });
+
+    it('never ends with a draft on a project, when both happen at once', async () => {
+      const activityId = await createActivity('Contested');
+      const projectId = await createProject('Contested project', []);
+
+      await Promise.allSettled([
+        service.addActivity(projectId, activityId, owner),
+        activities.update(activityId, { categoryId: null }, companyId),
+      ]);
+
+      const activity = await activities.findRaw(activityId, companyId);
+      const offered = await offeredIds(projectId);
+      // Whichever went first, the other was refused.
+      expect(offered.includes(activityId) && activity.categoryId === null).toBe(
+        false,
+      );
+      expect(offered.includes(activityId) || activity.categoryId === null).toBe(
+        true,
+      );
+    });
+
+    it('adds and removes one activity, keeping its link for logged time', async () => {
+      const kept = await createActivity('Linked one');
+      const toggled = await createActivity('Toggled one');
+      const projectId = await createProject('One activity', []);
+
+      await service.addActivity(projectId, kept, owner);
+      await service.addActivity(projectId, toggled, owner);
+      await service.removeActivity(projectId, toggled, owner);
+
+      await expect(offeredIds(projectId)).resolves.toEqual([kept]);
+      await expect(linkIsActive(projectId, toggled)).resolves.toBe(false);
+
+      // Adding it again brings back the same link rather than a second one.
+      const project = await service.addActivity(projectId, toggled, owner);
+
+      expect(
+        project.projectActivities.map((pa) => pa.activityId).sort(),
+      ).toEqual([kept, toggled].sort());
+      await expect(
+        dataSource
+          .getRepository(ProjectActivity)
+          .countBy({ projectId, activityId: toggled }),
+      ).resolves.toBe(1);
+    });
+  });
+
+  describe('one member at a time', () => {
+    it('adds someone from a team the manager leads', async () => {
+      const projectId = await createProject('add one', [alphaManager]);
+
+      const project = await service.addMember(
+        projectId,
+        alphaMember.id,
+        alphaManager,
+      );
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaManager, alphaMember),
+      );
+      expect(project.membersCount).toBe(2);
+    });
+
+    it("refuses someone from another manager's team", async () => {
+      const projectId = await createProject('add other', []);
+
+      await expect(
+        service.addMember(projectId, betaMember.id, alphaManager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(memberIds(projectId)).resolves.toEqual([]);
+    });
+
+    it('refuses a deactivated person, but keeps one already on it', async () => {
+      const projectId = await createProject('add deactivated', [leaver]);
+      const otherId = await createProject('add deactivated 2', []);
+      await setStatus(leaver, UserStatus.DEACTIVATED);
+
+      await service.addMember(projectId, leaver.id, alphaManager);
+      await expect(
+        service.addMember(otherId, leaver.id, alphaManager),
+      ).rejects.toThrow(NotFoundException);
+
+      await setStatus(leaver, UserStatus.ACTIVE);
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(leaver));
+      await expect(memberIds(otherId)).resolves.toEqual([]);
+    });
+
+    it('removes someone and their future plans on the project', async () => {
+      const projectId = await createProject('remove one', [
+        alphaMember,
+        betaMember,
+      ]);
+      deleteForRemovedMembers.mockClear();
+
+      await service.removeMember(projectId, alphaMember.id, alphaManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
+      expect(deleteForRemovedMembers).toHaveBeenCalledWith(
+        expect.anything(),
+        companyId,
+        projectId,
+        [alphaMember.id],
+      );
+    });
+
+    it('refuses removing someone the manager cannot see', async () => {
+      const projectId = await createProject('remove other', [betaMember]);
+
+      await expect(
+        service.removeMember(projectId, betaMember.id, alphaManager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
+    });
+
+    it('changes nothing for someone already on it, or not on it', async () => {
+      const projectId = await createProject('no change', [alphaMember]);
+      deleteForRemovedMembers.mockClear();
+
+      await service.addMember(projectId, alphaMember.id, alphaManager);
+      await service.removeMember(projectId, leaver.id, alphaManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(alphaMember));
+      expect(deleteForRemovedMembers).not.toHaveBeenCalled();
+    });
+
+    it('refuses someone from another company, even for an owner', async () => {
+      const projectId = await createProject('other company', []);
+
+      await expect(
+        service.addMember(projectId, randomUUID(), owner),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('lets a manager who leads no team add themselves', async () => {
+      const projectId = await createProject('lone self', []);
+
+      await service.addMember(projectId, loneManager.id, loneManager);
+
+      await expect(memberIds(projectId)).resolves.toEqual(sorted(loneManager));
+    });
+
+    it('changes nothing on an archived project', async () => {
+      const projectId = await createProject('archived links', []);
+      await dataSource
+        .getRepository(Project)
+        .update(projectId, { status: ProjectStatus.ARCHIVED });
+
+      await expect(
+        service.addMember(projectId, alphaMember.id, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.addActivity(projectId, activityId, owner),
+      ).rejects.toThrow(BadRequestException);
+    });
   });
 
   describe('listOwnProjects', () => {
@@ -800,6 +1001,29 @@ describe('ProjectsService membership scope', () => {
       await expect(
         service.create({ name: `  Alpha name ${RUN}  ` }, alphaManager),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+  describe('search', () => {
+    const foundNames = async (search: string) => {
+      const { results } = await service.list(
+        Object.assign(new ProjectsQuery(), { pageSize: 50, search }),
+        owner,
+      );
+      return results.map((project) => project.name);
+    };
+
+    beforeAll(async () => {
+      await service.create(
+        { name: `Harbour site ${RUN}`, clientName: 'Northwind Traders' },
+        owner,
+      );
+    });
+
+    it('matches part of a name or a client, ignoring case', async () => {
+      expect(await foundNames(`HARBOUR SITE ${RUN}`)).toEqual([
+        `Harbour site ${RUN}`,
+      ]);
+      expect(await foundNames('northwind')).toEqual([`Harbour site ${RUN}`]);
     });
   });
 });

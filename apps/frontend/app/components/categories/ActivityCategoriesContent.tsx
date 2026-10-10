@@ -1,29 +1,49 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Tags } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 import { hasManagerAccess } from "@/lib/utils/user";
 
-import { ActivityCategory } from "@/types";
-
-import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ActivityCategoryCard } from "./ActivityCategoryCard";
-import { ActivityCategoryModal } from "./ActivityCategoryModal";
+import { ActivityCategoryListItem } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
+
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import {
+  ManageColumn,
+  ManageCount,
+  ManageList,
+} from "../shared/resource/ManageList";
+import { ResourcePage } from "../shared/resource/ResourcePage";
+import { CategoryCreateDialog } from "./CategoryCreateDialog";
+import { useCategoryActions } from "./useCategoryActions";
+
+const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
+  {
+    header: "Activities",
+    width: "w-28",
+    numeric: true,
+    cell: (category) => <ManageCount count={category.activitiesCount} />,
+    summary: (category) =>
+      countLabel(category.activitiesCount, "activity", "activities"),
+  },
+];
 
 export const ActivityCategoriesContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
-    null,
-  );
-  const [status, setStatus] = useState<ActCategoryStatus>(
-    ActCategoryStatus.ACTIVE,
-  );
+  const listState = useManageListState();
+  const panel = useEntityPanel();
+  const categoryActions = useCategoryActions();
+  const status =
+    listState.tab === "archived"
+      ? ActCategoryStatus.ARCHIVED
+      : ActCategoryStatus.ACTIVE;
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
@@ -31,37 +51,26 @@ export const ActivityCategoriesContent = () => {
   const {
     items: categories,
     isLoading,
+    isPlaceholderData,
     isError,
     refetch,
     pagination,
   } = useActivityCategoriesInfiniteQuery({
     status,
+    search: listState.searchQuery,
   });
-
-  const editingCategory = useMemo(
-    () => categories.find((category) => category.id === editingCategoryId),
-    [categories, editingCategoryId],
-  );
-
-  const handleTabChange = (tab: "active" | "archived") => {
-    setEditingCategoryId(null);
-    setStatus(
-      tab === "archived"
-        ? ActCategoryStatus.ARCHIVED
-        : ActCategoryStatus.ACTIVE,
-    );
-  };
 
   return (
     <>
-      <ResourcePage<ActivityCategory>
+      <ResourcePage
         title="Activity categories"
         description="Organize activities into categories for easier time tracking."
-        items={categories}
+        listState={listState}
+        itemCount={categories.length}
         isLoading={isLoading}
+        isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        getSearchValue={(category) => category.name}
         searchPlaceholder="Search categories..."
         emptyTitle="No activity categories yet"
         emptyDescription="Create your first category to organize activities."
@@ -72,30 +81,32 @@ export const ActivityCategoriesContent = () => {
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
-        tab={status === ActCategoryStatus.ARCHIVED ? "archived" : "active"}
-        onTabChange={handleTabChange}
-        renderItem={(category) => (
-          <ActivityCategoryCard
-            key={category.id}
-            category={category}
-            canManage={canManage}
-            onView={(item) => setEditingCategoryId(item.id)}
-          />
-        )}
-      />
+      >
+        <ManageList
+          label="Activity categories"
+          items={categories}
+          row={{
+            getKey: (category) => category.id,
+            getName: (category) => category.name,
+            getEntity: (category) => ({ type: "category", id: category.id }),
+            onEdit: categoryActions.edit,
+            canEdit: categoryActions.canEdit,
+            columns: COLUMNS,
+            getActions: categoryActions.actionsFor,
+          }}
+        />
+      </ResourcePage>
 
-      <ActivityCategoryModal
+      <CategoryCreateDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(category) =>
+          panel.open({ type: "category", id: category.id })
+        }
         isOnboarding={isOnboarding}
       />
 
-      <ActivityCategoryModal
-        open={Boolean(editingCategory)}
-        category={editingCategory}
-        onClose={() => setEditingCategoryId(null)}
-        isOnboarding={isOnboarding}
-      />
+      {categoryActions.dialogs}
     </>
   );
 };

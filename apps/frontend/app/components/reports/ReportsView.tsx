@@ -18,7 +18,7 @@ import { HoursReportGroupBy } from "@/types/enums";
 import {
   ResourceTabButton,
   ResourceTabList,
-} from "../shared/resource/ResourcePage";
+} from "../shared/resource/ResourceTabs";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { HoursReportSection } from "./components/HoursReportSection";
 import { PlannedVsActualSection } from "./components/PlannedVsActualSection";

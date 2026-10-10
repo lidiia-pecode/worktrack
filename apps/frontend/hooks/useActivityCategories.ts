@@ -2,9 +2,11 @@
 
 import {
   ActivityCategory,
+  ActivityCategoryListItem,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
   ArchiveActivityCategoryPayload,
+  RestoreActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types";
 
@@ -15,12 +17,12 @@ import { ActivityCategoriesClientApi } from "@/lib/api/resources";
 
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
-import { queryKeys } from "./shared/queryKeys";
+import { CATALOG_QUERY_KEYS, queryKeys } from "./shared/queryKeys";
 
 type ActivityCategoryQueryParams = Omit<ActivityCategoryQuery, "page">;
 
 const activityCategoriesQueries = createEntityQuery<
-  ActivityCategory,
+  ActivityCategoryListItem,
   ActivityCategoryQueryParams
 >({
   queryKey: queryKeys.activityCategories,
@@ -47,6 +49,9 @@ export const useActivityCategoriesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.activityCategories.all,
 
+  // Each activity names its category.
+  alsoInvalidate: [queryKeys.activities.all],
+
   api: {
     create: ActivityCategoriesClientApi.create,
     update: ActivityCategoriesClientApi.update,
@@ -60,21 +65,16 @@ export const useActivityCategoriesMutations = createEntityMutations<
     archive: "Category archived successfully",
     unarchive: "Category restored successfully",
   },
+  conflictShownInForm: true,
 });
 
-export function useActivityCategories(
-  page = 1,
-  params?: ActivityCategoryQueryParams,
-) {
-  const query = useActivityCategoriesQuery(page, params);
+export const activityCategoryDetailsQuery = (id: string) => ({
+  queryKey: queryKeys.activityCategories.detail(id),
+  queryFn: () => ActivityCategoriesClientApi.getById(id),
+});
 
-  const actions = useActivityCategoriesMutations();
-
-  return {
-    ...query,
-    actions,
-  };
-}
+export const useActivityCategoryDetails = (id: string) =>
+  useQuery({ ...activityCategoryDetailsQuery(id), enabled: Boolean(id) });
 
 /** The active activities archiving a category would block on, read when about to. */
 export const useActivityCategoryArchiveImpact = (
@@ -102,14 +102,33 @@ export const useArchiveActivityCategory = () => {
     }) => ActivityCategoriesClientApi.archive(id, payload),
 
     onSuccess: () => {
-      [
-        queryKeys.activityCategories.all,
-        queryKeys.activities.all,
-        queryKeys.projects.all,
-        queryKeys.projectActivities.all,
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
 
       toast.success("Category archived successfully");
+    },
+  });
+};
+
+export const useRestoreActivityCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: RestoreActivityCategoryPayload;
+    }) => ActivityCategoriesClientApi.unarchive(id, payload),
+
+    onSuccess: () => {
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
+
+      toast.success("Category restored successfully");
     },
   });
 };

@@ -1,6 +1,6 @@
-import { PaginatedResponse, PaginationParams } from ".";
+import { PaginatedResponse, SearchablePaginationParams } from ".";
 import { Company } from "./Company";
-import { TeamRole, TeamStatus, UserRole } from "./enums";
+import { TeamRole, TeamStatus, UserRole, UserStatus } from "./enums";
 
 // TeamUserResponse
 export interface TeamUser {
@@ -9,6 +9,7 @@ export interface TeamUser {
   lastName: string;
   email: string;
   role: UserRole;
+  status: UserStatus;
   avatarUrl?: string | null;
   position?: string | null;
 }
@@ -53,7 +54,7 @@ export interface CreateTeamPayload {
 
 export type UpdateTeamPayload = Partial<CreateTeamPayload>;
 
-export interface TeamsQuery extends PaginationParams {
+export interface TeamsQuery extends SearchablePaginationParams {
   status?: TeamStatus;
 }
 

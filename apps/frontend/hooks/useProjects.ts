@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import {
+  hashKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import {
   Project,
@@ -59,8 +64,12 @@ export const useProjectsMutations = createEntityMutations<
   queryKey: queryKeys.projects.all,
 
   // Removing somebody from a project deletes their future plans for it, and a
-  // person's details list the projects they are on.
-  alsoInvalidate: [queryKeys.planning.all, queryKeys.users.all],
+  // person's and an activity's details list the projects they are on.
+  alsoInvalidate: [
+    queryKeys.planning.all,
+    queryKeys.users.all,
+    queryKeys.activities.all,
+  ],
 
   api: {
     create: ProjectsClientApi.create,
@@ -75,6 +84,7 @@ export const useProjectsMutations = createEntityMutations<
     archive: "Project archived successfully",
     unarchive: "Project restored successfully",
   },
+  conflictShownInForm: true,
 });
 
 export const useProjectDetails = (id?: string) =>
@@ -89,3 +99,70 @@ export const useOwnProjects = () =>
     queryKey: queryKeys.projects.mine(),
     queryFn: ProjectsClientApi.getMine,
   });
+
+interface MemberLink {
+  projectId: string;
+  userId: string;
+}
+
+interface ActivityLink {
+  projectId: string;
+  activityId: string;
+}
+
+/**
+ * Adds or removes one person or activity on a project. The response is the
+ * project's new details; what follows from them, such as a person's projects
+ * or the plans of someone removed, goes stale.
+ */
+export const useProjectLinks = () => {
+  const queryClient = useQueryClient();
+
+  const onSuccess = (project: Project) => {
+    const detailKey = queryKeys.projects.detail(project.id);
+    const detailHash = hashKey(detailKey);
+    queryClient.setQueryData(detailKey, project);
+
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.projects.all,
+      predicate: (query) => query.queryHash !== detailHash,
+    });
+    [
+      queryKeys.users.all,
+      queryKeys.activities.all,
+      queryKeys.projectActivities.all,
+      queryKeys.planning.all,
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+  };
+
+  const addMember = useMutation({
+    mutationFn: ({ projectId, userId }: MemberLink) =>
+      ProjectsClientApi.addMember(projectId, userId),
+    onSuccess,
+  });
+  const removeMember = useMutation({
+    mutationFn: ({ projectId, userId }: MemberLink) =>
+      ProjectsClientApi.removeMember(projectId, userId),
+    onSuccess,
+  });
+  const addActivity = useMutation({
+    mutationFn: ({ projectId, activityId }: ActivityLink) =>
+      ProjectsClientApi.addActivity(projectId, activityId),
+    onSuccess,
+  });
+  const removeActivity = useMutation({
+    mutationFn: ({ projectId, activityId }: ActivityLink) =>
+      ProjectsClientApi.removeActivity(projectId, activityId),
+    onSuccess,
+  });
+
+  return {
+    addMember,
+    removeMember,
+    addActivity,
+    removeActivity,
+    isSaving: [addMember, removeMember, addActivity, removeActivity].some(
+      (mutation) => mutation.isPending,
+    ),
+  };
+};

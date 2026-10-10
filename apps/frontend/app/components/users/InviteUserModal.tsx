@@ -1,17 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { MailPlus } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-
-import { ResourceFormModal } from "../shared/resource/ResourceFormModal";
-import { InviteUserForm } from "./InviteUserForm";
-import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
-import { useRouter } from "next/navigation";
-
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { useInvitations } from "@/hooks/auth/useInvitation";
+import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
+
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
+import { InviteUserForm } from "./InviteUserForm";
 
 const FORM_ID = "invite-user-form";
 
@@ -30,51 +25,22 @@ export const InviteUserModal = ({
     actions: { create },
   } = useInvitations();
 
-  const router = useRouter();
   const [canSubmit, setCanSubmit] = useState(true);
+  const afterCreate = useAfterCreate({ onClose, isOnboarding });
 
-  const handleSubmit = (data: InviteUserFormData) => {
-    create.mutate(data, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push(GETTING_STARTED_PATH);
-        }
-      },
-    });
-  };
+  const handleSubmit = (data: InviteUserFormData) =>
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
-    <ResourceFormModal
+    <CreateDialog
       open={open}
       onClose={onClose}
-      title="Invite user"
-      description="Send an invitation to join your workspace."
-      icon={<MailPlus className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={create.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={create.isPending}
-            disabled={!canSubmit}
-          >
-            Send invitation
-          </Button>
-        </>
-      }
+      title="Invite someone"
+      next="They get an email with a link to join."
+      formId={FORM_ID}
+      submitLabel="Send invitation"
+      isSubmitting={create.isPending}
+      submitDisabled={!canSubmit}
     >
       <InviteUserForm
         formId={FORM_ID}
@@ -82,6 +48,6 @@ export const InviteUserModal = ({
         onCanSubmitChange={setCanSubmit}
         isSubmitting={create.isPending}
       />
-    </ResourceFormModal>
+    </CreateDialog>
   );
 };

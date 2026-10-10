@@ -65,6 +65,8 @@ export const queryKeys = {
 
     allPages: (params?: QueryParams) => createAllPagesKey("activities", params),
 
+    detail: (id: string) => ["activities", "detail", id] as const,
+
     archiveImpact: (id: string) =>
       ["activities", "archive-impact", id] as const,
   },
@@ -81,6 +83,8 @@ export const queryKeys = {
 
     allPages: (params?: QueryParams) =>
       createAllPagesKey("activityCategories", params),
+
+    detail: (id: string) => ["activityCategories", "detail", id] as const,
 
     archiveImpact: (id: string) =>
       ["activityCategories", "archive-impact", id] as const,
@@ -193,3 +197,11 @@ export const queryKeys = {
     validate: (token: string) => ["invitations", "validate", token] as const,
   },
 };
+
+/** Everything that shows an activity's category. */
+export const CATALOG_QUERY_KEYS = [
+  queryKeys.activityCategories.all,
+  queryKeys.activities.all,
+  queryKeys.projects.all,
+  queryKeys.projectActivities.all,
+];

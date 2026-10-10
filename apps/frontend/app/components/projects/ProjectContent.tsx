@@ -1,30 +1,70 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import {
-  useProjectDetails,
-  useProjectsInfiniteQuery,
-} from "@/hooks/useProjects";
+import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
+import {
+  ManageColumn,
+  ManageCount,
+  ManageList,
+} from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ProjectCard } from "./ProjectCard";
-import { ProjectModal } from "./ProjectModal";
+import { ProjectCreateDialog } from "./ProjectCreateDialog";
+import { useProjectActions } from "./useProjectActions";
+
+const activitiesCount = (project: Project) =>
+  project.projectActivities?.length ?? 0;
+
+const membersCount = (project: Project) => project.membersCount ?? 0;
+
+const COLUMNS: ManageColumn<Project>[] = [
+  {
+    header: "Client",
+    width: "w-56",
+    // Internal is the absence of a client, so it reads quieter than a name.
+    cell: (project) =>
+      project.clientName || (
+        <span className="text-muted-foreground">Internal</span>
+      ),
+  },
+  {
+    header: "People",
+    width: "w-24",
+    numeric: true,
+    cell: (project) => <ManageCount count={membersCount(project)} />,
+    summary: (project) => countLabel(membersCount(project), "person", "people"),
+  },
+  {
+    header: "Activities",
+    width: "w-28",
+    numeric: true,
+    cell: (project) => <ManageCount count={activitiesCount(project)} />,
+    summary: (project) =>
+      countLabel(activitiesCount(project), "activity", "activities"),
+  },
+];
 
 export const ProjectsContent = () => {
-  const { isOnboarding, opensCreateForm, projectId } = useSetupLinkParams();
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [editingProjectId, setEditingProjectId] = useState<string | null>(
-    projectId,
-  );
-  const [status, setStatus] = useState<ProjectStatus>(ProjectStatus.ACTIVE);
+  const listState = useManageListState();
+  const panel = useEntityPanel();
+  const projectActions = useProjectActions();
+  const status =
+    listState.tab === "archived"
+      ? ProjectStatus.ARCHIVED
+      : ProjectStatus.ACTIVE;
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
@@ -32,41 +72,23 @@ export const ProjectsContent = () => {
   const {
     items: projects,
     isLoading,
+    isPlaceholderData,
     isError,
     refetch,
     pagination,
-  } = useProjectsInfiniteQuery({
-    status,
-  });
-
-  const listedProject = useMemo(
-    () => projects.find((project) => project.id === editingProjectId),
-    [projects, editingProjectId],
-  );
-
-  // A project opened from a setup link may not be on the loaded page.
-  const { data: fetchedProject } = useProjectDetails(
-    listedProject ? undefined : (editingProjectId ?? undefined),
-  );
-  const editingProject = listedProject ?? fetchedProject;
-
-  const handleTabChange = (tab: "active" | "archived") => {
-    setEditingProjectId(null);
-    setStatus(
-      tab === "archived" ? ProjectStatus.ARCHIVED : ProjectStatus.ACTIVE,
-    );
-  };
+  } = useProjectsInfiniteQuery({ status, search: listState.searchQuery });
 
   return (
     <>
-      <ResourcePage<Project>
+      <ResourcePage
         title="Projects"
         description="Manage projects and organize the work in your workspace."
-        items={projects}
+        listState={listState}
+        itemCount={projects.length}
         isLoading={isLoading}
+        isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        getSearchValue={(project) => project.name}
         searchPlaceholder="Search projects..."
         emptyTitle="No projects yet"
         emptyDescription="Create your first project to start tracking work."
@@ -77,31 +99,30 @@ export const ProjectsContent = () => {
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
-        tab={status === ProjectStatus.ARCHIVED ? "archived" : "active"}
-        onTabChange={handleTabChange}
-        renderItem={(project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            canManage={canManage}
-            onView={(item) => setEditingProjectId(item.id)}
-          />
-        )}
-      />
+      >
+        <ManageList
+          label="Projects"
+          items={projects}
+          row={{
+            getKey: (project) => project.id,
+            getName: (project) => project.name,
+            getEntity: (project) => ({ type: "project", id: project.id }),
+            onEdit: projectActions.edit,
+            canEdit: projectActions.canEdit,
+            columns: COLUMNS,
+            getActions: projectActions.actionsFor,
+          }}
+        />
+      </ResourcePage>
 
-      <ProjectModal
+      <ProjectCreateDialog
         isOnboarding={isOnboarding}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
+        onCreated={(project) => panel.open({ type: "project", id: project.id })}
       />
 
-      <ProjectModal
-        isOnboarding={isOnboarding}
-        key={editingProject?.id ?? "create"}
-        project={editingProject}
-        open={Boolean(editingProject)}
-        onClose={() => setEditingProjectId(null)}
-      />
+      {projectActions.dialogs}
     </>
   );
 };

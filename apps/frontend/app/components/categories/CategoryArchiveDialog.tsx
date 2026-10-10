@@ -2,17 +2,7 @@
 
 import { useState } from "react";
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-
-import { ActivityCategory } from "@/types";
+import { ActivityCategorySummary } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
 import {
@@ -21,31 +11,32 @@ import {
   useArchiveActivityCategory,
 } from "@/hooks/useActivityCategories";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import { FormSelect } from "../shared/FormSelect";
-import { activitiesArchiveImpactMessage } from "../activities/archive-impact";
+import { ImpactDialog } from "../shared/ImpactDialog";
 
 import {
   ARCHIVE_ACTIVITIES_OPTION,
   archiveActivitiesLabel,
   archivePayload,
-  categoryArchiveDescription,
+  distinctProjects,
+  DRAFTS_OPTION,
+  draftsLabel,
   noMoveTargetMessage,
 } from "./category-archive";
 
 interface CategoryArchiveDialogProps {
-  isOpen: boolean;
-  category: ActivityCategory;
+  /** The dialog is open while this is set. */
+  category: ActivityCategorySummary | null;
   onClose: () => void;
-  onArchived: () => void;
 }
 
 export const CategoryArchiveDialog = ({
-  isOpen,
   category,
   onClose,
-  onArchived,
 }: CategoryArchiveDialogProps) => {
-  const impact = useActivityCategoryArchiveImpact(category.id, isOpen);
+  const isOpen = Boolean(category);
+  const impact = useActivityCategoryArchiveImpact(category?.id ?? "", isOpen);
   const activeCategories = useActivityCategoriesAllPagesQuery(
     { status: ActCategoryStatus.ACTIVE },
     { enabled: isOpen },
@@ -57,15 +48,23 @@ export const CategoryArchiveDialog = ({
   const activities = impact.data?.activities ?? [];
   const hasActiveActivities = activities.length > 0;
 
+  // A draft can't be on a project, so drafts are offered only while no project links any.
+  const canLeaveDrafts =
+    hasActiveActivities && activities.every((activity) => !activity.isInUse);
   const moveTargets = activeCategories.items.filter(
-    (target) => target.id !== category.id,
+    (target) => target.id !== category?.id,
   );
-  const selectedOption =
-    chosenOption ?? moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION;
+  const defaultOption = canLeaveDrafts
+    ? DRAFTS_OPTION
+    : (moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION);
+  const selectedOption = chosenOption ?? defaultOption;
   const archivesActivities =
     hasActiveActivities && selectedOption === ARCHIVE_ACTIVITIES_OPTION;
 
   const options = [
+    ...(canLeaveDrafts
+      ? [{ value: DRAFTS_OPTION, label: draftsLabel(activities.length) }]
+      : []),
     ...moveTargets.map((target) => ({
       value: target.id,
       label: `Move to ${target.name}`,
@@ -84,86 +83,74 @@ export const CategoryArchiveDialog = ({
   };
 
   const confirm = () => {
+    if (!category) return;
+
     archive.mutate(
       {
         id: category.id,
-        payload: archivePayload(
-          activities.length,
-          archivesActivities,
-          selectedOption,
-        ),
+        payload: archivePayload(activities.length, selectedOption),
       },
       {
-        onSuccess: () => {
-          setChosenOption(undefined);
-          onArchived();
-        },
+        onSuccess: close,
       },
     );
   };
 
+  const description = impact.isError
+    ? "Could not check its activities. Close this and try again."
+    : !impact.data
+      ? "Checking its activities..."
+      : canLeaveDrafts
+        ? "No project uses its active activities, so they can stay as drafts without a category, move to another one, or be archived with it."
+        : hasActiveActivities
+          ? "Its active activities are on projects, so they need a category: they move to another one or are archived with it."
+          : "Nobody will be able to put new activities in it. You can restore it later.";
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && close()}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <div className="grid gap-4 p-6">
-          <DialogHeader className="pr-6">
-            <DialogTitle>Archive {category.name}?</DialogTitle>
-            <DialogDescription>
-              {impact.isError
-                ? "Could not check its activities. Close this and try again."
-                : impact.data
-                  ? categoryArchiveDescription(
-                      category.name,
-                      activities.map((activity) => activity.name),
-                    )
-                  : "Checking its activities..."}
-            </DialogDescription>
-          </DialogHeader>
-
-          {isReady && hasActiveActivities && (
-            <div className="space-y-3 text-sm text-muted-foreground">
-              {moveTargets.length > 0 ? (
-                <FormSelect
-                  label="Its activities"
-                  value={selectedOption}
-                  options={options}
-                  onValueChange={setChosenOption}
-                  disabled={archive.isPending}
-                />
-              ) : (
-                <p>{noMoveTargetMessage(activities.length)}</p>
-              )}
-
-              {archivesActivities && (
-                <p>{activitiesArchiveImpactMessage(activities)}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={close}
+    <ImpactDialog
+      isOpen={isOpen}
+      title={category ? `Archive ${category.name}?` : ""}
+      description={description}
+      affected={[
+        {
+          label: "Its active activities",
+          entities: linkedEntities("activity", activities),
+        },
+        {
+          label: "Projects that lose them",
+          entities: archivesActivities
+            ? linkedEntities(
+                "project",
+                distinctProjects(
+                  activities.flatMap((activity) => activity.projects),
+                ),
+              )
+            : [],
+        },
+      ]}
+      choice={
+        isReady &&
+        hasActiveActivities &&
+        (options.length > 1 ? (
+          <FormSelect
+            label="Its activities"
+            value={selectedOption}
+            options={options}
+            onValueChange={setChosenOption}
             disabled={archive.isPending}
-          >
-            Cancel
-          </Button>
-
-          <Button
-            type="button"
-            variant={archivesActivities ? "destructive" : "warning"}
-            size="sm"
-            onClick={confirm}
-            isLoading={archive.isPending}
-            disabled={!isReady}
-          >
-            Archive
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">
+            {noMoveTargetMessage(activities.length)}
+          </p>
+        ))
+      }
+      confirmText="Archive"
+      confirmVariant={archivesActivities ? "destructive" : "warning"}
+      onConfirm={confirm}
+      onClose={close}
+      loading={archive.isPending}
+      confirmDisabled={!isReady}
+    />
   );
 };

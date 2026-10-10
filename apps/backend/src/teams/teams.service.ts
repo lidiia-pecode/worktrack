@@ -19,6 +19,7 @@ import {
   UpdateTeamMemberDto,
 } from './dtos/team.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
+import { containsText } from 'src/lib/utils/contains-text.util';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
 import { findActiveTeam } from './find-active-team.util';
@@ -101,6 +102,15 @@ export class TeamsService {
     }
   }
 
+  /** Active status gates joining a team, not staying in one. */
+  private assertCanJoinTeam(user: User): void {
+    if (user.status !== UserStatus.ACTIVE) {
+      throw new BadRequestException(
+        'A deactivated person cannot be added to a team',
+      );
+    }
+  }
+
   /** The Owner already acts for everyone, so only a Manager leads a team. */
   private assertCanLeadTeam(user: User, roleInTeam?: TeamRole): void {
     if (roleInTeam === TeamRole.MANAGER && user.role !== UserRole.MANAGER) {
@@ -125,6 +135,7 @@ export class TeamsService {
       companyId,
       ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(query.search ? { name: containsText(query.search) } : {}),
     };
 
     const [teams, count] = await this.teamRepo.findAndCount({
@@ -360,6 +371,7 @@ export class TeamsService {
       );
     }
 
+    this.assertCanJoinTeam(user);
     this.assertCanLeadTeam(user, dto.roleInTeam);
 
     const newLeftAt = dto.leftAt ?? null;
@@ -457,6 +469,9 @@ export class TeamsService {
           dto.roleInTeam ?? membership.roleInTeam,
         );
       }
+
+      const reopens = membership.leftAt !== null && newLeftAt === null;
+      if (reopens) this.assertCanJoinTeam(membership.user);
 
       if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
         throw new BadRequestException('leftAt cannot be earlier than joinedAt');
