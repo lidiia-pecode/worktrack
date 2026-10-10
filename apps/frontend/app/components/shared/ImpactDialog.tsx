@@ -24,21 +24,15 @@ export interface ImpactGroup {
 
 interface ImpactDialogProps {
   isOpen: boolean;
-  /** The action and the name, such as "Archive Website?". */
   title: string;
-  /** One or two sentences on what happens. */
   description: ReactNode;
   affected?: ImpactGroup[];
-  /** A single choice the action needs, such as where its activities go. */
   choice?: ReactNode;
-  /** Why the action cannot go ahead; the dialog then only explains. */
   blocker?: ReactNode;
-  /** Not shown while a blocker explains why the action cannot go ahead. */
   confirmText?: string;
   confirmVariant?: "primary" | "warning" | "destructive" | "success";
   onConfirm: () => void;
   onClose: () => void;
-  /** Following a link; closes the dialog unless given, such as to close the modal under it too. */
   onNavigate?: () => void;
   loading?: boolean;
   confirmDisabled?: boolean;
@@ -128,7 +122,7 @@ export const ImpactDialog = ({
             onClick={onClose}
             disabled={loading}
           >
-            {blocker ? "Close" : "Cancel"}
+            {blocker ? "Got it" : "Cancel"}
           </Button>
 
           {!blocker && (
