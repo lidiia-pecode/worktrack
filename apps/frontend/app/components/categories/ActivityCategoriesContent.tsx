@@ -1,29 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, Tags } from "lucide-react";
+import { Tags } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import {
-  useActivityCategoriesInfiniteQuery,
-  useActivityCategoriesMutations,
-} from "@/hooks/useActivityCategories";
+import { useActivityCategoriesInfiniteQuery } from "@/hooks/useActivityCategories";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityCategoryListItem } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
   ManageList,
-  ManageRowAction,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCategoryModal } from "./ActivityCategoryModal";
-import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
+import { useCategoryActions } from "./useCategoryActions";
 
 const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
   {
@@ -39,10 +36,9 @@ const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
 export const ActivityCategoriesContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [openedCategoryId, setOpenedCategoryId] = useState<string | null>(null);
-  const [archivingCategory, setArchivingCategory] =
-    useState<ActivityCategoryListItem | null>(null);
   const listState = useManageListState();
+  const panel = useEntityPanel();
+  const categoryActions = useCategoryActions();
   const status =
     listState.tab === "archived"
       ? ActCategoryStatus.ARCHIVED
@@ -50,7 +46,6 @@ export const ActivityCategoriesContent = () => {
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
-  const { unarchive } = useActivityCategoriesMutations();
 
   const {
     items: categories,
@@ -63,28 +58,6 @@ export const ActivityCategoriesContent = () => {
     { status, search: listState.searchQuery },
     { keepPreviousData: true },
   );
-
-  const openedCategory = categories.find(
-    (category) => category.id === openedCategoryId,
-  );
-
-  const actionsFor = (category: ActivityCategoryListItem): ManageRowAction[] =>
-    category.status === ActCategoryStatus.ACTIVE
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingCategory(category),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => unarchive.mutate(category.id),
-          },
-        ];
 
   return (
     <>
@@ -114,9 +87,12 @@ export const ActivityCategoriesContent = () => {
           row={{
             getKey: (category) => category.id,
             getName: (category) => category.name,
-            onOpen: (category) => setOpenedCategoryId(category.id),
+            onOpen: (category) =>
+              panel.open({ type: "category", id: category.id }),
+            onEdit: categoryActions.edit,
+            canEdit: categoryActions.canEdit,
             columns: COLUMNS,
-            getActions: actionsFor,
+            getActions: categoryActions.actionsFor,
           }}
         />
       </ResourcePage>
@@ -127,21 +103,7 @@ export const ActivityCategoriesContent = () => {
         isOnboarding={isOnboarding}
       />
 
-      <ActivityCategoryModal
-        open={Boolean(openedCategory)}
-        category={openedCategory}
-        onClose={() => setOpenedCategoryId(null)}
-        isOnboarding={isOnboarding}
-      />
-
-      {archivingCategory && (
-        <CategoryArchiveDialog
-          isOpen
-          category={archivingCategory}
-          onClose={() => setArchivingCategory(null)}
-          onArchived={() => setArchivingCategory(null)}
-        />
-      )}
+      {categoryActions.dialogs}
     </>
   );
 };

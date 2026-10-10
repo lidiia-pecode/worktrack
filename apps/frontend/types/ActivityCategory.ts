@@ -1,6 +1,10 @@
 import { Activity, PaginatedResponse, SearchablePaginationParams } from ".";
 import { Company } from "./Company";
-import { ActCategoryStatus, ActiveActivitiesAction } from "./enums";
+import {
+  ActCategoryStatus,
+  ActiveActivitiesAction,
+  ActivityStatus,
+} from "./enums";
 
 export interface ActivityCategoryResponse {
   id: string;
@@ -43,6 +47,26 @@ export interface ActivityCategoryArchiveImpact {
 }
 
 export type UpdateActivityCategoryPayload = Partial<ActivityCategoryPayload>;
+/** What a category's own form and dialogs need, from a list row or its details. */
+export type ActivityCategorySummary = Pick<
+  ActivityCategory,
+  "id" | "name" | "status"
+>;
+
+export interface CategoryActivity {
+  id: string;
+  name: string;
+  status: ActivityStatus;
+}
+
+export interface ActivityCategoryDetails extends Omit<
+  ActivityCategory,
+  "activities"
+> {
+  /** Every activity in it, archived ones included. */
+  activities: CategoryActivity[];
+}
+
 export interface ActivityCategoryListItem extends ActivityCategory {
   /** Active activities only. */
   activitiesCount: number;

@@ -48,6 +48,9 @@ export const useActivityCategoriesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.activityCategories.all,
 
+  // Each activity names its category.
+  alsoInvalidate: [queryKeys.activities.all],
+
   api: {
     create: ActivityCategoriesClientApi.create,
     update: ActivityCategoriesClientApi.update,
@@ -62,6 +65,13 @@ export const useActivityCategoriesMutations = createEntityMutations<
     unarchive: "Category restored successfully",
   },
 });
+
+export const useActivityCategoryDetails = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.activityCategories.detail(id),
+    queryFn: () => ActivityCategoriesClientApi.getById(id),
+    enabled: Boolean(id),
+  });
 
 /** The active activities archiving a category would block on, read when about to. */
 export const useActivityCategoryArchiveImpact = (

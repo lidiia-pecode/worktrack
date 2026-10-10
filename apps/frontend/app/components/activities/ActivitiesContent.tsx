@@ -1,39 +1,42 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, ClipboardList } from "lucide-react";
+import { ClipboardList } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import {
-  useActivitiesInfiniteQuery,
-  useActivitiesMutations,
-} from "@/hooks/useActivities";
+import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityListItem } from "@/types";
-import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
+import { ActivityStatus } from "@/types/enums";
 
+import { EntityLink } from "../entity-panel/EntityLink";
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
   ManageList,
-  ManageRowAction,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
 import { ActivityModal } from "./ActivityModal";
-import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
+import { useActivityActions } from "./useActivityActions";
 
 const projectsCount = (activity: ActivityListItem) =>
   activity.projectsCount ?? 0;
+
+const CategoryLink = ({ activity }: { activity: ActivityListItem }) => (
+  <EntityLink entity={{ type: "category", id: activity.category.id }}>
+    {activity.category.name}
+  </EntityLink>
+);
 
 const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Category",
     width: "w-48",
-    cell: (activity) => activity.category.name,
+    cell: (activity) => <CategoryLink activity={activity} />,
   },
   {
     header: "Billable by default",
@@ -55,12 +58,9 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
 export const ActivitiesContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [openedActivityId, setOpenedActivityId] = useState<string | null>(null);
-  const [archivingActivity, setArchivingActivity] =
-    useState<ActivityListItem | null>(null);
-  const [restoringActivity, setRestoringActivity] =
-    useState<ActivityListItem | null>(null);
   const listState = useManageListState();
+  const panel = useEntityPanel();
+  const activityActions = useActivityActions();
   const status =
     listState.tab === "archived"
       ? ActivityStatus.ARCHIVED
@@ -68,7 +68,6 @@ export const ActivitiesContent = () => {
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
-  const { unarchive } = useActivitiesMutations();
 
   const {
     items: activities,
@@ -81,39 +80,6 @@ export const ActivitiesContent = () => {
     { status, search: listState.searchQuery },
     { keepPreviousData: true },
   );
-
-  const openedActivity = activities.find(
-    (activity) => activity.id === openedActivityId,
-  );
-
-  // An active activity needs an active category, so restoring one whose
-  // category is archived asks what to do with it first.
-  const restore = (activity: ActivityListItem) => {
-    if (activity.category.status === ActCategoryStatus.ARCHIVED) {
-      setRestoringActivity(activity);
-      return;
-    }
-
-    unarchive.mutate(activity.id);
-  };
-
-  const actionsFor = (activity: ActivityListItem): ManageRowAction[] =>
-    activity.status === ActivityStatus.ACTIVE
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingActivity(activity),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => restore(activity),
-          },
-        ];
 
   return (
     <>
@@ -143,9 +109,12 @@ export const ActivitiesContent = () => {
           row={{
             getKey: (activity) => activity.id,
             getName: (activity) => activity.name,
-            onOpen: (activity) => setOpenedActivityId(activity.id),
+            onOpen: (activity) =>
+              panel.open({ type: "activity", id: activity.id }),
+            onEdit: activityActions.edit,
+            canEdit: activityActions.canEdit,
             columns: COLUMNS,
-            getActions: actionsFor,
+            getActions: activityActions.actionsFor,
           }}
         />
       </ResourcePage>
@@ -156,26 +125,7 @@ export const ActivitiesContent = () => {
         onClose={() => setCreateOpen(false)}
       />
 
-      <ActivityModal
-        isOnboarding={isOnboarding}
-        open={Boolean(openedActivity)}
-        onClose={() => setOpenedActivityId(null)}
-        activity={openedActivity}
-      />
-
-      <ActivityArchiveDialog
-        activity={archivingActivity}
-        onClose={() => setArchivingActivity(null)}
-      />
-
-      {restoringActivity && (
-        <ActivityRestoreDialog
-          isOpen
-          activity={restoringActivity}
-          onClose={() => setRestoringActivity(null)}
-          onRestored={() => setRestoringActivity(null)}
-        />
-      )}
+      {activityActions.dialogs}
     </>
   );
 };

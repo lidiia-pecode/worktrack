@@ -5,7 +5,7 @@ import { Tags, Archive, ArchiveRestore } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
-import { ActivityCategory } from "@/types";
+import { ActivityCategorySummary } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
 import { useActivityCategoriesMutations } from "@/hooks/useActivityCategories";
@@ -23,7 +23,7 @@ import { GETTING_STARTED_PATH } from "@/lib/constants";
 interface ActivityCategoryModalProps {
   open: boolean;
   onClose: () => void;
-  category?: ActivityCategory;
+  category?: ActivityCategorySummary;
   isOnboarding?: boolean;
 }
 

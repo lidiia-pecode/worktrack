@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
-import { ActivityCategory } from "@/types";
+import { ActivityCategorySummary } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
 import {
@@ -34,7 +34,7 @@ import {
 
 interface CategoryArchiveDialogProps {
   isOpen: boolean;
-  category: ActivityCategory;
+  category: ActivityCategorySummary;
   onClose: () => void;
   onArchived: () => void;
 }

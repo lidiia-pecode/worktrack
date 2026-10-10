@@ -46,7 +46,12 @@ export const useActivitiesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.activities.all,
 
-  alsoInvalidate: [queryKeys.projects.all, queryKeys.projectActivities.all],
+  // Projects offer activities, and a category's panel lists its activities.
+  alsoInvalidate: [
+    queryKeys.projects.all,
+    queryKeys.projectActivities.all,
+    queryKeys.activityCategories.all,
+  ],
 
   api: {
     create: ActivitiesClientApi.create,
@@ -62,6 +67,13 @@ export const useActivitiesMutations = createEntityMutations<
     unarchive: "Activity restored successfully",
   },
 });
+
+export const useActivityDetails = (id: string) =>
+  useQuery({
+    queryKey: queryKeys.activities.detail(id),
+    queryFn: () => ActivitiesClientApi.getById(id),
+    enabled: Boolean(id),
+  });
 
 /** The projects archiving an activity would take it off, read when about to. */
 export const useActivityArchiveImpact = (

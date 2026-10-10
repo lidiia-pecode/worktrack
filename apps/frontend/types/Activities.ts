@@ -3,7 +3,7 @@ import {
   PaginatedResponse,
   SearchablePaginationParams,
 } from ".";
-import { ActivityStatus } from "./enums";
+import { ActivityStatus, ProjectStatus } from "./enums";
 
 export interface Activity {
   id: string;
@@ -27,6 +27,17 @@ export interface ActivityQuery extends SearchablePaginationParams {
 }
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;
+export interface ActivityProject {
+  id: string;
+  name: string;
+  status: ProjectStatus;
+}
+
+export interface ActivityDetails extends Activity {
+  /** Projects of every status that offer it; not sent to an employee. */
+  projects?: ActivityProject[];
+}
+
 export interface ActivityListItem extends Activity {
   /** Active projects offering it; not sent to an employee. */
   projectsCount?: number;

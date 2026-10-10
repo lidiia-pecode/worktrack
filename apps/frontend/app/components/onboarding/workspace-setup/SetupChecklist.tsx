@@ -41,7 +41,9 @@ const requiredSteps = ({
 }: OwnerSetupState): SetupStepItem[] => {
   const openSetupProject = (label: string) => ({
     label,
-    href: setupLink("/admin/projects", { projectId: setupProjectId }),
+    href: setupLink("/admin/projects", {
+      open: setupProjectId ? { type: "project", id: setupProjectId } : null,
+    }),
   });
 
   return [

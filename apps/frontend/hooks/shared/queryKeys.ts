@@ -65,6 +65,8 @@ export const queryKeys = {
 
     allPages: (params?: QueryParams) => createAllPagesKey("activities", params),
 
+    detail: (id: string) => ["activities", "detail", id] as const,
+
     archiveImpact: (id: string) =>
       ["activities", "archive-impact", id] as const,
   },
@@ -81,6 +83,8 @@ export const queryKeys = {
 
     allPages: (params?: QueryParams) =>
       createAllPagesKey("activityCategories", params),
+
+    detail: (id: string) => ["activityCategories", "detail", id] as const,
 
     archiveImpact: (id: string) =>
       ["activityCategories", "archive-impact", id] as const,

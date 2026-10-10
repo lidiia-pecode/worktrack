@@ -23,6 +23,7 @@ const buildRow = (
   getKey: (project) => project.id,
   getName: (project) => project.name,
   onOpen: vi.fn(),
+  onEdit: vi.fn(),
   columns: [
     {
       header: "Client",
@@ -103,10 +104,10 @@ describe("ManageList", () => {
 
     expect(onArchive).toHaveBeenCalledOnce();
     expect(row.onOpen).not.toHaveBeenCalled();
+    expect(row.onEdit).not.toHaveBeenCalled();
   });
 
-  it("offers View to a viewer who cannot edit", async () => {
-    const user = userEvent.setup();
+  it("shows no menu when the viewer can do nothing with the row", () => {
     render(
       <ManageList
         label="Projects"
@@ -115,12 +116,8 @@ describe("ManageList", () => {
       />,
     );
 
-    await user.click(
-      within(table()).getByRole("button", { name: "Actions for Website" }),
-    );
-
     expect(
-      (await screen.findAllByRole("menuitem")).map((item) => item.textContent),
-    ).toEqual(["View"]);
+      within(table()).queryByRole("button", { name: "Actions for Website" }),
+    ).not.toBeInTheDocument();
   });
 });

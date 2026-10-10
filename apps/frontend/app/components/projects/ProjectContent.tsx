@@ -1,37 +1,31 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, FolderKanban } from "lucide-react";
+import { FolderKanban } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import {
-  useProjectDetails,
-  useProjectsInfiniteQuery,
-  useProjectsMutations,
-} from "@/hooks/useProjects";
+import { useProjectsInfiniteQuery } from "@/hooks/useProjects";
 import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
   ManageList,
-  ManageRowAction,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ProjectModal } from "./ProjectModal";
+import { useProjectActions } from "./useProjectActions";
 
 const activitiesCount = (project: Project) =>
   project.projectActivities?.length ?? 0;
 
 const membersCount = (project: Project) => project.membersCount ?? 0;
-
-const isActiveProject = (project: Project) =>
-  project.status === ProjectStatus.ACTIVE;
 
 const COLUMNS: ManageColumn<Project>[] = [
   {
@@ -57,12 +51,11 @@ const COLUMNS: ManageColumn<Project>[] = [
 ];
 
 export const ProjectsContent = () => {
-  const { isOnboarding, opensCreateForm, projectId } = useSetupLinkParams();
+  const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [openedProjectId, setOpenedProjectId] = useState<string | null>(
-    projectId,
-  );
   const listState = useManageListState();
+  const panel = useEntityPanel();
+  const projectActions = useProjectActions();
   const status =
     listState.tab === "archived"
       ? ProjectStatus.ARCHIVED
@@ -70,7 +63,6 @@ export const ProjectsContent = () => {
 
   const { user } = useAuth();
   const canManage = hasManagerAccess(user?.role);
-  const { archive, unarchive } = useProjectsMutations();
 
   const {
     items: projects,
@@ -83,34 +75,6 @@ export const ProjectsContent = () => {
     { status, search: listState.searchQuery },
     { keepPreviousData: true },
   );
-
-  const listedProject = projects.find(
-    (project) => project.id === openedProjectId,
-  );
-
-  // A project opened from a setup link may not be on the loaded page.
-  const { data: fetchedProject } = useProjectDetails(
-    listedProject ? undefined : (openedProjectId ?? undefined),
-  );
-  const openedProject = listedProject ?? fetchedProject;
-
-  const actionsFor = (project: Project): ManageRowAction[] =>
-    isActiveProject(project)
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => archive.mutate(project.id),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => unarchive.mutate(project.id),
-          },
-        ];
 
   return (
     <>
@@ -140,9 +104,12 @@ export const ProjectsContent = () => {
           row={{
             getKey: (project) => project.id,
             getName: (project) => project.name,
-            onOpen: (project) => setOpenedProjectId(project.id),
+            onOpen: (project) =>
+              panel.open({ type: "project", id: project.id }),
+            onEdit: projectActions.edit,
+            canEdit: projectActions.canEdit,
             columns: COLUMNS,
-            getActions: actionsFor,
+            getActions: projectActions.actionsFor,
           }}
         />
       </ResourcePage>
@@ -153,13 +120,7 @@ export const ProjectsContent = () => {
         onClose={() => setCreateOpen(false)}
       />
 
-      <ProjectModal
-        isOnboarding={isOnboarding}
-        key={openedProject?.id ?? "create"}
-        project={openedProject}
-        open={Boolean(openedProject)}
-        onClose={() => setOpenedProjectId(null)}
-      />
+      {projectActions.dialogs}
     </>
   );
 };

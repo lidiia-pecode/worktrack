@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent, ReactNode } from "react";
-import { Eye, MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
+import { MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -47,11 +47,13 @@ export interface ManageRowDefinition<T> {
   getName: (item: T) => string;
   /** A quieter line under the name, such as an email. */
   getDetail?: (item: T) => ReactNode;
+  /** Shows the entity's details, from the row or its name. */
   onOpen: (item: T) => void;
-  /** Whether opening it lets the viewer edit it, which names the menu's first item; editable when omitted. */
+  /** Opens the entity's form, the menu's first item, where `canEdit` allows. */
+  onEdit?: (item: T) => void;
   canEdit?: (item: T) => boolean;
   columns: ManageColumn<T>[];
-  /** The menu's actions after Edit or View, such as Archive. */
+  /** The menu's actions after Edit, such as Archive. */
   getActions?: (item: T) => ManageRowAction[];
 }
 
@@ -111,8 +113,10 @@ const RowName = <T,>({ item, row }: RowPartProps<T>) => {
 
 const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
   const actions = row.getActions?.(item) ?? [];
-  const canEdit = row.canEdit?.(item) ?? true;
-  const OpenIcon = canEdit ? Pencil : Eye;
+  const onEdit = row.onEdit;
+  const canEdit = Boolean(onEdit) && (row.canEdit?.(item) ?? true);
+
+  if (!canEdit && actions.length === 0) return null;
 
   return (
     <div onClick={stopRowClick}>
@@ -131,12 +135,16 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
         />
 
         <DropdownMenuContent align="end" className="w-44 p-0">
-          <DropdownMenuItem onClick={() => row.onOpen(item)}>
-            <OpenIcon />
-            {canEdit ? "Edit" : "View"}
-          </DropdownMenuItem>
+          {canEdit && (
+            <DropdownMenuItem onClick={() => onEdit?.(item)}>
+              <Pencil />
+              Edit
+            </DropdownMenuItem>
+          )}
 
-          {actions.length > 0 && <DropdownMenuSeparator className="m-0" />}
+          {canEdit && actions.length > 0 && (
+            <DropdownMenuSeparator className="m-0" />
+          )}
 
           {actions.map((action) => (
             <DropdownMenuItem

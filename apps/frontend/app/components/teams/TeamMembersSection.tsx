@@ -12,6 +12,7 @@ import { useTeamMembers } from "@/hooks/useTeams";
 import { useUsersMutations } from "@/hooks/useUsers";
 import { Team, TeamUser } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
+import { TEAM_ROLE_LABELS } from "@/lib/constants";
 import { fullName } from "@/lib/utils/user";
 import { formatDayMonthYearLabel } from "@/lib/utils/date";
 
@@ -20,13 +21,12 @@ import { Avatar } from "../shared/Avatar";
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { FormSelect } from "../shared/FormSelect";
 
-const roleOptions = [
-  { label: "Member", value: TeamRole.MEMBER },
-  { label: "Manager", value: TeamRole.MANAGER },
-];
+const roleOptions = [TeamRole.MEMBER, TeamRole.MANAGER].map((value) => ({
+  label: TEAM_ROLE_LABELS[value],
+  value,
+}));
 
-const roleLabel = (role: TeamRole) =>
-  roleOptions.find((option) => option.value === role)?.label ?? role;
+const roleLabel = (role: TeamRole) => TEAM_ROLE_LABELS[role];
 
 interface TeamMembersSectionProps {
   team: Team;

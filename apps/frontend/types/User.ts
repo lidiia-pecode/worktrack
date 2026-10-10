@@ -1,5 +1,11 @@
 import { PaginatedResponse, SearchablePaginationParams } from ".";
-import { ProjectStatus, UserRole, UserStatus } from "./enums";
+import {
+  ProjectStatus,
+  TeamRole,
+  TeamStatus,
+  UserRole,
+  UserStatus,
+} from "./enums";
 
 export interface User {
   id: string;
@@ -74,8 +80,16 @@ export interface UserProject {
   status: ProjectStatus;
 }
 
+export interface UserTeamMembership extends UserTeam {
+  status: TeamStatus;
+  roleInTeam: TeamRole;
+  joinedAt: string;
+}
+
 export interface UserDetails extends User {
   projects: UserProject[];
+  /** Open memberships in active teams the viewer can see. */
+  teams: UserTeamMembership[];
 }
 
 export type AvatarUser = Pick<User, "firstName" | "lastName"> & {

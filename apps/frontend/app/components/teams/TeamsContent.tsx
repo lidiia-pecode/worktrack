@@ -1,57 +1,44 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore, UsersRound } from "lucide-react";
+import { UsersRound } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
-import { useTeamsInfiniteQuery, useTeamsMutations } from "@/hooks/useTeams";
+import { useTeamsInfiniteQuery } from "@/hooks/useTeams";
 import { MANAGER_WITHOUT_TEAM_MESSAGE } from "@/lib/constants";
-import {
-  fullName,
-  hasManagerAccess,
-  isDeactivatedUser,
-} from "@/lib/utils/user";
-import { Team, TeamMembership, TeamUser } from "@/types/Team";
-import { TeamRole, TeamStatus, UserRole } from "@/types/enums";
+import { fullName, hasManagerAccess } from "@/lib/utils/user";
+import { Team, TeamUser } from "@/types/Team";
+import { TeamStatus, UserRole } from "@/types/enums";
 
+import { EntityLinks } from "../entity-panel/EntityLink";
+import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   countLabel,
   ManageColumn,
   ManageList,
-  ManageRowAction,
   ManageWarning,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
-import { TeamArchiveDialog } from "./TeamArchiveDialog";
+import {
+  activeManagers,
+  currentMemberships,
+  deactivatedMembersCount,
+} from "./team-memberships";
 import { TeamModal } from "./TeamModal";
-
-type CurrentMembership = TeamMembership & { user: TeamUser };
-
-const currentMemberships = (team: Team): CurrentMembership[] =>
-  (team.memberships ?? []).filter(
-    (membership): membership is CurrentMembership =>
-      !membership.leftAt && Boolean(membership.user),
-  );
-
-const isActiveTeam = (team: Team) => team.status === TeamStatus.ACTIVE;
-
-const activeManagerNames = (team: Team) =>
-  currentMemberships(team)
-    .filter(
-      (membership) =>
-        membership.roleInTeam === TeamRole.MANAGER &&
-        !isDeactivatedUser(membership.user),
-    )
-    .map((membership) => fullName(membership.user));
-
-const deactivatedMembersCount = (team: Team) =>
-  currentMemberships(team).filter((membership) =>
-    isDeactivatedUser(membership.user),
-  ).length;
+import { isActiveTeam, useTeamActions } from "./useTeamActions";
 
 const NO_ACTIVE_MANAGER = "No active manager";
+
+const PeopleLinks = ({ people }: { people: TeamUser[] }) => (
+  <EntityLinks
+    entities={people.map((person) => ({
+      entity: { type: "user", id: person.id },
+      name: fullName(person),
+    }))}
+  />
+);
 
 // Archiving closes every membership, so an archived team has no manager to flag.
 const COLUMNS: ManageColumn<Team>[] = [
@@ -61,9 +48,9 @@ const COLUMNS: ManageColumn<Team>[] = [
     cell: (team) => {
       if (!isActiveTeam(team)) return "—";
 
-      const names = activeManagerNames(team);
-      return names.length > 0 ? (
-        names.join(", ")
+      const managers = activeManagers(team);
+      return managers.length > 0 ? (
+        <PeopleLinks people={managers} />
       ) : (
         <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
       );
@@ -71,9 +58,11 @@ const COLUMNS: ManageColumn<Team>[] = [
     summary: (team) => {
       if (!isActiveTeam(team)) return null;
 
-      const names = activeManagerNames(team);
-      return names.length > 0 ? (
-        `Managed by ${names.join(", ")}`
+      const managers = activeManagers(team);
+      return managers.length > 0 ? (
+        <>
+          Managed by <PeopleLinks people={managers} />
+        </>
       ) : (
         <ManageWarning inline>{NO_ACTIVE_MANAGER}</ManageWarning>
       );
@@ -115,14 +104,13 @@ const COLUMNS: ManageColumn<Team>[] = [
 export const TeamsContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
-  const [openedTeamId, setOpenedTeamId] = useState<string | null>(null);
-  const [archivingTeam, setArchivingTeam] = useState<Team | null>(null);
   const listState = useManageListState();
+  const panel = useEntityPanel();
+  const teamActions = useTeamActions();
   const status =
     listState.tab === "archived" ? TeamStatus.ARCHIVED : TeamStatus.ACTIVE;
 
   const { user } = useAuth();
-  const { unarchive } = useTeamsMutations();
 
   const {
     items: teams,
@@ -138,30 +126,6 @@ export const TeamsContent = () => {
 
   const canRead = hasManagerAccess(user?.role);
   const isOwner = user?.role === UserRole.OWNER;
-
-  const openedTeam = teams.find((team) => team.id === openedTeamId);
-
-  // Archiving and restoring a team are the owner's.
-  const actionsFor = (team: Team): ManageRowAction[] => {
-    if (!isOwner) return [];
-
-    return isActiveTeam(team)
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingTeam(team),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => unarchive.mutate(team.id),
-          },
-        ];
-  };
 
   return (
     <>
@@ -195,10 +159,11 @@ export const TeamsContent = () => {
           row={{
             getKey: (team) => team.id,
             getName: (team) => team.name,
-            onOpen: (team) => setOpenedTeamId(team.id),
-            canEdit: (team) => isOwner && isActiveTeam(team),
+            onOpen: (team) => panel.open({ type: "team", id: team.id }),
+            onEdit: teamActions.edit,
+            canEdit: teamActions.canEdit,
             columns: COLUMNS,
-            getActions: actionsFor,
+            getActions: teamActions.actionsFor,
           }}
         />
       </ResourcePage>
@@ -209,18 +174,7 @@ export const TeamsContent = () => {
         onClose={() => setCreateOpen(false)}
       />
 
-      <TeamModal
-        key={openedTeam?.id ?? "edit"}
-        isOnboarding={isOnboarding}
-        team={openedTeam}
-        open={Boolean(openedTeam)}
-        onClose={() => setOpenedTeamId(null)}
-      />
-
-      <TeamArchiveDialog
-        team={archivingTeam}
-        onClose={() => setArchivingTeam(null)}
-      />
+      {teamActions.dialogs}
     </>
   );
 };

@@ -52,7 +52,7 @@ const sinceFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
-const describeCapacity = (capacity: Capacity | null) => {
+export const describeCapacity = (capacity: Capacity | null) => {
   if (!capacity) return "Not set";
 
   const hours = formatDuration(capacity.minutesPerWeek);

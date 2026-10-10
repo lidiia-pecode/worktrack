@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { getErrorMessage } from "@/lib/api";
+import { getErrorMessage, isClientError } from "@/lib/api";
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
   const [client] = useState(
@@ -14,8 +14,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           queries: {
             retry: (failureCount, error) => {
               if (
-                error instanceof Error &&
-                error.message === "SESSION_EXPIRED"
+                (error instanceof Error &&
+                  error.message === "SESSION_EXPIRED") ||
+                isClientError(error)
               ) {
                 return false;
               }

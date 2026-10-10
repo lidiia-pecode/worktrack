@@ -3,6 +3,7 @@
 import {
   ActivityCategory,
   ActivityCategoryArchiveImpact,
+  ActivityCategoryDetails,
   ActivityCategoryListResponse,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
@@ -17,7 +18,8 @@ const crud = createCrudClient<
   ActivityCategoryPayload,
   UpdateActivityCategoryPayload,
   ActivityCategoryListResponse,
-  Omit<ActivityCategoryQuery, "page">
+  Omit<ActivityCategoryQuery, "page">,
+  ActivityCategoryDetails
 >({
   endpoint: "activity-categories",
 });
