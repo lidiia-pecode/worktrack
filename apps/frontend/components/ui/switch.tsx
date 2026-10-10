@@ -17,7 +17,7 @@ export const Switch = forwardRef<
     />
     <span
       aria-hidden="true"
-      className="h-5 w-9 rounded-full bg-muted transition-colors peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-ring/40 peer-disabled:opacity-50"
+      className="h-5 w-9 rounded-full bg-muted transition-colors peer-checked:bg-brand peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 peer-disabled:opacity-50"
     />
     <span
       aria-hidden="true"

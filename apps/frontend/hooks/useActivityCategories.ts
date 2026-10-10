@@ -17,7 +17,7 @@ import { ActivityCategoriesClientApi } from "@/lib/api/resources";
 
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
-import { queryKeys } from "./shared/queryKeys";
+import { CATALOG_QUERY_KEYS, queryKeys } from "./shared/queryKeys";
 
 type ActivityCategoryQueryParams = Omit<ActivityCategoryQuery, "page">;
 
@@ -65,7 +65,7 @@ export const useActivityCategoriesMutations = createEntityMutations<
     archive: "Category archived successfully",
     unarchive: "Category restored successfully",
   },
-  createConflictInForm: true,
+  conflictShownInForm: true,
 });
 
 export const activityCategoryDetailsQuery = (id: string) => ({
@@ -102,12 +102,9 @@ export const useArchiveActivityCategory = () => {
     }) => ActivityCategoriesClientApi.archive(id, payload),
 
     onSuccess: () => {
-      [
-        queryKeys.activityCategories.all,
-        queryKeys.activities.all,
-        queryKeys.projects.all,
-        queryKeys.projectActivities.all,
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
 
       toast.success("Category archived successfully");
     },
@@ -127,12 +124,9 @@ export const useRestoreActivityCategory = () => {
     }) => ActivityCategoriesClientApi.unarchive(id, payload),
 
     onSuccess: () => {
-      [
-        queryKeys.activityCategories.all,
-        queryKeys.activities.all,
-        queryKeys.projects.all,
-        queryKeys.projectActivities.all,
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
 
       toast.success("Category restored successfully");
     },

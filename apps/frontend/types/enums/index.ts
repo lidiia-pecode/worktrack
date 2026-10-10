@@ -7,7 +7,7 @@ export enum ActivityStatus {
 export enum ActiveActivitiesAction {
   MOVE = "MOVE",
   ARCHIVE = "ARCHIVE",
-  /** Leaves them as drafts, which only activities on no project may be. */
+  /** Leaves them as drafts; refused if a project links any. */
   UNCATEGORIZE = "UNCATEGORIZE",
 }
 

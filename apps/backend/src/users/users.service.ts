@@ -206,9 +206,10 @@ export class UsersService {
     userIds: string[],
     caller: AuthUser,
   ): Promise<TeamMembership[]> {
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(caller);
+    if (!userIds.length) return [];
 
-    if (!userIds.length || visibleTeamIds?.length === 0) return [];
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(caller);
+    if (visibleTeamIds?.length === 0) return [];
 
     return this.dataSource.getRepository(TeamMembership).find({
       where: {
@@ -441,7 +442,6 @@ export class UsersService {
     caller: AuthUser,
     manager?: EntityManager,
   ): Promise<User> {
-    const currentRole = caller.role;
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
       const user = await this.getUserById(id, companyId, man);
@@ -455,7 +455,7 @@ export class UsersService {
         throw new ForbiddenException('You cannot change your own role');
       }
 
-      if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+      if (user.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
         throw new ForbiddenException(
           'Only Company OWNER can modify another OWNER',
         );
@@ -464,7 +464,7 @@ export class UsersService {
       if (payload.firstName !== undefined) user.firstName = payload.firstName;
       if (payload.lastName !== undefined) user.lastName = payload.lastName;
       if (payload.role !== undefined) {
-        if (payload.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+        if (payload.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
           throw new ForbiddenException(
             'Only Company OWNER can assign the OWNER role',
           );

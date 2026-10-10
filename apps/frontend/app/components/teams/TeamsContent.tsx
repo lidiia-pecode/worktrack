@@ -11,12 +11,12 @@ import { MANAGER_WITHOUT_TEAM_MESSAGE } from "@/lib/constants";
 import { fullName, hasManagerAccess } from "@/lib/utils/user";
 import { Team, TeamUser } from "@/types/Team";
 import { TeamStatus, UserRole } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink, EntityLinks } from "../entity-panel/EntityLink";
 import { Avatar } from "../shared/Avatar";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
-  countLabel,
   ManageColumn,
   ManageCount,
   ManageList,
@@ -27,11 +27,10 @@ import {
   activeManagers,
   currentMemberships,
   deactivatedMembersCount,
+  NO_ACTIVE_MANAGER,
 } from "./team-memberships";
 import { TeamCreateDialog } from "./TeamCreateDialog";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
-
-const NO_ACTIVE_MANAGER = "No active manager";
 
 const PeopleLinks = ({ people }: { people: TeamUser[] }) => (
   <EntityLinks
@@ -43,7 +42,6 @@ const PeopleLinks = ({ people }: { people: TeamUser[] }) => (
   />
 );
 
-// In the table, each manager with their avatar, as people appear on Users.
 const ManagerList = ({ people }: { people: TeamUser[] }) => (
   <div className="flex min-w-0 flex-col gap-1">
     {people.map((person) => (
@@ -142,10 +140,7 @@ export const TeamsContent = () => {
     isError,
     refetch,
     pagination,
-  } = useTeamsInfiniteQuery(
-    { status, search: listState.searchQuery },
-    { keepPreviousData: true },
-  );
+  } = useTeamsInfiniteQuery({ status, search: listState.searchQuery });
 
   const canRead = hasManagerAccess(user?.role);
   const isOwner = user?.role === UserRole.OWNER;

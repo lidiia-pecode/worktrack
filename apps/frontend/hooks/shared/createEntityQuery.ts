@@ -81,14 +81,11 @@ export function createEntityQuery<
     return toListResult(query);
   };
 
-  const useEntityInfiniteQuery = (
-    params?: TParams,
-    options: { enabled?: boolean; keepPreviousData?: boolean } = {},
-  ) => {
+  // A new search or filter keeps showing the last results until its own arrive.
+  const useEntityInfiniteQuery = (params?: TParams) => {
     const query = useInfiniteQuery({
       queryKey: config.queryKey.infinite(params),
-      enabled: options.enabled,
-      placeholderData: options.keepPreviousData ? keepPreviousData : undefined,
+      placeholderData: keepPreviousData,
       queryFn: ({ pageParam }) =>
         config.api.getAll({
           ...params,

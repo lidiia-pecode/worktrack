@@ -42,7 +42,7 @@ export class CategoryActivityResponse {
   @Expose()
   status!: ActivityStatus;
 
-  /** On a project, archived ones too, so it cannot be left without a category. */
+  /** Linked to a project, archived ones too, so it can't become a draft. */
   @Expose()
   isInUse!: boolean;
 }

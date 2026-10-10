@@ -4,13 +4,13 @@ import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 
 import { memberChangeCopy } from "./team-member-changes";
-import { CurrentMembership } from "./team-memberships";
+import { MembershipWithUser } from "./team-memberships";
 
 const membership = (
   id: string,
   firstName: string,
   roleInTeam: TeamRole,
-): CurrentMembership => ({
+): MembershipWithUser => ({
   id: `m-${id}`,
   teamId: "t-1",
   userId: id,

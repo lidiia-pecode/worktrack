@@ -1006,7 +1006,7 @@ describe('ProjectsService membership scope', () => {
   describe('search', () => {
     const foundNames = async (search: string) => {
       const { results } = await service.list(
-        { offset: 0, limit: 50, search } as never,
+        Object.assign(new ProjectsQuery(), { pageSize: 50, search }),
         owner,
       );
       return results.map((project) => project.name);
@@ -1024,11 +1024,6 @@ describe('ProjectsService membership scope', () => {
         `Harbour site ${RUN}`,
       ]);
       expect(await foundNames('northwind')).toEqual([`Harbour site ${RUN}`]);
-    });
-
-    it('reads % and _ as plain characters', async () => {
-      expect(await foundNames('North_ind')).toEqual([]);
-      expect(await foundNames('100%')).toEqual([]);
     });
   });
 });

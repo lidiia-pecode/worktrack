@@ -13,7 +13,7 @@ const asPeople = (users: TeamUser[]) =>
   }));
 
 interface TeamArchiveDialogProps {
-  /** The team to archive; the dialog is open while one is given. */
+  /** The dialog is open while this is set. */
   team: Team | null;
   onClose: () => void;
 }

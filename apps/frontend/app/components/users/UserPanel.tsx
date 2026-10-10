@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
@@ -18,6 +17,7 @@ import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Capacity, UserDetails } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
@@ -31,24 +31,21 @@ import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
 import { UserForm, UserFormData } from "./UserForm";
-import {
-  PROJECTS_PICKER,
-  UserProjectsPicker,
-  useUserProjectChanges,
-} from "./UserProjectsPicker";
+import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
+import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
+import { UserProjectsPicker } from "./UserProjectsPicker";
 
 const EDIT_FORM_ID = "user-edit-form";
 
-// The weekly hours first, then where they come from.
 const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
-  const source = capacity?.isCompanyDefault
-    ? "company default"
-    : capacity?.validFrom &&
-      `since ${formatDayMonthYearLabel(capacity.validFrom)}`;
-
   if (!capacity) {
     return <span className="text-muted-foreground">Not set</span>;
   }
+
+  const source = capacity.isCompanyDefault
+    ? "company default"
+    : capacity.validFrom &&
+      `since ${formatDayMonthYearLabel(capacity.validFrom)}`;
 
   return (
     <>
@@ -69,8 +66,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const setCapacity = useSetCapacity();
   const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
-  // A Manager who leads a team stays one until the team has another manager;
-  // the API refuses too, but saying so first names the teams.
+  // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the teams.
   const managedTeams = user.teams.filter(
     (team) => team.roleInTeam === TeamRole.MANAGER,
   );
@@ -122,7 +118,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
             capacityHoursPerWeek: (capacity?.minutesPerWeek ?? 0) / 60,
             capacityValidFrom: todayISODate(),
           }}
-          onSubmit={(data) => void save(data)}
+          onSubmit={save}
           onDirtyChange={panel.setHasUnsavedChanges}
         />
       </PanelEditForm>
@@ -134,10 +130,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
         affected={[
           {
             label: "Manages",
-            entities: managedTeams.map((team) => ({
-              entity: { type: "team", id: team.id },
-              name: team.name,
-            })),
+            entities: linkedEntities("team", managedTeams),
           },
         ]}
         blocker="Make someone else the manager of these teams first, or make them a member."
@@ -158,20 +151,15 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   );
   const panel = useEntityPanel();
   const userActions = useUserActions();
-  const projectChanges = useUserProjectChanges(user);
+  const projectChanges = useProjectLinkChanges();
 
   const isDeactivated = isDeactivatedUser(user);
-  // Deactivating them elsewhere, such as from their row, ends the edit.
+  // Deactivating them from their row ends an open edit.
   const isEditing = panel.isEditing && userActions.canEdit(user);
-  // A deactivated person is read-only.
   const canChangeProjects = !isDeactivated && !isEditing;
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
-    return (
-      <>
-        <UserProjectsPicker user={user} />
-      </>
-    );
+    return <UserProjectsPicker user={user} />;
   }
 
   return (
@@ -188,7 +176,6 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         }
         details={[
           { label: "Role", value: ROLE_LABELS[user.role] },
-          // Working hours are the owner's to read.
           ...(isOwner
             ? [
                 {
@@ -200,8 +187,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           { label: "Email", value: user.email, wide: true },
         ]}
         actions={userActions.actionsFor(user)}
-        // A person's name is theirs to change, in their profile; the form
-        // leaves the heading as it is.
+        // Only the person changes their own name, in their profile.
         editForm={
           isEditing &&
           (isLoadingCapacity ? (
@@ -245,25 +231,25 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
                 canChangeProjects && !isArchived
                   ? {
                       label: `Remove ${fullName(user)} from ${project.name}`,
-                      onClick: () => projectChanges.removeFromProject(project),
+                      onClick: () =>
+                        projectChanges.removeMember(project, {
+                          id: user.id,
+                          name: fullName(user),
+                        }),
                     }
                   : undefined,
             };
           }}
           emptyText="Not on any projects yet."
-          action={
-            canChangeProjects && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => panel.openView(PROJECTS_PICKER, fullName(user))}
-                className="gap-1.5"
-              >
-                <Plus className="size-4" />
-                Add to projects
-              </Button>
-            )
+          add={
+            canChangeProjects
+              ? {
+                  label: "Add to projects",
+                  icon: Plus,
+                  onClick: () =>
+                    panel.openView(PROJECTS_PICKER, fullName(user)),
+                }
+              : undefined
           }
         />
       </EntityPanelLayout>

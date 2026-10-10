@@ -1,42 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useTeamsMutations } from "@/hooks/useTeams";
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Team } from "@/types/Team";
 
-import { CreateDialog } from "../shared/resource/CreateDialog";
-import { TeamForm, TeamFormData } from "./TeamForm";
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
+import { NameForm, NameFormData } from "../shared/resource/NameForm";
 
 interface TeamCreateDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Gets the new team, unless onboarding returns to the checklist instead. */
   onCreated: (team: Team) => void;
   isOnboarding?: boolean;
 }
 
 const FORM_ID = "team-create-form";
 
-/** Members are added in the new team's panel. */
+/** The same name field on creating and in the panel. */
+export const TEAM_NAME_FIELD = {
+  entity: "Team",
+  maxLength: 255,
+  placeholder: "e.g. Engineering",
+};
+
 export const TeamCreateDialog = ({
   open,
   onClose,
   onCreated,
-  isOnboarding = false,
+  isOnboarding,
 }: TeamCreateDialogProps) => {
-  const router = useRouter();
   const { create } = useTeamsMutations();
+  const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
 
-  const handleSubmit = (data: TeamFormData) =>
-    create.mutateAsync(data, {
-      onSuccess: (team) => {
-        onClose();
-
-        if (isOnboarding) router.push(GETTING_STARTED_PATH);
-        else onCreated(team);
-      },
-    });
+  const handleSubmit = (data: NameFormData) =>
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
     <CreateDialog
@@ -48,8 +44,9 @@ export const TeamCreateDialog = ({
       submitLabel="Create team"
       isSubmitting={create.isPending}
     >
-      <TeamForm
+      <NameForm
         formId={FORM_ID}
+        {...TEAM_NAME_FIELD}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}
       />

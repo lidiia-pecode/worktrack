@@ -31,8 +31,19 @@ type CategoryImpactActivity = {
   id: string;
   name: string;
   projects: OfferingProject[];
-  /** On a project, archived ones too, so it cannot be left without a category. */
   isInUse: boolean;
+};
+
+type CategoryActivity = Activity & { isInUse: boolean };
+
+const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+
+const assertAssignable = (category: ActCategory) => {
+  if (category.status === ActCategoryStatus.ARCHIVED) {
+    throw new BadRequestException(
+      `Category "${category.name}" is archived and cannot be assigned`,
+    );
+  }
 };
 
 @Injectable()
@@ -79,10 +90,11 @@ export class ActCategoriesService {
     id: string,
     companyId: string,
     manager: EntityManager,
+    mode: 'pessimistic_read' | 'pessimistic_write' = 'pessimistic_read',
   ): Promise<ActCategory> {
     const category = await manager.findOne(ActCategory, {
       where: { id, companyId },
-      lock: { mode: 'pessimistic_read' },
+      lock: { mode },
     });
 
     if (!category) {
@@ -98,27 +110,16 @@ export class ActCategoriesService {
     manager: EntityManager,
   ): Promise<ActCategory> {
     const category = await this.findLocked(id, companyId, manager);
-
-    if (category.status === ActCategoryStatus.ARCHIVED) {
-      throw new BadRequestException(
-        `Category "${category.name}" is archived and cannot be assigned`,
-      );
-    }
+    assertAssignable(category);
 
     return category;
   }
 
-  /**
-   * With all of its activities, archived ones included, each saying whether a
-   * project links it and so whether it may be left without a category.
-   */
   async getDetails(
     id: string,
     companyId: string,
   ): Promise<
-    Omit<ActCategory, 'activities'> & {
-      activities: Array<Activity & { isInUse: boolean }>;
-    }
+    Omit<ActCategory, 'activities'> & { activities: CategoryActivity[] }
   > {
     const category = await this.repo.findOne({
       where: { id, companyId },
@@ -264,31 +265,38 @@ export class ActCategoriesService {
     };
   }
 
-  /**
-   * An active activity is never in an archived category: archiving moves its
-   * active activities, archives them, or leaves them as drafts when no
-   * project links them.
-   */
+  /** An active activity is never in an archived category. */
   async archive(
     id: string,
     companyId: string,
     payload: ArchiveCategoryPayload = {},
   ): Promise<ActCategory> {
     return this.dataSource.transaction(async (manager) => {
-      const category = await manager.findOne(ActCategory, {
-        where: { id, companyId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      // Categories are locked before activities, and two in id order, as every
+      // change to an activity's category does, so none of them can deadlock.
+      const targetId =
+        payload.activities === ActiveActivitiesAction.MOVE &&
+        payload.moveToCategoryId !== id
+          ? payload.moveToCategoryId
+          : undefined;
+      const locked = new Map<string, ActCategory>();
 
-      if (!category) {
-        throw new NotFoundException('Activity category not found');
+      for (const categoryId of [id, targetId].filter(isDefined).sort()) {
+        const mode =
+          categoryId === id ? 'pessimistic_write' : 'pessimistic_read';
+        locked.set(
+          categoryId,
+          await this.findLocked(categoryId, companyId, manager, mode),
+        );
       }
+
+      const category = locked.get(id)!;
 
       if (category.status === ActCategoryStatus.ARCHIVED) {
         throw new BadRequestException('Category is already archived');
       }
 
-      // Locked, so none is put on a project while it may be left a draft.
+      // Locked so none goes on a project before it may become a draft.
       const activeActivities = await manager.find(Activity, {
         where: { companyId, categoryId: id, status: ActivityStatus.ACTIVE },
         order: { name: 'ASC' },
@@ -300,6 +308,7 @@ export class ActCategoriesService {
           category,
           activeActivities,
           payload,
+          targetId ? locked.get(targetId) : undefined,
           manager,
         );
       }
@@ -313,27 +322,22 @@ export class ActCategoriesService {
     category: ActCategory,
     activities: Activity[],
     payload: ArchiveCategoryPayload,
+    target: ActCategory | undefined,
     manager: EntityManager,
   ): Promise<void> {
-    const activityIds = In(activities.map((activity) => activity.id));
+    const ids = activities.map((activity) => activity.id);
 
     if (payload.activities === ActiveActivitiesAction.MOVE) {
-      const { moveToCategoryId } = payload;
-
-      if (!moveToCategoryId || moveToCategoryId === category.id) {
+      if (!target) {
         throw new BadRequestException(
           'Choose another category to move the activities to',
         );
       }
 
-      const target = await this.findActiveOnly(
-        moveToCategoryId,
-        category.companyId,
-        manager,
-      );
+      assertAssignable(target);
       await manager.update(
         Activity,
-        { id: activityIds },
+        { id: In(ids) },
         { categoryId: target.id },
       );
       return;
@@ -342,7 +346,7 @@ export class ActCategoriesService {
     if (payload.activities === ActiveActivitiesAction.ARCHIVE) {
       await manager.update(
         Activity,
-        { id: activityIds },
+        { id: In(ids) },
         { status: ActivityStatus.ARCHIVED },
       );
       return;
@@ -351,7 +355,7 @@ export class ActCategoriesService {
     if (payload.activities === ActiveActivitiesAction.UNCATEGORIZE) {
       const inUse = await findActivitiesInUse(
         manager.getRepository(ProjectActivity),
-        activities.map((activity) => activity.id),
+        ids,
       );
       const linked = activities.filter((activity) => inUse.has(activity.id));
 
@@ -362,7 +366,7 @@ export class ActCategoriesService {
         );
       }
 
-      await manager.update(Activity, { id: activityIds }, { categoryId: null });
+      await manager.update(Activity, { id: In(ids) }, { categoryId: null });
       return;
     }
 
@@ -372,24 +376,19 @@ export class ActCategoriesService {
     );
   }
 
-  /**
-   * Nothing records which activities were archived with the category, so
-   * restoring them brings back all of its archived activities.
-   */
+  /** RESTORE brings back all its archived activities: nothing records which were archived with it. */
   async unarchive(
     id: string,
     companyId: string,
     payload: RestoreCategoryPayload = {},
   ): Promise<ActCategory> {
     return this.dataSource.transaction(async (manager) => {
-      const category = await manager.findOne(ActCategory, {
-        where: { id, companyId },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      if (!category) {
-        throw new NotFoundException('Activity category not found');
-      }
+      const category = await this.findLocked(
+        id,
+        companyId,
+        manager,
+        'pessimistic_write',
+      );
 
       if (category.status === ActCategoryStatus.ACTIVE) {
         throw new BadRequestException('Category is already active');

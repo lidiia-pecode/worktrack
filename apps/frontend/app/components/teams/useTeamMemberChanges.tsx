@@ -11,19 +11,16 @@ import { TeamRole, UserRole } from "@/types/enums";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { MemberChange, memberChangeCopy } from "./team-member-changes";
-import { CurrentMembership } from "./team-memberships";
+import { MembershipWithUser } from "./team-memberships";
 
-/**
- * Changes who is on a team and in what role, each saved at once. A new role
- * or a removal confirms first, saying who sees whom afterwards.
- */
+/** Role changes and removals in a team, each confirmed with who sees whom afterwards. */
 export const useTeamMemberChanges = (team: Team) => {
   const { user: viewer } = useAuth();
   const { updateMember, removeMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
   const [change, setChange] = useState<MemberChange | null>(null);
   const [membershipToPromote, setMembershipToPromote] =
-    useState<CurrentMembership | null>(null);
+    useState<MembershipWithUser | null>(null);
   // Whether a removal leaves them in no team the viewer can see.
   const changedPerson = useUserDetails(
     change?.kind === "remove" ? change.membership.userId : "",
@@ -32,11 +29,19 @@ export const useTeamMemberChanges = (team: Team) => {
   // A second click while one change saves would act on stale details.
   const isBusy = updateMember.isPending || removeMember.isPending;
 
-  const changeRole = (membership: CurrentMembership, roleInTeam: TeamRole) => {
-    if (!isBusy) setChange({ kind: "role", membership, roleInTeam });
+  // Leading a team takes the Manager role, which an employee is given first.
+  const changeRole = (membership: MembershipWithUser, roleInTeam: TeamRole) => {
+    if (isBusy || roleInTeam === membership.roleInTeam) return;
+
+    const needsPromotion =
+      roleInTeam === TeamRole.MANAGER &&
+      membership.user.role === UserRole.EMPLOYEE;
+
+    if (needsPromotion) setMembershipToPromote(membership);
+    else setChange({ kind: "role", membership, roleInTeam });
   };
 
-  const remove = (membership: CurrentMembership) => {
+  const remove = (membership: MembershipWithUser) => {
     if (!isBusy) setChange({ kind: "remove", membership });
   };
 
@@ -67,10 +72,8 @@ export const useTeamMemberChanges = (team: Team) => {
     );
   };
 
-  // Leading a team takes the Manager role, so an employee gets it first.
   const confirmPromotion = () => {
     if (!membershipToPromote) return;
-    const done = { onSuccess: () => setMembershipToPromote(null) };
 
     updateUser.mutate(
       { id: membershipToPromote.user.id, data: { role: UserRole.MANAGER } },
@@ -81,7 +84,7 @@ export const useTeamMemberChanges = (team: Team) => {
               membershipId: membershipToPromote.id,
               data: { roleInTeam: TeamRole.MANAGER },
             },
-            done,
+            { onSuccess: () => setMembershipToPromote(null) },
           ),
       },
     );
@@ -101,7 +104,7 @@ export const useTeamMemberChanges = (team: Team) => {
         confirmVariant={change?.kind === "remove" ? "destructive" : "primary"}
         onConfirm={confirmChange}
         onClose={() => setChange(null)}
-        loading={updateMember.isPending || removeMember.isPending}
+        loading={isBusy}
         confirmDisabled={change?.kind === "remove" && !changedPerson.data}
       />
 
@@ -124,9 +127,6 @@ export const useTeamMemberChanges = (team: Team) => {
   return {
     changeRole,
     remove,
-    promote: (membership: CurrentMembership) => {
-      if (!isBusy) setMembershipToPromote(membership);
-    },
     dialogs,
   };
 };

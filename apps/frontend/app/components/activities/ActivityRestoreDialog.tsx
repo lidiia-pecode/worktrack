@@ -17,20 +17,17 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 const RESTORE_CATEGORY_OPTION = "restore-category";
 const DRAFT_OPTION = "draft";
 
-/** An activity whose category is archived. */
-type CategorisedActivity = Activity & { category: ActivityCategoryResponse };
+export type ActivityWithCategory = Activity & {
+  category: ActivityCategoryResponse;
+};
 
 interface ActivityRestoreDialogProps {
-  /** The dialog is open while one is given. */
-  activity: CategorisedActivity | null;
+  /** The dialog is open while this is set. */
+  activity: ActivityWithCategory | null;
   onClose: () => void;
 }
 
-/**
- * An active activity is never in an archived category, so restoring one asks
- * where it goes: back with its category, to another, or, when no project
- * links it, as a draft with none.
- */
+/** Its category is archived, so restoring asks where it goes: back with the category, to another one, or, if no project links it, as a draft. */
 export const ActivityRestoreDialog = ({
   activity,
   onClose,
@@ -40,7 +37,7 @@ export const ActivityRestoreDialog = ({
     { enabled: Boolean(activity) },
   );
   const restore = useRestoreActivityWithCategory();
-  // Its links on archived projects count too, which only its details list.
+  // Only its details include links on archived projects, which count too.
   const details = useActivityDetails(activity?.id ?? "");
   const canBeDraft = details.data
     ? (details.data.projects ?? []).length === 0

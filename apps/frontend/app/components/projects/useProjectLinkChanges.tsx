@@ -4,47 +4,59 @@ import { useState } from "react";
 
 import { useProjectLinks } from "@/hooks/useProjects";
 import { usePlanningRemovalGuard } from "@/hooks/usePlanningRemovalGuard";
-import { fullName } from "@/lib/utils/user";
-import { Activity, AssignableUser, Project } from "@/types";
 
+import type { Choice } from "../entity-panel/useStagedSelection";
 import { ImpactDialog } from "../shared/ImpactDialog";
-import { RemoveProjectActivityDialog } from "./RemoveProjectActivityDialog";
+import {
+  ProjectActivityRemoval,
+  RemoveProjectActivityDialog,
+} from "./RemoveProjectActivityDialog";
 
-/**
- * Removing one person or activity from its row on the project, saved at once.
- * Removing someone asks first only when it deletes their future plans here;
- * removing an activity always says that past time stays.
- */
-export const useProjectLinkChanges = (project: Project) => {
+/** Removes one person or activity from a project, from its row in any panel. */
+export const useProjectLinkChanges = () => {
   const links = useProjectLinks();
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
-  const [removingActivity, setRemovingActivity] = useState<Activity | null>(
-    null,
-  );
+  const [activityRemoval, setActivityRemoval] =
+    useState<ProjectActivityRemoval | null>(null);
 
   // A second click while one change saves would act on stale details.
   const isBusy = links.isSaving || isChecking;
-  const projectId = project.id;
 
-  const removeMember = (member: AssignableUser) => {
+  const removeMember = (project: Choice, person: Choice) => {
     if (isBusy) return;
 
     void confirmRemoval({
-      projectIds: [projectId],
-      userIds: [member.id],
-      title: `Remove ${fullName(member)} from ${project.name}?`,
-      // A failure is reported by the global mutation handler.
+      projectIds: [project.id],
+      userIds: [person.id],
+      title: `Remove ${person.name} from ${project.name}?`,
+      // The global mutation handler reports a failure.
       proceed: () =>
-        links.removeMember.mutateAsync({ projectId, userId: member.id }).then(
-          () => undefined,
-          () => undefined,
-        ),
+        links.removeMember
+          .mutateAsync({ projectId: project.id, userId: person.id })
+          .then(
+            () => undefined,
+            () => undefined,
+          ),
     });
   };
 
-  const removeActivity = (activity: Activity) => {
-    if (!isBusy) setRemovingActivity(activity);
+  const removeActivity = (project: Choice, activity: Choice) => {
+    if (!isBusy) {
+      setActivityRemoval({ projects: [project], activities: [activity] });
+    }
+  };
+
+  const confirmActivityRemoval = () => {
+    if (!activityRemoval) return;
+
+    links.removeActivity.mutate(
+      {
+        projectId: activityRemoval.projects[0].id,
+        activityId: activityRemoval.activities[0].id,
+      },
+      { onSettled: () => setActivityRemoval(null) },
+    );
   };
 
   const dialogs = (
@@ -52,21 +64,10 @@ export const useProjectLinkChanges = (project: Project) => {
       <ImpactDialog {...confirmProps} />
 
       <RemoveProjectActivityDialog
-        removal={
-          removingActivity && {
-            projects: [project],
-            activities: [removingActivity],
-          }
-        }
+        removal={activityRemoval}
         loading={links.removeActivity.isPending}
-        onConfirm={() =>
-          removingActivity &&
-          links.removeActivity.mutate(
-            { projectId, activityId: removingActivity.id },
-            { onSettled: () => setRemovingActivity(null) },
-          )
-        }
-        onClose={() => setRemovingActivity(null)}
+        onConfirm={confirmActivityRemoval}
+        onClose={() => setActivityRemoval(null)}
       />
     </>
   );

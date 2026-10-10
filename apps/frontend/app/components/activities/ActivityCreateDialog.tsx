@@ -1,21 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useActivitiesMutations } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Activity } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import { CreateDialog } from "../shared/resource/CreateDialog";
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 
 interface ActivityCreateDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Gets the new activity, unless onboarding returns to the checklist instead. */
-  onCreated: (activity: Activity) => void;
-  /** Where the new activity starts, such as the category it is added from. */
+  onCreated?: (activity: Activity) => void;
+  /** Chosen to start with, such as the category it is added from. */
   categoryId?: string;
   /** Made for a project, so it cannot be a draft. */
   requiresCategory?: boolean;
@@ -32,7 +29,6 @@ export const ActivityCreateDialog = ({
   requiresCategory = false,
   isOnboarding = false,
 }: ActivityCreateDialogProps) => {
-  const router = useRouter();
   const { create } = useActivitiesMutations();
   const { items: categories, isLoading: categoriesLoading } =
     useActivityCategoriesAllPagesQuery(
@@ -40,15 +36,10 @@ export const ActivityCreateDialog = ({
       { enabled: open },
     );
 
-  const handleSubmit = (data: ActivityFormData) =>
-    create.mutateAsync(data, {
-      onSuccess: (activity) => {
-        onClose();
+  const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
 
-        if (isOnboarding) router.push(GETTING_STARTED_PATH);
-        else onCreated(activity);
-      },
-    });
+  const handleSubmit = (data: ActivityFormData) =>
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
     <CreateDialog

@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,29 @@ import {
   DialogFooter,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { GETTING_STARTED_PATH } from "@/lib/constants";
+
+interface AfterCreateOptions<T> {
+  onClose: () => void;
+  /** Opens the new entity; not called from setup, which goes back to Getting started. */
+  onCreated?: (entity: T) => void;
+  isOnboarding?: boolean;
+}
+
+export const useAfterCreate = <T,>({
+  onClose,
+  onCreated,
+  isOnboarding = false,
+}: AfterCreateOptions<T>) => {
+  const router = useRouter();
+
+  return (entity: T) => {
+    onClose();
+
+    if (isOnboarding) router.push(GETTING_STARTED_PATH);
+    else onCreated?.(entity);
+  };
+};
 
 interface CreateDialogProps {
   open: boolean;
@@ -22,7 +46,6 @@ interface CreateDialogProps {
   submitLabel: string;
   isSubmitting: boolean;
   submitDisabled?: boolean;
-  /** The form, its name field first, set as the heading it becomes. */
   children: ReactNode;
 }
 

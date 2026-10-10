@@ -12,15 +12,15 @@ import { formatDuration } from "@/lib/utils/date";
 import { fullName, hasManagerAccess } from "@/lib/utils/user";
 import { UserListItem } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import {
-  countLabel,
   ManageColumn,
   ManageCount,
   ManageList,
   ManageWarning,
 } from "../shared/resource/ManageList";
-import { EntityLinks } from "../entity-panel/EntityLink";
+import { EntityLinks, linkedEntities } from "../entity-panel/EntityLink";
 import { Avatar } from "../shared/Avatar";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
@@ -28,13 +28,7 @@ import { PendingInvitations } from "./PendingInvitations";
 import { useUserActions } from "./useUserActions";
 
 const UserTeams = ({ user }: { user: UserListItem }) => (
-  <EntityLinks
-    tone="plain"
-    entities={user.teams.map((team) => ({
-      entity: { type: "team", id: team.id },
-      name: team.name,
-    }))}
-  />
+  <EntityLinks tone="plain" entities={linkedEntities("team", user.teams)} />
 );
 
 const NO_TEAM = "No team";
@@ -98,10 +92,7 @@ export const UsersContent = () => {
     isError,
     refetch,
     pagination,
-  } = useUsersInfiniteQuery(
-    { status, search: listState.searchQuery },
-    { keepPreviousData: true },
-  );
+  } = useUsersInfiniteQuery({ status, search: listState.searchQuery });
 
   return (
     <>

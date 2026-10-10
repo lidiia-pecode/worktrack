@@ -13,16 +13,18 @@ import { todayISODate } from "@/lib/utils/date";
 import { fullName, initials } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 import { TeamRole, UserRole, UserStatus } from "@/types/enums";
+import { nameOrCount } from "@/lib/utils/text";
 
 import { PanelView } from "../entity-panel/EntityPanelLayout";
-import {
-  Choice,
-  useStagedSelection,
-} from "../entity-panel/use-staged-selection";
+import { Choice, useStagedSelection } from "../entity-panel/useStagedSelection";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 import { InviteHint } from "../users/InviteHint";
-import { activeManagers, currentMemberships } from "./team-memberships";
+import {
+  activeManagers,
+  currentMemberships,
+  leftWithoutManagerText,
+} from "./team-memberships";
 
 export const MEMBERS_PICKER = "add-members";
 
@@ -34,14 +36,11 @@ const USER_ROLE_FOR: Record<TeamRole, UserRole> = {
   [TeamRole.MEMBER]: UserRole.EMPLOYEE,
 };
 
-/** Someone on the team now, by their membership, or joining in a role. */
+/** A current member carries their membership; a new one, the role they join in. */
 interface MemberChoice extends Choice {
   membershipId?: string;
   roleInTeam?: TeamRole;
 }
-
-const peopleCount = (count: number) =>
-  `${count} ${count === 1 ? "person" : "people"}`;
 
 export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const { timezone } = useWorkSettings();
@@ -52,14 +51,11 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     activeManagers(team).length === 0 ? TeamRole.MANAGER : TeamRole.MEMBER,
   );
   const { searchQuery, setSearch } = useServerSearch();
-  const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery(
-    {
-      status: UserStatus.ACTIVE,
-      role: USER_ROLE_FOR[roleInTeam],
-      search: searchQuery,
-    },
-    { keepPreviousData: true },
-  );
+  const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery({
+    status: UserStatus.ACTIVE,
+    role: USER_ROLE_FOR[roleInTeam],
+    search: searchQuery,
+  });
 
   const staged = useStagedSelection<MemberChoice>(
     currentMemberships(team).map((membership) => ({
@@ -68,13 +64,6 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
       membershipId: membership.id,
     })),
   );
-
-  const toggle = (userId: string) => {
-    const person = items.find((item) => item.id === userId);
-    if (person) {
-      staged.toggle({ id: person.id, name: fullName(person), roleInTeam });
-    }
-  };
 
   const joiningAs = (userId: string) =>
     staged.toAdd.find((choice) => choice.id === userId)?.roleInTeam;
@@ -104,7 +93,6 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     ]);
   };
 
-  // Leaving the team is confirmed; joining it is not.
   const done = () => {
     if (staged.toRemove.length > 0) setIsConfirmingRemoval(true);
     else void applyAll();
@@ -150,7 +138,9 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           className="mt-4"
           items={items}
           selectedIds={staged.selectedIds}
-          onToggle={toggle}
+          onToggle={(person) =>
+            staged.toggle({ id: person.id, name: fullName(person), roleInTeam })
+          }
           getId={(person) => person.id}
           getLabel={fullName}
           getSubtitle={(person) => {
@@ -174,15 +164,13 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
 
       <ImpactDialog
         isOpen={isConfirmingRemoval}
-        title={
-          staged.toRemove.length === 1
-            ? `Remove ${staged.toRemove[0].name} from ${team.name}?`
-            : `Remove ${peopleCount(staged.toRemove.length)} from ${team.name}?`
-        }
+        title={`Remove ${nameOrCount(
+          staged.toRemove.map((choice) => choice.name),
+          "people",
+        )} from ${team.name}?`}
         description={[
           "They leave the team today.",
-          leavesNoManager &&
-            `${team.name} is then left without an active manager.`,
+          leavesNoManager && leftWithoutManagerText(team),
         ]
           .filter(Boolean)
           .join(" ")}

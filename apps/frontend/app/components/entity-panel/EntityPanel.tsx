@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyboardEvent, ReactNode, useEffect, useId, useRef } from "react";
+import { KeyboardEvent, useEffect, useId, useRef } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,7 @@ import { TeamPanel } from "../teams/TeamPanel";
 import { UserPanel } from "../users/UserPanel";
 import { PanelTitleIdContext, useEntityPanel } from "./entity-panel-context";
 
-// Where the Manage table starts: below it the sidebar leaves no room beside
-// the list, so the panel takes the whole screen.
+// Below the table breakpoint there is no room beside the list, so the panel takes the whole screen.
 const DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
 
 const PanelContent = ({ entity }: { entity: EntityRef }) => {
@@ -42,8 +41,7 @@ export const EntityPanel = () => {
   const asideRef = useRef<HTMLElement>(null);
   const currentKey = current ? formatEntityRef(current) : null;
 
-  // Each entity the panel shows starts at its heading for a keyboard user.
-  // The aside exists only once the media query has resolved after a reload.
+  // Focus the heading for each new entity, also once the media query resolves after a reload.
   useEffect(() => {
     if (currentKey) asideRef.current?.focus();
   }, [currentKey, isDesktop]);
@@ -55,9 +53,9 @@ export const EntityPanel = () => {
     if (aside && !aside.contains(document.activeElement)) aside.focus();
   }, [view]);
 
-  if (!current || !currentKey) return null;
+  if (!current) return null;
 
-  const body: ReactNode = (
+  const body = (
     <PanelTitleIdContext.Provider value={titleId}>
       <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-3">
         {previous && (

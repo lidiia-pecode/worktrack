@@ -1,46 +1,35 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {
   useClientNameSuggestions,
   useProjectsMutations,
 } from "@/hooks/useProjects";
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { Project } from "@/types";
 
-import { CreateDialog } from "../shared/resource/CreateDialog";
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 
 interface ProjectCreateDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Gets the new project, unless onboarding returns to the checklist instead. */
   onCreated: (project: Project) => void;
   isOnboarding?: boolean;
 }
 
 const FORM_ID = "project-create-form";
 
-/** People and activities are added in the new project's panel. */
 export const ProjectCreateDialog = ({
   open,
   onClose,
   onCreated,
-  isOnboarding = false,
+  isOnboarding,
 }: ProjectCreateDialogProps) => {
-  const router = useRouter();
   const { create } = useProjectsMutations();
   const clientSuggestions = useClientNameSuggestions();
+  const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
 
   const handleSubmit = (data: ProjectFormData) =>
-    create.mutateAsync(data, {
-      onSuccess: (project) => {
-        onClose();
-
-        if (isOnboarding) router.push(GETTING_STARTED_PATH);
-        else onCreated(project);
-      },
-    });
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
     <CreateDialog

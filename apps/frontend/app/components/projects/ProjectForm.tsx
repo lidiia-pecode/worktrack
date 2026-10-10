@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 
 import { Field, fieldMessageId } from "@/components/ui/field";
 import { isConflictError } from "@/lib/api";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
 import { OptionCards } from "../shared/inputs/OptionCards";
 import { DescriptionEditor } from "./DescriptionEditor";
@@ -68,7 +69,7 @@ export type ProjectFormData = {
 };
 
 interface ProjectFormProps {
-  formId?: string;
+  formId: string;
   defaultValues?: Partial<ProjectFormData>;
   clientSuggestions?: string[];
   mode?: "create" | "edit";
@@ -78,7 +79,7 @@ interface ProjectFormProps {
 }
 
 export const ProjectForm = ({
-  formId = "project-form",
+  formId,
   defaultValues,
   mode = "create",
   clientSuggestions = [],
@@ -108,12 +109,9 @@ export const ProjectForm = ({
     mode === "edit" || Boolean(defaultValues?.description),
   );
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-    return () => onDirtyChange?.(false);
-  }, [isDirty, onDirtyChange]);
+  useReportDirty(isDirty, onDirtyChange);
 
-  // Names are unique, so a taken one is said where it was typed.
+  // The API refuses a taken name; show it under the field.
   const submit = async ({
     workType,
     clientName,
@@ -133,7 +131,6 @@ export const ProjectForm = ({
     }
   };
 
-  // The name is set as the heading it becomes, in the panel and on creating.
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
       <PanelTitleInput
@@ -183,7 +180,6 @@ export const ProjectForm = ({
         )}
       </Field>
 
-      {/* Optional, so a new project asks for it only on request. */}
       {!showsDescription ? (
         <Button
           type="button"

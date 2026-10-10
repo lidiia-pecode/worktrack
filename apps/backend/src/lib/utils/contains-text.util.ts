@@ -10,13 +10,14 @@ export const andWhereAnyContains = <T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   columns: string[],
   text: string,
-): SelectQueryBuilder<T> =>
-  qb.andWhere(
+): SelectQueryBuilder<T> => {
+  const search = containsPattern(text);
+
+  return qb.andWhere(
     new Brackets((where) => {
       for (const column of columns) {
-        where.orWhere(`${column} ILIKE :search`, {
-          search: containsPattern(text),
-        });
+        where.orWhere(`${column} ILIKE :search`, { search });
       }
     }),
   );
+};

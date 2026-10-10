@@ -1,24 +1,21 @@
 "use client";
 
 import { Fragment, MouseEvent, ReactNode, useState } from "react";
-import { ChevronRight, X } from "lucide-react";
+import { ChevronRight, X, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import type { EntityRef } from "@/lib/utils/entity-ref";
 import { cn } from "@/lib/utils/cn";
 
 import { EntityLink, useOpenEntity } from "./EntityLink";
-import { PanelSectionHeading } from "./EntityPanelLayout";
 
 const VISIBLE_ITEMS = 8;
 
-export interface PanelListRow {
+interface PanelListRow {
   /** What the row opens, from a click anywhere on it. */
   entity: EntityRef;
   name: string;
-  /** Before the name, such as a person's avatar. */
   leading?: ReactNode;
-  /** A quieter line under the name, such as a position. */
   detail?: ReactNode;
   /** Why the row reads differently, such as an Archived badge. */
   status?: ReactNode;
@@ -43,13 +40,12 @@ interface PanelListProps<T> {
   emptyText: ReactNode;
   /** Under the title, such as how many members the viewer cannot see. */
   note?: ReactNode;
-  /** Beside the title, such as a button that adds to the section. */
-  action?: ReactNode;
+  /** Opens the section's picker; left out when the viewer cannot add. */
+  add?: { label: string; icon: LucideIcon; onClick: () => void };
   /** Rows under headings, such as a project's activities by category; items come sorted by it. */
   groupBy?: (item: T) => PanelListGroup;
 }
 
-// The row's controls keep their own clicks.
 const stopRowClick = (event: MouseEvent) => event.stopPropagation();
 
 const RemoveButton = ({
@@ -129,7 +125,7 @@ export const PanelList = <T,>({
   renderRow,
   emptyText,
   note,
-  action,
+  add,
   groupBy,
 }: PanelListProps<T>) => {
   const [showsAll, setShowsAll] = useState(false);
@@ -138,7 +134,27 @@ export const PanelList = <T,>({
 
   return (
     <section>
-      <PanelSectionHeading title={title} count={items.length} action={action} />
+      <div className="flex min-h-8 items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">
+          {title}
+          <span className="ml-1.5 font-normal text-muted-foreground">
+            {items.length}
+          </span>
+        </h3>
+
+        {add && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={add.onClick}
+            className="gap-1.5"
+          >
+            <add.icon className="size-4" />
+            {add.label}
+          </Button>
+        )}
+      </div>
 
       {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
 

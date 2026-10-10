@@ -45,13 +45,9 @@ export interface RestoreActivityCategoryPayload {
 }
 
 export interface ActivityCategoryArchiveImpact {
-  activities: {
-    id: string;
-    name: string;
+  activities: (Pick<CategoryActivity, "id" | "name" | "isInUse"> & {
     projects: { id: string; name: string }[];
-    /** On a project, archived ones too, so it cannot be left without a category. */
-    isInUse: boolean;
-  }[];
+  })[];
 }
 
 export type UpdateActivityCategoryPayload = Partial<ActivityCategoryPayload>;

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { PlanningRemovalCountQuery } from "@/types";
 import { PlanningClientApi } from "@/lib/api/resources";
 import { getErrorMessage } from "@/lib/api";
+import { countLabel } from "@/lib/utils/text";
 
 type PendingRemoval = {
   title: string;
@@ -17,9 +18,6 @@ type RemovalRequest = PlanningRemovalCountQuery & {
   title: string;
   proceed: () => void | Promise<void>;
 };
-
-const plannedEntries = (count: number) =>
-  `${count} planned ${count === 1 ? "entry" : "entries"}`;
 
 /**
  * Removing somebody from a project deletes their plans for it from today
@@ -82,7 +80,7 @@ export function usePlanningRemovalGuard() {
       isOpen: pending !== null,
       title: pending?.title ?? "",
       description: pending
-        ? `This will also delete ${plannedEntries(pending.count)} from today onwards. Past plans are kept.`
+        ? `This will also delete ${countLabel(pending.count, "planned entry", "planned entries")} from today onwards. Past plans are kept.`
         : "",
       confirmText: "Remove",
       confirmVariant: "destructive" as const,

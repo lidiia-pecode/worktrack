@@ -16,7 +16,6 @@ import {
 import { sameName } from 'src/lib/utils/same-name.util';
 import { Project } from './entities/project.entity';
 import { ProjectActivity } from './entities/project-activity.entity';
-import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
 import { UsersService } from 'src/users/users.service';
 import {
@@ -102,7 +101,6 @@ export class ProjectsService {
     manager: EntityManager,
   ): Promise<void> {
     const targetActivityIds = Array.from(new Set(rawActivityIds));
-    const activityRepo = manager.getRepository(Activity);
     const projectActivityRepo = manager.getRepository(ProjectActivity);
 
     const targetIdsSet = new Set(targetActivityIds);
@@ -111,7 +109,7 @@ export class ProjectsService {
       ? await this.activitiesService.findLinkableMany(
           targetActivityIds,
           project.companyId,
-          activityRepo,
+          manager,
         )
       : [];
 
@@ -328,11 +326,7 @@ export class ProjectsService {
     return withOfferedActivities(project);
   }
 
-  /**
-   * The project, locked until the transaction ends, so changes to it run one
-   * after the other and two at once cannot both add one link. The lock is its
-   * own query: Postgres refuses FOR UPDATE on the outer joins `findOrFail` uses.
-   */
+  /** Locked in its own query (Postgres refuses FOR UPDATE with outer joins), so link changes run one at a time. */
   private async findLockedOrFail(
     id: string,
     companyId: string,
@@ -346,7 +340,6 @@ export class ProjectsService {
     return this.findOrFail(id, companyId, manager);
   }
 
-  /** One change to a project's people or activities. */
   private changeLinks(
     id: string,
     user: AuthUser,
@@ -624,7 +617,6 @@ export class ProjectsService {
     });
   }
 
-  /** Offers one more activity, bringing back a link removed before. */
   async addActivity(
     id: string,
     activityId: string,
@@ -634,14 +626,15 @@ export class ProjectsService {
       const [activity] = await this.activitiesService.findLinkableMany(
         [activityId],
         project.companyId,
-        manager.getRepository(Activity),
+        manager,
       );
-      const projectActivityRepo = manager.getRepository(ProjectActivity);
       const link = project.projectActivities.find(
         (projectActivity) => projectActivity.activityId === activityId,
       );
 
       if (link?.isActive) return;
+
+      const projectActivityRepo = manager.getRepository(ProjectActivity);
 
       if (link) {
         link.isActive = true;
@@ -660,7 +653,7 @@ export class ProjectsService {
     });
   }
 
-  /** Stops offering an activity; the time already logged on it stays. */
+  /** The time already logged on it stays. */
   async removeActivity(
     id: string,
     activityId: string,

@@ -8,7 +8,6 @@ import { useDebouncedValue } from "./useDebouncedValue";
 export type ResourceTab = "active" | "archived";
 
 const TAB_PARAM = "tab";
-const ARCHIVED_TAB: ResourceTab = "archived";
 const SEARCH_DEBOUNCE_MS = 300;
 
 /** What is typed, and what goes to the server once typing pauses. */
@@ -34,13 +33,13 @@ export const useManageListState = () => {
   const serverSearch = useServerSearch();
 
   const tab: ResourceTab =
-    searchParams.get(TAB_PARAM) === ARCHIVED_TAB ? ARCHIVED_TAB : "active";
+    searchParams.get(TAB_PARAM) === "archived" ? "archived" : "active";
 
   // Other parameters, such as `?onboarding=`, stay in the URL.
   const setTab = (nextTab: ResourceTab) => {
     const params = new URLSearchParams(searchParams);
 
-    if (nextTab === ARCHIVED_TAB) params.set(TAB_PARAM, nextTab);
+    if (nextTab === "archived") params.set(TAB_PARAM, nextTab);
     else params.delete(TAB_PARAM);
 
     window.history.replaceState(

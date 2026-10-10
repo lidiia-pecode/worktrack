@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,6 +8,7 @@ import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DateInput } from "../shared/inputs";
@@ -32,7 +32,7 @@ export type UserFormData = z.infer<typeof userSchema>;
 type UserFormProps = {
   formId: string;
   defaultValues: UserFormData;
-  onSubmit: (data: UserFormData) => void;
+  onSubmit: (data: UserFormData) => void | Promise<unknown>;
   onDirtyChange?: (isDirty: boolean) => void;
 };
 
@@ -60,10 +60,7 @@ export const UserForm = ({
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-    return () => onDirtyChange?.(false);
-  }, [isDirty, onDirtyChange]);
+  useReportDirty(isDirty, onDirtyChange);
 
   return (
     <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">

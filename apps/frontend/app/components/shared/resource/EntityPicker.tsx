@@ -11,7 +11,7 @@ import { PickerRow } from "./PickerRow";
 export interface EntityPickerProps<T> {
   items: T[];
   selectedIds: string[];
-  onToggle: (id: string) => void;
+  onToggle: (item: T) => void;
 
   getId: (item: T) => string;
   getLabel: (item: T) => string;
@@ -123,7 +123,7 @@ export const EntityPicker = <T,>({
                   subtitle={getSubtitle?.(item)}
                   avatarText={getAvatarText?.(item) ?? getLabel(item).charAt(0)}
                   selected={selectedIds.includes(id)}
-                  onToggle={() => onToggle(id)}
+                  onToggle={() => onToggle(item)}
                   disabled={isDisabled?.(item)}
                 />
               );

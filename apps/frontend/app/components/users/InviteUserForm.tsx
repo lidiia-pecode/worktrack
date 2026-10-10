@@ -25,6 +25,19 @@ import { useTeamOptions } from "@/hooks/useTeams";
 
 const NO_TEAM = "none";
 
+const ROLE_OPTIONS: OptionCard<UserRole>[] = [
+  {
+    value: UserRole.MANAGER,
+    label: ROLE_LABELS[UserRole.MANAGER],
+    description: "Leads teams, and sees and corrects their people's time.",
+  },
+  {
+    value: UserRole.EMPLOYEE,
+    label: ROLE_LABELS[UserRole.EMPLOYEE],
+    description: "Logs their own time and absences, in a team.",
+  },
+];
+
 interface InviteUserFormProps {
   formId: string;
   isSubmitting?: boolean;
@@ -44,19 +57,6 @@ export const InviteUserForm = ({
   const { options: teamOptions, isLoading: isLoadingTeams } = useTeamOptions();
 
   // Only an owner invites a Manager; a manager invites employees only.
-  const roleOptions: OptionCard<UserRole>[] = [
-    {
-      value: UserRole.MANAGER,
-      label: ROLE_LABELS[UserRole.MANAGER],
-      description: "Leads teams, and sees and corrects their people's time.",
-    },
-    {
-      value: UserRole.EMPLOYEE,
-      label: ROLE_LABELS[UserRole.EMPLOYEE],
-      description: "Logs their own time and absences, in a team.",
-    },
-  ];
-
   const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
 
   const {
@@ -117,7 +117,7 @@ export const InviteUserForm = ({
     }
   }, [isEmployee, teamOptions, setValue]);
 
-  // An email already in use is said where it was typed.
+  // The API refuses an email already in use; show it under the field.
   const submit = async (data: InviteUserFormData) => {
     try {
       await onSubmit(data);
@@ -150,7 +150,7 @@ export const InviteUserForm = ({
               <OptionCards
                 name="invite-user-role"
                 value={field.value}
-                options={roleOptions}
+                options={ROLE_OPTIONS}
                 onChange={field.onChange}
                 disabled={isSubmitting}
               />

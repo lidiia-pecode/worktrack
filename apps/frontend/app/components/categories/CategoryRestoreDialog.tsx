@@ -6,6 +6,7 @@ import { useRestoreActivityCategory } from "@/hooks/useActivityCategories";
 import { ActivityCategoryDetails } from "@/types";
 import { ActivityStatus, ArchivedActivitiesAction } from "@/types/enums";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
 
@@ -13,15 +14,12 @@ const WITH_ACTIVITIES = "with-activities";
 const CATEGORY_ALONE = "category-alone";
 
 interface CategoryRestoreDialogProps {
-  /** A category with archived activities; the dialog is open while one is given. */
+  /** A category with archived activities; the dialog is open while this is set. */
   category: ActivityCategoryDetails | null;
   onClose: () => void;
 }
 
-/**
- * Nothing records which activities were archived with the category, so the
- * choice covers all of them, which is why they are named.
- */
+/** Nothing records which activities were archived with the category, so the choice covers all of them. */
 export const CategoryRestoreDialog = ({
   category,
   onClose,
@@ -62,10 +60,7 @@ export const CategoryRestoreDialog = ({
       affected={[
         {
           label: "Archived activities",
-          entities: archivedActivities.map((activity) => ({
-            entity: { type: "activity", id: activity.id },
-            name: activity.name,
-          })),
+          entities: linkedEntities("activity", archivedActivities),
         },
       ]}
       choice={

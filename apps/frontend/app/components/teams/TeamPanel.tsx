@@ -16,7 +16,7 @@ import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
 import { formatDayMonthYearLabel } from "@/lib/utils/date";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
-import { Team, TeamMembership, TeamUser } from "@/types/Team";
+import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
 
 import { EntityLink } from "../entity-panel/EntityLink";
@@ -30,24 +30,22 @@ import {
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { ManageWarning } from "../shared/resource/ManageList";
-import { TeamForm, TeamFormData } from "./TeamForm";
+import { NameForm, NameFormData } from "../shared/resource/NameForm";
+import { TEAM_NAME_FIELD } from "./TeamCreateDialog";
 import { MEMBERS_PICKER, TeamMembersPicker } from "./TeamMembersPicker";
 import {
   activeManagers,
-  CurrentMembership,
   currentMemberships,
+  formerMemberships,
+  MembershipWithUser,
+  NO_ACTIVE_MANAGER,
 } from "./team-memberships";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
 import { useTeamMemberChanges } from "./useTeamMemberChanges";
 
 const EDIT_FORM_ID = "team-edit-form";
 
-const roleOptions = [TeamRole.MEMBER, TeamRole.MANAGER].map((value) => ({
-  label: TEAM_ROLE_LABELS[value],
-  value,
-}));
-
-type FormerMembership = TeamMembership & { user: TeamUser };
+const TEAM_ROLES = [TeamRole.MEMBER, TeamRole.MANAGER];
 
 const membershipPeriod = (membership: TeamMembership) => {
   const joined = formatDayMonthYearLabel(membership.joinedAt);
@@ -58,12 +56,11 @@ const membershipPeriod = (membership: TeamMembership) => {
 };
 
 interface TeamRoleMenuProps {
-  membership: CurrentMembership;
+  membership: MembershipWithUser;
   teamName: string;
   onChange: (roleInTeam: TeamRole) => void;
 }
 
-/** A member's role in the team, shown and changed in one quiet control. */
 const TeamRoleMenu = ({
   membership,
   teamName,
@@ -90,13 +87,9 @@ const TeamRoleMenu = ({
         value={membership.roleInTeam}
         onValueChange={(value) => onChange(value as TeamRole)}
       >
-        {roleOptions.map((option) => (
-          <DropdownMenuRadioItem
-            key={option.value}
-            value={option.value}
-            closeOnClick
-          >
-            {option.label}
+        {TEAM_ROLES.map((role) => (
+          <DropdownMenuRadioItem key={role} value={role} closeOnClick>
+            {TEAM_ROLE_LABELS[role]}
           </DropdownMenuRadioItem>
         ))}
       </DropdownMenuRadioGroup>
@@ -108,7 +101,7 @@ const TeamEditForm = ({ team }: { team: Team }) => {
   const panel = useEntityPanel();
   const { update } = useTeamsMutations();
 
-  const save = (data: TeamFormData) =>
+  const save = (data: NameFormData) =>
     update.mutate({ id: team.id, data }, { onSuccess: panel.stopEditing });
 
   return (
@@ -117,9 +110,10 @@ const TeamEditForm = ({ team }: { team: Team }) => {
       isSaving={update.isPending}
       onCancel={panel.stopEditing}
     >
-      <TeamForm
+      <NameForm
         formId={EDIT_FORM_ID}
-        defaultValues={{ name: team.name }}
+        {...TEAM_NAME_FIELD}
+        defaultName={team.name}
         onSubmit={save}
         isSubmitting={update.isPending}
         onDirtyChange={panel.setHasUnsavedChanges}
@@ -139,29 +133,12 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   const managers = activeManagers(team);
 
   if (isOwner && panel.view === MEMBERS_PICKER) {
-    return (
-      <>
-        <TeamMembersPicker team={team} />
-      </>
-    );
+    return <TeamMembersPicker team={team} />;
   }
 
-  // The owner sets roles; a manager only removes, from a team they lead.
-  // A deactivated member can only be removed.
-  const canChangeRole = (membership: CurrentMembership) =>
+  // Only the owner changes roles, and not for a deactivated member.
+  const canChangeRole = (membership: MembershipWithUser) =>
     isOwner && !isEditing && !isDeactivatedUser(membership.user);
-
-  // Leading a team takes the Manager role, which an employee is given first.
-  const changeRole = (membership: CurrentMembership, roleInTeam: TeamRole) => {
-    if (roleInTeam === membership.roleInTeam) return;
-
-    const needsPromotion =
-      roleInTeam === TeamRole.MANAGER &&
-      membership.user.role === UserRole.EMPLOYEE;
-
-    if (needsPromotion) changes.promote(membership);
-    else changes.changeRole(membership, roleInTeam);
-  };
 
   return (
     <>
@@ -195,7 +172,7 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
                   ))}
                 </span>
               ) : (
-                <ManageWarning>No active manager</ManageWarning>
+                <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
               ),
             wide: true,
           },
@@ -211,7 +188,7 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
             entity: { type: "user", id: membership.user.id },
             name: fullName(membership.user),
             leading: <Avatar user={membership.user} />,
-            // Where the role can change, its menu shows it.
+            // The role menu shows the role.
             detail: canChangeRole(membership)
               ? membershipPeriod(membership)
               : `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
@@ -222,7 +199,9 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
               <TeamRoleMenu
                 membership={membership}
                 teamName={team.name}
-                onChange={(roleInTeam) => changeRole(membership, roleInTeam)}
+                onChange={(roleInTeam) =>
+                  changes.changeRole(membership, roleInTeam)
+                }
               />
             ),
             remove: isEditing
@@ -237,20 +216,14 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
               ? "Nobody is on this team yet. A restored team comes back with no members."
               : "Nobody is on this team yet. An owner adds people to it."
           }
-          action={
-            isOwner &&
-            !isEditing && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => panel.openView(MEMBERS_PICKER, team.name)}
-                className="gap-1.5"
-              >
-                <UserPlus className="size-4" />
-                Add members
-              </Button>
-            )
+          add={
+            isOwner && !isEditing
+              ? {
+                  label: "Add members",
+                  icon: UserPlus,
+                  onClick: () => panel.openView(MEMBERS_PICKER, team.name),
+                }
+              : undefined
           }
         />
       </EntityPanelLayout>
@@ -261,42 +234,34 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   );
 };
 
-/** An archived team's memberships are all closed; it lists who was on it. */
 const ArchivedTeamView = ({ team }: { team: Team }) => {
   const teamActions = useTeamActions();
-  const formerMembers = (team.memberships ?? []).filter(
-    (membership): membership is FormerMembership => Boolean(membership.user),
-  );
 
   return (
-    <>
-      <EntityPanelLayout
-        type="Team"
-        name={team.name}
-        status={<PanelStatus isActive={false} />}
-        actions={teamActions.actionsFor(team)}
-      >
-        <PanelList
-          title="Former members"
-          note="Restoring the team starts it with no members."
-          items={formerMembers}
-          getKey={(membership) => membership.id}
-          renderRow={(membership) => ({
-            entity: { type: "user", id: membership.user.id },
-            name: fullName(membership.user),
-            leading: <Avatar user={membership.user} />,
-            detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
-            isInactive: isDeactivatedUser(membership.user),
-            status: isDeactivatedUser(membership.user) && (
-              <Badge variant="neutral">Deactivated</Badge>
-            ),
-          })}
-          emptyText="Nobody was on this team."
-        />
-      </EntityPanelLayout>
-
-      {teamActions.dialogs}
-    </>
+    <EntityPanelLayout
+      type="Team"
+      name={team.name}
+      status={<PanelStatus isActive={false} />}
+      actions={teamActions.actionsFor(team)}
+    >
+      <PanelList
+        title="Former members"
+        note="Restoring the team starts it with no members."
+        items={formerMemberships(team)}
+        getKey={(membership) => membership.id}
+        renderRow={(membership) => ({
+          entity: { type: "user", id: membership.user.id },
+          name: fullName(membership.user),
+          leading: <Avatar user={membership.user} />,
+          detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
+          isInactive: isDeactivatedUser(membership.user),
+          status: isDeactivatedUser(membership.user) && (
+            <Badge variant="neutral">Deactivated</Badge>
+          ),
+        })}
+        emptyText="Nobody was on this team."
+      />
+    </EntityPanelLayout>
   );
 };
 

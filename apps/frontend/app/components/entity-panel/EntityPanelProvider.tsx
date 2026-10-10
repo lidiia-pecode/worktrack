@@ -103,8 +103,7 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
     setPendingLeave(null);
   };
 
-  // From a list or a link outside the panel: a fresh start, whatever this
-  // entity showed when it was last open, and focus later returns to the opener.
+  // Opening from a list or an outside link starts afresh, and focus later returns to the opener.
   const show = (ref: EntityRef) => {
     setTrail(EMPTY_TRAIL);
     setEditingOpenValue(null);

@@ -14,10 +14,11 @@ import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { initials, fullName } from "@/lib/utils/user";
 import { Activity, Project } from "@/types";
 import { ActivityStatus, UserRole, UserStatus } from "@/types/enums";
+import { nameOrCount } from "@/lib/utils/text";
 
 import { ActivityCreateDialog } from "../activities/ActivityCreateDialog";
 import { PanelView } from "../entity-panel/EntityPanelLayout";
-import { useStagedSelection } from "../entity-panel/use-staged-selection";
+import { useStagedSelection } from "../entity-panel/useStagedSelection";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 import { InviteHint } from "../users/InviteHint";
@@ -30,7 +31,7 @@ export const PEOPLE_PICKER = "add-people";
 
 export const ACTIVITIES_PICKER = "add-activities";
 
-// From the setup checklist, adding is the step, so Done returns to it.
+// From setup, Done goes back to Getting started.
 const useSetupDone = () => {
   const router = useRouter();
   const isOnboarding = useIsOnboarding();
@@ -43,14 +44,11 @@ const useSetupDone = () => {
     : undefined;
 };
 
-/** Offered activities, which a project's details list with their category. */
+/** The activities a project offers. */
 export const offeredActivities = (project: Project): Activity[] =>
   (project.projectActivities ?? [])
     .map((projectActivity) => projectActivity.activity)
     .filter((activity): activity is Activity => Boolean(activity));
-
-const peopleCount = (count: number) =>
-  `${count} ${count === 1 ? "person" : "people"}`;
 
 export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
   const { user } = useAuth();
@@ -59,10 +57,10 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
   const { searchQuery, setSearch } = useServerSearch();
-  const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery(
-    { status: UserStatus.ACTIVE, search: searchQuery },
-    { keepPreviousData: true },
-  );
+  const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery({
+    status: UserStatus.ACTIVE,
+    search: searchQuery,
+  });
 
   const staged = useStagedSelection(
     (project.users ?? []).map((member) => ({
@@ -72,23 +70,17 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
   );
   const projectId = project.id;
 
-  const toggle = (userId: string) => {
-    const person = items.find((item) => item.id === userId);
-    if (person) staged.toggle({ id: person.id, name: fullName(person) });
-  };
-
-  // Taking someone off deletes their future plans here, so Done asks first
-  // only when there are some.
+  // Removing people deletes their future plans here, so Done asks first when there are any.
   const done = () => {
     const removedIds = staged.toRemove.map((member) => member.id);
 
     void confirmRemoval({
-      projectIds: removedIds.length > 0 ? [projectId] : [],
+      projectIds: [projectId],
       userIds: removedIds,
-      title:
-        staged.toRemove.length === 1
-          ? `Remove ${staged.toRemove[0].name} from ${project.name}?`
-          : `Remove ${peopleCount(staged.toRemove.length)} from ${project.name}?`,
+      title: `Remove ${nameOrCount(
+        staged.toRemove.map((member) => member.name),
+        "people",
+      )} from ${project.name}?`,
       proceed: () =>
         staged.apply(
           [
@@ -125,7 +117,9 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
         <EntityPicker
           items={items}
           selectedIds={staged.selectedIds}
-          onToggle={toggle}
+          onToggle={(person) =>
+            staged.toggle({ id: person.id, name: fullName(person) })
+          }
           getId={(person) => person.id}
           getLabel={fullName}
           getSubtitle={(person) => person.email}
@@ -151,23 +145,15 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
   const [isCreating, setIsCreating] = useState(false);
   const [removal, setRemoval] = useState<ProjectActivityRemoval | null>(null);
   const { searchQuery, setSearch } = useServerSearch();
-  const { items, isLoading, pagination } = useActivitiesInfiniteQuery(
-    { status: ActivityStatus.ACTIVE, search: searchQuery },
-    { keepPreviousData: true },
-  );
+  const { items, isLoading, pagination } = useActivitiesInfiniteQuery({
+    status: ActivityStatus.ACTIVE,
+    search: searchQuery,
+  });
 
   const staged = useStagedSelection(
     offeredActivities(project).map(({ id, name }) => ({ id, name })),
   );
   const projectId = project.id;
-
-  const toggle = (activityId: string) => {
-    const activity = items.find((item) => item.id === activityId);
-    // A draft has no category, so a project cannot offer it yet.
-    if (activity?.category) {
-      staged.toggle({ id: activity.id, name: activity.name });
-    }
-  };
 
   const applyAll = () =>
     staged.apply(
@@ -213,7 +199,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
         <EntityPicker
           items={items}
           selectedIds={staged.selectedIds}
-          onToggle={toggle}
+          onToggle={staged.toggle}
           getId={(activity) => activity.id}
           getLabel={(activity) => activity.name}
           getSubtitle={(activity) =>
@@ -230,14 +216,11 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
         />
       </PanelView>
 
-      {/* A new activity joins the choices, applied with them on Done. */}
       <ActivityCreateDialog
         open={isCreating}
         onClose={() => setIsCreating(false)}
         requiresCategory
-        onCreated={(activity) =>
-          staged.select({ id: activity.id, name: activity.name })
-        }
+        onCreated={staged.select}
       />
 
       <RemoveProjectActivityDialog

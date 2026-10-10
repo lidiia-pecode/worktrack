@@ -11,7 +11,7 @@ interface EntityLinkProps {
   entity: EntityRef;
   children: ReactNode;
   className?: string;
-  /** Called when the link opens the panel, such as to close the dialog it sits in. */
+  /** Runs before the panel opens, such as closing the dialog the link is in. */
   onNavigate?: () => void;
   /**
    * `brand` in running text; `plain` in a row, which itself shows it opens;
@@ -51,7 +51,7 @@ export const EntityLink = ({
   const openEntity = useOpenEntity();
 
   const handleClick = (event: MouseEvent<HTMLAnchorElement>) => {
-    // A link in a list row would otherwise also open the row's own entity.
+    // Keeps a link in a row from also opening the row.
     event.stopPropagation();
     if (opensElsewhere(event)) return;
 
@@ -80,17 +80,25 @@ export interface LinkedEntity {
   name: string;
 }
 
-interface EntityLinksProps {
+export const linkedEntities = (
+  type: EntityRef["type"],
+  items: { id: string; name: string }[],
+): LinkedEntity[] =>
+  items.map(({ id, name }) => ({ entity: { type, id }, name }));
+
+interface EntityLinksProps extends Pick<
+  EntityLinkProps,
+  "tone" | "onNavigate"
+> {
   entities: LinkedEntity[];
-  tone?: EntityLinkProps["tone"];
 }
 
-/** Several related names, such as a person's teams, comma-separated. */
-export const EntityLinks = ({ entities, tone }: EntityLinksProps) =>
+/** Several related names, comma-separated. */
+export const EntityLinks = ({ entities, tone, onNavigate }: EntityLinksProps) =>
   entities.map(({ entity, name }, index) => (
     <Fragment key={entity.id}>
       {index > 0 && ", "}
-      <EntityLink entity={entity} tone={tone}>
+      <EntityLink entity={entity} tone={tone} onNavigate={onNavigate}>
         {name}
       </EntityLink>
     </Fragment>

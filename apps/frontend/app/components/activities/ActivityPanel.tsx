@@ -3,7 +3,6 @@
 import { Plus, Tags } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   useActivitiesMutations,
   useActivityDetails,
@@ -24,11 +23,9 @@ import { PanelList } from "../entity-panel/PanelList";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
-import {
-  ActivityProjectsPicker,
-  PROJECTS_PICKER,
-  useActivityProjectChanges,
-} from "./ActivityProjectsPicker";
+import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
+import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
+import { ActivityProjectsPicker } from "./ActivityProjectsPicker";
 import { isActiveActivity, useActivityActions } from "./useActivityActions";
 
 const EDIT_FORM_ID = "activity-edit-form";
@@ -59,7 +56,7 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
           categoryId: activity.category?.id ?? null,
           defaultBillable: activity.defaultBillable,
         }}
-        // On a project it needs its category; it can only move to another.
+        // On a project it must keep a category.
         requiresCategory={(activity.projects?.length ?? 0) > 0}
         onSubmit={save}
         isSubmitting={update.isPending}
@@ -72,21 +69,17 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
 const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   const activityActions = useActivityActions();
   const panel = useEntityPanel();
-  const projectChanges = useActivityProjectChanges(activity);
+  const projectChanges = useProjectLinkChanges();
 
   const isActive = isActiveActivity(activity);
   const isDraft = !activity.category;
-  // Archiving it elsewhere, such as from its row, ends the edit.
+  // Archiving it from its row ends an open edit.
   const isEditing = panel.isEditing && isActive;
-  // A draft goes on no project until it has a category.
+  // A draft can't go on a project.
   const canChangeProjects = isActive && !isEditing && !isDraft;
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
-    return (
-      <>
-        <ActivityProjectsPicker activity={activity} />
-      </>
-    );
+    return <ActivityProjectsPicker activity={activity} />;
   }
 
   return (
@@ -160,7 +153,8 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                 canChangeProjects && !isArchived
                   ? {
                       label: `Remove ${activity.name} from ${project.name}`,
-                      onClick: () => projectChanges.removeFromProject(project),
+                      onClick: () =>
+                        projectChanges.removeActivity(project, activity),
                     }
                   : undefined,
             };
@@ -170,19 +164,14 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
               ? "None yet. A project can offer it once it has a category."
               : "No project offers it yet."
           }
-          action={
-            canChangeProjects && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => panel.openView(PROJECTS_PICKER, activity.name)}
-                className="gap-1.5"
-              >
-                <Plus className="size-4" />
-                Add to projects
-              </Button>
-            )
+          add={
+            canChangeProjects
+              ? {
+                  label: "Add to projects",
+                  icon: Plus,
+                  onClick: () => panel.openView(PROJECTS_PICKER, activity.name),
+                }
+              : undefined
           }
         />
       </EntityPanelLayout>

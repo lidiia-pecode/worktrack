@@ -18,7 +18,6 @@ export class ActivityResponse {
   @Expose()
   defaultBillable!: boolean;
 
-  /** None while it is a draft. */
   @Expose()
   @Type(() => ActivityCategoryResponse)
   category!: ActivityCategoryResponse | null;
@@ -47,7 +46,7 @@ export class ActivityProjectResponse {
 
 @Exclude()
 export class ActivityDetailsResponse extends ActivityResponse {
-  /** Projects of every status that offer it; absent for an employee. */
+  /** Projects of any status; absent for an employee. */
   @Expose()
   @Type(() => ActivityProjectResponse)
   projects?: ActivityProjectResponse[];

@@ -8,19 +8,17 @@ import { fullName } from "@/lib/utils/user";
 import { User } from "@/types";
 import { TeamRole } from "@/types/enums";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { activeManagers } from "../teams/team-memberships";
 
 interface UserDeactivateDialogProps {
-  /** The person to deactivate; the dialog is open while one is given. */
+  /** The dialog is open while this is set. */
   user: User | null;
   onClose: () => void;
 }
 
-/**
- * Deactivating someone who manages a team is allowed (decision 6): the dialog
- * names the teams it leaves without an active manager, for the owner to fix.
- */
+/** Deactivating someone who manages a team is allowed; the dialog names the teams it leaves without an active manager. */
 export const UserDeactivateDialog = ({
   user,
   onClose,
@@ -64,10 +62,7 @@ export const UserDeactivateDialog = ({
       affected={[
         {
           label: "Left without an active manager",
-          entities: teamsLeftWithoutManager.map((team) => ({
-            entity: { type: "team", id: team.id },
-            name: team.name,
-          })),
+          entities: linkedEntities("team", teamsLeftWithoutManager),
         },
       ]}
       confirmText="Deactivate"

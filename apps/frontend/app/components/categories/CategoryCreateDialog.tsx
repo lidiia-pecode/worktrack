@@ -1,44 +1,38 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useActivityCategoriesMutations } from "@/hooks/useActivityCategories";
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { ActivityCategory } from "@/types";
 
-import { CreateDialog } from "../shared/resource/CreateDialog";
-import {
-  ActivityCategoryForm,
-  ActivityCategoryFormData,
-} from "./ActivityCategoryForm";
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
+import { NameForm, NameFormData } from "../shared/resource/NameForm";
 
 interface CategoryCreateDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Gets the new category, unless onboarding returns to the checklist instead. */
   onCreated: (category: ActivityCategory) => void;
   isOnboarding?: boolean;
 }
 
 const FORM_ID = "category-create-form";
 
+/** The same name field on creating and in the panel. */
+export const CATEGORY_NAME_FIELD = {
+  entity: "Category",
+  maxLength: 100,
+  placeholder: "e.g. Development",
+};
+
 export const CategoryCreateDialog = ({
   open,
   onClose,
   onCreated,
-  isOnboarding = false,
+  isOnboarding,
 }: CategoryCreateDialogProps) => {
-  const router = useRouter();
   const { create } = useActivityCategoriesMutations();
+  const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
 
-  const handleSubmit = (data: ActivityCategoryFormData) =>
-    create.mutateAsync(data, {
-      onSuccess: (category) => {
-        onClose();
-
-        if (isOnboarding) router.push(GETTING_STARTED_PATH);
-        else onCreated(category);
-      },
-    });
+  const handleSubmit = (data: NameFormData) =>
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
     <CreateDialog
@@ -50,8 +44,9 @@ export const CategoryCreateDialog = ({
       submitLabel="Create category"
       isSubmitting={create.isPending}
     >
-      <ActivityCategoryForm
+      <NameForm
         formId={FORM_ID}
+        {...CATEGORY_NAME_FIELD}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}
       />

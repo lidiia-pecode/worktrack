@@ -96,14 +96,14 @@ export const useTeamsMutations = createEntityMutations<
         : `Team archived. Pending invitations revoked: ${revokedInvitationCount}.`,
     unarchive: "Team restored successfully!",
   },
-  createConflictInForm: true,
+  conflictShownInForm: true,
 });
 
 export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();
 
   // A person's row and panel name their team.
-  const invalidateTeams = () =>
+  const invalidate = () =>
     [queryKeys.teams.all, queryKeys.users.all].forEach((queryKey) =>
       queryClient.invalidateQueries({ queryKey }),
     );
@@ -112,7 +112,7 @@ export function useTeamMembers(teamId: string) {
     mutationFn: (data: AddTeamMemberPayload) =>
       TeamsClientApi.addMember(teamId, data),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   const updateMember = useMutation({
@@ -124,14 +124,14 @@ export function useTeamMembers(teamId: string) {
       data: UpdateTeamMemberPayload;
     }) => TeamsClientApi.updateMember(teamId, membershipId, data),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   const removeMember = useMutation({
     mutationFn: (membershipId: string) =>
       TeamsClientApi.removeMember(teamId, membershipId),
 
-    onSuccess: invalidateTeams,
+    onSuccess: invalidate,
   });
 
   return {

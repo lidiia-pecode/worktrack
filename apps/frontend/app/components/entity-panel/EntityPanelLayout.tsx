@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { isMissingEntityError } from "@/lib/api";
 import { cn } from "@/lib/utils/cn";
+import { countLabel } from "@/lib/utils/text";
 
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
@@ -20,7 +21,6 @@ interface EntityPanelLayoutProps {
   /** What the entity is, such as "Project", above its name. */
   type: string;
   name: string;
-  /** A line under the name, such as a person's position. */
   subtitle?: ReactNode;
   status: ReactNode;
   /** Opens the entity's form; left out when the viewer cannot edit it. */
@@ -33,19 +33,12 @@ interface EntityPanelLayoutProps {
   editForm?: ReactNode;
   /** Whether the form edits the name too, in the heading's place. */
   editsName?: boolean;
-  /** The related entities, each section managed where it stands. */
   children?: ReactNode;
 }
 
 const TOOLBAR_BUTTON = "rounded-none first:rounded-l-md last:rounded-r-md";
 
-/**
- * The entity's identity in the header: its actions in a quiet toolbar above
- * the name, its status, and its own facts, which Edit changes, in the same
- * grid on every panel. Its relationships follow, each changed in its own
- * section. While the form is open it is the whole panel, so what Edit covers
- * is never in doubt.
- */
+/** The panel's header, facts and relationship sections; an open form replaces everything under the heading. */
 export const EntityPanelLayout = ({
   type,
   name,
@@ -60,7 +53,6 @@ export const EntityPanelLayout = ({
 }: EntityPanelLayoutProps) => {
   const titleId = useContext(PanelTitleIdContext);
   const isEditing = Boolean(editForm);
-  // The form's own name field stands where the heading was.
   const hidesHeading = isEditing && editsName;
   const hasToolbar = !isEditing && (onEdit || actions.length > 0);
 
@@ -145,13 +137,11 @@ export const EntityPanelLayout = ({
 };
 
 interface PanelTitleInputProps extends ComponentProps<"input"> {
+  id: string;
   error?: string;
 }
 
-/**
- * A form's name field in the panel: it reads as the heading it replaces, with
- * a line under it that shows where typing goes.
- */
+/** A name field set like the heading it replaces. */
 export const PanelTitleInput = forwardRef<
   HTMLInputElement,
   PanelTitleInputProps
@@ -161,7 +151,7 @@ export const PanelTitleInput = forwardRef<
       ref={ref}
       id={id}
       aria-invalid={Boolean(error)}
-      aria-describedby={error && id ? `${id}-error` : undefined}
+      aria-describedby={error ? `${id}-error` : undefined}
       className={cn(
         "w-full border-0 border-b-2 border-border/60 bg-transparent px-0 pt-0 pb-1 text-xl font-semibold tracking-tight text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand",
         error && "border-destructive focus:border-destructive",
@@ -193,36 +183,12 @@ export const PanelStatus = ({
   </Badge>
 );
 
-export interface PanelDetail {
+interface PanelDetail {
   label: string;
   value: ReactNode;
   /** A long value, such as a description or an email, across both columns. */
   wide?: boolean;
 }
-
-/** A section's heading, with how many it holds and what adds to it. */
-export const PanelSectionHeading = ({
-  title,
-  count,
-  action,
-}: {
-  title: string;
-  count?: number;
-  action?: ReactNode;
-}) => (
-  <div className="flex min-h-8 items-center justify-between gap-3">
-    <h3 className="text-sm font-semibold text-foreground">
-      {title}
-      {count !== undefined && (
-        <span className="ml-1.5 font-normal text-muted-foreground">
-          {count}
-        </span>
-      )}
-    </h3>
-
-    {action}
-  </div>
-);
 
 /** An entity's own facts, each label above its value, two to a row. */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
@@ -281,7 +247,6 @@ interface PanelViewProps {
   description: ReactNode;
   /** Making a new one instead, such as "New activity", which joins the choices. */
   create?: { label: string; onClick: () => void };
-  /** How many choices wait for Done. */
   pendingCount: number;
   isApplying: boolean;
   onDone: () => void;
@@ -334,7 +299,7 @@ export const PanelView = ({
       <div className="mt-6 flex items-center justify-end gap-2">
         {pendingCount > 0 && (
           <p className="mr-auto text-sm text-muted-foreground" role="status">
-            {pendingCount} {pendingCount === 1 ? "change" : "changes"} to apply
+            {countLabel(pendingCount, "change", "changes")} to apply
           </p>
         )}
 

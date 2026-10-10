@@ -6,11 +6,13 @@ import { useQueries } from "@tanstack/react-query";
 import { activityDetailsQuery } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { ActCategoryStatus } from "@/types/enums";
+import { byCount, listNames, nameOrCount } from "@/lib/utils/text";
 
-import type { LinkedEntity } from "../entity-panel/EntityLink";
-import type { Choice } from "../entity-panel/use-staged-selection";
+import { linkedEntities } from "../entity-panel/EntityLink";
+import type { Choice } from "../entity-panel/useStagedSelection";
 import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
+import { distinctProjects } from "./category-archive";
 
 /** An activity coming in from another category, or a draft with none. */
 export interface MoveIn extends Choice {
@@ -30,13 +32,8 @@ interface CategoryActivityMovesDialogProps {
   onClose: () => void;
 }
 
-const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
-
 const names = (choices: Choice[]) =>
-  listFormat.format(choices.map((choice) => choice.name));
-
-const verb = (count: number, one: string, many: string) =>
-  count === 1 ? one : many;
+  listNames(choices.map((choice) => choice.name));
 
 // "Backend and QA leave Development; Standup gets a category."
 const describeMovesIn = (moves: MoveIn[]) => {
@@ -51,14 +48,17 @@ const describeMovesIn = (moves: MoveIn[]) => {
   return [...byCategory]
     .map(([from, group]) =>
       from
-        ? `${names(group)} ${verb(group.length, "leaves", "leave")} ${from}`
-        : `${names(group)} ${verb(group.length, "gets a", "get a")} category`,
+        ? `${names(group)} ${byCount(group.length, "leaves", "leave")} ${from}`
+        : `${names(group)} ${byCount(group.length, "gets a", "get a")} category`,
     )
     .join("; ");
 };
 
 const countOf = (choices: Choice[]) =>
-  choices.length === 1 ? choices[0].name : `${choices.length} activities`;
+  nameOrCount(
+    choices.map((choice) => choice.name),
+    "activities",
+  );
 
 const titleFor = (
   category: string,
@@ -74,12 +74,7 @@ const titleFor = (
   return `Remove ${countOf(toDrafts)} from ${category}?`;
 };
 
-/**
- * An activity is in at most one category, and in one while a project links
- * it: taking it off such a category moves it to another, taking it off while
- * no project links it leaves it a draft, and bringing one in takes it from
- * where it is.
- */
+/** An activity is in at most one category, and must keep one while a project links it. */
 export const CategoryActivityMovesDialog = ({
   category,
   isOpen,
@@ -96,23 +91,15 @@ export const CategoryActivityMovesDialog = ({
     { enabled: isOpen && needsDestination },
   );
   const [chosenId, setChosenId] = useState<string>();
-  // The projects that hold each one, named so the way to free it is a click away.
+  // Its projects, as links, so the user can take it off them first.
   const linkedProjects = useQueries({
     queries: isOpen
       ? movesOut.map((move) => activityDetailsQuery(move.id))
       : [],
   });
-  const projectsHoldingThem = [
-    ...new Map(
-      linkedProjects
-        .flatMap((query) => query.data?.projects ?? [])
-        .map((project) => [project.id, project]),
-    ).values(),
-  ];
-  const projectLinks: LinkedEntity[] = projectsHoldingThem.map((project) => ({
-    entity: { type: "project", id: project.id },
-    name: project.name,
-  }));
+  const projectsHoldingThem = distinctProjects(
+    linkedProjects.flatMap((query) => query.data?.projects ?? []),
+  );
 
   const targets = activeCategories.items.filter(
     (target) => target.id !== category.id,
@@ -125,9 +112,9 @@ export const CategoryActivityMovesDialog = ({
   const description = [
     movesIn.length > 0 && `${describeMovesIn(movesIn)}.`,
     needsDestination &&
-      `${names(movesOut)} ${verb(movesOut.length, "is", "are")} on ${verb(projectsHoldingThem.length, "a project", "projects")}, and a project only offers activities that have a category. So ${verb(movesOut.length, "it moves", "they move")} to ${destinationName}; to leave ${verb(movesOut.length, "it", "them")} without one, take ${verb(movesOut.length, "it", "them")} off ${verb(movesOut.length, "its", "their")} projects first.`,
+      `${names(movesOut)} ${byCount(movesOut.length, "is", "are")} on ${byCount(projectsHoldingThem.length, "a project", "projects")}, and a project only offers activities that have a category. So ${byCount(movesOut.length, "it moves", "they move")} to ${destinationName}; to leave ${byCount(movesOut.length, "it", "them")} without one, take ${byCount(movesOut.length, "it", "them")} off ${byCount(movesOut.length, "its", "their")} projects first.`,
     toDrafts.length > 0 &&
-      `${names(toDrafts)} ${verb(toDrafts.length, "becomes a draft", "become drafts")}: still active, but not on projects until ${verb(toDrafts.length, "it has", "they have")} a category again.`,
+      `${names(toDrafts)} ${byCount(toDrafts.length, "becomes a draft", "become drafts")}: still active, but not on projects until ${byCount(toDrafts.length, "it has", "they have")} a category again.`,
     "Projects and logged time stay as they are.",
   ]
     .filter(Boolean)
@@ -146,7 +133,12 @@ export const CategoryActivityMovesDialog = ({
       isOpen={isOpen}
       title={isOpen ? titleFor(category.name, movesIn, movesOut, toDrafts) : ""}
       description={description}
-      affected={[{ label: "On projects", entities: projectLinks }]}
+      affected={[
+        {
+          label: "On projects",
+          entities: linkedEntities("project", projectsHoldingThem),
+        },
+      ]}
       choice={
         needsDestination &&
         !activeCategories.isLoading &&

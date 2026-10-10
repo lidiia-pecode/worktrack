@@ -84,7 +84,7 @@ export const useProjectsMutations = createEntityMutations<
     archive: "Project archived successfully",
     unarchive: "Project restored successfully",
   },
-  createConflictInForm: true,
+  conflictShownInForm: true,
 });
 
 export const useProjectDetails = (id?: string) =>
@@ -111,22 +111,21 @@ interface ActivityLink {
 }
 
 /**
- * Adds or removes one person or activity on a project, saved at once. The
- * response is the project's new details; the rest goes stale, since a person's
- * projects, an activity's projects and the plans of someone removed all follow
- * from it.
+ * Adds or removes one person or activity on a project. The response is the
+ * project's new details; what follows from them, such as a person's projects
+ * or the plans of someone removed, goes stale.
  */
 export const useProjectLinks = () => {
   const queryClient = useQueryClient();
 
   const onSuccess = (project: Project) => {
     const detailKey = queryKeys.projects.detail(project.id);
+    const detailHash = hashKey(detailKey);
     queryClient.setQueryData(detailKey, project);
 
-    // The project's other queries go stale; its details are fresh already.
     queryClient.invalidateQueries({
       queryKey: queryKeys.projects.all,
-      predicate: (query) => query.queryHash !== hashKey(detailKey),
+      predicate: (query) => query.queryHash !== detailHash,
     });
     [
       queryKeys.users.all,

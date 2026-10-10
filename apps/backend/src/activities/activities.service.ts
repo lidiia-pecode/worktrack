@@ -33,6 +33,7 @@ import {
   findOfferingProjects,
   OfferingProject,
 } from './offering-projects';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import type { Project } from 'src/projects/entities/project.entity';
 
@@ -89,20 +90,16 @@ export class ActivitiesService {
     return entity;
   }
 
-  /**
-   * The activities a project may offer: active, and in a category. Called
-   * inside the linking transaction, it locks them, so taking an activity's
-   * category away cannot slip in between the check and the new link.
-   */
+  /** Active and in a category; locked so none loses its category before the link is saved. */
   async findLinkableMany(
     ids: string[],
     companyId: string,
-    repo: Repository<Activity>,
+    manager: EntityManager,
   ): Promise<Activity[]> {
     const uniqueIds = [...new Set(ids)];
     if (!uniqueIds.length) return [];
 
-    const activities = await repo.find({
+    const activities = await manager.find(Activity, {
       where: {
         id: In(uniqueIds),
         companyId,
@@ -142,13 +139,12 @@ export class ActivitiesService {
     return activities;
   }
 
-  /** The activity, locked until the transaction ends, for a change to its category. */
   private async findLocked(
     id: string,
     companyId: string,
     manager: EntityManager,
   ): Promise<Activity> {
-    // Its own query: Postgres refuses FOR UPDATE on the outer join to the category.
+    // Locked in its own query: Postgres refuses FOR UPDATE with the outer join to the category.
     await manager.findOne(Activity, {
       where: { id, companyId },
       lock: { mode: 'pessimistic_write' },
@@ -157,8 +153,36 @@ export class ActivitiesService {
     return this.findRaw(id, companyId, manager.getRepository(Activity));
   }
 
-  /** Only an activity on no project may be without a category. */
-  private async assertNotInUse(
+  /** The category a restored activity goes back into: a new one, or its own. */
+  private async lockRestoreCategory(
+    id: string,
+    companyId: string,
+    payload: RestoreActivityPayload,
+    manager: EntityManager,
+  ): Promise<ActCategory | null> {
+    if (payload.withoutCategory) return null;
+
+    if (payload.categoryId) {
+      return this.actCategoriesService.findActiveOnly(
+        payload.categoryId,
+        companyId,
+        manager,
+      );
+    }
+
+    const { categoryId } = await this.findRaw(
+      id,
+      companyId,
+      manager.getRepository(Activity),
+    );
+
+    return categoryId
+      ? this.actCategoriesService.findLocked(categoryId, companyId, manager)
+      : null;
+  }
+
+  /** Takes the category away, which only an activity on no project may lose. */
+  private async makeDraft(
     activity: Activity,
     manager: EntityManager,
   ): Promise<void> {
@@ -172,6 +196,9 @@ export class ActivitiesService {
         `"${activity.name}" is on a project, so it needs a category. Move it to another category instead.`,
       );
     }
+
+    activity.category = null;
+    activity.categoryId = null;
   }
 
   async list(user: AuthUser, query: ActivitiesQuery) {
@@ -211,10 +238,6 @@ export class ActivitiesService {
     return { results, count };
   }
 
-  /**
-   * With the projects offering it, of any status; none for an employee, who
-   * sees only their own.
-   */
   async getDetails(
     id: string,
     user: AuthUser,
@@ -280,6 +303,14 @@ export class ActivitiesService {
   ): Promise<Activity> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
+      // Categories are locked before activities, as archiving a category does.
+      const category = payload.categoryId
+        ? await this.actCategoriesService.findActiveOnly(
+            payload.categoryId,
+            companyId,
+            manager,
+          )
+        : undefined;
       const activity = await this.findLocked(id, companyId, manager);
 
       if (activity.status === ActivityStatus.ARCHIVED) {
@@ -292,15 +323,9 @@ export class ActivitiesService {
       }
 
       if (payload.categoryId === null && activity.categoryId) {
-        await this.assertNotInUse(activity, manager);
-        activity.category = null;
-        activity.categoryId = null;
-      } else if (payload.categoryId) {
-        activity.category = await this.actCategoriesService.findActiveOnly(
-          payload.categoryId,
-          companyId,
-          manager,
-        );
+        await this.makeDraft(activity, manager);
+      } else if (category) {
+        activity.category = category;
       }
 
       if (payload.defaultBillable !== undefined) {
@@ -361,6 +386,13 @@ export class ActivitiesService {
   ): Promise<Activity> {
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
+      // Categories are locked before activities, as archiving a category does.
+      const category = await this.lockRestoreCategory(
+        id,
+        companyId,
+        payload,
+        manager,
+      );
       const activity = await this.findLocked(id, companyId, manager);
 
       if (activity.status === ActivityStatus.ACTIVE) {
@@ -368,23 +400,16 @@ export class ActivitiesService {
       }
 
       if (payload.withoutCategory) {
-        await this.assertNotInUse(activity, manager);
-        activity.category = null;
-        activity.categoryId = null;
+        await this.makeDraft(activity, manager);
       } else if (payload.categoryId) {
-        const category = await this.actCategoriesService.findActiveOnly(
-          payload.categoryId,
-          companyId,
-          manager,
-        );
         activity.category = category;
-        activity.categoryId = category.id;
       } else if (activity.categoryId) {
-        const category = await this.actCategoriesService.findLocked(
-          activity.categoryId,
-          companyId,
-          manager,
-        );
+        // Its category was read before the activity was locked.
+        if (activity.categoryId !== category?.id) {
+          throw new ConflictException(
+            'The activity changed while it was being restored. Try again.',
+          );
+        }
 
         if (category.status === ActCategoryStatus.ARCHIVED) {
           throw new ConflictException(

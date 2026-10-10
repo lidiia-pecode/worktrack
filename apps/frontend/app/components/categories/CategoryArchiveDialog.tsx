@@ -11,21 +11,22 @@ import {
   useArchiveActivityCategory,
 } from "@/hooks/useActivityCategories";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
-import { distinctProjects } from "../activities/archive-impact";
 
 import {
   ARCHIVE_ACTIVITIES_OPTION,
   archiveActivitiesLabel,
   archivePayload,
+  distinctProjects,
   DRAFTS_OPTION,
   draftsLabel,
   noMoveTargetMessage,
 } from "./category-archive";
 
 interface CategoryArchiveDialogProps {
-  /** The category to archive; the dialog is open while one is given. */
+  /** The dialog is open while this is set. */
   category: ActivityCategorySummary | null;
   onClose: () => void;
 }
@@ -47,18 +48,16 @@ export const CategoryArchiveDialog = ({
   const activities = impact.data?.activities ?? [];
   const hasActiveActivities = activities.length > 0;
 
-  // Left without a category, an activity becomes a draft, which a project
-  // may not offer; so that is offered only while no project links any.
+  // A draft can't be on a project, so drafts are offered only while no project links any.
   const canLeaveDrafts =
     hasActiveActivities && activities.every((activity) => !activity.isInUse);
   const moveTargets = activeCategories.items.filter(
     (target) => target.id !== category?.id,
   );
-  const selectedOption =
-    chosenOption ??
-    (canLeaveDrafts ? DRAFTS_OPTION : undefined) ??
-    moveTargets[0]?.id ??
-    ARCHIVE_ACTIVITIES_OPTION;
+  const defaultOption = canLeaveDrafts
+    ? DRAFTS_OPTION
+    : (moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION);
+  const selectedOption = chosenOption ?? defaultOption;
   const archivesActivities =
     hasActiveActivities && selectedOption === ARCHIVE_ACTIVITIES_OPTION;
 
@@ -115,20 +114,17 @@ export const CategoryArchiveDialog = ({
       affected={[
         {
           label: "Its active activities",
-          entities: activities.map((activity) => ({
-            entity: { type: "activity", id: activity.id },
-            name: activity.name,
-          })),
+          entities: linkedEntities("activity", activities),
         },
         {
           label: "Projects that lose them",
           entities: archivesActivities
-            ? distinctProjects(
-                activities.flatMap((activity) => activity.projects),
-              ).map((project) => ({
-                entity: { type: "project", id: project.id },
-                name: project.name,
-              }))
+            ? linkedEntities(
+                "project",
+                distinctProjects(
+                  activities.flatMap((activity) => activity.projects),
+                ),
+              )
             : [],
         },
       ]}

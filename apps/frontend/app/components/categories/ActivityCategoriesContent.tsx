@@ -11,10 +11,10 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityCategoryListItem } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
-  countLabel,
   ManageColumn,
   ManageCount,
   ManageList,
@@ -55,10 +55,10 @@ export const ActivityCategoriesContent = () => {
     isError,
     refetch,
     pagination,
-  } = useActivityCategoriesInfiniteQuery(
-    { status, search: listState.searchQuery },
-    { keepPreviousData: true },
-  );
+  } = useActivityCategoriesInfiniteQuery({
+    status,
+    search: listState.searchQuery,
+  });
 
   return (
     <>

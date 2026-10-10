@@ -18,7 +18,7 @@ export class ActivityPayload {
   @MaxLength(100)
   name!: string;
 
-  /** Left out, or null, for a draft; null on an update takes it away. */
+  /** Omit it, or send null, for a draft. */
   @IsOptional()
   @IsUUID()
   categoryId?: string | null;
@@ -30,14 +30,13 @@ export class ActivityPayload {
 
 export class UpdateActivityPayload extends PartialType(ActivityPayload) {}
 
-/** For an activity whose own category is archived: where it goes instead. */
+/** Where an activity goes when its own category is archived. */
 export class RestoreActivityPayload {
-  /** A new active category. */
   @IsOptional()
   @IsUUID()
   categoryId?: string;
 
-  /** Back as a draft, which only an activity on no project may be. */
+  /** Restore it as a draft; refused while a project links it. */
   @IsOptional()
   @IsBoolean()
   withoutCategory?: boolean;

@@ -26,7 +26,6 @@ export interface EntityPanelContextValue {
   back: () => void;
   close: () => void;
   hrefFor: (ref: EntityRef) => string;
-  /** Whether the entity shown is open in its form. */
   isEditing: boolean;
   /** Shows the entity in its form, opening the panel if needed. */
   edit: (ref: EntityRef) => void;

@@ -3,7 +3,6 @@
 import { Plus, Tags, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   useClientNameSuggestions,
   useProjectDetails,
@@ -11,6 +10,7 @@ import {
 } from "@/hooks/useProjects";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Project } from "@/types";
+import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
@@ -35,11 +35,10 @@ import { useProjectLinkChanges } from "./useProjectLinkChanges";
 
 const EDIT_FORM_ID = "project-edit-form";
 
-// A manager reads only their own people on a project, while the count is the
-// project's true size, so the difference is who they cannot see.
+// A manager sees only the people in teams they manage, while the count includes everyone.
 const hiddenMembersNote = (hiddenCount: number) =>
   hiddenCount > 0
-    ? `${hiddenCount} more ${hiddenCount === 1 ? "person" : "people"} in teams you do not manage.`
+    ? `${countLabel(hiddenCount, "more person", "more people")} in teams you do not manage.`
     : undefined;
 
 const ProjectEditForm = ({ project }: { project: Project }) => {
@@ -76,16 +75,16 @@ const ProjectEditForm = ({ project }: { project: Project }) => {
 const ProjectDetails = ({ project }: { project: Project }) => {
   const panel = useEntityPanel();
   const projectActions = useProjectActions();
-  const changes = useProjectLinkChanges(project);
+  const changes = useProjectLinkChanges();
 
   const isActive = isActiveProject(project);
-  // Archiving it elsewhere, such as from its row, ends the edit.
+  // Archiving it from its row ends an open edit.
   const isEditing = panel.isEditing && isActive;
   const canChangeLinks = isActive && !isEditing;
 
   const members = project.users ?? [];
   const hiddenCount = Math.max((project.membersCount ?? 0) - members.length, 0);
-  // Grouped under their categories, in name order.
+  // Sorted by category, then name, for the grouped list.
   const activities = offeredActivities(project).sort(
     (first, second) =>
       (first.category?.name ?? "").localeCompare(second.category?.name ?? "") ||
@@ -93,19 +92,11 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   );
 
   if (isActive && panel.view === PEOPLE_PICKER) {
-    return (
-      <>
-        <ProjectPeoplePicker project={project} />
-      </>
-    );
+    return <ProjectPeoplePicker project={project} />;
   }
 
   if (isActive && panel.view === ACTIVITIES_PICKER) {
-    return (
-      <>
-        <ProjectActivitiesPicker project={project} />
-      </>
-    );
+    return <ProjectActivitiesPicker project={project} />;
   }
 
   return (
@@ -160,7 +151,11 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             remove: canChangeLinks
               ? {
                   label: `Remove ${fullName(member)} from ${project.name}`,
-                  onClick: () => changes.removeMember(member),
+                  onClick: () =>
+                    changes.removeMember(project, {
+                      id: member.id,
+                      name: fullName(member),
+                    }),
                 }
               : undefined,
           })}
@@ -169,19 +164,14 @@ const ProjectDetails = ({ project }: { project: Project }) => {
               ? "Nobody from your teams is on it."
               : "Nobody is on this project yet."
           }
-          action={
-            canChangeLinks && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => panel.openView(PEOPLE_PICKER, project.name)}
-                className="gap-1.5"
-              >
-                <UserPlus className="size-4" />
-                Add people
-              </Button>
-            )
+          add={
+            canChangeLinks
+              ? {
+                  label: "Add people",
+                  icon: UserPlus,
+                  onClick: () => panel.openView(PEOPLE_PICKER, project.name),
+                }
+              : undefined
           }
         />
 
@@ -208,24 +198,20 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             remove: canChangeLinks
               ? {
                   label: `Remove ${activity.name} from ${project.name}`,
-                  onClick: () => changes.removeActivity(activity),
+                  onClick: () => changes.removeActivity(project, activity),
                 }
               : undefined,
           })}
           emptyText="No activities yet, so nobody can log time on it."
-          action={
-            canChangeLinks && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => panel.openView(ACTIVITIES_PICKER, project.name)}
-                className="gap-1.5"
-              >
-                <Plus className="size-4" />
-                Add activities
-              </Button>
-            )
+          add={
+            canChangeLinks
+              ? {
+                  label: "Add activities",
+                  icon: Plus,
+                  onClick: () =>
+                    panel.openView(ACTIVITIES_PICKER, project.name),
+                }
+              : undefined
           }
         />
       </EntityPanelLayout>

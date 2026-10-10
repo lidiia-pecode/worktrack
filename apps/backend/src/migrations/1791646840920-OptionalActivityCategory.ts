@@ -1,11 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-/**
- * An activity may have no category until it is put on a project. Its name was
- * unique within its category in the index, while the service has always kept
- * it unique in the company; with no category the index would not hold at all,
- * since every NULL is distinct, so it now keeps the service's rule.
- */
+/** Lets an activity have no category, and keeps names unique per company rather than per category, since NULL categories never clash in a unique index. */
 export class OptionalActivityCategory1791646840920 implements MigrationInterface {
   name = 'OptionalActivityCategory1791646840920';
 

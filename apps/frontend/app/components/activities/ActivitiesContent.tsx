@@ -11,11 +11,11 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityListItem } from "@/types";
 import { ActivityStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
-  countLabel,
   ManageColumn,
   ManageCount,
   ManageList,
@@ -28,40 +28,28 @@ import { useActivityActions } from "./useActivityActions";
 const projectsCount = (activity: ActivityListItem) =>
   activity.projectsCount ?? 0;
 
-// A draft has no category, so it cannot go on a project until it gets one.
-const NO_CATEGORY = "No category";
-
-const CategoryLink = ({ activity }: { activity: ActivityListItem }) =>
-  activity.category && (
+const categoryCell = (activity: ActivityListItem, inline = false) =>
+  activity.category ? (
     <EntityLink
       entity={{ type: "category", id: activity.category.id }}
       tone="plain"
     >
       {activity.category.name}
     </EntityLink>
+  ) : (
+    <ManageWarning inline={inline}>No category</ManageWarning>
   );
 
 const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Category",
     width: "w-48",
-    cell: (activity) =>
-      activity.category ? (
-        <CategoryLink activity={activity} />
-      ) : (
-        <ManageWarning>{NO_CATEGORY}</ManageWarning>
-      ),
-    summary: (activity) =>
-      activity.category ? (
-        <CategoryLink activity={activity} />
-      ) : (
-        <ManageWarning inline>{NO_CATEGORY}</ManageWarning>
-      ),
+    cell: (activity) => categoryCell(activity),
+    summary: (activity) => categoryCell(activity, true),
   },
   {
     header: "Billable by default",
     width: "w-40",
-    // Yes carries a dot so the billable rows can be picked out down the column.
     cell: (activity) =>
       activity.defaultBillable ? (
         <span className="inline-flex items-center gap-2">
@@ -108,10 +96,7 @@ export const ActivitiesContent = () => {
     isError,
     refetch,
     pagination,
-  } = useActivitiesInfiniteQuery(
-    { status, search: listState.searchQuery },
-    { keepPreviousData: true },
-  );
+  } = useActivitiesInfiniteQuery({ status, search: listState.searchQuery });
 
   return (
     <>

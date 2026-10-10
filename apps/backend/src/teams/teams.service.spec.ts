@@ -22,6 +22,7 @@ import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 
 import { TeamVisibilityService } from './team-visibility.service';
+import { TeamsQuery } from './dtos/team.dto';
 import { TeamsService } from './teams.service';
 
 /**
@@ -390,7 +391,7 @@ describe('TeamsService', () => {
     const foundNames = async (search: string, caller: AuthUser = owner) => {
       const { results } = await service.list(
         companyId,
-        { offset: 0, limit: 50, search } as never,
+        Object.assign(new TeamsQuery(), { pageSize: 50, search }),
         caller,
       );
       return results.map((team) => team.name);
@@ -398,11 +399,6 @@ describe('TeamsService', () => {
 
     it('matches part of a name, ignoring case', async () => {
       expect(await foundNames(`ALPHA ${RUN}`)).toEqual([`Alpha ${RUN}`]);
-    });
-
-    it('reads % and _ as plain characters', async () => {
-      expect(await foundNames('%')).toEqual([]);
-      expect(await foundNames('Alph_')).toEqual([]);
     });
 
     it('stays within the teams a manager leads', async () => {

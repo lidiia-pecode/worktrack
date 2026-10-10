@@ -37,11 +37,7 @@ export const findOfferingProjects = async (
   return projectsByActivity;
 };
 
-/**
- * The activities a project still links, archived projects included, since
- * restoring a project brings its links back. A link removed from a project,
- * kept for the time logged on it, does not count.
- */
+/** Activities still linked to a project, archived projects included, since restoring one brings its links back; a removed link does not count. */
 export const findActivitiesInUse = async (
   projectActivityRepo: Repository<ProjectActivity>,
   activityIds: string[],

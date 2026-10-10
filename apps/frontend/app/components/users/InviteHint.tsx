@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 
-/** Someone new joins through an invitation, which only Users sends. */
 export const InviteHint = () => (
   <>
     Someone new?{" "}

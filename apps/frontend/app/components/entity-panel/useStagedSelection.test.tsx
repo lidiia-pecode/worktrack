@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import { EntityPanelContext } from "./entity-panel-context";
 import { mockEntityPanel } from "./mock-entity-panel";
-import { useStagedSelection } from "./use-staged-selection";
+import { useStagedSelection } from "./useStagedSelection";
 
 const FRONTEND = { id: "a-1", name: "Frontend" };
 const BACKEND = { id: "a-2", name: "Backend" };

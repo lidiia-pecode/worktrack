@@ -18,7 +18,7 @@ import {
 
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
-import { queryKeys } from "./shared/queryKeys";
+import { CATALOG_QUERY_KEYS, queryKeys } from "./shared/queryKeys";
 
 type ActivityQueryParams = Omit<ActivityQuery, "page">;
 
@@ -66,7 +66,7 @@ export const useActivitiesMutations = createEntityMutations<
     archive: "Activity archived successfully",
     unarchive: "Activity restored successfully",
   },
-  createConflictInForm: true,
+  conflictShownInForm: true,
 });
 
 export const activityDetailsQuery = (id: string) => ({
@@ -122,12 +122,9 @@ export const useRestoreActivityWithCategory = () => {
     },
 
     onSettled: () => {
-      [
-        queryKeys.activities.all,
-        queryKeys.activityCategories.all,
-        queryKeys.projects.all,
-        queryKeys.projectActivities.all,
-      ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
     },
 
     onSuccess: () => toast.success("Activity restored successfully"),

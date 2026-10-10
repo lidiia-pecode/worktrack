@@ -3,6 +3,7 @@
 import { KeyboardEvent, ReactNode } from "react";
 
 import { getNextTabIndex } from "@/lib/utils/tabs";
+import { cn } from "@/lib/utils/cn";
 
 interface ResourceTabListProps {
   label: string;
@@ -35,9 +36,10 @@ export const ResourceTabList = ({
       role="tablist"
       aria-label={label}
       onKeyDown={handleKeyDown}
-      className={["flex items-center gap-1 border-b border-border", className]
-        .filter(Boolean)
-        .join(" ")}
+      className={cn(
+        "flex items-center gap-1 border-b border-border",
+        className,
+      )}
     >
       {children}
     </div>
@@ -70,26 +72,19 @@ export const ResourceTabButton = ({
       aria-controls={controls}
       tabIndex={active ? 0 : -1}
       onClick={onClick}
-      className={[
-        "group relative flex items-center gap-2",
-        "px-3 py-2.5",
-        "text-sm font-medium",
-        "transition-colors",
-        "focus-visible:outline-none",
-        "focus-visible:ring-2",
-        "focus-visible:ring-ring",
-        "focus-visible:ring-offset-2",
+      className={cn(
+        "group relative flex items-center gap-2 px-3 py-2.5 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
         active
           ? "text-foreground"
           : "text-muted-foreground hover:text-foreground",
-      ].join(" ")}
+      )}
     >
       <span
         aria-hidden="true"
-        className={[
+        className={cn(
           "transition-colors",
           active ? "text-brand" : "text-muted-foreground",
-        ].join(" ")}
+        )}
       >
         {icon}
       </span>
@@ -98,11 +93,10 @@ export const ResourceTabButton = ({
 
       <span
         aria-hidden="true"
-        className={[
-          "absolute inset-x-2 -bottom-px h-0.5 rounded-full",
-          "transition-all",
+        className={cn(
+          "absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-all",
           active ? "bg-brand opacity-100" : "bg-transparent opacity-0",
-        ].join(" ")}
+        )}
       />
     </button>
   );

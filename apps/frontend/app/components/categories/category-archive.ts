@@ -1,21 +1,19 @@
 import type { ArchiveActivityCategoryPayload } from "@/types";
 import { ActiveActivitiesAction } from "@/types/enums";
+import { byCount } from "@/lib/utils/text";
 
 export const ARCHIVE_ACTIVITIES_OPTION = "archive-activities";
 
-const itOrThem = (count: number) => (count === 1 ? "it" : "them");
-
 export const archiveActivitiesLabel = (activeActivityCount: number) =>
-  `Archive ${itOrThem(activeActivityCount)} too`;
+  `Archive ${byCount(activeActivityCount, "it", "them")} too`;
 
 export const noMoveTargetMessage = (activeActivityCount: number) =>
-  `There is no other active category, so ${activeActivityCount === 1 ? "it" : "they"} will be archived too.`;
+  `There is no other active category, so ${byCount(activeActivityCount, "it", "they")} will be archived too.`;
 
-/** Only activities no project links may be left without a category. */
 export const DRAFTS_OPTION = "leave-as-drafts";
 
 export const draftsLabel = (activeActivityCount: number) =>
-  `Leave ${itOrThem(activeActivityCount)} without a category, as drafts`;
+  `Leave ${byCount(activeActivityCount, "it", "them")} without a category, as drafts`;
 
 export const archivePayload = (
   activeActivityCount: number,
@@ -35,3 +33,11 @@ export const archivePayload = (
     moveToCategoryId: selectedOption,
   };
 };
+
+/** Each project once, in name order, when several activities share it. */
+export const distinctProjects = <T extends { id: string; name: string }>(
+  projects: T[],
+): T[] =>
+  [...new Map(projects.map((project) => [project.id, project])).values()].sort(
+    (a, b) => a.name.localeCompare(b.name),
+  );

@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, ReactNode } from "react";
+import { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { EntityLink, LinkedEntity } from "../entity-panel/EntityLink";
+import { EntityLinks, LinkedEntity } from "../entity-panel/EntityLink";
 
 const MAX_LINKED = 6;
 
 /** Entities an action touches, such as "Left without a team". */
-export interface ImpactGroup {
+interface ImpactGroup {
   label: string;
   entities: LinkedEntity[];
 }
@@ -51,14 +51,7 @@ const AffectedEntities = ({
     <div>
       <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
       <p className="mt-0.5 text-sm text-foreground">
-        {named.map(({ entity, name }, index) => (
-          <Fragment key={entity.id}>
-            {index > 0 && ", "}
-            <EntityLink entity={entity} onNavigate={onNavigate}>
-              {name}
-            </EntityLink>
-          </Fragment>
-        ))}
+        <EntityLinks entities={named} onNavigate={onNavigate} />
         {othersCount > 0 && ` and ${othersCount} more`}
       </p>
     </div>

@@ -27,6 +27,8 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { User } from './entities/user.entity';
 import { UserRole, UserStatus } from './enums/user-role.enum';
+import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
+import { UsersQuery } from './dtos/users-query.dto';
 import { UsersService } from './users.service';
 
 /**
@@ -39,7 +41,7 @@ const RUN = Date.now();
 const SLUG = `users-scope-test-${RUN}`;
 const PAGE = { offset: 0, limit: 50 } as never;
 const searchFor = (search: string) =>
-  ({ offset: 0, limit: 50, search }) as never;
+  Object.assign(new UsersQuery(), { pageSize: 50, search });
 const TIME_ZONE = timeZoneOnAnotherDay();
 
 describe('UsersService scope', () => {
@@ -196,11 +198,6 @@ describe('UsersService scope', () => {
       expect(await foundIds('quality')).toEqual([member.id]);
     });
 
-    it('reads % and _ as plain characters', async () => {
-      expect(await foundIds('%')).toEqual([]);
-      expect(await foundIds('memb_r')).toEqual([]);
-    });
-
     it('stays within what a manager can see', async () => {
       const { results } = await service.list(
         companyId,
@@ -311,7 +308,10 @@ describe('UsersService scope', () => {
     it('lists one role at a time, for leading a team or joining one', async () => {
       const { results } = await service.listAssignable(
         companyId,
-        { offset: 0, limit: 50, role: UserRole.MANAGER } as never,
+        Object.assign(new AssignableUsersQuery(), {
+          pageSize: 50,
+          role: UserRole.MANAGER,
+        }),
         owner,
       );
 

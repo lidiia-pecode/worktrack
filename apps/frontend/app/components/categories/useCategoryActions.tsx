@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Archive, ArchiveRestore } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -14,7 +13,7 @@ import { getErrorMessage } from "@/lib/api";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import type { ManageRowAction } from "../shared/resource/ManageList";
+import { archiveOrRestore } from "../shared/resource/ManageList";
 import { CategoryArchiveDialog } from "./CategoryArchiveDialog";
 import { CategoryRestoreDialog } from "./CategoryRestoreDialog";
 
@@ -55,23 +54,11 @@ export const useCategoryActions = () => {
     }
   };
 
-  const actionsFor = (category: ActivityCategorySummary): ManageRowAction[] =>
-    isActiveCategory(category)
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingCategory(category),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => void restore(category),
-          },
-        ];
+  const actionsFor = (category: ActivityCategorySummary) =>
+    archiveOrRestore(isActiveCategory(category), {
+      archive: () => setArchivingCategory(category),
+      restore: () => void restore(category),
+    });
 
   const dialogs = (
     <>

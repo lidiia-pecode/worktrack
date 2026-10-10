@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CreateDialog } from "../shared/resource/CreateDialog";
-import { InviteUserForm } from "./InviteUserForm";
-import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
-import { useRouter } from "next/navigation";
 
-import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { useInvitations } from "@/hooks/auth/useInvitation";
+import { InviteUserFormData } from "@/lib/forms/schemas/invite-user.schema";
+
+import { CreateDialog, useAfterCreate } from "../shared/resource/CreateDialog";
+import { InviteUserForm } from "./InviteUserForm";
 
 const FORM_ID = "invite-user-form";
 
@@ -26,19 +25,11 @@ export const InviteUserModal = ({
     actions: { create },
   } = useInvitations();
 
-  const router = useRouter();
   const [canSubmit, setCanSubmit] = useState(true);
+  const afterCreate = useAfterCreate({ onClose, isOnboarding });
 
   const handleSubmit = (data: InviteUserFormData) =>
-    create.mutateAsync(data, {
-      onSuccess: () => {
-        onClose();
-
-        if (isOnboarding) {
-          router.push(GETTING_STARTED_PATH);
-        }
-      },
-    });
+    create.mutateAsync(data, { onSuccess: afterCreate });
 
   return (
     <CreateDialog

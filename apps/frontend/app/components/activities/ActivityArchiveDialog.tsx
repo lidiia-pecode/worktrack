@@ -6,10 +6,11 @@ import {
 } from "@/hooks/useActivities";
 import { Activity } from "@/types";
 
+import { linkedEntities } from "../entity-panel/EntityLink";
 import { ImpactDialog } from "../shared/ImpactDialog";
 
 interface ActivityArchiveDialogProps {
-  /** The activity to archive; the dialog is open while one is given. */
+  /** The dialog is open while this is set. */
   activity: Activity | null;
   onClose: () => void;
 }
@@ -49,10 +50,7 @@ export const ActivityArchiveDialog = ({
       affected={[
         {
           label: "Projects that lose it",
-          entities: projects.map((project) => ({
-            entity: { type: "project", id: project.id },
-            name: project.name,
-          })),
+          entities: linkedEntities("project", projects),
         },
       ]}
       confirmText="Archive"

@@ -11,10 +11,10 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
-  countLabel,
   ManageColumn,
   ManageCount,
   ManageList,
@@ -76,10 +76,7 @@ export const ProjectsContent = () => {
     isError,
     refetch,
     pagination,
-  } = useProjectsInfiniteQuery(
-    { status, search: listState.searchQuery },
-    { keepPreviousData: true },
-  );
+  } = useProjectsInfiniteQuery({ status, search: listState.searchQuery });
 
   return (
     <>

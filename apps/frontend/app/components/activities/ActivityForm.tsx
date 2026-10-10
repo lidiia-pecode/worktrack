@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
 
 import { createFirstLink } from "@/hooks/useSetupLink";
@@ -12,6 +11,7 @@ import { ActivityCategory } from "@/types";
 
 import { Switch } from "@/components/ui/switch";
 import { isConflictError } from "@/lib/api";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
 import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
@@ -36,22 +36,22 @@ export type ActivityFormData = Omit<ActivityFormValues, "categoryId"> & {
   categoryId: string | null;
 };
 
-const NO_CATEGORY = "none";
+const DRAFT_OPTION = "none";
 
 interface ActivityFormProps {
-  formId?: string;
+  formId: string;
   defaultValues?: Partial<ActivityFormData>;
   categories: ActivityCategory[];
   onSubmit: (data: ActivityFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
   isOnboarding?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
-  /** It is on a project, or about to be, so it cannot be left a draft. */
+  /** Hides the draft option, for an activity that is or will be on a project. */
   requiresCategory?: boolean;
 }
 
 export const ActivityForm = ({
-  formId = "activity-form",
+  formId,
   defaultValues,
   categories,
   onSubmit,
@@ -63,7 +63,7 @@ export const ActivityForm = ({
   const hasNoCategories = categories.length === 0;
   // A new activity starts as a draft, unless it is for a project.
   const initialCategory =
-    defaultValues?.categoryId ?? (requiresCategory ? "" : NO_CATEGORY);
+    defaultValues?.categoryId ?? (requiresCategory ? "" : DRAFT_OPTION);
 
   const {
     register,
@@ -83,16 +83,16 @@ export const ActivityForm = ({
   const selectedCategory = useWatch({ control, name: "categoryId" });
 
   const submit = async ({ categoryId, ...values }: ActivityFormValues) => {
-    if (!categoryId || (requiresCategory && categoryId === NO_CATEGORY)) {
+    if (!categoryId || (requiresCategory && categoryId === DRAFT_OPTION)) {
       setError("categoryId", { message: "Choose a category" });
       return;
     }
 
-    // Names are unique, so a taken one is said where it was typed.
+    // The API refuses a taken name; show it under the field.
     try {
       await onSubmit({
         ...values,
-        categoryId: categoryId === NO_CATEGORY ? null : categoryId,
+        categoryId: categoryId === DRAFT_OPTION ? null : categoryId,
       });
     } catch (error) {
       if (isConflictError(error)) {
@@ -103,53 +103,46 @@ export const ActivityForm = ({
     }
   };
 
-  useEffect(() => {
-    onDirtyChange?.(isDirty);
-    return () => onDirtyChange?.(false);
-  }, [isDirty, onDirtyChange]);
+  useReportDirty(isDirty, onDirtyChange);
 
   const categoryOptions = [
     ...(requiresCategory
       ? []
-      : [{ value: NO_CATEGORY, label: "No category (draft)" }]),
+      : [{ value: DRAFT_OPTION, label: "No category (draft)" }]),
     ...categories.map((category) => ({
       value: category.id,
       label: category.name,
     })),
   ];
 
+  const categoriesLink = (label: string) => (
+    <Link
+      href={createFirstLink("/admin/categories", isOnboarding)}
+      className="font-medium text-brand hover:underline"
+    >
+      {label}
+    </Link>
+  );
+
   const categoryHint = requiresCategory ? (
     hasNoCategories && (
       <>
         A project needs categorised activities.{" "}
-        <Link
-          href={createFirstLink("/admin/categories", isOnboarding)}
-          className="font-medium text-brand hover:underline"
-        >
-          Create a category first
-        </Link>
-        .
+        {categoriesLink("Create a category first")}.
       </>
     )
   ) : hasNoCategories ? (
     <>
       There is no active category yet, so it starts as a draft.{" "}
-      <Link
-        href={createFirstLink("/admin/categories", isOnboarding)}
-        className="font-medium text-brand hover:underline"
-      >
-        Create a category
-      </Link>{" "}
-      to put it on projects.
+      {categoriesLink("Create a category")} to put it on projects.
     </>
   ) : (
-    selectedCategory === NO_CATEGORY &&
+    selectedCategory === DRAFT_OPTION &&
     "A draft can't go on a project until it has a category."
   );
 
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
-      {/* The name is set as the heading it becomes, in the panel and on creating. */}
       <PanelTitleInput
         id="activity-name"
         aria-label="Activity name"

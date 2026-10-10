@@ -2,11 +2,15 @@ import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 import { TeamRole } from "@/types/enums";
 
-import { activeManagers, CurrentMembership } from "./team-memberships";
+import {
+  activeManagers,
+  leftWithoutManagerText,
+  MembershipWithUser,
+} from "./team-memberships";
 
 export type MemberChange =
-  | { kind: "role"; membership: CurrentMembership; roleInTeam: TeamRole }
-  | { kind: "remove"; membership: CurrentMembership };
+  | { kind: "role"; membership: MembershipWithUser; roleInTeam: TeamRole }
+  | { kind: "remove"; membership: MembershipWithUser };
 
 interface ChangeContext {
   isOwner: boolean;
@@ -15,12 +19,12 @@ interface ChangeContext {
 }
 
 // A deactivated manager already leaves the team without an active one.
-const isOnlyActiveManager = (team: Team, membership: CurrentMembership) =>
+const isOnlyActiveManager = (team: Team, membership: MembershipWithUser) =>
   membership.roleInTeam === TeamRole.MANAGER &&
   !isDeactivatedUser(membership.user) &&
   activeManagers(team).every((manager) => manager.id === membership.user.id);
 
-/** What a change to someone's place in a team means, for its confirmation. */
+/** The confirmation's wording for a role change or a removal. */
 export const memberChangeCopy = (
   change: MemberChange,
   team: Team,
@@ -28,7 +32,7 @@ export const memberChangeCopy = (
 ) => {
   const name = fullName(change.membership.user);
   const leavesNoManager = isOnlyActiveManager(team, change.membership)
-    ? `${team.name} is then left without an active manager.`
+    ? leftWithoutManagerText(team)
     : null;
 
   if (change.kind === "role" && change.roleInTeam === TeamRole.MANAGER) {

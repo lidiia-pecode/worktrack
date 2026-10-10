@@ -47,7 +47,6 @@ interface ResourcePageProps {
   topContent?: ReactNode;
   archivedLabel?: string;
   archiveVerb?: string;
-  /** The list itself, shown once there is something in it. */
   children: ReactNode;
 }
 

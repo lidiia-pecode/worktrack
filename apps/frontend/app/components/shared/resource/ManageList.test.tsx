@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { Archive } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
 
+import { countLabel } from "@/lib/utils/text";
+
 import { EntityPanelContext } from "../../entity-panel/entity-panel-context";
 import { mockEntityPanel } from "../../entity-panel/mock-entity-panel";
-import { countLabel, ManageList, ManageRowDefinition } from "./ManageList";
+import { ManageList, ManageRowDefinition } from "./ManageList";
 
 interface Project {
   id: string;

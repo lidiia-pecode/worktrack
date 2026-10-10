@@ -22,8 +22,7 @@ export const useUserActions = () => {
 
   const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
 
-  // An owner, the viewer included, is reached only through a project link.
-  // The form can't keep the Owner role and the API refuses to deactivate one.
+  // An owner can't be edited or deactivated here: the form has no Owner role and the API refuses.
   const managesPerson = (user: User) => isOwner && user.role !== UserRole.OWNER;
 
   const canEdit = (user: User) =>

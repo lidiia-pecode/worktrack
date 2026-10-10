@@ -1,9 +1,10 @@
 import {
   ActivityCategoryResponse,
   PaginatedResponse,
+  ProjectRef,
   SearchablePaginationParams,
 } from ".";
-import { ActivityStatus, ProjectStatus } from "./enums";
+import { ActivityStatus } from "./enums";
 
 export interface Activity {
   id: string;
@@ -29,15 +30,10 @@ export interface ActivityQuery extends SearchablePaginationParams {
 }
 
 export type UpdateActivityPayload = Partial<ActivityPayload>;
-export interface ActivityProject {
-  id: string;
-  name: string;
-  status: ProjectStatus;
-}
 
 export interface ActivityDetails extends Activity {
   /** Projects of every status that offer it; not sent to an employee. */
-  projects?: ActivityProject[];
+  projects?: ProjectRef[];
 }
 
 export interface ActivityListItem extends Activity {
@@ -47,13 +43,13 @@ export interface ActivityListItem extends Activity {
 
 export type ActivityListResponse = PaginatedResponse<ActivityListItem>;
 
-/** The active projects that offer an activity now, which archiving takes it off. */
 export interface RestoreActivityPayload {
   categoryId?: string;
-  /** Back as a draft, which only an activity on no project may be. */
+  /** Back as a draft; refused while a project links it. */
   withoutCategory?: boolean;
 }
 
+/** The active projects that offer an activity now, which archiving takes it off. */
 export interface ActivityArchiveImpact {
   projects: { id: string; name: string }[];
 }

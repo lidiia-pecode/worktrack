@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamsMutations } from "@/hooks/useTeams";
@@ -9,7 +8,7 @@ import { Team } from "@/types/Team";
 import { TeamStatus, UserRole } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import type { ManageRowAction } from "../shared/resource/ManageList";
+import { archiveOrRestore } from "../shared/resource/ManageList";
 import { TeamArchiveDialog } from "./TeamArchiveDialog";
 
 export const isActiveTeam = (team: Team) => team.status === TeamStatus.ACTIVE;
@@ -23,30 +22,16 @@ export const useTeamActions = () => {
 
   const [archivingTeam, setArchivingTeam] = useState<Team | null>(null);
 
-  // Its name is the owner's to change; an archived team is read-only. A
-  // manager removes members from the panel's rows.
+  // Only the owner renames a team, and only an active one.
   const canEdit = (team: Team) => isOwner && isActiveTeam(team);
 
-  const actionsFor = (team: Team): ManageRowAction[] => {
-    if (!isOwner) return [];
-
-    return isActiveTeam(team)
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingTeam(team),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => unarchive.mutate(team.id),
-          },
-        ];
-  };
+  const actionsFor = (team: Team) =>
+    isOwner
+      ? archiveOrRestore(isActiveTeam(team), {
+          archive: () => setArchivingTeam(team),
+          restore: () => unarchive.mutate(team.id),
+        })
+      : [];
 
   const dialogs = (
     <TeamArchiveDialog

@@ -1,7 +1,13 @@
 "use client";
 
 import { useRef, type MouseEvent, type ReactNode } from "react";
-import { MoreHorizontal, Pencil, type LucideIcon } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  MoreHorizontal,
+  Pencil,
+  type LucideIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +51,22 @@ export interface ManageRowAction {
   destructive?: boolean;
 }
 
+/** Archive for an active entity, Restore for an archived one. */
+export const archiveOrRestore = (
+  isActive: boolean,
+  { archive, restore }: { archive: () => void; restore: () => void },
+): ManageRowAction[] =>
+  isActive
+    ? [
+        {
+          label: "Archive",
+          icon: Archive,
+          destructive: true,
+          onSelect: archive,
+        },
+      ]
+    : [{ label: "Restore", icon: ArchiveRestore, onSelect: restore }];
+
 /** One entity's row, which both the table and the phone list render. */
 export interface ManageRowDefinition<T> {
   getKey: (item: T) => string;
@@ -63,11 +85,7 @@ export interface ManageRowDefinition<T> {
   getActions?: (item: T) => ManageRowAction[];
 }
 
-/** "1 project", "3 projects". */
-export const countLabel = (count: number, one: string, many: string) =>
-  `${count} ${count === 1 ? one : many}`;
-
-/** A count in a column; none recedes, so the rows that have some stand out. */
+/** A count in a column; zero is muted. */
 export const ManageCount = ({ count }: { count: number }) => (
   <span className={count === 0 ? "text-muted-foreground" : undefined}>
     {count}

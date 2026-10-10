@@ -65,10 +65,7 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
     afterwards();
   };
 
-  /**
-   * Runs the changes and leaves once all of them succeed. A failure is reported
-   * by the global mutation handler, and the picker stays with what is left.
-   */
+  /** Runs the changes and leaves once all succeed; after a failure the picker stays with what is left. */
   const apply = async (
     changes: Promise<unknown>[],
     afterwards?: () => void,
@@ -78,7 +75,7 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
       await Promise.all(changes);
       leave(afterwards);
     } catch {
-      // Reported already; the draft keeps what did not go through.
+      // The global mutation handler already reported it.
     } finally {
       setIsApplying(false);
     }
@@ -96,3 +93,7 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
     cancel: () => leave(),
   };
 };
+
+export type StagedSelection<T extends Choice> = ReturnType<
+  typeof useStagedSelection<T>
+>;

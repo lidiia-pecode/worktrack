@@ -197,3 +197,11 @@ export const queryKeys = {
     validate: (token: string) => ["invitations", "validate", token] as const,
   },
 };
+
+/** Everything that shows an activity's category. */
+export const CATALOG_QUERY_KEYS = [
+  queryKeys.activityCategories.all,
+  queryKeys.activities.all,
+  queryKeys.projects.all,
+  queryKeys.projectActivities.all,
+];

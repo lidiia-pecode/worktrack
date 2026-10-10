@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Archive, ArchiveRestore } from "lucide-react";
 
 import { useActivitiesMutations } from "@/hooks/useActivities";
-import { Activity, ActivityCategoryResponse } from "@/types";
+import { Activity } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import type { ManageRowAction } from "../shared/resource/ManageList";
+import { archiveOrRestore } from "../shared/resource/ManageList";
 import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
-import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
+import {
+  ActivityRestoreDialog,
+  ActivityWithCategory,
+} from "./ActivityRestoreDialog";
 
 export const isActiveActivity = (activity: Activity) =>
   activity.status === ActivityStatus.ACTIVE;
@@ -22,13 +24,10 @@ export const useActivityActions = () => {
   const [archivingActivity, setArchivingActivity] = useState<Activity | null>(
     null,
   );
-  const [restoringActivity, setRestoringActivity] = useState<
-    (Activity & { category: ActivityCategoryResponse }) | null
-  >(null);
+  const [restoringActivity, setRestoringActivity] =
+    useState<ActivityWithCategory | null>(null);
 
-  // An active activity is never in an archived category, so restoring one
-  // whose category is archived asks what to do with it first. A draft just
-  // comes back as a draft.
+  // A draft, or an activity in an active category, restores at once; otherwise the dialog asks where it goes.
   const restore = (activity: Activity) => {
     const { category } = activity;
 
@@ -40,23 +39,11 @@ export const useActivityActions = () => {
     unarchive.mutate(activity.id);
   };
 
-  const actionsFor = (activity: Activity): ManageRowAction[] =>
-    isActiveActivity(activity)
-      ? [
-          {
-            label: "Archive",
-            icon: Archive,
-            destructive: true,
-            onSelect: () => setArchivingActivity(activity),
-          },
-        ]
-      : [
-          {
-            label: "Restore",
-            icon: ArchiveRestore,
-            onSelect: () => restore(activity),
-          },
-        ];
+  const actionsFor = (activity: Activity) =>
+    archiveOrRestore(isActiveActivity(activity), {
+      archive: () => setArchivingActivity(activity),
+      restore: () => restore(activity),
+    });
 
   const dialogs = (
     <>

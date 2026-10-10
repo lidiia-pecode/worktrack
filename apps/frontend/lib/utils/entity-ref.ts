@@ -1,4 +1,4 @@
-export const ENTITY_TYPES = [
+const ENTITY_TYPES = [
   "user",
   "team",
   "project",
@@ -6,7 +6,7 @@ export const ENTITY_TYPES = [
   "category",
 ] as const;
 
-export type EntityType = (typeof ENTITY_TYPES)[number];
+type EntityType = (typeof ENTITY_TYPES)[number];
 
 /** Which entity the panel shows, as `?open=<type>:<id>`. */
 export interface EntityRef {
@@ -28,10 +28,12 @@ export const parseEntityRef = (value: string | null): EntityRef | null => {
   if (!value) return null;
 
   const separatorIndex = value.indexOf(SEPARATOR);
+  if (separatorIndex === -1) return null;
+
   const type = value.slice(0, separatorIndex);
   const id = value.slice(separatorIndex + SEPARATOR.length);
 
-  if (separatorIndex === -1 || !isEntityType(type) || !id) return null;
+  if (!isEntityType(type) || !id) return null;
 
   return { type, id };
 };

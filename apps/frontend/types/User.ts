@@ -1,11 +1,5 @@
-import { PaginatedResponse, SearchablePaginationParams } from ".";
-import {
-  ProjectStatus,
-  TeamRole,
-  TeamStatus,
-  UserRole,
-  UserStatus,
-} from "./enums";
+import { PaginatedResponse, ProjectRef, SearchablePaginationParams } from ".";
+import { TeamRole, TeamStatus, UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
@@ -78,12 +72,6 @@ export interface AssignableUsersQuery extends UsersQuery {
   role?: UserRole;
 }
 
-export interface UserProject {
-  id: string;
-  name: string;
-  status: ProjectStatus;
-}
-
 export interface UserTeamMembership extends UserTeam {
   status: TeamStatus;
   roleInTeam: TeamRole;
@@ -91,7 +79,7 @@ export interface UserTeamMembership extends UserTeam {
 }
 
 export interface UserDetails extends User {
-  projects: UserProject[];
+  projects: ProjectRef[];
   /** Open memberships in active teams the viewer can see. */
   teams: UserTeamMembership[];
 }

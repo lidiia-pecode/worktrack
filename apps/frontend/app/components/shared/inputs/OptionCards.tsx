@@ -19,7 +19,7 @@ interface OptionCardsProps<T extends string> {
   className?: string;
 }
 
-/** A choice between a few options, each saying what it means: radios drawn as cards. */
+/** Radio buttons drawn as cards, each saying what choosing it means. */
 export const OptionCards = <T extends string>({
   name,
   value,
@@ -35,7 +35,7 @@ export const OptionCards = <T extends string>({
         className={cn(
           "flex cursor-pointer flex-col gap-0.5 rounded-lg border border-border bg-card px-3.5 py-2.5 transition-colors hover:bg-muted/20",
           "has-checked:border-brand has-checked:bg-brand-subtle",
-          "has-focus-visible:ring-2 has-focus-visible:ring-ring/30",
+          "has-focus-visible:border-ring has-focus-visible:ring-2 has-focus-visible:ring-ring/20",
           "has-disabled:cursor-not-allowed has-disabled:opacity-50",
         )}
       >

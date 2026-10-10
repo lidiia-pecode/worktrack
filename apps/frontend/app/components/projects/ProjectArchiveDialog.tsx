@@ -6,7 +6,7 @@ import { Project } from "@/types";
 import { ImpactDialog } from "../shared/ImpactDialog";
 
 interface ProjectArchiveDialogProps {
-  /** The project to archive; the dialog is open while one is given. */
+  /** The dialog is open while this is set. */
   project: Project | null;
   onClose: () => void;
 }

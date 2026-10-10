@@ -9,6 +9,7 @@ import { ActCategoriesService } from 'src/activity-categories/activity-categorie
 
 import { Activity } from './entities/activity.entity';
 import { ActivitiesService } from './activities.service';
+import { SearchablePaginationQuery } from 'src/lib/dtos/searchable-pagination-query.dto';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
@@ -373,9 +374,10 @@ describe('Activity and category names', () => {
       ]);
     });
   });
+
   describe('lists', () => {
     const searchFor = (search: string) =>
-      ({ offset: 0, limit: 50, search }) as never;
+      Object.assign(new SearchablePaginationQuery(), { pageSize: 50, search });
 
     let listedId: string;
 
@@ -609,11 +611,7 @@ describe('Activity and category names', () => {
 
       await expect(
         dataSource.transaction((manager) =>
-          activities.findLinkableMany(
-            [draft.id],
-            companyId,
-            manager.getRepository(Activity),
-          ),
+          activities.findLinkableMany([draft.id], companyId, manager),
         ),
       ).rejects.toThrow(BadRequestException);
     });
@@ -774,6 +772,96 @@ describe('Activity and category names', () => {
       );
 
       expect(inUse).toEqual({ [free.id]: false, [linked.id]: true });
+    });
+  });
+
+  // Every path locks categories before activities, so none can deadlock with
+  // another. Each test holds a category in a separate transaction and checks
+  // that the activity row is still free while the operation waits for it.
+  describe('lock order', () => {
+    const activityIsFreeWhile = async (
+      heldCategoryId: string,
+      activityId: string,
+      operation: () => Promise<unknown>,
+    ): Promise<boolean> => {
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+      await holder.query(
+        'SELECT id FROM act_categories WHERE id = $1 FOR UPDATE',
+        [heldCategoryId],
+      );
+
+      const pending = operation();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      let isFree = true;
+      try {
+        await holder.query(
+          'SELECT id FROM activities WHERE id = $1 FOR UPDATE NOWAIT',
+          [activityId],
+        );
+      } catch {
+        isFree = false;
+      }
+
+      await holder.rollbackTransaction();
+      await holder.release();
+      await pending;
+
+      return isFree;
+    };
+
+    it('waits for the new category before locking the activity it changes', async () => {
+      const activity = await activities.create(
+        { name: 'Lock moved', categoryId },
+        companyId,
+      );
+
+      expect(
+        await activityIsFreeWhile(otherCategoryId, activity.id, () =>
+          activities.update(
+            activity.id,
+            { categoryId: otherCategoryId },
+            companyId,
+          ),
+        ),
+      ).toBe(true);
+    });
+
+    it('waits for its category before locking the activity it restores', async () => {
+      const activity = await activities.create(
+        { name: 'Lock restored', categoryId },
+        companyId,
+      );
+      await activities.archive(activity.id, companyId);
+
+      expect(
+        await activityIsFreeWhile(categoryId, activity.id, () =>
+          activities.unarchive(activity.id, companyId),
+        ),
+      ).toBe(true);
+    });
+
+    it('locks the category it moves activities to before the activities', async () => {
+      const source = await categories.create({ name: 'Lock from' }, companyId);
+      const target = await categories.create({ name: 'Lock to' }, companyId);
+      const activity = await activities.create(
+        { name: 'Lock carried', categoryId: source.id },
+        companyId,
+      );
+
+      expect(
+        await activityIsFreeWhile(target.id, activity.id, () =>
+          categories.archive(source.id, companyId, {
+            activities: ActiveActivitiesAction.MOVE,
+            moveToCategoryId: target.id,
+          }),
+        ),
+      ).toBe(true);
+      expect(
+        (await activities.findRaw(activity.id, companyId)).categoryId,
+      ).toBe(target.id);
     });
   });
 });
