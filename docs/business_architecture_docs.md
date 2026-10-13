@@ -302,9 +302,9 @@ distinguishable from "Development on our internal tooling".
 **What a project offers.** A project's activity list is what people may log
 against there: an activity enabled on the project, and active in the company's
 catalogue.
-- *Removing* an activity from a project takes it off that project's list at
-  once, with no warning, even when time has been logged on it. Adding it again
-  picks up the same link and history.
+- *Removing* an activity from a project takes it off that project's list once
+  confirmed, and the confirmation says that time already logged stays. Adding
+  it again picks up the same link and history.
 - *Archiving* an activity takes it off the list of every project. The owner or
   manager is first shown the active projects that offer it. Its project links
   stay, so restoring it puts it back on the same projects.

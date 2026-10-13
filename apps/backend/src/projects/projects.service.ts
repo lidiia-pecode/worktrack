@@ -199,12 +199,7 @@ export class ProjectsService {
       (id) => !targetIds.has(id),
     );
 
-    // Only the newcomers are checked: an existing member stays whatever their
-    // status, and this also rejects an id from another company.
-    if (idsToAdd.length > 0) {
-      await this.usersService.findActiveOnlyMany(idsToAdd, project.companyId);
-    }
-
+    // Scope first, as in `addMember`, so the answer says nothing about people outside it.
     const assignable = await this.teamVisibility.filterVisibleUserIds(
       [...idsToAdd, ...removalCandidates],
       user,
@@ -214,6 +209,16 @@ export class ProjectsService {
     if (idsToAdd.some((id) => !assignable.has(id))) {
       throw new ForbiddenException(
         'You can only assign yourself and users in teams you manage',
+      );
+    }
+
+    // Only the newcomers are checked: an existing member stays whatever their
+    // status, and this also rejects an id from another company.
+    if (idsToAdd.length > 0) {
+      await this.usersService.findActiveOnlyMany(
+        idsToAdd,
+        project.companyId,
+        manager,
       );
     }
 

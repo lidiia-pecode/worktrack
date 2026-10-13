@@ -90,9 +90,13 @@ export const ActivityRestoreDialog = ({
       isOpen={Boolean(activity)}
       title={activity ? `Restore ${activity.name}?` : ""}
       description={
-        canBeDraft
-          ? "Its category is archived. Restore the category too, move it to an active one, or bring it back as a draft until it has a category."
-          : "Its category is archived. Restore the category too, or move it to an active one: it is on a project, so it needs a category."
+        details.isError
+          ? "Could not check which projects use it. Close this and try again."
+          : !details.data
+            ? "Checking which projects use it..."
+            : canBeDraft
+              ? "Its category is archived. Restore the category too, move it to an active one, or bring it back as a draft until it has a category."
+              : "Its category is archived. Restore the category too, or move it to an active one: it is on a project, so it needs a category."
       }
       affected={
         activity

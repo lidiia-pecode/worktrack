@@ -39,8 +39,6 @@ export interface ProjectPayload {
   name: string;
   clientName?: string | null;
   description?: string;
-  activityIds?: string[];
-  userIds?: string[];
 }
 
 export type UpdateProjectPayload = Partial<ProjectPayload>;

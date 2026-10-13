@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useEntityPanel } from "./entity-panel-context";
 
@@ -19,6 +19,7 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
   const [added, setAdded] = useState<T[]>([]);
   const [removedIds, setRemovedIds] = useState<string[]>([]);
   const [isApplying, setIsApplying] = useState(false);
+  const isMounted = useRef(false);
 
   const currentIds = current.map((item) => item.id);
   // Once applied, a pending addition is simply current, and a removal gone.
@@ -36,6 +37,13 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
   }, [pendingCount, setHasUnsavedChanges]);
 
   useEffect(() => () => setHasUnsavedChanges(false), [setHasUnsavedChanges]);
+
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   const toggle = (item: T) => {
     if (currentIds.includes(item.id)) {
@@ -65,20 +73,24 @@ export const useStagedSelection = <T extends Choice>(current: T[]) => {
     afterwards();
   };
 
-  /** Runs the changes and leaves once all succeed; after a failure the picker stays with what is left. */
+  /**
+   * Runs the changes and leaves once all succeed; after a failure the picker
+   * stays with what is left. It waits for every change, so Done can't resend
+   * one still in flight, and doesn't leave if the picker was closed meanwhile.
+   */
   const apply = async (
     changes: Promise<unknown>[],
     afterwards?: () => void,
   ) => {
     setIsApplying(true);
-    try {
-      await Promise.all(changes);
-      leave(afterwards);
-    } catch {
-      // The global mutation handler already reported it.
-    } finally {
-      setIsApplying(false);
-    }
+    // A failure was already reported by the global mutation handler.
+    const results = await Promise.allSettled(changes);
+    setIsApplying(false);
+
+    const allSucceeded = results.every(
+      (result) => result.status === "fulfilled",
+    );
+    if (allSucceeded && isMounted.current) leave(afterwards);
   };
 
   return {

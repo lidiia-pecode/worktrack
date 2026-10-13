@@ -64,4 +64,43 @@ describe("useStagedSelection", () => {
     expect(panel.back).not.toHaveBeenCalled();
     expect(result.current.toAdd).toEqual([BACKEND]);
   });
+
+  it("stays busy until every change settles, even after one fails", async () => {
+    const { result } = renderSelection();
+    let finishSlow = () => {};
+    const slow = new Promise<void>((resolve) => {
+      finishSlow = resolve;
+    });
+
+    let applying = Promise.resolve();
+    act(() => {
+      applying = result.current.apply([Promise.reject(new Error("No")), slow]);
+    });
+    await act(() => Promise.resolve());
+    expect(result.current.isApplying).toBe(true);
+
+    await act(async () => {
+      finishSlow();
+      await applying;
+    });
+    expect(result.current.isApplying).toBe(false);
+  });
+
+  it("doesn't leave once the picker has closed", async () => {
+    const { result, panel, unmount } = renderSelection();
+    let finish = () => {};
+    const pending = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+
+    let applying = Promise.resolve();
+    act(() => {
+      applying = result.current.apply([pending]);
+    });
+    unmount();
+    finish();
+    await applying;
+
+    expect(panel.back).not.toHaveBeenCalled();
+  });
 });

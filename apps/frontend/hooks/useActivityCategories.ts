@@ -32,8 +32,6 @@ const activityCategoriesQueries = createEntityQuery<
   },
 });
 
-export const useActivityCategoriesQuery = activityCategoriesQueries.useQuery;
-
 export const useActivityCategoriesInfiniteQuery =
   activityCategoriesQueries.useInfiniteQuery;
 

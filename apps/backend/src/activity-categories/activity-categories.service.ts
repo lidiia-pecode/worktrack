@@ -38,6 +38,12 @@ type CategoryActivity = Activity & { isInUse: boolean };
 
 const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
 
+const sortedNames = (activities: Activity[]) =>
+  activities
+    .map((activity) => activity.name)
+    .sort((a, b) => a.localeCompare(b))
+    .join(', ');
+
 const assertAssignable = (category: ActCategory) => {
   if (category.status === ActCategoryStatus.ARCHIVED) {
     throw new BadRequestException(
@@ -208,27 +214,34 @@ export class ActCategoriesService {
     payload: ActivityCategoryPayload,
     companyId: string,
   ): Promise<ActCategory> {
-    const category = await this.findRaw(id, companyId);
+    return this.dataSource.transaction(async (manager) => {
+      const category = await this.findLocked(
+        id,
+        companyId,
+        manager,
+        'pessimistic_write',
+      );
 
-    if (category.status === ActCategoryStatus.ARCHIVED) {
-      throw new BadRequestException('An archived category cannot be changed');
-    }
-
-    if (payload.name !== category.name) {
-      await this.assertUniqueName(companyId, payload.name, id);
-      category.name = payload.name;
-    }
-
-    try {
-      return await this.repo.save(category);
-    } catch (error: unknown) {
-      if (isDatabaseConflictError(error)) {
-        throw new ConflictException(
-          `Category "${payload.name}" already exists in this company`,
-        );
+      if (category.status === ActCategoryStatus.ARCHIVED) {
+        throw new BadRequestException('An archived category cannot be changed');
       }
-      throw error;
-    }
+
+      if (payload.name !== category.name) {
+        await this.assertUniqueName(companyId, payload.name, id);
+        category.name = payload.name;
+      }
+
+      try {
+        return await manager.save(category);
+      } catch (error: unknown) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(
+            `Category "${payload.name}" already exists in this company`,
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   async getArchiveImpact(
@@ -299,7 +312,7 @@ export class ActCategoriesService {
       // Locked so none goes on a project before it may become a draft.
       const activeActivities = await manager.find(Activity, {
         where: { companyId, categoryId: id, status: ActivityStatus.ACTIVE },
-        order: { name: 'ASC' },
+        order: { id: 'ASC' },
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -360,7 +373,7 @@ export class ActCategoriesService {
       const linked = activities.filter((activity) => inUse.has(activity.id));
 
       if (linked.length) {
-        const names = linked.map((activity) => activity.name).join(', ');
+        const names = sortedNames(linked);
         throw new ConflictException(
           `These activities are on projects, so they need a category: ${names}. Move them to another category or archive them instead.`,
         );
@@ -370,7 +383,7 @@ export class ActCategoriesService {
       return;
     }
 
-    const names = activities.map((activity) => activity.name).join(', ');
+    const names = sortedNames(activities);
     throw new ConflictException(
       `Category "${category.name}" still has active activities: ${names}. Move them to another category or archive them first.`,
     );

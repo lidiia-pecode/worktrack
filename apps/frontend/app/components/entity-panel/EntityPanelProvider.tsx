@@ -57,11 +57,12 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
     navigate: () => void;
   } | null>(null);
 
-  const openedWithHistoryEntry = useRef(false);
+  // The URL the panel's own history entry returns to, when it added one.
+  const urlBeforeOpen = useRef<string | null>(null);
   const returnFocusTo = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!openValue) openedWithHistoryEntry.current = false;
+    if (!openValue) urlBeforeOpen.current = null;
   }, [openValue]);
 
   const writeUrl = (ref: EntityRef | null, mode: "push" | "replace") => {
@@ -117,7 +118,7 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
       return;
     }
 
-    openedWithHistoryEntry.current = true;
+    urlBeforeOpen.current = urlWithOpenEntity(pathname, searchParams, null);
     writeUrl(ref, "push");
   };
 
@@ -160,12 +161,11 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
 
   const close = () =>
     leave(() => {
-      if (openedWithHistoryEntry.current) {
-        openedWithHistoryEntry.current = false;
-        window.history.back();
-      } else {
-        writeUrl(null, "replace");
-      }
+      // Back only while it returns to the same list: a tab switched since then stays.
+      const closedUrl = urlWithOpenEntity(pathname, searchParams, null);
+      if (urlBeforeOpen.current === closedUrl) window.history.back();
+      else writeUrl(null, "replace");
+      urlBeforeOpen.current = null;
 
       // A menu item that opened it has gone with its menu.
       if (returnFocusTo.current?.isConnected) returnFocusTo.current.focus();

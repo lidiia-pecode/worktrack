@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import {
   useActivitiesInfiniteQuery,
-  useActivitiesMutations,
+  useSetActivityCategory,
 } from "@/hooks/useActivities";
 import { useServerSearch } from "@/hooks/useManageListState";
 import { ActivityCategoryDetails } from "@/types";
@@ -30,7 +30,7 @@ export const CategoryActivitiesPicker = ({
   const [isCreating, setIsCreating] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const { searchQuery, setSearch } = useServerSearch();
-  const { update } = useActivitiesMutations();
+  const setActivityCategory = useSetActivityCategory();
   const { items, isLoading, pagination } = useActivitiesInfiniteQuery({
     status: ActivityStatus.ACTIVE,
     search: searchQuery,
@@ -53,19 +53,19 @@ export const CategoryActivitiesPicker = ({
   const applyAll = (destinationId: string | null) =>
     staged.apply([
       ...staged.toAdd.map((activity) =>
-        update.mutateAsync({
+        setActivityCategory.mutateAsync({
           id: activity.id,
-          data: { categoryId: category.id },
+          categoryId: category.id,
         }),
       ),
       ...movesOut.map((activity) =>
-        update.mutateAsync({
+        setActivityCategory.mutateAsync({
           id: activity.id,
-          data: { categoryId: destinationId },
+          categoryId: destinationId,
         }),
       ),
       ...toDrafts.map((activity) =>
-        update.mutateAsync({ id: activity.id, data: { categoryId: null } }),
+        setActivityCategory.mutateAsync({ id: activity.id, categoryId: null }),
       ),
     ]);
 

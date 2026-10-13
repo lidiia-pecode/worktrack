@@ -165,6 +165,23 @@ describe("EntityPanelProvider", () => {
     expect(backTo()).toBeEmptyDOMElement();
   });
 
+  it("keeps a tab switched while it was open when closing", async () => {
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Open team row" }));
+    // The list switches tabs with `replaceState`, keeping `?open=`.
+    window.history.replaceState(
+      null,
+      "",
+      `${PATHNAME}?tab=archived&open=${formatEntityRef(TEAM)}`,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Close" }));
+    expect(window.history.back).not.toHaveBeenCalled();
+    expect(navigation.search).toBe("?tab=archived");
+  });
+
   it("closes a panel it found in the URL without leaving the page", async () => {
     const user = userEvent.setup();
     navigation.search = `?open=${formatEntityRef(TEAM)}`;

@@ -104,6 +104,8 @@ export class ActivitiesService {
         id: In(uniqueIds),
         companyId,
       },
+      // Locked in id order, as every other path that locks several activities.
+      order: { id: 'ASC' },
       lock: { mode: 'pessimistic_write' },
     });
 
@@ -364,19 +366,17 @@ export class ActivitiesService {
     return { projects: projectsByActivity.get(id) ?? [] };
   }
 
-  async archive(
-    id: string,
-    companyId: string,
-    repo: Repository<Activity> = this.repo,
-  ): Promise<Activity> {
-    const activity = await this.findRaw(id, companyId, repo);
+  async archive(id: string, companyId: string): Promise<Activity> {
+    return this.dataSource.transaction(async (manager) => {
+      const activity = await this.findLocked(id, companyId, manager);
 
-    if (activity.status === ActivityStatus.ARCHIVED) {
-      throw new BadRequestException('Activity is already archived');
-    }
+      if (activity.status === ActivityStatus.ARCHIVED) {
+        throw new BadRequestException('Activity is already archived');
+      }
 
-    activity.status = ActivityStatus.ARCHIVED;
-    return repo.save(activity);
+      activity.status = ActivityStatus.ARCHIVED;
+      return manager.getRepository(Activity).save(activity);
+    });
   }
 
   async unarchive(

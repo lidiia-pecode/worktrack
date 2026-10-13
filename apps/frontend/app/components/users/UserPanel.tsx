@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
 import {
   formatDayMonthYearLabel,
@@ -64,6 +65,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const panel = useEntityPanel();
   const { update } = useUsersMutations();
   const setCapacity = useSetCapacity();
+  const { timezone } = useWorkSettings();
   const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
   // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the teams.
@@ -116,7 +118,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
             position: user.position ?? "",
             role: user.role,
             capacityHoursPerWeek: (capacity?.minutesPerWeek ?? 0) / 60,
-            capacityValidFrom: todayISODate(),
+            capacityValidFrom: todayISODate(timezone),
           }}
           onSubmit={save}
           onDirtyChange={panel.setHasUnsavedChanges}

@@ -33,8 +33,6 @@ const activitiesQueries = createEntityQuery<
   },
 });
 
-export const useActivitiesQuery = activitiesQueries.useQuery;
-
 export const useActivitiesInfiniteQuery = activitiesQueries.useInfiniteQuery;
 
 export const useActivitiesMutations = createEntityMutations<
@@ -88,6 +86,27 @@ export const useActivityArchiveImpact = (
     enabled,
     staleTime: 0,
   });
+
+/** Moves one activity to a category, or makes it a draft, without a toast: like the other pickers, the category's picker applies its moves quietly. */
+export const useSetActivityCategory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      categoryId,
+    }: {
+      id: string;
+      categoryId: string | null;
+    }) => ActivitiesClientApi.update(id, { categoryId }),
+
+    onSettled: () => {
+      CATALOG_QUERY_KEYS.forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      );
+    },
+  });
+};
 
 type RestoreActivityVariables =
   | { id: string; restoreCategoryId: string }

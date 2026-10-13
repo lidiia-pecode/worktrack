@@ -333,11 +333,11 @@ describe('ProjectsService membership scope', () => {
       );
     });
 
-    // `UpdateUserModal` reads the members back and writes them all again. A
+    // A client may read the members back and write them all again. A
     // manager's read is partial, so the members they never saw must survive
     // both directions of that toggle.
-    it('adds one person when the user modal sends the whole list', async () => {
-      const projectId = await createProject('user modal add', [
+    it('adds one person when a client sends the whole list back', async () => {
+      const projectId = await createProject('whole list add', [
         alphaMember,
         betaMember,
       ]);
@@ -353,8 +353,8 @@ describe('ProjectsService membership scope', () => {
       );
     });
 
-    it('removes one person when the user modal sends the whole list', async () => {
-      const projectId = await createProject('user modal remove', [
+    it('removes one person when a client sends the whole list back', async () => {
+      const projectId = await createProject('whole list remove', [
         alphaMember,
         alphaManager,
         betaMember,
@@ -657,13 +657,13 @@ describe('ProjectsService membership scope', () => {
       await expect(memberIds(projectId)).resolves.toEqual(sorted(leaver));
     });
 
-    it('does not let an archived id smuggle someone past the scope check', async () => {
+    it('answers as for anyone outside the scope, saying nothing of their status', async () => {
       const projectId = await createProject('archived scope', []);
       await setStatus(betaMember, UserStatus.DEACTIVATED);
 
       await expect(
         service.update(projectId, { userIds: [betaMember.id] }, alphaManager),
-      ).rejects.toThrow(NotFoundException);
+      ).rejects.toThrow(ForbiddenException);
 
       await setStatus(betaMember, UserStatus.ACTIVE);
     });

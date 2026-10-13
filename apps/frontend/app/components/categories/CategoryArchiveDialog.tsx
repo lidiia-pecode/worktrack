@@ -75,7 +75,9 @@ export const CategoryArchiveDialog = ({
     },
   ];
 
-  const isReady = Boolean(impact.data) && !activeCategories.isLoading;
+  // Without the other categories, the options would wrongly offer only archiving.
+  const loadFailed = impact.isError || activeCategories.isError;
+  const isReady = Boolean(impact.data) && activeCategories.query.isSuccess;
 
   const close = () => {
     setChosenOption(undefined);
@@ -96,9 +98,9 @@ export const CategoryArchiveDialog = ({
     );
   };
 
-  const description = impact.isError
+  const description = loadFailed
     ? "Could not check its activities. Close this and try again."
-    : !impact.data
+    : !isReady
       ? "Checking its activities..."
       : canLeaveDrafts
         ? "No project uses its active activities, so they can stay as drafts without a category, move to another one, or be archived with it."
