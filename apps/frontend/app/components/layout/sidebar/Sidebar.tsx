@@ -36,7 +36,8 @@ const SidebarBody = ({ user, pathname, onNavigate }: SidebarBodyProps) => {
 
   return (
     <>
-      <div className="flex-1 overflow-y-auto px-3 py-5">
+      {/* min-h-0 lets the links scroll on a short screen instead of running under the cards below. */}
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
         <SidebarNavigation
           groups={navigationFor(user.role)}
           pathname={pathname}

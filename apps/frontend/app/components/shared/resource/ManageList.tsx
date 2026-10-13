@@ -252,12 +252,13 @@ const EDGE_END = "pr-4";
 
 /**
  * A table from `lg` up and a two-line list below it: the sidebar takes its
- * space from `md`, which leaves too little room for the columns. An open
- * panel takes as much again, so beside it the table waits for `2xl`.
+ * space from `md`, which leaves too little room for the columns. From `xl` an
+ * open panel sits beside the list and takes as much again, so there the table
+ * waits for `2xl`; below `xl` the panel is a drawer over the list.
  */
 export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
   const panel = useEntityPanel();
-  const isBesidePanel = Boolean(panel.current);
+  const isPanelOpen = Boolean(panel.current);
 
   // A click on the row moves focus to its name, which closing the panel returns to.
   const openRow = (event: MouseEvent<HTMLElement>, item: T) => {
@@ -267,7 +268,9 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
 
   return (
     <Card>
-      <div className={cn("hidden", isBesidePanel ? "2xl:block" : "lg:block")}>
+      <div
+        className={cn("hidden lg:block", isPanelOpen && "xl:hidden 2xl:block")}
+      >
         <Table aria-label={label} className="table-fixed">
           <TableHeader>
             <TableHead className={cn(HEAD_HEIGHT, EDGE_START)}>Name</TableHead>
@@ -320,8 +323,8 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
       <ul
         aria-label={label}
         className={cn(
-          "divide-y divide-border",
-          isBesidePanel ? "2xl:hidden" : "lg:hidden",
+          "divide-y divide-border lg:hidden",
+          isPanelOpen && "xl:block 2xl:hidden",
         )}
       >
         {items.map((item) => (

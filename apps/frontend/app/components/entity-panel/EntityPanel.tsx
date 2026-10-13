@@ -16,8 +16,8 @@ import { TeamPanel } from "../teams/TeamPanel";
 import { UserPanel } from "../users/UserPanel";
 import { PanelTitleIdContext, useEntityPanel } from "./entity-panel-context";
 
-// Below the table breakpoint there is no room beside the list, so the panel takes the whole screen.
-const DESKTOP_MEDIA_QUERY = "(min-width: 64rem)";
+// From `xl` the list keeps enough room beside the panel; below it the panel is a drawer over the list.
+const DESKTOP_MEDIA_QUERY = "(min-width: 80rem)";
 
 const PanelContent = ({ entity }: { entity: EntityRef }) => {
   switch (entity.type) {
@@ -115,7 +115,7 @@ export const EntityPanel = () => {
       <DialogSidePanel
         side="right"
         aria-labelledby={titleId}
-        className="w-full bg-card"
+        className="w-full bg-card sm:w-120"
       >
         {body}
       </DialogSidePanel>
