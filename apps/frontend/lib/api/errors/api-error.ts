@@ -33,6 +33,28 @@ export function isApiMessageError(error: unknown): error is ApiMessageError {
   );
 }
 
+/** Whether the API refused the request itself, which asking again won't change. */
+export function isClientError(error: unknown): boolean {
+  return (
+    isApiMessageError(error) &&
+    error.statusCode >= 400 &&
+    error.statusCode < 500
+  );
+}
+
+/** The API refused it as taken, such as a name already in use. */
+export function isConflictError(error: unknown): boolean {
+  return isApiMessageError(error) && error.statusCode === 409;
+}
+
+/** For a read by id: the entity doesn't exist, or the id isn't one (400). */
+export function isMissingEntityError(error: unknown): boolean {
+  return (
+    isApiMessageError(error) &&
+    (error.statusCode === 404 || error.statusCode === 400)
+  );
+}
+
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.message === "SESSION_EXPIRED") {

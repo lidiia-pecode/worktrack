@@ -4,10 +4,11 @@ import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TeamsModule } from 'src/teams/teams.module';
+import { CapacityModule } from 'src/capacity/capacity.module';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), TeamsModule],
+  imports: [TypeOrmModule.forFeature([User]), TeamsModule, CapacityModule],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

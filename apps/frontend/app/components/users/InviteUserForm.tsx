@@ -5,12 +5,16 @@ import Link from "next/link";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import Input from "@/components/ui/input";
+import { isConflictError, getErrorMessage } from "@/lib/api";
 
 import { UserRole } from "@/types/enums";
 import { MANAGER_WITHOUT_TEAM_MESSAGE, ROLE_LABELS } from "@/lib/constants";
 
+import { Field } from "@/components/ui/field";
+
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 import { FormSelect } from "../shared/FormSelect";
+import { OptionCard, OptionCards } from "../shared/inputs/OptionCards";
 
 import {
   inviteUserSchema,
@@ -21,10 +25,23 @@ import { useTeamOptions } from "@/hooks/useTeams";
 
 const NO_TEAM = "none";
 
+const ROLE_OPTIONS: OptionCard<UserRole>[] = [
+  {
+    value: UserRole.MANAGER,
+    label: ROLE_LABELS[UserRole.MANAGER],
+    description: "Leads teams, and sees and corrects their people's time.",
+  },
+  {
+    value: UserRole.EMPLOYEE,
+    label: ROLE_LABELS[UserRole.EMPLOYEE],
+    description: "Logs their own time and absences, in a team.",
+  },
+];
+
 interface InviteUserFormProps {
   formId: string;
   isSubmitting?: boolean;
-  onSubmit: (data: InviteUserFormData) => void;
+  onSubmit: (data: InviteUserFormData) => void | Promise<unknown>;
   onCanSubmitChange: (canSubmit: boolean) => void;
 }
 
@@ -39,30 +56,14 @@ export const InviteUserForm = ({
 
   const { options: teamOptions, isLoading: isLoadingTeams } = useTeamOptions();
 
-  const roleOptions = isOwner
-    ? [
-        {
-          value: UserRole.MANAGER,
-          label: ROLE_LABELS[UserRole.MANAGER],
-        },
-        {
-          value: UserRole.EMPLOYEE,
-          label: ROLE_LABELS[UserRole.EMPLOYEE],
-        },
-      ]
-    : [
-        {
-          value: UserRole.EMPLOYEE,
-          label: ROLE_LABELS[UserRole.EMPLOYEE],
-        },
-      ];
-
+  // Only an owner invites a Manager; a manager invites employees only.
   const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
 
   const {
     register,
     control,
     setValue,
+    setError,
     getFieldState,
     handleSubmit,
     formState: { errors },
@@ -116,34 +117,47 @@ export const InviteUserForm = ({
     }
   }, [isEmployee, teamOptions, setValue]);
 
+  // The API refuses an email already in use; show it under the field.
+  const submit = async (data: InviteUserFormData) => {
+    try {
+      await onSubmit(data);
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("email", { message: getErrorMessage(error) });
+      }
+    }
+  };
+
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-      <Input
+    <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
+      <PanelTitleInput
         id="invite-user-email"
-        label="Email"
+        aria-label="Email"
         type="email"
-        placeholder="john@example.com"
+        placeholder="name@company.com"
+        autoFocus
         {...register("email")}
         error={errors.email?.message}
         disabled={isSubmitting}
       />
 
-      <Controller
-        name="role"
-        control={control}
-        render={({ field, fieldState }) => (
-          <FormSelect
-            id="invite-user-role"
-            label="Role"
-            value={field.value}
-            onValueChange={field.onChange}
-            options={roleOptions}
-            placeholder="Select a role"
-            error={fieldState.error?.message}
-            disabled={isSubmitting}
+      {isOwner && (
+        <Field id="invite-user-role" label="Role" group>
+          <Controller
+            name="role"
+            control={control}
+            render={({ field }) => (
+              <OptionCards
+                name="invite-user-role"
+                value={field.value}
+                options={ROLE_OPTIONS}
+                onChange={field.onChange}
+                disabled={isSubmitting}
+              />
+            )}
           />
-        )}
-      />
+        </Field>
+      )}
 
       {isEmployee && (
         <Controller

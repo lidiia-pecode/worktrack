@@ -7,6 +7,8 @@ export enum ActivityStatus {
 export enum ActiveActivitiesAction {
   MOVE = "MOVE",
   ARCHIVE = "ARCHIVE",
+  /** Leaves them as drafts; refused if a project links any. */
+  UNCATEGORIZE = "UNCATEGORIZE",
 }
 
 export enum ActCategoryStatus {
@@ -91,4 +93,8 @@ export enum UnusableInvitationCode {
 /** Mirrors the backend's NotificationType. */
 export enum NotificationType {
   INVITATION_ACCEPTED = "INVITATION_ACCEPTED",
+}
+
+export enum ArchivedActivitiesAction {
+  RESTORE = "RESTORE",
 }

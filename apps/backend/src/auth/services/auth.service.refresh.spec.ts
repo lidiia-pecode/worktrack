@@ -10,6 +10,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 
 import { AuthSession } from '../entities/auth-session.entity';
@@ -126,6 +127,7 @@ describe('AuthService refresh', () => {
       dataSource.getRepository(User),
       teamVisibility,
       dataSource,
+      stub<CapacityService>({}),
     );
 
     jwt = new JwtService();

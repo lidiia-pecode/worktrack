@@ -66,4 +66,7 @@ export class ActCategory {
     cascade: false,
   })
   activities!: Activity[];
+
+  // Not a column — the active activities count, filled in by `list()`.
+  activitiesCount?: number;
 }

@@ -9,7 +9,6 @@ interface PickerRowProps {
   label: string;
   subtitle?: string | null;
   avatarText?: string;
-  icon?: React.ReactNode;
   onToggle: () => void;
   disabled?: boolean;
 }
@@ -19,7 +18,6 @@ export const PickerRow = ({
   label,
   subtitle,
   avatarText,
-  icon,
   onToggle,
   disabled = false,
 }: PickerRowProps) => {
@@ -44,7 +42,7 @@ export const PickerRow = ({
           "bg-gradient-to-br from-brand to-brand-secondary text-brand-foreground",
         )}
       >
-        {selected ? <Check className="size-3.5" /> : (icon ?? avatarText)}
+        {selected ? <Check className="size-3.5" /> : avatarText}
       </span>
 
       <span className="flex min-w-0 flex-col items-start">

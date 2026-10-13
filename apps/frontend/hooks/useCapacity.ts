@@ -35,6 +35,8 @@ export function useSetCapacity() {
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.capacity.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
+      // The Manage list shows each person's weekly hours.
+      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
 
       toast.success("Working hours updated");
     },

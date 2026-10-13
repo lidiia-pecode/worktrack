@@ -17,6 +17,10 @@ export interface PaginationParams {
   pageSize?: number;
 }
 
+export interface SearchablePaginationParams extends PaginationParams {
+  search?: string;
+}
+
 export interface PaginatedResponse<T> {
   results: T[];
   count: number;

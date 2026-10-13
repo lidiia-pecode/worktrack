@@ -127,4 +127,7 @@ export class User {
 
   @ManyToMany(() => Project, (project) => project.users)
   projects?: Project[];
+
+  // Not a column — the active projects count, filled in by the people list.
+  projectsCount?: number;
 }

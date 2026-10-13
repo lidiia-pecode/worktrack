@@ -3,10 +3,12 @@
 import {
   ActivityCategory,
   ActivityCategoryArchiveImpact,
+  ActivityCategoryDetails,
   ActivityCategoryListResponse,
   ActivityCategoryPayload,
   ActivityCategoryQuery,
   ArchiveActivityCategoryPayload,
+  RestoreActivityCategoryPayload,
   UpdateActivityCategoryPayload,
 } from "@/types/ActivityCategory";
 
@@ -17,7 +19,8 @@ const crud = createCrudClient<
   ActivityCategoryPayload,
   UpdateActivityCategoryPayload,
   ActivityCategoryListResponse,
-  Omit<ActivityCategoryQuery, "page">
+  Omit<ActivityCategoryQuery, "page">,
+  ActivityCategoryDetails
 >({
   endpoint: "activity-categories",
 });
@@ -35,5 +38,6 @@ export const ActivityCategoriesClientApi = {
   archive: (id: string, payload?: ArchiveActivityCategoryPayload) =>
     client.patch<ActivityCategory>(`/${id}/archive`, payload),
 
-  unarchive: (id: string) => client.patch<ActivityCategory>(`/${id}/unarchive`),
+  unarchive: (id: string, payload?: RestoreActivityCategoryPayload) =>
+    client.patch<ActivityCategory>(`/${id}/unarchive`, payload),
 };

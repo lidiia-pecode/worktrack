@@ -33,6 +33,18 @@ export const ProjectsClientApi = {
 
   unarchive: (id: string) => client.patch<Project>(`/${id}/unarchive`),
 
+  addMember: (id: string, userId: string) =>
+    client.post<Project>(`/${id}/members/${userId}`),
+
+  removeMember: (id: string, userId: string) =>
+    client.delete<Project>(`/${id}/members/${userId}`),
+
+  addActivity: (id: string, activityId: string) =>
+    client.post<Project>(`/${id}/activities/${activityId}`),
+
+  removeActivity: (id: string, activityId: string) =>
+    client.delete<Project>(`/${id}/activities/${activityId}`),
+
   /** The caller's own active projects, with or without activities. */
   getMine: () => client.get<PaginatedResponse<ProjectSummary>>("/me"),
 };

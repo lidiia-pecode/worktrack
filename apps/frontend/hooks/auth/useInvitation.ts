@@ -20,6 +20,7 @@ export const useInvitations = () => {
     });
 
   const create = useMutation({
+    meta: { conflictShownInForm: true },
     mutationFn: InvitationsClientApi.create,
 
     onSuccess: () => {

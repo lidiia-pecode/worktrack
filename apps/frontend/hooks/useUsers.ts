@@ -2,7 +2,14 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import { AssignableUser, UpdateUserPayload, User, UsersQuery } from "@/types";
+import {
+  AssignableUser,
+  AssignableUsersQuery,
+  UpdateUserPayload,
+  User,
+  UserListItem,
+  UsersQuery,
+} from "@/types";
 
 import { UsersClientApi } from "@/lib/api/resources";
 
@@ -12,7 +19,7 @@ import { queryKeys } from "./shared/queryKeys";
 
 type UserQueryParams = Omit<UsersQuery, "page">;
 
-const usersQueries = createEntityQuery<User, UserQueryParams>({
+const usersQueries = createEntityQuery<UserListItem, UserQueryParams>({
   queryKey: queryKeys.users,
 
   api: {
@@ -31,7 +38,7 @@ export const useUsersInfiniteQuery = usersQueries.useInfiniteQuery;
  */
 const assignableUsersQueries = createEntityQuery<
   AssignableUser,
-  UserQueryParams
+  Omit<AssignableUsersQuery, "page">
 >({
   queryKey: queryKeys.users.assignable,
 

@@ -4,12 +4,16 @@ import Link from "next/link";
 
 import { createFirstLink } from "@/hooks/useSetupLink";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 import { ActivityCategory } from "@/types";
 
-import Input from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { isConflictError } from "@/lib/api";
+import { useReportDirty } from "@/hooks/useReportDirty";
+
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 
 import { FormSelect } from "../shared/FormSelect";
 
@@ -20,58 +24,130 @@ const activitySchema = z.object({
     .min(2, "Activity name must be at least 2 characters")
     .max(100, "Activity name must be at most 100 characters"),
 
-  categoryId: z.string().min(1, "Category is required"),
+  categoryId: z.string(),
 
   defaultBillable: z.boolean(),
 });
 
-export type ActivityFormData = z.infer<typeof activitySchema>;
+type ActivityFormValues = z.infer<typeof activitySchema>;
+
+/** A draft has no category: it is kept, but cannot go on a project yet. */
+export type ActivityFormData = Omit<ActivityFormValues, "categoryId"> & {
+  categoryId: string | null;
+};
+
+const DRAFT_OPTION = "none";
 
 interface ActivityFormProps {
-  formId?: string;
+  formId: string;
   defaultValues?: Partial<ActivityFormData>;
   categories: ActivityCategory[];
-  mode?: "create" | "edit";
-  onSubmit: (data: ActivityFormData) => void;
+  onSubmit: (data: ActivityFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
   isOnboarding?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
+  /** Hides the draft option, for an activity that is or will be on a project. */
+  requiresCategory?: boolean;
 }
 
 export const ActivityForm = ({
-  formId = "activity-form",
+  formId,
   defaultValues,
   categories,
   onSubmit,
   isSubmitting = false,
   isOnboarding = false,
+  onDirtyChange,
+  requiresCategory = false,
 }: ActivityFormProps) => {
+  const hasNoCategories = categories.length === 0;
+  // A new activity starts as a draft, unless it is for a project.
+  const initialCategory =
+    defaultValues?.categoryId ?? (requiresCategory ? "" : DRAFT_OPTION);
+
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
-  } = useForm<ActivityFormData>({
+    setError,
+    formState: { errors, isDirty },
+  } = useForm<ActivityFormValues>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
-      categoryId: defaultValues?.categoryId ?? "",
+      categoryId: initialCategory,
       defaultBillable: defaultValues?.defaultBillable ?? true,
     },
   });
 
-  const categoryOptions = categories.map((category) => ({
-    value: category.id,
-    label: category.name,
-  }));
+  const selectedCategory = useWatch({ control, name: "categoryId" });
 
-  const hasNoCategories = categories.length === 0;
+  const submit = async ({ categoryId, ...values }: ActivityFormValues) => {
+    if (!categoryId || (requiresCategory && categoryId === DRAFT_OPTION)) {
+      setError("categoryId", { message: "Choose a category" });
+      return;
+    }
+
+    // The API refuses a taken name; show it under the field.
+    try {
+      await onSubmit({
+        ...values,
+        categoryId: categoryId === DRAFT_OPTION ? null : categoryId,
+      });
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("name", {
+          message: "An activity with this name already exists",
+        });
+      }
+    }
+  };
+
+  useReportDirty(isDirty, onDirtyChange);
+
+  const categoryOptions = [
+    ...(requiresCategory
+      ? []
+      : [{ value: DRAFT_OPTION, label: "No category (draft)" }]),
+    ...categories.map((category) => ({
+      value: category.id,
+      label: category.name,
+    })),
+  ];
+
+  const categoriesLink = (label: string) => (
+    <Link
+      href={createFirstLink("/admin/categories", isOnboarding)}
+      className="font-medium text-brand hover:underline"
+    >
+      {label}
+    </Link>
+  );
+
+  const categoryHint = requiresCategory ? (
+    hasNoCategories && (
+      <>
+        A project needs categorised activities.{" "}
+        {categoriesLink("Create a category first")}.
+      </>
+    )
+  ) : hasNoCategories ? (
+    <>
+      There is no active category yet, so it starts as a draft.{" "}
+      {categoriesLink("Create a category")} to put it on projects.
+    </>
+  ) : (
+    selectedCategory === DRAFT_OPTION &&
+    "A draft can't go on a project until it has a category."
+  );
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      <Input
+    <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
+      <PanelTitleInput
         id="activity-name"
-        label="Activity name"
+        aria-label="Activity name"
         placeholder="e.g. Frontend development"
+        autoFocus
         {...register("name")}
         error={errors.name?.message}
         disabled={isSubmitting}
@@ -86,44 +162,26 @@ export const ActivityForm = ({
             value={field.value}
             onValueChange={field.onChange}
             options={categoryOptions}
-            placeholder={
-              hasNoCategories ? "No active categories" : "Select category"
-            }
-            description={
-              hasNoCategories && (
-                <>
-                  Every activity belongs to a category.{" "}
-                  <Link
-                    href={createFirstLink("/admin/categories", isOnboarding)}
-                    className="font-medium text-brand hover:underline"
-                  >
-                    Create a category first
-                  </Link>
-                  .
-                </>
-              )
-            }
+            placeholder="Select category"
+            description={categoryHint}
             error={errors.categoryId?.message}
-            disabled={isSubmitting || hasNoCategories}
+            disabled={isSubmitting || (requiresCategory && hasNoCategories)}
           />
         )}
       />
 
-      <div>
-        <label className="flex cursor-pointer select-none items-center gap-2.5">
-          <input
-            type="checkbox"
-            {...register("defaultBillable")}
-            disabled={isSubmitting}
-            className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
-          />
-          <span className="text-sm text-foreground">Billable by default</span>
-        </label>
-        <p className="mt-1.5 pl-6.5 text-xs text-muted-foreground">
-          New time entries for this activity start as billable. People can still
-          change it on each entry.
-        </p>
-      </div>
+      <label className="flex cursor-pointer items-center justify-between gap-4 select-none">
+        <span>
+          <span className="block text-sm font-medium text-foreground">
+            Billable by default
+          </span>
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            New time entries start billable. People can change each one.
+          </span>
+        </span>
+
+        <Switch {...register("defaultBillable")} disabled={isSubmitting} />
+      </label>
     </form>
   );
 };

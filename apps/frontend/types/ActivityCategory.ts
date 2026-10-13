@@ -1,6 +1,11 @@
-import { Activity, PaginatedResponse, PaginationParams } from ".";
+import { Activity, PaginatedResponse, SearchablePaginationParams } from ".";
 import { Company } from "./Company";
-import { ActCategoryStatus, ActiveActivitiesAction } from "./enums";
+import {
+  ActCategoryStatus,
+  ActiveActivitiesAction,
+  ActivityStatus,
+  ArchivedActivitiesAction,
+} from "./enums";
 
 export interface ActivityCategoryResponse {
   id: string;
@@ -25,7 +30,7 @@ export interface ActivityCategoryPayload {
   name: string;
 }
 
-export interface ActivityCategoryQuery extends PaginationParams {
+export interface ActivityCategoryQuery extends SearchablePaginationParams {
   status?: ActCategoryStatus;
 }
 
@@ -34,13 +39,44 @@ export interface ArchiveActivityCategoryPayload {
   moveToCategoryId?: string;
 }
 
+/** Without `activities`, the category comes back alone. */
+export interface RestoreActivityCategoryPayload {
+  activities?: ArchivedActivitiesAction;
+}
+
 export interface ActivityCategoryArchiveImpact {
-  activities: {
-    id: string;
-    name: string;
+  activities: (Pick<CategoryActivity, "id" | "name" | "isInUse"> & {
     projects: { id: string; name: string }[];
-  }[];
+  })[];
 }
 
 export type UpdateActivityCategoryPayload = Partial<ActivityCategoryPayload>;
-export type ActivityCategoryListResponse = PaginatedResponse<ActivityCategory>;
+/** What a category's own form and dialogs need, from a list row or its details. */
+export type ActivityCategorySummary = Pick<
+  ActivityCategory,
+  "id" | "name" | "status"
+>;
+
+export interface CategoryActivity {
+  id: string;
+  name: string;
+  status: ActivityStatus;
+  /** On a project, archived ones too, so it cannot be left without a category. */
+  isInUse: boolean;
+}
+
+export interface ActivityCategoryDetails extends Omit<
+  ActivityCategory,
+  "activities"
+> {
+  /** Every activity in it, archived ones included. */
+  activities: CategoryActivity[];
+}
+
+export interface ActivityCategoryListItem extends ActivityCategory {
+  /** Active activities only. */
+  activitiesCount: number;
+}
+
+export type ActivityCategoryListResponse =
+  PaginatedResponse<ActivityCategoryListItem>;

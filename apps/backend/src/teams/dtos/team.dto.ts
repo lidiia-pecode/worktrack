@@ -10,7 +10,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { TrimString } from 'src/lib/decorators';
-import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
+import { SearchablePaginationQuery } from 'src/lib/dtos/searchable-pagination-query.dto';
 import { TeamStatus } from '../enums/team-status.enum';
 import { TeamRole } from '../enums/team-role.enum';
 
@@ -32,7 +32,7 @@ export class UpdateTeamDto {
   name?: string;
 }
 
-export class TeamsQuery extends PaginationQuery {
+export class TeamsQuery extends SearchablePaginationQuery {
   @IsOptional()
   @IsEnum(TeamStatus)
   status?: TeamStatus;

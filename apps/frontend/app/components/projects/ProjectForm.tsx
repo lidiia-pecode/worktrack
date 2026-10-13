@@ -1,18 +1,20 @@
 "use client";
 
+import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Activity, Users } from "lucide-react";
 
 import Input from "@/components/ui/input";
+import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
 import { Button } from "@/components/ui/button";
 
-import {
-  Field,
-  fieldLabelClassName,
-  fieldMessageId,
-} from "@/components/ui/field";
+import { Field, fieldMessageId } from "@/components/ui/field";
+import { isConflictError } from "@/lib/api";
+import { useReportDirty } from "@/hooks/useReportDirty";
+
+import { OptionCards } from "../shared/inputs/OptionCards";
 import { DescriptionEditor } from "./DescriptionEditor";
 
 const projectFormSchema = z
@@ -42,6 +44,23 @@ const projectFormSchema = z
 
 type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
+const WORK_TYPE_OPTIONS: {
+  value: ProjectFormValues["workType"];
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "client",
+    label: "Client work",
+    description: "Done for a client, named below.",
+  },
+  {
+    value: "internal",
+    label: "Internal",
+    description: "Your own company's work, with no client.",
+  },
+];
+
 /** An internal project is one with no client. */
 export type ProjectFormData = {
   name: string;
@@ -50,31 +69,30 @@ export type ProjectFormData = {
 };
 
 interface ProjectFormProps {
-  formId?: string;
+  formId: string;
   defaultValues?: Partial<ProjectFormData>;
   clientSuggestions?: string[];
   mode?: "create" | "edit";
-  membersCount?: number;
-  activitiesCount?: number;
-  onSubmit: (data: ProjectFormData) => void;
+  onSubmit: (data: ProjectFormData) => void | Promise<unknown>;
   isSubmitting?: boolean;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const ProjectForm = ({
-  formId = "project-form",
+  formId,
   defaultValues,
   mode = "create",
-  membersCount = 0,
-  activitiesCount = 0,
   clientSuggestions = [],
   onSubmit,
   isSubmitting = false,
+  onDirtyChange,
 }: ProjectFormProps) => {
   const {
     register,
     control,
     handleSubmit,
-    formState: { errors },
+    setError,
+    formState: { errors, isDirty },
   } = useForm<ProjectFormValues>({
     resolver: zodResolver(projectFormSchema),
     defaultValues: {
@@ -87,67 +105,56 @@ export const ProjectForm = ({
   });
 
   const workType = useWatch({ control, name: "workType" });
-  const isEditMode = mode === "edit";
+  const [showsDescription, setShowsDescription] = useState(
+    mode === "edit" || Boolean(defaultValues?.description),
+  );
 
-  const submit = ({ workType, clientName, ...rest }: ProjectFormValues) =>
-    onSubmit({
-      ...rest,
-      clientName: workType === "client" ? clientName : null,
-    });
+  useReportDirty(isDirty, onDirtyChange);
+
+  // The API refuses a taken name; show it under the field.
+  const submit = async ({
+    workType,
+    clientName,
+    ...rest
+  }: ProjectFormValues) => {
+    try {
+      await onSubmit({
+        ...rest,
+        clientName: workType === "client" ? clientName : null,
+      });
+    } catch (error) {
+      if (isConflictError(error)) {
+        setError("name", {
+          message: "A project with this name already exists",
+        });
+      }
+    }
+  };
 
   return (
     <form id={formId} onSubmit={handleSubmit(submit)} className="space-y-6">
-      <Input
+      <PanelTitleInput
         id="project-name"
-        label="Project name"
-        {...register("name")}
+        aria-label="Project name"
         placeholder="e.g. Website redesign"
-        description={
-          isEditMode
-            ? "Update the name used to identify this project."
-            : "Choose a clear name that helps people understand what this project is about."
-        }
+        autoFocus
+        {...register("name")}
         error={errors.name?.message}
         disabled={isSubmitting}
       />
 
-      <Field
-        id="project-work-type"
-        label="Who is it for"
-        group
-        description={
-          workType === "client"
-            ? undefined
-            : "Work for your own company, with no client."
-        }
-      >
+      <Field id="project-work-type" label="Who is it for" group>
         <Controller
           name="workType"
           control={control}
           render={({ field }) => (
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant={field.value === "client" ? "primary" : "outline"}
-                aria-pressed={field.value === "client"}
-                onClick={() => field.onChange("client")}
-                disabled={isSubmitting}
-              >
-                Client work
-              </Button>
-
-              <Button
-                type="button"
-                size="sm"
-                variant={field.value === "internal" ? "primary" : "outline"}
-                aria-pressed={field.value === "internal"}
-                onClick={() => field.onChange("internal")}
-                disabled={isSubmitting}
-              >
-                Internal
-              </Button>
-            </div>
+            <OptionCards
+              name="project-work-type"
+              value={field.value}
+              options={WORK_TYPE_OPTIONS}
+              onChange={field.onChange}
+              disabled={isSubmitting}
+            />
           )}
         />
 
@@ -159,7 +166,7 @@ export const ProjectForm = ({
               {...register("clientName")}
               list="project-client-suggestions"
               autoComplete="off"
-              placeholder="e.g. Retail Corp"
+              placeholder="Client name, e.g. Retail Corp"
               error={errors.clientName?.message}
               disabled={isSubmitting}
             />
@@ -173,59 +180,41 @@ export const ProjectForm = ({
         )}
       </Field>
 
-      <Field
-        id="project-description"
-        label="Description"
-        error={errors.description?.message}
-      >
-        <Controller
-          name="description"
-          control={control}
-          render={({ field }) => (
-            <DescriptionEditor
-              id="project-description"
-              labelledBy="project-description-label"
-              describedBy={fieldMessageId("project-description", {
-                error: errors.description?.message,
-              })}
-              value={field.value ?? ""}
-              onChange={field.onChange}
-              disabled={isSubmitting}
-            />
-          )}
-        />
-      </Field>
-
-      {isEditMode && (
-        <section aria-labelledby="project-overview-title">
-          <h3 id="project-overview-title" className={fieldLabelClassName}>
-            Project overview
-          </h3>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
-              <Users className="size-4 text-muted-foreground" />
-
-              <div>
-                <p className="text-xs text-muted-foreground">Members</p>
-                <p className="text-sm font-medium text-foreground">
-                  {membersCount}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
-              <Activity className="size-4 text-muted-foreground" />
-
-              <div>
-                <p className="text-xs text-muted-foreground">Activities</p>
-                <p className="text-sm font-medium text-foreground">
-                  {activitiesCount}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
+      {!showsDescription ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowsDescription(true)}
+          disabled={isSubmitting}
+          className="-ml-2 gap-1.5 text-brand"
+        >
+          <Plus className="size-4" />
+          Add description
+        </Button>
+      ) : (
+        <Field
+          id="project-description"
+          label="Description"
+          error={errors.description?.message}
+        >
+          <Controller
+            name="description"
+            control={control}
+            render={({ field }) => (
+              <DescriptionEditor
+                id="project-description"
+                labelledBy="project-description-label"
+                describedBy={fieldMessageId("project-description", {
+                  error: errors.description?.message,
+                })}
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                disabled={isSubmitting}
+              />
+            )}
+          />
+        </Field>
       )}
     </form>
   );

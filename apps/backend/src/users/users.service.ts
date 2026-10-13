@@ -11,6 +11,7 @@ import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
 import { UsersQuery } from './dtos/users-query.dto';
+import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
 import { UserRole, UserStatus } from './enums/user-role.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
@@ -18,6 +19,23 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { Team } from 'src/teams/entities/team.entity';
+
+type UserTeam = Pick<Team, 'id' | 'name'>;
+
+type UserTeamMembership = UserTeam &
+  Pick<Team, 'status'> &
+  Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
+
+const PERSON_SEARCH_COLUMNS = [
+  'u.first_name',
+  'u.last_name',
+  'u.email',
+  'u.position',
+];
 
 @Injectable()
 export class UsersService {
@@ -26,6 +44,7 @@ export class UsersService {
     private readonly repo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
+    private readonly capacity: CapacityService,
   ) {}
 
   private getRepository(manager?: EntityManager): Repository<User> {
@@ -127,22 +146,100 @@ export class UsersService {
   ) {
     const qb = this.getRepository(manager)
       .createQueryBuilder('u')
-      .where('u.company_id = :companyId', { companyId });
+      .where('u.company_id = :companyId', { companyId })
+      // Nobody manages the owner's account from this list.
+      .andWhere('u.role != :owner', { owner: UserRole.OWNER })
+      .loadRelationCountAndMap(
+        'u.projectsCount',
+        'u.projects',
+        'project',
+        (projects) =>
+          projects.andWhere('project.status = :activeProject', {
+            activeProject: ProjectStatus.ACTIVE,
+          }),
+      );
 
     if (query.status) {
       qb.andWhere('u.status = :status', { status: query.status });
     }
 
+    if (query.search) {
+      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
+    }
+
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user);
 
-    const [results, count] = await qb
+    const [users, count] = await qb
       .orderBy('u.created_at', 'DESC')
       .addOrderBy('u.id', 'DESC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
 
+    const userIds = users.map((listed) => listed.id);
+    const [memberships, weeklyMinutesByUser] = await Promise.all([
+      this.openMembershipsFor(companyId, userIds, user),
+      user.role === UserRole.OWNER
+        ? this.weeklyMinutesFor(companyId, userIds)
+        : null,
+    ]);
+
+    const teamsByUser = new Map<string, UserTeam[]>();
+    for (const { userId, team } of memberships) {
+      const teams = teamsByUser.get(userId) ?? [];
+      teams.push({ id: team.id, name: team.name });
+      teamsByUser.set(userId, teams);
+    }
+
+    const results = users.map((listed) => ({
+      ...listed,
+      teams: teamsByUser.get(listed.id) ?? [],
+      weeklyMinutes: weeklyMinutesByUser?.get(listed.id),
+    }));
+
     return { results, count };
+  }
+
+  // Only teams the caller can see, so a manager learns no other team's name.
+  private async openMembershipsFor(
+    companyId: string,
+    userIds: string[],
+    caller: AuthUser,
+  ): Promise<TeamMembership[]> {
+    if (!userIds.length) return [];
+
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(caller);
+    if (visibleTeamIds?.length === 0) return [];
+
+    return this.dataSource.getRepository(TeamMembership).find({
+      where: {
+        companyId,
+        userId: In(userIds),
+        leftAt: IsNull(),
+        team: {
+          status: TeamStatus.ACTIVE,
+          ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
+        },
+      },
+      relations: { team: true },
+      order: { team: { name: 'ASC' } },
+    });
+  }
+
+  private async weeklyMinutesFor(
+    companyId: string,
+    userIds: string[],
+  ): Promise<Map<string, number>> {
+    const today = await this.capacity.today(companyId);
+    const timelines = await this.capacity.timelinesFor(
+      companyId,
+      userIds,
+      today,
+    );
+
+    return new Map(
+      userIds.map((id) => [id, timelines.get(id)!.minutesPerWeekOn(today)]),
+    );
   }
 
   /**
@@ -151,13 +248,25 @@ export class UsersService {
    * Separate from `list` only because of that "plus themselves" — a manager
    * who leads no team must still be able to pick themselves.
    */
-  async listAssignable(companyId: string, query: UsersQuery, user: AuthUser) {
+  async listAssignable(
+    companyId: string,
+    query: AssignableUsersQuery,
+    user: AuthUser,
+  ) {
     const qb = this.repo
       .createQueryBuilder('u')
       .where('u.company_id = :companyId', { companyId });
 
     if (query.status) {
       qb.andWhere('u.status = :status', { status: query.status });
+    }
+
+    if (query.role) {
+      qb.andWhere('u.role = :role', { role: query.role });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
@@ -211,7 +320,13 @@ export class UsersService {
     companyId: string,
     caller: AuthUser,
     manager?: EntityManager,
-  ): Promise<User & { hasPassword: boolean; googleLinked: boolean }> {
+  ): Promise<
+    User & {
+      hasPassword: boolean;
+      googleLinked: boolean;
+      teams: UserTeamMembership[];
+    }
+  > {
     const user = await this.getRepository(manager).findOne({
       where: {
         id,
@@ -237,10 +352,19 @@ export class UsersService {
       );
     }
 
+    const memberships = await this.openMembershipsFor(companyId, [id], caller);
+
     return {
       ...user,
       hasPassword: Boolean(user.passwordHash),
       googleLinked: Boolean(user.googleId),
+      teams: memberships.map(({ team, roleInTeam, joinedAt }) => ({
+        id: team.id,
+        name: team.name,
+        status: team.status,
+        roleInTeam,
+        joinedAt,
+      })),
     };
   }
 
@@ -315,14 +439,23 @@ export class UsersService {
     id: string,
     companyId: string,
     payload: UpdateUserPayload,
-    currentRole: UserRole,
+    caller: AuthUser,
     manager?: EntityManager,
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
       const user = await this.getUserById(id, companyId, man);
 
-      if (user.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+      // Otherwise the company could be left with no owner.
+      if (
+        user.id === caller.id &&
+        payload.role !== undefined &&
+        payload.role !== user.role
+      ) {
+        throw new ForbiddenException('You cannot change your own role');
+      }
+
+      if (user.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
         throw new ForbiddenException(
           'Only Company OWNER can modify another OWNER',
         );
@@ -331,7 +464,7 @@ export class UsersService {
       if (payload.firstName !== undefined) user.firstName = payload.firstName;
       if (payload.lastName !== undefined) user.lastName = payload.lastName;
       if (payload.role !== undefined) {
-        if (payload.role === UserRole.OWNER && currentRole !== UserRole.OWNER) {
+        if (payload.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
           throw new ForbiddenException(
             'Only Company OWNER can assign the OWNER role',
           );

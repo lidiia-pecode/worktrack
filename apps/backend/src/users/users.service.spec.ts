@@ -1,5 +1,9 @@
 import 'reflect-metadata';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -11,12 +15,20 @@ import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TeamsService } from 'src/teams/teams.service';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { ReportingService } from 'src/reporting/reporting.service';
+import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
+import { Project } from 'src/projects/entities/project.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { User } from './entities/user.entity';
 import { UserRole, UserStatus } from './enums/user-role.enum';
+import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
+import { UsersQuery } from './dtos/users-query.dto';
 import { UsersService } from './users.service';
 
 /**
@@ -28,11 +40,14 @@ import { UsersService } from './users.service';
 const RUN = Date.now();
 const SLUG = `users-scope-test-${RUN}`;
 const PAGE = { offset: 0, limit: 50 } as never;
+const searchFor = (search: string) =>
+  Object.assign(new UsersQuery(), { pageSize: 50, search });
 const TIME_ZONE = timeZoneOnAnotherDay();
 
 describe('UsersService scope', () => {
   let dataSource: DataSource;
   let service: UsersService;
+  let capacity: CapacityService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -70,13 +85,25 @@ describe('UsersService scope', () => {
       logging: false,
     }).initialize();
 
+    const teamVisibility = new TeamVisibilityService(
+      dataSource.getRepository(TeamMembership),
+      dataSource.getRepository(User),
+    );
+    capacity = new CapacityService(
+      dataSource.getRepository(UserCapacity),
+      dataSource.getRepository(Company),
+      dataSource.getRepository(User),
+      new ReportingService(
+        dataSource.getRepository(ReportingPeriod),
+        dataSource.getRepository(Company),
+        teamVisibility,
+      ),
+    );
     service = new UsersService(
       dataSource.getRepository(User),
-      new TeamVisibilityService(
-        dataSource.getRepository(TeamMembership),
-        dataSource.getRepository(User),
-      ),
+      teamVisibility,
       dataSource,
+      capacity,
     );
 
     const company = await dataSource
@@ -112,23 +139,25 @@ describe('UsersService scope', () => {
   afterAll(async () => {
     if (!dataSource?.isInitialized) return;
 
+    // A project's members go with it, and would otherwise hold on to the users.
+    await dataSource.getRepository(Project).delete({ companyId });
     await dataSource.getRepository(Company).delete({ slug: In([SLUG]) });
     await dataSource.destroy();
   });
 
   describe('list', () => {
-    it('shows an owner the whole company', async () => {
+    it('shows an owner the whole company except owners', async () => {
       const ids = await listedIds(owner);
 
       expect(ids).toEqual(
         expect.arrayContaining([
-          owner.id,
           manager.id,
           member.id,
           outsider.id,
           leadNothing.id,
         ]),
       );
+      expect(ids).not.toContain(owner.id);
     });
 
     it('shows a manager their own team, and themselves', async () => {
@@ -143,6 +172,108 @@ describe('UsersService scope', () => {
 
     it('shows a manager who leads no team nobody', async () => {
       expect(await listedIds(leadNothing)).toEqual([]);
+    });
+  });
+
+  describe('list search', () => {
+    const foundIds = async (search: string) => {
+      const { results } = await service.list(
+        companyId,
+        searchFor(search),
+        owner,
+      );
+      return results.map((user) => user.id);
+    };
+
+    it('matches a name, ignoring case', async () => {
+      expect(await foundIds('OUTSIDER')).toEqual([outsider.id]);
+    });
+
+    it('matches an email and a position', async () => {
+      await dataSource
+        .getRepository(User)
+        .update(member.id, { position: 'Quality Lead' });
+
+      expect(await foundIds(`outsider-${RUN}@`)).toEqual([outsider.id]);
+      expect(await foundIds('quality')).toEqual([member.id]);
+    });
+
+    it('stays within what a manager can see', async () => {
+      const { results } = await service.list(
+        companyId,
+        searchFor('outsider'),
+        manager,
+      );
+
+      expect(results).toEqual([]);
+    });
+  });
+
+  describe('list rows', () => {
+    let betaId: string;
+
+    const rowOf = async (caller: AuthUser, userId: string) => {
+      const { results } = await service.list(companyId, PAGE, caller);
+      return results.find((user) => user.id === userId)!;
+    };
+
+    beforeAll(async () => {
+      const beta = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Beta ${RUN}` });
+      betaId = beta.id;
+
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: betaId,
+        userId: member.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+
+      for (const status of [ProjectStatus.ACTIVE, ProjectStatus.ARCHIVED]) {
+        await dataSource.getRepository(Project).save({
+          companyId,
+          name: `${status} project ${RUN}`,
+          status,
+          users: [{ id: member.id }],
+        });
+      }
+    });
+
+    it('names every open team for an owner', async () => {
+      const row = await rowOf(owner, member.id);
+
+      expect(row.teams.map((team) => team.id).sort()).toEqual(
+        [alphaId, betaId].sort(),
+      );
+    });
+
+    it('names only the teams a manager leads', async () => {
+      const row = await rowOf(manager, member.id);
+
+      expect(row.teams).toEqual([{ id: alphaId, name: `Alpha ${RUN}` }]);
+    });
+
+    it('gives a person on no team an empty list', async () => {
+      expect((await rowOf(owner, outsider.id)).teams).toEqual([]);
+    });
+
+    it('counts active projects only', async () => {
+      expect((await rowOf(owner, member.id)).projectsCount).toBe(1);
+      expect((await rowOf(owner, outsider.id)).projectsCount).toBe(0);
+    });
+
+    it("gives an owner today's weekly capacity", async () => {
+      const row = await rowOf(owner, member.id);
+
+      expect(row.weeklyMinutes).toBe(
+        await capacity.defaultMinutesPerWeek(companyId),
+      );
+    });
+
+    it('gives a manager no capacity', async () => {
+      expect((await rowOf(manager, member.id)).weeklyMinutes).toBeUndefined();
     });
   });
 
@@ -173,6 +304,32 @@ describe('UsersService scope', () => {
     it('offers a manager who leads no team only themselves', async () => {
       expect(await assignableIds(leadNothing)).toEqual([leadNothing.id]);
     });
+
+    it('lists one role at a time, for leading a team or joining one', async () => {
+      const { results } = await service.listAssignable(
+        companyId,
+        Object.assign(new AssignableUsersQuery(), {
+          pageSize: 50,
+          role: UserRole.MANAGER,
+        }),
+        owner,
+      );
+
+      expect(results.map((user) => user.role)).not.toContain(UserRole.EMPLOYEE);
+      expect(results.map((user) => user.id)).toEqual(
+        expect.arrayContaining([manager.id, leadNothing.id]),
+      );
+    });
+
+    it('searches, and keeps owners, who can be put on a project', async () => {
+      const { results } = await service.listAssignable(
+        companyId,
+        searchFor('owner'),
+        owner,
+      );
+
+      expect(results.map((user) => user.id)).toEqual([owner.id]);
+    });
   });
 
   describe('getUserDetailsById', () => {
@@ -200,6 +357,33 @@ describe('UsersService scope', () => {
       await expect(
         service.getUserDetailsById(outsider.id, companyId, manager),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('names their teams with the role and joining date', async () => {
+      const { teams } = await service.getUserDetailsById(
+        member.id,
+        companyId,
+        owner,
+      );
+
+      expect(teams).toContainEqual({
+        id: alphaId,
+        name: `Alpha ${RUN}`,
+        status: TeamStatus.ACTIVE,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+    });
+
+    it('names only the teams a manager leads', async () => {
+      // The member is also in "Beta", which the list rows above put them in.
+      const { teams } = await service.getUserDetailsById(
+        member.id,
+        companyId,
+        manager,
+      );
+
+      expect(teams.map((team) => team.id)).toEqual([alphaId]);
     });
   });
 
@@ -283,7 +467,7 @@ describe('UsersService scope', () => {
         user.id,
         companyId,
         { role: UserRole.EMPLOYEE },
-        UserRole.OWNER,
+        owner,
       );
 
     it('is allowed for a Manager who manages no team', async () => {
@@ -332,6 +516,20 @@ describe('UsersService scope', () => {
       });
     });
 
+    it("is refused for the owner's own role", async () => {
+      await expect(
+        service.updateUser(
+          owner.id,
+          companyId,
+          { role: UserRole.EMPLOYEE },
+          owner,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.updateUser(owner.id, companyId, { position: 'Founder' }, owner),
+      ).resolves.toMatchObject({ role: UserRole.OWNER });
+    });
+
     it('is refused for making a team manager an Owner too', async () => {
       const leader = await createUser('ownerbound', UserRole.MANAGER);
       await leadTeam(leader, 'Theta');
@@ -341,7 +539,7 @@ describe('UsersService scope', () => {
           leader.id,
           companyId,
           { role: UserRole.OWNER },
-          UserRole.OWNER,
+          owner,
         ),
       ).rejects.toThrow(BadRequestException);
     });

@@ -3,20 +3,23 @@
 import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
+import { EntityRef, formatEntityRef, OPEN_PARAM } from "@/lib/utils/entity-ref";
+
 interface SetupLinkOptions {
   create?: boolean;
-  projectId?: string | null;
+  /** Shown in the page's entity panel on arrival. */
+  open?: EntityRef | null;
 }
 
 const CREATE = "create";
-const PROJECT = "project";
+const ONBOARDING = "onboarding";
 
 /** A link from the setup checklist; the page it opens returns to Getting started once the step is done. */
 export const setupLink = (path: string, options: SetupLinkOptions = {}) => {
-  const params = new URLSearchParams({ onboarding: "true" });
+  const params = new URLSearchParams({ [ONBOARDING]: "true" });
 
   if (options.create) params.set(CREATE, "true");
-  if (options.projectId) params.set(PROJECT, options.projectId);
+  if (options.open) params.set(OPEN_PARAM, formatEntityRef(options.open));
 
   return `${path}?${params}`;
 };
@@ -30,6 +33,10 @@ export const createFirstLink = (path: string, isOnboarding: boolean) =>
     ? setupLink(path, { create: true })
     : `${path}?${new URLSearchParams({ [CREATE]: "true" })}`;
 
+/** Whether the page was reached from the setup checklist, which it returns to once the step is done. */
+export const useIsOnboarding = () =>
+  useSearchParams().get(ONBOARDING) === "true";
+
 /**
  * Read these once, as the page's starting state: the form opens on arrival,
  * and the parameters are then dropped so a reload or Back does not reopen it.
@@ -40,11 +47,10 @@ export const useSetupLinkParams = () => {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!searchParams.has(CREATE) && !searchParams.has(PROJECT)) return;
+    if (!searchParams.has(CREATE)) return;
 
     const remaining = new URLSearchParams(searchParams);
     remaining.delete(CREATE);
-    remaining.delete(PROJECT);
 
     router.replace(remaining.size ? `${pathname}?${remaining}` : pathname, {
       scroll: false,
@@ -52,8 +58,7 @@ export const useSetupLinkParams = () => {
   }, [pathname, router, searchParams]);
 
   return {
-    isOnboarding: searchParams.get("onboarding") === "true",
+    isOnboarding: searchParams.get(ONBOARDING) === "true",
     opensCreateForm: searchParams.get(CREATE) === "true",
-    projectId: searchParams.get(PROJECT),
   };
 };

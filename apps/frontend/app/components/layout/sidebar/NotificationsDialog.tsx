@@ -10,6 +10,7 @@ import {
 } from "@/hooks/useNotifications";
 import { NotificationType } from "@/types/enums";
 import type { AppNotification } from "@/types/Notification";
+import { urlWithOpenEntity } from "@/lib/utils/entity-ref";
 
 import { EmptyState } from "../../shared/EmptyState";
 import { ErrorState } from "../../shared/ErrorState";
@@ -23,7 +24,16 @@ const SENT_AT_LABEL = new Intl.DateTimeFormat(undefined, {
   minute: "2-digit",
 });
 
-const PROJECTS_PATH = "/admin/projects";
+const USERS_PATH = "/admin/users";
+
+// The person's panel, where their projects are; the list when they are unknown.
+const personLink = (subjectUser: AppNotification["subjectUser"]) =>
+  subjectUser
+    ? urlWithOpenEntity(USERS_PATH, new URLSearchParams(), {
+        type: "user",
+        id: subjectUser.id,
+      })
+    : USERS_PATH;
 
 interface NotificationRowProps {
   notification: AppNotification;
@@ -57,7 +67,7 @@ const NotificationRow = ({
         </p>
 
         <Link
-          href={PROJECTS_PATH}
+          href={personLink(subjectUser)}
           onClick={onNavigate}
           className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
         >

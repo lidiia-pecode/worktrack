@@ -79,15 +79,28 @@ function DialogContent({
   );
 }
 
-/** A full-height panel that slides in from the left, such as the phone menu. */
-function DialogSidePanel({ className, ...props }: DialogPrimitive.Popup.Props) {
+const SIDE_PANEL_SIDES = {
+  left: "left-0 data-open:slide-in-from-left data-closed:slide-out-to-left",
+  right: "right-0 data-open:slide-in-from-right data-closed:slide-out-to-right",
+};
+
+/**
+ * A full-height panel that slides in from one side: the phone menu from the
+ * left, an entity's details on a phone from the right.
+ */
+function DialogSidePanel({
+  className,
+  side = "left",
+  ...props
+}: DialogPrimitive.Popup.Props & { side?: keyof typeof SIDE_PANEL_SIDES }) {
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Popup
         data-slot="dialog-side-panel"
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-80 max-w-full flex-col bg-popover text-popover-foreground shadow-xl duration-200 outline-none data-open:animate-in data-open:slide-in-from-left data-closed:animate-out data-closed:slide-out-to-left",
+          "fixed inset-y-0 z-50 flex w-80 max-w-full flex-col bg-popover text-popover-foreground shadow-xl duration-200 outline-none data-open:animate-in data-closed:animate-out",
+          SIDE_PANEL_SIDES[side],
           className,
         )}
         {...props}

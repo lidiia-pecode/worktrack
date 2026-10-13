@@ -3,6 +3,7 @@
 import {
   Activity,
   ActivityArchiveImpact,
+  ActivityDetails,
   ActivityListResponse,
   ActivityPayload,
   ActivityQuery,
@@ -17,7 +18,8 @@ const crud = createCrudClient<
   ActivityPayload,
   UpdateActivityPayload,
   ActivityListResponse,
-  Omit<ActivityQuery, "page">
+  Omit<ActivityQuery, "page">,
+  ActivityDetails
 >({
   endpoint: "activities",
 });

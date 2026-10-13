@@ -36,3 +36,18 @@ export const findOfferingProjects = async (
 
   return projectsByActivity;
 };
+
+/** Activities still linked to a project, archived projects included, since restoring one brings its links back; a removed link does not count. */
+export const findActivitiesInUse = async (
+  projectActivityRepo: Repository<ProjectActivity>,
+  activityIds: string[],
+): Promise<Set<string>> => {
+  if (!activityIds.length) return new Set();
+
+  const links = await projectActivityRepo.find({
+    select: { activityId: true },
+    where: { activityId: In(activityIds), isActive: true },
+  });
+
+  return new Set(links.map((link) => link.activityId));
+};

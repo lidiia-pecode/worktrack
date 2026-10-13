@@ -96,9 +96,10 @@ company role to MANAGER, then makes them the team's manager. The API refuses
 A Manager who manages no team may be changed to Employee or Owner; one who
 manages a team may not, and the refusal names the teams — memberships never
 change as a side effect. A closed manager membership cannot be reopened for
-someone who is no longer a Manager either. The member list offers the Owner a "make Manager" step for an
-employee, which changes only the company role. The Owner may also invite a new
-Manager to lead a team; accepting makes them its manager. That is still the
+someone who is no longer a Manager either. In the member list, choosing Manager
+for an employee asks once, then makes them a Manager and then the team's
+manager, as two separate changes. The Owner may also invite a new Manager to
+lead a team; accepting makes them its manager. That is still the
 Owner appointing a team's manager, since nobody else can invite a Manager.
 
 **Archiving a team closes it** — confirmed and enforced in September 2026.
@@ -187,14 +188,18 @@ Three further rules follow from §3.4 and are settled:
 
 - **A manager changes only what they were shown.** Because their member list is
   scoped, their save adds and removes inside that scope and leaves everyone else
-  untouched. They cannot remove another manager's person from a project, even
+  untouched, and adding or removing one person on its own
+  (`POST`/`DELETE /projects/:id/members/:userId`) outside it is refused. They
+  cannot remove another manager's person from a project, even
   one who has clearly rolled off — that is the Owner's call, or that person's
   manager's.
 - **A manager may always add themselves**, including one who currently leads no
   team and therefore sees nobody. Otherwise they would still have no project to
   log time against, which is the whole reason managers become members at all.
 - **Active status gates joining, not staying.** Only an ACTIVE user may be newly
-  assigned. Archiving someone leaves their existing project memberships — and
+  assigned, to a project or to a team, and a closed team membership is not
+  reopened for someone deactivated. Archiving someone leaves their existing
+  project memberships — and
   their team memberships — exactly as they are, un-archiving restores nothing
   because nothing was taken, and only a deliberate removal ever changes them.
   This is "archive, never delete" (business §8) applied to `project_users`.

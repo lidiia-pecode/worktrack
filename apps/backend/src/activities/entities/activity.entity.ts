@@ -18,7 +18,7 @@ import { ActivityStatus } from '../enums/activity-status.enum';
 @Entity('activities')
 @Index('IDX_activities_company_id', ['companyId'])
 @Index('IDX_activities_category_id', ['categoryId'])
-@Index('UQ_activities_company_category_name_lower', {
+@Index('UQ_activities_company_name_lower', {
   synchronize: false,
 })
 export class Activity {
@@ -55,12 +55,13 @@ export class Activity {
   })
   status!: ActivityStatus;
 
+  /** None while it is a draft; it needs one before it can go on a project. */
   @Column({
     type: 'uuid',
     name: 'category_id',
-    nullable: false,
+    nullable: true,
   })
-  categoryId!: string;
+  categoryId!: string | null;
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
@@ -80,11 +81,11 @@ export class Activity {
   company!: Company;
 
   @ManyToOne(() => ActCategory, (category) => category.activities, {
-    nullable: false,
+    nullable: true,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'category_id' })
-  category!: ActCategory;
+  category!: ActCategory | null;
 
   @OneToMany(
     () => ProjectActivity,

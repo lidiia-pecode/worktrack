@@ -16,9 +16,12 @@ import { CurrentUser, Role } from 'src/lib/decorators';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   ActivityCategoryArchiveImpactResponse,
+  ActivityCategoryDetailsResponse,
+  ActivityCategoryListItemResponse,
   ActivityCategoryResponse,
 } from './dtos/activities-category-response.dto';
 import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
+import { RestoreCategoryPayload } from './dtos/restore-category-payload.dto';
 import { ActivityCategoryPayload } from './dtos/activities-category-payload.dto';
 import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto';
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -29,18 +32,18 @@ export class ActCategoriesController {
   constructor(private readonly service: ActCategoriesService) {}
 
   @Get()
-  @SerializeList(ActivityCategoryResponse)
+  @SerializeList(ActivityCategoryListItemResponse)
   list(@Query() query: ActivityCategoriesQuery, @CurrentUser() user: AuthUser) {
     return this.service.list(user, query);
   }
 
   @Get(':id')
-  @Serialize(ActivityCategoryResponse)
+  @Serialize(ActivityCategoryDetailsResponse)
   getById(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.getById(id, user.companyId);
+    return this.service.getDetails(id, user.companyId);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)
@@ -90,8 +93,9 @@ export class ActCategoriesController {
   @Serialize(ActivityCategoryResponse)
   unarchive(
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() payload: RestoreCategoryPayload,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.unarchive(id, user.companyId);
+    return this.service.unarchive(id, user.companyId, payload);
   }
 }
