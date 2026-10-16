@@ -1,21 +1,39 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { COMPANY, SEED_PASSWORD, TEAM, PROJECTS, USERS } from './seed-config';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 
-// Must stay inside apps/backend — that is the only folder the seed container
-// shares with your machine.
+import { COMPANY, SEED_PASSWORD, TEAMS, PROJECTS, USERS } from './seed-config';
+
 const TARGET = path.resolve(__dirname, '../../docs/TEST-CREDENTIALS.md');
 
 export function writeCredentialsFile(): string {
   const rows = USERS.map(
     (user) =>
-      `| ${user.role} | \`${user.email}\` | ${user.firstName} ${user.lastName} | ${user.note} |`,
+      `| ${user.role} | \`${user.email}\` | ${user.firstName} ${user.lastName} | ${user.note ?? ''} |`,
   ).join('\n');
 
-  const projects = PROJECTS.map(
-    (project) => `- **${project.name}** — ${project.members.join(', ')}`,
-  ).join('\n');
+  const teams = TEAMS.map((team) => {
+    const heading =
+      team.status === TeamStatus.ARCHIVED
+        ? `### ${team.name} (archived, former members)`
+        : `### ${team.name}`;
+    const members = team.members
+      .map((member) => `- ${member.email} (${member.roleInTeam})`)
+      .join('\n');
+
+    return `${heading}\n\n${members}`;
+  }).join('\n\n');
+
+  const projects = PROJECTS.map((project) => {
+    const name =
+      project.status === ProjectStatus.ARCHIVED
+        ? `**${project.name}** (archived)`
+        : `**${project.name}**`;
+
+    return `- ${name} — ${project.members.join(', ') || 'nobody'}`;
+  }).join('\n');
 
   const content = `# Test logins
 
@@ -38,12 +56,15 @@ All of them belong to the single test company **${COMPANY.companyName}**.
 | :--- | :--- | :--- | :--- |
 ${rows}
 
-## Team "${TEAM.name}"
+Deactivated accounts cannot sign in.
 
-${TEAM.members.map((m) => `- ${m.email} (${m.roleInTeam})`).join('\n')}
+## Teams
 
-Anyone not listed here is invisible to the manager — that is deliberate, and it
-is how you check the role-visibility rules by hand.
+${teams}
+
+A manager sees only the people in the teams they lead: anyone else is invisible
+to them — that is deliberate, and it is how you check the role-visibility rules
+by hand.
 
 ## Project members
 

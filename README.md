@@ -73,11 +73,17 @@ make setup
 This starts PostgreSQL, runs all database migrations and seeds one test company
 with users, projects, activities, teams, planning and time logs.
 
-`make seed` creates the **WorkTrack Demo** company with five test users — an
-owner, a manager and three employees. The logins are written to
-`apps/backend/docs/TEST-CREDENTIALS.md` (ignored by Git) every time you seed.
-To change what gets created, edit `apps/backend/src/seed/seed-config.ts` and
-re-run `make seed`.
+`make seed` creates the **WorkTrack Demo** company: the accounts for checking
+each role (an owner, two managers and employees) and about twenty demo people
+in several teams, with projects, activities and categories, including archived,
+deactivated and draft ones and long names. Running it again adds only what is
+missing. The logins are written to `apps/backend/docs/TEST-CREDENTIALS.md`
+(ignored by Git) every time you seed. To change what gets created, edit
+`apps/backend/src/seed/seed-config.ts` and re-run `make seed`.
+
+The seed writes only to a local database: it stops before connecting when
+`NODE_ENV` is `production`, `DATABASE_SSL` is `true`, or the database host is
+not `localhost`, `127.0.0.1` or `::1`, so it can never run against Neon.
 
 ### Running
 

@@ -33,7 +33,7 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
         role: data.role,
         position: data.position,
         passwordHash,
-        status: UserStatus.ACTIVE,
+        status: data.status ?? UserStatus.ACTIVE,
         createdAt: ACCOUNTS_CREATED_AT,
       }),
     );

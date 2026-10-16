@@ -1,6 +1,6 @@
 import { SnakeNamingStrategy } from 'typeorm-naming-strategies';
 
-type ReadEnv = (key: string) => string | undefined;
+export type ReadEnv = (key: string) => string | undefined;
 
 /**
  * Hosted databases hand out a single connection URL; Docker gives separate
