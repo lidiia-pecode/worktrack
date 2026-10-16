@@ -5,9 +5,9 @@ allowed-tools: Bash(git rev-parse:*), Bash(git status:*), Bash(git log:*), Bash(
 
 # /pr — write the PR body for this branch
 
-Fills the two sections of `.github/pull_request_template.md` and saves the
-result to `.pr-body.md`. The user copies it into the GitHub PR form and opens
-the PR themselves.
+Writes a short PR body, saying what changed and why, from the branch's actual
+changes and saves it to `.pr-body.md`. The user copies it into the GitHub PR
+form and opens the PR themselves.
 
 ## 1. Read the branch
 
