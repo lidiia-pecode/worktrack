@@ -53,7 +53,7 @@ export const EmptyState = ({
         </h2>
 
         {description && (
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          <p className="mt-2 text-sm leading-6 wrap-anywhere text-muted-foreground">
             {description}
           </p>
         )}

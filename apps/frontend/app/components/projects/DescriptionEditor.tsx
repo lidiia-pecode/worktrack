@@ -1,7 +1,8 @@
 "use client";
 
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, mergeAttributes } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Heading from "@tiptap/extension-heading";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
 
@@ -65,12 +66,27 @@ const ToolbarButton = ({
   );
 };
 
+// The view sits under the panel's own h2, so "# Scope" renders as an h3.
+const HEADING_LEVELS_BELOW_PANEL_TITLE = 2;
+
+const PanelHeading = Heading.extend({
+  renderHTML({ node, HTMLAttributes }) {
+    const level = node.attrs.level + HEADING_LEVELS_BELOW_PANEL_TITLE;
+
+    return [
+      `h${level}`,
+      mergeAttributes(this.options.HTMLAttributes, HTMLAttributes),
+      0,
+    ];
+  },
+});
+
 // The editor saves Markdown, and the view reads it back with the same setup.
-const markdownExtensions = () => [
-  StarterKit.configure({
-    heading: {
-      levels: [1, 2, 3],
-    },
+const markdownExtensions = (heading = Heading) => [
+  StarterKit.configure({ heading: false }),
+
+  heading.configure({
+    levels: [1, 2, 3],
   }),
 
   Markdown.configure({
@@ -238,14 +254,14 @@ export const DescriptionView = ({ value }: { value: string }) => {
   const editor = useEditor(
     {
       editable: false,
-      extensions: markdownExtensions(),
+      extensions: markdownExtensions(PanelHeading),
       content: value,
       editorProps: {
         attributes: {
-          // Headings stay below the panel's own title.
+          // Headings stay smaller than the panel's own title.
           class: cn(
             proseClassName,
-            "prose-h1:text-base prose-h2:text-sm prose-h3:text-sm",
+            "prose-h3:text-base prose-h4:text-sm prose-h5:text-sm",
             "prose-headings:mt-3 prose-headings:mb-1",
           ),
         },

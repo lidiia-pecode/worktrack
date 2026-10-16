@@ -46,7 +46,7 @@ const BillableValue = ({ isBillable }: { isBillable: boolean }) => {
   const Icon = isBillable ? Check : X;
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5")}>
+    <span className="inline-flex items-center gap-1.5">
       <Icon
         aria-hidden="true"
         strokeWidth={2.5}
