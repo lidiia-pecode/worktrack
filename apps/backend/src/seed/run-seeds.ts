@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { AppDataSource } from 'src/data-source';
 
 import { COMPANY, OWNER_EMAIL, SEED_PASSWORD } from './seed-config';
+import { assertLocalDatabase } from './seed-guard';
 import { seedCompanies } from './seed-companies';
 import { seedUsers } from './seed-users';
 import { seedActivityCategories } from './seed-activity-categories';
@@ -16,6 +17,8 @@ import { writeCredentialsFile } from './write-credentials';
 
 async function run() {
   try {
+    assertLocalDatabase((key) => process.env[key]);
+
     console.log(`🌱 Seeding "${COMPANY.companyName}"...`);
     await AppDataSource.initialize();
 

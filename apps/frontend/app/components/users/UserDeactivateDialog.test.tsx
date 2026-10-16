@@ -27,7 +27,6 @@ const emma: User = {
 const membershipTeam = (id: string, name: string, roleInTeam: TeamRole) => ({
   id,
   name,
-  status: TeamStatus.ACTIVE,
   roleInTeam,
   joinedAt: "2026-01-05",
 });

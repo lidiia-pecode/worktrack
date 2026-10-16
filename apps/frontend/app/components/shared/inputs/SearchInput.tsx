@@ -6,6 +6,8 @@ import { Search, X } from "lucide-react";
 import Input from "@/components/ui/input";
 import { cn } from "@/lib/utils/cn";
 
+const MAX_SEARCH_LENGTH = 100;
+
 interface SearchInputProps {
   value: string;
   onChange: (value: string) => void;
@@ -47,6 +49,7 @@ export const SearchInput = ({
         ref={ref}
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        maxLength={MAX_SEARCH_LENGTH}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
         className="pr-9 pl-9"

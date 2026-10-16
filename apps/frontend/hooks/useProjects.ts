@@ -64,11 +64,12 @@ export const useProjectsMutations = createEntityMutations<
   queryKey: queryKeys.projects.all,
 
   // Removing somebody from a project deletes their future plans for it, and a
-  // person's and an activity's details list the projects they are on.
+  // person's, an activity's and a category's details count the projects.
   alsoInvalidate: [
     queryKeys.planning.all,
     queryKeys.users.all,
     queryKeys.activities.all,
+    queryKeys.activityCategories.all,
   ],
 
   api: {
@@ -130,6 +131,7 @@ export const useProjectLinks = () => {
     [
       queryKeys.users.all,
       queryKeys.activities.all,
+      queryKeys.activityCategories.all,
       queryKeys.projectActivities.all,
       queryKeys.planning.all,
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));

@@ -54,7 +54,7 @@ type CreateEntityMutationsConfig<
 
   messages?: MutationMessages<TDeleteResult>;
 
-  /** Its create form shows a taken name under the field, so no toast says it too. */
+  /** Its create and edit forms show a taken name under the field, so no toast says it too. */
   conflictShownInForm?: boolean;
 };
 
@@ -125,6 +125,7 @@ export function createEntityMutations<
     });
 
     const update = useMutation({
+      meta: { conflictShownInForm: config.conflictShownInForm },
       mutationFn: ({ id, data }: { id: string; data: TUpdate }) =>
         config.api.update(id, data),
 

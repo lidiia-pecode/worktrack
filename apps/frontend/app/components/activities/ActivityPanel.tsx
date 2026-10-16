@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Tags } from "lucide-react";
+import { FolderTree, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -40,7 +40,10 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
   if (isLoading) return <LoadingState size="compact" />;
 
   const save = (data: ActivityFormData) =>
-    update.mutate({ id: activity.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: activity.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm
@@ -88,12 +91,14 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
         type="Activity"
         name={activity.name}
         status={
-          isActive && isDraft ? (
-            <Badge variant="warning" dot>
-              Draft
-            </Badge>
+          isActive ? (
+            isDraft && (
+              <Badge variant="warning" dot>
+                Draft
+              </Badge>
+            )
           ) : (
-            <PanelStatus isActive={isActive} />
+            <PanelStatus />
           )
         }
         onEdit={
@@ -110,7 +115,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                 entity={{ type: "category", id: activity.category.id }}
                 tone="chip"
               >
-                <Tags
+                <FolderTree
                   aria-hidden="true"
                   className="size-3.5 text-muted-foreground"
                 />
@@ -128,7 +133,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
               </Badge>
             ) : (
               <Badge variant="neutral" dot>
-                Not billable
+                Non-billable
               </Badge>
             ),
           },

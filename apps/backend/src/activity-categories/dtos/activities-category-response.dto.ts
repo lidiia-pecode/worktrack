@@ -25,10 +25,28 @@ export class ActivityCategoryResponse {
 }
 
 @Exclude()
+class CategoryActivityRefResponse {
+  @Expose()
+  id!: string;
+
+  @Expose()
+  name!: string;
+}
+
+@Exclude()
 export class ActivityCategoryListItemResponse extends ActivityCategoryResponse {
   /** Active activities only. */
   @Expose()
   activitiesCount!: number;
+
+  /** The first few active activities, by name. */
+  @Expose()
+  @Type(() => CategoryActivityRefResponse)
+  firstActivities!: CategoryActivityRefResponse[];
+
+  /** Active activities that an active project offers; not sent to an employee. */
+  @Expose()
+  onProjectsCount?: number;
 }
 
 @Exclude()
@@ -45,6 +63,10 @@ export class CategoryActivityResponse {
   /** Linked to a project, archived ones too, so it can't become a draft. */
   @Expose()
   isInUse!: boolean;
+
+  /** Active projects that offer it now; not sent to an employee. */
+  @Expose()
+  projectsCount?: number;
 }
 
 @Exclude()

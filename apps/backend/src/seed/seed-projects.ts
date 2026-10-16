@@ -26,7 +26,7 @@ export async function seedProjects(dataSource: DataSource, companyId: string) {
         name: data.name,
         clientName: data.clientName,
         description: data.description,
-        status: ProjectStatus.ACTIVE,
+        status: data.status ?? ProjectStatus.ACTIVE,
         users: members,
       });
     } else {

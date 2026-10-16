@@ -15,15 +15,17 @@ export async function seedActivities(
     .findBy({ companyId });
 
   for (const item of ACTIVITIES) {
-    const category = categories.find((c) => c.name === item.category);
+    const category = item.category
+      ? categories.find((c) => c.name === item.category)
+      : null;
 
-    if (!category) {
+    if (category === undefined) {
       throw new Error(`Activity category "${item.category}" not found`);
     }
 
+    // Names are unique per company, whatever the category.
     const existing = await activityRepo.findOneBy({
       companyId,
-      categoryId: category.id,
       name: item.name,
     });
 
@@ -31,10 +33,10 @@ export async function seedActivities(
       await activityRepo.save(
         activityRepo.create({
           companyId,
-          categoryId: category.id,
+          categoryId: category?.id ?? null,
           name: item.name,
           defaultBillable: item.billable,
-          status: ActivityStatus.ACTIVE,
+          status: item.status ?? ActivityStatus.ACTIVE,
         }),
       );
     }

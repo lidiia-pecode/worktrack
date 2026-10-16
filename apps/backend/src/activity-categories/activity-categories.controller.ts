@@ -43,7 +43,7 @@ export class ActCategoriesController {
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthUser,
   ) {
-    return this.service.getDetails(id, user.companyId);
+    return this.service.getDetails(id, user);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

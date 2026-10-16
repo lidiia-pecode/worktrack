@@ -19,6 +19,7 @@ import {
   ManageCount,
   ManageList,
 } from "../shared/resource/ManageList";
+import { ProjectColorDot } from "../shared/ProjectColorDot";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ProjectCreateDialog } from "./ProjectCreateDialog";
 import { useProjectActions } from "./useProjectActions";
@@ -106,6 +107,7 @@ export const ProjectsContent = () => {
           row={{
             getKey: (project) => project.id,
             getName: (project) => project.name,
+            getLeading: (project) => <ProjectColorDot projectId={project.id} />,
             getEntity: (project) => ({ type: "project", id: project.id }),
             onEdit: projectActions.edit,
             canEdit: projectActions.canEdit,

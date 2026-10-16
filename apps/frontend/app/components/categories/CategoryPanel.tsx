@@ -11,6 +11,7 @@ import {
 import { useActivitiesMutations } from "@/hooks/useActivities";
 import { ActivityCategoryDetails, CategoryActivity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
+import { countLabel } from "@/lib/utils/text";
 
 import {
   EntityPanelLayout,
@@ -40,7 +41,10 @@ const CategoryEditForm = ({
   const { update } = useActivityCategoriesMutations();
 
   const save = (data: NameFormData) =>
-    update.mutate({ id: category.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: category.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm
@@ -59,6 +63,11 @@ const CategoryEditForm = ({
     </PanelEditForm>
   );
 };
+
+const projectsLabel = (count: number) =>
+  count > 0
+    ? `On ${countLabel(count, "project", "projects")}`
+    : "Not on any project";
 
 export const CategoryPanel = ({ id }: { id: string }) => {
   const {
@@ -91,7 +100,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
       <EntityPanelLayout
         type="Category"
         name={category.name}
-        status={<PanelStatus isActive={isActive} />}
+        status={!isActive && <PanelStatus />}
         onEdit={
           categoryActions.canEdit(category)
             ? () => categoryActions.edit(category)
@@ -112,6 +121,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
             return {
               entity: { type: "activity", id: activity.id },
               name: activity.name,
+              detail: !isArchived && projectsLabel(activity.projectsCount ?? 0),
               isInactive: isArchived,
               status: isArchived && <Badge variant="neutral">Archived</Badge>,
               remove:

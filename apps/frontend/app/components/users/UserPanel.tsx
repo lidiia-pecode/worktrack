@@ -27,6 +27,7 @@ import {
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
+import { Avatar } from "../shared/Avatar";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
@@ -170,9 +171,8 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         type="Person"
         name={fullName(user)}
         subtitle={user.position}
-        status={
-          <PanelStatus isActive={!isDeactivated} inactiveLabel="Deactivated" />
-        }
+        leading={<Avatar user={user} size="lg" />}
+        status={isDeactivated && <PanelStatus label="Deactivated" />}
         onEdit={
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }

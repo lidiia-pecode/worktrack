@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Tags, UserPlus } from "lucide-react";
+import { FolderTree, Plus, UserPlus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,6 +22,8 @@ import {
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { Avatar } from "../shared/Avatar";
+import { ProjectColorDot } from "../shared/ProjectColorDot";
+import { DescriptionView } from "./DescriptionEditor";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import {
   ACTIVITIES_PICKER,
@@ -47,7 +49,10 @@ const ProjectEditForm = ({ project }: { project: Project }) => {
   const clientSuggestions = useClientNameSuggestions();
 
   const save = (data: ProjectFormData) =>
-    update.mutate({ id: project.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: project.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm
@@ -104,7 +109,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
       <EntityPanelLayout
         type="Project"
         name={project.name}
-        status={<PanelStatus isActive={isActive} />}
+        leading={<ProjectColorDot projectId={project.id} className="size-3" />}
+        status={!isActive && <PanelStatus />}
         onEdit={
           projectActions.canEdit(project)
             ? () => projectActions.edit(project)
@@ -122,11 +128,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             ? [
                 {
                   label: "Description",
-                  value: (
-                    <span className="whitespace-pre-line">
-                      {project.description}
-                    </span>
-                  ),
+                  value: <DescriptionView value={project.description} />,
                   wide: true,
                 },
               ]
@@ -187,7 +189,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
                 tone="plain"
                 className="inline-flex items-center gap-1.5 text-muted-foreground"
               >
-                <Tags aria-hidden="true" className="size-3.5" />
+                <FolderTree aria-hidden="true" className="size-3.5" />
                 {activity.category.name}
               </EntityLink>
             ),

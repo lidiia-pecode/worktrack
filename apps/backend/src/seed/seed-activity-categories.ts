@@ -10,7 +10,7 @@ export async function seedActivityCategories(
 ) {
   const categoryRepo = dataSource.getRepository(ActCategory);
 
-  for (const name of CATEGORIES) {
+  for (const { name, status } of CATEGORIES) {
     const existing = await categoryRepo.findOneBy({ companyId, name });
 
     if (!existing) {
@@ -18,7 +18,7 @@ export async function seedActivityCategories(
         categoryRepo.create({
           companyId,
           name,
-          status: ActCategoryStatus.ACTIVE,
+          status: status ?? ActCategoryStatus.ACTIVE,
         }),
       );
     }
