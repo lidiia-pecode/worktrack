@@ -11,8 +11,8 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityCategoryListItem } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
-import { countLabel } from "@/lib/utils/text";
 
+import { EntityLinks, linkedEntities } from "../entity-panel/EntityLink";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
   ManageColumn,
@@ -23,14 +23,76 @@ import { ResourcePage } from "../shared/resource/ResourcePage";
 import { CategoryCreateDialog } from "./CategoryCreateDialog";
 import { useCategoryActions } from "./useCategoryActions";
 
+const NO_ACTIVITIES = "No active activities";
+
+const onProjectsCount = (category: ActivityCategoryListItem) =>
+  category.onProjectsCount ?? 0;
+
+const FirstActivityLinks = ({
+  category,
+}: {
+  category: ActivityCategoryListItem;
+}) => (
+  <EntityLinks
+    tone="plain"
+    entities={linkedEntities("activity", category.firstActivities)}
+  />
+);
+
+const MoreActivities = ({
+  category,
+}: {
+  category: ActivityCategoryListItem;
+}) => {
+  const moreCount = category.activitiesCount - category.firstActivities.length;
+
+  if (moreCount <= 0) return null;
+
+  return (
+    <span className="ml-1 shrink-0 text-muted-foreground">
+      +{moreCount}
+      <span className="sr-only"> more</span>
+    </span>
+  );
+};
+
 const COLUMNS: ManageColumn<ActivityCategoryListItem>[] = [
   {
     header: "Activities",
+    // A share rather than a fixed width, so the names keep pace with the screen.
+    width: "w-2/5",
+    // The count stays visible however much of the names is cut off.
+    cell: (category) =>
+      category.activitiesCount > 0 ? (
+        <span className="flex min-w-0">
+          <span className="truncate">
+            <FirstActivityLinks category={category} />
+          </span>
+          <MoreActivities category={category} />
+        </span>
+      ) : (
+        <span className="text-muted-foreground">{NO_ACTIVITIES}</span>
+      ),
+    summary: (category) =>
+      category.activitiesCount > 0 ? (
+        <>
+          <FirstActivityLinks category={category} />
+          <MoreActivities category={category} />
+        </>
+      ) : (
+        NO_ACTIVITIES
+      ),
+  },
+  {
+    header: "On projects",
     width: "w-28",
     numeric: true,
-    cell: (category) => <ManageCount count={category.activitiesCount} />,
-    summary: (category) =>
-      countLabel(category.activitiesCount, "activity", "activities"),
+    cell: (category) => <ManageCount count={onProjectsCount(category)} />,
+    summary: (category) => (
+      <span className="whitespace-nowrap">
+        {onProjectsCount(category)} on projects
+      </span>
+    ),
   },
 ];
 

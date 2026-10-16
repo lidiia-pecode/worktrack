@@ -63,6 +63,8 @@ export interface CategoryActivity {
   status: ActivityStatus;
   /** On a project, archived ones too, so it cannot be left without a category. */
   isInUse: boolean;
+  /** Active projects that offer it now; not sent to an employee. */
+  projectsCount?: number;
 }
 
 export interface ActivityCategoryDetails extends Omit<
@@ -76,6 +78,10 @@ export interface ActivityCategoryDetails extends Omit<
 export interface ActivityCategoryListItem extends ActivityCategory {
   /** Active activities only. */
   activitiesCount: number;
+  /** The first few active activities, by name. */
+  firstActivities: Pick<Activity, "id" | "name">[];
+  /** Active activities that an active project offers; not sent to an employee. */
+  onProjectsCount?: number;
 }
 
 export type ActivityCategoryListResponse =

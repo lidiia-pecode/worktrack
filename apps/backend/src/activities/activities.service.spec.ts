@@ -446,6 +446,55 @@ describe('Activity and category names', () => {
       ]);
     });
 
+    describe('a category row', () => {
+      let summaryId: string;
+
+      beforeAll(async () => {
+        summaryId = (
+          await categories.create({ name: `Summary ${RUN}` }, companyId)
+        ).id;
+
+        const create = (name: string) =>
+          activities.create({ name, categoryId: summaryId }, companyId);
+
+        const offered = await create('Summary B');
+        const onArchivedOnly = await create('Summary D');
+        await create('Summary C');
+        await create('Summary E');
+        const archived = await create('Summary A');
+        await activities.archive(archived.id, companyId);
+
+        await createProject('Summary offering', offered.id);
+        await createProject('Summary old', onArchivedOnly.id, {
+          status: ProjectStatus.ARCHIVED,
+        });
+      });
+
+      const summaryFor = async (role: UserRole) =>
+        (await categories.list(callerWith(role), searchFor('Summary')))
+          .results[0];
+
+      it('names its first three active activities and counts those a project offers', async () => {
+        expect(await summaryFor(UserRole.MANAGER)).toMatchObject({
+          id: summaryId,
+          activitiesCount: 4,
+          firstActivities: [
+            expect.objectContaining({ name: 'Summary B' }),
+            expect.objectContaining({ name: 'Summary C' }),
+            expect.objectContaining({ name: 'Summary D' }),
+          ],
+          onProjectsCount: 1,
+        });
+      });
+
+      it('gives an employee the names but no project count', async () => {
+        const summary = await summaryFor(UserRole.EMPLOYEE);
+
+        expect(summary.firstActivities).toHaveLength(3);
+        expect(summary).not.toHaveProperty('onProjectsCount');
+      });
+    });
+
     it('reads % and _ as plain characters in a search', async () => {
       const owner = callerWith(UserRole.OWNER);
       const namesFound = async (search: string) =>
@@ -519,13 +568,64 @@ describe('Activity and category names', () => {
 
       const { activities: listed } = await categories.getDetails(
         category.id,
-        companyId,
+        callerWith(UserRole.MANAGER),
       );
 
       expect(listed.map(({ id, status }) => ({ id, status }))).toEqual([
         { id: archived.id, status: ActivityStatus.ARCHIVED },
         { id: kept.id, status: ActivityStatus.ACTIVE },
       ]);
+    });
+  });
+
+  describe('activities in a category', () => {
+    let categoryWithProjectsId: string;
+    let offeredId: string;
+    let idleId: string;
+
+    beforeAll(async () => {
+      categoryWithProjectsId = (
+        await categories.create({ name: `Project counts ${RUN}` }, companyId)
+      ).id;
+      offeredId = (
+        await activities.create(
+          { name: 'Counted twice', categoryId: categoryWithProjectsId },
+          companyId,
+        )
+      ).id;
+      idleId = (
+        await activities.create(
+          { name: 'Counted never', categoryId: categoryWithProjectsId },
+          companyId,
+        )
+      ).id;
+
+      await createProject('Counts one', offeredId);
+      await createProject('Counts two', offeredId);
+      await createProject('Counts archived', offeredId, {
+        status: ProjectStatus.ARCHIVED,
+      });
+    });
+
+    it('counts the active projects that offer each one', async () => {
+      const { activities: listed } = await categories.getDetails(
+        categoryWithProjectsId,
+        callerWith(UserRole.OWNER),
+      );
+      const counts = Object.fromEntries(
+        listed.map((activity) => [activity.id, activity.projectsCount]),
+      );
+
+      expect(counts).toEqual({ [offeredId]: 2, [idleId]: 0 });
+    });
+
+    it('gives an employee no project counts', async () => {
+      const { activities: listed } = await categories.getDetails(
+        categoryWithProjectsId,
+        callerWith(UserRole.EMPLOYEE),
+      );
+
+      expect(listed[0]).not.toHaveProperty('projectsCount');
     });
   });
 
@@ -766,7 +866,10 @@ describe('Activity and category names', () => {
       );
       await createProject('Flag user', linked.id);
 
-      const details = await categories.getDetails(category.id, companyId);
+      const details = await categories.getDetails(
+        category.id,
+        callerWith(UserRole.MANAGER),
+      );
       const inUse = Object.fromEntries(
         details.activities.map((activity) => [activity.id, activity.isInUse]),
       );

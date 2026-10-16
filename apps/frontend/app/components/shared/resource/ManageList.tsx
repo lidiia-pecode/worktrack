@@ -40,7 +40,7 @@ export interface ManageColumn<T> {
   /** How the value reads on a phone, where no column header names it, such as "3 projects"; null leaves it out. */
   summary?: (item: T) => ReactNode;
   numeric?: boolean;
-  /** A fixed width, such as `w-32`; the name column takes the rest. */
+  /** A fixed width, such as `w-32`, or a share, such as `w-2/5`; the name column takes the rest. */
   width: string;
 }
 

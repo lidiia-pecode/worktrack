@@ -26,6 +26,7 @@ import {
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
 import { ActiveActivitiesAction } from './enums/active-activities-action.enum';
+import { UserRole } from 'src/users/enums/user-role.enum';
 
 type CategoryImpactActivity = {
   id: string;
@@ -34,7 +35,15 @@ type CategoryImpactActivity = {
   isInUse: boolean;
 };
 
-type CategoryActivity = Activity & { isInUse: boolean };
+type CategoryActivity = Activity & { isInUse: boolean; projectsCount?: number };
+
+type CategoryListItem = ActCategory & {
+  firstActivities: Pick<Activity, 'id' | 'name'>[];
+  onProjectsCount?: number;
+};
+
+/** How many active activities a category's row names before "+N". */
+const FIRST_ACTIVITIES_SHOWN = 3;
 
 const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
 
@@ -123,12 +132,12 @@ export class ActCategoriesService {
 
   async getDetails(
     id: string,
-    companyId: string,
+    user: AuthUser,
   ): Promise<
     Omit<ActCategory, 'activities'> & { activities: CategoryActivity[] }
   > {
     const category = await this.repo.findOne({
-      where: { id, companyId },
+      where: { id, companyId: user.companyId },
       relations: { activities: true },
       order: { activities: { name: 'ASC' } },
     });
@@ -137,9 +146,14 @@ export class ActCategoriesService {
       throw new NotFoundException('Activity category not found');
     }
 
+    const activityIds = category.activities.map((activity) => activity.id);
     const inUse = await findActivitiesInUse(
       this.dataSource.getRepository(ProjectActivity),
-      category.activities.map((activity) => activity.id),
+      activityIds,
+    );
+    const offeringProjects = await this.findOfferingProjectsFor(
+      user,
+      activityIds,
     );
 
     return {
@@ -147,6 +161,9 @@ export class ActCategoriesService {
       activities: category.activities.map((activity) => ({
         ...activity,
         isInUse: inUse.has(activity.id),
+        ...(offeringProjects && {
+          projectsCount: offeringProjects.get(activity.id)?.length ?? 0,
+        }),
       })),
     };
   }
@@ -175,14 +192,65 @@ export class ActCategoriesService {
       andWhereAnyContains(qb, ['category.name'], query.search);
     }
 
-    const [results, count] = await qb
+    const [categories, count] = await qb
       .orderBy('category.name', 'ASC')
       .addOrderBy('category.id', 'ASC')
       .skip(query.offset)
       .take(query.limit)
       .getManyAndCount();
 
-    return { results, count };
+    return { results: await this.withActivitySummary(categories, user), count };
+  }
+
+  /** Its first active activities, and how many of them a project offers. */
+  private async withActivitySummary(
+    categories: ActCategory[],
+    user: AuthUser,
+  ): Promise<CategoryListItem[]> {
+    if (!categories.length) return [];
+
+    const activities = await this.dataSource.getRepository(Activity).find({
+      select: { id: true, name: true, categoryId: true },
+      where: {
+        companyId: user.companyId,
+        categoryId: In(categories.map((category) => category.id)),
+        status: ActivityStatus.ACTIVE,
+      },
+      order: { name: 'ASC' },
+    });
+    const offeringProjects = await this.findOfferingProjectsFor(
+      user,
+      activities.map((activity) => activity.id),
+    );
+
+    return categories.map((category) => {
+      const own = activities.filter(
+        (activity) => activity.categoryId === category.id,
+      );
+
+      return {
+        ...category,
+        firstActivities: own
+          .slice(0, FIRST_ACTIVITIES_SHOWN)
+          .map(({ id, name }) => ({ id, name })),
+        ...(offeringProjects && {
+          onProjectsCount: own.filter(
+            (activity) => offeringProjects.get(activity.id)?.length,
+          ).length,
+        }),
+      };
+    });
+  }
+
+  // An employee sees only their own projects, so they get no project counts.
+  private findOfferingProjectsFor(user: AuthUser, activityIds: string[]) {
+    if (user.role === UserRole.EMPLOYEE) return Promise.resolve(null);
+
+    return findOfferingProjects(
+      this.dataSource.getRepository(ProjectActivity),
+      user.companyId,
+      activityIds,
+    );
   }
 
   async create(
