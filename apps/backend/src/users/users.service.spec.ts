@@ -369,7 +369,6 @@ describe('UsersService scope', () => {
       expect(teams).toContainEqual({
         id: alphaId,
         name: `Alpha ${RUN}`,
-        status: TeamStatus.ACTIVE,
         roleInTeam: TeamRole.MEMBER,
         joinedAt: '2026-01-01',
       });

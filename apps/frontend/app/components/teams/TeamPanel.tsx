@@ -102,7 +102,7 @@ const TeamEditForm = ({ team }: { team: Team }) => {
   const { update } = useTeamsMutations();
 
   const save = (data: NameFormData) =>
-    update.mutate({ id: team.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync({ id: team.id, data }, { onSuccess: panel.stopEditing });
 
   return (
     <PanelEditForm

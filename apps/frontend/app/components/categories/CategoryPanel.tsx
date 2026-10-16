@@ -41,7 +41,10 @@ const CategoryEditForm = ({
   const { update } = useActivityCategoriesMutations();
 
   const save = (data: NameFormData) =>
-    update.mutate({ id: category.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: category.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm

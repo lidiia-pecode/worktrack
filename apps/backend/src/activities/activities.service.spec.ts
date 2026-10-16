@@ -844,7 +844,7 @@ describe('Activity and category names', () => {
         categories.archive(category.id, companyId, {
           activities: ActiveActivitiesAction.UNCATEGORIZE,
         }),
-      ).rejects.toThrow(ConflictException);
+      ).rejects.toThrow(BadRequestException);
 
       expect((await activities.findRaw(free.id, companyId)).categoryId).toBe(
         category.id,

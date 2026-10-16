@@ -23,6 +23,7 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { Avatar } from "../shared/Avatar";
 import { ProjectColorDot } from "../shared/ProjectColorDot";
+import { DescriptionView } from "./DescriptionEditor";
 import { ProjectForm, ProjectFormData } from "./ProjectForm";
 import {
   ACTIVITIES_PICKER,
@@ -48,7 +49,10 @@ const ProjectEditForm = ({ project }: { project: Project }) => {
   const clientSuggestions = useClientNameSuggestions();
 
   const save = (data: ProjectFormData) =>
-    update.mutate({ id: project.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: project.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm
@@ -124,11 +128,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             ? [
                 {
                   label: "Description",
-                  value: (
-                    <span className="whitespace-pre-line">
-                      {project.description}
-                    </span>
-                  ),
+                  value: <DescriptionView value={project.description} />,
                   wide: true,
                 },
               ]

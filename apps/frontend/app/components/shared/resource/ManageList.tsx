@@ -307,7 +307,8 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
                     numeric={column.numeric}
                     className="py-2"
                   >
-                    {column.cell(item)}
+                    {/* A long value ends in an ellipsis instead of wrapping and growing the row. */}
+                    <div className="truncate">{column.cell(item)}</div>
                   </TableCell>
                 ))}
 

@@ -442,7 +442,7 @@ export class ActCategoriesService {
 
       if (linked.length) {
         const names = sortedNames(linked);
-        throw new ConflictException(
+        throw new BadRequestException(
           `These activities are on projects, so they need a category: ${names}. Move them to another category or archive them instead.`,
         );
       }

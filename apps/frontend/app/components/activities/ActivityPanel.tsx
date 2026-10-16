@@ -40,7 +40,10 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
   if (isLoading) return <LoadingState size="compact" />;
 
   const save = (data: ActivityFormData) =>
-    update.mutate({ id: activity.id, data }, { onSuccess: panel.stopEditing });
+    update.mutateAsync(
+      { id: activity.id, data },
+      { onSuccess: panel.stopEditing },
+    );
 
   return (
     <PanelEditForm
@@ -130,7 +133,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
               </Badge>
             ) : (
               <Badge variant="neutral" dot>
-                Not billable
+                Non-billable
               </Badge>
             ),
           },

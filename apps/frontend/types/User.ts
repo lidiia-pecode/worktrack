@@ -1,5 +1,5 @@
 import { PaginatedResponse, ProjectRef, SearchablePaginationParams } from ".";
-import { TeamRole, TeamStatus, UserRole, UserStatus } from "./enums";
+import { TeamRole, UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
@@ -73,7 +73,6 @@ export interface AssignableUsersQuery extends UsersQuery {
 }
 
 export interface UserTeamMembership extends UserTeam {
-  status: TeamStatus;
   roleInTeam: TeamRole;
   joinedAt: string;
 }

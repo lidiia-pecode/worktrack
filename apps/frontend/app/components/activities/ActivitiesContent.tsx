@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity } from "lucide-react";
+import { Activity, Check, X } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
@@ -11,6 +11,7 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityListItem } from "@/types";
 import { ActivityStatus } from "@/types/enums";
+import { cn } from "@/lib/utils/cn";
 import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
@@ -40,6 +41,25 @@ const categoryCell = (activity: ActivityListItem, inline = false) =>
     <ManageWarning inline={inline}>No category</ManageWarning>
   );
 
+// Both values carry an icon, so they line up in the column.
+const BillableValue = ({ isBillable }: { isBillable: boolean }) => {
+  const Icon = isBillable ? Check : X;
+
+  return (
+    <span className={cn("inline-flex items-center gap-1.5")}>
+      <Icon
+        aria-hidden="true"
+        strokeWidth={2.5}
+        className={cn(
+          "size-3.5",
+          isBillable ? "text-success" : "text-destructive",
+        )}
+      />
+      {isBillable ? "Yes" : "No"}
+    </span>
+  );
+};
+
 const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Category",
@@ -50,18 +70,7 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Billable by default",
     width: "w-40",
-    cell: (activity) =>
-      activity.defaultBillable ? (
-        <span className="inline-flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="size-1.5 rounded-full bg-success"
-          />
-          Yes
-        </span>
-      ) : (
-        <span className="text-muted-foreground">No</span>
-      ),
+    cell: (activity) => <BillableValue isBillable={activity.defaultBillable} />,
     summary: (activity) =>
       activity.defaultBillable ? "Billable" : "Non-billable",
   },

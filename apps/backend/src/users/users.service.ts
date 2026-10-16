@@ -27,7 +27,6 @@ import { Team } from 'src/teams/entities/team.entity';
 type UserTeam = Pick<Team, 'id' | 'name'>;
 
 type UserTeamMembership = UserTeam &
-  Pick<Team, 'status'> &
   Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
 
 const PERSON_SEARCH_COLUMNS = [
@@ -361,7 +360,6 @@ export class UsersService {
       teams: memberships.map(({ team, roleInTeam, joinedAt }) => ({
         id: team.id,
         name: team.name,
-        status: team.status,
         roleInTeam,
         joinedAt,
       })),

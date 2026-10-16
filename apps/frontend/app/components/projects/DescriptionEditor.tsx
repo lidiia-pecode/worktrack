@@ -65,6 +65,31 @@ const ToolbarButton = ({
   );
 };
 
+// The editor saves Markdown, and the view reads it back with the same setup.
+const markdownExtensions = () => [
+  StarterKit.configure({
+    heading: {
+      levels: [1, 2, 3],
+    },
+  }),
+
+  Markdown.configure({
+    html: false,
+    transformCopiedText: true,
+    transformPastedText: true,
+  }),
+];
+
+const proseClassName = cn(
+  "text-sm text-foreground",
+  "prose prose-sm max-w-none",
+  "prose-headings:font-semibold",
+  "prose-ul:my-1",
+  "prose-ol:my-1",
+  "prose-li:my-0",
+  "prose-p:my-1",
+);
+
 export const DescriptionEditor = ({
   id,
   labelledBy,
@@ -79,17 +104,7 @@ export const DescriptionEditor = ({
     editable: !disabled,
 
     extensions: [
-      StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
-      }),
-
-      Markdown.configure({
-        html: false,
-        transformCopiedText: true,
-        transformPastedText: true,
-      }),
+      ...markdownExtensions(),
 
       Placeholder.configure({
         placeholder,
@@ -105,17 +120,7 @@ export const DescriptionEditor = ({
         "aria-multiline": "true",
         ...(labelledBy && { "aria-labelledby": labelledBy }),
         ...(describedBy && { "aria-describedby": describedBy }),
-        class: cn(
-          "min-h-[160px] px-3.5 py-3",
-          "text-sm text-foreground",
-          "outline-none",
-          "prose prose-sm max-w-none",
-          "prose-headings:font-semibold",
-          "prose-ul:my-1",
-          "prose-ol:my-1",
-          "prose-li:my-0",
-          "prose-p:my-1",
-        ),
+        class: cn("min-h-[160px] px-3.5 py-3", "outline-none", proseClassName),
       },
     },
 
@@ -226,4 +231,28 @@ export const DescriptionEditor = ({
       <EditorContent editor={editor} />
     </div>
   );
+};
+
+/** A saved description, formatted as the editor shows it. */
+export const DescriptionView = ({ value }: { value: string }) => {
+  const editor = useEditor(
+    {
+      editable: false,
+      extensions: markdownExtensions(),
+      content: value,
+      editorProps: {
+        attributes: {
+          // Headings stay below the panel's own title.
+          class: cn(
+            proseClassName,
+            "prose-h1:text-base prose-h2:text-sm prose-h3:text-sm",
+            "prose-headings:mt-3 prose-headings:mb-1",
+          ),
+        },
+      },
+    },
+    [value],
+  );
+
+  return <EditorContent editor={editor} />;
 };
