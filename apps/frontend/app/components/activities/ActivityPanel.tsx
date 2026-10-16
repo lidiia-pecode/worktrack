@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Tags } from "lucide-react";
+import { FolderTree, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import {
@@ -88,12 +88,14 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
         type="Activity"
         name={activity.name}
         status={
-          isActive && isDraft ? (
-            <Badge variant="warning" dot>
-              Draft
-            </Badge>
+          isActive ? (
+            isDraft && (
+              <Badge variant="warning" dot>
+                Draft
+              </Badge>
+            )
           ) : (
-            <PanelStatus isActive={isActive} />
+            <PanelStatus />
           )
         }
         onEdit={
@@ -110,7 +112,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                 entity={{ type: "category", id: activity.category.id }}
                 tone="chip"
               >
-                <Tags
+                <FolderTree
                   aria-hidden="true"
                   className="size-3.5 text-muted-foreground"
                 />

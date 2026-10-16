@@ -91,7 +91,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
       <EntityPanelLayout
         type="Category"
         name={category.name}
-        status={<PanelStatus isActive={isActive} />}
+        status={!isActive && <PanelStatus />}
         onEdit={
           categoryActions.canEdit(category)
             ? () => categoryActions.edit(category)

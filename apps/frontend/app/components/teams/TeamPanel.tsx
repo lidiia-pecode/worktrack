@@ -145,7 +145,6 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       <EntityPanelLayout
         type="Team"
         name={team.name}
-        status={<PanelStatus isActive />}
         onEdit={
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
@@ -241,7 +240,7 @@ const ArchivedTeamView = ({ team }: { team: Team }) => {
     <EntityPanelLayout
       type="Team"
       name={team.name}
-      status={<PanelStatus isActive={false} />}
+      status={<PanelStatus />}
       actions={teamActions.actionsFor(team)}
     >
       <PanelList

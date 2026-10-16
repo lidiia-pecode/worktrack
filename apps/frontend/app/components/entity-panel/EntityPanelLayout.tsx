@@ -21,8 +21,11 @@ interface EntityPanelLayoutProps {
   /** What the entity is, such as "Project", above its name. */
   type: string;
   name: string;
+  /** Before the name, such as a person's avatar; decorative, since the name says it. */
+  leading?: ReactNode;
   subtitle?: ReactNode;
-  status: ReactNode;
+  /** Only what the tab doesn't already say, such as Archived or Draft. */
+  status?: ReactNode;
   /** Opens the entity's form; left out when the viewer cannot edit it. */
   onEdit?: () => void;
   /** Its lifecycle, such as Archive or Restore, beside Edit. */
@@ -42,6 +45,7 @@ const TOOLBAR_BUTTON = "rounded-none first:rounded-l-md last:rounded-r-md";
 export const EntityPanelLayout = ({
   type,
   name,
+  leading,
   subtitle,
   status,
   onEdit,
@@ -106,20 +110,30 @@ export const EntityPanelLayout = ({
         </div>
 
         <div className={cn(hidesHeading && "sr-only")}>
-          <h2
-            id={titleId}
-            className="mt-1 text-xl font-semibold tracking-tight break-words text-foreground"
-          >
-            {name}
-          </h2>
+          <div className="mt-1 flex items-center gap-3">
+            {leading && (
+              <span aria-hidden="true" className="shrink-0">
+                {leading}
+              </span>
+            )}
+
+            <div className="min-w-0">
+              <h2
+                id={titleId}
+                className="text-xl font-semibold tracking-tight break-words text-foreground"
+              >
+                {name}
+              </h2>
+
+              {!isEditing && subtitle && (
+                <p className="mt-0.5 text-sm text-foreground/80">{subtitle}</p>
+              )}
+            </div>
+          </div>
 
           {!isEditing && (
             <>
-              {subtitle && (
-                <p className="mt-0.5 text-sm text-foreground/80">{subtitle}</p>
-              )}
-
-              <div className="mt-2.5 flex">{status}</div>
+              {status && <div className="mt-2.5 flex">{status}</div>}
 
               {details.length > 0 && <PanelDetails details={details} />}
             </>
@@ -169,17 +183,10 @@ export const PanelTitleInput = forwardRef<
 ));
 PanelTitleInput.displayName = "PanelTitleInput";
 
-interface PanelStatusProps {
-  isActive: boolean;
-  inactiveLabel?: string;
-}
-
-export const PanelStatus = ({
-  isActive,
-  inactiveLabel = "Archived",
-}: PanelStatusProps) => (
-  <Badge variant={isActive ? "success" : "neutral"} dot>
-    {isActive ? "Active" : inactiveLabel}
+/** An archived or deactivated entity's status; an active one shows none. */
+export const PanelStatus = ({ label = "Archived" }: { label?: string }) => (
+  <Badge variant="neutral" dot>
+    {label}
   </Badge>
 );
 

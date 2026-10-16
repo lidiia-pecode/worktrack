@@ -4,8 +4,9 @@ import { StickyNote } from "lucide-react";
 
 import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
-import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
+
+import { ProjectColorDot } from "../../shared/ProjectColorDot";
 
 type UserTimeEntryRowProps = {
   timelog: TimeLog;
@@ -20,11 +21,7 @@ export const UserTimeEntryRow = ({
 
   const content = (
     <>
-      <span
-        aria-hidden
-        className="mt-1.5 size-2.5 shrink-0 rounded-full"
-        style={{ backgroundColor: getProjectColor(colorSeed) }}
-      />
+      <ProjectColorDot projectId={colorSeed} className="mt-1.5" />
 
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-1.5">

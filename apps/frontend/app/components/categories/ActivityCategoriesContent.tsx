@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Tags } from "lucide-react";
+import { FolderTree } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
@@ -74,7 +74,7 @@ export const ActivityCategoriesContent = () => {
         searchPlaceholder="Search categories..."
         emptyTitle="No activity categories yet"
         emptyDescription="Create your first category to organize activities."
-        emptyIcon={<Tags className="size-6" />}
+        emptyIcon={<FolderTree className="size-6" />}
         createLabel="Create category"
         onCreate={() => setCreateOpen(true)}
         canCreate={canManage}

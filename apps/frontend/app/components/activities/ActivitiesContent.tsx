@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
@@ -112,7 +112,7 @@ export const ActivitiesContent = () => {
         searchPlaceholder="Search activities..."
         emptyTitle="No activities yet"
         emptyDescription="Create your first activity to start tracking work."
-        emptyIcon={<ClipboardList className="size-6" />}
+        emptyIcon={<Activity className="size-6" />}
         createLabel="Create activity"
         onCreate={() => setCreateOpen(true)}
         canCreate={canManage}
