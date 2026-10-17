@@ -1,7 +1,8 @@
 # WorkTrack Architecture
 
-Start here. This page gives the shape of the system and points at the detailed
-documents; it deliberately does not repeat them.
+The shape of the system and where to start a task. The
+[README](../README.md#documentation) lists every document; this page
+deliberately does not repeat them.
 
 ## What the project is
 
@@ -65,20 +66,6 @@ employees themselves. This is D9 in
 [`business_architecture_docs.md`](./business_architecture_docs.md), and it is
 enforced in `TimeLogsService`.
 
-## Documentation map
-
-| Document | Covers |
-| :--- | :--- |
-| [`README.md`](../README.md) | Setup, commands, environment |
-| [`docs/business_architecture_docs.md`](./business_architecture_docs.md) | Product definition, business rules, agreed decisions, roadmap |
-| [`docs/permission-model.md`](./permission-model.md) | The permission model and its open questions |
-| [`docs/workflow.md`](./workflow.md) | Branching, pull requests, CI, database changes |
-
-A local checkout carries more: the active scope document, the list of defects
-and debt no scope owns, context notes for the backend and the frontend, and the
-repository's coding conventions. These are deliberately kept outside version
-control and are not part of the published documentation.
-
 ## Where to start for a given task
 
 | Task | Read |
@@ -95,8 +82,8 @@ control and are not part of the published documentation.
 
 The employee timesheet is complete: logging, editing and deleting time against
 assigned projects, driven by company work settings, with full loading, error and
-empty states. Admin CRUD exists for users, teams, projects, activities and
-categories. Owners and managers have a team time view at `/team` — a week grid
+empty states. The Manage pages show users, teams, projects, activities and
+categories as searchable lists that open a shared side panel. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
 Absences are built: a person records days away as a date range with a type, and
@@ -111,18 +98,7 @@ actual and utilisation at `/reports`, and download hours as an Excel file for
 invoicing. The authorization gaps are all closed. The work ahead is making it a
 better product; a production launch comes last, once it is ready.
 
-Backend test coverage is twenty-eight suites and 477 tests, covering the
-role-visibility filters, team and invitation rules, the time-log, absence,
-capacity and planning rules, monthly locking in and outside UTC, the reports and
-the export, page and date-range limits, and sessions — mostly against a real
-database. The frontend has Vitest tests for its date, month, absence, lock,
-paging and time zone helpers, tab keyboard navigation and download file names,
-and component tests in jsdom for the sidebar, the phone menu and sign-out.
-GitHub Actions runs the formatting check, lint with no warnings allowed,
-typecheck, build and tests for both applications on every pull request. The backend has a production image
-(`apps/backend/Dockerfile`); the frontend has none by design, because it is
-built by its host.
-
 See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
-fuller assessment and §7 for the roadmap. The permission model, all of it
+fuller assessment, test coverage and the engineering state, and §7 for the
+roadmap. The permission model, all of it
 enforced, is in [`permission-model.md`](./permission-model.md).

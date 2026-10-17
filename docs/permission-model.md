@@ -1,4 +1,4 @@
-# WorkTrack — Target permission model
+# WorkTrack — Permission model
 
 **Status: delivered.** This document describes how responsibility and access
 work, and every rule in it is enforced today. The last two, in §3.2 — the
@@ -249,25 +249,25 @@ their projects with their people. Neither can quietly become the other.
 
 ## 4. Worked example
 
-**Cast.** Olena (Owner). Marta and Mykola (Managers). Team Alpha: Marta,
-Dmytro, Iryna. Team Beta: Mykola, Petro. Sofia, a new hire. *Retail Redesign*, a
+**Cast.** Olivia (Owner). Mary and Mark (Managers). Team Alpha: Mary,
+Daniel, Irene. Team Beta: Mark, Peter. Sophie, a new hire. *Retail Redesign*, a
 project staffed from both teams.
 
-| Situation | Target behaviour |
+| Situation | Behaviour |
 | :--- | :--- |
-| Olena creates Team Alpha and appoints Marta | Allowed. Only Olena can do either |
-| Marta hires Sofia | Marta invites Sofia as an EMPLOYEE **into Alpha**. On acceptance Sofia joins Alpha and Marta manages her. No Owner involvement |
-| Marta tries to invite a new MANAGER | Refused. Appointing managers is Olena's |
-| Marta tries to add Petro to Alpha | Refused. Petro already belongs to Beta; only Olena moves people |
-| Marta removes Iryna from Alpha | Allowed. `leftAt` is closed; the row and the history stay |
-| Marta opens *Retail Redesign* | Allowed — projects are company-wide. She sees Dmytro, Iryna and Sofia on it, and a count telling her others are there. She does **not** see Petro, not even his name |
-| Marta staffs *Retail Redesign* | She may add Dmytro, Iryna, Sofia and **herself**. She may not add Petro — Mykola or Olena adds him |
-| Marta saves *Retail Redesign* without Petro in her list | Petro stays. Her save only touches the people she was shown |
-| Olena archives Dmytro | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Un-archiving him changes nothing back, because nothing was removed |
-| Marta wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Petro's side of the work she asks Olena — nobody is responsible for the project itself (§3.6) |
-| Marta logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
-| Mykola opens *Retail Redesign* | Same rights as Marta. Projects are not owned by a team |
-| Olena does any of the above | Allowed, always |
+| Olivia creates Team Alpha and appoints Mary | Allowed. Only Olivia can do either |
+| Mary hires Sophie | Mary invites Sophie as an EMPLOYEE **into Alpha**. On acceptance Sophie joins Alpha and Mary manages her. No Owner involvement |
+| Mary tries to invite a new MANAGER | Refused. Appointing managers is Olivia's |
+| Mary tries to add Peter to Alpha | Refused. Peter already belongs to Beta; only Olivia moves people |
+| Mary removes Irene from Alpha | Allowed. `leftAt` is closed; the row and the history stay |
+| Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
+| Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
+| Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
+| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Reactivating him changes nothing back, because nothing was removed |
+| Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
+| Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
+| Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |
+| Olivia does any of the above | Allowed, always |
 
 ---
 
@@ -280,7 +280,7 @@ call it.
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
 membership dates, and it does not need to be while §3.3 holds (P4). Projects are
-company-wide for managers, which is the target rather than a defect.
+company-wide for managers, which is intended rather than a defect.
 
 ---
 

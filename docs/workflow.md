@@ -34,7 +34,7 @@ npm run test -w apps/frontend         # frontend suite, no database needed
 npm run format:check && npm run lint && npm run typecheck   # repo root, both apps
 
 git push -u origin feat/team-week-grid
-gh pr create                          # the PR template asks for what changed and why
+gh pr create                          # say what changed and why
 ```
 
 Then wait for CI, open the preview Vercel comments on the PR and click through
@@ -145,9 +145,9 @@ everywhere. It is the cheapest check in this whole document.
 
 ### The four rules
 
-1. **Migrations run as a release step, never at application boot.**
-   `synchronize` stays `false` — two instances racing the same DDL is not a
-   theoretical problem.
+1. **Migrations run as a separate step, never at application boot.** For now
+   that step is run by hand (see *On merge to `main`*). `synchronize` stays
+   `false` — two instances racing the same DDL is not a theoretical problem.
 2. **A committed migration is immutable.** If it was wrong, write another one.
    Editing one that has already run leaves two databases permanently different.
 3. **Additive first.** To rename or drop a column: add the new one and backfill,
