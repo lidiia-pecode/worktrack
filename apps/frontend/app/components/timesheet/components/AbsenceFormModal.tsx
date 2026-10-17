@@ -84,7 +84,7 @@ export const AbsenceFormModal = ({
     getValues,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<AbsenceFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(absenceSchema) as any,
@@ -101,7 +101,7 @@ export const AbsenceFormModal = ({
   // a shorter one, so the last day follows rather than becoming invalid.
   useEffect(() => {
     if (startDate && getValues("endDate") < startDate) {
-      setValue("endDate", startDate);
+      setValue("endDate", startDate, { shouldDirty: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate]);
@@ -142,6 +142,7 @@ export const AbsenceFormModal = ({
       <ResourceFormModal
         open={open}
         onClose={onClose}
+        hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
         description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}

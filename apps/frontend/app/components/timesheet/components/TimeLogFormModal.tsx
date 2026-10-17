@@ -107,7 +107,7 @@ export const TimeLogFormModal = ({
     setValue,
     setError,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TimeLogFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(timeLogSchema) as any,
@@ -166,7 +166,7 @@ export const TimeLogFormModal = ({
       (item) => item.value === activityId,
     );
     if (activityId && !stillValid) {
-      setValue("activityId", "");
+      setValue("activityId", "", { shouldDirty: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
@@ -178,7 +178,8 @@ export const TimeLogFormModal = ({
         candidate.activityId === activityId,
     );
 
-    if (item) setValue("isBillable", item.defaultBillable);
+    if (item)
+      setValue("isBillable", item.defaultBillable, { shouldDirty: true });
   };
 
   const onSubmit = async (data: TimeLogFormData) => {
@@ -242,6 +243,7 @@ export const TimeLogFormModal = ({
       <ResourceFormModal
         open={open}
         onClose={onClose}
+        hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
           DAY_LABEL.format(new Date(`${date}T00:00:00`)),
@@ -302,8 +304,12 @@ export const TimeLogFormModal = ({
             <TimePicker
               hours={Number(hours)}
               minutes={Number(minutes)}
-              onHoursChange={(value) => setValue("hours", value)}
-              onMinutesChange={(value) => setValue("minutes", value)}
+              onHoursChange={(value) =>
+                setValue("hours", value, { shouldDirty: true })
+              }
+              onMinutesChange={(value) =>
+                setValue("minutes", value, { shouldDirty: true })
+              }
               error={!!errors.hours}
               className="w-fit"
             />

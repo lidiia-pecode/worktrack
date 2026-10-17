@@ -11,7 +11,7 @@ import {
   urlWithOpenEntity,
 } from "@/lib/utils/entity-ref";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { DiscardChangesModal } from "../shared/DiscardChangesModal";
 import {
   EntityPanelContext,
   EntityPanelContextValue,
@@ -213,15 +213,10 @@ export const EntityPanelProvider = ({ children }: { children: ReactNode }) => {
       {children}
       <EntityPanel />
 
-      <ConfirmModal
+      <DiscardChangesModal
         isOpen={Boolean(pendingLeave)}
-        title="Discard your changes?"
-        message="What you changed here isn't saved yet."
-        confirmText="Discard"
-        cancelText="Keep editing"
-        variant="danger"
-        onConfirm={discardAndLeave}
-        onClose={() => setPendingLeave(null)}
+        onDiscard={discardAndLeave}
+        onKeepEditing={() => setPendingLeave(null)}
       />
     </EntityPanelContext.Provider>
   );

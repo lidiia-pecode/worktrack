@@ -108,7 +108,7 @@ export const PlanningDayModal = ({
     control,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<PlanFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(planSchema) as any,
@@ -155,7 +155,10 @@ export const PlanningDayModal = ({
       return;
     }
 
-    setValue("projectId", projectId, { shouldValidate: true });
+    setValue("projectId", projectId, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   };
 
   const onSubmit = async (data: PlanFormData) => {
@@ -208,6 +211,7 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
+        hasUnsavedChanges={isDirty}
         title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
         description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of a ${formatDuration(dayLimitMinutes)} day planned`}
         icon={<CalendarClock className="size-5" />}
@@ -343,8 +347,12 @@ export const PlanningDayModal = ({
                   hours={Number(hours)}
                   minutes={Number(minutes)}
                   minuteStep={MINUTE_STEP}
-                  onHoursChange={(value) => setValue("hours", value)}
-                  onMinutesChange={(value) => setValue("minutes", value)}
+                  onHoursChange={(value) =>
+                    setValue("hours", value, { shouldDirty: true })
+                  }
+                  onMinutesChange={(value) =>
+                    setValue("minutes", value, { shouldDirty: true })
+                  }
                   error={!!errors.hours}
                   className="w-fit"
                 />
