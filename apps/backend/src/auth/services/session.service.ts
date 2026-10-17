@@ -5,11 +5,15 @@ import { EntityManager, LessThan, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 
 import { AuthSession } from '../entities/auth-session.entity';
-import { CreateSessionDto } from '../dtos/create-session.dto';
 import { SessionMetadata } from 'src/lib/types/session-metadata';
 import { AuthUser } from '../auth-strategies/types';
 
 import { TokenService } from './token.service';
+
+// The sizes of the ip and user_agent columns in auth_sessions. Both come from
+// the request as sent, so a longer value would fail the sign-in or refresh.
+const IP_MAX_LENGTH = 45;
+const USER_AGENT_MAX_LENGTH = 500;
 
 @Injectable()
 export class SessionService {
@@ -27,11 +31,6 @@ export class SessionService {
     );
 
     return new Date(Date.now() + maxAgeMs);
-  }
-
-  async create(payload: CreateSessionDto): Promise<AuthSession> {
-    const session = this.repo.create(payload);
-    return this.repo.save(session);
   }
 
   async findById(id: string): Promise<AuthSession | null> {
@@ -92,8 +91,10 @@ export class SessionService {
       lastActivityAt: new Date(),
     };
 
-    if (metadata?.ip) updateData.ip = metadata.ip;
-    if (metadata?.userAgent) updateData.userAgent = metadata.userAgent;
+    if (metadata?.ip) updateData.ip = metadata.ip.slice(0, IP_MAX_LENGTH);
+    if (metadata?.userAgent) {
+      updateData.userAgent = metadata.userAgent.slice(0, USER_AGENT_MAX_LENGTH);
+    }
 
     const result = await this.repo.update(
       {
@@ -149,8 +150,9 @@ export class SessionService {
       companyId: user.companyId,
       refreshHash,
       expiresAt,
-      ip: metadata?.ip ?? '0.0.0.0',
-      userAgent: metadata?.userAgent ?? 'unknown',
+      ip: metadata?.ip?.slice(0, IP_MAX_LENGTH) ?? '0.0.0.0',
+      userAgent:
+        metadata?.userAgent?.slice(0, USER_AGENT_MAX_LENGTH) ?? 'unknown',
     });
 
     return {

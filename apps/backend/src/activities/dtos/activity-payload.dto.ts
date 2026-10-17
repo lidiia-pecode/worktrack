@@ -8,10 +8,10 @@ import {
   MinLength,
 } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
-import { TrimString } from 'src/lib/decorators';
+import { OptionalNotNull, TrimString } from 'src/lib/decorators';
 
 export class ActivityPayload {
-  @TrimString()
+  @TrimString({ keepNull: true })
   @IsNotEmpty()
   @IsString()
   @MinLength(2)
@@ -23,12 +23,14 @@ export class ActivityPayload {
   @IsUUID()
   categoryId?: string | null;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsBoolean()
   defaultBillable?: boolean;
 }
 
-export class UpdateActivityPayload extends PartialType(ActivityPayload) {}
+export class UpdateActivityPayload extends PartialType(ActivityPayload, {
+  skipNullProperties: false,
+}) {}
 
 /** Where an activity goes when its own category is archived. */
 export class RestoreActivityPayload {

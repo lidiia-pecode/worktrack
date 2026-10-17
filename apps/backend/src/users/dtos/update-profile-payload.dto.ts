@@ -1,12 +1,13 @@
 import { IsOptional, IsString } from 'class-validator';
+import { OptionalNotNull } from 'src/lib/decorators';
 import { PersonName } from 'src/lib/validators/account-fields';
 
 export class UpdateProfilePayload {
-  @IsOptional()
+  @OptionalNotNull()
   @PersonName('First name')
   firstName?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @PersonName('Last name')
   lastName?: string;
 

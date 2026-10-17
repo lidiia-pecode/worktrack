@@ -11,6 +11,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { OmitType, PartialType } from '@nestjs/swagger';
+import { OptionalNotNull } from 'src/lib/decorators';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 
 export class TimeLogPayload {
@@ -33,7 +34,7 @@ export class TimeLogPayload {
   @MaxLength(1000)
   note?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsBoolean()
   isBillable?: boolean;
 
@@ -44,4 +45,5 @@ export class TimeLogPayload {
 // An entry cannot be reassigned to a different person, so userId is not updatable.
 export class UpdateTimeLogPayload extends PartialType(
   OmitType(TimeLogPayload, ['userId'] as const),
+  { skipNullProperties: false },
 ) {}

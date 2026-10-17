@@ -37,4 +37,5 @@ export class CreatePlanningEntryDto {
 
 export class UpdatePlanningEntryDto extends PartialType(
   OmitType(CreatePlanningEntryDto, ['userId'] as const),
+  { skipNullProperties: false },
 ) {}

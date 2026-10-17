@@ -10,10 +10,10 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { PartialType } from '@nestjs/swagger';
-import { TrimString } from 'src/lib/decorators';
+import { OptionalNotNull, TrimString } from 'src/lib/decorators';
 
 export class ProjectPayload {
-  @TrimString()
+  @TrimString({ keepNull: true })
   @IsNotEmpty()
   @IsString()
   @MinLength(2)
@@ -27,23 +27,25 @@ export class ProjectPayload {
   @MaxLength(255)
   clientName?: string | null;
 
-  @TrimString()
+  @TrimString({ keepNull: true })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
-  description?: string;
+  description?: string | null;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsArray()
   @ArrayUnique()
   @IsUUID('all', { each: true })
   activityIds?: string[];
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsArray()
   @ArrayUnique()
   @IsUUID('all', { each: true })
   userIds?: string[];
 }
 
-export class UpdateProjectPayload extends PartialType(ProjectPayload) {}
+export class UpdateProjectPayload extends PartialType(ProjectPayload, {
+  skipNullProperties: false,
+}) {}
