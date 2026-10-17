@@ -32,6 +32,7 @@ const SLUG = `auth-refresh-test-${RUN}`;
 const PASSWORD = 'password123';
 const REUSE_GRACE_MS = 30_000;
 const CONCURRENT_REFRESHES = 5;
+const USER_AGENT_MAX_LENGTH = 500;
 
 const CONFIG: Record<string, unknown> = {
   'auth.accessToken.secret': 'test-access-secret',
@@ -49,6 +50,7 @@ describe('AuthService refresh', () => {
   let dataSource: DataSource;
   let service: AuthService;
   let tokenService: TokenService;
+  let sessionService: SessionService;
   let jwt: JwtService;
 
   let companyId: string;
@@ -132,11 +134,7 @@ describe('AuthService refresh', () => {
 
     jwt = new JwtService();
     tokenService = new TokenService(jwt, config);
-    const sessionService = new SessionService(
-      config,
-      tokenService,
-      sessionRepo(),
-    );
+    sessionService = new SessionService(config, tokenService, sessionRepo());
 
     service = new AuthService(
       new PasswordService(),
@@ -199,6 +197,34 @@ describe('AuthService refresh', () => {
       const session = await findSession(sessionId);
       expect(session!.refreshHash).toBe(
         tokenService.hashRefreshToken(first.refresh_token!, sessionId),
+      );
+    });
+  });
+
+  describe('session details', () => {
+    it('keeps the first 500 characters of a long user agent', async () => {
+      const signInAgent = `Mozilla/5.0 ${'a'.repeat(600)}`;
+      const refreshAgent = `Mozilla/5.0 ${'b'.repeat(600)}`;
+
+      const { refresh_token } = await sessionService.createSession(user, {
+        ip: '203.0.113.7',
+        userAgent: signInAgent,
+      });
+      const { sessionId } = jwt.decode<{ sessionId: string }>(refresh_token);
+
+      expect((await findSession(sessionId))!.userAgent).toBe(
+        signInAgent.slice(0, USER_AGENT_MAX_LENGTH),
+      );
+
+      const result = await service.refreshAccessToken(
+        refresh_token,
+        authFor(sessionId),
+        { ip: '203.0.113.7', userAgent: refreshAgent },
+      );
+
+      expect(result.refresh_token).toBeTruthy();
+      expect((await findSession(sessionId))!.userAgent).toBe(
+        refreshAgent.slice(0, USER_AGENT_MAX_LENGTH),
       );
     });
   });
