@@ -5,6 +5,7 @@ import { WeekDay } from "@/types/enums";
 import {
   addDays,
   addMonthsToKey,
+  companyToday,
   formatDuration,
   formatSignedDuration,
   getMonthGridDates,
@@ -47,6 +48,25 @@ describe("todayISODate", () => {
 
     expect(todayISODate()).toBe("2026-01-13");
     expect(todayISODate("Not/AZone")).toBe("2026-01-13");
+  });
+});
+
+describe("companyToday", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("opens the company's week, not the browser's", () => {
+    // Sunday evening in Los Angeles is already Monday morning in Kyiv.
+    vi.useFakeTimers({ now: Date.parse("2026-10-19T03:00:00Z") });
+
+    const today = companyToday("Europe/Kyiv");
+
+    expect(toISODate(today)).toBe("2026-10-19");
+    expect(toISODate(getWeekStart(today))).toBe("2026-10-19");
+    expect(toISODate(getWeekStart(companyToday("America/Los_Angeles")))).toBe(
+      "2026-10-12",
+    );
   });
 });
 

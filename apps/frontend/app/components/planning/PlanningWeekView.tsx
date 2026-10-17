@@ -6,13 +6,13 @@ import { SearchX } from "lucide-react";
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useTeamOptions } from "@/hooks/useTeams";
 import {
   formatDuration,
   getWeekDates,
   getWeekEnd,
-  getWeekStart,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
@@ -44,21 +44,15 @@ type PlanningWeekViewProps = {
 
 export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const {
-    weekStartDay,
     timezone,
     isLoading: isLoadingSettings,
     isError: isSettingsError,
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const { weekStart, showWeekOf } = useShownWeek();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
-
-  const weekStart = useMemo(
-    () => getWeekStart(anchorDate, weekStartDay),
-    [anchorDate, weekStartDay],
-  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -88,7 +82,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     [absences, weekDates],
   );
 
-  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
+  const {
+    isLocked,
+    isEditable,
+    isError: isLocksError,
+    refetch: refetchLocks,
+  } = useLockedDates(dateFrom, dateTo);
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
@@ -114,12 +113,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     : undefined;
 
   const todayIso = todayISODate(timezone);
-  const hasError = isSettingsError || isWeekError || isAbsencesError;
+  const hasError =
+    isSettingsError || isWeekError || isAbsencesError || isLocksError;
 
   const retry = () => {
     void refetchWeek();
     void refetchSettings();
     void refetchAbsences();
+    void refetchLocks();
   };
 
   const {
@@ -150,7 +151,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   return (
     <div className="flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
-        <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+        <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
         {!hasError && (
           <div className="flex items-center gap-2 text-sm">

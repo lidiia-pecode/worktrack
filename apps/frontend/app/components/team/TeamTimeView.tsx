@@ -6,6 +6,7 @@ import { SearchX } from "lucide-react";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
@@ -16,7 +17,6 @@ import {
   formatWeekRangeLabel,
   getWeekDates,
   getWeekEnd,
-  getWeekStart,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
@@ -43,22 +43,16 @@ type TeamTimeViewProps = {
 
 export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const {
-    weekStartDay,
     timezone,
     isLoading: isLoadingSettings,
     isError: isSettingsError,
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const { weekStart, showWeekOf } = useShownWeek();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
   const [openedUser, setOpenedUser] = useState<TeamSummaryUser | null>(null);
-
-  const weekStart = useMemo(
-    () => getWeekStart(anchorDate, weekStartDay),
-    [anchorDate, weekStartDay],
-  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -93,7 +87,12 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     [absences, weekDates],
   );
 
-  const { isLocked, isEditable } = useLockedDates(dateFrom, dateTo);
+  const {
+    isLocked,
+    isEditable,
+    isError: isLocksError,
+    refetch: refetchLocks,
+  } = useLockedDates(dateFrom, dateTo);
 
   const {
     options: teamOptions,
@@ -117,7 +116,8 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   }, [rows]);
 
   const todayIso = todayISODate(timezone);
-  const hasError = isSettingsError || isSummaryError || isAbsencesError;
+  const hasError =
+    isSettingsError || isSummaryError || isAbsencesError || isLocksError;
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
 
@@ -146,6 +146,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     void refetchSummary();
     void refetchSettings();
     void refetchAbsences();
+    void refetchLocks();
   };
 
   if (isLoadingSettings || isLoadingSummary || isLoadingAbsences) {
@@ -162,7 +163,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   return (
     <div className="flex flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
-        <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+        <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
         {!hasError && (
           <div className="flex items-center gap-2 text-sm">

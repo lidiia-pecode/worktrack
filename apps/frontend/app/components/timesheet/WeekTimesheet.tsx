@@ -18,12 +18,12 @@ import {
   formatMonthLabel,
   getWeekDates,
   getWeekEnd,
-  getWeekStart,
   isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useShownWeek } from "@/hooks/useShownWeek";
 import { mapAbsencesByDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 
@@ -73,7 +73,6 @@ type WeekTimesheetProps = {
 
 export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
-    weekStartDay,
     dailyTargetMinutes,
     timezone,
     isLoading: isLoadingSettings,
@@ -81,18 +80,13 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const { weekStart, showWeekOf } = useShownWeek();
   const [modalState, setModalState] = useState<ModalState | null>(null);
   const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(
     null,
   );
   const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const weekStart = useMemo(
-    () => getWeekStart(anchorDate, weekStartDay),
-    [anchorDate, weekStartDay],
-  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
@@ -150,10 +144,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   // An absence is frozen whole once any of its days locks, so its months count.
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
-  const { isLocked, isEditable } = useLockedDates(
-    lockRange.dateFrom,
-    lockRange.dateTo,
-  );
+  const {
+    isLocked,
+    isEditable,
+    isError: isLocksError,
+    refetch: refetchLocks,
+  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
   const graceMonth = useGraceMonth();
 
   const { items: plannedEntries } = usePlanningEntries({
@@ -277,6 +273,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     void refetchAbsences();
     void refetchExpected();
     void refetchOwnProjects();
+    void refetchLocks();
   };
 
   const hasError =
@@ -285,7 +282,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isSettingsError ||
     isAbsencesError ||
     isExpectedError ||
-    isOwnProjectsError;
+    isOwnProjectsError ||
+    isLocksError;
 
   const content = timesheetContentFor({
     loggableActivities: pickerItems.length,
@@ -335,7 +333,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
         <div className="mb-4">
-          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+          <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
         </div>
 
         {content === "notOnProjects" ? (
@@ -363,7 +361,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
       <div className="border-b border-border">
         <div className="flex items-center justify-between pb-3">
-          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+          <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
           {showsFigures && (
             <div className="flex items-center gap-2 text-sm">

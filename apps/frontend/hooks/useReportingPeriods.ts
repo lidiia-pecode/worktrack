@@ -66,20 +66,22 @@ export function useReportingPeriodHistory() {
 
 /**
  * Which days between two dates are locked, and which can be edited. Until the
- * months load no day is editable, but none is shown as locked either.
+ * months load, or when they fail to, no day is editable, but none is shown as
+ * locked either.
  */
 export function useLockedDates(dateFrom: string, dateTo: string) {
-  const { months, isLoading } = useReportingPeriods({
+  const { months, isLoading, isError, refetch } = useReportingPeriods({
     from: toMonthKey(dateFrom),
     to: toMonthKey(dateTo),
   });
 
   return useMemo(() => {
     const isLocked = lockedDateLookup(months);
-    const isEditable = (date: string) => !isLoading && !isLocked(date);
+    const isEditable = (date: string) =>
+      !isLoading && !isError && !isLocked(date);
 
-    return { isLocked, isEditable };
-  }, [months, isLoading]);
+    return { isLocked, isEditable, isError, refetch };
+  }, [months, isLoading, isError, refetch]);
 }
 
 /** The month that is past its end but still editable, if there is one. */

@@ -11,6 +11,7 @@ import {
   getWeekStart,
   isSameDay,
   isToday,
+  companyToday,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
@@ -135,7 +136,7 @@ export const WeekCalendarPopover = ({
       <button
         type="button"
         onClick={() => {
-          onSelectWeek(new Date());
+          onSelectWeek(companyToday(timezone));
           onClose();
         }}
         className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:underline"
