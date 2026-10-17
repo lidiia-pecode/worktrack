@@ -64,10 +64,12 @@ describe('a value of the wrong type in an optional text field', () => {
     ).resolves.toEqual(['description']);
   });
 
-  it('treats null as not sent in a field that cannot be cleared', () => {
-    const team = plainToInstance(UpdateTeamDto, { name: null });
+  it('treats null as not sent in a field without keepNull', () => {
+    const project = plainToInstance(UpdateProjectPayload, {
+      description: null,
+    });
 
-    expect(team.name).toBeUndefined();
+    expect(project.description).toBeUndefined();
   });
 
   it('keeps null for the client, so a project can be switched to internal work', async () => {

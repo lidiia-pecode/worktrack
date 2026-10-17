@@ -34,4 +34,5 @@ export class AbsencePayload {
 // An absence cannot be reassigned to a different person, so userId is not updatable.
 export class UpdateAbsencePayload extends PartialType(
   OmitType(AbsencePayload, ['userId'] as const),
+  { skipNullProperties: false },
 ) {}

@@ -1,7 +1,6 @@
 import {
   IsEnum,
   IsNumber,
-  IsOptional,
   IsString,
   Length,
   Max,
@@ -10,15 +9,16 @@ import {
 } from 'class-validator';
 import { Transform, TransformFnParams } from 'class-transformer';
 import { WeekDay } from '../enums/week-day.enum';
+import { OptionalNotNull } from 'src/lib/decorators';
 import { CompanyName } from 'src/lib/validators/account-fields';
 import { IsIanaTimeZone } from 'src/lib/validators/IsIanaTimeZone';
 
 export class UpdateCompanyDto {
-  @IsOptional()
+  @OptionalNotNull()
   @CompanyName()
   companyName?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsString()
   @MaxLength(50)
   @IsIanaTimeZone()
@@ -27,7 +27,7 @@ export class UpdateCompanyDto {
   )
   timezone?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsString()
   @Length(3, 3)
   @Transform(({ value }: TransformFnParams): string | undefined =>
@@ -35,11 +35,11 @@ export class UpdateCompanyDto {
   )
   currency?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsEnum(WeekDay)
   weekStartDay?: WeekDay;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsNumber({ maxDecimalPlaces: 2 })
   @Min(1)
   @Max(24)

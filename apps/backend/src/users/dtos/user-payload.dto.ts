@@ -1,17 +1,18 @@
 import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { UserRole } from '../enums/user-role.enum';
+import { OptionalNotNull } from 'src/lib/decorators';
 import { PersonName } from 'src/lib/validators/account-fields';
 
 export class UpdateUserPayload {
-  @IsOptional()
+  @OptionalNotNull()
   @PersonName('First name')
   firstName?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @PersonName('Last name')
   lastName?: string;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsEnum(UserRole)
   role?: UserRole;
 

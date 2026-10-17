@@ -9,7 +9,7 @@ import {
   MinLength,
   ValidateIf,
 } from 'class-validator';
-import { TrimString } from 'src/lib/decorators';
+import { OptionalNotNull, TrimString } from 'src/lib/decorators';
 import { SearchablePaginationQuery } from 'src/lib/dtos/searchable-pagination-query.dto';
 import { TeamStatus } from '../enums/team-status.enum';
 import { TeamRole } from '../enums/team-role.enum';
@@ -24,8 +24,8 @@ export class CreateTeamDto {
 }
 
 export class UpdateTeamDto {
-  @TrimString()
-  @IsOptional()
+  @TrimString({ keepNull: true })
+  @OptionalNotNull()
   @IsString()
   @MinLength(2)
   @MaxLength(255)
@@ -57,11 +57,11 @@ export class AddTeamMemberDto {
 }
 
 export class UpdateTeamMemberDto {
-  @IsOptional()
+  @OptionalNotNull()
   @IsEnum(TeamRole)
   roleInTeam?: TeamRole;
 
-  @IsOptional()
+  @OptionalNotNull()
   @IsDateString()
   joinedAt?: string;
 

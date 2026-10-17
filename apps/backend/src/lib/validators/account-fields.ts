@@ -31,7 +31,7 @@ export const ExistingPassword = () =>
 
 export const PersonName = (label: string) =>
   applyDecorators(
-    TrimString(),
+    TrimString({ keepNull: true }),
     IsString({ message: `${label} is required` }),
     Length(1, PERSON_NAME_MAX_LENGTH, {
       message: `${label} must be 1-${PERSON_NAME_MAX_LENGTH} characters`,
@@ -43,7 +43,7 @@ export const PersonName = (label: string) =>
 
 export const CompanyName = () =>
   applyDecorators(
-    TrimString(),
+    TrimString({ keepNull: true }),
     IsString({ message: 'Company name is required' }),
     Length(COMPANY_NAME_MIN_LENGTH, COMPANY_NAME_MAX_LENGTH, {
       message: `Company name must be ${COMPANY_NAME_MIN_LENGTH}–${COMPANY_NAME_MAX_LENGTH} characters`,
