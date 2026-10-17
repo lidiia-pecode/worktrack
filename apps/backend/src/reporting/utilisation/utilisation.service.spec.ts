@@ -219,15 +219,15 @@ describe('UtilisationService', () => {
     });
   });
 
-  it('works out the four figures', async () => {
+  it('works out the four figures, counting billable time on any project', async () => {
     const row = await rowFor(owner, member);
 
     expect(row).toMatchObject({
       loggedMinutes: 1440,
-      billableMinutes: 960,
+      billableMinutes: 1200,
       clientMinutes: 1200,
       nonBillableClientMinutes: 240,
-      billableUtilisation: 0.1,
+      billableUtilisation: 0.125,
       nonBillableClientShare: 0.2,
       loggingCompleteness: 0.15,
     });
@@ -261,7 +261,7 @@ describe('UtilisationService', () => {
 
     expect(totals.loggedMinutes).toBe(1440);
     expect(totals.billableUtilisation).toBeCloseTo(
-      960 / totals.availableMinutes,
+      1200 / totals.availableMinutes,
     );
   });
 

@@ -14,6 +14,7 @@ export type PickerProjectActivity = {
   projectName: string;
   activityId: string;
   activityName: string;
+  /** Whether a new entry on this pair starts billable. */
   defaultBillable: boolean;
 };
 
@@ -49,7 +50,9 @@ export function useAssignableActivities(userId?: string, enabled = true) {
           projectName: project.name,
           activityId: activity.id,
           activityName: activity.name,
-          defaultBillable: activity.defaultBillable,
+          // Internal work starts non-billable, as on the server (D2).
+          defaultBillable:
+            Boolean(project.clientName) && activity.defaultBillable,
         },
       ];
     });

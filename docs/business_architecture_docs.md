@@ -86,19 +86,20 @@ columns. The weekly grid stays the primary entry surface.
 
 ### D2 — Billability is decided per entry, not per project
 
-Whether time is billable is a property of the individual entry. It defaults from
-`Activity.defaultBillable` and can be overridden whenever the entry is created
-or edited.
+Whether time is billable is a property of the individual entry, on any project.
+On a client project it defaults from `Activity.defaultBillable`; on an internal
+project it defaults to non-billable. Either can be overridden whenever the entry
+is created or edited.
 
 *Why.* Client work is not automatically billable. Hours beyond an estimate, plus
 communication, investigation and setup that the client does not pay for, are
 **client work that is non-billable**. A project-level or client-level flag cannot
 express this.
 
-*Consequence.* Three categories must remain distinguishable in reporting:
-billable client work, non-billable client work, and internal work. The first two
-are separated by `TimeLog.isBillable`; the third by the project the time was
-logged against.
+*Consequence.* Reporting keeps two independent dimensions. Billable or
+non-billable comes from `TimeLog.isBillable` alone, on every project. Client or
+internal comes from the project the time was logged against: a project with no
+client name is internal. There is no third billing category.
 
 ### D3 — Planning is advisory, never restrictive
 
@@ -355,9 +356,11 @@ a single date cannot exceed 1440 minutes. The daily total is enforced under a
 `pessimistic_write` lock on the user row inside a transaction, so concurrent
 writes cannot exceed the budget between them.
 
-`isBillable` defaults from `Activity.defaultBillable` when the entry does not
-specify it (D2). The time form starts a new entry from the chosen activity's
-default, and the person can change it on each entry.
+When the entry does not specify `isBillable`, it defaults from
+`Activity.defaultBillable` on a client project and to non-billable on an
+internal one (D2). The time form starts a new entry the same way once the
+activity is chosen, and the person can change it on each entry, on any
+project.
 
 ### Absences
 
@@ -700,19 +703,23 @@ see, and how a new company gets started. §7 plans that work.
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
 - **Hours report** — owners and managers see logged time on `/reports` for a
-  month or a custom range of up to 366 days, grouped by client, project, activity or person, and
-  split into billable client work, non-billable client work and internal work
-  (D2). A range that includes a month still open to edits is marked
+  month or a custom range of up to 366 days, grouped by client, project,
+  activity or person, and split into billable and non-billable by each entry's
+  flag, on any project (D2). Grouped by client, time on projects with no client
+  is one "Internal work" row. A range that includes a month still open to edits is marked
   provisional. Managers see only the teams they lead. A second tab compares
   planned with logged time per person for the same range, shown as a neutral
   difference rather than a score (D3). A third shows utilisation per person —
-  billable utilisation, client share, non-billable client share and logging
+  billable utilisation (billable time on any project), client share and
+  non-billable client share (both about client projects) and logging
   completeness, each labelled with what it is measured against and shown as
   "—" when there is nothing to measure. Availability and logged time both count
   only days that have finished.
 - **Hours export** — from the Hours tab, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person, day,
-  project, activity and billing type, in hours and minutes, with no notes. The
+  project, activity and billing (Billable or Non-billable, by the entry's flag),
+  in hours and minutes, with no notes. The `Client` column is empty for internal
+  work. The
   people and totals are the Hours report's, one spelling is used per client, and
   a `Period` column says whether each row's month is still open to edits. Names
   are written as text, so a name starting with `=` is never run as a formula.
@@ -1074,16 +1081,6 @@ routes is a change to the §5 matrix and would be recorded as one.
 *Alternative:* build it only from the routes already open to employees, with no
 permission change and no billable split by project.
 
-**Q15 — Is time on a project with no client ever billable?**
-Belongs to Area 3. The reports count all time on a project with no client
-as internal, whatever its billable flag (D2), but the timesheet's progress bar
-and the week summary use the flag itself, so the same hours read "billable" on
-the timesheet and "internal" in the report.
-*Recommendation:* no — the time form does not offer "billable" on a project with
-no client, and the timesheet shows the same three-way split as the reports.
-*Alternative:* keep the flag free on every project and only relabel the
-timesheet's bar.
-
 **Q16 — Can someone delete their own account, or an owner their company?**
 Raised on 1 October 2026; no area yet. Nobody can delete an account today:
 people are deactivated, never deleted (§8 rule 6). A user row also cannot be
@@ -1124,3 +1121,9 @@ their time logs, such as anonymising the person and keeping the hours.
   from Area 3 into Area 1's last phase (1 October 2026) and in force since; see
   §4. An explicit start date on the person stays the answer for a company
   that backfills older history.
+- **Q15** — Time on a project with no client can be billable: project type and
+  billable status are independent (D2). Internal work starts non-billable and
+  can be switched on, and the reports, the export and utilisation count
+  billable by the flag on every project. Existing entries on internal projects
+  were reset to non-billable by a data migration, so no past billable figure
+  changed (Phase 28).

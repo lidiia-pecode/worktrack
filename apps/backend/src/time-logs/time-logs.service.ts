@@ -281,8 +281,12 @@ export class TimeLogsService {
         payload.minutes,
       );
 
+      // Work on an internal project starts non-billable; client work starts
+      // from the activity's default. Either can be switched explicitly (D2).
+      const isClientWork = Boolean(projectActivity.project.clientName);
       const finalIsBillable =
-        payload.isBillable ?? projectActivity.activity.defaultBillable;
+        payload.isBillable ??
+        (isClientWork && projectActivity.activity.defaultBillable);
 
       const entity = manager.create(TimeLog, {
         companyId: user.companyId,

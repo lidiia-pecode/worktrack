@@ -299,6 +299,72 @@ describe('TimeLogsService write scope', () => {
         service.create(logFor(member.id, LOCKED_DATE), owner),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    describe('billable default', () => {
+      // The shared project has no client, and its activity is billable by
+      // default, so the two rules disagree on it.
+      it('starts work on an internal project non-billable', async () => {
+        const log = await service.create(logFor(member.id), member);
+
+        expect(log.isBillable).toBe(false);
+      });
+
+      it('keeps billable switched on explicitly on an internal project', async () => {
+        const log = await service.create(
+          { ...logFor(member.id), isBillable: true },
+          member,
+        );
+
+        expect(log.isBillable).toBe(true);
+      });
+
+      it("starts client work from the activity's default", async () => {
+        const activities = dataSource.getRepository(Activity);
+        const { id: categoryId } = await dataSource
+          .getRepository(ActCategory)
+          .findOneByOrFail({ companyId });
+        const billable = await activities.save({
+          companyId,
+          categoryId,
+          name: `Billable ${RUN}`,
+        });
+        const nonBillable = await activities.save({
+          companyId,
+          categoryId,
+          name: `Non-billable ${RUN}`,
+          defaultBillable: false,
+        });
+        const clientProject = await dataSource
+          .getRepository(Project)
+          .save({ companyId, name: `Client ${RUN}`, clientName: 'Acme' });
+        const [billablePair, nonBillablePair] = await dataSource
+          .getRepository(ProjectActivity)
+          .save([
+            { companyId, projectId: clientProject.id, activityId: billable.id },
+            {
+              companyId,
+              projectId: clientProject.id,
+              activityId: nonBillable.id,
+            },
+          ]);
+        await dataSource.query(
+          'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
+          [clientProject.id, member.id],
+        );
+
+        const billableLog = await service.create(
+          { projectActivityId: billablePair.id, minutes: 60, date: DATE },
+          member,
+        );
+        const nonBillableLog = await service.create(
+          { projectActivityId: nonBillablePair.id, minutes: 60, date: DATE },
+          member,
+        );
+
+        expect(billableLog.isBillable).toBe(true);
+        expect(nonBillableLog.isBillable).toBe(false);
+      });
+    });
   });
 
   describe('update and delete', () => {

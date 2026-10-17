@@ -94,8 +94,8 @@ and a `down`, holding the exact SQL that moves the schema from one shape to the
 next. The filename starts with a timestamp, and that timestamp is the order they
 run in.
 
-You never write one by hand. Change the entity, then let TypeORM diff the
-entities against a live database and write the file:
+A schema change is never written by hand. Change the entity, then let TypeORM
+diff the entities against a live database and write the file:
 
 ```bash
 make db                         # the diff is taken against the running local database
@@ -107,6 +107,11 @@ Generated files come out with different formatting from the rest of the
 repository, so run prettier over the new one before committing. Read the SQL
 afterwards — generation is a starting point, not an authority, and it will
 happily write a destructive statement you did not intend.
+
+A data-only migration, which changes rows but not the schema, has nothing to
+diff, so it is the one kind written by hand: a timestamped class with the
+`UPDATE` in `up`. Its `down` restores the old values when it can, and is
+deliberately empty, with a comment saying why, when it cannot.
 
 ### How TypeORM knows what has already run
 
@@ -172,9 +177,15 @@ breaks the code that is currently running. TypeORM selects every mapped column b
 name, so dropping one makes every query against that table fail until the new
 code is live. It goes **after** the deploy.
 
+A **data-only** migration changes rows, not columns, so the old code keeps
+working and it goes **before** the deploy too. Until the new code is live, the
+old code can still write rows the migration would have changed, so check those
+afterwards.
+
 | Kind | Examples | Apply |
 | :--- | :--- | :--- |
 | Additive | `CREATE TABLE`, nullable column, index, new enum type | **Before** the merge |
+| Data only | `UPDATE` of existing rows, no schema change | **Before** the merge; then check rows the old code wrote in between |
 | Destructive | `DROP COLUMN`, `DROP TABLE`, `NOT NULL` on existing data, type narrowing | **After** Render is serving the new code |
 
 A change that contains both is applied in two sittings, not one.
