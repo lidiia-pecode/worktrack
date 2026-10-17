@@ -28,7 +28,7 @@ export class AbsencePayload {
   @IsString()
   @MinLength(3)
   @MaxLength(1000)
-  note?: string;
+  note?: string | null;
 }
 
 // An absence cannot be reassigned to a different person, so userId is not updatable.

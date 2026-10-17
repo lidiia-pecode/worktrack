@@ -351,6 +351,11 @@ Every write passes four checks, in this order:
    `(projectId, userId)`. Submitting a valid `projectActivityId` for a project
    you are not assigned to is rejected (403).
 
+On update, checks 3 and 4 run only when the entry moves to another project or
+activity. An entry on an archived project or activity, or on a project its owner
+has left, keeps its project and activity and can still have its duration, note
+and billable flag corrected. Notes on time entries and absences can be cleared.
+
 Additional constraints: a single entry is 1–1440 minutes; one person's total for
 a single date cannot exceed 1440 minutes. The daily total is enforced under a
 `pessimistic_write` lock on the user row inside a transaction, so concurrent

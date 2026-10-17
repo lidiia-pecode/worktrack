@@ -326,7 +326,12 @@ export class TimeLogsService {
         );
       }
 
-      if (payload.projectActivityId !== undefined) {
+      // Availability is checked only for a new activity, so an entry on an
+      // archived project or one the person has left can still be corrected.
+      if (
+        payload.projectActivityId !== undefined &&
+        payload.projectActivityId !== log.projectActivityId
+      ) {
         log.projectActivity = await this.resolveProjectActivity(
           payload.projectActivityId,
           ownerId,

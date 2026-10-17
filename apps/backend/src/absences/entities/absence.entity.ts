@@ -53,7 +53,7 @@ export class Absence {
   endDate!: string;
 
   @Column({ type: 'text', nullable: true })
-  note?: string;
+  note?: string | null;
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;

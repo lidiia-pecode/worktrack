@@ -27,7 +27,8 @@ export interface TimeLogPayload {
   userId?: string;
   projectActivityId: string;
   minutes: number;
-  note?: string;
+  /** null clears a saved note on update. */
+  note?: string | null;
   isBillable?: boolean;
   date: string;
 }

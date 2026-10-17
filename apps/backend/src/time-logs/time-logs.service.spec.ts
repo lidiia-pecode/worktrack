@@ -17,6 +17,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
@@ -423,6 +424,39 @@ describe('TimeLogsService write scope', () => {
       await expect(service.update(id, { minutes: 90 }, owner)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('changes an entry on an archived project while its activity is kept', async () => {
+      const id = await existingLogFor(member.id);
+      const { projectId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const projects = dataSource.getRepository(Project);
+      await projects.update(projectId, { status: ProjectStatus.ARCHIVED });
+
+      try {
+        await expect(
+          service.update(
+            id,
+            { projectActivityId, minutes: 90, note: 'Kept on' },
+            manager,
+          ),
+        ).resolves.toMatchObject({ minutes: 90, note: 'Kept on' });
+      } finally {
+        await projects.update(projectId, { status: ProjectStatus.ACTIVE });
+      }
+    });
+
+    it('clears a note', async () => {
+      const id = await existingLogFor(member.id);
+      await service.update(id, { note: 'Pairing' }, member);
+
+      await service.update(id, { note: null }, member);
+
+      const saved = await dataSource
+        .getRepository(TimeLog)
+        .findOneByOrFail({ id });
+      expect(saved.note).toBeNull();
     });
 
     it('reports a missing entry as not found', async () => {

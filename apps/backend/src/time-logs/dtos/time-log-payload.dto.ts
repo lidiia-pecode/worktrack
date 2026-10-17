@@ -32,7 +32,7 @@ export class TimeLogPayload {
   @IsString()
   @MinLength(3)
   @MaxLength(1000)
-  note?: string;
+  note?: string | null;
 
   @OptionalNotNull()
   @IsBoolean()

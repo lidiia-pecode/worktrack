@@ -13,6 +13,7 @@ import { usePlanningMutations } from "@/hooks/usePlanning";
 import { formatDuration, formatLongDayLabel } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
+import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,12 +36,7 @@ const planSchema = z
     projectId: z.string().min(1, "Select a project"),
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
-    note: z
-      .string()
-      .trim()
-      .refine((value) => value.length === 0 || value.length >= 3, {
-        message: "Use at least 3 characters, or leave it empty",
-      }),
+    note: optionalNoteSchema,
   })
   .refine((data) => data.hours * 60 + data.minutes > 0, {
     message: "Enter a duration greater than 0",
