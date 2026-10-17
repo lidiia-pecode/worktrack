@@ -263,7 +263,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   scope="col"
                   className="p-2 text-right text-2xs font-medium uppercase tracking-wider text-muted-foreground"
                 >
-                  Week / expected
+                  {projectId ? "On project" : "Week / expected"}
                 </th>
               </tr>
             </thead>
@@ -275,6 +275,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   row={row}
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
+                  showsExpected={!projectId}
                   onOpen={(opened) => setOpenedUser(opened.user)}
                 />
               ))}
@@ -293,6 +294,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
           canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
           isLocked={isLocked}
           isEditable={isEditable}
+          projectId={projectId}
           onClose={() => setOpenedUser(null)}
         />
       )}

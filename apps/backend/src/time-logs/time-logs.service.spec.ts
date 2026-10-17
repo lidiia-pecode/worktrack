@@ -566,6 +566,44 @@ describe('TimeLogsService write scope', () => {
       expect(ids.filter((id) => id === manager.id)).toHaveLength(1);
       expect(ids.sort()).toEqual([manager.id, member.id, unassigned.id].sort());
     });
+
+    it("counts only the filtered project's hours", async () => {
+      const { projectId, activityId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const otherProject = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Other ${RUN}` });
+      const otherPair = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: otherProject.id, activityId });
+      await dataSource.query(
+        'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
+        [otherProject.id, member.id],
+      );
+
+      await existingLogFor(member.id);
+      await dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId: member.id,
+        projectActivityId: otherPair.id,
+        minutes: 120,
+        date: DATE,
+        isBillable: false,
+      });
+
+      const summary = await service.getTeamSummary(
+        { dateFrom: DATE, dateTo: DATE, projectId },
+        owner,
+      );
+      const memberRow = summary.rows.find((row) => row.user.id === member.id);
+
+      expect(memberRow?.minutes).toBe(60);
+      expect(memberRow?.days).toEqual([
+        expect.objectContaining({ date: DATE, minutes: 60 }),
+      ]);
+      expect(summary.minutes).toBe(60);
+    });
   });
 
   describe("locking on the company's clock", () => {

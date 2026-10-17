@@ -697,7 +697,9 @@ see, and how a new company gets started. §7 plans that work.
   can stay a draft without a category until a project uses it.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
-  entries day by day and correct them.
+  entries day by day and correct them. Filtered to a project, the rows, the
+  team total and the person's panel show only that project's hours, with no
+  Expected and no "behind", since those are about the whole week.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet; the timesheet and the team grid mark those days, so
   an empty week explains itself. A day is either worked or absent, never both.

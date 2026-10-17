@@ -28,6 +28,8 @@ type UserTimeDetailPanelProps = {
   canWrite: boolean;
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
+  /** The grid's project filter, so the panel shows the same hours as the row. */
+  projectId?: string;
   onClose: () => void;
 };
 
@@ -44,6 +46,7 @@ export const UserTimeDetailPanel = ({
   canWrite,
   isLocked,
   isEditable,
+  projectId,
   onClose,
 }: UserTimeDetailPanelProps) => {
   const [formState, setFormState] = useState<FormState | null>(null);
@@ -58,6 +61,7 @@ export const UserTimeDetailPanel = ({
     userId: user.id,
     dateFrom: toISODate(weekDates[0]),
     dateTo: toISODate(weekDates[6]),
+    projectId,
   });
 
   // Only needed to fill the form, so a read-only panel does not ask for it.
@@ -106,7 +110,9 @@ export const UserTimeDetailPanel = ({
           !hasError &&
           !isLoading && (
             <div className="flex w-full items-center justify-between gap-3 text-sm">
-              <span className="text-muted-foreground">Logged this week</span>
+              <span className="text-muted-foreground">
+                {projectId ? "Logged on this project" : "Logged this week"}
+              </span>
 
               <span className="font-semibold tabular-nums text-foreground">
                 {formatDuration(totalMinutes)}
