@@ -687,7 +687,8 @@ see, and how a new company gets started. §7 plans that work.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
-  states.
+  states. A week says when it is complete: its logged time has reached what
+  was expected.
 - **Manage pages** — users, teams, projects, activities and categories as
   searchable lists. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog

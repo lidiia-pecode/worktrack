@@ -154,6 +154,7 @@ export const AbsenceFormModal = ({
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
+                disabled={isSaving}
               >
                 <Trash2 className="size-4" />
                 Delete
@@ -170,7 +171,13 @@ export const AbsenceFormModal = ({
               Cancel
             </Button>
 
-            <Button type="submit" form={FORM_ID} size="sm" isLoading={isSaving}>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSaving}
+              disabled={isDeleting}
+            >
               {isEditMode ? "Save changes" : "Add absence"}
             </Button>
           </>

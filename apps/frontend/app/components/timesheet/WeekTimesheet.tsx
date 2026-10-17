@@ -2,7 +2,13 @@
 
 import { ReactNode, useMemo, useRef, useState } from "react";
 
-import { CalendarOff, Clock, FolderKanban, ListTodo } from "lucide-react";
+import {
+  CalendarOff,
+  Check,
+  Clock,
+  FolderKanban,
+  ListTodo,
+} from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
@@ -203,25 +209,31 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     0,
   );
 
+  // Only the shown week's dates count, like the daily totals, so the previous
+  // week kept on screen while the next one loads adds nothing.
   const { billableMinutes, nonBillableMinutes } = useMemo(() => {
     let billable = 0;
     let nonBillable = 0;
 
-    timelogs.forEach((log) => {
-      if (log.isBillable) {
-        billable += log.minutes;
-      } else {
-        nonBillable += log.minutes;
-      }
+    weekDates.forEach((date) => {
+      (timelogsByDate[toISODate(date)] ?? []).forEach((log) => {
+        if (log.isBillable) {
+          billable += log.minutes;
+        } else {
+          nonBillable += log.minutes;
+        }
+      });
     });
 
     return {
       billableMinutes: billable,
       nonBillableMinutes: nonBillable,
     };
-  }, [timelogs]);
+  }, [weekDates, timelogsByDate]);
 
   const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
+  const isWeekComplete = expectedMinutes > 0 && totalMinutes >= expectedMinutes;
+  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
   const maxDailyMinutes = Math.max(
     dailyTargetMinutes,
@@ -255,7 +267,16 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     setAbsenceModal({ date: iso, absence: absencesByDate[iso] });
   };
 
-  const openNewAbsence = () => setAbsenceModal({ date: todayIso });
+  // Starts on today in the current week, otherwise on the shown week's first
+  // working day.
+  const openNewAbsence = () => {
+    const firstWorkingDay =
+      weekDates.find((date) => !isWeekend(date)) ?? weekStart;
+
+    setAbsenceModal({
+      date: isCurrentWeek ? todayIso : toISODate(firstWorkingDay),
+    });
+  };
 
   const openEdit = (timelog: TimeLog) => {
     setModalState({
@@ -290,7 +311,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     ownProjects: ownProjects?.count ?? 0,
     timeLogs: timelogs.length,
     absences: absences.length,
-    isCurrentWeek: dateFrom <= todayIso && todayIso <= dateTo,
+    isCurrentWeek,
   });
   const showsFigures =
     !hasError &&
@@ -303,6 +324,29 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     <PageHeader
       title="Timesheet"
       description="Record your working hours, day by day."
+    />
+  );
+
+  const addAbsenceButton = (
+    <Button type="button" variant="outline" size="sm" onClick={openNewAbsence}>
+      <CalendarOff className="size-4" />
+      Add absence
+    </Button>
+  );
+
+  const absenceForm = absenceModal && (
+    <AbsenceFormModal
+      open
+      onClose={() => setAbsenceModal(null)}
+      date={absenceModal.date}
+      absence={absenceModal.absence}
+      onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
+      onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
+      onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+      isSaving={
+        absenceActions.create.isPending || absenceActions.update.isPending
+      }
+      isDeleting={absenceActions.delete.isPending}
     />
   );
 
@@ -332,8 +376,9 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
         {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
-        <div className="mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+          {addAbsenceButton}
         </div>
 
         {content === "notOnProjects" ? (
@@ -349,6 +394,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
             icon={<ListTodo />}
           />
         )}
+
+        {absenceForm}
       </>
     );
   }
@@ -386,21 +433,24 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                   -{formatDuration(behindMinutes)}
                 </Badge>
               )}
+
+              {isWeekComplete && (
+                <Badge
+                  variant="success"
+                  title="Everything expected this week is logged"
+                  className="px-1.5 text-2xs font-medium"
+                >
+                  <Check className="size-3" aria-hidden />
+                  Complete
+                </Badge>
+              )}
             </div>
           )}
         </div>
 
         {!hasError && (
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={openNewAbsence}
-            >
-              <CalendarOff className="size-4" />
-              Add absence
-            </Button>
+            {addAbsenceButton}
 
             {graceMonth?.editableUntil && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -506,23 +556,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         confirmText="Log time"
       />
 
-      {absenceModal && (
-        <AbsenceFormModal
-          open
-          onClose={() => setAbsenceModal(null)}
-          date={absenceModal.date}
-          absence={absenceModal.absence}
-          onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
-          onUpdate={(id, data) =>
-            absenceActions.update.mutateAsync({ id, data })
-          }
-          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
-          isSaving={
-            absenceActions.create.isPending || absenceActions.update.isPending
-          }
-          isDeleting={absenceActions.delete.isPending}
-        />
-      )}
+      {absenceForm}
 
       {modalState && (
         <TimeLogFormModal

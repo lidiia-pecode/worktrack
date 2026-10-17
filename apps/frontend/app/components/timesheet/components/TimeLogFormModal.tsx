@@ -15,6 +15,7 @@ import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
@@ -258,6 +259,7 @@ export const TimeLogFormModal = ({
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
+                disabled={isSaving}
               >
                 <Trash2 className="size-4" />
                 Delete
@@ -279,7 +281,7 @@ export const TimeLogFormModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={isSaving}
-              disabled={hasNoOptions}
+              disabled={hasNoOptions || isDeleting}
             >
               {isEditMode ? "Save changes" : "Log time"}
             </Button>
@@ -364,13 +366,11 @@ export const TimeLogFormModal = ({
             />
           </Field>
 
-          <label className="flex cursor-pointer select-none items-center gap-2.5">
-            <input
-              type="checkbox"
-              {...register("isBillable")}
-              className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="text-sm text-foreground">Billable</span>
+          <label className="flex cursor-pointer select-none items-center justify-between gap-4">
+            <span className="text-sm font-medium text-foreground">
+              Billable
+            </span>
+            <Switch {...register("isBillable")} />
           </label>
         </form>
       </ResourceFormModal>
