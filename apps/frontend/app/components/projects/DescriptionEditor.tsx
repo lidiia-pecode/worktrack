@@ -118,6 +118,7 @@ export const DescriptionEditor = ({
 }: DescriptionEditorProps) => {
   const editor = useEditor({
     editable: !disabled,
+    immediatelyRender: false,
 
     extensions: [
       ...markdownExtensions(),
@@ -254,6 +255,7 @@ export const DescriptionView = ({ value }: { value: string }) => {
   const editor = useEditor(
     {
       editable: false,
+      immediatelyRender: false,
       extensions: markdownExtensions(PanelHeading),
       content: value,
       editorProps: {

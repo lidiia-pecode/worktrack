@@ -3,6 +3,7 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { ActivityPayload } from 'src/activities/dtos/activity-payload.dto';
+import { ActivityCategoryPayload } from 'src/activity-categories/dtos/activities-category-payload.dto';
 import { CreateInvitationPayload } from 'src/invitations/dtos/create-invitation.dto';
 import {
   ProjectPayload,
@@ -65,11 +66,9 @@ describe('a value of the wrong type in an optional text field', () => {
   });
 
   it('treats null as not sent in a field without keepNull', () => {
-    const project = plainToInstance(UpdateProjectPayload, {
-      description: null,
-    });
+    const category = plainToInstance(ActivityCategoryPayload, { name: null });
 
-    expect(project.description).toBeUndefined();
+    expect(category.name).toBeUndefined();
   });
 
   it('keeps null for the client, so a project can be switched to internal work', async () => {
@@ -78,6 +77,17 @@ describe('a value of the wrong type in an optional text field', () => {
     expect(project.clientName).toBeNull();
     await expect(
       errorFields(UpdateProjectPayload, { clientName: null }),
+    ).resolves.toEqual([]);
+  });
+
+  it('keeps null for the description, so it can be cleared', async () => {
+    const project = plainToInstance(UpdateProjectPayload, {
+      description: null,
+    });
+
+    expect(project.description).toBeNull();
+    await expect(
+      errorFields(UpdateProjectPayload, { description: null }),
     ).resolves.toEqual([]);
   });
 });

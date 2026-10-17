@@ -27,11 +27,11 @@ export class ProjectPayload {
   @MaxLength(255)
   clientName?: string | null;
 
-  @TrimString()
+  @TrimString({ keepNull: true })
   @IsOptional()
   @IsString()
   @MaxLength(1000)
-  description?: string;
+  description?: string | null;
 
   @OptionalNotNull()
   @IsArray()
