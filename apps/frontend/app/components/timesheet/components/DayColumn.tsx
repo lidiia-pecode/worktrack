@@ -30,7 +30,8 @@ type Props = {
   isAbsenceLocked: boolean;
   totalMinutes: number;
   pixelsPerMinute: number;
-  expectedMinutes: number;
+  /** The person's own expected minutes that day; undefined until it loads. */
+  expectedMinutes?: number;
   isLocked: boolean;
   isEditable: boolean;
   onAddClick: (date: Date) => void;
@@ -60,17 +61,21 @@ export const DayColumn = ({
   } | null>(null);
 
   const weekend = isWeekend(date);
-  const overTargetMinutes = Math.max(0, totalMinutes - expectedMinutes);
+  // Nothing counts as over the day's figure until it has loaded. A day that
+  // expects nothing, such as a weekend or an absence, has no line.
+  const overTargetFrom = expectedMinutes ?? Infinity;
+  const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
+  const hasTargetLine = !!expectedMinutes;
 
-  const targetLineOffset = expectedMinutes * pixelsPerMinute;
+  const targetLineOffset = overTargetFrom * pixelsPerMinute;
 
   const showsPlan =
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
-    () => buildSegments(timelogs, expectedMinutes, pixelsPerMinute),
-    [timelogs, expectedMinutes, pixelsPerMinute],
+    () => buildSegments(timelogs, overTargetFrom, pixelsPerMinute),
+    [timelogs, overTargetFrom, pixelsPerMinute],
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
@@ -174,12 +179,14 @@ export const DayColumn = ({
         </div>
       )}
 
-      <div
-        className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-border"
-        style={{
-          top: targetLineOffset,
-        }}
-      />
+      {hasTargetLine && (
+        <div
+          className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-border"
+          style={{
+            top: targetLineOffset,
+          }}
+        />
+      )}
 
       {isOverTarget && (
         <>

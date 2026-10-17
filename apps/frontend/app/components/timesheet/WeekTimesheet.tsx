@@ -142,6 +142,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
     expectedMinutes,
     expectedToDateMinutes,
+    expectedByDate,
     isLoading: isLoadingExpected,
     isError: isExpectedError,
     refetch: refetchExpected,
@@ -441,7 +442,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                 date={date}
                 isToday={toISODate(date) === todayIso}
                 totalMinutes={dailyTotals[toISODate(date)] ?? 0}
-                targetMinutes={dailyTargetMinutes}
+                targetMinutes={expectedByDate[toISODate(date)]}
                 isLocked={isLocked(toISODate(date))}
               />
             ))}
@@ -479,7 +480,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                       isAbsenceLocked={isAbsenceLocked}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
-                      expectedMinutes={dailyTargetMinutes}
+                      expectedMinutes={expectedByDate[iso]}
                       isLocked={isLocked(iso)}
                       isEditable={isEditable(iso) && !isAbsenceLocked}
                       onAddClick={openCreate}

@@ -50,6 +50,7 @@ export class CapacityController {
       dateTo: query.dateTo,
       expectedMinutes: expected.total,
       expectedToDateMinutes: expected.toDate,
+      expectedByDate: expected.byDate,
     };
   }
 

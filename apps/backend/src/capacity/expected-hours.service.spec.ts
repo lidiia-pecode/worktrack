@@ -324,6 +324,37 @@ describe('ExpectedHoursService', () => {
     });
   });
 
+  describe('the day-by-day breakdown', () => {
+    const byDate = async (userId: string) =>
+      service.expectedForUser(companyId, userId, MONDAY, SUNDAY);
+
+    it("follows a part-timer's own days, with nothing on absences and weekends", async () => {
+      await setCapacity(fullTimer, 20 * 60, '2020-01-01');
+      await setAbsence(fullTimer, MONDAY, '2026-02-10');
+
+      const expected = await byDate(fullTimer);
+
+      expect(expected.byDate.map((day) => day.minutes)).toEqual([
+        0, 0, 240, 240, 240, 0, 0,
+      ]);
+      expect(expected.byDate[0].date).toBe(MONDAY);
+      expect(expected.total).toBe(720);
+    });
+
+    it('adds up to the total when a day is a fraction of a minute', async () => {
+      await setCapacity(fullTimer, 20 * 60 + 1, '2020-01-01');
+
+      const expected = await byDate(fullTimer);
+      const sum = expected.byDate.reduce(
+        (total, day) => total + day.minutes,
+        0,
+      );
+
+      expect(sum).toBe(expected.total);
+      expect(expected.total).toBe(20 * 60 + 1);
+    });
+  });
+
   describe('capacity changes over time', () => {
     it('applies a change from its date forward', async () => {
       await setCapacity(fullTimer, 32 * 60, '2026-02-11');

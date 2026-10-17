@@ -12,11 +12,18 @@ import {
   isWorkingDay,
 } from './working-days.util';
 
+export interface ExpectedDay {
+  date: string;
+  minutes: number;
+}
+
 export interface ExpectedMinutes {
   /** The whole range. */
   total: number;
   /** Only the days that have finished, which is what "behind" is measured against. */
   toDate: number;
+  /** Every date in the range, 0 on weekends, absences and before the start date. Adds up to `total`. */
+  byDate: ExpectedDay[];
 }
 
 /**
@@ -37,9 +44,27 @@ interface ShareSums {
   available: number;
   availableToDate: number;
   capacityToDate: number;
+  /** Each date's available share, in date order. */
+  availableByDate: { date: string; share: number }[];
 }
 
-const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0 };
+const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0, byDate: [] };
+
+/**
+ * Rounds the running total rather than each day, so the days always add up to
+ * the rounded total even when a day's share is a fraction of a minute.
+ */
+const roundDays = (days: ShareSums['availableByDate']): ExpectedDay[] => {
+  let runningShare = 0;
+  let roundedSoFar = 0;
+
+  return days.map(({ date, share }) => {
+    runningShare += share;
+    const minutes = Math.round(runningShare) - roundedSoFar;
+    roundedSoFar += minutes;
+    return { date, minutes };
+  });
+};
 
 /**
  * How many minutes somebody was expected to work: their capacity from the day
@@ -78,6 +103,7 @@ export class ExpectedHoursService {
       expected.set(userId, {
         total: Math.round(sum.available),
         toDate: Math.round(sum.availableToDate),
+        byDate: roundDays(sum.availableByDate),
       });
     });
 
@@ -143,9 +169,13 @@ export class ExpectedHoursService {
         available: 0,
         availableToDate: 0,
         capacityToDate: 0,
+        availableByDate: [],
       };
 
       for (const date of eachDate(from, to)) {
+        const available = { date, share: 0 };
+        sum.availableByDate.push(available);
+
         if (!isWorkingDay(date)) continue;
         if (startDate && date < startDate) continue;
 
@@ -159,6 +189,7 @@ export class ExpectedHoursService {
         );
         if (isAbsent) continue;
 
+        available.share = share;
         sum.available += share;
         if (hasFinished) sum.availableToDate += share;
       }

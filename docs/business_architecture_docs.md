@@ -477,9 +477,13 @@ account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
 for the days before they joined; there is no separate start date (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
-that person's capacity, for a part-timer as well as a full-timer. It returns two
-figures — `total` for the whole range, and `toDate` counting only days that have
-finished in the company's timezone, which is what **behind** is measured against.
+that person's capacity, for a part-timer as well as a full-timer. It returns
+`total` for the whole range, `toDate` counting only days that have finished in
+the company's timezone, which is what **behind** is measured against, and a
+figure for every date, which the timesheet draws each day's line and over-target
+warning from. A day expects nothing on a weekend, an absence or before the
+account was created. The days are rounded along a running total, so they always
+add up to `total`.
 
 **Expected never consults planning, and planning never changes expected** (D3).
 Somebody with no plan at all has the same expectation as anybody else.
