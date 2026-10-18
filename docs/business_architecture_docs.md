@@ -15,11 +15,10 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 25 September 2026**, and reconciled again
-with Phases 11, 12 and 13. Phases 0 to 13 of the roadmap in §7 are delivered,
-and so is the permission model. The work ahead was re-planned on 28 September
-2026 as a high-level improvement roadmap (§7); the production
-launch is a final stage that starts only once the product is judged ready.
+**Last verified against the code: 18 October 2026.** Phases 0 to 28 in §7 are
+delivered, and so is the permission model. The work ahead was re-planned on 28
+September 2026 as a high-level improvement roadmap (§7); the production launch
+is a final stage that starts only once the product is judged ready.
 
 ---
 
@@ -87,19 +86,20 @@ columns. The weekly grid stays the primary entry surface.
 
 ### D2 — Billability is decided per entry, not per project
 
-Whether time is billable is a property of the individual entry. It defaults from
-`Activity.defaultBillable` and can be overridden whenever the entry is created
-or edited.
+Whether time is billable is a property of the individual entry, on any project.
+On a client project it defaults from `Activity.defaultBillable`; on an internal
+project it defaults to non-billable. Either can be overridden whenever the entry
+is created or edited.
 
 *Why.* Client work is not automatically billable. Hours beyond an estimate, plus
 communication, investigation and setup that the client does not pay for, are
 **client work that is non-billable**. A project-level or client-level flag cannot
 express this.
 
-*Consequence.* Three categories must remain distinguishable in reporting:
-billable client work, non-billable client work, and internal work. The first two
-are separated by `TimeLog.isBillable`; the third by the project the time was
-logged against.
+*Consequence.* Reporting keeps two independent dimensions. Billable or
+non-billable comes from `TimeLog.isBillable` alone, on every project. Client or
+internal comes from the project the time was logged against: a project with no
+client name is internal. There is no third billing category.
 
 ### D3 — Planning is advisory, never restrictive
 
@@ -351,14 +351,21 @@ Every write passes four checks, in this order:
    `(projectId, userId)`. Submitting a valid `projectActivityId` for a project
    you are not assigned to is rejected (403).
 
+On update, checks 3 and 4 run only when the entry moves to another project or
+activity. An entry on an archived project or activity, or on a project its owner
+has left, keeps its project and activity and can still have its duration, note
+and billable flag corrected. Notes on time entries and absences can be cleared.
+
 Additional constraints: a single entry is 1–1440 minutes; one person's total for
 a single date cannot exceed 1440 minutes. The daily total is enforced under a
 `pessimistic_write` lock on the user row inside a transaction, so concurrent
 writes cannot exceed the budget between them.
 
-`isBillable` defaults from `Activity.defaultBillable` when the entry does not
-specify it (D2). The time form starts a new entry from the chosen activity's
-default, and the person can change it on each entry.
+When the entry does not specify `isBillable`, it defaults from
+`Activity.defaultBillable` on a client project and to non-billable on an
+internal one (D2). The time form starts a new entry the same way once the
+activity is chosen, and the person can change it on each entry, on any
+project.
 
 ### Absences
 
@@ -470,9 +477,13 @@ account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
 for the days before they joined; there is no separate start date (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
-that person's capacity, for a part-timer as well as a full-timer. It returns two
-figures — `total` for the whole range, and `toDate` counting only days that have
-finished in the company's timezone, which is what **behind** is measured against.
+that person's capacity, for a part-timer as well as a full-timer. It returns
+`total` for the whole range, `toDate` counting only days that have finished in
+the company's timezone, which is what **behind** is measured against, and a
+figure for every date, which the timesheet draws each day's line and over-target
+warning from. A day expects nothing on a weekend, an absence or before the
+account was created. The days are rounded along a running total, so they always
+add up to `total`.
 
 **Expected never consults planning, and planning never changes expected** (D3).
 Somebody with no plan at all has the same expectation as anybody else.
@@ -618,7 +629,7 @@ added to a team or a project.
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
-| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
+| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
@@ -676,13 +687,19 @@ see, and how a new company gets started. §7 plans that work.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
-  states.
-- **Admin CRUD** — users, teams, projects, activities and categories. A project
-  is client work, with a client suggested from those already used, or internal;
-  an activity has a billable default.
+  states. A week says when it is complete: its logged time has reached what
+  was expected.
+- **Manage pages** — users, teams, projects, activities and categories as
+  searchable lists. A row opens a shared side panel where every related name is
+  a link and relationships are edited in place, and one confirmation dialog
+  comes before anything risky. A project is client work, with a client suggested
+  from those already used, or internal; an activity has a billable default and
+  can stay a draft without a category until a project uses it.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
-  entries day by day and correct them.
+  entries day by day and correct them. Filtered to a project, the rows, the
+  team total and the person's panel show only that project's hours, with no
+  Expected and no "behind", since those are about the whole week.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet; the timesheet and the team grid mark those days, so
   an empty week explains itself. A day is either worked or absent, never both.
@@ -698,19 +715,23 @@ see, and how a new company gets started. §7 plans that work.
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
 - **Hours report** — owners and managers see logged time on `/reports` for a
-  month or a custom range of up to 366 days, grouped by client, project, activity or person, and
-  split into billable client work, non-billable client work and internal work
-  (D2). A range that includes a month still open to edits is marked
+  month or a custom range of up to 366 days, grouped by client, project,
+  activity or person, and split into billable and non-billable by each entry's
+  flag, on any project (D2). Grouped by client, time on projects with no client
+  is one "Internal work" row. A range that includes a month still open to edits is marked
   provisional. Managers see only the teams they lead. A second tab compares
   planned with logged time per person for the same range, shown as a neutral
   difference rather than a score (D3). A third shows utilisation per person —
-  billable utilisation, client share, non-billable client share and logging
+  billable utilisation (billable time on any project), client share and
+  non-billable client share (both about client projects) and logging
   completeness, each labelled with what it is measured against and shown as
   "—" when there is nothing to measure. Availability and logged time both count
   only days that have finished.
 - **Hours export** — from the Hours tab, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person, day,
-  project, activity and billing type, in hours and minutes, with no notes. The
+  project, activity and billing (Billable or Non-billable, by the entry's flag),
+  in hours and minutes, with no notes. The `Client` column is empty for internal
+  work. The
   people and totals are the Hours report's, one spelling is used per client, and
   a `Period` column says whether each row's month is still open to edits. Names
   are written as text, so a name starting with `=` is never run as a formula.
@@ -755,16 +776,19 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-Backend test coverage is thirty-four suites and 534 tests, covering the
-role-visibility filters, team and invitation rules, the Google callbacks and
-notifications, time-log, absence, capacity
-and planning rules, monthly locking in and outside UTC, the reports and the
-export, page and date-range limits, name checks, and session refresh, rate
-limits and token clean-up — most against a real database. The frontend has
-Vitest tests for its date, month, absence, lock and paging helpers, the report
-range check, tab keyboard navigation and download file names, and component
-tests in jsdom for the sidebar, the phone menu and sign-out. GitHub Actions runs the formatting check, lint with no warnings
-allowed, typecheck, build and tests for both applications on every pull
+This is the one place that counts the tests. Backend coverage is forty-two
+suites and 727 tests, covering the role-visibility filters, team and invitation
+rules, the Google callbacks and notifications, time-log, absence, capacity and
+planning rules, monthly locking in and outside UTC, the reports and the export,
+page and date-range limits, name checks, the seed's local-only guard, and
+session refresh, rate limits and token clean-up — most against a real database.
+The frontend has thirty-five Vitest files and 179 tests: its date, month,
+absence, lock, paging and time zone helpers, the report range check, tab
+keyboard navigation and download file names, and component tests in jsdom for
+the sidebar and phone menu, sign-out, the shared states and form field, the
+Manage lists, panel and confirmation dialogs, the form dialog's discard check
+and the time entry form. GitHub Actions runs the formatting check, lint with no
+warnings allowed, typecheck, build and tests for both applications on every pull
 request.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
@@ -806,7 +830,8 @@ itself started without help.
 
 ### Delivered
 
-Built from August to October 2026, one branch and one pull request per phase.
+Built from August to October 2026, one branch and one pull request per phase,
+except Phases 20 to 25, which shipped together.
 The rules each one settled are in §2 and §4–§6; the detail of how each was built
 is in its pull request.
 
@@ -832,6 +857,11 @@ is in its pull request.
 | 16 | The rest of the first run: one look for every auth page; invitation links that handle a signed-in visitor and an address that already has an account; Expected from the day an account was created; first screens for each role that say why there is nothing to log, with role-focused welcomes; Team and Planning always showing their people; a manager invited to lead a team; activities that stay off a project once removed |
 | 17 | Fixes left from the first run: active activities only in active categories, with simple archive and restore dialogs; a refused role change that saves nothing; stricter input checks; the password checked before account status; unverified Google emails refused; a race-free team addition; old read notifications cleaned up; the `username` column dropped |
 | 18 | The application shell: navigation grouped into Work and Manage, with Getting started apart; an accessible phone menu that closes on navigation; one page frame and one page header; sign-out that clears every cached query; component tests |
+| 19 | Shared UI: one version each of the loading, error and empty states, card, form field, select, dialog footer, confirmation, badge and report table, built on the design tokens; people deactivated rather than archived everywhere |
+| 20–25 | The Manage redesign: users, teams, projects, activities and categories as searchable lists with a shared side panel, related names as links, relationships edited in place and one confirmation before risky actions; draft activities without a category; create dialogs that ask for the name first |
+| 26 | Manage polish: rows that show what an item belongs to, project colours, a status only when something is archived, deactivated or a draft; a taken name shown under the field; project descriptions as Markdown; a realistic demo seed that runs only against a local database |
+| 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
+| 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 
 ### Improvement roadmap — high level, flexible
 
@@ -843,9 +873,8 @@ stage is what makes it a better product first.
 covers. It deliberately settles no business decision and no implementation
 detail: an area gets a detailed scope, with its own decisions, only when it is
 picked up. Areas can grow, shrink, split into several phases or change as the
-work teaches us something. Each phase that ships is still one area, one branch
-and one pull request, numbered from Phase 14 on. The defects found so far are
-listed against their area in the local known-issues document.
+work teaches us something. Phases are numbered from Phase 14 on. The defects
+found so far are listed against their area in the local known-issues document.
 
 **UI/UX runs through every area.** Each area reviews and improves all of its
 important pages and flows, for every role that uses them — Owner, Manager and
@@ -863,42 +892,44 @@ Employee — and not only its functional problems:
 Every area also keeps accessibility at the level Phase 12 set, adds the tests
 for what it changes, and updates the documentation it affects.
 
-**Area 1 — First run and onboarding** *(first)*. Everything a new company and a
-new person meet before WorkTrack is useful to them: sign-up, the company setup
-wizard and the owner's and manager's checklists, inviting people and joining,
-the first screen each role sees, empty states, and explaining WorkTrack's
-concepts — teams, projects, activities, categories, billable work, capacity and
-periods — where they are first met. Setup should end with a company in which
-people can actually log time, which also means setting up projects and
+**Area 1 — First run and onboarding** *(done, Phases 14–17)*. Everything a new
+company and a new person meet before WorkTrack is useful to them: sign-up, the
+company setup wizard and the owner's and manager's checklists, inviting people
+and joining, the first screen each role sees, empty states, and explaining
+WorkTrack's concepts — teams, projects, activities, categories, billable work,
+capacity and periods — where they are first met. Setup should end with a company
+in which people can actually log time, which also means setting up projects and
 activities properly, clients and billable defaults included. The public landing
 and sign-in pages, the invitation email and the Google sign-in paths belong
 here, as do the basics of a person's own account settings.
 
-**Area 2 — Application shell and shared UI.** The frame every page sits in and
-the parts every page is built from: navigation per role, the sidebar, header and
-user menu, page layout and headers, and one version each of the table, card,
-form field, select, dialog, confirmation, loading, empty and error patterns,
-all built from the tokens in `globals.css`. It sets the standard the other areas
-apply to their pages, so it may run alongside Area 1 or straight after it, and
-it includes what the frontend needs to test components rather than only helpers.
+**Area 2 — Application shell and shared UI** *(done, Phases 18–19)*. The frame
+every page sits in and the parts every page is built from: navigation per role,
+the sidebar, header and user menu, page layout and headers, and one version each
+of the table, card, form field, select, dialog, confirmation, loading, empty and
+error patterns, all built from the tokens in `globals.css`. It sets the standard
+the other areas apply to their pages, so it may run alongside Area 1 or straight
+after it, and it includes what the frontend needs to test components rather than
+only helpers.
 
-**Area 3 — Everyday time entry.** The employee's timesheet and absences, the
-screen people use most. Logging should be fast, with the plan, recent work and
-common durations doing much of the typing; a week should say clearly when it is
-complete; the figures it shows — billable, internal, expected — should mean the
-same as everywhere else and start when the person started; and it should work
-on a phone.
+**Area 3 — Everyday time entry** *(started, Phase 28)*. The employee's timesheet
+and absences, the screen people use most. Logging should be fast, with the plan,
+recent work and common durations doing much of the typing; a week should say
+clearly when it is complete; the figures it shows — billable, internal, expected
+— should mean the same as everywhere else and start when the person started; and
+it should work on a phone.
 
 **Area 4 — Team oversight and planning.** The manager's and owner's week views:
 the team grid, the per-person panel and the planning grid. Finding who is behind
 and why, correcting somebody's week including their absences, planning more than
 one cell at a time, and grids that draw days, absences and locks the same way.
 
-**Area 5 — Administration and settings.** The owner's and manager's admin
-screens — people, teams, projects, activities, categories, periods and company
-settings. Lists that scale past a few dozen items with search that covers
-everything, confirmations before anything is archived, forms and dialogs that
-behave the same on every screen, and settings that say what a change will do.
+**Area 5 — Administration and settings** *(mostly done, Phases 20–26; periods
+and company settings remain)*. The owner's and manager's admin screens — people,
+teams, projects, activities, categories, periods and company settings. Lists
+that scale past a few dozen items with search that covers everything,
+confirmations before anything is archived, forms and dialogs that behave the
+same on every screen, and settings that say what a change will do.
 
 **Area 6 — Reporting and insights.** What owners and managers learn from
 `/reports` and the export. Which questions each role actually brings, and how
@@ -918,11 +949,12 @@ flow in the product, role by role and on a phone, for consistency, wording and
 the details the earlier areas left: the point at which the product is judged
 ready, or not, for the final stage.
 
-**Order.** Area 1 first, by decision. Area 2 early, because every later area
-reuses what it settles. Areas 3 to 7 follow roughly in the order people meet
-them day to day, and can be reordered; Area 6 and Area 7 need the most
-discussion before they are scoped. Area 8 closes the stage. A defect that
-distorts figures can be pulled into whichever scope comes first.
+**Order.** Area 1 came first, by decision, and Area 2 straight after, because
+every later area reuses what it settles; most of Area 5 followed. Areas 3, 4, 6
+and 7 follow roughly in the order people meet them day to day, and can be
+reordered; Area 6 and Area 7 need the most discussion before they are scoped.
+Area 8 closes the stage. A defect that distorts figures can be pulled into
+whichever scope comes first.
 
 ---
 
@@ -951,11 +983,11 @@ timing), which is a business decision rather than code.*
 
 **Deferred on purpose.** Not scheduled, each waiting for a decision or a real
 need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a dark
-theme, which Area 2 unblocks; per-person working patterns, a configurable
-working week, a versioned company default capacity, a configurable grace period
-and closing a month early; your own list of sessions and two-factor sign-in;
-and the permission questions in [`permission-model.md`](./permission-model.md)
-§6 other than P5.
+theme, which Area 2's shared tokens have unblocked; per-person working patterns,
+a configurable working week, a versioned company default capacity, a
+configurable grace period and closing a month early; your own list of sessions
+and two-factor sign-in; and the permission questions in
+[`permission-model.md`](./permission-model.md) §6 other than P5.
 
 ---
 
@@ -987,19 +1019,9 @@ Short list. These are the things that would be expensive or dangerous to break.
 
 ## 9. Documentation map
 
-| Document | Covers |
-| :--- | :--- |
-| **This document** | Product definition, business rules, decisions, roadmap |
-| [`permission-model.md`](./permission-model.md) | The permission model, all of it enforced, and its open questions |
-| [`architecture.md`](./architecture.md) | System shape, request flow, where to start |
-| [`workflow.md`](./workflow.md) | Branching, pull requests, CI, migrations, deployment |
-| [`README.md`](../README.md) | Setup, commands, environment |
-
-Alongside these, a local checkout also carries working documents that are
-deliberately not version-controlled: the active scope, the list of defects and
-debt no scope owns, context notes for the backend and the frontend, and the
-repository's coding conventions. They are named here rather than linked, because
-they are not part of the published documentation.
+The [README](../README.md#documentation) lists every document and what it
+covers, and names the working documents a local checkout carries outside version
+control.
 
 ---
 
@@ -1073,16 +1095,6 @@ routes is a change to the §5 matrix and would be recorded as one.
 *Alternative:* build it only from the routes already open to employees, with no
 permission change and no billable split by project.
 
-**Q15 — Is time on a project with no client ever billable?**
-Belongs to Area 3. The reports count all time on a project with no client
-as internal, whatever its billable flag (D2), but the timesheet's progress bar
-and the week summary use the flag itself, so the same hours read "billable" on
-the timesheet and "internal" in the report.
-*Recommendation:* no — the time form does not offer "billable" on a project with
-no client, and the timesheet shows the same three-way split as the reports.
-*Alternative:* keep the flag free on every project and only relabel the
-timesheet's bar.
-
 **Q16 — Can someone delete their own account, or an owner their company?**
 Raised on 1 October 2026; no area yet. Nobody can delete an account today:
 people are deactivated, never deleted (§8 rule 6). A user row also cannot be
@@ -1123,3 +1135,9 @@ their time logs, such as anonymising the person and keeping the hours.
   from Area 3 into Area 1's last phase (1 October 2026) and in force since; see
   §4. An explicit start date on the person stays the answer for a company
   that backfills older history.
+- **Q15** — Time on a project with no client can be billable: project type and
+  billable status are independent (D2). Internal work starts non-billable and
+  can be switched on, and the reports, the export and utilisation count
+  billable by the flag on every project. Existing entries on internal projects
+  were reset to non-billable by a data migration, so no past billable figure
+  changed (Phase 28).

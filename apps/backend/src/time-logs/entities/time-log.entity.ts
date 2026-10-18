@@ -53,7 +53,7 @@ export class TimeLog {
   minutes!: number;
 
   @Column({ type: 'text', nullable: true })
-  note?: string;
+  note?: string | null;
 
   @Column({ type: 'date', nullable: false })
   date!: string;

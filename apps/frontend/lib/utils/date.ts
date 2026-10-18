@@ -97,6 +97,11 @@ export function getWeekDates(weekStart: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
 
+/** Today in the workspace timezone, as a local-midnight Date for the week grids. */
+export function companyToday(timeZone?: string): Date {
+  return new Date(`${todayISODate(timeZone)}T00:00:00`);
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
   return toISODate(a) === toISODate(b);
 }

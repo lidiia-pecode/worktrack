@@ -29,7 +29,6 @@ const NAME_COLUMN_LABEL: Record<HoursReportGroupBy, string> = {
 const SPLIT_COLUMNS: { key: keyof HoursSplit; label: string }[] = [
   { key: "billableMinutes", label: "Billable" },
   { key: "nonBillableMinutes", label: "Non-billable" },
-  { key: "internalMinutes", label: "Internal" },
   { key: "totalMinutes", label: "Total" },
 ];
 

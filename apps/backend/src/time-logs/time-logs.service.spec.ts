@@ -17,6 +17,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
+import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
@@ -299,6 +300,72 @@ describe('TimeLogsService write scope', () => {
         service.create(logFor(member.id, LOCKED_DATE), owner),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    describe('billable default', () => {
+      // The shared project has no client, and its activity is billable by
+      // default, so the two rules disagree on it.
+      it('starts work on an internal project non-billable', async () => {
+        const log = await service.create(logFor(member.id), member);
+
+        expect(log.isBillable).toBe(false);
+      });
+
+      it('keeps billable switched on explicitly on an internal project', async () => {
+        const log = await service.create(
+          { ...logFor(member.id), isBillable: true },
+          member,
+        );
+
+        expect(log.isBillable).toBe(true);
+      });
+
+      it("starts client work from the activity's default", async () => {
+        const activities = dataSource.getRepository(Activity);
+        const { id: categoryId } = await dataSource
+          .getRepository(ActCategory)
+          .findOneByOrFail({ companyId });
+        const billable = await activities.save({
+          companyId,
+          categoryId,
+          name: `Billable ${RUN}`,
+        });
+        const nonBillable = await activities.save({
+          companyId,
+          categoryId,
+          name: `Non-billable ${RUN}`,
+          defaultBillable: false,
+        });
+        const clientProject = await dataSource
+          .getRepository(Project)
+          .save({ companyId, name: `Client ${RUN}`, clientName: 'Acme' });
+        const [billablePair, nonBillablePair] = await dataSource
+          .getRepository(ProjectActivity)
+          .save([
+            { companyId, projectId: clientProject.id, activityId: billable.id },
+            {
+              companyId,
+              projectId: clientProject.id,
+              activityId: nonBillable.id,
+            },
+          ]);
+        await dataSource.query(
+          'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
+          [clientProject.id, member.id],
+        );
+
+        const billableLog = await service.create(
+          { projectActivityId: billablePair.id, minutes: 60, date: DATE },
+          member,
+        );
+        const nonBillableLog = await service.create(
+          { projectActivityId: nonBillablePair.id, minutes: 60, date: DATE },
+          member,
+        );
+
+        expect(billableLog.isBillable).toBe(true);
+        expect(nonBillableLog.isBillable).toBe(false);
+      });
+    });
   });
 
   describe('update and delete', () => {
@@ -357,6 +424,56 @@ describe('TimeLogsService write scope', () => {
       await expect(service.update(id, { minutes: 90 }, owner)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+
+    it('changes an entry on an archived project while its activity is kept', async () => {
+      const id = await existingLogFor(member.id);
+      const { projectId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const projects = dataSource.getRepository(Project);
+      await projects.update(projectId, { status: ProjectStatus.ARCHIVED });
+
+      try {
+        await expect(
+          service.update(
+            id,
+            { projectActivityId, minutes: 90, note: 'Kept on' },
+            manager,
+          ),
+        ).resolves.toMatchObject({ minutes: 90, note: 'Kept on' });
+      } finally {
+        await projects.update(projectId, { status: ProjectStatus.ACTIVE });
+      }
+    });
+
+    it('still checks a new activity, refusing one on a project the owner is not on', async () => {
+      const id = await existingLogFor(member.id);
+      const { activityId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const elsewhere = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Elsewhere ${RUN}` });
+      const elsewherePair = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: elsewhere.id, activityId });
+
+      await expect(
+        service.update(id, { projectActivityId: elsewherePair.id }, owner),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('clears a note', async () => {
+      const id = await existingLogFor(member.id);
+      await service.update(id, { note: 'Pairing' }, member);
+
+      await service.update(id, { note: null }, member);
+
+      const saved = await dataSource
+        .getRepository(TimeLog)
+        .findOneByOrFail({ id });
+      expect(saved.note).toBeNull();
     });
 
     it('reports a missing entry as not found', async () => {
@@ -465,6 +582,44 @@ describe('TimeLogsService write scope', () => {
 
       expect(ids.filter((id) => id === manager.id)).toHaveLength(1);
       expect(ids.sort()).toEqual([manager.id, member.id, unassigned.id].sort());
+    });
+
+    it("counts only the filtered project's hours", async () => {
+      const { projectId, activityId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const otherProject = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Other ${RUN}` });
+      const otherPair = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: otherProject.id, activityId });
+      await dataSource.query(
+        'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
+        [otherProject.id, member.id],
+      );
+
+      await existingLogFor(member.id);
+      await dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId: member.id,
+        projectActivityId: otherPair.id,
+        minutes: 120,
+        date: DATE,
+        isBillable: false,
+      });
+
+      const summary = await service.getTeamSummary(
+        { dateFrom: DATE, dateTo: DATE, projectId },
+        owner,
+      );
+      const memberRow = summary.rows.find((row) => row.user.id === member.id);
+
+      expect(memberRow?.minutes).toBe(60);
+      expect(memberRow?.days).toEqual([
+        expect.objectContaining({ date: DATE, minutes: 60 }),
+      ]);
+      expect(summary.minutes).toBe(60);
     });
   });
 

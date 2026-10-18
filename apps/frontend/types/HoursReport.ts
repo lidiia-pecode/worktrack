@@ -1,12 +1,10 @@
 import { HoursReportGroupBy } from "./enums";
 
 export interface HoursSplit {
-  /** Client work marked billable. */
+  /** Time marked billable, on any project. */
   billableMinutes: number;
-  /** Client work not marked billable. */
+  /** Time not marked billable, on any project. */
   nonBillableMinutes: number;
-  /** Work on projects with no client. */
-  internalMinutes: number;
   totalMinutes: number;
 }
 

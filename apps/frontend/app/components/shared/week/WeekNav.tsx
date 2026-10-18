@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import {
   addWeeks,
+  companyToday,
   formatWeekRangeLabel,
   getWeekStart,
   isSameDay,
@@ -21,11 +22,11 @@ type Props = {
 export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const calendarToggleRef = useRef<HTMLButtonElement>(null);
-  const { weekStartDay } = useWorkSettings();
+  const { weekStartDay, timezone } = useWorkSettings();
 
   const isCurrentWeek = isSameDay(
     weekStart,
-    getWeekStart(new Date(), weekStartDay),
+    getWeekStart(companyToday(timezone), weekStartDay),
   );
 
   const closeCalendar = () => {
@@ -87,7 +88,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           variant="secondary"
           size="sm"
           className="w-auto"
-          onClick={() => onWeekChange(new Date())}
+          onClick={() => onWeekChange(companyToday(timezone))}
         >
           Today
         </Button>

@@ -16,6 +16,7 @@ import { UtilisationQuery } from './dtos/utilisation-query.dto';
 
 export interface UtilisationFigures extends Availability {
   loggedMinutes: number;
+  /** Time marked billable, on any project. */
   billableMinutes: number;
   /** Billable and non-billable client work together. */
   clientMinutes: number;
@@ -185,17 +186,14 @@ export class UtilisationService {
     availability: Availability | undefined,
     hours: HoursReportRow | undefined,
   ): Minutes {
-    const billableMinutes = hours?.billableMinutes ?? 0;
-    const nonBillableClientMinutes = hours?.nonBillableMinutes ?? 0;
-
     return {
       capacityMinutes: availability?.capacityMinutes ?? 0,
       absenceMinutes: availability?.absenceMinutes ?? 0,
       availableMinutes: availability?.availableMinutes ?? 0,
       loggedMinutes: hours?.totalMinutes ?? 0,
-      billableMinutes,
-      clientMinutes: billableMinutes + nonBillableClientMinutes,
-      nonBillableClientMinutes,
+      billableMinutes: hours?.billableMinutes ?? 0,
+      clientMinutes: hours?.clientMinutes ?? 0,
+      nonBillableClientMinutes: hours?.nonBillableClientMinutes ?? 0,
     };
   }
 }

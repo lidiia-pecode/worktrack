@@ -4,6 +4,7 @@ import { TimeLog } from "@/types";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { OVERTIME_SEGMENT_PATTERN } from "../consts";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
+import { cn } from "@/lib/utils/cn";
 
 type TimelogSegmentProps = {
   segment: Segment;
@@ -23,7 +24,7 @@ export const TimelogSegment = ({
   const color = getProjectColor(colorSeed);
 
   // A read-only entry stays focusable so its details can still be shown by
-  // keyboard.
+  // keyboard, but has no hover, so it doesn't look clickable.
   return (
     <div
       role="button"
@@ -50,21 +51,11 @@ export const TimelogSegment = ({
         top: offsetTop,
         backgroundColor: color,
       }}
-      className="
-        absolute
-        left-[3px]
-        right-[3px]
-        rounded-md
-        ring-1
-        ring-foreground/5
-        overflow-hidden
-        focus-visible:outline-2
-        focus-visible:-outline-offset-2
-        focus-visible:outline-ring
-        hover:ring-foreground/15
-        hover:brightness-105
-        transition-all
-      "
+      className={cn(
+        "absolute left-[3px] right-[3px] overflow-hidden rounded-md ring-1 ring-foreground/5 transition-all focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+        onClick &&
+          "cursor-pointer hover:ring-foreground/15 hover:brightness-105",
+      )}
     >
       {overtimeHeight > 0 && (
         <div

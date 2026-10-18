@@ -34,7 +34,7 @@ npm run test -w apps/frontend         # frontend suite, no database needed
 npm run format:check && npm run lint && npm run typecheck   # repo root, both apps
 
 git push -u origin feat/team-week-grid
-gh pr create                          # the PR template asks for what changed and why
+gh pr create                          # say what changed and why
 ```
 
 Then wait for CI, open the preview Vercel comments on the PR and click through
@@ -94,8 +94,8 @@ and a `down`, holding the exact SQL that moves the schema from one shape to the
 next. The filename starts with a timestamp, and that timestamp is the order they
 run in.
 
-You never write one by hand. Change the entity, then let TypeORM diff the
-entities against a live database and write the file:
+A schema change is never written by hand. Change the entity, then let TypeORM
+diff the entities against a live database and write the file:
 
 ```bash
 make db                         # the diff is taken against the running local database
@@ -107,6 +107,11 @@ Generated files come out with different formatting from the rest of the
 repository, so run prettier over the new one before committing. Read the SQL
 afterwards — generation is a starting point, not an authority, and it will
 happily write a destructive statement you did not intend.
+
+A data-only migration, which changes rows but not the schema, has nothing to
+diff, so it is the one kind written by hand: a timestamped class with the
+`UPDATE` in `up`. Its `down` restores the old values when it can, and is
+deliberately empty, with a comment saying why, when it cannot.
 
 ### How TypeORM knows what has already run
 
@@ -145,9 +150,9 @@ everywhere. It is the cheapest check in this whole document.
 
 ### The four rules
 
-1. **Migrations run as a release step, never at application boot.**
-   `synchronize` stays `false` — two instances racing the same DDL is not a
-   theoretical problem.
+1. **Migrations run as a separate step, never at application boot.** For now
+   that step is run by hand (see *On merge to `main`*). `synchronize` stays
+   `false` — two instances racing the same DDL is not a theoretical problem.
 2. **A committed migration is immutable.** If it was wrong, write another one.
    Editing one that has already run leaves two databases permanently different.
 3. **Additive first.** To rename or drop a column: add the new one and backfill,
@@ -172,9 +177,15 @@ breaks the code that is currently running. TypeORM selects every mapped column b
 name, so dropping one makes every query against that table fail until the new
 code is live. It goes **after** the deploy.
 
+A **data-only** migration changes rows, not columns, so the old code keeps
+working and it goes **before** the deploy too. Until the new code is live, the
+old code can still write rows the migration would have changed, so check those
+afterwards.
+
 | Kind | Examples | Apply |
 | :--- | :--- | :--- |
 | Additive | `CREATE TABLE`, nullable column, index, new enum type | **Before** the merge |
+| Data only | `UPDATE` of existing rows, no schema change | **Before** the merge; then check rows the old code wrote in between |
 | Destructive | `DROP COLUMN`, `DROP TABLE`, `NOT NULL` on existing data, type narrowing | **After** Render is serving the new code |
 
 A change that contains both is applied in two sittings, not one.

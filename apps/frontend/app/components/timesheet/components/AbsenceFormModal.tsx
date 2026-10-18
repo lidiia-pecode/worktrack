@@ -13,6 +13,7 @@ import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { Button } from "@/components/ui/button";
 import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
+import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
@@ -26,7 +27,7 @@ const absenceSchema = z
     type: z.nativeEnum(AbsenceType, { message: "Pick a reason" }),
     startDate: z.string().min(1, "Pick a first day"),
     endDate: z.string().min(1, "Pick a last day"),
-    note: z.string().optional(),
+    note: optionalNoteSchema,
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "The last day can't be before the first",
@@ -83,7 +84,7 @@ export const AbsenceFormModal = ({
     getValues,
     setValue,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<AbsenceFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(absenceSchema) as any,
@@ -100,7 +101,7 @@ export const AbsenceFormModal = ({
   // a shorter one, so the last day follows rather than becoming invalid.
   useEffect(() => {
     if (startDate && getValues("endDate") < startDate) {
-      setValue("endDate", startDate);
+      setValue("endDate", startDate, { shouldDirty: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate]);
@@ -110,16 +111,16 @@ export const AbsenceFormModal = ({
       type: data.type,
       startDate: data.startDate,
       endDate: data.endDate,
-      note: data.note?.trim() || undefined,
     };
 
     // A refusal is the server's to explain — the global mutation handler shows
     // it, and the modal stays open on the values that caused it.
     try {
       if (absence) {
-        await onUpdate(absence.id, shared);
+        // null clears a saved note; undefined would leave it unchanged.
+        await onUpdate(absence.id, { ...shared, note: data.note || null });
       } else {
-        await onCreate(shared);
+        await onCreate({ ...shared, note: data.note || undefined });
       }
       onClose();
     } catch {}
@@ -141,6 +142,7 @@ export const AbsenceFormModal = ({
       <ResourceFormModal
         open={open}
         onClose={onClose}
+        hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
         description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}
@@ -153,6 +155,7 @@ export const AbsenceFormModal = ({
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
+                disabled={isSaving}
               >
                 <Trash2 className="size-4" />
                 Delete
@@ -169,7 +172,13 @@ export const AbsenceFormModal = ({
               Cancel
             </Button>
 
-            <Button type="submit" form={FORM_ID} size="sm" isLoading={isSaving}>
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={isSaving}
+              disabled={isDeleting}
+            >
               {isEditMode ? "Save changes" : "Add absence"}
             </Button>
           </>
@@ -210,7 +219,7 @@ export const AbsenceFormModal = ({
             />
           </div>
 
-          <Field id="absence-note" label="Note">
+          <Field id="absence-note" label="Note" error={errors.note?.message}>
             <TextareaAutosize
               id="absence-note"
               {...register("note")}

@@ -281,8 +281,12 @@ export class TimeLogsService {
         payload.minutes,
       );
 
+      // Work on an internal project starts non-billable; client work starts
+      // from the activity's default. Either can be switched explicitly (D2).
+      const isClientWork = Boolean(projectActivity.project.clientName);
       const finalIsBillable =
-        payload.isBillable ?? projectActivity.activity.defaultBillable;
+        payload.isBillable ??
+        (isClientWork && projectActivity.activity.defaultBillable);
 
       const entity = manager.create(TimeLog, {
         companyId: user.companyId,
@@ -322,7 +326,12 @@ export class TimeLogsService {
         );
       }
 
-      if (payload.projectActivityId !== undefined) {
+      // Availability is checked only for a new activity, so an entry on an
+      // archived project or one the person has left can still be corrected.
+      if (
+        payload.projectActivityId !== undefined &&
+        payload.projectActivityId !== log.projectActivityId
+      ) {
         log.projectActivity = await this.resolveProjectActivity(
           payload.projectActivityId,
           ownerId,

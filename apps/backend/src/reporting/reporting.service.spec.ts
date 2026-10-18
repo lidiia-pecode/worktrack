@@ -427,7 +427,7 @@ describe('ReportingService', () => {
       await plan(manager.id, crm.projectId, 60);
     });
 
-    it('splits client work by billability and keeps internal work apart', async () => {
+    it('splits by the billable flag on every project, internal ones included', async () => {
       const { rows, totals } = await report(owner, HoursReportGroupBy.CLIENT);
 
       expect(rows).toEqual([
@@ -435,14 +435,16 @@ describe('ReportingService', () => {
           name: 'Acme',
           billableMinutes: 540,
           nonBillableMinutes: 60,
-          internalMinutes: 0,
+          clientMinutes: 600,
+          nonBillableClientMinutes: 60,
           totalMinutes: 600,
         }),
         expect.objectContaining({
           name: null,
-          billableMinutes: 0,
+          billableMinutes: 120,
           nonBillableMinutes: 0,
-          internalMinutes: 120,
+          clientMinutes: 0,
+          nonBillableClientMinutes: 0,
           totalMinutes: 120,
         }),
       ]);
@@ -477,9 +479,9 @@ describe('ReportingService', () => {
         const { rows } = await report(owner, groupBy);
 
         for (const row of rows) {
-          expect(
-            row.billableMinutes + row.nonBillableMinutes + row.internalMinutes,
-          ).toBe(row.totalMinutes);
+          expect(row.billableMinutes + row.nonBillableMinutes).toBe(
+            row.totalMinutes,
+          );
         }
       }
     });
@@ -566,7 +568,7 @@ describe('ReportingService', () => {
         ).toEqual([
           ['Member Test', `CRM ${RUN}`, HoursBilling.BILLABLE, 300],
           ['Member Test', `CRM ${RUN}`, HoursBilling.NON_BILLABLE, 60],
-          ['Member Test', `Tooling ${RUN}`, HoursBilling.INTERNAL, 120],
+          ['Member Test', `Tooling ${RUN}`, HoursBilling.BILLABLE, 120],
           ['Outsider Test', `CRM ${RUN}`, HoursBilling.BILLABLE, 240],
         ]);
         expect(rows[0]).toMatchObject({
@@ -575,6 +577,7 @@ describe('ReportingService', () => {
           activity: `Backend ${RUN}`,
           category: `Engineering ${RUN}`,
         });
+        expect(rows[2].client).toBeNull();
       });
 
       it('adds up to the Hours report for the same people', async () => {

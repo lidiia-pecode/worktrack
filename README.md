@@ -71,7 +71,7 @@ make setup
 ```
 
 This starts PostgreSQL, runs all database migrations and seeds one test company
-with users, projects, activities, teams, planning and time logs.
+with users, projects, activities, teams, planning, time logs and absences.
 
 `make seed` creates the **WorkTrack Demo** company: the accounts for checking
 each role (an owner, two managers and employees) and about twenty demo people
@@ -175,7 +175,7 @@ CI runs, and the rules for changes that touch the database.
 
 | Document                                                                           | Covers                                                 |
 | :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md)                                     | System overview and documentation map — start here     |
+| [`docs/architecture.md`](docs/architecture.md)                                     | System shape, request flow, where to start a task      |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
 | [`docs/permission-model.md`](docs/permission-model.md)                             | The permission model and the scopes that delivered it  |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
@@ -192,21 +192,21 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting with an Excel
-export of hours, and admin CRUD for users, teams, projects, activities and
+export of hours, and the Manage pages for users, teams, projects, activities and
 categories are implemented, and a new company is guided from sign-up to somebody
-logging time. Test coverage is twenty-eight backend suites and 477 tests,
-covering who may see and change whose data and the business rules behind each
-feature, plus frontend tests for the date, lock, paging and time zone logic the
-screens rely on.
+logging time.
 
-The original feature plan is complete, the most recent additions being keyboard
-and screen-reader access and the hours export. The work ahead improves the
-product itself — ease of use, visual consistency, reporting, what employees can
-see, and onboarding. A production launch comes last, once the product is ready.
+The original feature plan is complete. The work ahead improves the product
+itself, area by area: first run and onboarding, the application shell and shared
+UI, and most of administration are done. A production launch comes last, once
+the product is ready. The roadmap, test coverage and engineering state are in
+[`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
+and §7.
 
-The backend has a production Docker image (`apps/backend/Dockerfile`) and
-migrations run as a deployment step. Pull requests are checked by GitHub Actions
-and by a Vercel preview build, and `main` is protected. A shared development
-stand is deployed — Vercel for the frontend, Render for the backend, Neon for the
+The backend has a production Docker image (`apps/backend/Dockerfile`).
+Migrations are run by hand, not as a deployment step; a real release step is
+part of the production launch. Pull requests are checked by GitHub Actions and
+by a Vercel preview build, and `main` is protected. A shared development stand
+is deployed — Vercel for the frontend, Render for the backend, Neon for the
 database; see [`docs/workflow.md`](docs/workflow.md). There is no production
 environment yet.

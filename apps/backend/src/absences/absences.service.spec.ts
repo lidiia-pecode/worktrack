@@ -653,6 +653,15 @@ describe('AbsencesService', () => {
       expect(updated.note).toBe('changed');
     });
 
+    it('clears a note', async () => {
+      const id = await existingAbsence(member.id);
+      await service.update(id, { note: 'Dentist' }, member);
+
+      const updated = await service.update(id, { note: null }, member);
+
+      expect(updated.note).toBeNull();
+    });
+
     it('allows two people to be absent on the same days', async () => {
       await service.create(absenceFor(member.id), member);
 

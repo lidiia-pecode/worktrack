@@ -64,12 +64,14 @@ export interface ReportingMonth {
 }
 
 export interface HoursSplit {
-  /** Client work marked billable. */
+  /** Time marked billable, on any project. */
   billableMinutes: number;
-  /** Client work not marked billable. */
+  /** Time not marked billable, on any project. */
   nonBillableMinutes: number;
-  /** Work on projects with no client, whatever its billable flag. */
-  internalMinutes: number;
+  /** Time on projects with a client. Not shown on the report screen; utilisation reads it. */
+  clientMinutes: number;
+  /** Client work not marked billable. Not shown on the report screen; utilisation reads it. */
+  nonBillableClientMinutes: number;
   totalMinutes: number;
 }
 
@@ -97,7 +99,8 @@ interface HoursReportRawRow {
   detail: string | null;
   billableMinutes: string;
   nonBillableMinutes: string;
-  internalMinutes: string;
+  clientMinutes: string;
+  nonBillableClientMinutes: string;
   totalMinutes: string;
 }
 
@@ -151,7 +154,6 @@ const CLIENT_EXPORT_NAME = `COALESCE(
 )`;
 
 const BILLING = `CASE
-  WHEN ${CLIENT_NAME} IS NULL THEN '${HoursBilling.INTERNAL}'
   WHEN tl.is_billable THEN '${HoursBilling.BILLABLE}'
   ELSE '${HoursBilling.NON_BILLABLE}'
 END`;
@@ -410,8 +412,8 @@ export class ReportingService {
   // ==========================================
 
   /**
-   * Logged time over a date range, grouped one way and split into billable
-   * client work, non-billable client work and internal work (D2).
+   * Logged time over a date range, grouped one way and split into billable and
+   * non-billable by each entry's flag, on any project (D2).
    */
   async getHoursReport(
     user: AuthUser,
@@ -430,16 +432,20 @@ export class ReportingService {
       .addSelect(grouping.name, 'name')
       .addSelect(grouping.detail, 'detail')
       .addSelect(
-        `SUM(CASE WHEN ${isClientWork} AND tl.is_billable THEN tl.minutes ELSE 0 END)`,
+        'SUM(CASE WHEN tl.is_billable THEN tl.minutes ELSE 0 END)',
         'billableMinutes',
       )
       .addSelect(
-        `SUM(CASE WHEN ${isClientWork} AND NOT tl.is_billable THEN tl.minutes ELSE 0 END)`,
+        'SUM(CASE WHEN NOT tl.is_billable THEN tl.minutes ELSE 0 END)',
         'nonBillableMinutes',
       )
       .addSelect(
-        `SUM(CASE WHEN ${CLIENT_NAME} IS NULL THEN tl.minutes ELSE 0 END)`,
-        'internalMinutes',
+        `SUM(CASE WHEN ${isClientWork} THEN tl.minutes ELSE 0 END)`,
+        'clientMinutes',
+      )
+      .addSelect(
+        `SUM(CASE WHEN ${isClientWork} AND NOT tl.is_billable THEN tl.minutes ELSE 0 END)`,
+        'nonBillableClientMinutes',
       )
       .addSelect('SUM(tl.minutes)', 'totalMinutes')
       .from('time_logs', 'tl')
@@ -466,7 +472,8 @@ export class ReportingService {
       detail: raw.detail,
       billableMinutes: Number(raw.billableMinutes),
       nonBillableMinutes: Number(raw.nonBillableMinutes),
-      internalMinutes: Number(raw.internalMinutes),
+      clientMinutes: Number(raw.clientMinutes),
+      nonBillableClientMinutes: Number(raw.nonBillableClientMinutes),
       totalMinutes: Number(raw.totalMinutes),
     }));
 
@@ -474,13 +481,16 @@ export class ReportingService {
       (sum, row) => ({
         billableMinutes: sum.billableMinutes + row.billableMinutes,
         nonBillableMinutes: sum.nonBillableMinutes + row.nonBillableMinutes,
-        internalMinutes: sum.internalMinutes + row.internalMinutes,
+        clientMinutes: sum.clientMinutes + row.clientMinutes,
+        nonBillableClientMinutes:
+          sum.nonBillableClientMinutes + row.nonBillableClientMinutes,
         totalMinutes: sum.totalMinutes + row.totalMinutes,
       }),
       {
         billableMinutes: 0,
         nonBillableMinutes: 0,
-        internalMinutes: 0,
+        clientMinutes: 0,
+        nonBillableClientMinutes: 0,
         totalMinutes: 0,
       },
     );

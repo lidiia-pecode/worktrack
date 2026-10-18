@@ -9,6 +9,10 @@ export class ProjectSummaryResponse {
   @Expose()
   name!: string;
 
+  /** Null or empty for an internal project. */
+  @Expose()
+  clientName!: string | null;
+
   @Expose()
   status!: ProjectStatus;
 }

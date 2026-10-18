@@ -176,7 +176,7 @@ export const ActivityForm = ({
             Billable by default
           </span>
           <span className="mt-0.5 block text-xs text-muted-foreground">
-            New time entries start billable. People can change each one.
+            New time entries on client projects start billable.
           </span>
         </span>
 

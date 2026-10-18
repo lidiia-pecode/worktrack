@@ -2,7 +2,13 @@
 
 import { ReactNode, useMemo, useRef, useState } from "react";
 
-import { CalendarOff, Clock, FolderKanban, ListTodo } from "lucide-react";
+import {
+  CalendarOff,
+  Check,
+  Clock,
+  FolderKanban,
+  ListTodo,
+} from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
@@ -13,18 +19,19 @@ import { useOwnProjects } from "@/hooks/useProjects";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
+  companyToday,
   formatDayMonthLabel,
   formatDuration,
   formatMonthLabel,
   getWeekDates,
   getWeekEnd,
-  getWeekStart,
   isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
-import { mapAbsencesByDate } from "@/lib/utils/absence";
+import { useShownWeek } from "@/hooks/useShownWeek";
+import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -73,7 +80,6 @@ type WeekTimesheetProps = {
 
 export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
-    weekStartDay,
     dailyTargetMinutes,
     timezone,
     isLoading: isLoadingSettings,
@@ -81,18 +87,13 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const [anchorDate, setAnchorDate] = useState(() => new Date());
+  const { weekStart, showWeekOf } = useShownWeek();
   const [modalState, setModalState] = useState<ModalState | null>(null);
   const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(
     null,
   );
   const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const weekStart = useMemo(
-    () => getWeekStart(anchorDate, weekStartDay),
-    [anchorDate, weekStartDay],
-  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
@@ -142,6 +143,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
     expectedMinutes,
     expectedToDateMinutes,
+    expectedByDate,
     isLoading: isLoadingExpected,
     isError: isExpectedError,
     refetch: refetchExpected,
@@ -149,10 +151,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   // An absence is frozen whole once any of its days locks, so its months count.
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
-  const { isLocked, isEditable } = useLockedDates(
-    lockRange.dateFrom,
-    lockRange.dateTo,
-  );
+  const {
+    isLocked,
+    isEditable,
+    isError: isLocksError,
+    refetch: refetchLocks,
+  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
   const graceMonth = useGraceMonth();
 
   const { items: plannedEntries } = usePlanningEntries({
@@ -206,25 +210,31 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     0,
   );
 
+  // Only the shown week's dates count, like the daily totals, so the previous
+  // week kept on screen while the next one loads adds nothing.
   const { billableMinutes, nonBillableMinutes } = useMemo(() => {
     let billable = 0;
     let nonBillable = 0;
 
-    timelogs.forEach((log) => {
-      if (log.isBillable) {
-        billable += log.minutes;
-      } else {
-        nonBillable += log.minutes;
-      }
+    weekDates.forEach((date) => {
+      (timelogsByDate[toISODate(date)] ?? []).forEach((log) => {
+        if (log.isBillable) {
+          billable += log.minutes;
+        } else {
+          nonBillable += log.minutes;
+        }
+      });
     });
 
     return {
       billableMinutes: billable,
       nonBillableMinutes: nonBillable,
     };
-  }, [timelogs]);
+  }, [weekDates, timelogsByDate]);
 
   const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
+  const isWeekComplete = expectedMinutes > 0 && totalMinutes >= expectedMinutes;
+  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
   const maxDailyMinutes = Math.max(
     dailyTargetMinutes,
@@ -258,7 +268,15 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     setAbsenceModal({ date: iso, absence: absencesByDate[iso] });
   };
 
-  const openNewAbsence = () => setAbsenceModal({ date: todayIso });
+  const openNewAbsence = () =>
+    setAbsenceModal({
+      date: newAbsenceStartDate({
+        today: companyToday(timezone),
+        weekStart,
+        isCurrentWeek,
+        isEditable,
+      }),
+    });
 
   const openEdit = (timelog: TimeLog) => {
     setModalState({
@@ -276,6 +294,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     void refetchAbsences();
     void refetchExpected();
     void refetchOwnProjects();
+    void refetchLocks();
   };
 
   const hasError =
@@ -284,14 +303,15 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isSettingsError ||
     isAbsencesError ||
     isExpectedError ||
-    isOwnProjectsError;
+    isOwnProjectsError ||
+    isLocksError;
 
   const content = timesheetContentFor({
     loggableActivities: pickerItems.length,
     ownProjects: ownProjects?.count ?? 0,
     timeLogs: timelogs.length,
     absences: absences.length,
-    isCurrentWeek: dateFrom <= todayIso && todayIso <= dateTo,
+    isCurrentWeek,
   });
   const showsFigures =
     !hasError &&
@@ -304,6 +324,29 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     <PageHeader
       title="Timesheet"
       description="Record your working hours, day by day."
+    />
+  );
+
+  const addAbsenceButton = (
+    <Button type="button" variant="outline" size="sm" onClick={openNewAbsence}>
+      <CalendarOff className="size-4" />
+      Add absence
+    </Button>
+  );
+
+  const absenceForm = absenceModal && (
+    <AbsenceFormModal
+      open
+      onClose={() => setAbsenceModal(null)}
+      date={absenceModal.date}
+      absence={absenceModal.absence}
+      onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
+      onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
+      onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+      isSaving={
+        absenceActions.create.isPending || absenceActions.update.isPending
+      }
+      isDeleting={absenceActions.delete.isPending}
     />
   );
 
@@ -333,8 +376,9 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
         {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
-        <div className="mb-4">
-          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+          {addAbsenceButton}
         </div>
 
         {content === "notOnProjects" ? (
@@ -350,6 +394,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
             icon={<ListTodo />}
           />
         )}
+
+        {absenceForm}
       </>
     );
   }
@@ -362,7 +408,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
       <div className="border-b border-border">
         <div className="flex items-center justify-between pb-3">
-          <WeekNav weekStart={weekStart} onWeekChange={setAnchorDate} />
+          <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
           {showsFigures && (
             <div className="flex items-center gap-2 text-sm">
@@ -387,21 +433,24 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                   -{formatDuration(behindMinutes)}
                 </Badge>
               )}
+
+              {isWeekComplete && (
+                <Badge
+                  variant="success"
+                  title="Everything expected this week is logged"
+                  className="px-1.5 text-2xs font-medium"
+                >
+                  <Check className="size-3" aria-hidden />
+                  Complete
+                </Badge>
+              )}
             </div>
           )}
         </div>
 
         {!hasError && (
           <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={openNewAbsence}
-            >
-              <CalendarOff className="size-4" />
-              Add absence
-            </Button>
+            {addAbsenceButton}
 
             {graceMonth?.editableUntil && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -427,7 +476,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       {hasError && (
         <ErrorState
           title="We couldn't load your timesheet"
-          description="Your entries for this week are unavailable right now."
+          description="This week is unavailable right now."
           onRetry={retry}
         />
       )}
@@ -441,7 +490,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                 date={date}
                 isToday={toISODate(date) === todayIso}
                 totalMinutes={dailyTotals[toISODate(date)] ?? 0}
-                targetMinutes={dailyTargetMinutes}
+                targetMinutes={expectedByDate[toISODate(date)]}
                 isLocked={isLocked(toISODate(date))}
               />
             ))}
@@ -479,7 +528,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                       isAbsenceLocked={isAbsenceLocked}
                       totalMinutes={dailyTotals[iso] ?? 0}
                       pixelsPerMinute={PX_PER_MINUTE}
-                      expectedMinutes={dailyTargetMinutes}
+                      expectedMinutes={expectedByDate[iso]}
                       isLocked={isLocked(iso)}
                       isEditable={isEditable(iso) && !isAbsenceLocked}
                       onAddClick={openCreate}
@@ -507,23 +556,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         confirmText="Log time"
       />
 
-      {absenceModal && (
-        <AbsenceFormModal
-          open
-          onClose={() => setAbsenceModal(null)}
-          date={absenceModal.date}
-          absence={absenceModal.absence}
-          onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
-          onUpdate={(id, data) =>
-            absenceActions.update.mutateAsync({ id, data })
-          }
-          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
-          isSaving={
-            absenceActions.create.isPending || absenceActions.update.isPending
-          }
-          isDeleting={absenceActions.delete.isPending}
-        />
-      )}
+      {absenceForm}
 
       {modalState && (
         <TimeLogFormModal

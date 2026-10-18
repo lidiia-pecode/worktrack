@@ -6,6 +6,8 @@ import { Company } from "./Company";
 export interface ProjectSummary {
   id: string;
   name: string;
+  /** Null or empty for an internal project. */
+  clientName: string | null;
   status: string;
 }
 

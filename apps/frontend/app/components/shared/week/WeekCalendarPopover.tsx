@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addDays,
+  companyToday,
   formatLongDayLabel,
   formatWeekdayLabel,
   getMonthGridDates,
@@ -135,7 +136,7 @@ export const WeekCalendarPopover = ({
       <button
         type="button"
         onClick={() => {
-          onSelectWeek(new Date());
+          onSelectWeek(companyToday(timezone));
           onClose();
         }}
         className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:underline"

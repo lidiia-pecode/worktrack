@@ -14,7 +14,7 @@ const row: HoursExportRow = {
   project: 'Tooling',
   activity: 'Backend',
   category: null,
-  billing: HoursBilling.INTERNAL,
+  billing: HoursBilling.NON_BILLABLE,
   minutes: 450,
   isPeriodClosed: false,
 };

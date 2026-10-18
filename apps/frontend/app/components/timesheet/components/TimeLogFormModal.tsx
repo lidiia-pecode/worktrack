@@ -15,8 +15,10 @@ import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
+import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 const FORM_ID = "timelog-form";
 
@@ -26,7 +28,7 @@ const timeLogSchema = z
     activityId: z.string().min(1, "Select an activity"),
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
-    note: z.string().optional(),
+    note: optionalNoteSchema,
     isBillable: z.boolean(),
   })
   .refine((data) => data.hours * 60 + data.minutes > 0, {
@@ -105,7 +107,7 @@ export const TimeLogFormModal = ({
     setValue,
     setError,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<TimeLogFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(timeLogSchema) as any,
@@ -116,11 +118,21 @@ export const TimeLogFormModal = ({
     reset(defaultValues);
   }, [defaultValues, reset]);
 
+  // An entry keeps its own project and activity as an option even when they
+  // are archived or the person has left the project, so it can still be
+  // corrected. They are only offered back to this entry.
+  const current = timelog?.projectActivity;
+  const currentProject = current?.project;
+  const currentActivity = current?.activity;
+
   const projectOptions = useMemo(() => {
     const seen = new Map<string, string>();
     pickerItems.forEach((item) => seen.set(item.projectId, item.projectName));
+    if (currentProject && !seen.has(currentProject.id)) {
+      seen.set(currentProject.id, currentProject.name);
+    }
     return Array.from(seen, ([id, name]) => ({ value: id, label: name }));
-  }, [pickerItems]);
+  }, [pickerItems, currentProject]);
 
   const hasNoOptions = projectOptions.length === 0;
 
@@ -129,13 +141,24 @@ export const TimeLogFormModal = ({
     name: ["projectId", "hours", "minutes"],
   });
 
-  const activityOptions = useMemo(
-    () =>
-      pickerItems
-        .filter((item) => item.projectId === selectedProjectId)
-        .map((i) => ({ value: i.activityId, label: i.activityName })),
-    [pickerItems, selectedProjectId],
-  );
+  const activityOptions = useMemo(() => {
+    const options = pickerItems
+      .filter((item) => item.projectId === selectedProjectId)
+      .map((i) => ({ value: i.activityId, label: i.activityName }));
+
+    if (
+      currentActivity &&
+      currentProject?.id === selectedProjectId &&
+      !options.some((option) => option.value === currentActivity.id)
+    ) {
+      options.unshift({
+        value: currentActivity.id,
+        label: currentActivity.name,
+      });
+    }
+
+    return options;
+  }, [pickerItems, selectedProjectId, currentProject, currentActivity]);
 
   useEffect(() => {
     const activityId = getValues("activityId");
@@ -143,7 +166,7 @@ export const TimeLogFormModal = ({
       (item) => item.value === activityId,
     );
     if (activityId && !stillValid) {
-      setValue("activityId", "");
+      setValue("activityId", "", { shouldDirty: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
@@ -155,16 +178,21 @@ export const TimeLogFormModal = ({
         candidate.activityId === activityId,
     );
 
-    if (item) setValue("isBillable", item.defaultBillable);
+    if (item)
+      setValue("isBillable", item.defaultBillable, { shouldDirty: true });
   };
 
   const onSubmit = async (data: TimeLogFormData) => {
+    const keepsCurrentPair =
+      data.projectId === currentProject?.id &&
+      data.activityId === currentActivity?.id;
+
     const match = pickerItems.find(
       (item) =>
         item.projectId === data.projectId &&
         item.activityId === data.activityId,
     );
-    if (!match) {
+    if (!match && !keepsCurrentPair) {
       setError("activityId", {
         message:
           "That project and activity are no longer available to you. Pick another.",
@@ -172,20 +200,29 @@ export const TimeLogFormModal = ({
       return;
     }
 
-    const minutes = data.hours * 60 + data.minutes;
-
     const shared = {
-      projectActivityId: match.id,
-      minutes,
-      note: data.note?.trim() || undefined,
+      minutes: data.hours * 60 + data.minutes,
       isBillable: data.isBillable,
     };
 
     try {
       if (timelog) {
-        await onUpdate(timelog.id, shared);
+        await onUpdate(timelog.id, {
+          ...shared,
+          // null clears a saved note; undefined would leave it unchanged.
+          note: data.note || null,
+          // Sent only when it changes, so the server re-checks availability
+          // only for a new project or activity.
+          ...(match && !keepsCurrentPair && { projectActivityId: match.id }),
+        });
       } else {
-        await onCreate({ ...shared, date });
+        // A new entry has no current pair, so the check above guarantees a match.
+        await onCreate({
+          ...shared,
+          projectActivityId: match!.id,
+          note: data.note || undefined,
+          date,
+        });
       }
       onClose();
     } catch {}
@@ -207,6 +244,7 @@ export const TimeLogFormModal = ({
       <ResourceFormModal
         open={open}
         onClose={onClose}
+        hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
           DAY_LABEL.format(new Date(`${date}T00:00:00`)),
@@ -224,6 +262,7 @@ export const TimeLogFormModal = ({
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
+                disabled={isSaving}
               >
                 <Trash2 className="size-4" />
                 Delete
@@ -245,7 +284,7 @@ export const TimeLogFormModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={isSaving}
-              disabled={hasNoOptions}
+              disabled={hasNoOptions || isDeleting}
             >
               {isEditMode ? "Save changes" : "Log time"}
             </Button>
@@ -266,8 +305,12 @@ export const TimeLogFormModal = ({
             <TimePicker
               hours={Number(hours)}
               minutes={Number(minutes)}
-              onHoursChange={(value) => setValue("hours", value)}
-              onMinutesChange={(value) => setValue("minutes", value)}
+              onHoursChange={(value) =>
+                setValue("hours", value, { shouldDirty: true })
+              }
+              onMinutesChange={(value) =>
+                setValue("minutes", value, { shouldDirty: true })
+              }
               error={!!errors.hours}
               className="w-fit"
             />
@@ -316,7 +359,7 @@ export const TimeLogFormModal = ({
             />
           </div>
 
-          <Field id="timelog-note" label="Note">
+          <Field id="timelog-note" label="Note" error={errors.note?.message}>
             <TextareaAutosize
               id="timelog-note"
               {...register("note")}
@@ -330,13 +373,11 @@ export const TimeLogFormModal = ({
             />
           </Field>
 
-          <label className="flex cursor-pointer select-none items-center gap-2.5">
-            <input
-              type="checkbox"
-              {...register("isBillable")}
-              className="size-4 rounded border-input-placeholder/50 accent-brand focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span className="text-sm text-foreground">Billable</span>
+          <label className="flex cursor-pointer select-none items-center justify-between gap-4">
+            <span className="text-sm font-medium text-foreground">
+              Billable
+            </span>
+            <Switch {...register("isBillable")} />
           </label>
         </form>
       </ResourceFormModal>

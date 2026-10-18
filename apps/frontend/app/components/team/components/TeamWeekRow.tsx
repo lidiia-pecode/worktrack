@@ -10,6 +10,8 @@ type TeamWeekRowProps = {
   row: TeamSummaryRow;
   weekDates: Date[];
   absencesByDate: Record<string, Absence>;
+  /** False under a project filter: Expected and "behind" are about the whole week. */
+  showsExpected: boolean;
   onOpen: (row: TeamSummaryRow) => void;
 };
 
@@ -17,12 +19,13 @@ export const TeamWeekRow = ({
   row,
   weekDates,
   absencesByDate,
+  showsExpected,
   onOpen,
 }: TeamWeekRowProps) => {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
 
   const behindMinutes = Math.max(0, row.expectedToDateMinutes - row.minutes);
-  const isBehind = behindMinutes > 0;
+  const isBehind = showsExpected && behindMinutes > 0;
 
   return (
     <tr
@@ -82,9 +85,11 @@ export const TeamWeekRow = ({
               {formatDuration(row.minutes)}
             </span>
 
-            <span className="ml-1.5 text-xs text-muted-foreground">
-              / {formatDuration(row.expectedMinutes)}
-            </span>
+            {showsExpected && (
+              <span className="ml-1.5 text-xs text-muted-foreground">
+                / {formatDuration(row.expectedMinutes)}
+              </span>
+            )}
           </div>
 
           {isBehind && (

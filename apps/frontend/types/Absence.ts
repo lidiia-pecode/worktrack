@@ -21,7 +21,8 @@ export interface AbsencePayload {
   type: AbsenceType;
   startDate: string;
   endDate: string;
-  note?: string;
+  /** null clears a saved note on update. */
+  note?: string | null;
 }
 
 export type UpdateAbsencePayload = Partial<Omit<AbsencePayload, "userId">>;
