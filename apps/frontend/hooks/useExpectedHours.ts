@@ -15,22 +15,21 @@ export function useExpectedHours(params: ExpectedHoursQuery) {
     placeholderData: keepPreviousData,
   });
 
-  // Keyed by date, so a previous week kept on screen while the next one loads
-  // answers nothing for the new dates.
+  // The previous week's figures stay cached for a smooth switch, but are never
+  // shown against the next week, or it would read as behind while it loads.
+  const data = query.isPlaceholderData ? undefined : query.data;
+
   const expectedByDate = useMemo(
     () =>
       Object.fromEntries(
-        (query.data?.expectedByDate ?? []).map((day) => [
-          day.date,
-          day.minutes,
-        ]),
+        (data?.expectedByDate ?? []).map((day) => [day.date, day.minutes]),
       ) as Record<string, number | undefined>,
-    [query.data?.expectedByDate],
+    [data?.expectedByDate],
   );
 
   return {
-    expectedMinutes: query.data?.expectedMinutes ?? 0,
-    expectedToDateMinutes: query.data?.expectedToDateMinutes ?? 0,
+    expectedMinutes: data?.expectedMinutes ?? 0,
+    expectedToDateMinutes: data?.expectedToDateMinutes ?? 0,
     expectedByDate,
     isLoading: query.isLoading,
     isError: query.isError,

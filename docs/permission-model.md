@@ -206,7 +206,10 @@ Three further rules follow from §3.4 and are settled:
 - **The member count stays whole.** A scoped list is still reported against the
   project's true size, per §3.4.
 
-**Employees** see the projects they are assigned to, and no others.
+**Employees** see the projects they are assigned to, and no others. They read
+each one's name, status and client name — the client name also on their own
+time entries, including entries on a project they have since left — and nothing
+about any other project.
 
 ### 3.6 A project has no owner
 

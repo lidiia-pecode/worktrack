@@ -19,7 +19,6 @@ import { useOwnProjects } from "@/hooks/useProjects";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
-  addDays,
   companyToday,
   formatDayMonthLabel,
   formatDuration,
@@ -32,7 +31,7 @@ import {
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
-import { mapAbsencesByDate } from "@/lib/utils/absence";
+import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
@@ -269,14 +268,15 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     setAbsenceModal({ date: iso, absence: absencesByDate[iso] });
   };
 
-  // Starts on today in the current week, otherwise on the shown week's first
-  // day, moved on to the next working day when that falls on a weekend.
-  const openNewAbsence = () => {
-    let firstDay = isCurrentWeek ? companyToday(timezone) : weekStart;
-    while (isWeekend(firstDay)) firstDay = addDays(firstDay, 1);
-
-    setAbsenceModal({ date: toISODate(firstDay) });
-  };
+  const openNewAbsence = () =>
+    setAbsenceModal({
+      date: newAbsenceStartDate({
+        today: companyToday(timezone),
+        weekStart,
+        isCurrentWeek,
+        isEditable,
+      }),
+    });
 
   const openEdit = (timelog: TimeLog) => {
     setModalState({

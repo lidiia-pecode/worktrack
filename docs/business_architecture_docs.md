@@ -629,7 +629,7 @@ added to a team or a project.
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD | read, within their teams; remove a member | — |
-| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me/activities` |
+| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
 | Time logs — write | whole company | own, plus users in teams they manage | **own only** |
@@ -782,7 +782,7 @@ rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC, the reports and the export,
 page and date-range limits, name checks, the seed's local-only guard, and
 session refresh, rate limits and token clean-up — most against a real database.
-The frontend has thirty-four Vitest files and 174 tests: its date, month,
+The frontend has thirty-five Vitest files and 179 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
