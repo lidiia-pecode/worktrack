@@ -447,6 +447,23 @@ describe('TimeLogsService write scope', () => {
       }
     });
 
+    it('still checks a new activity, refusing one on a project the owner is not on', async () => {
+      const id = await existingLogFor(member.id);
+      const { activityId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      const elsewhere = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Elsewhere ${RUN}` });
+      const elsewherePair = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: elsewhere.id, activityId });
+
+      await expect(
+        service.update(id, { projectActivityId: elsewherePair.id }, owner),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
     it('clears a note', async () => {
       const id = await existingLogFor(member.id);
       await service.update(id, { note: 'Pairing' }, member);

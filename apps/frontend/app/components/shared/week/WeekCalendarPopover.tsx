@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addDays,
+  companyToday,
   formatLongDayLabel,
   formatWeekdayLabel,
   getMonthGridDates,
@@ -11,7 +12,6 @@ import {
   getWeekStart,
   isSameDay,
   isToday,
-  companyToday,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 

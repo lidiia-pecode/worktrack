@@ -19,6 +19,8 @@ import { useOwnProjects } from "@/hooks/useProjects";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
+  addDays,
+  companyToday,
   formatDayMonthLabel,
   formatDuration,
   formatMonthLabel,
@@ -268,14 +270,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   };
 
   // Starts on today in the current week, otherwise on the shown week's first
-  // working day.
+  // day, moved on to the next working day when that falls on a weekend.
   const openNewAbsence = () => {
-    const firstWorkingDay =
-      weekDates.find((date) => !isWeekend(date)) ?? weekStart;
+    let firstDay = isCurrentWeek ? companyToday(timezone) : weekStart;
+    while (isWeekend(firstDay)) firstDay = addDays(firstDay, 1);
 
-    setAbsenceModal({
-      date: isCurrentWeek ? todayIso : toISODate(firstWorkingDay),
-    });
+    setAbsenceModal({ date: toISODate(firstDay) });
   };
 
   const openEdit = (timelog: TimeLog) => {
@@ -476,7 +476,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       {hasError && (
         <ErrorState
           title="We couldn't load your timesheet"
-          description="Your entries for this week are unavailable right now."
+          description="This week is unavailable right now."
           onRetry={retry}
         />
       )}

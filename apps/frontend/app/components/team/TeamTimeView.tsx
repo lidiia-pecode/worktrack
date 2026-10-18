@@ -188,7 +188,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
       {hasError && (
         <ErrorState
           title="We couldn't load the team's week"
-          description="Logged time for this week is unavailable right now."
+          description="This week is unavailable right now."
           onRetry={retry}
         />
       )}

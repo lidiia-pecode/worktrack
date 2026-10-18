@@ -66,7 +66,7 @@ export const DayColumn = ({
   const overTargetFrom = expectedMinutes ?? Infinity;
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
-  const hasTargetLine = !!expectedMinutes;
+  const hasTargetLine = (expectedMinutes ?? 0) > 0;
 
   const targetLineOffset = overTargetFrom * pixelsPerMinute;
 

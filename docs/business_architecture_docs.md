@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 17 October 2026.** Phases 0 to 27 in §7 are
+**Last verified against the code: 18 October 2026.** Phases 0 to 28 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -777,18 +777,19 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-two
-suites and 717 tests, covering the role-visibility filters, team and invitation
+suites and 727 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC, the reports and the export,
 page and date-range limits, name checks, the seed's local-only guard, and
 session refresh, rate limits and token clean-up — most against a real database.
-The frontend has thirty-two Vitest files and 167 tests: its date, month,
+The frontend has thirty-four Vitest files and 174 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
-the sidebar and phone menu, sign-out, the shared states and form field, and the
-Manage lists, panel and confirmation dialogs. GitHub Actions runs the formatting
-check, lint with no warnings allowed, typecheck, build and tests for both
-applications on every pull request.
+the sidebar and phone menu, sign-out, the shared states and form field, the
+Manage lists, panel and confirmation dialogs, the form dialog's discard check
+and the time entry form. GitHub Actions runs the formatting check, lint with no
+warnings allowed, typecheck, build and tests for both applications on every pull
+request.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on
@@ -860,6 +861,7 @@ is in its pull request.
 | 20–25 | The Manage redesign: users, teams, projects, activities and categories as searchable lists with a shared side panel, related names as links, relationships edited in place and one confirmation before risky actions; draft activities without a category; create dialogs that ask for the name first |
 | 26 | Manage polish: rows that show what an item belongs to, project colours, a status only when something is archived, deactivated or a draft; a taken name shown under the field; project descriptions as Markdown; a realistic demo seed that runs only against a local database |
 | 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
+| 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 
 ### Improvement roadmap — high level, flexible
 
@@ -910,12 +912,12 @@ the other areas apply to their pages, so it may run alongside Area 1 or straight
 after it, and it includes what the frontend needs to test components rather than
 only helpers.
 
-**Area 3 — Everyday time entry.** The employee's timesheet and absences, the
-screen people use most. Logging should be fast, with the plan, recent work and
-common durations doing much of the typing; a week should say clearly when it is
-complete; the figures it shows — billable, internal, expected — should mean the
-same as everywhere else and start when the person started; and it should work
-on a phone.
+**Area 3 — Everyday time entry** *(started, Phase 28)*. The employee's timesheet
+and absences, the screen people use most. Logging should be fast, with the plan,
+recent work and common durations doing much of the typing; a week should say
+clearly when it is complete; the figures it shows — billable, internal, expected
+— should mean the same as everywhere else and start when the person started; and
+it should work on a phone.
 
 **Area 4 — Team oversight and planning.** The manager's and owner's week views:
 the team grid, the per-person panel and the planning grid. Finding who is behind

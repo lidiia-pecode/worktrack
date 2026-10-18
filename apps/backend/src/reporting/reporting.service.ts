@@ -68,9 +68,9 @@ export interface HoursSplit {
   billableMinutes: number;
   /** Time not marked billable, on any project. */
   nonBillableMinutes: number;
-  /** Time on projects with a client. Not a report column; utilisation reads it. */
+  /** Time on projects with a client. Not shown on the report screen; utilisation reads it. */
   clientMinutes: number;
-  /** Client work not marked billable. Not a report column; utilisation reads it. */
+  /** Client work not marked billable. Not shown on the report screen; utilisation reads it. */
   nonBillableClientMinutes: number;
   totalMinutes: number;
 }

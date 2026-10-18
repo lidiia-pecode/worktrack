@@ -213,12 +213,13 @@ export const TimeLogFormModal = ({
           note: data.note || null,
           // Sent only when it changes, so the server re-checks availability
           // only for a new project or activity.
-          ...(!keepsCurrentPair && match && { projectActivityId: match.id }),
+          ...(match && !keepsCurrentPair && { projectActivityId: match.id }),
         });
-      } else if (match) {
+      } else {
+        // A new entry has no current pair, so the check above guarantees a match.
         await onCreate({
           ...shared,
-          projectActivityId: match.id,
+          projectActivityId: match!.id,
           note: data.note || undefined,
           date,
         });

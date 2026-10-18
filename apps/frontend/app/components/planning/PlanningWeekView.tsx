@@ -175,7 +175,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
       {hasError && (
         <ErrorState
           title="We couldn't load the week's plan"
-          description="Planned work for this week is unavailable right now."
+          description="This week is unavailable right now."
           onRetry={retry}
         />
       )}
