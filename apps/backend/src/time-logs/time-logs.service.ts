@@ -254,10 +254,9 @@ export class TimeLogsService {
     const ownerId = payload.userId ?? user.id;
     await this.assertCanWriteFor(ownerId, user);
 
-    await this.assertDateNotLocked(user.companyId, payload.date);
-
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
+      await this.assertDateNotLocked(manager, user.companyId, payload.date);
 
       const projectActivity = await this.resolveProjectActivity(
         payload.projectActivityId,
@@ -315,9 +314,9 @@ export class TimeLogsService {
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
       // 1. Reporting Period Check for existing and new target dates
-      await this.assertDateNotLocked(user.companyId, log.date);
+      await this.assertDateNotLocked(manager, user.companyId, log.date);
       if (payload.date && payload.date !== log.date) {
-        await this.assertDateNotLocked(user.companyId, payload.date);
+        await this.assertDateNotLocked(manager, user.companyId, payload.date);
         await this.assertNotAbsent(
           manager,
           ownerId,
@@ -366,7 +365,7 @@ export class TimeLogsService {
       const log = await this.getLogForUpdate(id, user.companyId, manager);
 
       // Reporting Period Check
-      await this.assertDateNotLocked(user.companyId, log.date);
+      await this.assertDateNotLocked(manager, user.companyId, log.date);
 
       await manager.remove(TimeLog, log);
     });
@@ -427,13 +426,19 @@ export class TimeLogsService {
   }
 
   /**
-   * Verifies that the date is not part of a LOCKED reporting period.
+   * Verifies that the date is not part of a LOCKED reporting period. Runs
+   * inside the write's transaction, so a Close at the same moment waits for it.
    */
   private async assertDateNotLocked(
+    manager: EntityManager,
     companyId: string,
     date: string,
   ): Promise<void> {
-    const isLocked = await this.reportingService.isDateLocked(companyId, date);
+    const isLocked = await this.reportingService.isDateLocked(
+      companyId,
+      date,
+      manager,
+    );
     if (isLocked) {
       throw new ForbiddenException(
         `Cannot modify time logs for date ${date} because it belongs to a LOCKED reporting period.`,

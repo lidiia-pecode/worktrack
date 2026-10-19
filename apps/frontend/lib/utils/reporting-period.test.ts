@@ -14,6 +14,8 @@ const month = (key: string, state: ReportingMonthState) => ({
   month: key,
   state,
   editableUntil: null,
+  changedBy: null,
+  changedAt: null,
 });
 
 describe("lockedDateLookup", () => {

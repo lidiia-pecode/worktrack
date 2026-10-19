@@ -216,13 +216,68 @@ describe('ReportingService', () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it('records who made the change', async () => {
-      await service.reopenMonth(companyId, lockedMonthKey, ownerId);
+    it('records who made the change and when', async () => {
+      const reopened = await service.reopenMonth(
+        companyId,
+        lockedMonthKey,
+        ownerId,
+      );
 
       const row = await dataSource
         .getRepository(ReportingPeriod)
         .findOneByOrFail({ companyId, month: lockedMonth });
       expect(row.changedById).toBe(ownerId);
+      expect(reopened.changedBy).toBe('Owner Test');
+      expect(reopened.changedAt).toBe(row.updatedAt.toISOString());
+
+      const closed = await service.closeMonth(
+        companyId,
+        lockedMonthKey,
+        ownerId,
+      );
+      expect(closed.changedBy).toBe('Owner Test');
+      expect(closed.changedAt! >= reopened.changedAt!).toBe(true);
+    });
+
+    it('answers a second Reopen racing the first with the same conflict', async () => {
+      // One of the two wins; the other is refused like a plain second Reopen.
+      await expect(
+        Promise.all([
+          service.reopenMonth(companyId, lockedMonthKey, ownerId),
+          service.reopenMonth(companyId, lockedMonthKey, ownerId),
+        ]),
+      ).rejects.toThrow(ConflictException);
+
+      await expect(service.isDateLocked(companyId, lockedDate)).resolves.toBe(
+        false,
+      );
+    });
+
+    it('waits for a write that passed the lock check before closing', async () => {
+      await service.reopenMonth(companyId, lockedMonthKey, ownerId);
+
+      let closed = false;
+      let closing: Promise<void> = Promise.resolve();
+
+      await dataSource.transaction(async (manager) => {
+        // The write's lock check, which share-locks the reopened month's row.
+        await expect(
+          service.isDateLocked(companyId, lockedDate, manager),
+        ).resolves.toBe(false);
+
+        closing = service
+          .closeMonth(companyId, lockedMonthKey, ownerId)
+          .then(() => {
+            closed = true;
+          });
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(closed).toBe(false);
+      });
+
+      // The write has committed, so the Close goes through.
+      await closing;
+      expect(closed).toBe(true);
     });
   });
 
@@ -237,12 +292,16 @@ describe('ReportingService', () => {
         month: toMonthKey(thisMonth),
         state: ReportingMonthState.OPEN,
         editableUntil: editableUntil(thisMonth),
+        changedBy: null,
+        changedAt: null,
       });
-      expect(months.find((m) => m.month === lockedMonthKey)).toEqual({
-        month: lockedMonthKey,
+      const reopenedMonth = months.find((m) => m.month === lockedMonthKey);
+      expect(reopenedMonth).toMatchObject({
         state: ReportingMonthState.REOPENED,
         editableUntil: null,
+        changedBy: 'Owner Test',
       });
+      expect(typeof reopenedMonth?.changedAt).toBe('string');
       expect(
         months.find((m) => m.month === toMonthKey(addMonths(thisMonth, -4)))
           ?.state,

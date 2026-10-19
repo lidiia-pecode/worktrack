@@ -293,7 +293,7 @@ export class PlanningService {
       await this.assertCanPlanForUser(targetUser, user);
 
       this.assertWorkingDay(payload.date);
-      await this.assertDateNotLocked(user.companyId, payload.date);
+      await this.assertDateNotLocked(manager, user.companyId, payload.date);
 
       const project = await this.resolveProject(
         payload.projectId,
@@ -348,7 +348,7 @@ export class PlanningService {
 
       await this.lockUser(manager, entry.userId, user.companyId);
 
-      await this.assertDateNotLocked(user.companyId, entry.date);
+      await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
       const current = await manager.findOne(Project, {
         where: { id: entry.projectId, companyId: user.companyId },
@@ -375,7 +375,7 @@ export class PlanningService {
 
       if (movesDate) {
         entry.date = payload.date!;
-        await this.assertDateNotLocked(user.companyId, entry.date);
+        await this.assertDateNotLocked(manager, user.companyId, entry.date);
       }
 
       if (movesProject) {
@@ -429,7 +429,7 @@ export class PlanningService {
       if (!targetUser) throw new NotFoundException('User not found');
 
       await this.assertCanPlanForUser(targetUser, user);
-      await this.assertDateNotLocked(user.companyId, entry.date);
+      await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
       await manager.remove(PlanningEntry, entry);
     });
@@ -628,11 +628,13 @@ export class PlanningService {
     }
   }
 
+  /** Runs inside the write's transaction, so a Close at the same moment waits for it. */
   private async assertDateNotLocked(
+    manager: EntityManager,
     companyId: string,
     date: string,
   ): Promise<void> {
-    if (await this.reportingService.isDateLocked(companyId, date)) {
+    if (await this.reportingService.isDateLocked(companyId, date, manager)) {
       throw new ForbiddenException(
         `Cannot change planning for ${date} because it belongs to a LOCKED reporting period.`,
       );
