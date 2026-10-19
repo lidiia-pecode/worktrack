@@ -466,6 +466,7 @@ export const TimeLogFormModal = ({
             <TextareaAutosize
               id="timelog-note"
               {...register("note")}
+              aria-label="Note"
               aria-invalid={!!errors.note}
               aria-describedby={fieldMessageId("timelog-note", {
                 error: errors.note?.message,

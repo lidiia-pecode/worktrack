@@ -207,6 +207,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     0,
   );
 
+  // Only the shown week's dates count, like the daily totals, so the previous
+  // week kept on screen while the next one loads adds nothing.
   const { billableMinutes, nonBillableMinutes } = useMemo(() => {
     let billable = 0;
     let nonBillable = 0;
