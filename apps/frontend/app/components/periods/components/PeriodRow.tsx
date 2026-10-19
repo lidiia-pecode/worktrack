@@ -49,17 +49,18 @@ const describeState = ({ state, editableUntil }: ReportingMonth): string => {
   }
 };
 
+// The day alone when the person's account is gone.
 const describeChange = (
   { changedBy, changedAt }: ReportingMonth,
   timezone?: string,
 ): string | null => {
-  if (!changedBy || !changedAt) return null;
+  if (!changedAt) return null;
 
   const day = formatDayMonthYearLabel(
     isoDateInTimeZone(new Date(changedAt), timezone),
   );
 
-  return `${changedBy} · ${day}`;
+  return changedBy ? `${changedBy} · ${day}` : day;
 };
 
 export const PeriodRow = ({

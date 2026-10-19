@@ -71,9 +71,11 @@ export function useReportingPeriodHistory() {
     months: query.data?.pages.flat() ?? [],
     isLoading: query.isPending,
     isError: query.isError || companyQuery.isError,
+    // Without the company there is no first page to ask for yet; the months
+    // fetch by themselves once it arrives.
     refetch: () => {
       void companyQuery.refetch();
-      void query.refetch();
+      if (firstMonth) void query.refetch();
     },
     hasOlder: query.hasNextPage,
     loadOlder: query.fetchNextPage,

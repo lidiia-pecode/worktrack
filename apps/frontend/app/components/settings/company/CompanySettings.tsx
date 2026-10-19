@@ -84,22 +84,22 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
     });
   };
 
-  const save = (data: CompanyFormValues) => actions.update.mutateAsync(data);
-
   const onSubmit = async (data: CompanyFormValues) => {
     if (data.standardWorkHoursPerDay !== company?.standardWorkHoursPerDay) {
       setStandardDayChange(data);
       return;
     }
 
-    await save(data);
+    await actions.update.mutateAsync(data);
   };
 
-  const confirmStandardDayChange = async () => {
+  // A failed save keeps the dialog open; the global handler shows the error.
+  const confirmStandardDayChange = () => {
     if (!standardDayChange) return;
 
-    await save(standardDayChange);
-    setStandardDayChange(null);
+    actions.update.mutate(standardDayChange, {
+      onSuccess: () => setStandardDayChange(null),
+    });
   };
 
   return (

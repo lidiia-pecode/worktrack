@@ -13,18 +13,12 @@ import {
 } from "./reporting-period";
 
 describe("firstPeriodsPage", () => {
-  it("lists twelve months back from the current one", () => {
-    expect(firstPeriodsPage("2026-10", "2024-01")).toEqual({
-      from: "2025-11",
-      to: "2026-10",
-    });
+  it("lists twelve months back from the current one, up to the server's today", () => {
+    expect(firstPeriodsPage("2026-10", "2024-01")).toEqual({ from: "2025-11" });
   });
 
   it("starts at the company's first month when that is later", () => {
-    expect(firstPeriodsPage("2026-10", "2026-07")).toEqual({
-      from: "2026-07",
-      to: "2026-10",
-    });
+    expect(firstPeriodsPage("2026-10", "2026-07")).toEqual({ from: "2026-07" });
   });
 });
 

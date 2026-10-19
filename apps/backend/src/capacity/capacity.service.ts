@@ -187,35 +187,42 @@ export class CapacityService {
   ): Promise<CurrentCapacity> {
     await this.assertUserInCompany(companyId, userId);
 
-    // A change effective on or before the last closed day would silently
-    // rewrite what was expected of somebody in a month already signed off.
-    const lockedUntil = await this.reportingService.latestLockedDate(companyId);
-
-    if (lockedUntil && validFrom <= lockedUntil) {
-      throw new ForbiddenException(
-        `Cannot change capacity from ${validFrom}: periods are LOCKED up to ${lockedUntil}, and the change would alter what was expected then.`,
+    // The lock check runs inside the write's transaction, so a Close at the
+    // same moment waits for it (see ReportingService.isRangeLocked).
+    await this.repo.manager.transaction(async (manager) => {
+      // A change effective on or before the last closed day would silently
+      // rewrite what was expected of somebody in a month already signed off.
+      const lockedUntil = await this.reportingService.latestLockedDate(
+        companyId,
+        manager,
       );
-    }
 
-    const existing = await this.repo.findOne({
-      where: { companyId, userId, validFrom },
+      if (lockedUntil && validFrom <= lockedUntil) {
+        throw new ForbiddenException(
+          `Cannot change capacity from ${validFrom}: periods are LOCKED up to ${lockedUntil}, and the change would alter what was expected then.`,
+        );
+      }
+
+      const existing = await manager.findOne(UserCapacity, {
+        where: { companyId, userId, validFrom },
+      });
+
+      if (existing) {
+        existing.minutesPerWeek = minutesPerWeek;
+        existing.createdById = actorId;
+        await manager.save(existing);
+      } else {
+        await manager.save(
+          manager.create(UserCapacity, {
+            companyId,
+            userId,
+            validFrom,
+            minutesPerWeek,
+            createdById: actorId,
+          }),
+        );
+      }
     });
-
-    if (existing) {
-      existing.minutesPerWeek = minutesPerWeek;
-      existing.createdById = actorId;
-      await this.repo.save(existing);
-    } else {
-      await this.repo.save(
-        this.repo.create({
-          companyId,
-          userId,
-          validFrom,
-          minutesPerWeek,
-          createdById: actorId,
-        }),
-      );
-    }
 
     return this.currentFor(companyId, userId, validFrom);
   }

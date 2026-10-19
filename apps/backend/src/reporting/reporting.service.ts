@@ -388,11 +388,22 @@ export class ReportingService {
 
   /**
    * The last day of the newest locked month. Anything effective on or before
-   * it would rewrite a closed month.
+   * it would rewrite a closed month. Takes a write's `manager` like
+   * `isRangeLocked`, for the same reason.
    */
-  async latestLockedDate(companyId: string): Promise<string> {
-    const today = await findCompanyToday(this.companyRepo.manager, companyId);
-    const reopened = await this.findReopenedMonths(companyId);
+  async latestLockedDate(
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<string> {
+    const today = await findCompanyToday(
+      manager ?? this.companyRepo.manager,
+      companyId,
+    );
+    const reopened = await this.findReopenedMonths(
+      companyId,
+      undefined,
+      manager,
+    );
 
     let month = latestAutoLockedMonth(today);
     while (reopened.has(month)) {

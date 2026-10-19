@@ -240,7 +240,9 @@ describe('ReportingService', () => {
     });
 
     it('answers a second Reopen racing the first with the same conflict', async () => {
-      // One of the two wins; the other is refused like a plain second Reopen.
+      // One of the two wins. The other is refused either by the status check,
+      // if the first has committed, or by the unique index while both are in
+      // flight; both answer the same conflict.
       await expect(
         Promise.all([
           service.reopenMonth(companyId, lockedMonthKey, ownerId),
@@ -276,6 +278,32 @@ describe('ReportingService', () => {
       });
 
       // The write has committed, so the Close goes through.
+      await closing;
+      expect(closed).toBe(true);
+    });
+
+    it('waits for a capacity change that read the locked range before closing', async () => {
+      await service.reopenMonth(companyId, lockedMonthKey, ownerId);
+
+      let closed = false;
+      let closing: Promise<void> = Promise.resolve();
+
+      await dataSource.transaction(async (manager) => {
+        // The capacity write's check, which share-locks the reopened row too.
+        await expect(
+          service.latestLockedDate(companyId, manager),
+        ).resolves.toBe(lastDayOfMonth(newestLocked));
+
+        closing = service
+          .closeMonth(companyId, lockedMonthKey, ownerId)
+          .then(() => {
+            closed = true;
+          });
+
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(closed).toBe(false);
+      });
+
       await closing;
       expect(closed).toBe(true);
     });

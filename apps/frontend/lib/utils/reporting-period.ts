@@ -15,14 +15,18 @@ export const PERIOD_MONTHS_PER_PAGE = 12;
 const notBefore = (monthKey: string, firstMonth: string) =>
   monthKey < firstMonth ? firstMonth : monthKey;
 
-/** The Periods list's first page: the current month back, but never before the company's first month. */
+/**
+ * The Periods list's first page: the current month back, but never before the
+ * company's first month. The end is left to the server's own today, so a page
+ * refetched after the 1st shows the new month.
+ */
 export function firstPeriodsPage(
   currentMonth: string,
   firstMonth: string,
 ): ReportingPeriodsQuery {
   const from = addMonthsToKey(currentMonth, -(PERIOD_MONTHS_PER_PAGE - 1));
 
-  return { from: notBefore(from, firstMonth), to: currentMonth };
+  return { from: notBefore(from, firstMonth) };
 }
 
 /** The page before the oldest month shown, or null once the company's first month is on screen. */
