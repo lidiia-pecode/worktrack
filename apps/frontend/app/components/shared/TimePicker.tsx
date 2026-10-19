@@ -43,10 +43,8 @@ export const TimePicker = ({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-1 rounded-lg border p-2 transition-colors",
-        error
-          ? "border-destructive/40 bg-destructive/10 ring-1 ring-destructive/20"
-          : "border-border bg-muted/20 ring-1 ring-border",
+        "inline-flex items-center rounded-lg p-0.5 transition-colors",
+        error ? "bg-destructive/10 ring-1 ring-destructive/40" : "bg-muted/25",
         className,
       )}
     >
@@ -58,7 +56,10 @@ export const TimePicker = ({
         onStep={(direction) => stepBy(direction * 60)}
         onChange={onHoursChange}
       />
-      <span className="select-none text-2xl font-light text-muted-foreground">
+      <span
+        aria-hidden="true"
+        className="pb-0.5 text-base font-medium text-muted-foreground select-none"
+      >
         :
       </span>
       <TimeField
@@ -72,6 +73,9 @@ export const TimePicker = ({
     </div>
   );
 };
+
+const stepButtonClassName =
+  "h-4 w-full rounded-sm p-0 hover:bg-card disabled:opacity-30";
 
 type TimeFieldProps = {
   label: string;
@@ -112,13 +116,14 @@ const TimeField = ({
     <div className="flex flex-col items-center">
       <Button
         type="button"
+        variant="ghost"
         tabIndex={-1}
         aria-label={`Increase: ${label}`}
         disabled={!canIncrease}
-        className="h-6 w-full rounded-sm bg-muted/40 p-0 text-muted-foreground hover:bg-transparent"
+        className={stepButtonClassName}
         onClick={() => step(1)}
       >
-        <ChevronUp className="size-4" />
+        <ChevronUp className="size-3.5" />
       </Button>
 
       <input
@@ -161,21 +166,22 @@ const TimeField = ({
           }
         }}
         className={cn(
-          "w-10 rounded-md bg-transparent py-1 text-center text-xl leading-none",
-          "tabular-nums outline-none transition-colors",
-          "hover:bg-muted/40 focus:bg-muted/40",
+          "w-9 rounded-md bg-transparent py-1 text-center text-lg leading-none font-semibold",
+          "tabular-nums text-foreground outline-none transition-colors",
+          "hover:bg-card/60 focus:bg-card focus:text-brand focus:shadow-xs",
         )}
       />
 
       <Button
         type="button"
+        variant="ghost"
         tabIndex={-1}
         aria-label={`Decrease: ${label}`}
         disabled={!canDecrease}
-        className="h-6 w-full rounded-sm bg-muted/40 p-0 text-muted-foreground hover:bg-transparent"
+        className={stepButtonClassName}
         onClick={() => step(-1)}
       >
-        <ChevronDown className="size-4" />
+        <ChevronDown className="size-3.5" />
       </Button>
     </div>
   );

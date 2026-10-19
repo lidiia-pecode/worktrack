@@ -186,6 +186,9 @@ describe("TimeLogFormModal", () => {
       expect(await select("Activity")).toHaveTextContent("Meetings");
       expect(billable()).not.toBeChecked();
       expect(billable()).toBeEnabled();
+      await waitFor(() =>
+        expect(screen.getByRole("spinbutton", { name: "Hours" })).toHaveFocus(),
+      );
     });
 
     it("remembers the project and activity it logged", async () => {
@@ -222,6 +225,41 @@ describe("TimeLogFormModal", () => {
       expect(await select("Project")).toHaveTextContent("Select project");
     });
 
+    it("saves from the note with Ctrl+Enter", async () => {
+      const user = userEvent.setup();
+      const { onCreate } = renderNewEntry([websiteDesign]);
+
+      const hours = screen.getByRole("spinbutton", { name: "Hours" });
+      await user.clear(hours);
+      await user.type(hours, "1");
+      await user.click(screen.getByRole("textbox", { name: "Note" }));
+      await user.keyboard("Wireframes{Control>}{Enter}{/Control}");
+
+      await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ minutes: 60, note: "Wireframes" }),
+      );
+    });
+
+    it("clears the duration error once the duration is fixed", async () => {
+      const user = userEvent.setup();
+      renderNewEntry([websiteDesign]);
+
+      await user.click(screen.getByRole("button", { name: "Log time" }));
+      expect(
+        await screen.findByText("Enter a duration greater than 0"),
+      ).toBeInTheDocument();
+
+      await user.click(
+        screen.getByRole("button", { name: "Increase: Minutes" }),
+      );
+      await waitFor(() =>
+        expect(
+          screen.queryByText("Enter a duration greater than 0"),
+        ).not.toBeInTheDocument(),
+      );
+    });
+
     it("picks the only project and its only activity", async () => {
       renderNewEntry([websiteDesign]);
 
@@ -246,6 +284,34 @@ describe("TimeLogFormModal", () => {
       await user.click(await screen.findByRole("option", { name: "Design" }));
       expect(billable()).toBeChecked();
       expect(billable()).toBeEnabled();
+    });
+
+    it("takes Billable from the new project when the activity stays", async () => {
+      const user = userEvent.setup();
+      window.localStorage.setItem(
+        REMEMBER_KEY,
+        JSON.stringify({
+          projectId: "project-website",
+          activityId: "activity-design",
+        }),
+      );
+      renderNewEntry([
+        websiteDesign,
+        pickerItem({
+          id: "pair-intranet-design",
+          projectId: "project-intranet",
+          projectName: "Intranet",
+          defaultBillable: false,
+        }),
+      ]);
+
+      expect(billable()).toBeChecked();
+
+      await user.click(await select("Project"));
+      await user.click(await screen.findByRole("option", { name: "Intranet" }));
+
+      expect(await select("Activity")).toHaveTextContent("Design");
+      expect(billable()).not.toBeChecked();
     });
 
     it("turns Billable off again when a new project clears the activity", async () => {

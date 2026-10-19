@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Calendar, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
@@ -16,9 +16,16 @@ import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Field, fieldControlClassName } from "@/components/ui/field";
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
-import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
+import {
+  NOTE_MAX_LENGTH,
+  optionalNoteSchema,
+} from "@/lib/forms/schemas/note.schema";
 
 import {
   EntryChoice,
@@ -27,6 +34,8 @@ import {
 } from "../helpers/last-entry-choice";
 
 const FORM_ID = "timelog-form";
+// The counter appears only near the limit, so a short note stays uncluttered.
+const NOTE_COUNTER_FROM = 900;
 
 const timeLogSchema = z
   .object({
@@ -141,8 +150,9 @@ export const TimeLogFormModal = ({
     getValues,
     setValue,
     setError,
+    trigger,
     reset,
-    formState: { errors, isDirty },
+    formState: { errors, isDirty, isSubmitted },
   } = useForm<TimeLogFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(timeLogSchema) as any,
@@ -171,10 +181,16 @@ export const TimeLogFormModal = ({
 
   const hasNoOptions = projectOptions.length === 0;
 
-  const [selectedProjectId, selectedActivityId, hours, minutes] = useWatch({
-    control,
-    name: ["projectId", "activityId", "hours", "minutes"],
-  });
+  const [selectedProjectId, selectedActivityId, hours, minutes, note] =
+    useWatch({
+      control,
+      name: ["projectId", "activityId", "hours", "minutes", "note"],
+    });
+  const noteLength = note?.length ?? 0;
+  const noteCounter =
+    noteLength > NOTE_COUNTER_FROM
+      ? `${noteLength} / ${NOTE_MAX_LENGTH}`
+      : undefined;
 
   const activityOptions = useMemo(() => {
     const options = pickerItems
@@ -208,19 +224,29 @@ export const TimeLogFormModal = ({
   };
 
   // A new project keeps the activity only if it offers it, and otherwise
-  // takes its only activity, if it has just one.
+  // takes its only activity, if it has just one. A new entry's Billable
+  // follows the pair, since an internal project starts it off.
   useEffect(() => {
-    const activityId = getValues("activityId");
-    if (activityOptions.some((item) => item.value === activityId)) return;
+    const current = getValues("activityId");
+    const activityId = activityOptions.some((item) => item.value === current)
+      ? current
+      : activityOptions.length === 1
+        ? activityOptions[0].value
+        : "";
 
-    const onlyActivityId =
-      activityOptions.length === 1 ? activityOptions[0].value : "";
-    if (!activityId && !onlyActivityId) return;
-
-    setValue("activityId", onlyActivityId, { shouldDirty: true });
-    if (!isEditMode) startBillableFrom(onlyActivityId);
+    if (activityId !== current) {
+      setValue("activityId", activityId, { shouldDirty: true });
+    }
+    if (!isEditMode) startBillableFrom(activityId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
+
+  // After a failed save, the duration error clears as soon as it is fixed.
+  // Both parts are checked under "hours", where the schema reports it.
+  const setDuration = (name: "hours" | "minutes", value: number) => {
+    setValue(name, value, { shouldDirty: true });
+    if (isSubmitted) trigger("hours");
+  };
 
   const onSubmit = async (data: TimeLogFormData) => {
     const keepsCurrentPair =
@@ -285,6 +311,7 @@ export const TimeLogFormModal = ({
         open={open}
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        size="lg"
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
           DAY_LABEL.format(new Date(`${date}T00:00:00`)),
@@ -292,20 +319,46 @@ export const TimeLogFormModal = ({
         ]
           .filter(Boolean)
           .join(" · ")}
-        icon={<Calendar className="size-5" />}
+        headerEnd={
+          <div
+            role="group"
+            aria-label="Duration"
+            aria-describedby={
+              errors.hours ? "timelog-duration-error" : undefined
+            }
+            className="flex flex-col items-end gap-1"
+          >
+            <TimePicker
+              hours={Number(hours)}
+              minutes={Number(minutes)}
+              onHoursChange={(value) => setDuration("hours", value)}
+              onMinutesChange={(value) => setDuration("minutes", value)}
+              error={!!errors.hours}
+            />
+            {errors.hours && (
+              <p
+                id="timelog-duration-error"
+                className="text-xs whitespace-nowrap text-destructive-text"
+              >
+                {errors.hours.message}
+              </p>
+            )}
+          </div>
+        }
         footer={
           <>
             {isEditMode && (
               <Button
                 type="button"
-                className="mr-auto"
+                className="mr-auto max-sm:px-2.5"
                 variant="destructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isSaving}
               >
                 <Trash2 className="size-4" />
-                Delete
+                {/* Icon only on a phone, so the footer stays on one row. */}
+                <span className="max-sm:sr-only">Delete</span>
               </Button>
             )}
 
@@ -336,27 +389,7 @@ export const TimeLogFormModal = ({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-6"
         >
-          <Field
-            id="timelog-duration"
-            label="Duration"
-            group
-            error={errors.hours?.message}
-          >
-            <TimePicker
-              hours={Number(hours)}
-              minutes={Number(minutes)}
-              onHoursChange={(value) =>
-                setValue("hours", value, { shouldDirty: true })
-              }
-              onMinutesChange={(value) =>
-                setValue("minutes", value, { shouldDirty: true })
-              }
-              error={!!errors.hours}
-              className="w-fit"
-            />
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Controller
               control={control}
               name="projectId"
@@ -399,29 +432,60 @@ export const TimeLogFormModal = ({
             />
           </div>
 
-          <Field id="timelog-note" label="Note" error={errors.note?.message}>
+          <div className="flex items-center justify-between gap-4 rounded-lg bg-muted/25 px-4 py-3">
+            <div className="min-w-0">
+              <label
+                htmlFor="timelog-billable"
+                className="text-sm font-medium text-foreground"
+              >
+                Billable
+              </label>
+              <p
+                id="timelog-billable-description"
+                className="mt-0.5 text-xs text-muted-foreground"
+              >
+                {selectedActivityId
+                  ? "Count this time toward client billing."
+                  : "Choose an activity first."}
+              </p>
+            </div>
+
+            <Switch
+              id="timelog-billable"
+              {...register("isBillable")}
+              disabled={!selectedActivityId}
+              aria-describedby="timelog-billable-description"
+            />
+          </div>
+
+          <Field
+            id="timelog-note"
+            error={errors.note?.message}
+            description={noteCounter}
+          >
             <TextareaAutosize
               id="timelog-note"
               {...register("note")}
-              minRows={3}
+              aria-invalid={!!errors.note}
+              aria-describedby={fieldMessageId("timelog-note", {
+                error: errors.note?.message,
+                description: noteCounter,
+              })}
+              minRows={4}
               maxRows={8}
               placeholder="What did you work on?"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                  e.preventDefault();
+                  e.currentTarget.form?.requestSubmit();
+                }
+              }}
               className={cn(
-                fieldControlClassName(),
+                fieldControlClassName(!!errors.note),
                 "resize-none py-2.5 leading-relaxed",
               )}
             />
           </Field>
-
-          <label className="flex cursor-pointer select-none items-center justify-between gap-4">
-            <span className="text-sm font-medium text-foreground">
-              Billable
-            </span>
-            <Switch
-              {...register("isBillable")}
-              disabled={!selectedActivityId}
-            />
-          </label>
         </form>
       </ResourceFormModal>
 

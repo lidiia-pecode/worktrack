@@ -91,7 +91,7 @@ export const UserTimeDetailPanel = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        size="lg"
+        size="xl"
         bodyPadding={false}
         title={fullName(user)}
         description={

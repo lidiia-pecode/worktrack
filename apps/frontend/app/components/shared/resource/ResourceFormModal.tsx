@@ -21,8 +21,13 @@ interface ResourceFormModalProps {
   title: string;
   description?: string;
   icon?: ReactNode;
+  /**
+   * A control at the header's end, in place of the close button. Escape, an
+   * outside click and the footer's Cancel still close the dialog.
+   */
+  headerEnd?: ReactNode;
 
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "xl";
   footer?: ReactNode;
   bodyPadding?: boolean;
   /**
@@ -36,7 +41,8 @@ interface ResourceFormModalProps {
 
 const sizeClass: Record<NonNullable<ResourceFormModalProps["size"]>, string> = {
   md: "sm:max-w-md",
-  lg: "sm:max-w-2xl",
+  lg: "sm:max-w-lg",
+  xl: "sm:max-w-2xl",
 };
 
 export const ResourceFormModal = ({
@@ -45,6 +51,7 @@ export const ResourceFormModal = ({
   title,
   description,
   icon,
+  headerEnd,
   size = "md",
   footer,
   bodyPadding = true,
@@ -68,16 +75,27 @@ export const ResourceFormModal = ({
       <Dialog open={open} onOpenChange={(value) => !value && dismiss()}>
         <DialogContent
           className={cn("gap-0 overflow-hidden p-0", sizeClass[size])}
+          showCloseButton={!headerEnd}
         >
-          <DialogHeader className="border-b border-border py-5 pr-12 pl-6">
-            <div className="flex items-start gap-3">
+          <DialogHeader
+            className={cn(
+              "border-b border-border pl-6",
+              headerEnd ? "py-4 pr-6" : "py-5 pr-12",
+            )}
+          >
+            <div
+              className={cn(
+                "flex gap-3",
+                headerEnd ? "items-center" : "items-start",
+              )}
+            >
               {icon && (
                 <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-subtle text-brand">
                   {icon}
                 </div>
               )}
 
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <DialogTitle className="truncate text-base text-foreground">
                   {title}
                 </DialogTitle>
@@ -88,6 +106,8 @@ export const ResourceFormModal = ({
                   </DialogDescription>
                 )}
               </div>
+
+              {headerEnd && <div className="shrink-0">{headerEnd}</div>}
             </div>
           </DialogHeader>
 
