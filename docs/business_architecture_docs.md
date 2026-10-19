@@ -364,8 +364,8 @@ writes cannot exceed the budget between them.
 When the entry does not specify `isBillable`, it defaults from
 `Activity.defaultBillable` on a client project and to non-billable on an
 internal one (D2). The time form starts a new entry the same way once the
-activity is chosen, and the person can change it on each entry, on any
-project.
+activity is chosen, with the switch off until then, and the person can change
+it on each entry, on any project.
 
 ### Absences
 
@@ -687,7 +687,8 @@ see, and how a new company gets started. §7 plans that work.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
-  states. A week says when it is complete: its logged time has reached what
+  states. A new entry starts from the last project and activity logged for
+  that person, or the only one there is. A week says when it is complete: its logged time has reached what
   was expected.
 - **Manage pages** — users, teams, projects, activities and categories as
   searchable lists. A row opens a shared side panel where every related name is

@@ -46,6 +46,7 @@ import { Button } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
+import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekProgressBar } from "./components/WeekProgressBar";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
@@ -210,8 +211,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     0,
   );
 
-  // Only the shown week's dates count, like the daily totals, so the previous
-  // week kept on screen while the next one loads adds nothing.
   const { billableMinutes, nonBillableMinutes } = useMemo(() => {
     let billable = 0;
     let nonBillable = 0;
@@ -563,6 +562,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           open
           onClose={closeModal}
           date={modalState.date}
+          rememberKey={lastEntryChoiceKey(userId, userId)}
           timelog={modalState.timelog}
           pickerItems={pickerItems}
           onCreate={(payload) => actions.create.mutateAsync(payload)}

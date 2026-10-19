@@ -20,6 +20,12 @@ import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
+import {
+  EntryChoice,
+  readLastEntryChoice,
+  storeLastEntryChoice,
+} from "../helpers/last-entry-choice";
+
 const FORM_ID = "timelog-form";
 
 const timeLogSchema = z
@@ -48,11 +54,37 @@ const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "long",
 });
 
+const findPickerItem = (
+  pickerItems: PickerProjectActivity[],
+  { projectId, activityId }: EntryChoice,
+) =>
+  pickerItems.find(
+    (item) => item.projectId === projectId && item.activityId === activityId,
+  );
+
+const startingChoice = (
+  pickerItems: PickerProjectActivity[],
+  rememberKey: string,
+): EntryChoice => {
+  const remembered = readLastEntryChoice(rememberKey);
+  if (remembered && findPickerItem(pickerItems, remembered)) return remembered;
+
+  const projectIds = new Set(pickerItems.map((item) => item.projectId));
+  if (projectIds.size !== 1) return { projectId: "", activityId: "" };
+
+  return {
+    projectId: pickerItems[0].projectId,
+    activityId: pickerItems.length === 1 ? pickerItems[0].activityId : "",
+  };
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
   date: string;
   subjectName?: string;
+  /** From `lastEntryChoiceKey`: where the last pair logged for this person is kept. */
+  rememberKey: string;
   timelog?: TimeLog;
   pickerItems: PickerProjectActivity[];
   onCreate: (payload: TimeLogPayload) => Promise<unknown>;
@@ -67,6 +99,7 @@ export const TimeLogFormModal = ({
   onClose,
   date,
   subjectName,
+  rememberKey,
   timelog,
   pickerItems,
   onCreate,
@@ -79,13 +112,15 @@ export const TimeLogFormModal = ({
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const defaultValues = useMemo<TimeLogFormData>(() => {
     if (!timelog) {
+      const choice = startingChoice(pickerItems, rememberKey);
+
       return {
-        projectId: "",
-        activityId: "",
+        ...choice,
         hours: 0,
         minutes: 0,
         note: "",
-        isBillable: true,
+        isBillable:
+          findPickerItem(pickerItems, choice)?.defaultBillable ?? false,
       };
     }
 
@@ -97,7 +132,7 @@ export const TimeLogFormModal = ({
       note: timelog.note ?? "",
       isBillable: timelog.isBillable,
     };
-  }, [timelog]);
+  }, [timelog, pickerItems, rememberKey]);
 
   const {
     register,
@@ -136,9 +171,9 @@ export const TimeLogFormModal = ({
 
   const hasNoOptions = projectOptions.length === 0;
 
-  const [selectedProjectId, hours, minutes] = useWatch({
+  const [selectedProjectId, selectedActivityId, hours, minutes] = useWatch({
     control,
-    name: ["projectId", "hours", "minutes"],
+    name: ["projectId", "activityId", "hours", "minutes"],
   });
 
   const activityOptions = useMemo(() => {
@@ -160,38 +195,39 @@ export const TimeLogFormModal = ({
     return options;
   }, [pickerItems, selectedProjectId, currentProject, currentActivity]);
 
+  // Off until there is an activity whose default it can start from.
+  const startBillableFrom = (activityId: string) => {
+    const item = findPickerItem(pickerItems, {
+      projectId: getValues("projectId"),
+      activityId,
+    });
+
+    setValue("isBillable", item?.defaultBillable ?? false, {
+      shouldDirty: true,
+    });
+  };
+
+  // A new project keeps the activity only if it offers it, and otherwise
+  // takes its only activity, if it has just one.
   useEffect(() => {
     const activityId = getValues("activityId");
-    const stillValid = activityOptions.some(
-      (item) => item.value === activityId,
-    );
-    if (activityId && !stillValid) {
-      setValue("activityId", "", { shouldDirty: true });
-    }
+    if (activityOptions.some((item) => item.value === activityId)) return;
+
+    const onlyActivityId =
+      activityOptions.length === 1 ? activityOptions[0].value : "";
+    if (!activityId && !onlyActivityId) return;
+
+    setValue("activityId", onlyActivityId, { shouldDirty: true });
+    if (!isEditMode) startBillableFrom(onlyActivityId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedProjectId]);
-
-  const startBillableFrom = (activityId: string) => {
-    const item = pickerItems.find(
-      (candidate) =>
-        candidate.projectId === getValues("projectId") &&
-        candidate.activityId === activityId,
-    );
-
-    if (item)
-      setValue("isBillable", item.defaultBillable, { shouldDirty: true });
-  };
 
   const onSubmit = async (data: TimeLogFormData) => {
     const keepsCurrentPair =
       data.projectId === currentProject?.id &&
       data.activityId === currentActivity?.id;
 
-    const match = pickerItems.find(
-      (item) =>
-        item.projectId === data.projectId &&
-        item.activityId === data.activityId,
-    );
+    const match = findPickerItem(pickerItems, data);
     if (!match && !keepsCurrentPair) {
       setError("activityId", {
         message:
@@ -222,6 +258,10 @@ export const TimeLogFormModal = ({
           projectActivityId: match!.id,
           note: data.note || undefined,
           date,
+        });
+        storeLastEntryChoice(rememberKey, {
+          projectId: data.projectId,
+          activityId: data.activityId,
         });
       }
       onClose();
@@ -377,7 +417,10 @@ export const TimeLogFormModal = ({
             <span className="text-sm font-medium text-foreground">
               Billable
             </span>
-            <Switch {...register("isBillable")} />
+            <Switch
+              {...register("isBillable")}
+              disabled={!selectedActivityId}
+            />
           </label>
         </form>
       </ResourceFormModal>

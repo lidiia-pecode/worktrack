@@ -1,11 +1,43 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 import { TimeLog } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 
+import { lastEntryChoiceKey } from "../helpers/last-entry-choice";
 import { TimeLogFormModal } from "./TimeLogFormModal";
+
+const REMEMBER_KEY = lastEntryChoiceKey("viewer-1", "user-1");
+
+const pickerItem = (
+  overrides: Partial<PickerProjectActivity>,
+): PickerProjectActivity => ({
+  id: "pair-website-design",
+  projectId: "project-website",
+  projectName: "Website",
+  activityId: "activity-design",
+  activityName: "Design",
+  defaultBillable: true,
+  ...overrides,
+});
+
+const websiteDesign = pickerItem({});
+const websiteMeetings = pickerItem({
+  id: "pair-website-meetings",
+  activityId: "activity-meetings",
+  activityName: "Meetings",
+  defaultBillable: false,
+});
+const intranetSupport = pickerItem({
+  id: "pair-intranet-support",
+  projectId: "project-intranet",
+  projectName: "Intranet",
+  activityId: "activity-support",
+  activityName: "Support",
+  defaultBillable: false,
+});
 
 // An entry on a project that is archived, so it is not among the person's
 // loggable project/activity pairs any more.
@@ -54,6 +86,7 @@ const renderForm = () => {
       open
       onClose={onClose}
       date={archivedEntry.date}
+      rememberKey={REMEMBER_KEY}
       timelog={archivedEntry}
       pickerItems={[]}
       onCreate={vi.fn()}
@@ -66,6 +99,32 @@ const renderForm = () => {
 
   return { onUpdate, onClose };
 };
+
+const renderNewEntry = (pickerItems: PickerProjectActivity[]) => {
+  const onCreate = vi.fn().mockResolvedValue(undefined);
+
+  render(
+    <TimeLogFormModal
+      open
+      onClose={vi.fn()}
+      date="2026-10-14"
+      rememberKey={REMEMBER_KEY}
+      pickerItems={pickerItems}
+      onCreate={onCreate}
+      onUpdate={vi.fn()}
+      onDelete={vi.fn()}
+      isSaving={false}
+      isDeleting={false}
+    />,
+  );
+
+  return { onCreate };
+};
+
+const select = (name: string) => screen.findByRole("combobox", { name });
+const billable = () => screen.getByRole("switch", { name: "Billable" });
+
+beforeEach(() => window.localStorage.clear());
 
 describe("TimeLogFormModal", () => {
   it("saves an entry on an archived project without moving it, and clears its note", async () => {
@@ -108,5 +167,111 @@ describe("TimeLogFormModal", () => {
     expect(
       screen.queryByRole("dialog", { name: "Discard your changes?" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("a new entry", () => {
+    const items = [websiteDesign, websiteMeetings, intranetSupport];
+
+    it("starts from the last project and activity logged for the person", async () => {
+      window.localStorage.setItem(
+        REMEMBER_KEY,
+        JSON.stringify({
+          projectId: "project-website",
+          activityId: "activity-meetings",
+        }),
+      );
+      renderNewEntry(items);
+
+      expect(await select("Project")).toHaveTextContent("Website");
+      expect(await select("Activity")).toHaveTextContent("Meetings");
+      expect(billable()).not.toBeChecked();
+      expect(billable()).toBeEnabled();
+    });
+
+    it("remembers the project and activity it logged", async () => {
+      const user = userEvent.setup();
+      const { onCreate } = renderNewEntry(items);
+
+      await user.click(await select("Project"));
+      await user.click(await screen.findByRole("option", { name: "Intranet" }));
+      const hours = screen.getByRole("spinbutton", { name: "Hours" });
+      await user.clear(hours);
+      await user.type(hours, "1");
+      await user.click(screen.getByRole("button", { name: "Log time" }));
+
+      await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+      expect(onCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ projectActivityId: "pair-intranet-support" }),
+      );
+      expect(JSON.parse(window.localStorage.getItem(REMEMBER_KEY)!)).toEqual({
+        projectId: "project-intranet",
+        activityId: "activity-support",
+      });
+    });
+
+    it("ignores a remembered pair the person can no longer log against", async () => {
+      window.localStorage.setItem(
+        REMEMBER_KEY,
+        JSON.stringify({
+          projectId: "project-archived",
+          activityId: "activity-design",
+        }),
+      );
+      renderNewEntry(items);
+
+      expect(await select("Project")).toHaveTextContent("Select project");
+    });
+
+    it("picks the only project and its only activity", async () => {
+      renderNewEntry([websiteDesign]);
+
+      expect(await select("Project")).toHaveTextContent("Website");
+      expect(await select("Activity")).toHaveTextContent("Design");
+      expect(billable()).toBeChecked();
+    });
+
+    it("keeps Billable off until an activity is picked", async () => {
+      const user = userEvent.setup();
+      renderNewEntry(items);
+
+      expect(await select("Project")).toHaveTextContent("Select project");
+      expect(billable()).not.toBeChecked();
+      expect(billable()).toBeDisabled();
+
+      await user.click(await select("Project"));
+      await user.click(await screen.findByRole("option", { name: "Website" }));
+      expect(billable()).toBeDisabled();
+
+      await user.click(await select("Activity"));
+      await user.click(await screen.findByRole("option", { name: "Design" }));
+      expect(billable()).toBeChecked();
+      expect(billable()).toBeEnabled();
+    });
+
+    it("turns Billable off again when a new project clears the activity", async () => {
+      const user = userEvent.setup();
+      window.localStorage.setItem(
+        REMEMBER_KEY,
+        JSON.stringify({
+          projectId: "project-intranet",
+          activityId: "activity-support",
+        }),
+      );
+      renderNewEntry([
+        websiteDesign,
+        websiteMeetings,
+        { ...intranetSupport, defaultBillable: true },
+      ]);
+
+      expect(await select("Activity")).toHaveTextContent("Support");
+      expect(billable()).toBeChecked();
+
+      await user.click(await select("Project"));
+      await user.click(await screen.findByRole("option", { name: "Website" }));
+
+      expect(await select("Activity")).toHaveTextContent("Select activity");
+      expect(billable()).not.toBeChecked();
+      expect(billable()).toBeDisabled();
+    });
   });
 });
