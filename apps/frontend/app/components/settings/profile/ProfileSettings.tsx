@@ -14,12 +14,17 @@ import {
 } from "@/lib/forms/schemas/profile.schema";
 import Input from "../../../../components/ui/input";
 import { useProfile } from "@/hooks/auth/useProfile";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
 interface ProfileSettingsProps {
   user: User | null;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
-export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
+export const ProfileSettings = ({
+  user,
+  onDirtyChange,
+}: ProfileSettingsProps) => {
   const { actions } = useProfile();
 
   const {
@@ -34,6 +39,8 @@ export const ProfileSettings = ({ user }: ProfileSettingsProps) => {
       lastName: "",
     },
   });
+
+  useReportDirty(isDirty, onDirtyChange);
 
   useEffect(() => {
     if (!user) return;

@@ -56,6 +56,7 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
             <button
               key={item.id}
               type="button"
+              aria-current={active ? "page" : undefined}
               onClick={() => onChange(item.id)}
               className={cn(
                 "group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
