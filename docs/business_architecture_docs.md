@@ -364,8 +364,8 @@ writes cannot exceed the budget between them.
 When the entry does not specify `isBillable`, it defaults from
 `Activity.defaultBillable` on a client project and to non-billable on an
 internal one (D2). The time form starts a new entry the same way once the
-activity is chosen, and the person can change it on each entry, on any
-project.
+activity is chosen, with the switch off until then, and the person can change
+it on each entry, on any project.
 
 ### Absences
 
@@ -687,8 +687,9 @@ see, and how a new company gets started. §7 plans that work.
 - **Employee timesheet** — the most complete feature and the best reference for
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
-  states. A week says when it is complete: its logged time has reached what
-  was expected.
+  states. A new entry starts from the last project and activity logged for
+  that person, or the only one there is. A week says when it is complete: its
+  logged time has reached what was expected.
 - **Manage pages** — users, teams, projects, activities and categories as
   searchable lists. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
@@ -782,14 +783,14 @@ rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC, the reports and the export,
 page and date-range limits, name checks, the seed's local-only guard, and
 session refresh, rate limits and token clean-up — most against a real database.
-The frontend has thirty-five Vitest files and 179 tests: its date, month,
+The frontend has thirty-nine Vitest files and 199 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
-Manage lists, panel and confirmation dialogs, the form dialog's discard check
-and the time entry form. GitHub Actions runs the formatting check, lint with no
-warnings allowed, typecheck, build and tests for both applications on every pull
-request.
+Manage lists, panel and confirmation dialogs, the form dialog's discard check,
+the time entry form and the timesheet day column. GitHub Actions runs the
+formatting check, lint with no warnings allowed, typecheck, build and tests for
+both applications on every pull request.
 
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on

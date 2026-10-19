@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   addDays,
   companyToday,
+  firstOfMonth,
   formatLongDayLabel,
   formatWeekdayLabel,
   getMonthGridDates,
@@ -67,7 +68,7 @@ export const WeekCalendarPopover = ({
         <button
           type="button"
           aria-label="Previous month"
-          onClick={() => setViewMonth(addDays(viewMonth, -30))}
+          onClick={() => setViewMonth(firstOfMonth(viewMonth, -1))}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
         >
           <ChevronLeft size={16} aria-hidden />
@@ -78,7 +79,7 @@ export const WeekCalendarPopover = ({
         <button
           type="button"
           aria-label="Next month"
-          onClick={() => setViewMonth(addDays(viewMonth, 30))}
+          onClick={() => setViewMonth(firstOfMonth(viewMonth, 1))}
           className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
         >
           <ChevronRight size={16} aria-hidden />

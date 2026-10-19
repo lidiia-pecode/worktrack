@@ -6,8 +6,10 @@ import {
   addDays,
   addMonthsToKey,
   companyToday,
+  firstOfMonth,
   formatDuration,
   formatSignedDuration,
+  formatWeekRangeLabel,
   getMonthGridDates,
   getMonthRange,
   getWeekDates,
@@ -103,6 +105,18 @@ describe("weeks", () => {
     expect(toISODate(addDays(new Date(2026, 2, 20), 21))).toBe("2026-04-10");
   });
 
+  it("names a week's year once, and both years across a new year", () => {
+    const yearCount = (label: string, year: string) =>
+      label.split(year).length - 1;
+
+    const inOneYear = formatWeekRangeLabel(new Date(2025, 5, 30));
+    const acrossYears = formatWeekRangeLabel(new Date(2026, 11, 28));
+
+    expect(yearCount(inOneYear, "2025")).toBe(1);
+    expect(yearCount(acrossYears, "2026")).toBe(1);
+    expect(yearCount(acrossYears, "2027")).toBe(1);
+  });
+
   it("treats only Saturday and Sunday as the weekend", () => {
     const days = getWeekDates(new Date(2026, 0, 12)).map(isWeekend);
 
@@ -128,6 +142,13 @@ describe("months", () => {
       dateFrom: "2026-12-01",
       dateTo: "2026-12-31",
     });
+  });
+
+  it("steps to the 1st of a neighbouring month without skipping one", () => {
+    const lateJanuary = new Date(2026, 0, 30);
+
+    expect(toISODate(firstOfMonth(lateJanuary, 1))).toBe("2026-02-01");
+    expect(toISODate(firstOfMonth(lateJanuary, -1))).toBe("2025-12-01");
   });
 
   it("fills a six-week calendar grid from the week start", () => {

@@ -7,12 +7,14 @@ import { useTimelogs } from "@/hooks/useTimelogs";
 import { TeamSummaryUser, TimeLog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
+import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
 import { Avatar } from "../../shared/Avatar";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { TimeLogFormModal } from "../../timesheet/components/TimeLogFormModal";
+import { lastEntryChoiceKey } from "../../timesheet/helpers/last-entry-choice";
 import { UserTimeDayGroup } from "./UserTimeDayGroup";
 
 type FormState = {
@@ -22,6 +24,7 @@ type FormState = {
 
 type UserTimeDetailPanelProps = {
   user: TeamSummaryUser;
+  viewerId: string;
   weekDates: Date[];
   weekLabel: string;
   todayIso: string;
@@ -33,13 +36,9 @@ type UserTimeDetailPanelProps = {
   onClose: () => void;
 };
 
-/**
- * One person's entries for the week behind their row in the team grid. The
- * grid answers how much; this answers what the time went on, and lets an owner
- * or manager correct it.
- */
 export const UserTimeDetailPanel = ({
   user,
+  viewerId,
   weekDates,
   weekLabel,
   todayIso,
@@ -72,15 +71,10 @@ export const UserTimeDetailPanel = ({
     refetch: refetchPicker,
   } = useAssignableActivities(user.id, canWrite);
 
-  const timelogsByDate = useMemo(() => {
-    const map: Record<string, TimeLog[]> = {};
-
-    timelogs.forEach((log) => {
-      (map[log.date] ??= []).push(log);
-    });
-
-    return map;
-  }, [timelogs]);
+  const timelogsByDate = useMemo(
+    () => groupTimelogsByDate(timelogs),
+    [timelogs],
+  );
 
   const totalMinutes = timelogs.reduce((sum, log) => sum + log.minutes, 0);
 
@@ -99,7 +93,7 @@ export const UserTimeDetailPanel = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        size="lg"
+        size="xl"
         bodyPadding={false}
         title={fullName(user)}
         description={
@@ -175,6 +169,7 @@ export const UserTimeDetailPanel = ({
           onClose={closeForm}
           date={formState.date}
           subjectName={fullName(user)}
+          rememberKey={lastEntryChoiceKey(viewerId, user.id)}
           timelog={formState.timelog}
           pickerItems={pickerItems}
           onCreate={(payload) =>

@@ -213,6 +213,11 @@ export function formatDayMonthLabel(date: string): string {
   return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
 }
 
+/** The 1st of the month `monthsAhead` months from `date`'s month. */
+export function firstOfMonth(date: Date, monthsAhead = 0): Date {
+  return new Date(date.getFullYear(), date.getMonth() + monthsAhead, 1);
+}
+
 /**
  * Returns a 6-week (42 day) grid covering the given month, including the
  * leading/trailing days from adjacent months — the classic calendar-popover
@@ -222,24 +227,17 @@ export function getMonthGridDates(
   monthDate: Date,
   weekStartDay: WeekDay = WeekDay.MONDAY,
 ): Date[] {
-  const firstOfMonth = new Date(
-    monthDate.getFullYear(),
-    monthDate.getMonth(),
-    1,
-  );
-  const gridStart = getWeekStart(firstOfMonth, weekStartDay);
+  const gridStart = getWeekStart(firstOfMonth(monthDate), weekStartDay);
   return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 }
 
-/** e.g. "30 Jun – 6 Jul 2026" or "30 Jun – 6 Jul" if within the same year. */
+/** e.g. "30 Jun – 6 Jul, 2026", or "29 Dec 2026 – 4 Jan 2027" across a new year. */
 export function formatWeekRangeLabel(weekStart: Date): string {
   const weekEnd = getWeekEnd(weekStart);
-  const sameYear = weekStart.getFullYear() === new Date().getFullYear();
 
-  const start = DAY_MONTH_LABEL.format(weekStart);
-  const end = sameYear
-    ? DAY_MONTH_LABEL.format(weekEnd)
-    : DAY_MONTH_YEAR_LABEL.format(weekEnd);
+  if (weekStart.getFullYear() !== weekEnd.getFullYear()) {
+    return `${DAY_MONTH_YEAR_LABEL.format(weekStart)} – ${DAY_MONTH_YEAR_LABEL.format(weekEnd)}`;
+  }
 
-  return `${start} – ${end}, ${weekEnd.getFullYear()}`;
+  return `${DAY_MONTH_LABEL.format(weekStart)} – ${DAY_MONTH_LABEL.format(weekEnd)}, ${weekEnd.getFullYear()}`;
 }

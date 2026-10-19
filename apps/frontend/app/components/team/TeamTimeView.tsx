@@ -288,6 +288,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
         <UserTimeDetailPanel
           key={openedUser.id}
           user={openedUser}
+          viewerId={viewerId}
           weekDates={weekDates}
           weekLabel={formatWeekRangeLabel(weekStart)}
           todayIso={todayIso}

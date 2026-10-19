@@ -33,6 +33,7 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
@@ -46,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
+import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekProgressBar } from "./components/WeekProgressBar";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
@@ -175,15 +177,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     return map;
   }, [plannedEntries]);
 
-  const timelogsByDate = useMemo(() => {
-    const map: Record<string, TimeLog[]> = {};
-
-    timelogs.forEach((log) => {
-      (map[log.date] ??= []).push(log);
-    });
-
-    return map;
-  }, [timelogs]);
+  const timelogsByDate = useMemo(
+    () => groupTimelogsByDate(timelogs),
+    [timelogs],
+  );
 
   const absencesByDate = useMemo(
     () => mapAbsencesByDate(absences, weekDates.map(toISODate)),
@@ -563,6 +560,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           open
           onClose={closeModal}
           date={modalState.date}
+          rememberKey={lastEntryChoiceKey(userId, userId)}
           timelog={modalState.timelog}
           pickerItems={pickerItems}
           onCreate={(payload) => actions.create.mutateAsync(payload)}
