@@ -103,22 +103,27 @@ const renderForm = () => {
 const renderNewEntry = (pickerItems: PickerProjectActivity[]) => {
   const onCreate = vi.fn().mockResolvedValue(undefined);
 
-  render(
+  const form = (items: PickerProjectActivity[]) => (
     <TimeLogFormModal
       open
       onClose={vi.fn()}
       date="2026-10-14"
       rememberKey={REMEMBER_KEY}
-      pickerItems={pickerItems}
+      pickerItems={items}
       onCreate={onCreate}
       onUpdate={vi.fn()}
       onDelete={vi.fn()}
       isSaving={false}
       isDeleting={false}
-    />,
+    />
   );
 
-  return { onCreate };
+  const { rerender } = render(form(pickerItems));
+
+  return {
+    onCreate,
+    rerenderWith: (items: PickerProjectActivity[]) => rerender(form(items)),
+  };
 };
 
 const select = (name: string) => screen.findByRole("combobox", { name });
@@ -239,6 +244,33 @@ describe("TimeLogFormModal", () => {
       expect(onCreate).toHaveBeenCalledWith(
         expect.objectContaining({ minutes: 60, note: "Wireframes" }),
       );
+    });
+
+    it("saves once when Ctrl+Enter is pressed again during the save", async () => {
+      const user = userEvent.setup();
+      const { onCreate } = renderNewEntry([websiteDesign]);
+      onCreate.mockReturnValue(new Promise(() => {}));
+
+      const hours = screen.getByRole("spinbutton", { name: "Hours" });
+      await user.clear(hours);
+      await user.type(hours, "1");
+      await user.click(screen.getByRole("textbox", { name: "Note" }));
+      await user.keyboard("{Control>}{Enter}{/Control}");
+      await waitFor(() => expect(onCreate).toHaveBeenCalledOnce());
+      await user.keyboard("{Control>}{Enter}{/Control}");
+
+      expect(onCreate).toHaveBeenCalledOnce();
+    });
+
+    it("keeps what is typed when the picker refetches", async () => {
+      const user = userEvent.setup();
+      const { rerenderWith } = renderNewEntry([websiteDesign]);
+
+      const note = screen.getByRole("textbox", { name: "Note" });
+      await user.type(note, "Wireframes");
+      rerenderWith([websiteDesign, intranetSupport]);
+
+      expect(note).toHaveValue("Wireframes");
     });
 
     it("clears the duration error once the duration is fixed", async () => {

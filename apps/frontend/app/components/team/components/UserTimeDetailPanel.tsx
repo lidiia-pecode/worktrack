@@ -31,6 +31,7 @@ type UserTimeDetailPanelProps = {
   canWrite: boolean;
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
+  /** The grid's project filter, so the panel shows the same hours as the row. */
   projectId?: string;
   onClose: () => void;
 };
@@ -62,6 +63,7 @@ export const UserTimeDetailPanel = ({
     projectId,
   });
 
+  // Only needed to fill the form, so a read-only panel does not ask for it.
   const {
     items: pickerItems,
     isLoading: isLoadingPicker,

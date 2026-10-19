@@ -783,7 +783,7 @@ rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC, the reports and the export,
 page and date-range limits, name checks, the seed's local-only guard, and
 session refresh, rate limits and token clean-up — most against a real database.
-The frontend has thirty-nine Vitest files and 197 tests: its date, month,
+The frontend has thirty-nine Vitest files and 199 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the

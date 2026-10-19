@@ -119,6 +119,8 @@ export const TimeLogFormModal = ({
 }: Props) => {
   const isEditMode = !!timelog;
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  // Read once per entry, as both callers open the form only after the picker
+  // has loaded; a background refetch must not reset what is being typed.
   const defaultValues = useMemo<TimeLogFormData>(() => {
     if (!timelog) {
       const choice = startingChoice(pickerItems, rememberKey);
@@ -141,7 +143,8 @@ export const TimeLogFormModal = ({
       note: timelog.note ?? "",
       isBillable: timelog.isBillable,
     };
-  }, [timelog, pickerItems, rememberKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timelog]);
 
   const {
     register,
@@ -152,7 +155,7 @@ export const TimeLogFormModal = ({
     setError,
     trigger,
     reset,
-    formState: { errors, isDirty, isSubmitted },
+    formState: { errors, isDirty, isSubmitted, isSubmitting },
   } = useForm<TimeLogFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(timeLogSchema) as any,
@@ -476,10 +479,13 @@ export const TimeLogFormModal = ({
               maxRows={8}
               placeholder="What did you work on?"
               onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                  e.preventDefault();
-                  e.currentTarget.form?.requestSubmit();
-                }
+                if (e.key !== "Enter" || !(e.metaKey || e.ctrlKey)) return;
+
+                e.preventDefault();
+                // requestSubmit skips the disabled button, so a save in
+                // progress has to be checked here.
+                if (isSubmitting || isSaving || isDeleting) return;
+                e.currentTarget.form?.requestSubmit();
               }}
               className={cn(
                 fieldControlClassName(!!errors.note),
