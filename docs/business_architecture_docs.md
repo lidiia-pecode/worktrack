@@ -712,7 +712,9 @@ see, and how a new company gets started. §7 plans that work.
   fit; everyone sees their own plan on the timesheet until they log time that
   day.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
-  owner can reopen a locked month from `/admin/periods` and close it again. The
+  owner can reopen a locked month from `/admin/periods` and close it again,
+  each after a confirmation; the page lists the months back to the company's
+  first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
 - **Hours report** — owners and managers see logged time on `/reports` for a
@@ -778,17 +780,19 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-two
-suites and 727 tests, covering the role-visibility filters, team and invitation
+suites and 729 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, monthly locking in and outside UTC, the reports and the export,
-page and date-range limits, name checks, the seed's local-only guard, and
-session refresh, rate limits and token clean-up — most against a real database.
-The frontend has thirty-nine Vitest files and 199 tests: its date, month,
+planning rules, monthly locking in and outside UTC and a Close that waits for
+an open write, the reports and the export, page and date-range limits, name
+checks, the seed's local-only guard, and session refresh, rate limits and token
+clean-up — most against a real database.
+The frontend has forty-one Vitest files and 208 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
-the time entry form and the timesheet day column. GitHub Actions runs the
+the time entry form, the duration stepper, the timesheet day column, the week a
+grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -863,6 +867,7 @@ is in its pull request.
 | 26 | Manage polish: rows that show what an item belongs to, project colours, a status only when something is archived, deactivated or a draft; a taken name shown under the field; project descriptions as Markdown; a realistic demo seed that runs only against a local database |
 | 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
+| 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
 
 ### Improvement roadmap — high level, flexible
 
@@ -913,7 +918,7 @@ the other areas apply to their pages, so it may run alongside Area 1 or straight
 after it, and it includes what the frontend needs to test components rather than
 only helpers.
 
-**Area 3 — Everyday time entry** *(started, Phase 28)*. The employee's timesheet
+**Area 3 — Everyday time entry** *(started, Phases 28–29)*. The employee's timesheet
 and absences, the screen people use most. Logging should be fast, with the plan,
 recent work and common durations doing much of the typing; a week should say
 clearly when it is complete; the figures it shows — billable, internal, expected

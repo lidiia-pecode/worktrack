@@ -5,15 +5,46 @@ import { ReportingMonthState } from "@/types/enums";
 import { Absence } from "@/types";
 
 import {
+  firstPeriodsPage,
   isRangeLocked,
   lockLookupRange,
   lockedDateLookup,
+  olderPeriodsPage,
 } from "./reporting-period";
+
+describe("firstPeriodsPage", () => {
+  it("lists twelve months back from the current one, up to the server's today", () => {
+    expect(firstPeriodsPage("2026-10", "2024-01")).toEqual({ from: "2025-11" });
+  });
+
+  it("starts at the company's first month when that is later", () => {
+    expect(firstPeriodsPage("2026-10", "2026-07")).toEqual({ from: "2026-07" });
+  });
+});
+
+describe("olderPeriodsPage", () => {
+  it("asks for the twelve months before the oldest shown", () => {
+    expect(olderPeriodsPage("2025-11", "2024-01")).toEqual({
+      from: "2024-11",
+      to: "2025-10",
+    });
+  });
+
+  it("stops at the company's first month", () => {
+    expect(olderPeriodsPage("2024-03", "2024-01")).toEqual({
+      from: "2024-01",
+      to: "2024-02",
+    });
+    expect(olderPeriodsPage("2024-01", "2024-01")).toBeNull();
+  });
+});
 
 const month = (key: string, state: ReportingMonthState) => ({
   month: key,
   state,
   editableUntil: null,
+  changedBy: null,
+  changedAt: null,
 });
 
 describe("lockedDateLookup", () => {

@@ -12,9 +12,14 @@ import { toast } from "sonner";
 import { ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
-import { addMonthsToKey, toMonthKey } from "@/lib/utils/date";
-import { lockedDateLookup } from "@/lib/utils/reporting-period";
+import { isoDateInTimeZone, todayISODate, toMonthKey } from "@/lib/utils/date";
+import {
+  firstPeriodsPage,
+  lockedDateLookup,
+  olderPeriodsPage,
+} from "@/lib/utils/reporting-period";
 
+import { useCompany } from "./auth/useCompany";
 import { queryKeys } from "./shared/queryKeys";
 
 export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
@@ -31,34 +36,48 @@ export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
   };
 }
 
-const MONTHS_PER_PAGE = 12;
-
 /**
- * Every month from the current one back, twelve at a time. There is no lower
- * bound: time can be logged on any past date, so any month may need reopening.
+ * Every month from the current one back to the company's first, twelve at a
+ * time. Months before the company existed are not listed, so the page can
+ * tell when there is nothing older. Waits for the company to know its first
+ * month and time zone.
  */
 export function useReportingPeriodHistory() {
+  const { company, query: companyQuery } = useCompany();
+
+  const firstMonth =
+    company &&
+    toMonthKey(
+      isoDateInTimeZone(new Date(company.createdAt), company.timezone),
+    );
+  const currentMonth = toMonthKey(todayISODate(company?.timezone));
+
   const query = useInfiniteQuery({
     queryKey: queryKeys.reporting.periodHistory(),
     queryFn: ({ pageParam }) => ReportingClientApi.getPeriods(pageParam),
-    // The first page is the server's default: the last twelve months.
-    initialPageParam: {} as ReportingPeriodsQuery,
+    enabled: Boolean(firstMonth),
+    initialPageParam: firstMonth
+      ? firstPeriodsPage(currentMonth, firstMonth)
+      : ({} as ReportingPeriodsQuery),
     getNextPageParam: (lastPage): ReportingPeriodsQuery | undefined => {
-      const oldestLoadedMonth = lastPage.at(-1)?.month;
-      if (!oldestLoadedMonth) return undefined;
+      const oldestShownMonth = lastPage.at(-1)?.month;
+      if (!oldestShownMonth || !firstMonth) return undefined;
 
-      const to = addMonthsToKey(oldestLoadedMonth, -1);
-      const from = addMonthsToKey(to, -(MONTHS_PER_PAGE - 1));
-
-      return { from, to };
+      return olderPeriodsPage(oldestShownMonth, firstMonth) ?? undefined;
     },
   });
 
   return {
     months: query.data?.pages.flat() ?? [],
-    isLoading: query.isLoading,
-    isError: query.isError,
-    refetch: query.refetch,
+    isLoading: query.isPending,
+    isError: query.isError || companyQuery.isError,
+    // Without the company there is no first page to ask for yet; the months
+    // fetch by themselves once it arrives.
+    refetch: () => {
+      void companyQuery.refetch();
+      if (firstMonth) void query.refetch();
+    },
+    hasOlder: query.hasNextPage,
     loadOlder: query.fetchNextPage,
     isLoadingOlder: query.isFetchingNextPage,
   };

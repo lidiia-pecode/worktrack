@@ -1,24 +1,38 @@
-import { Button } from "@/components/ui/button";
+import { Lock } from "lucide-react";
+
 import { Badge, BadgeProps } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { TableCell, TableRow, TableRowHeader } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
-import { formatDayMonthLabel, formatMonthLabel } from "@/lib/utils/date";
+import {
+  formatDayMonthLabel,
+  formatDayMonthYearLabel,
+  formatMonthLabel,
+  isoDateInTimeZone,
+} from "@/lib/utils/date";
 import { ReportingMonth } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 
+/** The same inset at both edges of the header and every row. */
+export const ROW_EDGE_START = "pl-5";
+export const ROW_EDGE_END = "pr-5";
+
 type PeriodRowProps = {
   period: ReportingMonth;
+  /** The company's time zone, for the day a change was made on. */
+  timezone?: string;
   onReopen: (month: string) => void;
   onClose: (month: string) => void;
-  isClosing: boolean;
 };
 
+// Locked is the rule, so it gets the lock icon and no badge; a badge marks the
+// exceptions.
 const STATE_BADGE: Record<
-  ReportingMonthState,
+  Exclude<ReportingMonthState, ReportingMonthState.LOCKED>,
   { label: string; variant: BadgeProps["variant"] }
 > = {
   [ReportingMonthState.OPEN]: { label: "Open", variant: "default" },
   [ReportingMonthState.GRACE]: { label: "Closing soon", variant: "warning" },
-  [ReportingMonthState.LOCKED]: { label: "Locked", variant: "neutral" },
   [ReportingMonthState.REOPENED]: { label: "Reopened", variant: "warning" },
 };
 
@@ -35,39 +49,66 @@ const describeState = ({ state, editableUntil }: ReportingMonth): string => {
   }
 };
 
+// The day alone when the person's account is gone.
+const describeChange = (
+  { changedBy, changedAt }: ReportingMonth,
+  timezone?: string,
+): string | null => {
+  if (!changedAt) return null;
+
+  const day = formatDayMonthYearLabel(
+    isoDateInTimeZone(new Date(changedAt), timezone),
+  );
+
+  return changedBy ? `${changedBy} · ${day}` : day;
+};
+
 export const PeriodRow = ({
   period,
+  timezone,
   onReopen,
   onClose,
-  isClosing,
 }: PeriodRowProps) => {
-  const badge = STATE_BADGE[period.state];
+  const monthLabel = formatMonthLabel(period.month);
+  const change = describeChange(period, timezone);
 
   return (
-    <li
+    <TableRow
       className={cn(
-        "flex flex-wrap items-center justify-between gap-3 px-5 py-4",
+        "h-14",
         period.state === ReportingMonthState.REOPENED && "bg-warning/5",
       )}
     >
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-card-foreground">
-          {formatMonthLabel(period.month)}
-        </p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {describeState(period)}
-        </p>
-      </div>
+      <TableRowHeader
+        className={cn("py-2", ROW_EDGE_START)}
+        detail={describeState(period)}
+      >
+        {monthLabel}
+      </TableRowHeader>
 
-      <div className="flex items-center gap-3">
-        <Badge variant={badge.variant} dot>
-          {badge.label}
-        </Badge>
+      <TableCell className="py-2">
+        {period.state === ReportingMonthState.LOCKED ? (
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Lock className="size-3.5" aria-hidden />
+            Locked
+          </span>
+        ) : (
+          <Badge variant={STATE_BADGE[period.state].variant} dot>
+            {STATE_BADGE[period.state].label}
+          </Badge>
+        )}
+      </TableCell>
 
+      <TableCell className="py-2 text-muted-foreground">
+        <div className="truncate">{change ?? "—"}</div>
+      </TableCell>
+
+      <TableCell className={cn("py-2 text-right", ROW_EDGE_END)}>
         {period.state === ReportingMonthState.LOCKED && (
           <Button
             variant="outline"
             size="sm"
+            aria-label={`Reopen ${monthLabel}`}
             onClick={() => onReopen(period.month)}
           >
             Reopen
@@ -78,13 +119,13 @@ export const PeriodRow = ({
           <Button
             variant="secondary"
             size="sm"
+            aria-label={`Close ${monthLabel}`}
             onClick={() => onClose(period.month)}
-            isLoading={isClosing}
           >
             Close
           </Button>
         )}
-      </div>
-    </li>
+      </TableCell>
+    </TableRow>
   );
 };

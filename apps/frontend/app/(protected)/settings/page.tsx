@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -8,6 +9,7 @@ import { SettingsSidebar } from "@/app/components/settings/SettingsSidebar";
 import { ProfileSettings } from "@/app/components/settings/profile/ProfileSettings";
 import { SecuritySettings } from "@/app/components/settings/security/SecuritySettings";
 import { CompanySettings } from "@/app/components/settings/company/CompanySettings";
+import { DiscardChangesModal } from "@/app/components/shared/DiscardChangesModal";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { useGoogleLinkResult } from "@/hooks/auth/useGoogleLinkResult";
 import {
@@ -28,8 +30,28 @@ export default function SettingsPage() {
     hasGoogleResult,
   });
 
-  const setActiveTab = (tab: SettingsTab) =>
+  // Switching tabs replaces the form, so unsaved edits ask first.
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [pendingTab, setPendingTab] = useState<SettingsTab | null>(null);
+
+  const showTab = (tab: SettingsTab) =>
     window.history.replaceState(null, "", `?tab=${tab}`);
+
+  const changeTab = (tab: SettingsTab) => {
+    if (tab === activeTab) return;
+
+    if (hasUnsavedChanges) {
+      setPendingTab(tab);
+      return;
+    }
+
+    showTab(tab);
+  };
+
+  const discardAndChangeTab = () => {
+    if (pendingTab) showTab(pendingTab);
+    setPendingTab(null);
+  };
 
   return (
     <>
@@ -42,17 +64,29 @@ export default function SettingsPage() {
         <SettingsSidebar
           activeTab={activeTab}
           isOwner={isOwner}
-          onChange={setActiveTab}
+          onChange={changeTab}
         />
 
         <div className="min-w-0 max-w-180 flex-1">
-          {activeTab === "profile" && <ProfileSettings user={user} />}
+          {activeTab === "profile" && (
+            <ProfileSettings user={user} onDirtyChange={setHasUnsavedChanges} />
+          )}
 
-          {activeTab === "security" && <SecuritySettings />}
+          {activeTab === "security" && (
+            <SecuritySettings onDirtyChange={setHasUnsavedChanges} />
+          )}
 
-          {activeTab === "company" && isOwner && <CompanySettings />}
+          {activeTab === "company" && isOwner && (
+            <CompanySettings onDirtyChange={setHasUnsavedChanges} />
+          )}
         </div>
       </div>
+
+      <DiscardChangesModal
+        isOpen={pendingTab !== null}
+        onDiscard={discardAndChangeTab}
+        onKeepEditing={() => setPendingTab(null)}
+      />
     </>
   );
 }

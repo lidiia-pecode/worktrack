@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import {
 } from "@/lib/forms/schemas/company.schema";
 
 import Input from "../../../../components/ui/input";
+import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 
@@ -22,9 +23,19 @@ import { toListedTimeZone } from "@/lib/utils/time-zones";
 import { settingsNumberInputClassName } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
+import { useReportDirty } from "@/hooks/useReportDirty";
 
-export const CompanySettings = () => {
+interface CompanySettingsProps {
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
   const { company, actions } = useCompany();
+
+  // A changed standard day is held here until the owner confirms it, since it
+  // rewrites Expected for everybody on the default, locked months included.
+  const [standardDayChange, setStandardDayChange] =
+    useState<CompanyFormValues | null>(null);
 
   const {
     register,
@@ -42,6 +53,13 @@ export const CompanySettings = () => {
       weekStartDay: WeekDay.MONDAY,
       standardWorkHoursPerDay: 0,
     },
+  });
+
+  useReportDirty(isDirty, onDirtyChange);
+
+  const standardWorkHoursPerDay = useWatch({
+    control,
+    name: "standardWorkHoursPerDay",
   });
 
   useEffect(() => {
@@ -67,7 +85,21 @@ export const CompanySettings = () => {
   };
 
   const onSubmit = async (data: CompanyFormValues) => {
+    if (data.standardWorkHoursPerDay !== company?.standardWorkHoursPerDay) {
+      setStandardDayChange(data);
+      return;
+    }
+
     await actions.update.mutateAsync(data);
+  };
+
+  // A failed save keeps the dialog open; the global handler shows the error.
+  const confirmStandardDayChange = () => {
+    if (!standardDayChange) return;
+
+    actions.update.mutate(standardDayChange, {
+      onSuccess: () => setStandardDayChange(null),
+    });
   };
 
   return (
@@ -155,8 +187,9 @@ export const CompanySettings = () => {
 
                 {!errors.standardWorkHoursPerDay && (
                   <p className="mt-1.5 text-xs text-muted-foreground">
-                    Changing it recalculates Expected hours, past weeks
-                    included, for everyone on the company&apos;s default hours.
+                    Changing it recalculates Expected hours for everyone on the
+                    company&apos;s default hours, past and locked months
+                    included.
                   </p>
                 )}
               </div>
@@ -175,6 +208,17 @@ export const CompanySettings = () => {
           </Button>
         </CardFooter>
       </form>
+
+      <ConfirmModal
+        isOpen={standardDayChange !== null}
+        title={`Change the standard day to ${standardWorkHoursPerDay}h?`}
+        message="Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them."
+        confirmText="Save changes"
+        variant="warning"
+        onConfirm={confirmStandardDayChange}
+        onClose={() => setStandardDayChange(null)}
+        loading={actions.update.isPending}
+      />
     </Card>
   );
 };

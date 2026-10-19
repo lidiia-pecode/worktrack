@@ -92,14 +92,15 @@ export class AbsencesService {
     await this.assertCanWriteFor(ownerId, user);
 
     this.assertRangeOrder(payload.startDate, payload.endDate);
-    await this.assertRangeNotLocked(
-      user.companyId,
-      payload.startDate,
-      payload.endDate,
-    );
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
+      await this.assertRangeNotLocked(
+        manager,
+        user.companyId,
+        payload.startDate,
+        payload.endDate,
+      );
 
       await this.assertRangeIsFree(
         manager,
@@ -136,6 +137,7 @@ export class AbsencesService {
 
       // Where it sits now is frozen, and so is wherever it is being moved to.
       await this.assertRangeNotLocked(
+        manager,
         user.companyId,
         absence.startDate,
         absence.endDate,
@@ -149,7 +151,12 @@ export class AbsencesService {
         startDate !== absence.startDate || endDate !== absence.endDate;
 
       if (moved) {
-        await this.assertRangeNotLocked(user.companyId, startDate, endDate);
+        await this.assertRangeNotLocked(
+          manager,
+          user.companyId,
+          startDate,
+          endDate,
+        );
       }
 
       absence.startDate = startDate;
@@ -178,6 +185,7 @@ export class AbsencesService {
       const absence = await this.getForUpdate(id, user.companyId, manager);
 
       await this.assertRangeNotLocked(
+        manager,
         user.companyId,
         absence.startDate,
         absence.endDate,
@@ -212,8 +220,11 @@ export class AbsencesService {
   /**
    * An absence is frozen as soon as any day of its range falls in a locked
    * period, so a holiday spanning the boundary cannot be edited from outside.
+   * Runs inside the write's transaction, so a Close at the same moment waits
+   * for it.
    */
   private async assertRangeNotLocked(
+    manager: EntityManager,
     companyId: string,
     startDate: string,
     endDate: string,
@@ -222,6 +233,7 @@ export class AbsencesService {
       companyId,
       startDate,
       endDate,
+      manager,
     );
 
     if (isLocked) {

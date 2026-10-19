@@ -17,9 +17,14 @@ import { isApiValidationError } from "@/lib/api/errors";
 import { PasswordInput } from "../../shared/inputs/PasswordInput";
 import { useSecurity } from "@/hooks/useSecurity";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useReportDirty } from "@/hooks/useReportDirty";
 import { GOOGLE_LINK_URL } from "@/lib/constants";
 
-export const SecuritySettings = () => {
+interface SecuritySettingsProps {
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
   const { user } = useAuth();
   const { actions } = useSecurity();
 
@@ -44,6 +49,8 @@ export const SecuritySettings = () => {
       newPassword: "",
     },
   });
+
+  useReportDirty(isDirty, onDirtyChange);
 
   const onSubmit = async (data: SecurityFormValues) => {
     try {

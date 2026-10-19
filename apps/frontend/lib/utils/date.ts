@@ -22,12 +22,13 @@ export function toISODate(d: Date): string {
 }
 
 /**
- * Today in the workspace timezone. Falls back to the viewer's local date when
- * no timezone is configured, or when the stored value is not a valid IANA name.
+ * The calendar date of an instant in the workspace timezone. Falls back to the
+ * viewer's local date when no timezone is configured, or when the stored value
+ * is not a valid IANA name.
  */
-export function todayISODate(timeZone?: string): string {
+export function isoDateInTimeZone(instant: Date, timeZone?: string): string {
   if (!timeZone) {
-    return toISODate(new Date());
+    return toISODate(instant);
   }
 
   try {
@@ -37,10 +38,15 @@ export function todayISODate(timeZone?: string): string {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-    }).format(new Date());
+    }).format(instant);
   } catch {
-    return toISODate(new Date());
+    return toISODate(instant);
   }
+}
+
+/** Today in the workspace timezone. */
+export function todayISODate(timeZone?: string): string {
+  return isoDateInTimeZone(new Date(), timeZone);
 }
 
 /** e.g. "1h 30m", "2h" or "45m"; zero reads "0h". */

@@ -5,9 +5,16 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import {
+  EntityManager,
+  In,
+  ObjectLiteral,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
+import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { ReportingPeriod } from './entities/reporting-period.entity';
@@ -61,7 +68,13 @@ export interface ReportingMonth {
   state: ReportingMonthState;
   /** The last editable day while the month is open or in its grace window. */
   editableUntil: string | null;
+  /** Who last reopened or closed the month by hand; null while nobody has. */
+  changedBy: string | null;
+  /** When that happened (ISO 8601); null while nobody has. */
+  changedAt: string | null;
 }
+
+type MonthChange = Pick<ReportingMonth, 'changedBy' | 'changedAt'>;
 
 export interface HoursSplit {
   /** Time marked billable, on any project. */
@@ -227,7 +240,18 @@ export class ReportingService {
       );
     }
 
-    const reopened = await this.findReopenedMonths(companyId, months);
+    const periods = await this.periodRepo.find({
+      where: { companyId, month: In(months) },
+      relations: { changedBy: true },
+    });
+    const periodByMonth = new Map(
+      periods.map((period) => [period.month, period]),
+    );
+    const reopened = new Set(
+      periods
+        .filter((period) => period.status === ReportingPeriodStatus.OPEN)
+        .map((period) => period.month),
+    );
 
     return months.reverse().map((month) => {
       const state = this.stateOf(month, today, reopened);
@@ -239,6 +263,7 @@ export class ReportingService {
         month: toMonthKey(month),
         state,
         editableUntil: isEditable ? editableUntil(month) : null,
+        ...this.changeOf(periodByMonth.get(month)),
       };
     });
   }
@@ -257,23 +282,36 @@ export class ReportingService {
       );
     }
 
-    const period =
-      (await this.periodRepo.findOne({ where: { companyId, month } })) ??
-      this.periodRepo.create({ companyId, month });
+    return this.periodRepo.manager.transaction(async (manager) => {
+      const period =
+        (await this.findPeriodForUpdate(manager, companyId, month)) ??
+        manager.create(ReportingPeriod, { companyId, month });
 
-    if (period.status === ReportingPeriodStatus.OPEN) {
-      throw new ConflictException(`${monthKey} is already reopened`);
-    }
+      if (period.status === ReportingPeriodStatus.OPEN) {
+        throw new ConflictException(`${monthKey} is already reopened`);
+      }
 
-    period.status = ReportingPeriodStatus.OPEN;
-    period.changedById = actorId;
-    await this.periodRepo.save(period);
+      period.status = ReportingPeriodStatus.OPEN;
+      period.changedById = actorId;
 
-    return {
-      month: monthKey,
-      state: ReportingMonthState.REOPENED,
-      editableUntil: null,
-    };
+      // A month reopened for the first time has no row to lock, so a second
+      // Reopen racing this one hits the unique index instead.
+      try {
+        await manager.save(period);
+      } catch (error) {
+        if (isDatabaseConflictError(error)) {
+          throw new ConflictException(`${monthKey} is already reopened`);
+        }
+        throw error;
+      }
+
+      return {
+        month: monthKey,
+        state: ReportingMonthState.REOPENED,
+        editableUntil: null,
+        ...(await this.changeOfSaved(manager, period.id)),
+      };
+    });
   }
 
   async closeMonth(
@@ -281,58 +319,91 @@ export class ReportingService {
     monthKey: string,
     actorId: string,
   ): Promise<ReportingMonth> {
-    const period = await this.periodRepo.findOne({
-      where: { companyId, month: firstDayOfMonth(monthKey) },
-    });
-
-    if (period?.status !== ReportingPeriodStatus.OPEN) {
-      throw new ConflictException(
-        `${monthKey} was not reopened, so there is nothing to close`,
+    return this.periodRepo.manager.transaction(async (manager) => {
+      const period = await this.findPeriodForUpdate(
+        manager,
+        companyId,
+        firstDayOfMonth(monthKey),
       );
-    }
 
-    period.status = ReportingPeriodStatus.LOCKED;
-    period.changedById = actorId;
-    await this.periodRepo.save(period);
+      if (period?.status !== ReportingPeriodStatus.OPEN) {
+        throw new ConflictException(
+          `${monthKey} was not reopened, so there is nothing to close`,
+        );
+      }
 
-    return {
-      month: monthKey,
-      state: ReportingMonthState.LOCKED,
-      editableUntil: null,
-    };
+      period.status = ReportingPeriodStatus.LOCKED;
+      period.changedById = actorId;
+      await manager.save(period);
+
+      return {
+        month: monthKey,
+        state: ReportingMonthState.LOCKED,
+        editableUntil: null,
+        ...(await this.changeOfSaved(manager, period.id)),
+      };
+    });
   }
 
-  async isDateLocked(companyId: string, date: string): Promise<boolean> {
-    return this.isRangeLocked(companyId, date, date);
+  async isDateLocked(
+    companyId: string,
+    date: string,
+    manager?: EntityManager,
+  ): Promise<boolean> {
+    return this.isRangeLocked(companyId, date, date, manager);
   }
 
   /**
    * True when any day between the two dates is locked. A record covering a
    * range is frozen as soon as it touches one.
+   *
+   * Inside a write's transaction, pass its `manager`: the period rows are then
+   * read with a share lock, so a Close or Reopen of one of those months waits
+   * until the write has finished instead of slipping in between the check and
+   * the save.
    */
   async isRangeLocked(
     companyId: string,
     startDate: string,
     endDate: string,
+    manager?: EntityManager,
   ): Promise<boolean> {
-    const today = await findCompanyToday(this.companyRepo.manager, companyId);
+    const today = await findCompanyToday(
+      manager ?? this.companyRepo.manager,
+      companyId,
+    );
     const autoLocked = monthsBetween(startDate, endDate).filter((month) =>
       isAutoLocked(month, today),
     );
 
     if (autoLocked.length === 0) return false;
 
-    const reopened = await this.findReopenedMonths(companyId, autoLocked);
+    const reopened = await this.findReopenedMonths(
+      companyId,
+      autoLocked,
+      manager,
+    );
     return autoLocked.some((month) => !reopened.has(month));
   }
 
   /**
    * The last day of the newest locked month. Anything effective on or before
-   * it would rewrite a closed month.
+   * it would rewrite a closed month. Takes a write's `manager` like
+   * `isRangeLocked`, for the same reason.
    */
-  async latestLockedDate(companyId: string): Promise<string> {
-    const today = await findCompanyToday(this.companyRepo.manager, companyId);
-    const reopened = await this.findReopenedMonths(companyId);
+  async latestLockedDate(
+    companyId: string,
+    manager?: EntityManager,
+  ): Promise<string> {
+    const today = await findCompanyToday(
+      manager ?? this.companyRepo.manager,
+      companyId,
+    );
+    const reopened = await this.findReopenedMonths(
+      companyId,
+      undefined,
+      manager,
+    );
 
     let month = latestAutoLockedMonth(today);
     while (reopened.has(month)) {
@@ -360,22 +431,63 @@ export class ReportingService {
 
   /**
    * The first days of the months an owner has reopened, optionally only among
-   * the given ones.
+   * the given ones. With a transaction's `manager`, the rows are share-locked
+   * until it ends (see `isRangeLocked`).
    */
   private async findReopenedMonths(
     companyId: string,
     among?: string[],
+    manager?: EntityManager,
   ): Promise<Set<string>> {
-    const rows = await this.periodRepo.find({
-      where: {
-        companyId,
-        status: ReportingPeriodStatus.OPEN,
-        ...(among && { month: In(among) }),
+    const rows = await (manager ?? this.periodRepo.manager).find(
+      ReportingPeriod,
+      {
+        where: {
+          companyId,
+          status: ReportingPeriodStatus.OPEN,
+          ...(among && { month: In(among) }),
+        },
+        select: ['month'],
+        ...(manager && { lock: { mode: 'pessimistic_read' } }),
       },
-      select: ['month'],
-    });
+    );
 
     return new Set(rows.map((row) => row.month));
+  }
+
+  /** The month's row, locked against another Close or Reopen until the transaction ends. */
+  private findPeriodForUpdate(
+    manager: EntityManager,
+    companyId: string,
+    month: string,
+  ): Promise<ReportingPeriod | null> {
+    return manager.findOne(ReportingPeriod, {
+      where: { companyId, month },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  private changeOf(period: ReportingPeriod | undefined): MonthChange {
+    if (!period) return { changedBy: null, changedAt: null };
+
+    return {
+      changedBy: period.changedBy
+        ? `${period.changedBy.firstName} ${period.changedBy.lastName}`
+        : null,
+      changedAt: period.updatedAt.toISOString(),
+    };
+  }
+
+  private async changeOfSaved(
+    manager: EntityManager,
+    periodId: string,
+  ): Promise<MonthChange> {
+    const saved = await manager.findOneOrFail(ReportingPeriod, {
+      where: { id: periodId },
+      relations: { changedBy: true },
+    });
+
+    return this.changeOf(saved);
   }
 
   /** Whether any month touching the range is not locked yet. */
