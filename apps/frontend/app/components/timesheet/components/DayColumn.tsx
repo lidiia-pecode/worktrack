@@ -56,7 +56,7 @@ export const DayColumn = ({
 }: Props) => {
   const plannedId = useId();
   const [hovered, setHovered] = useState<{
-    timelog: TimeLog;
+    timelogId: string;
     anchor: DOMRect;
   } | null>(null);
 
@@ -79,7 +79,15 @@ export const DayColumn = ({
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
-    setHovered({ timelog, anchor: target.getBoundingClientRect() });
+    setHovered({
+      timelogId: timelog.id,
+      anchor: target.getBoundingClientRect(),
+    });
+
+  // Read from the current entries: a deleted entry's segment unmounts without
+  // a mouse leave, so its card must not outlive it.
+  const hoveredTimelog =
+    hovered && timelogs.find((timelog) => timelog.id === hovered.timelogId);
 
   const hidePopover = () => setHovered(null);
 
@@ -220,8 +228,8 @@ export const DayColumn = ({
         ))}
       </div>
 
-      {hovered && (
-        <TimelogPopover timelog={hovered.timelog} anchor={hovered.anchor} />
+      {hovered && hoveredTimelog && (
+        <TimelogPopover timelog={hoveredTimelog} anchor={hovered.anchor} />
       )}
     </div>
   );
