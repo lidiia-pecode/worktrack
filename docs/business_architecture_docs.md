@@ -788,7 +788,8 @@ absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
-the time entry form and the timesheet day column. GitHub Actions runs the
+the time entry form, the duration stepper, the timesheet day column, the week a
+grid shows and the order of a day's entries. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -863,6 +864,7 @@ is in its pull request.
 | 26 | Manage polish: rows that show what an item belongs to, project colours, a status only when something is archived, deactivated or a draft; a taken name shown under the field; project descriptions as Markdown; a realistic demo seed that runs only against a local database |
 | 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
+| 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
 
 ### Improvement roadmap — high level, flexible
 
@@ -913,7 +915,7 @@ the other areas apply to their pages, so it may run alongside Area 1 or straight
 after it, and it includes what the frontend needs to test components rather than
 only helpers.
 
-**Area 3 — Everyday time entry** *(started, Phase 28)*. The employee's timesheet
+**Area 3 — Everyday time entry** *(started, Phases 28–29)*. The employee's timesheet
 and absences, the screen people use most. Logging should be fast, with the plan,
 recent work and common durations doing much of the typing; a week should say
 clearly when it is complete; the figures it shows — billable, internal, expected
