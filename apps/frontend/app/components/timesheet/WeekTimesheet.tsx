@@ -33,6 +33,7 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
 import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
@@ -176,15 +177,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     return map;
   }, [plannedEntries]);
 
-  const timelogsByDate = useMemo(() => {
-    const map: Record<string, TimeLog[]> = {};
-
-    timelogs.forEach((log) => {
-      (map[log.date] ??= []).push(log);
-    });
-
-    return map;
-  }, [timelogs]);
+  const timelogsByDate = useMemo(
+    () => groupTimelogsByDate(timelogs),
+    [timelogs],
+  );
 
   const absencesByDate = useMemo(
     () => mapAbsencesByDate(absences, weekDates.map(toISODate)),

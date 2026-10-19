@@ -7,6 +7,7 @@ import { useTimelogs } from "@/hooks/useTimelogs";
 import { TeamSummaryUser, TimeLog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
+import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
 import { Avatar } from "../../shared/Avatar";
 import { ErrorState } from "../../shared/ErrorState";
@@ -68,15 +69,10 @@ export const UserTimeDetailPanel = ({
     refetch: refetchPicker,
   } = useAssignableActivities(user.id, canWrite);
 
-  const timelogsByDate = useMemo(() => {
-    const map: Record<string, TimeLog[]> = {};
-
-    timelogs.forEach((log) => {
-      (map[log.date] ??= []).push(log);
-    });
-
-    return map;
-  }, [timelogs]);
+  const timelogsByDate = useMemo(
+    () => groupTimelogsByDate(timelogs),
+    [timelogs],
+  );
 
   const totalMinutes = timelogs.reduce((sum, log) => sum + log.minutes, 0);
 

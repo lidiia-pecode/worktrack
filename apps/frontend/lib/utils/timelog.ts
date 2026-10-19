@@ -23,3 +23,18 @@ export function getTimelogDisplay(timelog: TimeLog): TimelogDisplay {
     activityName: activity?.name ?? "Unknown activity",
   };
 }
+
+/** Each day's entries in the order they were logged; the API lists the newest first. */
+export function groupTimelogsByDate(
+  timelogs: TimeLog[],
+): Record<string, TimeLog[]> {
+  const byDate: Record<string, TimeLog[]> = {};
+
+  [...timelogs]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .forEach((log) => {
+      (byDate[log.date] ??= []).push(log);
+    });
+
+  return byDate;
+}
