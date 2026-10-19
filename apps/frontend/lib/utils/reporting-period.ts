@@ -1,10 +1,42 @@
-import { Absence, ReportingMonth } from "@/types";
+import { Absence, ReportingMonth, ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 
 import { addMonthsToKey, getMonthRange, toMonthKey } from "./date";
 
 /** The most months `GET /periods` returns in one request. */
 export const MAX_PERIOD_MONTHS_PER_REQUEST = 36;
+
+/** How many days a month stays editable after it ends; mirrors the backend's `GRACE_DAYS`. */
+export const GRACE_DAYS = 7;
+
+/** How many months the Periods page lists at a time. */
+export const PERIOD_MONTHS_PER_PAGE = 12;
+
+const notBefore = (monthKey: string, firstMonth: string) =>
+  monthKey < firstMonth ? firstMonth : monthKey;
+
+/** The Periods list's first page: the current month back, but never before the company's first month. */
+export function firstPeriodsPage(
+  currentMonth: string,
+  firstMonth: string,
+): ReportingPeriodsQuery {
+  const from = addMonthsToKey(currentMonth, -(PERIOD_MONTHS_PER_PAGE - 1));
+
+  return { from: notBefore(from, firstMonth), to: currentMonth };
+}
+
+/** The page before the oldest month shown, or null once the company's first month is on screen. */
+export function olderPeriodsPage(
+  oldestShownMonth: string,
+  firstMonth: string,
+): ReportingPeriodsQuery | null {
+  if (oldestShownMonth <= firstMonth) return null;
+
+  const to = addMonthsToKey(oldestShownMonth, -1);
+  const from = addMonthsToKey(to, -(PERIOD_MONTHS_PER_PAGE - 1));
+
+  return { from: notBefore(from, firstMonth), to };
+}
 
 /** Whether a YYYY-MM-DD date falls in one of the months the server reports as locked. */
 export function lockedDateLookup(months: ReportingMonth[]) {
