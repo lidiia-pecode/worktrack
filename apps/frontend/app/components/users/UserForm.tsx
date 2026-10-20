@@ -99,14 +99,13 @@ export const UserForm = ({
             max={168}
             step={0.5}
             label="Contracted hours per week"
-            description="Hours per week, not per day."
             error={errors.capacityHoursPerWeek?.message}
           />
 
           <DateInput
             {...register("capacityValidFrom")}
             label="Applies from"
-            description="Earlier weeks keep the hours they were measured against."
+            description="Earlier weeks keep their hours."
             error={errors.capacityValidFrom?.message}
           />
         </div>

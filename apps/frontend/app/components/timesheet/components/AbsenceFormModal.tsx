@@ -176,7 +176,6 @@ export const AbsenceFormModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}
         footer={
           <>

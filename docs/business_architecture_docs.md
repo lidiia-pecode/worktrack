@@ -457,10 +457,11 @@ total the write raises is refused. The same checks can be run without saving
 is already planned and every conflict before anything is written, and saves
 only once everything fits.
 
-The planning grid shows managers two figures of their own: **unplanned** hours
-(available minus planned) and **no longer fits** (planned above available,
-flagged and never fixed automatically). Neither is shown to an employee, who
-sees only their own plan, and neither affects whether somebody is behind.
+The planning grid shows managers one figure of its own: **no longer fits**
+(planned above available, flagged as "Over by" and never fixed automatically).
+It is not shown to an employee, who sees only their own plan, and it does not
+affect whether somebody is behind. A deactivated person's plans stay visible in
+the grid, read-only.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -985,6 +986,21 @@ what is a permission decision and is settled as one.
 flow in the product, role by role and on a phone, for consistency, wording and
 the details the earlier areas left: the point at which the product is judged
 ready, or not, for the final stage.
+
+**Proposed next: Phase 33 — cross-cutting UI from the 21 October 2026 review**
+*(Area 2 revisited; not scoped yet, kept out of Phase 32 by decision)*. Remove
+the page headings and subtitles on Team time, Timesheet, Planning, Reports,
+Users, Teams, Projects, Activities, Categories and Periods: an `sr-only` h1
+stays for assistive technology, the Manage pages' Create button moves into the
+toolbar beside the search, Periods keeps its lock rule as one muted line above
+the list, and the phone header names the current page beside the logo, since
+the sidebar's highlight is not visible there; whether Settings and Getting
+started keep their headings is open. Planning cells drawn as project-coloured
+chips, so the board reads as a plan beside Team time's numbers. The beige
+`secondary` surface ("Today", "Clear filters") retuned to the cool accent, if
+wanted. Not in it, by decision: merging or restructuring Planning and Team
+time — they share the chrome, not the job (actuals and corrections on one,
+intent and limits on the other).
 
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have

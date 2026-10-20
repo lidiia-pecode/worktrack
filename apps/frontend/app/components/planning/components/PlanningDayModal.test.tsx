@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningWeekRow } from "@/types";
+import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
 import { AbsenceType, UserStatus } from "@/types/enums";
 
 import { PlanningDayModal } from "./PlanningDayModal";
@@ -15,6 +15,14 @@ vi.mock("@/hooks/usePlanning", () => ({
   }),
 }));
 
+const NORTHWIND = {
+  id: "plan-1",
+  userId: "user-alice",
+  project: { id: "project-northwind", name: "Northwind" },
+  plannedMinutes: 240,
+  date: "2026-11-10",
+} as PlanningEntry;
+
 const ALICE: PlanningWeekRow = {
   user: {
     id: "user-alice",
@@ -26,7 +34,10 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
-  projects: [{ id: "project-northwind", name: "Northwind" }],
+  projects: [
+    { id: "project-northwind", name: "Northwind" },
+    { id: "project-internal", name: "Internal" },
+  ],
   entries: [],
 };
 
@@ -41,24 +52,34 @@ const VACATION: Absence = {
   updatedAt: "2026-10-01T00:00:00Z",
 };
 
-const renderModal = (absence?: Absence) => {
+const renderModal = (props: {
+  absence?: Absence;
+  entries?: PlanningEntry[];
+}) => {
   const onAddAbsence = vi.fn();
+  const onClose = vi.fn();
   render(
     <PlanningDayModal
-      row={ALICE}
+      row={{ ...ALICE, entries: props.entries ?? [] }}
       date="2026-11-10"
       dayLimitMinutes={480}
-      absence={absence}
+      absence={props.absence}
       onAddAbsence={onAddAbsence}
-      onClose={vi.fn()}
+      onClose={onClose}
     />,
   );
-  return { onAddAbsence };
+  return { onAddAbsence, onClose };
 };
+
+const makeDirty = (user: ReturnType<typeof userEvent.setup>) =>
+  user.type(screen.getByLabelText("Note"), "x");
+
+// The dialog's × is also named "Close"; the footer's button comes first.
+const footerClose = () => screen.getAllByRole("button", { name: "Close" })[0];
 
 describe("PlanningDayModal", () => {
   it("shows a frozen absence instead of the form", () => {
-    renderModal(VACATION);
+    renderModal({ absence: VACATION });
 
     expect(screen.getByText("Vacation")).toBeInTheDocument();
     expect(screen.getByText("Skiing")).toBeInTheDocument();
@@ -73,13 +94,44 @@ describe("PlanningDayModal", () => {
 
   it("offers to add an absence on a working day", async () => {
     const user = userEvent.setup();
-    const { onAddAbsence } = renderModal();
+    const { onAddAbsence } = renderModal({});
 
     expect(
       screen.getByRole("combobox", { name: "Project" }),
     ).toBeInTheDocument();
+    expect(screen.getByText(/of an 8h day planned/)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Add absence" }));
     expect(onAddAbsence).toHaveBeenCalledOnce();
+  });
+
+  it("asks before Close drops unsaved changes", async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderModal({});
+
+    await makeDirty(user);
+    await user.click(footerClose());
+    expect(screen.getByText("Discard your changes?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(footerClose());
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("asks before switching to another plan drops unsaved changes", async () => {
+    const user = userEvent.setup();
+    renderModal({ entries: [NORTHWIND] });
+
+    await makeDirty(user);
+    await user.click(screen.getByRole("button", { name: "Edit Northwind" }));
+    expect(screen.getByText("Discard your changes?")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Discard" }));
+    expect(
+      screen.getByRole("button", { name: "Save changes" }),
+    ).toBeInTheDocument();
   });
 });

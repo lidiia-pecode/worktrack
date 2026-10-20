@@ -367,7 +367,6 @@ export const PlanPeriodModal = ({
       hasUnsavedChanges={isDirty}
       size="lg"
       title={`Plan a period for ${fullName(row.user)}`}
-      description="The same hours on every working day. Single days can still be changed in the grid."
       icon={<CalendarRange className="size-5" />}
       footer={
         <>
@@ -492,7 +491,7 @@ export const PlanPeriodModal = ({
                   {/* The only row can be changed, not removed. */}
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="ghostDestructive"
                     size="iconSm"
                     aria-label={`Remove ${projectName(chosenId) ?? `project ${index + 1}`}`}
                     title="Remove from this plan"
@@ -638,12 +637,6 @@ export const PlanPeriodModal = ({
                   </p>
                 )}
               </div>
-            )}
-
-            {preview && plannedDays.length > 0 && conflicts.length === 0 && (
-              <p className="text-muted-foreground">
-                Weekends and absence days are skipped. Nothing else changes.
-              </p>
             )}
           </div>
         )}

@@ -256,6 +256,9 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   className="border-r border-border/60 p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground"
                 >
                   Person
+                  <span className="block font-normal normal-case tracking-normal">
+                    click to plan a period
+                  </span>
                 </th>
 
                 {weekDates.map((date) => (

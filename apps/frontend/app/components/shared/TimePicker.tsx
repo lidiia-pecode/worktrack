@@ -88,7 +88,7 @@ export const TimePicker = ({
 };
 
 const stepButtonClassName =
-  "h-4 w-5 rounded-sm p-0 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30";
+  "h-4 w-5 rounded-sm p-0 text-muted-foreground disabled:opacity-30";
 
 type TimeFieldProps = {
   label: string;
