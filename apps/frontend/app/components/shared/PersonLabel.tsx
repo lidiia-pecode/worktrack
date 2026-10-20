@@ -12,7 +12,7 @@ export const PersonLabel = ({ user }: PersonLabelProps) => (
     <Avatar user={user} />
 
     <span className="min-w-0">
-      <span className="block truncate text-sm font-medium text-foreground">
+      <span className="block truncate text-sm font-medium text-foreground transition-colors group-hover:text-brand group-focus-visible:text-brand">
         {fullName(user)}
       </span>
 

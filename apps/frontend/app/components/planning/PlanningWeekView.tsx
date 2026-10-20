@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
 
 import { usePlanningWeek } from "@/hooks/usePlanning";
-import { useAllAbsencesQuery } from "@/hooks/useAbsences";
+import { useAbsencesMutations, useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
@@ -17,6 +17,8 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
+import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { Absence } from "@/types";
 import { UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
@@ -29,12 +31,20 @@ import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
+import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanningDayModal } from "./components/PlanningDayModal";
+import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 
 type OpenedDay = {
   userId: string;
   date: string;
+};
+
+type AbsenceFormState = {
+  userId: string;
+  date: string;
+  absence?: Absence;
 };
 
 type PlanningWeekViewProps = {
@@ -53,6 +63,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const { weekStart, showWeekOf } = useShownWeek();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
+  const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
+  const [periodUserId, setPeriodUserId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -82,12 +94,21 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     [absences, weekDates],
   );
 
+  // An absence is frozen whole once any of its days locks, so its months count.
+  const lockRange = lockLookupRange(
+    dateFrom,
+    dateTo,
+    absences,
+    todayISODate(timezone),
+  );
   const {
     isLocked,
     isEditable,
     isError: isLocksError,
     refetch: refetchLocks,
-  } = useLockedDates(dateFrom, dateTo);
+  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
+
+  const absenceActions = useAbsencesMutations();
 
   const dailyTotals = useMemo(() => {
     const totalsByDate: Record<string, number> = {};
@@ -110,6 +131,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   const openedRow = openedDay
     ? rows.find((row) => row.user.id === openedDay.userId)
+    : undefined;
+  const openedAbsence = openedDay
+    ? absencesByUser[openedDay.userId]?.[openedDay.date]
+    : undefined;
+  const periodRow = periodUserId
+    ? rows.find((row) => row.user.id === periodUserId)
     : undefined;
 
   const todayIso = todayISODate(timezone);
@@ -267,6 +294,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   onOpenDay={(opened, date) =>
                     setOpenedDay({ userId: opened.user.id, date })
                   }
+                  onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />
               ))}
             </tbody>
@@ -280,7 +308,59 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           row={openedRow}
           date={openedDay.date}
           dayLimitMinutes={week.dayLimitMinutes}
+          absence={openedAbsence}
+          canEditAbsence={
+            !!openedAbsence &&
+            !isRangeLocked(
+              isLocked,
+              openedAbsence.startDate,
+              openedAbsence.endDate,
+            )
+          }
+          onAddAbsence={() =>
+            setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
+          }
+          onEditAbsence={(absence) =>
+            setAbsenceForm({
+              userId: openedDay.userId,
+              date: absence.startDate,
+              absence,
+            })
+          }
           onClose={() => setOpenedDay(null)}
+        />
+      )}
+
+      {absenceForm && (
+        <AbsenceFormModal
+          open
+          onClose={() => setAbsenceForm(null)}
+          userId={absenceForm.userId}
+          date={absenceForm.date}
+          absence={absenceForm.absence}
+          onCreate={(payload) =>
+            absenceActions.create.mutateAsync({
+              ...payload,
+              userId: absenceForm.userId,
+            })
+          }
+          onUpdate={(id, data) =>
+            absenceActions.update.mutateAsync({ id, data })
+          }
+          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+          isSaving={
+            absenceActions.create.isPending || absenceActions.update.isPending
+          }
+          isDeleting={absenceActions.delete.isPending}
+        />
+      )}
+
+      {periodRow && week && (
+        <PlanPeriodModal
+          key={periodRow.user.id}
+          row={periodRow}
+          dayLimitMinutes={week.dayLimitMinutes}
+          onClose={() => setPeriodUserId(null)}
         />
       )}
     </div>

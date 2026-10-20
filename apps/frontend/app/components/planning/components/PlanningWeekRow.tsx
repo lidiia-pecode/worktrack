@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 
 import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
-import { ProjectStatus } from "@/types/enums";
+import { ProjectStatus, UserStatus } from "@/types/enums";
 import {
   formatDuration,
   formatLongDayLabel,
@@ -23,6 +23,7 @@ type PlanningWeekRowProps = {
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
   onOpenDay: (row: Row, date: string) => void;
+  onPlanPeriod: (row: Row) => void;
 };
 
 const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
@@ -73,6 +74,7 @@ export const PlanningWeekRow = ({
   isLocked,
   isEditable,
   onOpenDay,
+  onPlanPeriod,
 }: PlanningWeekRowProps) => {
   const entriesByDate = new Map<string, PlanningEntry[]>();
   row.entries.forEach((entry) => {
@@ -94,9 +96,21 @@ export const PlanningWeekRow = ({
         scope="row"
         className="border-r border-border/60 p-0 text-left font-normal"
       >
-        <div className="flex min-w-0 items-center gap-2.5 p-3">
-          <PersonLabel user={row.user} />
-        </div>
+        {row.user.status === UserStatus.ACTIVE ? (
+          <button
+            type="button"
+            onClick={() => onPlanPeriod(row)}
+            title="Plan a period"
+            aria-label={`Plan a period for ${fullName(row.user)}`}
+            className="group flex w-full min-w-0 cursor-pointer items-center gap-2.5 p-3 text-left transition hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <PersonLabel user={row.user} />
+          </button>
+        ) : (
+          <div className="flex min-w-0 items-center gap-2.5 p-3">
+            <PersonLabel user={row.user} />
+          </div>
+        )}
       </th>
 
       {weekDates.map((date) => {

@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Trash2 } from "lucide-react";
+import { CalendarOff, Info, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
+import { formatDuration, isISODate } from "@/lib/utils/date";
+import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
@@ -44,6 +46,8 @@ const TYPE_OPTIONS = Object.values(AbsenceType).map((type) => ({
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Whose absence it is, to name the plans it will remove. */
+  userId: string;
   date: string;
   absence?: Absence;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
@@ -56,6 +60,7 @@ type Props = {
 export const AbsenceFormModal = ({
   open,
   onClose,
+  userId,
   date,
   absence,
   onCreate,
@@ -95,7 +100,39 @@ export const AbsenceFormModal = ({
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const startDate = useWatch({ control, name: "startDate" });
+  const [startDate, endDate] = useWatch({
+    control,
+    name: ["startDate", "endDate"],
+  });
+
+  const isRangeComplete =
+    isISODate(startDate) && isISODate(endDate) && endDate >= startDate;
+  const { items: plansInRange } = usePlanningEntries(
+    { userId, dateFrom: startDate, dateTo: endDate },
+    { enabled: open && isRangeComplete },
+  );
+
+  // Recording the absence deletes these on the server; named here first.
+  const removedPlans = useMemo(() => {
+    if (!isRangeComplete) return null;
+
+    const minutesByProject = new Map<string, number>();
+    plansInRange.forEach((plan) => {
+      minutesByProject.set(
+        plan.project.name,
+        (minutesByProject.get(plan.project.name) ?? 0) + plan.plannedMinutes,
+      );
+    });
+
+    return plansInRange.length === 0
+      ? null
+      : {
+          count: plansInRange.length,
+          projects: [...minutesByProject]
+            .map(([name, minutes]) => `${name} ${formatDuration(minutes)}`)
+            .join(", "),
+        };
+  }, [isRangeComplete, plansInRange]);
 
   // Moving the first day past the last is almost always a longer absence, not
   // a shorter one, so the last day follows rather than becoming invalid.
@@ -218,6 +255,17 @@ export const AbsenceFormModal = ({
               error={errors.endDate?.message}
             />
           </div>
+
+          {removedPlans && (
+            <p className="flex gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                Removes {removedPlans.count}{" "}
+                {removedPlans.count === 1 ? "plan" : "plans"} on these days:{" "}
+                {removedPlans.projects}
+              </span>
+            </p>
+          )}
 
           <Field id="absence-note" label="Note" error={errors.note?.message}>
             <TextareaAutosize

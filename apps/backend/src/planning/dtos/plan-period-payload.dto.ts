@@ -36,3 +36,20 @@ export class PlanPeriodPayload {
   @Type(() => PeriodProjectPayload)
   projects!: PeriodProjectPayload[];
 }
+
+/** The same plan, checked but not saved; the projects may still be empty. */
+export class PreviewPeriodPayload {
+  @IsUUID()
+  userId!: string;
+
+  @IsDateWithoutTimeString()
+  startDate!: string;
+
+  @IsDateWithoutTimeString()
+  endDate!: string;
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PeriodProjectPayload)
+  projects!: PeriodProjectPayload[];
+}

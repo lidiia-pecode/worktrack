@@ -83,6 +83,21 @@ export interface PlannedPeriod {
   updated: number;
 }
 
+export interface PeriodPreview {
+  /** The working days the plan would cover. */
+  plannedDays: string[];
+  /** Every day and week the plan would take over its limit. */
+  problems: string[];
+}
+
+interface ResolvedPeriod {
+  plannedDays: Set<string>;
+  problems: string[];
+  /** The person's plans across every week the period touches. */
+  existing: PlanningEntry[];
+  minutesByProject: Map<string, number>;
+}
+
 const dayLimitMinutes = (company: PlanningCompany): number =>
   Math.round(Number(company.standardWorkHoursPerDay) * 60);
 
@@ -442,6 +457,23 @@ export class PlanningService {
   }
 
   /**
+   * What a period plan would do, checked with the same rules the save uses,
+   * so the dialog can show the days and every problem before saving.
+   */
+  async previewPeriod(
+    payload: PlanPeriodPayload,
+    user: AuthUser,
+  ): Promise<PeriodPreview> {
+    const { plannedDays, problems } = await this.resolvePeriod(
+      payload,
+      user,
+      this.dataSource.manager,
+    );
+
+    return { plannedDays: [...plannedDays].sort(), problems };
+  }
+
+  /**
    * Sets each listed project to the same hours on every day of the range the
    * person has hours on, or writes nothing: the day and week limits are checked
    * on the result as a whole, and every problem is returned at once.
@@ -451,68 +483,18 @@ export class PlanningService {
     user: AuthUser,
   ): Promise<PlannedPeriod> {
     const { userId, startDate, endDate } = payload;
-    assertDateRange(startDate, endDate);
-
-    const minutesByProject = new Map(
-      payload.projects.map((p) => [p.projectId, p.minutesPerDay]),
-    );
-    if (minutesByProject.size !== payload.projects.length) {
-      throw new BadRequestException('Each project can be listed only once');
-    }
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, userId, user.companyId);
 
-      const targetUser = await this.getActiveUser(
-        userId,
-        user.companyId,
-        manager,
-      );
-      await this.assertCanPlanForUser(targetUser, user);
+      const { plannedDays, problems, existing, minutesByProject } =
+        await this.resolvePeriod(payload, user, manager);
 
-      for (const projectId of minutesByProject.keys()) {
-        await this.resolveProject(projectId, user.companyId, manager);
-        await this.assertProjectMember(manager, projectId, userId);
-      }
-
-      await this.assertPeriodNotLocked(
-        manager,
-        user.companyId,
-        startDate,
-        endDate,
-      );
-
-      const company = await this.getCompany(user.companyId, manager);
-      const weeks = await this.periodWeeks(company, userId, startDate, endDate);
-
-      const plannedDays = new Set(
-        weeks
-          .flatMap((week) => week.workingDays)
-          .filter((date) => date >= startDate && date <= endDate),
-      );
       if (plannedDays.size === 0) {
         throw new BadRequestException(
           `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences and days before the person joined are skipped.`,
         );
       }
-
-      const existing = await manager
-        .createQueryBuilder(PlanningEntry, 'p')
-        .where('p.company_id = :companyId', { companyId: user.companyId })
-        .andWhere('p.user_id = :userId', { userId })
-        .andWhere('p.date BETWEEN :from AND :to', {
-          from: weeks[0].start,
-          to: weeks[weeks.length - 1].end,
-        })
-        .getMany();
-
-      const problems = periodProblems({
-        weeks,
-        plannedDays,
-        minutesByProject,
-        existing,
-        dayLimit: dayLimitMinutes(company),
-      });
       if (problems.length > 0) throw new BadRequestException(problems);
 
       const existingByDayAndProject = new Map(
@@ -550,6 +532,71 @@ export class PlanningService {
 
       return { days: plannedDays.size, created, updated };
     });
+  }
+
+  /** The checks a period plan and its preview share; it writes nothing. */
+  private async resolvePeriod(
+    payload: PlanPeriodPayload,
+    user: AuthUser,
+    manager: EntityManager,
+  ): Promise<ResolvedPeriod> {
+    const { userId, startDate, endDate } = payload;
+    assertDateRange(startDate, endDate);
+
+    const minutesByProject = new Map(
+      payload.projects.map((p) => [p.projectId, p.minutesPerDay]),
+    );
+    if (minutesByProject.size !== payload.projects.length) {
+      throw new BadRequestException('Each project can be listed only once');
+    }
+
+    const targetUser = await this.getActiveUser(
+      userId,
+      user.companyId,
+      manager,
+    );
+    await this.assertCanPlanForUser(targetUser, user);
+
+    for (const projectId of minutesByProject.keys()) {
+      await this.resolveProject(projectId, user.companyId, manager);
+      await this.assertProjectMember(manager, projectId, userId);
+    }
+
+    await this.assertPeriodNotLocked(
+      manager,
+      user.companyId,
+      startDate,
+      endDate,
+    );
+
+    const company = await this.getCompany(user.companyId, manager);
+    const weeks = await this.periodWeeks(company, userId, startDate, endDate);
+
+    const plannedDays = new Set(
+      weeks
+        .flatMap((week) => week.workingDays)
+        .filter((date) => date >= startDate && date <= endDate),
+    );
+
+    const existing = await manager
+      .createQueryBuilder(PlanningEntry, 'p')
+      .where('p.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('p.user_id = :userId', { userId })
+      .andWhere('p.date BETWEEN :from AND :to', {
+        from: weeks[0].start,
+        to: weeks[weeks.length - 1].end,
+      })
+      .getMany();
+
+    const problems = periodProblems({
+      weeks,
+      plannedDays,
+      minutesByProject,
+      existing,
+      dayLimit: dayLimitMinutes(company),
+    });
+
+    return { plannedDays, problems, existing, minutesByProject };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {

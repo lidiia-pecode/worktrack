@@ -4,13 +4,14 @@ import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarClock, Pencil, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, Pencil, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { PlanningEntry, PlanningWeekRow } from "@/types";
+import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 import { usePlanningMutations } from "@/hooks/usePlanning";
 import { formatDuration, formatLongDayLabel } from "@/lib/utils/date";
+import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
@@ -74,6 +75,12 @@ type PlanningDayModalProps = {
   row: PlanningWeekRow;
   date: string;
   dayLimitMinutes: number;
+  /** The absence covering the day, which then holds no plan. */
+  absence?: Absence;
+  /** False while the absence touches a locked month. */
+  canEditAbsence: boolean;
+  onAddAbsence: () => void;
+  onEditAbsence: (absence: Absence) => void;
   onClose: () => void;
 };
 
@@ -81,6 +88,10 @@ export const PlanningDayModal = ({
   row,
   date,
   dayLimitMinutes,
+  absence,
+  canEditAbsence,
+  onAddAbsence,
+  onEditAbsence,
   onClose,
 }: PlanningDayModalProps) => {
   const { create, update, delete: remove } = usePlanningMutations();
@@ -206,6 +217,52 @@ export const PlanningDayModal = ({
     }
   };
 
+  if (absence) {
+    return (
+      <ResourceFormModal
+        open
+        onClose={onClose}
+        title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
+        description={`${fullName(row.user)} · away, nothing to plan`}
+        icon={<CalendarOff className="size-5" />}
+        footer={
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        }
+      >
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
+            <Badge variant="default" dot>
+              {ABSENCE_TYPE_LABELS[absence.type]}
+            </Badge>
+            <span>{formatAbsenceRange(absence)}</span>
+          </div>
+
+          {absence.note && (
+            <p className="text-sm text-muted-foreground">{absence.note}</p>
+          )}
+
+          {canEditAbsence ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onEditAbsence(absence)}
+            >
+              <Pencil className="size-4" />
+              Edit absence
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              This absence touches a locked month and cannot be changed.
+            </p>
+          )}
+        </div>
+      </ResourceFormModal>
+    );
+  }
+
   return (
     <>
       <ResourceFormModal
@@ -217,6 +274,20 @@ export const PlanningDayModal = ({
         icon={<CalendarClock className="size-5" />}
         footer={
           <>
+            {!editing && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onAddAbsence}
+                className="mr-auto"
+                disabled={create.isPending || update.isPending}
+              >
+                <CalendarOff className="size-4" />
+                Add absence
+              </Button>
+            )}
+
             {editing && (
               <Button
                 type="button"

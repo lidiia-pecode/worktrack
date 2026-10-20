@@ -707,6 +707,53 @@ describe('PlanningService', () => {
       expect(result.updated).toBe(1);
     });
 
+    it('previews the days and every problem without saving', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 24 * HOUR,
+      });
+      await existingEntry(member.id, TUESDAY, 3 * HOUR, otherProjectId);
+      await absentOn(member.id, WEDNESDAY);
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, FRIDAY, [{ projectId, minutesPerDay: 6 * HOUR }]),
+        manager,
+      );
+
+      expect(preview.plannedDays).toEqual([
+        MONDAY,
+        TUESDAY,
+        addDays(MONDAY, 3),
+        FRIDAY,
+      ]);
+      expect(preview.problems).toEqual([
+        expect.stringMatching(/: 9h planned, over the 8h working day/),
+        // 24h a week, less the absent day.
+        expect.stringMatching(/^Week of .+: 27h planned of 19h 12m available/),
+      ]);
+      expect(await entriesFor(member.id)).toHaveLength(1);
+    });
+
+    it('previews a range with no working day, and one with no project yet', async () => {
+      await expect(
+        service.previewPeriod(
+          period(SATURDAY, addDays(SATURDAY, 1), [
+            { projectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).resolves.toEqual({ plannedDays: [], problems: [] });
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, FRIDAY, []),
+        manager,
+      );
+      expect(preview.plannedDays).toHaveLength(5);
+      expect(preview.problems).toEqual([]);
+    });
+
     it('refuses a range with no working day', async () => {
       await expect(
         service.planPeriod(

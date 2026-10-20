@@ -1,20 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-import {
-  addDays,
-  companyToday,
-  firstOfMonth,
-  formatLongDayLabel,
-  formatWeekdayLabel,
-  getMonthGridDates,
-  getWeekDates,
-  getWeekStart,
-  isSameDay,
-  isToday,
-} from "@/lib/utils/date";
+import { useEffect, useRef } from "react";
+import { addDays, companyToday } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+
+import { MonthCalendar } from "../MonthCalendar";
 
 type Props = {
   weekStart: Date;
@@ -22,17 +12,12 @@ type Props = {
   onClose: () => void;
 };
 
-const MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
-  month: "long",
-  year: "numeric",
-});
 export const WeekCalendarPopover = ({
   weekStart,
   onSelectWeek,
   onClose,
 }: Props) => {
-  const [viewMonth, setViewMonth] = useState(weekStart);
-  const { weekStartDay, timezone } = useWorkSettings();
+  const { timezone } = useWorkSettings();
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -50,12 +35,10 @@ export const WeekCalendarPopover = ({
     };
   }, [onClose]);
 
-  const weekEnd = addDays(weekStart, 6);
-  const days = getMonthGridDates(viewMonth, weekStartDay);
-
-  const weekdayHeaders = getWeekDates(
-    getWeekStart(new Date(), weekStartDay),
-  ).map(formatWeekdayLabel);
+  const selectWeek = (day: Date) => {
+    onSelectWeek(day);
+    onClose();
+  };
 
   return (
     <div
@@ -64,82 +47,17 @@ export const WeekCalendarPopover = ({
       aria-label="Choose a week"
       className="absolute z-40 top-full mt-2 left-0 w-72 bg-popover rounded-2xl border border-border shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
     >
-      <div className="flex items-center justify-between mb-3">
-        <button
-          type="button"
-          aria-label="Previous month"
-          onClick={() => setViewMonth(firstOfMonth(viewMonth, -1))}
-          className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
-        >
-          <ChevronLeft size={16} aria-hidden />
-        </button>
-        <p className="text-sm font-semibold text-foreground">
-          {MONTH_LABEL.format(viewMonth)}
-        </p>
-        <button
-          type="button"
-          aria-label="Next month"
-          onClick={() => setViewMonth(firstOfMonth(viewMonth, 1))}
-          className="p-1.5 rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground transition"
-        >
-          <ChevronRight size={16} aria-hidden />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-7 mb-1">
-        {weekdayHeaders.map((d) => (
-          <span
-            key={d}
-            className="text-2xs font-medium text-muted-foreground text-center py-1"
-          >
-            {d}
-          </span>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-7 gap-y-1">
-        {days.map((day) => {
-          const inCurrentMonth = day.getMonth() === viewMonth.getMonth();
-          const inSelectedWeek = day >= weekStart && day <= weekEnd;
-          const today = isToday(day, timezone);
-
-          return (
-            <button
-              type="button"
-              key={day.toISOString()}
-              aria-label={
-                inSelectedWeek
-                  ? `${formatLongDayLabel(day)}, selected week`
-                  : formatLongDayLabel(day)
-              }
-              aria-current={today ? "date" : undefined}
-              autoFocus={isSameDay(day, weekStart)}
-              onClick={() => {
-                onSelectWeek(day);
-                onClose();
-              }}
-              className={`
-                relative h-8 text-xs rounded-md transition mx-auto w-8
-                ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}
-                ${inSelectedWeek ? "bg-brand-muted" : "hover:bg-muted/40"}
-                ${isSameDay(day, weekStart) || isSameDay(day, weekEnd) ? "font-semibold text-brand" : ""}
-              `}
-            >
-              {day.getDate()}
-              {today && (
-                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 size-1 rounded-full bg-brand" />
-              )}
-            </button>
-          );
-        })}
-      </div>
+      <MonthCalendar
+        initialMonth={weekStart}
+        selection={{ start: weekStart, end: addDays(weekStart, 6) }}
+        selectionLabel="selected week"
+        autoFocusDate={weekStart}
+        onSelectDay={selectWeek}
+      />
 
       <button
         type="button"
-        onClick={() => {
-          onSelectWeek(companyToday(timezone));
-          onClose();
-        }}
+        onClick={() => selectWeek(companyToday(timezone))}
         className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:underline"
       >
         Jump to this week

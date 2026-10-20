@@ -300,6 +300,7 @@ export const PersonWeekPanel = ({
         <AbsenceFormModal
           open
           onClose={() => setAbsenceForm(null)}
+          userId={user.id}
           date={absenceForm.date}
           absence={absenceForm.absence}
           onCreate={(payload) =>

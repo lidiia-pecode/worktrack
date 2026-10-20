@@ -55,6 +55,14 @@ export function isMissingEntityError(error: unknown): boolean {
   );
 }
 
+/** Every message of a refusal, for a form that lists them all. */
+export function getErrorMessages(error: unknown): string[] {
+  if (isApiMessageError(error) && Array.isArray(error.message)) {
+    return error.message;
+  }
+  return [getErrorMessage(error)];
+}
+
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     if (error.message === "SESSION_EXPIRED") {

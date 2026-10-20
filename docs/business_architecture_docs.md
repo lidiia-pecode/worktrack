@@ -452,7 +452,10 @@ its hours, creating or changing that day's plan; plans for other projects stay.
 The same rules apply to the result as a whole: a range touching a LOCKED month
 is refused, and if any day or week would go over its limit, nothing is saved and
 every day and week that does not fit is named. As with a single plan, only a
-total the write raises is refused.
+total the write raises is refused. The same checks can be run without saving
+(a preview), so the dialog shows the working days, the absences skipped, what
+is already planned and every conflict before anything is written, and saves
+only once everything fits.
 
 The planning grid shows managers two figures of their own: **unplanned** hours
 (available minus planned) and **no longer fits** (planned above available,
@@ -651,7 +654,7 @@ added to a team or a project.
 | Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
-| Planning — write, a day or a period | any active user | self + managed users | — |
+| Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
 | Hours report and export | whole company | own, plus users in teams they manage | — |
 

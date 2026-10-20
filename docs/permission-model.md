@@ -244,7 +244,9 @@ manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
 (`GET /planning/week`), the Team week view and the utilisation report. Planning
-a whole period (`POST /planning/period`) reaches the same people. One write
+a whole period (`POST /planning/period`), and its preview
+(`POST /planning/period/preview`, the same checks without a write), reach the
+same people. One write
 outside planning removes plans: recording an absence deletes its owner's plans
 on the days it covers, so an employee's own sick day clears their own plans for
 it. That reaches only the absence owner's plans on those open days, and opens no
