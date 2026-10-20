@@ -26,7 +26,8 @@ const absencesQueries = createEntityQuery<Absence, AbsenceQueryParams>({
 
 export const useAllAbsencesQuery = absencesQueries.useAllPagesQuery;
 
-const useAbsencesMutations = createEntityMutations<
+/** The absence writes alone, for a view that reads absences some other way. */
+export const useAbsencesMutations = createEntityMutations<
   Absence,
   AbsencePayload,
   UpdateAbsencePayload,
@@ -34,9 +35,14 @@ const useAbsencesMutations = createEntityMutations<
 >({
   queryKey: queryKeys.absences.all,
 
-  // Days away are an input to Expected, which the server works out — so the
-  // week views have to re-read it, not just the absence list.
-  alsoInvalidate: [queryKeys.capacity.all, queryKeys.timelogs.all],
+  // Days away are an input to Expected and to Planning's available hours,
+  // which the server works out — so the week views have to re-read them, not
+  // just the absence list.
+  alsoInvalidate: [
+    queryKeys.capacity.all,
+    queryKeys.timelogs.all,
+    queryKeys.planning.all,
+  ],
 
   api: {
     create: AbsencesClientApi.create,

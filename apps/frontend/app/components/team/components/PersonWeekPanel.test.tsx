@@ -36,6 +36,10 @@ vi.mock("@/hooks/useAssignableActivities", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useAbsences", () => ({
+  useAbsencesMutations: () => ({ create: noop, update: noop, delete: noop }),
+}));
+
 vi.mock("@/hooks/usePlanning", () => ({
   usePlanningEntries: () => ({
     items: data.plannedEntries,
@@ -50,6 +54,14 @@ vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => true }));
 // The form itself is tested on its own; here only that it opens matters.
 vi.mock("../../timesheet/components/TimeLogFormModal", () => ({
   TimeLogFormModal: () => <div role="dialog" aria-label="Time entry form" />,
+}));
+
+vi.mock("../../timesheet/components/AbsenceFormModal", () => ({
+  AbsenceFormModal: ({ absence }: { absence?: Absence }) => (
+    <div role="dialog" aria-label="Absence form">
+      {absence ? `Editing ${absence.id}` : "New absence"}
+    </div>
+  ),
 }));
 
 const WEEK_DATES = getWeekDates(new Date("2026-10-19T00:00:00"));
@@ -122,7 +134,12 @@ const plan = {
 const renderPanel = ({
   status = UserStatus.ACTIVE,
   absencesByDate = {},
-}: { status?: UserStatus; absencesByDate?: Record<string, Absence> } = {}) =>
+  isLocked = () => false,
+}: {
+  status?: UserStatus;
+  absencesByDate?: Record<string, Absence>;
+  isLocked?: (date: string) => boolean;
+} = {}) =>
   render(
     <PersonWeekPanel
       row={row(status)}
@@ -131,8 +148,8 @@ const renderPanel = ({
       weekLabel="19 Oct – 25 Oct, 2026"
       todayIso="2026-10-20"
       canWrite
-      isLocked={() => false}
-      isEditable={() => true}
+      isLocked={isLocked}
+      isEditable={(date) => !isLocked(date)}
       absencesByDate={absencesByDate}
       onClose={vi.fn()}
     />,
@@ -181,6 +198,40 @@ describe("PersonWeekPanel", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens the absence form for the person from the header and from an absence day", async () => {
+    const user = userEvent.setup();
+    renderPanel({ absencesByDate: { "2026-10-21": vacation } });
+
+    await user.click(screen.getByRole("button", { name: "Add absence" }));
+    expect(
+      screen.getByRole("dialog", { name: "Absence form" }),
+    ).toHaveTextContent("New absence");
+
+    await user.click(
+      within(dayOf("Wed")).getByRole("button", { name: /Vacation/ }),
+    );
+    expect(
+      screen.getByRole("dialog", { name: "Absence form" }),
+    ).toHaveTextContent("Editing absence-1");
+  });
+
+  it("shows a locked absence but does not open it", () => {
+    const fromSeptember = { ...vacation, startDate: "2026-09-28" };
+    renderPanel({
+      absencesByDate: { "2026-10-21": fromSeptember },
+      isLocked: (date) => date < "2026-10-01",
+    });
+
+    const wednesday = dayOf("Wed");
+    expect(within(wednesday).getByText("Vacation")).toBeInTheDocument();
+    expect(
+      within(wednesday).getByText("Part of it is in a locked month"),
+    ).toBeInTheDocument();
+    expect(
+      within(wednesday).queryByRole("button", { name: /Vacation/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it("marks a deactivated person and lets nobody add or edit their entries", () => {
     data.timelogs = [entry];
 
@@ -188,6 +239,9 @@ describe("PersonWeekPanel", () => {
 
     expect(screen.getByText("Deactivated")).toBeInTheDocument();
     expect(addButtons()).toHaveLength(0);
+    expect(
+      screen.queryByRole("button", { name: "Add absence" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Website redesign")).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /Website redesign/ }),

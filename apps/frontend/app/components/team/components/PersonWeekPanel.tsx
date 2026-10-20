@@ -1,13 +1,18 @@
 "use client";
 
 import { useId, useMemo, useState } from "react";
+import { CalendarOff } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useAbsencesMutations } from "@/hooks/useAbsences";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
+import { newAbsenceStartDate } from "@/lib/utils/absence";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
+import { isRangeLocked } from "@/lib/utils/reporting-period";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
@@ -17,6 +22,7 @@ import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
 import { NonWorkDayConfirm } from "../../shared/week/NonWorkDayConfirm";
+import { AbsenceFormModal } from "../../timesheet/components/AbsenceFormModal";
 import { TimeLogFormModal } from "../../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../../timesheet/helpers/last-entry-choice";
 import { UserTimeDayGroup } from "./UserTimeDayGroup";
@@ -24,6 +30,11 @@ import { UserTimeDayGroup } from "./UserTimeDayGroup";
 type FormState = {
   date: string;
   timelog?: TimeLog;
+};
+
+type AbsenceFormState = {
+  date: string;
+  absence?: Absence;
 };
 
 type PersonWeekPanelProps = {
@@ -44,7 +55,8 @@ type PersonWeekPanelProps = {
 
 /**
  * One person's week beside the Team time grid: their entries day by day, with
- * absences and plans where nothing is logged. A deactivated person is shown
+ * absences and plans where nothing is logged. An owner or manager records the
+ * person's time and absences from here. A deactivated person is shown
  * read-only, which the API enforces too.
  */
 export const PersonWeekPanel = ({
@@ -63,6 +75,7 @@ export const PersonWeekPanel = ({
   const { user } = row;
   const titleId = useId();
   const [formState, setFormState] = useState<FormState | null>(null);
+  const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
 
   const isDeactivated = isDeactivatedUser(user);
@@ -70,6 +83,7 @@ export const PersonWeekPanel = ({
 
   const dateFrom = toISODate(weekDates[0]);
   const dateTo = toISODate(weekDates[6]);
+  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
   const {
     items: timelogs,
@@ -93,6 +107,9 @@ export const PersonWeekPanel = ({
     dateFrom,
     dateTo,
   });
+
+  // The absences themselves come from the grid, which reads the whole team's.
+  const absenceActions = useAbsencesMutations();
 
   const timelogsByDate = useMemo(
     () => groupTimelogsByDate(timelogs),
@@ -137,6 +154,19 @@ export const PersonWeekPanel = ({
 
   const closeForm = () => setFormState(null);
 
+  const openNewAbsence = () =>
+    setAbsenceForm({
+      date: newAbsenceStartDate({
+        today: new Date(`${todayIso}T00:00:00`),
+        weekStart: weekDates[0],
+        isCurrentWeek,
+        isEditable,
+      }),
+    });
+
+  const openAbsence = (absence: Absence) =>
+    setAbsenceForm({ date: absence.startDate, absence });
+
   return (
     <SidePanel titleId={titleId} focusKey={user.id} onClose={onClose}>
       <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
@@ -162,6 +192,18 @@ export const PersonWeekPanel = ({
             {user.position ? `${user.position} · ${weekLabel}` : weekLabel}
           </p>
         </div>
+
+        {canEdit && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={openNewAbsence}
+          >
+            <CalendarOff className="size-4" />
+            Add absence
+          </Button>
+        )}
 
         <CloseButton aria-label="Close panel" onClick={onClose} />
       </div>
@@ -214,6 +256,10 @@ export const PersonWeekPanel = ({
             const iso = toISODate(date);
             const absence = absencesByDate[iso];
             const canWriteDay = canEdit && isEditable(iso);
+            // An absence is frozen whole once any of its days locks.
+            const isAbsenceLocked =
+              !!absence &&
+              isRangeLocked(isLocked, absence.startDate, absence.endDate);
 
             return (
               <UserTimeDayGroup
@@ -223,6 +269,7 @@ export const PersonWeekPanel = ({
                 isLocked={isLocked(iso)}
                 timelogs={timelogsByDate[iso] ?? []}
                 absence={absence}
+                isAbsenceLocked={isAbsenceLocked}
                 plannedEntries={plannedByDate[iso]}
                 onAdd={
                   canWriteDay && !absence ? () => openCreate(date) : undefined
@@ -232,6 +279,7 @@ export const PersonWeekPanel = ({
                     ? (timelog) => setFormState({ date: timelog.date, timelog })
                     : undefined
                 }
+                onAbsenceClick={canWriteDay ? openAbsence : undefined}
               />
             );
           })}
@@ -254,6 +302,26 @@ export const PersonWeekPanel = ({
         onClose={() => setNonWorkDayDate(null)}
         onConfirm={confirmNonWorkDay}
       />
+
+      {absenceForm && (
+        <AbsenceFormModal
+          open
+          onClose={() => setAbsenceForm(null)}
+          date={absenceForm.date}
+          absence={absenceForm.absence}
+          onCreate={(payload) =>
+            absenceActions.create.mutateAsync({ ...payload, userId: user.id })
+          }
+          onUpdate={(id, data) =>
+            absenceActions.update.mutateAsync({ id, data })
+          }
+          onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+          isSaving={
+            absenceActions.create.isPending || absenceActions.update.isPending
+          }
+          isDeleting={absenceActions.delete.isPending}
+        />
+      )}
 
       {formState && (
         <TimeLogFormModal

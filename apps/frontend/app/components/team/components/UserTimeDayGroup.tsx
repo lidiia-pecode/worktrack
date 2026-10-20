@@ -21,16 +21,29 @@ const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "short",
 });
 
+const absenceSummary = (absence: Absence) => (
+  <>
+    <Badge variant="default" dot className="text-2xs">
+      {ABSENCE_TYPE_LABELS[absence.type]}
+    </Badge>
+
+    <span>{formatAbsenceRange(absence)}</span>
+  </>
+);
+
 type UserTimeDayGroupProps = {
   date: Date;
   isToday: boolean;
   isLocked: boolean;
   timelogs: TimeLog[];
   absence?: Absence;
+  /** Part of the absence is in a locked month, so it is shown but not opened. */
+  isAbsenceLocked?: boolean;
   /** Shown where nothing is logged and no absence covers the day. */
   plannedEntries?: PlanningEntry[];
   onAdd?: (date: string) => void;
   onEdit?: (timelog: TimeLog) => void;
+  onAbsenceClick?: (absence: Absence) => void;
 };
 
 export const UserTimeDayGroup = ({
@@ -39,9 +52,11 @@ export const UserTimeDayGroup = ({
   isLocked,
   timelogs,
   absence,
+  isAbsenceLocked = false,
   plannedEntries = [],
   onAdd,
   onEdit,
+  onAbsenceClick,
 }: UserTimeDayGroupProps) => {
   const iso = toISODate(date);
   const totalMinutes = timelogs.reduce((sum, log) => sum + log.minutes, 0);
@@ -97,12 +112,27 @@ export const UserTimeDayGroup = ({
       </header>
 
       {absence && (
-        <div className="flex items-center gap-2 px-3 pb-2.5 text-xs text-muted-foreground">
-          <Badge variant="default" dot className="text-2xs">
-            {ABSENCE_TYPE_LABELS[absence.type]}
-          </Badge>
+        <div className="px-1.5 pb-2">
+          {onAbsenceClick && !isAbsenceLocked ? (
+            <button
+              type="button"
+              onClick={() => onAbsenceClick(absence)}
+              className="flex w-full items-center gap-2 rounded-lg px-1.5 py-1 text-left text-xs text-muted-foreground transition-colors hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {absenceSummary(absence)}
+            </button>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 px-1.5 py-1 text-xs text-muted-foreground">
+              {absenceSummary(absence)}
 
-          <span>{formatAbsenceRange(absence)}</span>
+              {isAbsenceLocked && !isLocked && (
+                <span className="flex items-center gap-1 text-2xs">
+                  <Lock className="size-3" aria-hidden />
+                  Part of it is in a locked month
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
