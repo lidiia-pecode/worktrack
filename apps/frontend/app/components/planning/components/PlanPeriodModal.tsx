@@ -5,9 +5,7 @@ import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import {
-  CalendarDays,
   CalendarRange,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Plus,
@@ -29,7 +27,6 @@ import {
   addMonthsToKey,
   companyToday,
   formatDayMonthLabel,
-  formatDayMonthYearLabel,
   formatDuration,
   formatMonthLabel,
   getMonthRange,
@@ -46,26 +43,32 @@ import { cn } from "@/lib/utils/cn";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 
 import { FormAlert } from "../../shared/FormAlert";
 import { FormSelect } from "../../shared/FormSelect";
-import { MonthCalendar } from "../../shared/MonthCalendar";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
+import { TimePicker } from "../../shared/TimePicker";
+import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
 const MINUTE_STEP = 15;
 
-const projectSchema = z.object({
-  projectId: z.string().min(1, "Select a project"),
-  minutesPerDay: z.string().min(1, "Choose the hours"),
-});
+const projectSchema = z
+  .object({
+    projectId: z.string().min(1, "Select a project"),
+    hours: z.coerce.number().min(0).max(24),
+    minutes: z.coerce.number().min(0).max(59),
+  })
+  .refine((data) => data.hours * 60 + data.minutes > 0, {
+    message: "Enter hours greater than 0",
+    path: ["hours"],
+  })
+  .refine((data) => data.minutes % MINUTE_STEP === 0, {
+    message: "Plan in 15-minute steps",
+    path: ["hours"],
+  });
 
 const periodSchema = z
   .object({
@@ -84,7 +87,10 @@ const periodSchema = z
 
 type PeriodFormData = z.infer<typeof periodSchema>;
 
-const EMPTY_PROJECT = { projectId: "", minutesPerDay: "" };
+const EMPTY_PROJECT = { projectId: "", hours: 0, minutes: 0 };
+
+const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
+  Number(hours) * 60 + Number(minutes);
 
 const toDate = (iso: string) => new Date(`${iso}T00:00:00`);
 
@@ -116,10 +122,8 @@ type PeriodPickerProps = {
 };
 
 /**
- * A month at a time with the arrows; the label opens the month grid for any
- * other range, where the first click picks the first day and the second the
- * last. A click before the first day moves it; a hovered or focused day
- * previews the band.
+ * A month at a time with the arrows; the label opens the shared range picker
+ * for any other period.
  */
 const PeriodPicker = ({
   startDate,
@@ -127,125 +131,54 @@ const PeriodPicker = ({
   invalid,
   onChange,
 }: PeriodPickerProps) => {
-  const [open, setOpen] = useState(false);
-  const [draftStart, setDraftStart] = useState<string | null>(null);
-  const [previewEnd, setPreviewEnd] = useState<string | null>(null);
-  const calendarRef = useRef<HTMLDivElement>(null);
-
   const monthKey = toMonthKey(startDate);
-  const label = isWholeMonth(startDate, endDate)
-    ? formatMonthLabel(monthKey)
-    : `${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)}`;
-
-  const choose = (first: string, last: string) => {
-    onChange(first, last);
-    setOpen(false);
-  };
 
   const pickMonth = (key: string) => {
     const { dateFrom, dateTo } = getMonthRange(key);
-    choose(dateFrom, dateTo);
+    onChange(dateFrom, dateTo);
   };
-
-  const pickDay = (day: Date) => {
-    const iso = toISODate(day);
-    if (!draftStart || iso < draftStart) setDraftStart(iso);
-    else choose(draftStart, iso);
-  };
-
-  const selection = draftStart
-    ? {
-        start: toDate(draftStart),
-        end: toDate(
-          previewEnd && previewEnd > draftStart ? previewEnd : draftStart,
-        ),
-      }
-    : { start: toDate(startDate), end: toDate(endDate) };
 
   return (
     <div className="flex items-center gap-2">
       <Button
         type="button"
         variant="outline"
-        size="iconSm"
+        size="icon"
+        className="size-11"
         aria-label="Previous month"
         onClick={() => pickMonth(addMonthsToKey(monthKey, -1))}
       >
         <ChevronLeft className="size-4" />
       </Button>
 
-      <Popover
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          setDraftStart(null);
-          setPreviewEnd(null);
-        }}
+      <DateRangePicker
+        startDate={startDate}
+        endDate={endDate}
+        label={
+          isWholeMonth(startDate, endDate)
+            ? formatMonthLabel(monthKey)
+            : undefined
+        }
+        invalid={invalid}
+        onChange={onChange}
+        className="flex-1"
       >
-        <PopoverTrigger
-          aria-invalid={invalid}
-          className={cn(
-            "flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
-            invalid && "border-destructive",
-          )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="text-brand"
+          onClick={() => pickMonth(monthKey)}
         >
-          <CalendarDays
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-          <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-          <ChevronDown
-            className="size-4 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-        </PopoverTrigger>
-
-        <PopoverContent
-          className="w-76"
-          initialFocus={() =>
-            calendarRef.current?.querySelector<HTMLElement>(
-              '[data-date][tabindex="0"]',
-            ) ?? true
-          }
-        >
-          <div ref={calendarRef}>
-            <p
-              className="mb-2 text-xs text-muted-foreground"
-              aria-live="polite"
-            >
-              {draftStart
-                ? `From ${formatDayMonthLabel(draftStart)}. Now choose the last day.`
-                : "Choose the first day, then the last."}
-            </p>
-
-            <MonthCalendar
-              initialMonth={toDate(startDate)}
-              selection={selection}
-              selectionLabel="in the period"
-              autoFocusDate={toDate(startDate)}
-              onSelectDay={pickDay}
-              onHoverDay={(day) => setPreviewEnd(day && toISODate(day))}
-            />
-
-            <div className="mt-3 border-t border-border/60 pt-3">
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="text-brand"
-                onClick={() => pickMonth(monthKey)}
-              >
-                Whole {formatMonthLabel(monthKey)}
-              </Button>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+          Whole {formatMonthLabel(monthKey)}
+        </Button>
+      </DateRangePicker>
 
       <Button
         type="button"
         variant="outline"
-        size="iconSm"
+        size="icon"
+        className="size-11"
         aria-label="Next month"
         onClick={() => pickMonth(addMonthsToKey(monthKey, 1))}
       >
@@ -335,17 +268,9 @@ export const PlanPeriodModal = ({
   const personProjects = row.projects;
   const projectName = (projectId: string) =>
     personProjects.find((project) => project.id === projectId)?.name;
-  const hoursOptions = Array.from(
-    { length: Math.floor(dayLimitMinutes / MINUTE_STEP) },
-    (_, index) => {
-      const minutes = (index + 1) * MINUTE_STEP;
-      return { value: String(minutes), label: formatDuration(minutes) };
-    },
-  );
-
   const chosenIds = chosen.map((project) => project.projectId);
   const dailyMinutes = chosen.reduce(
-    (total, project) => total + Number(project.minutesPerDay || 0),
+    (total, project) => total + minutesOf(project),
     0,
   );
   const periodError = errors.startDate?.message ?? errors.endDate?.message;
@@ -358,10 +283,10 @@ export const PlanPeriodModal = ({
         startDate,
         endDate,
         projects: chosen
-          .filter((project) => project.projectId && project.minutesPerDay)
+          .filter((project) => project.projectId && minutesOf(project) > 0)
           .map((project) => ({
             projectId: project.projectId,
-            minutesPerDay: Number(project.minutesPerDay),
+            minutesPerDay: minutesOf(project),
           })),
       }
     : null;
@@ -414,7 +339,7 @@ export const PlanPeriodModal = ({
         endDate: data.endDate,
         projects: data.projects.map((project) => ({
           projectId: project.projectId,
-          minutesPerDay: Number(project.minutesPerDay),
+          minutesPerDay: minutesOf(project),
         })),
       });
 
@@ -519,7 +444,7 @@ export const PlanPeriodModal = ({
               return (
                 <div
                   key={field.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_7rem_auto] items-start gap-2"
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-start gap-2"
                 >
                   <ProjectColorDot
                     projectId={chosenId}
@@ -541,20 +466,28 @@ export const PlanPeriodModal = ({
                     )}
                   />
 
-                  <Controller
-                    control={control}
-                    name={`projects.${index}.minutesPerDay`}
-                    render={({ field: select }) => (
-                      <FormSelect
-                        aria-label={`Hours a day for project ${index + 1}`}
-                        value={select.value}
-                        onValueChange={select.onChange}
-                        options={hoursOptions}
-                        placeholder="Hours"
-                        error={rowErrors?.minutesPerDay?.message}
-                      />
-                    )}
-                  />
+                  <Field
+                    id={`period-hours-${field.id}`}
+                    error={rowErrors?.hours?.message}
+                  >
+                    <TimePicker
+                      aria-label={`Hours a day for project ${index + 1}`}
+                      hours={Number(chosen[index]?.hours ?? 0)}
+                      minutes={Number(chosen[index]?.minutes ?? 0)}
+                      minuteStep={MINUTE_STEP}
+                      onHoursChange={(value) =>
+                        setValue(`projects.${index}.hours`, value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      onMinutesChange={(value) =>
+                        setValue(`projects.${index}.minutes`, value, {
+                          shouldDirty: true,
+                        })
+                      }
+                      error={!!rowErrors?.hours}
+                    />
+                  </Field>
 
                   {/* The only row can be changed, not removed. */}
                   <Button
@@ -617,7 +550,7 @@ export const PlanPeriodModal = ({
                   <div
                     key={fields[index]?.id ?? index}
                     style={{
-                      width: `${Math.min(100, (Number(project.minutesPerDay || 0) / dayLimitMinutes) * 100)}%`,
+                      width: `${Math.min(100, (minutesOf(project) / dayLimitMinutes) * 100)}%`,
                       backgroundColor: project.projectId
                         ? getProjectColor(project.projectId)
                         : "var(--muted-foreground)",

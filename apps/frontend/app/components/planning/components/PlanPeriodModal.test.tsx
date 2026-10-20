@@ -118,7 +118,10 @@ const fillRow = async (
   hours: string,
 ) => {
   await pickOption(user, `Project ${index + 1}`, project);
-  await pickOption(user, `Hours a day for project ${index + 1}`, hours);
+  const field = screen.getAllByRole("spinbutton", { name: "Hours" })[index];
+  await user.clear(field);
+  await user.type(field, hours);
+  await user.tab();
 };
 
 describe("PlanPeriodModal", () => {
@@ -262,11 +265,11 @@ describe("PlanPeriodModal", () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
-    await fillRow(user, 0, "Northwind", "4h");
+    await fillRow(user, 0, "Northwind", "4");
     await user.click(
       screen.getByRole("button", { name: "Add another project" }),
     );
-    await fillRow(user, 1, "Internal", "2h");
+    await fillRow(user, 1, "Internal", "2");
 
     expect(screen.getByText("6h a day")).toBeInTheDocument();
     expect(
@@ -298,7 +301,7 @@ describe("PlanPeriodModal", () => {
     server.planPeriod.mockResolvedValue({ days: 22, created: 22, updated: 0 });
     const { onClose } = renderModal();
 
-    await fillRow(user, 0, "Northwind", "4h");
+    await fillRow(user, 0, "Northwind", "4");
     await user.click(screen.getByRole("button", { name: "Save plan" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
@@ -318,7 +321,7 @@ describe("PlanPeriodModal", () => {
     });
     const { onClose } = renderModal();
 
-    await fillRow(user, 0, "Northwind", "6h");
+    await fillRow(user, 0, "Northwind", "6");
     await user.click(screen.getByRole("button", { name: "Save plan" }));
 
     const alert = await screen.findByText("Nothing was saved.");

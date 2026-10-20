@@ -291,9 +291,28 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
                   isEditable={isEditable}
-                  onOpenDay={(opened, date) =>
-                    setOpenedDay({ userId: opened.user.id, date })
-                  }
+                  onOpenDay={(opened, date) => {
+                    // An absence day opens the absence itself, unless a
+                    // locked month freezes it; then the day dialog says so.
+                    const absence = absencesByUser[opened.user.id]?.[date];
+                    const isAbsenceEditable =
+                      !!absence &&
+                      !isRangeLocked(
+                        isLocked,
+                        absence.startDate,
+                        absence.endDate,
+                      );
+
+                    if (absence && isAbsenceEditable) {
+                      setAbsenceForm({
+                        userId: opened.user.id,
+                        date: absence.startDate,
+                        absence,
+                      });
+                    } else {
+                      setOpenedDay({ userId: opened.user.id, date });
+                    }
+                  }}
                   onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />
               ))}
@@ -309,23 +328,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           date={openedDay.date}
           dayLimitMinutes={week.dayLimitMinutes}
           absence={openedAbsence}
-          canEditAbsence={
-            !!openedAbsence &&
-            !isRangeLocked(
-              isLocked,
-              openedAbsence.startDate,
-              openedAbsence.endDate,
-            )
-          }
           onAddAbsence={() =>
             setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
-          }
-          onEditAbsence={(absence) =>
-            setAbsenceForm({
-              userId: openedDay.userId,
-              date: absence.startDate,
-              absence,
-            })
           }
           onClose={() => setOpenedDay(null)}
         />

@@ -19,7 +19,7 @@ import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
-import { DateInput } from "../../shared/inputs";
+import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "absence-form";
@@ -86,7 +86,6 @@ export const AbsenceFormModal = ({
     register,
     handleSubmit,
     control,
-    getValues,
     setValue,
     reset,
     formState: { errors, isDirty },
@@ -134,14 +133,10 @@ export const AbsenceFormModal = ({
         };
   }, [isRangeComplete, plansInRange]);
 
-  // Moving the first day past the last is almost always a longer absence, not
-  // a shorter one, so the last day follows rather than becoming invalid.
-  useEffect(() => {
-    if (startDate && getValues("endDate") < startDate) {
-      setValue("endDate", startDate, { shouldDirty: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate]);
+  const setDays = (first: string, last: string) => {
+    setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
+    setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+  };
 
   const onSubmit = async (data: AbsenceFormData) => {
     const shared = {
@@ -241,20 +236,19 @@ export const AbsenceFormModal = ({
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <DateInput
-              label="First day"
-              {...register("startDate")}
-              error={errors.startDate?.message}
+          <Field
+            id="absence-days"
+            label="Days"
+            group
+            error={errors.startDate?.message ?? errors.endDate?.message}
+          >
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              invalid={!!(errors.startDate || errors.endDate)}
+              onChange={setDays}
             />
-
-            <DateInput
-              label="Last day"
-              {...register("endDate")}
-              min={startDate || undefined}
-              error={errors.endDate?.message}
-            />
-          </div>
+          </Field>
 
           {removedPlans && (
             <p className="flex gap-2 text-sm text-muted-foreground">

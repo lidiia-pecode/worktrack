@@ -13,10 +13,17 @@ type TimePickerProps = {
   className?: string;
   error?: boolean;
   minuteStep?: number;
+  /** Names the pair where no visible label does, e.g. in a row of controls. */
+  "aria-label"?: string;
 };
 
 const MAX_MINUTES = 24 * 60;
 
+/**
+ * Hours and minutes as one control the height of an input, so it sits beside
+ * a select or a text field. Each field types, steps by arrow key, wheel or
+ * its small chevrons, and the minutes carry into the hours.
+ */
 export const TimePicker = ({
   hours,
   minutes,
@@ -25,6 +32,7 @@ export const TimePicker = ({
   className,
   error,
   minuteStep = 5,
+  "aria-label": ariaLabel,
 }: TimePickerProps) => {
   const total = hours * 60 + minutes;
 
@@ -42,9 +50,14 @@ export const TimePicker = ({
 
   return (
     <div
+      role={ariaLabel ? "group" : undefined}
+      aria-label={ariaLabel}
       className={cn(
-        "inline-flex items-center rounded-lg p-0.5 transition-colors",
-        error ? "bg-destructive/10 ring-1 ring-destructive/40" : "bg-muted/25",
+        "inline-flex h-11 items-center rounded-lg border bg-input px-1.5 transition-colors",
+        "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
+        error
+          ? "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
+          : "border-input-placeholder/50",
         className,
       )}
     >
@@ -58,7 +71,7 @@ export const TimePicker = ({
       />
       <span
         aria-hidden="true"
-        className="pb-0.5 text-base font-medium text-muted-foreground select-none"
+        className="px-0.5 pb-0.5 text-sm font-medium text-muted-foreground select-none"
       >
         :
       </span>
@@ -75,7 +88,7 @@ export const TimePicker = ({
 };
 
 const stepButtonClassName =
-  "h-4 w-full rounded-sm p-0 hover:bg-card disabled:opacity-30";
+  "h-4 w-5 rounded-sm p-0 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-30";
 
 type TimeFieldProps = {
   label: string;
@@ -113,19 +126,7 @@ const TimeField = ({
   };
 
   return (
-    <div className="flex flex-col items-center">
-      <Button
-        type="button"
-        variant="ghost"
-        tabIndex={-1}
-        aria-label={`Increase: ${label}`}
-        disabled={!canIncrease}
-        className={stepButtonClassName}
-        onClick={() => step(1)}
-      >
-        <ChevronUp className="size-3.5" />
-      </Button>
-
+    <div className="flex items-center">
       <input
         value={displayValue}
         role="spinbutton"
@@ -166,23 +167,37 @@ const TimeField = ({
           }
         }}
         className={cn(
-          "w-9 rounded-md bg-transparent py-1 text-center text-lg leading-none font-semibold",
+          "w-7 rounded-md bg-transparent py-1 text-center text-sm leading-none font-semibold",
           "tabular-nums text-foreground outline-none transition-colors",
-          "hover:bg-card/60 focus:bg-card focus:text-brand focus:shadow-xs",
+          "hover:bg-muted/40 focus:bg-brand-subtle focus:text-brand",
         )}
       />
 
-      <Button
-        type="button"
-        variant="ghost"
-        tabIndex={-1}
-        aria-label={`Decrease: ${label}`}
-        disabled={!canDecrease}
-        className={stepButtonClassName}
-        onClick={() => step(-1)}
-      >
-        <ChevronDown className="size-3.5" />
-      </Button>
+      <div className="flex flex-col">
+        <Button
+          type="button"
+          variant="ghost"
+          tabIndex={-1}
+          aria-label={`Increase: ${label}`}
+          disabled={!canIncrease}
+          className={stepButtonClassName}
+          onClick={() => step(1)}
+        >
+          <ChevronUp className="size-3" />
+        </Button>
+
+        <Button
+          type="button"
+          variant="ghost"
+          tabIndex={-1}
+          aria-label={`Decrease: ${label}`}
+          disabled={!canDecrease}
+          className={stepButtonClassName}
+          onClick={() => step(-1)}
+        >
+          <ChevronDown className="size-3" />
+        </Button>
+      </div>
     </div>
   );
 };

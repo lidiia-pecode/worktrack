@@ -75,12 +75,12 @@ type PlanningDayModalProps = {
   row: PlanningWeekRow;
   date: string;
   dayLimitMinutes: number;
-  /** The absence covering the day, which then holds no plan. */
+  /**
+   * The absence covering the day, shown here only while a locked month
+   * freezes it; an editable one opens its form straight from the grid.
+   */
   absence?: Absence;
-  /** False while the absence touches a locked month. */
-  canEditAbsence: boolean;
   onAddAbsence: () => void;
-  onEditAbsence: (absence: Absence) => void;
   onClose: () => void;
 };
 
@@ -89,9 +89,7 @@ export const PlanningDayModal = ({
   date,
   dayLimitMinutes,
   absence,
-  canEditAbsence,
   onAddAbsence,
-  onEditAbsence,
   onClose,
 }: PlanningDayModalProps) => {
   const { create, update, delete: remove } = usePlanningMutations();
@@ -243,21 +241,9 @@ export const PlanningDayModal = ({
             <p className="text-sm text-muted-foreground">{absence.note}</p>
           )}
 
-          {canEditAbsence ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onEditAbsence(absence)}
-            >
-              <Pencil className="size-4" />
-              Edit absence
-            </Button>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              This absence touches a locked month and cannot be changed.
-            </p>
-          )}
+          <p className="text-xs text-muted-foreground">
+            This absence touches a locked month and cannot be changed.
+          </p>
         </div>
       </ResourceFormModal>
     );

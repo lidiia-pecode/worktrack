@@ -41,57 +41,39 @@ const VACATION: Absence = {
   updatedAt: "2026-10-01T00:00:00Z",
 };
 
-const renderModal = (props: {
-  absence?: Absence;
-  canEditAbsence?: boolean;
-}) => {
+const renderModal = (absence?: Absence) => {
   const onAddAbsence = vi.fn();
-  const onEditAbsence = vi.fn();
   render(
     <PlanningDayModal
       row={ALICE}
       date="2026-11-10"
       dayLimitMinutes={480}
-      absence={props.absence}
-      canEditAbsence={props.canEditAbsence ?? true}
+      absence={absence}
       onAddAbsence={onAddAbsence}
-      onEditAbsence={onEditAbsence}
       onClose={vi.fn()}
     />,
   );
-  return { onAddAbsence, onEditAbsence };
+  return { onAddAbsence };
 };
 
 describe("PlanningDayModal", () => {
-  it("shows an absence day's absence instead of the form", async () => {
-    const user = userEvent.setup();
-    const { onEditAbsence } = renderModal({ absence: VACATION });
+  it("shows a frozen absence instead of the form", () => {
+    renderModal(VACATION);
 
     expect(screen.getByText("Vacation")).toBeInTheDocument();
     expect(screen.getByText("Skiing")).toBeInTheDocument();
+    expect(screen.getByText(/touches a locked month/)).toBeInTheDocument();
     expect(
       screen.queryByRole("combobox", { name: "Project" }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Add plan" }),
     ).not.toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: "Edit absence" }));
-    expect(onEditAbsence).toHaveBeenCalledWith(VACATION);
-  });
-
-  it("explains a locked absence instead of offering to edit it", () => {
-    renderModal({ absence: VACATION, canEditAbsence: false });
-
-    expect(
-      screen.queryByRole("button", { name: "Edit absence" }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByText(/touches a locked month/)).toBeInTheDocument();
   });
 
   it("offers to add an absence on a working day", async () => {
     const user = userEvent.setup();
-    const { onAddAbsence } = renderModal({});
+    const { onAddAbsence } = renderModal();
 
     expect(
       screen.getByRole("combobox", { name: "Project" }),
