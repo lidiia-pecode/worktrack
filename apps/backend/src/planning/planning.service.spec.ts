@@ -1,12 +1,16 @@
 import 'reflect-metadata';
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -285,6 +289,10 @@ describe('PlanningService', () => {
   afterEach(async () => {
     await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(Absence).delete({ companyId });
+    await dataSource.getRepository(UserCapacity).delete({ companyId });
+    await dataSource
+      .getRepository(User)
+      .update({ id: member.id }, { status: UserStatus.ACTIVE });
     await dataSource
       .getRepository(Project)
       .update({ id: archivedProjectId }, { status: ProjectStatus.ACTIVE });
@@ -513,6 +521,16 @@ describe('PlanningService', () => {
     });
 
     it('measures the week against available hours, not capacity', async () => {
+      // A longer standard day, so only the week can refuse the extra hour.
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { standardWorkHoursPerDay: 10 });
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 40 * HOUR,
+      });
       await absentOn(member.id, MONDAY);
 
       for (let day = 1; day < 5; day++) {
@@ -520,28 +538,25 @@ describe('PlanningService', () => {
       }
 
       await expect(
-        service.create(plan(member.id, MONDAY, HOUR, otherProjectId), manager),
+        service.create(plan(member.id, TUESDAY, HOUR, otherProjectId), manager),
       ).rejects.toThrow('Weekly planning limit exceeded: 0h left of 32h');
     });
 
-    it('never lets an absence block planning the day itself', async () => {
+    it('refuses a plan on a day the person is away', async () => {
       await absentOn(member.id, MONDAY);
 
-      const entry = await service.create(
-        plan(member.id, MONDAY, 8 * HOUR),
-        manager,
-      );
-
-      expect(entry.date).toBe(MONDAY);
+      await expect(
+        service.create(plan(member.id, MONDAY, 8 * HOUR), manager),
+      ).rejects.toThrow(`This person is away on ${MONDAY} (sick leave)`);
     });
 
-    it('never changes a plan when an absence is recorded', async () => {
-      await planFullWeek(member.id);
-      const before = await entriesFor(member.id);
+    it('refuses moving a plan onto a day the person is away', async () => {
+      await absentOn(member.id, TUESDAY);
+      const id = await existingEntry(member.id, MONDAY, 4 * HOUR);
 
-      await absentOn(member.id, MONDAY, TUESDAY);
-
-      expect(await entriesFor(member.id)).toEqual(before);
+      await expect(
+        service.update(id, { date: TUESDAY }, manager),
+      ).rejects.toThrow(/This person is away on/);
     });
 
     it('lets an over-budget week be reduced, but not raised', async () => {
@@ -594,6 +609,238 @@ describe('PlanningService', () => {
 
       expect(week.weekStart).toBe(addDays(MONDAY, -1));
       expect(week.weekEnd).toBe(SATURDAY);
+    });
+  });
+
+  describe('planning a period', () => {
+    const period = (
+      startDate: string,
+      endDate: string,
+      projects: { projectId: string; minutesPerDay: number }[],
+      userId = member.id,
+    ) => ({ userId, startDate, endDate, projects });
+
+    const problemsOf = async (promise: Promise<unknown>): Promise<string[]> => {
+      const error: unknown = await promise.catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(BadRequestException);
+      const { message } = (error as BadRequestException).getResponse() as {
+        message: string[];
+      };
+      return message;
+    };
+
+    it('plans every working day for each project, skipping weekends and absences', async () => {
+      await absentOn(member.id, WEDNESDAY);
+
+      const result = await service.planPeriod(
+        period(MONDAY, addDays(NEXT_MONDAY, 4), [
+          { projectId, minutesPerDay: 4 * HOUR },
+          { projectId: otherProjectId, minutesPerDay: 2 * HOUR },
+        ]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 9, created: 18, updated: 0 });
+      const entries = await entriesFor(member.id);
+      expect(entries).toHaveLength(18);
+      expect(entries.map((e) => e.date)).not.toContain(WEDNESDAY);
+      expect(entries.map((e) => e.date)).not.toContain(SATURDAY);
+    });
+
+    it('replaces the listed project and keeps the others', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, MONDAY, HOUR, otherProjectId);
+
+      const result = await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 5 * HOUR }]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 1, created: 0, updated: 1 });
+      const minutesByProject = Object.fromEntries(
+        (await entriesFor(member.id)).map((e) => [
+          e.projectId,
+          e.plannedMinutes,
+        ]),
+      );
+      expect(minutesByProject).toEqual({
+        [projectId]: 5 * HOUR,
+        [otherProjectId]: HOUR,
+      });
+    });
+
+    it('lists every day and week that does not fit, and saves nothing', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 24 * HOUR,
+      });
+      await existingEntry(member.id, TUESDAY, 3 * HOUR, otherProjectId);
+
+      const problems = await problemsOf(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [{ projectId, minutesPerDay: 6 * HOUR }]),
+          manager,
+        ),
+      );
+
+      expect(problems).toEqual([
+        expect.stringMatching(
+          /: 9h planned, over the 8h working day \(3h already planned on other projects\)$/,
+        ),
+        expect.stringMatching(
+          /^Week of .+: 33h planned of 24h available \(3h already planned on other projects\)$/,
+        ),
+      ]);
+      expect(await entriesFor(member.id)).toHaveLength(1);
+    });
+
+    it('lets a day already over the limit be lowered', async () => {
+      await existingEntry(member.id, MONDAY, 9 * HOUR);
+
+      const result = await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 8 * HOUR + 30 }]),
+        manager,
+      );
+
+      expect(result.updated).toBe(1);
+    });
+
+    it('previews the days and every problem without saving', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 24 * HOUR,
+      });
+      await existingEntry(member.id, TUESDAY, 3 * HOUR, otherProjectId);
+      await absentOn(member.id, WEDNESDAY);
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, FRIDAY, [{ projectId, minutesPerDay: 6 * HOUR }]),
+        manager,
+      );
+
+      expect(preview.plannedDays).toEqual([
+        MONDAY,
+        TUESDAY,
+        addDays(MONDAY, 3),
+        FRIDAY,
+      ]);
+      expect(preview.problems).toEqual([
+        expect.stringMatching(/: 9h planned, over the 8h working day/),
+        // 24h a week, less the absent day.
+        expect.stringMatching(/^Week of .+: 27h planned of 19h 12m available/),
+      ]);
+      expect(await entriesFor(member.id)).toHaveLength(1);
+    });
+
+    it('previews a range with no working day, and one with no project yet', async () => {
+      await expect(
+        service.previewPeriod(
+          period(SATURDAY, addDays(SATURDAY, 1), [
+            { projectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).resolves.toEqual({ plannedDays: [], problems: [] });
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, FRIDAY, []),
+        manager,
+      );
+      expect(preview.plannedDays).toHaveLength(5);
+      expect(preview.problems).toEqual([]);
+    });
+
+    it('counts plans outside the range against the week it shares', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 32 * HOUR,
+      });
+      await existingEntry(member.id, FRIDAY, 8 * HOUR, otherProjectId);
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, addDays(MONDAY, 3), [
+          { projectId, minutesPerDay: 8 * HOUR },
+        ]),
+        manager,
+      );
+
+      // Every day fits the 8h day; the week does not once Friday counts.
+      expect(preview.problems).toEqual([
+        expect.stringMatching(/^Week of .+: 40h planned of 32h available/),
+      ]);
+    });
+
+    it('refuses a range with no working day', async () => {
+      await expect(
+        service.planPeriod(
+          period(SATURDAY, addDays(SATURDAY, 1), [
+            { projectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow('There is no working day to plan');
+    });
+
+    it('refuses a range touching a locked month, in the preview too', async () => {
+      const lockedWeek = period(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4), [
+        { projectId, minutesPerDay: HOUR },
+      ]);
+
+      await expect(service.planPeriod(lockedWeek, manager)).rejects.toThrow(
+        /LOCKED reporting period/,
+      );
+      await expect(service.previewPeriod(lockedWeek, manager)).rejects.toThrow(
+        /LOCKED reporting period/,
+      );
+      expect(await entriesFor(member.id)).toHaveLength(0);
+    });
+
+    it('refuses a project the person is not on, or listed twice', async () => {
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [
+            { projectId: unstaffedProjectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow(/not a member of the project/);
+
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [
+            { projectId, minutesPerDay: HOUR },
+            { projectId, minutesPerDay: 2 * HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow('Each project can be listed only once');
+    });
+
+    it('refuses an inactive person, an employee and somebody outside the team', async () => {
+      const anHour = [{ projectId, minutesPerDay: HOUR }];
+
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, anHour, outsider.id),
+          manager,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.planPeriod(period(MONDAY, FRIDAY, anHour), member),
+      ).rejects.toThrow(ForbiddenException);
+
+      await dataSource
+        .getRepository(User)
+        .update({ id: member.id }, { status: UserStatus.DEACTIVATED });
+      await expect(
+        service.planPeriod(period(MONDAY, FRIDAY, anHour), manager),
+      ).rejects.toThrow('Planning can only be created for active users');
     });
   });
 

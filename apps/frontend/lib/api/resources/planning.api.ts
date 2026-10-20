@@ -8,6 +8,9 @@ import {
   PlanningRemovalCountQuery,
   PlanningWeek,
   PlanningWeekQuery,
+  PeriodPreview,
+  PlanPeriodPayload,
+  PlannedPeriod,
   UpdatePlanningEntryPayload,
 } from "@/types";
 
@@ -28,6 +31,12 @@ const client = createClient({ endpoint: "planning" });
 export const PlanningClientApi = {
   ...crud,
   delete: (id: string) => client.delete(`/${id}`),
+
+  planPeriod: (payload: PlanPeriodPayload) =>
+    client.post<PlannedPeriod>("/period", payload),
+
+  previewPeriod: (payload: PlanPeriodPayload) =>
+    client.post<PeriodPreview>("/period/preview", payload),
 
   getWeek: (params: PlanningWeekQuery) =>
     client.get<PlanningWeek>(`/week${buildQueryString(params)}`),

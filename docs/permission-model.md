@@ -243,7 +243,14 @@ Phase 31; D9 says nothing about status, so this is a rule added on top of it.
 manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
-(`GET /planning/week`), the Team week view and the utilisation report. The
+(`GET /planning/week`), the Team week view and the utilisation report. Planning
+a whole period (`POST /planning/period`), and its preview
+(`POST /planning/period/preview`, the same checks without a write), reach the
+same people. One write
+outside planning removes plans: recording an absence deletes its owner's plans
+on the days it covers, so an employee's own sick day clears their own plans for
+it. That reaches only the absence owner's plans on those open days, and opens no
+planning route to employees (decided 20 October 2026, Phase 32). The
 removal count (`GET /planning/removal-count`) counts the same people a save may
 remove. Removing somebody from a project deletes their plans for it from today
 on, and since a save only removes people the caller was shown (§3.5), a manager
@@ -273,7 +280,7 @@ project staffed from both teams.
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
-| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Reactivating him changes nothing back, because nothing was removed |
+| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in, and neither Mary nor Olivia can add, edit or delete his time or absences (§3.7). Reactivating him changes nothing back, because nothing was removed |
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |
@@ -343,9 +350,11 @@ responsible person on a project, so whether they must be a member is moot
 (formerly P3).
 
 Everything built afterwards — absences, capacity, planning, reporting and the
-hours export — needed nothing new here: it reuses D9's people through the same
-helpers, so a manager's figures cover the teams they lead and an owner's the
-whole company. Reopening a locked month is the Owner's alone.
+hours export — reuses D9's people through the same helpers, so a manager's
+figures cover the teams they lead and an owner's the whole company. Reopening a
+locked month is the Owner's alone. One rule was added on top in October 2026
+(Phase 31): time and absences can be written for somebody else only while that
+person is active (§3.7).
 
 ---
 

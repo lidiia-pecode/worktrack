@@ -9,7 +9,7 @@ export default async function PlanningPage() {
     <>
       <PageHeader
         title="Planning"
-        description="Plan your team's week by project. Plans are guidance, never a limit on logged time."
+        description="Plan your team's week by project, or click a person to plan a longer period. Plans are guidance, never a limit on logged time."
       />
 
       <PlanningWeekView role={user.role} viewerId={user.id} />

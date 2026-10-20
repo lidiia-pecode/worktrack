@@ -109,6 +109,13 @@ export class AbsencesService {
         payload.startDate,
         payload.endDate,
       );
+      await this.removePlansOn(
+        manager,
+        ownerId,
+        user.companyId,
+        payload.startDate,
+        payload.endDate,
+      );
 
       const entity = manager.create(Absence, {
         companyId: user.companyId,
@@ -171,6 +178,13 @@ export class AbsencesService {
         startDate,
         endDate,
         id,
+      );
+      await this.removePlansOn(
+        manager,
+        ownerId,
+        user.companyId,
+        startDate,
+        endDate,
       );
 
       return manager.save(Absence, absence);
@@ -294,6 +308,28 @@ export class AbsencesService {
         `An absence already covers ${overlapping.startDate} to ${overlapping.endDate}. Absences cannot overlap.`,
       );
     }
+  }
+
+  /**
+   * A day the person is away is not a planned day, so recording an absence
+   * removes their plans on it, whoever records it. Its range is never locked,
+   * so only open days lose plans.
+   */
+  private async removePlansOn(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<void> {
+    await manager
+      .createQueryBuilder()
+      .delete()
+      .from('planning_entries')
+      .where('company_id = :companyId', { companyId })
+      .andWhere('user_id = :userId', { userId })
+      .andWhere('date BETWEEN :startDate AND :endDate', { startDate, endDate })
+      .execute();
   }
 
   /**

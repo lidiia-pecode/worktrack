@@ -31,6 +31,28 @@ export interface UpdatePlanningEntryPayload {
   note?: string | null;
 }
 
+// Payload (back PlanPeriodPayload)
+export interface PlanPeriodPayload {
+  userId: string;
+  startDate: string;
+  endDate: string;
+  projects: { projectId: string; minutesPerDay: number }[];
+}
+
+export interface PlannedPeriod {
+  days: number;
+  created: number;
+  updated: number;
+}
+
+// Response (back PeriodPreview): the same plan checked, not saved
+export interface PeriodPreview {
+  /** The working days the plan would cover. */
+  plannedDays: string[];
+  /** Every day and week the plan would take over its limit. */
+  problems: string[];
+}
+
 // Query (back PlanningQueryDto)
 export type PlanningQuery = PaginationParams & {
   userId?: string;

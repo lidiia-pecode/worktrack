@@ -41,7 +41,6 @@ export const StepActions = ({
             size="sm"
             onClick={onBack}
             disabled={isPending}
-            className="text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             <ChevronLeft className="size-4" />
             Back
@@ -56,7 +55,6 @@ export const StepActions = ({
           size="sm"
           onClick={onSkip}
           disabled={isPending}
-          className="text-muted-foreground hover:bg-muted hover:text-foreground"
         >
           Skip for now
         </Button>

@@ -1,7 +1,7 @@
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 
 import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
-import { ProjectStatus } from "@/types/enums";
+import { ProjectStatus, UserStatus } from "@/types/enums";
 import {
   formatDuration,
   formatLongDayLabel,
@@ -23,6 +23,7 @@ type PlanningWeekRowProps = {
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
   onOpenDay: (row: Row, date: string) => void;
+  onPlanPeriod: (row: Row) => void;
 };
 
 const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
@@ -73,6 +74,7 @@ export const PlanningWeekRow = ({
   isLocked,
   isEditable,
   onOpenDay,
+  onPlanPeriod,
 }: PlanningWeekRowProps) => {
   const entriesByDate = new Map<string, PlanningEntry[]>();
   row.entries.forEach((entry) => {
@@ -82,11 +84,8 @@ export const PlanningWeekRow = ({
     ]);
   });
 
+  const isActive = row.user.status === UserStatus.ACTIVE;
   const overMinutes = Math.max(0, row.plannedMinutes - row.availableMinutes);
-  const unplannedMinutes = Math.max(
-    0,
-    row.availableMinutes - row.plannedMinutes,
-  );
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -94,9 +93,34 @@ export const PlanningWeekRow = ({
         scope="row"
         className="border-r border-border/60 p-0 text-left font-normal"
       >
-        <div className="flex min-w-0 items-center gap-2.5 p-3">
-          <PersonLabel user={row.user} />
-        </div>
+        {isActive ? (
+          <button
+            type="button"
+            onClick={() => onPlanPeriod(row)}
+            aria-label={`Plan a period for ${fullName(row.user)}`}
+            className="group flex w-full min-w-0 cursor-pointer items-center gap-2.5 p-3 text-left transition hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          >
+            <PersonLabel user={row.user} />
+
+            {/* Says what the cell does once it is hovered or focused; it
+                takes no room until then, so the name keeps its width. */}
+            <span
+              aria-hidden
+              className="ml-auto hidden shrink-0 items-center gap-0.5 text-xs font-medium text-brand group-hover:flex group-focus-visible:flex"
+            >
+              Plan period
+              <ChevronRight className="size-3.5" />
+            </span>
+          </button>
+        ) : (
+          <div className="flex min-w-0 items-center gap-2.5 p-3">
+            <PersonLabel user={row.user} />
+
+            <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
+              Deactivated
+            </Badge>
+          </div>
+        )}
       </th>
 
       {weekDates.map((date) => {
@@ -115,13 +139,17 @@ export const PlanningWeekRow = ({
           );
         }
 
-        if (!isEditable(iso)) {
+        // A deactivated person's plans stay visible, but nothing can be
+        // written for them, like a locked day.
+        if (!isActive || !isEditable(iso)) {
           return (
             <td
               key={iso}
               className={cn(
                 "border-r border-border/60 p-2 align-top",
-                absence ? "bg-brand-subtle" : isLocked(iso) && "bg-muted/20",
+                absence
+                  ? "bg-brand-subtle"
+                  : (!isActive || isLocked(iso)) && "bg-muted/20",
               )}
             >
               <div className="flex min-h-10 flex-col gap-1">
@@ -139,19 +167,24 @@ export const PlanningWeekRow = ({
               absence && "bg-brand-subtle",
             )}
           >
+            {/* The button's name is the day and its contents, read in order. */}
             <button
               type="button"
               onClick={() => onOpenDay(row, iso)}
-              aria-label={`Plan ${fullName(row.user)} on ${formatLongDayLabel(date)}`}
               className="group flex h-full min-h-14 w-full flex-col gap-1 p-2 text-left hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
+              <span className="sr-only">{formatLongDayLabel(date)}: </span>
+
               <DayEntries absence={absence} entries={entries} />
 
-              {entries.length === 0 && (
-                <Plus
-                  aria-hidden
-                  className="m-auto size-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-                />
+              {entries.length === 0 && !absence && (
+                <>
+                  <span className="sr-only">nothing planned</span>
+                  <Plus
+                    aria-hidden
+                    className="m-auto size-4 text-muted-foreground/60 transition-colors group-hover:text-foreground group-focus-visible:text-foreground"
+                  />
+                </>
               )}
             </button>
           </td>
@@ -169,7 +202,7 @@ export const PlanningWeekRow = ({
           </span>
         </div>
 
-        {overMinutes > 0 ? (
+        {overMinutes > 0 && (
           <Badge
             variant="warning"
             title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
@@ -177,12 +210,6 @@ export const PlanningWeekRow = ({
           >
             Over by {formatDuration(overMinutes)}
           </Badge>
-        ) : (
-          unplannedMinutes > 0 && (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              {formatDuration(unplannedMinutes)} free
-            </span>
-          )
         )}
       </td>
     </tr>

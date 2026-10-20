@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -21,6 +23,10 @@ import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
+import {
+  PlanPeriodPayload,
+  PreviewPeriodPayload,
+} from './dtos/plan-period-payload.dto';
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
@@ -75,6 +81,27 @@ export class PlanningController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.create(payload, user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
+  @Post('period')
+  planPeriod(
+    @Body() payload: PlanPeriodPayload,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.planPeriod(payload, user);
+  }
+
+  @UseGuards(RolesGuard)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
+  @Post('period/preview')
+  @HttpCode(HttpStatus.OK)
+  previewPeriod(
+    @Body() payload: PreviewPeriodPayload,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.previewPeriod(payload, user);
   }
 
   @UseGuards(RolesGuard)

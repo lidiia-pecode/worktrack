@@ -42,7 +42,13 @@ const buttonVariants = cva(
 
         ghost: [
           "bg-transparent text-muted-foreground",
-          "hover:bg-muted hover:text-foreground",
+          "hover:bg-accent hover:text-accent-foreground",
+        ],
+
+        // A quiet control that removes something: the trash beside an entry.
+        ghostDestructive: [
+          "bg-transparent text-muted-foreground",
+          "hover:bg-destructive/10 hover:text-destructive-text",
         ],
 
         destructive: [

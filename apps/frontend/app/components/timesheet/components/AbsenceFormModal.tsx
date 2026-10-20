@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Trash2 } from "lucide-react";
+import { CalendarOff, Info, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
+import { formatDuration, isISODateRange } from "@/lib/utils/date";
+import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
@@ -17,7 +19,7 @@ import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
 import { FormSelect } from "../../shared/FormSelect";
-import { DateInput } from "../../shared/inputs";
+import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
 const FORM_ID = "absence-form";
@@ -44,6 +46,8 @@ const TYPE_OPTIONS = Object.values(AbsenceType).map((type) => ({
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** Whose absence it is, to name the plans it will remove. */
+  userId: string;
   date: string;
   absence?: Absence;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
@@ -56,6 +60,7 @@ type Props = {
 export const AbsenceFormModal = ({
   open,
   onClose,
+  userId,
   date,
   absence,
   onCreate,
@@ -81,7 +86,6 @@ export const AbsenceFormModal = ({
     register,
     handleSubmit,
     control,
-    getValues,
     setValue,
     reset,
     formState: { errors, isDirty },
@@ -95,16 +99,43 @@ export const AbsenceFormModal = ({
     reset(defaultValues);
   }, [defaultValues, reset]);
 
-  const startDate = useWatch({ control, name: "startDate" });
+  const [startDate, endDate] = useWatch({
+    control,
+    name: ["startDate", "endDate"],
+  });
 
-  // Moving the first day past the last is almost always a longer absence, not
-  // a shorter one, so the last day follows rather than becoming invalid.
-  useEffect(() => {
-    if (startDate && getValues("endDate") < startDate) {
-      setValue("endDate", startDate, { shouldDirty: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate]);
+  const isRangeComplete = isISODateRange(startDate, endDate);
+  const { items: plansInRange } = usePlanningEntries(
+    { userId, dateFrom: startDate, dateTo: endDate },
+    { enabled: open && isRangeComplete },
+  );
+
+  // Recording the absence deletes these on the server; named here first.
+  const removedPlans = useMemo(() => {
+    if (!isRangeComplete) return null;
+
+    const minutesByProject = new Map<string, number>();
+    plansInRange.forEach((plan) => {
+      minutesByProject.set(
+        plan.project.name,
+        (minutesByProject.get(plan.project.name) ?? 0) + plan.plannedMinutes,
+      );
+    });
+
+    return plansInRange.length === 0
+      ? null
+      : {
+          count: plansInRange.length,
+          projects: [...minutesByProject]
+            .map(([name, minutes]) => `${name} ${formatDuration(minutes)}`)
+            .join(", "),
+        };
+  }, [isRangeComplete, plansInRange]);
+
+  const setDays = (first: string, last: string) => {
+    setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
+    setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+  };
 
   const onSubmit = async (data: AbsenceFormData) => {
     const shared = {
@@ -144,7 +175,6 @@ export const AbsenceFormModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description="Days away are recorded once, as a range."
         icon={<CalendarOff className="size-5" />}
         footer={
           <>
@@ -204,20 +234,30 @@ export const AbsenceFormModal = ({
             )}
           />
 
-          <div className="grid grid-cols-2 gap-4">
-            <DateInput
-              label="First day"
-              {...register("startDate")}
-              error={errors.startDate?.message}
+          <Field
+            id="absence-days"
+            label="Days"
+            group
+            error={errors.startDate?.message ?? errors.endDate?.message}
+          >
+            <DateRangePicker
+              startDate={startDate}
+              endDate={endDate}
+              invalid={!!(errors.startDate || errors.endDate)}
+              onChange={setDays}
             />
+          </Field>
 
-            <DateInput
-              label="Last day"
-              {...register("endDate")}
-              min={startDate || undefined}
-              error={errors.endDate?.message}
-            />
-          </div>
+          {removedPlans && (
+            <p className="flex gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                Removes {removedPlans.count}{" "}
+                {removedPlans.count === 1 ? "plan" : "plans"} on these days:{" "}
+                {removedPlans.projects}
+              </span>
+            </p>
+          )}
 
           <Field id="absence-note" label="Note" error={errors.note?.message}>
             <TextareaAutosize

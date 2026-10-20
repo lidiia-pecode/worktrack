@@ -22,6 +22,13 @@ import {
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
+import { PlanPeriodPayload } from './dtos/plan-period-payload.dto';
+import {
+  PeriodWeek,
+  formatDay,
+  formatMinutes,
+  periodProblems,
+} from './planning-period.util';
 import { Company } from 'src/companies/entities/company.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -34,10 +41,13 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
+  addDays,
   isWorkingDay,
   todayISODate,
   weekRange,
 } from 'src/capacity/working-days.util';
+import { assertDateRange } from 'src/reporting/date-range.util';
+import { monthsBetween } from 'src/reporting/reporting-months.util';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -66,11 +76,27 @@ export interface PlanningWeek {
   rows: PlanningWeekRow[];
 }
 
-const formatMinutes = (minutes: number): string => {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return rest ? `${hours}h ${rest}m` : `${hours}h`;
-};
+export interface PlannedPeriod {
+  /** The working days that were planned. */
+  days: number;
+  created: number;
+  updated: number;
+}
+
+export interface PeriodPreview {
+  /** The working days the plan would cover. */
+  plannedDays: string[];
+  /** Every day and week the plan would take over its limit. */
+  problems: string[];
+}
+
+interface ResolvedPeriod {
+  plannedDays: Set<string>;
+  problems: string[];
+  /** The person's plans across every week the period touches. */
+  existing: PlanningEntry[];
+  minutesByProject: Map<string, number>;
+}
 
 const dayLimitMinutes = (company: PlanningCompany): number =>
   Math.round(Number(company.standardWorkHoursPerDay) * 60);
@@ -294,6 +320,12 @@ export class PlanningService {
 
       this.assertWorkingDay(payload.date);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
+      await this.assertNotAbsent(
+        manager,
+        payload.userId,
+        user.companyId,
+        payload.date,
+      );
 
       const project = await this.resolveProject(
         payload.projectId,
@@ -376,6 +408,12 @@ export class PlanningService {
       if (movesDate) {
         entry.date = payload.date!;
         await this.assertDateNotLocked(manager, user.companyId, entry.date);
+        await this.assertNotAbsent(
+          manager,
+          entry.userId,
+          user.companyId,
+          entry.date,
+        );
       }
 
       if (movesProject) {
@@ -416,6 +454,149 @@ export class PlanningService {
         throw error;
       }
     });
+  }
+
+  /**
+   * What a period plan would do, checked with the same rules the save uses,
+   * so the dialog can show the days and every problem before saving. It runs
+   * in a transaction because the lock check share-locks the period rows, but
+   * it writes nothing.
+   */
+  async previewPeriod(
+    payload: PlanPeriodPayload,
+    user: AuthUser,
+  ): Promise<PeriodPreview> {
+    const { plannedDays, problems } = await this.dataSource.transaction(
+      (manager) => this.resolvePeriod(payload, user, manager),
+    );
+
+    return { plannedDays: [...plannedDays].sort(), problems };
+  }
+
+  /**
+   * Sets each listed project to the same hours on every day of the range the
+   * person has hours on, or writes nothing: the day and week limits are checked
+   * on the result as a whole, and every problem is returned at once.
+   */
+  async planPeriod(
+    payload: PlanPeriodPayload,
+    user: AuthUser,
+  ): Promise<PlannedPeriod> {
+    const { userId, startDate, endDate } = payload;
+
+    return this.dataSource.transaction(async (manager) => {
+      await this.lockUser(manager, userId, user.companyId);
+
+      const { plannedDays, problems, existing, minutesByProject } =
+        await this.resolvePeriod(payload, user, manager);
+
+      if (plannedDays.size === 0) {
+        throw new BadRequestException(
+          `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences and days before the person joined are skipped.`,
+        );
+      }
+      if (problems.length > 0) throw new BadRequestException(problems);
+
+      const existingByDayAndProject = new Map(
+        existing.map((entry) => [`${entry.date}|${entry.projectId}`, entry]),
+      );
+      const toSave: PlanningEntry[] = [];
+      let created = 0;
+      let updated = 0;
+
+      for (const date of plannedDays) {
+        for (const [projectId, minutes] of minutesByProject) {
+          const entry = existingByDayAndProject.get(`${date}|${projectId}`);
+
+          if (!entry) {
+            toSave.push(
+              manager.create(PlanningEntry, {
+                companyId: user.companyId,
+                userId,
+                projectId,
+                createdById: user.id,
+                plannedMinutes: minutes,
+                date,
+              }),
+            );
+            created++;
+          } else if (entry.plannedMinutes !== minutes) {
+            entry.plannedMinutes = minutes;
+            toSave.push(entry);
+            updated++;
+          }
+        }
+      }
+
+      await manager.save(PlanningEntry, toSave);
+
+      return { days: plannedDays.size, created, updated };
+    });
+  }
+
+  /** The checks a period plan and its preview share; it writes nothing. */
+  private async resolvePeriod(
+    payload: PlanPeriodPayload,
+    user: AuthUser,
+    manager: EntityManager,
+  ): Promise<ResolvedPeriod> {
+    const { userId, startDate, endDate } = payload;
+    assertDateRange(startDate, endDate);
+
+    const minutesByProject = new Map(
+      payload.projects.map((p) => [p.projectId, p.minutesPerDay]),
+    );
+    if (minutesByProject.size !== payload.projects.length) {
+      throw new BadRequestException('Each project can be listed only once');
+    }
+
+    const targetUser = await this.getActiveUser(
+      userId,
+      user.companyId,
+      manager,
+    );
+    await this.assertCanPlanForUser(targetUser, user);
+
+    for (const projectId of minutesByProject.keys()) {
+      await this.resolveProject(projectId, user.companyId, manager);
+      await this.assertProjectMember(manager, projectId, userId);
+    }
+
+    await this.assertPeriodNotLocked(
+      manager,
+      user.companyId,
+      startDate,
+      endDate,
+    );
+
+    const company = await this.getCompany(user.companyId, manager);
+    const weeks = await this.periodWeeks(company, userId, startDate, endDate);
+
+    const plannedDays = new Set(
+      weeks
+        .flatMap((week) => week.workingDays)
+        .filter((date) => date >= startDate && date <= endDate),
+    );
+
+    const existing = await manager
+      .createQueryBuilder(PlanningEntry, 'p')
+      .where('p.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('p.user_id = :userId', { userId })
+      .andWhere('p.date BETWEEN :from AND :to', {
+        from: weeks[0].start,
+        to: weeks[weeks.length - 1].end,
+      })
+      .getMany();
+
+    const problems = periodProblems({
+      weeks,
+      plannedDays,
+      minutesByProject,
+      existing,
+      dayLimit: dayLimitMinutes(company),
+    });
+
+    return { plannedDays, problems, existing, minutesByProject };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
@@ -629,6 +810,73 @@ export class PlanningService {
   }
 
   /** Runs inside the write's transaction, so a Close at the same moment waits for it. */
+  private async assertPeriodNotLocked(
+    manager: EntityManager,
+    companyId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<void> {
+    for (const month of monthsBetween(startDate, endDate)) {
+      if (
+        await this.reportingService.isRangeLocked(
+          companyId,
+          month,
+          month,
+          manager,
+        )
+      ) {
+        const name = new Date(`${month}T00:00:00Z`).toLocaleDateString(
+          'en-GB',
+          { month: 'long', year: 'numeric', timeZone: 'UTC' },
+        );
+        throw new ForbiddenException(
+          `Cannot plan in ${name} because it is a LOCKED reporting period.`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Every company week the range touches, with what the person has available
+   * in it — the same figure a single plan is checked against.
+   */
+  private async periodWeeks(
+    company: PlanningCompany,
+    userId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<PeriodWeek[]> {
+    const ranges: { start: string; end: string }[] = [];
+    for (
+      let week = weekRange(startDate, company.weekStartDay);
+      week.start <= endDate;
+      week = weekRange(addDays(week.end, 1), company.weekStartDay)
+    ) {
+      ranges.push(week);
+    }
+
+    return Promise.all(
+      ranges.map(async ({ start, end }) => {
+        const expected = await this.expectedHours.expectedForUser(
+          company.id,
+          userId,
+          start,
+          end,
+        );
+
+        return {
+          start,
+          end,
+          availableMinutes: expected.total,
+          workingDays: expected.byDate
+            .filter((day) => day.minutes > 0)
+            .map((day) => day.date),
+        };
+      }),
+    );
+  }
+
+  /** Runs inside the write's transaction, so a Close at the same moment waits for it. */
   private async assertDateNotLocked(
     manager: EntityManager,
     companyId: string,
@@ -637,6 +885,29 @@ export class PlanningService {
     if (await this.reportingService.isDateLocked(companyId, date, manager)) {
       throw new ForbiddenException(
         `Cannot change planning for ${date} because it belongs to a LOCKED reporting period.`,
+      );
+    }
+  }
+
+  /** Reads the absences table directly, the way absences read time logs. */
+  private async assertNotAbsent(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    const rows: { type: string }[] = await manager.query(
+      `SELECT type FROM absences
+       WHERE company_id = $1 AND user_id = $2
+         AND start_date <= $3 AND end_date >= $3
+       LIMIT 1`,
+      [companyId, userId, date],
+    );
+
+    if (rows.length > 0) {
+      const reason = rows[0].type.toLowerCase().split('_').join(' ');
+      throw new BadRequestException(
+        `This person is away on ${date} (${reason}), and a day off cannot be planned.`,
       );
     }
   }

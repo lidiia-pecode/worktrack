@@ -327,6 +327,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     <AbsenceFormModal
       open
       onClose={() => setAbsenceModal(null)}
+      userId={userId}
       date={absenceModal.date}
       absence={absenceModal.absence}
       onCreate={(payload) => absenceActions.create.mutateAsync(payload)}

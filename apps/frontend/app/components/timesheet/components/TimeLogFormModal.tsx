@@ -443,21 +443,23 @@ export const TimeLogFormModal = ({
               >
                 Billable
               </label>
-              <p
-                id="timelog-billable-description"
-                className="mt-0.5 text-xs text-muted-foreground"
-              >
-                {selectedActivityId
-                  ? "Count this time toward client billing."
-                  : "Choose an activity first."}
-              </p>
+              {!selectedActivityId && (
+                <p
+                  id="timelog-billable-description"
+                  className="mt-0.5 text-xs text-muted-foreground"
+                >
+                  Choose an activity first.
+                </p>
+              )}
             </div>
 
             <Switch
               id="timelog-billable"
               {...register("isBillable")}
               disabled={!selectedActivityId}
-              aria-describedby="timelog-billable-description"
+              aria-describedby={
+                selectedActivityId ? undefined : "timelog-billable-description"
+              }
             />
           </div>
 

@@ -4,13 +4,18 @@ import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarClock, Pencil, Trash2 } from "lucide-react";
+import { CalendarClock, CalendarOff, Pencil, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { PlanningEntry, PlanningWeekRow } from "@/types";
+import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 import { usePlanningMutations } from "@/hooks/usePlanning";
-import { formatDuration, formatLongDayLabel } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  fromISODate,
+} from "@/lib/utils/date";
+import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
@@ -24,6 +29,7 @@ import {
 } from "@/components/ui/field";
 
 import { ConfirmModal } from "../../shared/ConfirmModal";
+import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
@@ -70,10 +76,20 @@ const toFormData = (entry: PlanningEntry): PlanFormData => ({
 const isArchivedEntry = (entry: PlanningEntry) =>
   entry.project.status === ProjectStatus.ARCHIVED;
 
+/** "an 8h" but "a 7h 30m": the article follows how the hours are read out. */
+const withArticle = (duration: string) =>
+  `${/^(8|11|18)h/.test(duration) ? "an" : "a"} ${duration}`;
+
 type PlanningDayModalProps = {
   row: PlanningWeekRow;
   date: string;
   dayLimitMinutes: number;
+  /**
+   * The absence covering the day, shown here only while a locked month
+   * freezes it; an editable one opens its form straight from the grid.
+   */
+  absence?: Absence;
+  onAddAbsence: () => void;
   onClose: () => void;
 };
 
@@ -81,6 +97,8 @@ export const PlanningDayModal = ({
   row,
   date,
   dayLimitMinutes,
+  absence,
+  onAddAbsence,
   onClose,
 }: PlanningDayModalProps) => {
   const { create, update, delete: remove } = usePlanningMutations();
@@ -117,6 +135,14 @@ export const PlanningDayModal = ({
 
   const [hours, minutes] = useWatch({ control, name: ["hours", "minutes"] });
 
+  // Closing or switching to another plan asks first while the form has
+  // unsaved changes, as × and Escape do; the action waits for the answer.
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const guardUnsaved = (action: () => void) => {
+    if (isDirty) setPendingAction(() => action);
+    else action();
+  };
+
   const projectOptions = useMemo(() => {
     const options = row.projects.map((project) => ({
       value: project.id,
@@ -151,7 +177,7 @@ export const PlanningDayModal = ({
     const planned = dayEntries.find((entry) => entry.project.id === projectId);
 
     if (planned && planned.id !== editingId && !isArchivedEntry(planned)) {
-      startEditing(planned);
+      guardUnsaved(() => startEditing(planned));
       return;
     }
 
@@ -206,17 +232,65 @@ export const PlanningDayModal = ({
     }
   };
 
+  if (absence) {
+    return (
+      <ResourceFormModal
+        open
+        onClose={onClose}
+        title={formatLongDayLabel(fromISODate(date))}
+        description={`${fullName(row.user)} · away, nothing to plan`}
+        icon={<CalendarOff className="size-5" />}
+        footer={
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Close
+          </Button>
+        }
+      >
+        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+          <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
+            <Badge variant="default" dot>
+              {ABSENCE_TYPE_LABELS[absence.type]}
+            </Badge>
+            <span>{formatAbsenceRange(absence)}</span>
+          </div>
+
+          {absence.note && (
+            <p className="text-sm text-muted-foreground">{absence.note}</p>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            This absence touches a locked month and cannot be changed.
+          </p>
+        </div>
+      </ResourceFormModal>
+    );
+  }
+
   return (
     <>
       <ResourceFormModal
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty}
-        title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
-        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of a ${formatDuration(dayLimitMinutes)} day planned`}
+        title={formatLongDayLabel(fromISODate(date))}
+        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={
           <>
+            {!editing && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onAddAbsence}
+                className="mr-auto"
+                disabled={create.isPending || update.isPending}
+              >
+                <CalendarOff className="size-4" />
+                Add absence
+              </Button>
+            )}
+
             {editing && (
               <Button
                 type="button"
@@ -234,7 +308,7 @@ export const PlanningDayModal = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={onClose}
+              onClick={() => guardUnsaved(onClose)}
               disabled={create.isPending || update.isPending}
             >
               Close
@@ -291,7 +365,7 @@ export const PlanningDayModal = ({
                         variant="ghost"
                         size="iconSm"
                         aria-label={`Edit ${entry.project.name}`}
-                        onClick={() => startEditing(entry)}
+                        onClick={() => guardUnsaved(() => startEditing(entry))}
                       >
                         <Pencil className="size-4" />
                       </Button>
@@ -299,7 +373,7 @@ export const PlanningDayModal = ({
 
                     <Button
                       type="button"
-                      variant="ghost"
+                      variant="ghostDestructive"
                       size="iconSm"
                       aria-label={`Remove ${entry.project.name}`}
                       onClick={() => setDeletingEntry(entry)}
@@ -386,6 +460,16 @@ export const PlanningDayModal = ({
           </form>
         </div>
       </ResourceFormModal>
+
+      <DiscardChangesModal
+        isOpen={pendingAction !== null}
+        onDiscard={() => {
+          const action = pendingAction;
+          setPendingAction(null);
+          action?.();
+        }}
+        onKeepEditing={() => setPendingAction(null)}
+      />
 
       <ConfirmModal
         isOpen={deletingEntry !== null}

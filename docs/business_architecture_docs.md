@@ -15,8 +15,9 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 18 October 2026.** Phases 0 to 28 in §7 are
-delivered, and so is the permission model. The work ahead was re-planned on 28
+**Last verified against the code: 21 October 2026.** Phases 0 to 32 in §7 are
+delivered (Phase 32 on its branch, awaiting its pull request), and so is the
+permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -384,6 +385,7 @@ Every write passes three checks:
    no day may already be covered by another absence, whatever its type.
 
 The rule runs both ways: time logging is refused on a day an absence covers.
+An absence also deletes its owner's plans on those days (see Planning).
 Each service reads the other's table directly rather than depending on it, and
 both check inside the transaction that locks the owner's user row, which is what
 stops two concurrent writes from each seeing a free day.
@@ -436,12 +438,31 @@ Every write is checked on the server:
    reduced.
 
 An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
-minutes. An absence never blocks planning and never changes a plan.
+minutes. A day an absence covers cannot be planned: a new plan, or one moved
+onto it, is refused. Recording an absence, or moving one, deletes that person's
+plans on the days it covers, whoever records it — the person themselves
+included, though they cannot write planning otherwise. An absence never touches
+a locked period, so only open days lose plans, and deleting or shortening an
+absence brings nothing back.
 
-The planning grid shows managers two figures of their own: **unplanned** hours
-(available minus planned) and **no longer fits** (planned above available,
-flagged and never fixed automatically). Neither is shown to an employee, who
-sees only their own plan, and neither affects whether somebody is behind.
+**A period** can be planned in one go: a person, a date range and one or more
+projects, each with the hours to plan on every working day. The days are the
+range's weekdays the person has hours on — no absence, and not before their
+account was created. For each listed project every one of those days is set to
+its hours, creating or changing that day's plan; plans for other projects stay.
+The same rules apply to the result as a whole: a range touching a LOCKED month
+is refused, and if any day or week would go over its limit, nothing is saved and
+every day and week that does not fit is named. As with a single plan, only a
+total the write raises is refused. The same checks can be run without saving
+(a preview), so the dialog shows the working days, the absences skipped, what
+is already planned and every conflict before anything is written, and saves
+only once everything fits.
+
+The planning grid shows managers one figure of its own: **no longer fits**
+(planned above available, flagged as "Over by" and never fixed automatically).
+It is not shown to an employee, who sees only their own plan, and it does not
+affect whether somebody is behind. A deactivated person's plans stay visible in
+the grid, read-only.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -635,7 +656,7 @@ added to a team or a project.
 | Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
-| Planning — write | any active user | self + managed users | — |
+| Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
 | Hours report and export | whole company | own, plus users in teams they manage | — |
 
@@ -714,12 +735,17 @@ see, and how a new company gets started. §7 plans that work.
   week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's contracted hours
   from a date; both week views read one backend figure for what was expected,
-  absences reduce it, and each shows logged time against it; nothing marks a
-  person behind mid-week (Phase 31, by decision).
+  absences reduce it, and each shows logged time against it; no screen marks a
+  person behind (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
-  `/planning`, see planned against available hours and which weeks no longer
-  fit; everyone sees their own plan on the timesheet until they log time that
-  day.
+  `/planning`, or a whole period for one person from their cell: a month at a
+  time or any range, several projects with hours per working day, with a
+  preview of the working days, the absences skipped, what is already planned
+  and anything that does not fit before saving, all-or-nothing. They see
+  planned against available hours and which weeks no longer fit, and open an
+  absence day straight into its form. Everyone sees their own plan on the
+  timesheet until they log time that day; recording an absence removes the
+  plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -878,6 +904,8 @@ is in its pull request.
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 | 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
 | 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
+| 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
+| 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 
 ### Improvement roadmap — high level, flexible
 
@@ -935,10 +963,11 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning.** The manager's and owner's week views:
-the team grid, the per-person panel and the planning grid. Finding who is behind
-and why, correcting somebody's week including their absences, planning more than
-one cell at a time, and grids that draw days, absences and locks the same way.
+**Area 4 — Team oversight and planning** *(started, Phases 31–32)*. The manager's
+and owner's week views: the team grid, the per-person panel and the planning
+grid. Finding who is behind and why, correcting somebody's week including their
+absences, planning more than one cell at a time, and grids that draw days,
+absences and locks the same way.
 
 **Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
@@ -965,12 +994,27 @@ flow in the product, role by role and on a phone, for consistency, wording and
 the details the earlier areas left: the point at which the product is judged
 ready, or not, for the final stage.
 
+**Proposed next: Phase 33 — cross-cutting UI from the 21 October 2026 review**
+*(Area 2 revisited; not scoped yet, kept out of Phase 32 by decision)*. Remove
+the page headings and subtitles on Team time, Timesheet, Planning, Reports,
+Users, Teams, Projects, Activities, Categories and Periods: an `sr-only` h1
+stays for assistive technology, the Manage pages' Create button moves into the
+toolbar beside the search, Periods keeps its lock rule as one muted line above
+the list, and the phone header names the current page beside the logo, since
+the sidebar's highlight is not visible there; whether Settings and Getting
+started keep their headings is open. Planning cells drawn as project-coloured
+chips, so the board reads as a plan beside Team time's numbers. The beige
+`secondary` surface ("Today", "Clear filters") retuned to the cool accent, if
+wanted. Not in it, by decision: merging or restructuring Planning and Team
+time — they share the chrome, not the job (actuals and corrections on one,
+intent and limits on the other).
+
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
-every later area reuses what it settles; most of Area 5 followed. Areas 3, 4, 6
-and 7 follow roughly in the order people meet them day to day, and can be
-reordered; Area 6 and Area 7 need the most discussion before they are scoped.
-Area 8 closes the stage. A defect that distorts figures can be pulled into
-whichever scope comes first.
+every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
+started. Areas 3, 4, 6 and 7 follow roughly in the order people meet them day to
+day, and can be reordered; Area 6 and Area 7 need the most discussion before
+they are scoped. Area 8 closes the stage. A defect that distorts figures can be
+pulled into whichever scope comes first.
 
 ---
 
@@ -1064,8 +1108,10 @@ lookup tables any manager can still edit or archive across the whole company.
 ever disagree about the catalogue.
 
 **Q5 — Should the app chase people who have not logged time?**
-The team view shows who is short, but somebody still has to look. Phase 3 made
-"short" precise: logged below expected, over days that have finished.
+The team view shows each person's logged time against what was expected, but
+somebody still has to look, and since Phase 31 nothing marks anyone short.
+Phase 3 made "short" precise: logged below expected, over days that have
+finished; today only the utilisation report measures it.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to

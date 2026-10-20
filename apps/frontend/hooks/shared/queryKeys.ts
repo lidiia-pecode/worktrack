@@ -157,6 +157,8 @@ export const queryKeys = {
     week: (params?: QueryParams) => ["planning", "week", params ?? {}] as const,
 
     list: (params?: QueryParams) => ["planning", "list", params ?? {}] as const,
+
+    preview: (payload: object) => ["planning", "preview", payload] as const,
   },
 
   reporting: {

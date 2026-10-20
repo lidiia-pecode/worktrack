@@ -169,6 +169,16 @@ export function isISODate(value: string): boolean {
   return ISO_DATE.test(value);
 }
 
+/** Whether both fields hold whole dates, the last not before the first. */
+export function isISODateRange(startDate: string, endDate: string): boolean {
+  return isISODate(startDate) && isISODate(endDate) && endDate >= startDate;
+}
+
+/** The local midnight of a YYYY-MM-DD date; the inverse of `toISODate`. */
+export function fromISODate(date: string): Date {
+  return new Date(`${date}T00:00:00`);
+}
+
 /** The last day a report starting on dateFrom may end on. */
 export function lastDayOfReportRange(dateFrom: string): string {
   const firstDay = new Date(`${dateFrom}T00:00:00`);
