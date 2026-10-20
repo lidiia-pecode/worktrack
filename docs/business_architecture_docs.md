@@ -632,7 +632,8 @@ added to a team or a project.
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
-| Time logs — write | whole company | own, plus users in teams they manage | **own only** |
+| Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
+| Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
@@ -651,7 +652,9 @@ membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the team view's per-person panel is
-where an owner or manager acts on it.
+where an owner or manager acts on it. Writing time or an absence for somebody
+else is refused once they are deactivated; their records stay as they were,
+and reading them is unchanged (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member

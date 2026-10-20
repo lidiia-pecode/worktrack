@@ -1,5 +1,7 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 
+import { UserStatus } from 'src/users/enums/user-role.enum';
+
 @Exclude()
 export class TeamSummaryUserResponse {
   @Expose()
@@ -19,6 +21,9 @@ export class TeamSummaryUserResponse {
 
   @Expose()
   avatarUrl?: string;
+
+  @Expose()
+  status!: UserStatus;
 }
 
 @Exclude()

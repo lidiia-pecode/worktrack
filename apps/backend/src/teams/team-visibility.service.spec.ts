@@ -1,11 +1,15 @@
 import 'reflect-metadata';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { Team } from './entities/team.entity';
@@ -42,6 +46,7 @@ describe('TeamVisibilityService', () => {
   let member: AuthUser; // active member of "Alpha"
   let formerMember: AuthUser; // left "Alpha" (leftAt is set)
   let outsider: AuthUser; // in the company, on no team
+  let deactivated: AuthUser; // in the company, on no team, deactivated
 
   // Company B — exists only to prove tenants stay separate.
   let otherCompanyUser: AuthUser;
@@ -58,11 +63,13 @@ describe('TeamVisibilityService', () => {
     companyId: string,
     name: string,
     role: UserRole,
+    status = UserStatus.ACTIVE,
   ): Promise<AuthUser> => {
     const email = `${name}-${RUN}@visibility.test`;
     const user = await dataSource.getRepository(User).save({
       companyId,
       role,
+      status,
       firstName: name,
       lastName: 'Test',
       email,
@@ -139,6 +146,12 @@ describe('TeamVisibilityService', () => {
       UserRole.EMPLOYEE,
     );
     outsider = await createUser(companyA, 'outsider', UserRole.EMPLOYEE);
+    deactivated = await createUser(
+      companyA,
+      'deactivated',
+      UserRole.EMPLOYEE,
+      UserStatus.DEACTIVATED,
+    );
     otherCompanyUser = await createUser(
       companyB,
       'othercompany',
@@ -177,6 +190,7 @@ describe('TeamVisibilityService', () => {
           member,
           formerMember,
           outsider,
+          deactivated,
         ),
       );
     });
@@ -313,6 +327,54 @@ describe('TeamVisibilityService', () => {
     it('refuses an employee for anyone else', async () => {
       await expect(assertFor(outsider.id, member)).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+  });
+
+  describe('assertCanWriteForUser', () => {
+    const wording = { action: 'change', subject: 'time logs' };
+
+    const assertFor = (userId: string, caller: AuthUser): Promise<void> =>
+      service.assertCanWriteForUser(userId, caller, wording);
+
+    it('lets an owner write for an active person', async () => {
+      await expect(assertFor(outsider.id, owner)).resolves.toBeUndefined();
+    });
+
+    it('refuses writing for a deactivated person', async () => {
+      await expect(assertFor(deactivated.id, owner)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(assertFor(deactivated.id, owner)).rejects.toThrow(
+        'You can only change time logs of active users',
+      );
+    });
+
+    it('checks scope before status', async () => {
+      await expect(assertFor(deactivated.id, manager)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+  });
+
+  describe('findVisibleUsers', () => {
+    it("carries each person's status", async () => {
+      const users = await service.findVisibleUsers(owner);
+      const statusOf = (id: string) =>
+        users.find((user) => user.id === id)?.status;
+
+      expect(statusOf(member.id)).toBe(UserStatus.ACTIVE);
+    });
+
+    it('lists a deactivated person only when they are named', async () => {
+      const byDefault = await service.findVisibleUsers(owner);
+      const named = await service.findVisibleUsers(owner, {
+        includeUserIds: [deactivated.id],
+      });
+
+      expect(byDefault.map((user) => user.id)).not.toContain(deactivated.id);
+      expect(named.find((user) => user.id === deactivated.id)?.status).toBe(
+        UserStatus.DEACTIVATED,
       );
     });
   });

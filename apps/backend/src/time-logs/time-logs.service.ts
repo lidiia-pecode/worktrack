@@ -629,13 +629,13 @@ export class TimeLogsService {
   }
 
   /**
-   * Verifies the caller may write an entry belonging to someone else
-   * Write scope mirrors read scope, so both go through the same check.
+   * Verifies the caller may write an entry belonging to someone else. Write
+   * scope mirrors read scope, plus the owner must still be active.
    */
   private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
     if (ownerId === user.id) return Promise.resolve();
 
-    return this.teamVisibility.assertCanActForUser(ownerId, user, {
+    return this.teamVisibility.assertCanWriteForUser(ownerId, user, {
       action: 'change',
       subject: 'time logs',
     });

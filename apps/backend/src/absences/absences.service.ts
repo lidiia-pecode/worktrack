@@ -357,7 +357,7 @@ export class AbsencesService {
   private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
     if (ownerId === user.id) return Promise.resolve();
 
-    return this.teamVisibility.assertCanActForUser(ownerId, user, {
+    return this.teamVisibility.assertCanWriteForUser(ownerId, user, {
       action: 'change',
       subject: 'absences',
     });

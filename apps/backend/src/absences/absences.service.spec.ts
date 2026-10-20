@@ -9,7 +9,7 @@ import { DataSource, In } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -64,6 +64,7 @@ describe('AbsencesService', () => {
   let outsider: AuthUser; // in the company, on no team
   let stranger: AuthUser; // a different company entirely
   let loneManager: AuthUser; // has the MANAGER role but leads no team
+  let deactivated: AuthUser; // in the company, deactivated
 
   let projectActivityId: string;
 
@@ -71,11 +72,13 @@ describe('AbsencesService', () => {
     name: string,
     role: UserRole,
     inCompanyId = companyId,
+    status = UserStatus.ACTIVE,
   ): Promise<AuthUser> => {
     const email = `${name}-${RUN}@absence.test`;
     const user = await dataSource.getRepository(User).save({
       companyId: inCompanyId,
       role,
+      status,
       firstName: name,
       lastName: 'Test',
       email,
@@ -173,6 +176,12 @@ describe('AbsencesService', () => {
     member = await createUser('member', UserRole.EMPLOYEE);
     outsider = await createUser('outsider', UserRole.EMPLOYEE);
     loneManager = await createUser('lonemanager', UserRole.MANAGER);
+    deactivated = await createUser(
+      'deactivated',
+      UserRole.EMPLOYEE,
+      companyId,
+      UserStatus.DEACTIVATED,
+    );
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -305,6 +314,21 @@ describe('AbsencesService', () => {
       ).rejects.toThrow(ForbiddenException);
       await expect(service.delete(id, outsider)).rejects.toThrow(
         ForbiddenException,
+      );
+    });
+
+    it("leaves a deactivated person's absences as they are", async () => {
+      await expect(
+        service.create(absenceFor(deactivated.id), owner),
+      ).rejects.toThrow(BadRequestException);
+
+      const id = await existingAbsence(deactivated.id);
+
+      await expect(
+        service.update(id, { note: 'changed' }, owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(service.delete(id, owner)).rejects.toThrow(
+        BadRequestException,
       );
     });
   });
