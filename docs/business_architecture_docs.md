@@ -384,6 +384,7 @@ Every write passes three checks:
    no day may already be covered by another absence, whatever its type.
 
 The rule runs both ways: time logging is refused on a day an absence covers.
+An absence also deletes its owner's plans on those days (see Planning).
 Each service reads the other's table directly rather than depending on it, and
 both check inside the transaction that locks the owner's user row, which is what
 stops two concurrent writes from each seeing a free day.
@@ -436,7 +437,12 @@ Every write is checked on the server:
    reduced.
 
 An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
-minutes. An absence never blocks planning and never changes a plan.
+minutes. A day an absence covers cannot be planned: a new plan, or one moved
+onto it, is refused. Recording an absence, or moving one, deletes that person's
+plans on the days it covers, whoever records it — the person themselves
+included, though they cannot write planning otherwise. An absence never touches
+a locked period, so only open days lose plans, and deleting or shortening an
+absence brings nothing back.
 
 **A period** can be planned in one go: a person, a date range and one or more
 projects, each with the hours to plan on every working day. The days are the

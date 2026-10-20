@@ -23,6 +23,7 @@ import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-stat
 import { ReportingService } from 'src/reporting/reporting.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
@@ -67,6 +68,7 @@ describe('AbsencesService', () => {
   let deactivated: AuthUser; // in the company, deactivated
 
   let projectActivityId: string;
+  let projectId: string;
 
   const createUser = async (
     name: string,
@@ -224,6 +226,7 @@ describe('AbsencesService', () => {
       .save({ companyId, projectId: project.id, activityId: activity.id });
 
     projectActivityId = projectActivity.id;
+    projectId = project.id;
 
     for (const user of [owner, manager, member, outsider]) {
       await dataSource.query(
@@ -242,6 +245,7 @@ describe('AbsencesService', () => {
   });
 
   afterEach(async () => {
+    await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(TimeLog).delete({ companyId });
     await dataSource.getRepository(Absence).delete({ companyId });
   });
@@ -479,6 +483,48 @@ describe('AbsencesService', () => {
       await expect(timeLogs.delete(logId, member)).resolves.toEqual({
         success: true,
       });
+    });
+  });
+
+  describe('an absence removes the plans on its days', () => {
+    const planOn = (userId: string, date: string) =>
+      dataSource
+        .getRepository(PlanningEntry)
+        .save({ companyId, userId, projectId, date, plannedMinutes: 240 });
+
+    const plannedDates = async (userId: string) =>
+      (
+        await dataSource
+          .getRepository(PlanningEntry)
+          .find({ where: { companyId, userId }, order: { date: 'ASC' } })
+      ).map((entry) => entry.date);
+
+    it("removes that person's plans inside the range and nothing else", async () => {
+      for (const date of ['2026-02-09', START, '2026-02-11', '2026-02-13']) {
+        await planOn(member.id, date);
+      }
+      await planOn(outsider.id, START);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await plannedDates(member.id)).toEqual([
+        '2026-02-09',
+        '2026-02-13',
+      ]);
+      expect(await plannedDates(outsider.id)).toEqual([START]);
+    });
+
+    it('removes the plans on the days an absence is moved to', async () => {
+      await planOn(member.id, '2026-02-16');
+      const absence = await service.create(absenceFor(member.id), manager);
+
+      await service.update(
+        absence.id,
+        { startDate: '2026-02-16', endDate: '2026-02-16' },
+        manager,
+      );
+
+      expect(await plannedDates(member.id)).toEqual([]);
     });
   });
 

@@ -521,6 +521,16 @@ describe('PlanningService', () => {
     });
 
     it('measures the week against available hours, not capacity', async () => {
+      // A longer standard day, so only the week can refuse the extra hour.
+      await dataSource
+        .getRepository(Company)
+        .update({ id: companyId }, { standardWorkHoursPerDay: 10 });
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 40 * HOUR,
+      });
       await absentOn(member.id, MONDAY);
 
       for (let day = 1; day < 5; day++) {
@@ -528,28 +538,25 @@ describe('PlanningService', () => {
       }
 
       await expect(
-        service.create(plan(member.id, MONDAY, HOUR, otherProjectId), manager),
+        service.create(plan(member.id, TUESDAY, HOUR, otherProjectId), manager),
       ).rejects.toThrow('Weekly planning limit exceeded: 0h left of 32h');
     });
 
-    it('never lets an absence block planning the day itself', async () => {
+    it('refuses a plan on a day the person is away', async () => {
       await absentOn(member.id, MONDAY);
 
-      const entry = await service.create(
-        plan(member.id, MONDAY, 8 * HOUR),
-        manager,
-      );
-
-      expect(entry.date).toBe(MONDAY);
+      await expect(
+        service.create(plan(member.id, MONDAY, 8 * HOUR), manager),
+      ).rejects.toThrow(`This person is away on ${MONDAY} (sick leave)`);
     });
 
-    it('never changes a plan when an absence is recorded', async () => {
-      await planFullWeek(member.id);
-      const before = await entriesFor(member.id);
+    it('refuses moving a plan onto a day the person is away', async () => {
+      await absentOn(member.id, TUESDAY);
+      const id = await existingEntry(member.id, MONDAY, 4 * HOUR);
 
-      await absentOn(member.id, MONDAY, TUESDAY);
-
-      expect(await entriesFor(member.id)).toEqual(before);
+      await expect(
+        service.update(id, { date: TUESDAY }, manager),
+      ).rejects.toThrow(/This person is away on/);
     });
 
     it('lets an over-budget week be reduced, but not raised', async () => {

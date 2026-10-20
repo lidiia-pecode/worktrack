@@ -244,7 +244,11 @@ manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
 (`GET /planning/week`), the Team week view and the utilisation report. Planning
-a whole period (`POST /planning/period`) reaches the same people. The
+a whole period (`POST /planning/period`) reaches the same people. One write
+outside planning removes plans: recording an absence deletes its owner's plans
+on the days it covers, so an employee's own sick day clears their own plans for
+it. That reaches only the absence owner's plans on those open days, and opens no
+planning route to employees (decided 20 October 2026, Phase 32). The
 removal count (`GET /planning/removal-count`) counts the same people a save may
 remove. Removing somebody from a project deletes their plans for it from today
 on, and since a save only removes people the caller was shown (§3.5), a manager

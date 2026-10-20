@@ -305,6 +305,12 @@ export class PlanningService {
 
       this.assertWorkingDay(payload.date);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
+      await this.assertNotAbsent(
+        manager,
+        payload.userId,
+        user.companyId,
+        payload.date,
+      );
 
       const project = await this.resolveProject(
         payload.projectId,
@@ -387,6 +393,12 @@ export class PlanningService {
       if (movesDate) {
         entry.date = payload.date!;
         await this.assertDateNotLocked(manager, user.companyId, entry.date);
+        await this.assertNotAbsent(
+          manager,
+          entry.userId,
+          user.companyId,
+          entry.date,
+        );
       }
 
       if (movesProject) {
@@ -826,6 +838,29 @@ export class PlanningService {
     if (await this.reportingService.isDateLocked(companyId, date, manager)) {
       throw new ForbiddenException(
         `Cannot change planning for ${date} because it belongs to a LOCKED reporting period.`,
+      );
+    }
+  }
+
+  /** Reads the absences table directly, the way absences read time logs. */
+  private async assertNotAbsent(
+    manager: EntityManager,
+    userId: string,
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    const rows: { type: string }[] = await manager.query(
+      `SELECT type FROM absences
+       WHERE company_id = $1 AND user_id = $2
+         AND start_date <= $3 AND end_date >= $3
+       LIMIT 1`,
+      [companyId, userId, date],
+    );
+
+    if (rows.length > 0) {
+      const reason = rows[0].type.toLowerCase().replace('_', ' ');
+      throw new BadRequestException(
+        `This person is away on ${date} (${reason}), and a day off cannot be planned.`,
       );
     }
   }
