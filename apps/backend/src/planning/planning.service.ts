@@ -458,16 +458,16 @@ export class PlanningService {
 
   /**
    * What a period plan would do, checked with the same rules the save uses,
-   * so the dialog can show the days and every problem before saving.
+   * so the dialog can show the days and every problem before saving. It runs
+   * in a transaction because the lock check share-locks the period rows, but
+   * it writes nothing.
    */
   async previewPeriod(
     payload: PlanPeriodPayload,
     user: AuthUser,
   ): Promise<PeriodPreview> {
-    const { plannedDays, problems } = await this.resolvePeriod(
-      payload,
-      user,
-      this.dataSource.manager,
+    const { plannedDays, problems } = await this.dataSource.transaction(
+      (manager) => this.resolvePeriod(payload, user, manager),
     );
 
     return { plannedDays: [...plannedDays].sort(), problems };
@@ -905,7 +905,7 @@ export class PlanningService {
     );
 
     if (rows.length > 0) {
-      const reason = rows[0].type.toLowerCase().replace('_', ' ');
+      const reason = rows[0].type.toLowerCase().split('_').join(' ');
       throw new BadRequestException(
         `This person is away on ${date} (${reason}), and a day off cannot be planned.`,
       );

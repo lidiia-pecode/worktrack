@@ -754,6 +754,28 @@ describe('PlanningService', () => {
       expect(preview.problems).toEqual([]);
     });
 
+    it('counts plans outside the range against the week it shares', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 32 * HOUR,
+      });
+      await existingEntry(member.id, FRIDAY, 8 * HOUR, otherProjectId);
+
+      const preview = await service.previewPeriod(
+        period(MONDAY, addDays(MONDAY, 3), [
+          { projectId, minutesPerDay: 8 * HOUR },
+        ]),
+        manager,
+      );
+
+      // Every day fits the 8h day; the week does not once Friday counts.
+      expect(preview.problems).toEqual([
+        expect.stringMatching(/^Week of .+: 40h planned of 32h available/),
+      ]);
+    });
+
     it('refuses a range with no working day', async () => {
       await expect(
         service.planPeriod(
@@ -765,15 +787,17 @@ describe('PlanningService', () => {
       ).rejects.toThrow('There is no working day to plan');
     });
 
-    it('refuses a range touching a locked month', async () => {
-      await expect(
-        service.planPeriod(
-          period(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4), [
-            { projectId, minutesPerDay: HOUR },
-          ]),
-          manager,
-        ),
-      ).rejects.toThrow(/LOCKED reporting period/);
+    it('refuses a range touching a locked month, in the preview too', async () => {
+      const lockedWeek = period(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4), [
+        { projectId, minutesPerDay: HOUR },
+      ]);
+
+      await expect(service.planPeriod(lockedWeek, manager)).rejects.toThrow(
+        /LOCKED reporting period/,
+      );
+      await expect(service.previewPeriod(lockedWeek, manager)).rejects.toThrow(
+        /LOCKED reporting period/,
+      );
       expect(await entriesFor(member.id)).toHaveLength(0);
     });
 

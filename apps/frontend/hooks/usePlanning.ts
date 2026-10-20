@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   keepPreviousData,
   useMutation,
@@ -62,22 +63,49 @@ export function usePlanningEntries(
   };
 }
 
+const PREVIEW_SETTLE_MS = 300;
+
 /**
- * What a period plan would do, from the server's own rules. The previous
- * answer stays on screen, marked outdated, while the next one loads.
+ * The value once it has stopped changing for a moment, compared by content;
+ * the first one counts at once. `isSettling` is true while a newer one waits.
+ */
+function useSettledValue<T>(value: T) {
+  const key = JSON.stringify(value);
+  const [settled, setSettled] = useState({ key, value });
+
+  useEffect(() => {
+    if (settled.key === key) return;
+    const timer = setTimeout(
+      () => setSettled({ key, value }),
+      PREVIEW_SETTLE_MS,
+    );
+    return () => clearTimeout(timer);
+    // Keyed on content: a new object with the same content does not restart.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, settled.key]);
+
+  return { value: settled.value, isSettling: settled.key !== key };
+}
+
+/**
+ * What a period plan would do, from the server's own rules. Hours step
+ * quickly through the picker, so the server is asked once they settle; the
+ * previous answer stays on screen, marked outdated, while the next one loads.
  */
 export function usePeriodPreview(payload: PlanPeriodPayload | null) {
+  const { value: settled, isSettling } = useSettledValue(payload);
+
   const query = useQuery({
-    enabled: payload !== null,
-    queryKey: queryKeys.planning.preview(payload ?? {}),
-    queryFn: () => PlanningClientApi.previewPeriod(payload!),
+    enabled: settled !== null,
+    queryKey: queryKeys.planning.preview(settled ?? {}),
+    queryFn: () => PlanningClientApi.previewPeriod(settled!),
     placeholderData: keepPreviousData,
     retry: false,
   });
 
   return {
     preview: query.data,
-    isOutdated: query.isPlaceholderData || query.isFetching,
+    isOutdated: isSettling || query.isPlaceholderData || query.isFetching,
     isLoading: query.isLoading,
     error: query.error,
   };

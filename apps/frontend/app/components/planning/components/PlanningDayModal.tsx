@@ -10,7 +10,11 @@ import TextareaAutosize from "react-textarea-autosize";
 import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 import { usePlanningMutations } from "@/hooks/usePlanning";
-import { formatDuration, formatLongDayLabel } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  fromISODate,
+} from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -233,7 +237,7 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
+        title={formatLongDayLabel(fromISODate(date))}
         description={`${fullName(row.user)} · away, nothing to plan`}
         icon={<CalendarOff className="size-5" />}
         footer={
@@ -268,7 +272,7 @@ export const PlanningDayModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty}
-        title={formatLongDayLabel(new Date(`${date}T00:00:00`))}
+        title={formatLongDayLabel(fromISODate(date))}
         description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={

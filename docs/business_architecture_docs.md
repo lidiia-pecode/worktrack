@@ -15,8 +15,9 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 20 October 2026.** Phases 0 to 31 in §7 are
-delivered, and so is the permission model. The work ahead was re-planned on 28
+**Last verified against the code: 21 October 2026.** Phases 0 to 32 in §7 are
+delivered (Phase 32 on its branch, awaiting its pull request), and so is the
+permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -737,9 +738,14 @@ see, and how a new company gets started. §7 plans that work.
   absences reduce it, and each shows logged time against it; no screen marks a
   person behind (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
-  `/planning`, see planned against available hours and which weeks no longer
-  fit; everyone sees their own plan on the timesheet until they log time that
-  day.
+  `/planning`, or a whole period for one person from their cell: a month at a
+  time or any range, several projects with hours per working day, with a
+  preview of the working days, the absences skipped, what is already planned
+  and anything that does not fit before saving, all-or-nothing. They see
+  planned against available hours and which weeks no longer fit, and open an
+  absence day straight into its form. Everyone sees their own plan on the
+  timesheet until they log time that day; recording an absence removes the
+  plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -899,6 +905,7 @@ is in its pull request.
 | 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
 | 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
 | 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
+| 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 
 ### Improvement roadmap — high level, flexible
 
@@ -956,7 +963,7 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning** *(started, Phase 31)*. The manager's
+**Area 4 — Team oversight and planning** *(started, Phases 31–32)*. The manager's
 and owner's week views: the team grid, the per-person panel and the planning
 grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,

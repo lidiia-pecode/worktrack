@@ -6,6 +6,7 @@ import { CalendarDays, ChevronDown } from "lucide-react";
 import {
   formatDayMonthLabel,
   formatDayMonthYearLabel,
+  fromISODate,
   toISODate,
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
@@ -17,8 +18,6 @@ import {
 } from "@/components/ui/popover";
 
 import { MonthCalendar } from "../MonthCalendar";
-
-const toDate = (iso: string) => new Date(`${iso}T00:00:00`);
 
 /** "Oct 19 – Oct 23, 2026", or the one day. */
 export const formatDateRange = (startDate: string, endDate: string) =>
@@ -70,12 +69,12 @@ export const DateRangePicker = ({
 
   const selection = draftStart
     ? {
-        start: toDate(draftStart),
-        end: toDate(
+        start: fromISODate(draftStart),
+        end: fromISODate(
           previewEnd && previewEnd > draftStart ? previewEnd : draftStart,
         ),
       }
-    : { start: toDate(startDate), end: toDate(endDate) };
+    : { start: fromISODate(startDate), end: fromISODate(endDate) };
 
   return (
     <Popover
@@ -123,10 +122,10 @@ export const DateRangePicker = ({
           </p>
 
           <MonthCalendar
-            initialMonth={toDate(startDate)}
+            initialMonth={fromISODate(startDate)}
             selection={selection}
             selectionLabel="in the period"
-            autoFocusDate={toDate(startDate)}
+            autoFocusDate={fromISODate(startDate)}
             onSelectDay={pickDay}
             onHoverDay={(day) => setPreviewEnd(day && toISODate(day))}
           />

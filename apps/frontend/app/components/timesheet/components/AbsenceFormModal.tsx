@@ -10,7 +10,7 @@ import TextareaAutosize from "react-textarea-autosize";
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
-import { formatDuration, isISODate } from "@/lib/utils/date";
+import { formatDuration, isISODateRange } from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import { Field, fieldControlClassName } from "@/components/ui/field";
@@ -104,8 +104,7 @@ export const AbsenceFormModal = ({
     name: ["startDate", "endDate"],
   });
 
-  const isRangeComplete =
-    isISODate(startDate) && isISODate(endDate) && endDate >= startDate;
+  const isRangeComplete = isISODateRange(startDate, endDate);
   const { items: plansInRange } = usePlanningEntries(
     { userId, dateFrom: startDate, dateTo: endDate },
     { enabled: open && isRangeComplete },

@@ -18,7 +18,7 @@ import {
 } from "@/lib/utils/date";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
-import { Absence } from "@/types";
+import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
@@ -135,6 +135,20 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const openedAbsence = openedDay
     ? absencesByUser[openedDay.userId]?.[openedDay.date]
     : undefined;
+
+  // An absence day opens the absence itself, unless a locked month freezes
+  // it; then the day dialog shows it and says so.
+  const openDay = (row: PlanningRow, date: string) => {
+    const absence = absencesByUser[row.user.id]?.[date];
+    const isFrozen =
+      !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
+
+    if (absence && !isFrozen) {
+      setAbsenceForm({ userId: row.user.id, date: absence.startDate, absence });
+    } else {
+      setOpenedDay({ userId: row.user.id, date });
+    }
+  };
   const periodRow = periodUserId
     ? rows.find((row) => row.user.id === periodUserId)
     : undefined;
@@ -294,28 +308,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
                   isEditable={isEditable}
-                  onOpenDay={(opened, date) => {
-                    // An absence day opens the absence itself, unless a
-                    // locked month freezes it; then the day dialog says so.
-                    const absence = absencesByUser[opened.user.id]?.[date];
-                    const isAbsenceEditable =
-                      !!absence &&
-                      !isRangeLocked(
-                        isLocked,
-                        absence.startDate,
-                        absence.endDate,
-                      );
-
-                    if (absence && isAbsenceEditable) {
-                      setAbsenceForm({
-                        userId: opened.user.id,
-                        date: absence.startDate,
-                        absence,
-                      });
-                    } else {
-                      setOpenedDay({ userId: opened.user.id, date });
-                    }
-                  }}
+                  onOpenDay={openDay}
                   onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />
               ))}
@@ -345,15 +338,18 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           userId={absenceForm.userId}
           date={absenceForm.date}
           absence={absenceForm.absence}
-          onCreate={(payload) =>
-            absenceActions.create.mutateAsync({
+          onCreate={async (payload) => {
+            await absenceActions.create.mutateAsync({
               ...payload,
               userId: absenceForm.userId,
-            })
-          }
-          onUpdate={(id, data) =>
-            absenceActions.update.mutateAsync({ id, data })
-          }
+            });
+            // The day dialog this came from is now an absence day's.
+            setOpenedDay(null);
+          }}
+          onUpdate={async (id, data) => {
+            await absenceActions.update.mutateAsync({ id, data });
+            setOpenedDay(null);
+          }}
           onDelete={(id) => absenceActions.delete.mutateAsync(id)}
           isSaving={
             absenceActions.create.isPending || absenceActions.update.isPending
