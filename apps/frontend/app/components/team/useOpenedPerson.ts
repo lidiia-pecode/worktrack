@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 export const PERSON_PARAM = "person";
@@ -24,33 +24,41 @@ export const useOpenedPerson = () => {
     if (!personId) urlBeforeOpen.current = null;
   }, [personId]);
 
-  const urlWithPerson = (id: string | null) => {
-    const params = new URLSearchParams(searchParams);
+  const urlWithPerson = useCallback(
+    (id: string | null) => {
+      const params = new URLSearchParams(searchParams);
 
-    if (id) params.set(PERSON_PARAM, id);
-    else params.delete(PERSON_PARAM);
+      if (id) params.set(PERSON_PARAM, id);
+      else params.delete(PERSON_PARAM);
 
-    return params.size ? `${pathname}?${params}` : pathname;
-  };
+      return params.size ? `${pathname}?${params}` : pathname;
+    },
+    [pathname, searchParams],
+  );
 
-  const open = (id: string) => {
-    if (id === personId) return;
+  const open = useCallback(
+    (id: string) => {
+      if (id === personId) return;
 
-    returnFocusTo.current =
-      document.activeElement instanceof HTMLElement
-        ? document.activeElement
-        : null;
+      returnFocusTo.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
 
-    if (personId) {
-      window.history.replaceState(null, "", urlWithPerson(id));
-      return;
-    }
+      if (personId) {
+        window.history.replaceState(null, "", urlWithPerson(id));
+        return;
+      }
 
-    urlBeforeOpen.current = urlWithPerson(null);
-    window.history.pushState(null, "", urlWithPerson(id));
-  };
+      urlBeforeOpen.current = urlWithPerson(null);
+      window.history.pushState(null, "", urlWithPerson(id));
+    },
+    [personId, urlWithPerson],
+  );
 
-  const close = () => {
+  // Stable until the URL changes, so an effect that closes the panel runs once
+  // rather than again on every render before `back()` lands.
+  const close = useCallback(() => {
     // Back only while it returns to this same view; otherwise just drop the parameter.
     if (urlBeforeOpen.current === urlWithPerson(null)) window.history.back();
     else window.history.replaceState(null, "", urlWithPerson(null));
@@ -58,7 +66,7 @@ export const useOpenedPerson = () => {
 
     if (returnFocusTo.current?.isConnected) returnFocusTo.current.focus();
     returnFocusTo.current = null;
-  };
+  }, [urlWithPerson]);
 
   return { personId, open, close };
 };

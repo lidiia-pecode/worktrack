@@ -21,6 +21,7 @@ import {
 } from "@/lib/utils/date";
 import { canWriteTimeLogsFor } from "@/lib/utils/user";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
+import { lockLookupRange } from "@/lib/utils/reporting-period";
 import { UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -87,12 +88,16 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     [absences, weekDates],
   );
 
+  const todayIso = todayISODate(timezone);
+
+  // An absence is frozen whole once any of its days locks, so its months count.
+  const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
   const {
     isLocked,
     isEditable,
     isError: isLocksError,
     refetch: refetchLocks,
-  } = useLockedDates(dateFrom, dateTo);
+  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
 
   const {
     options: teamOptions,
@@ -131,7 +136,6 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     if (isPersonGone) closePerson();
   }, [isPersonGone, closePerson]);
 
-  const todayIso = todayISODate(timezone);
   const hasError =
     isSettingsError || isSummaryError || isAbsencesError || isLocksError;
 
