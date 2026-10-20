@@ -1,12 +1,16 @@
 import 'reflect-metadata';
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -285,6 +289,10 @@ describe('PlanningService', () => {
   afterEach(async () => {
     await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(Absence).delete({ companyId });
+    await dataSource.getRepository(UserCapacity).delete({ companyId });
+    await dataSource
+      .getRepository(User)
+      .update({ id: member.id }, { status: UserStatus.ACTIVE });
     await dataSource
       .getRepository(Project)
       .update({ id: archivedProjectId }, { status: ProjectStatus.ACTIVE });
@@ -594,6 +602,167 @@ describe('PlanningService', () => {
 
       expect(week.weekStart).toBe(addDays(MONDAY, -1));
       expect(week.weekEnd).toBe(SATURDAY);
+    });
+  });
+
+  describe('planning a period', () => {
+    const period = (
+      startDate: string,
+      endDate: string,
+      projects: { projectId: string; minutesPerDay: number }[],
+      userId = member.id,
+    ) => ({ userId, startDate, endDate, projects });
+
+    const problemsOf = async (promise: Promise<unknown>): Promise<string[]> => {
+      const error: unknown = await promise.catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(BadRequestException);
+      const { message } = (error as BadRequestException).getResponse() as {
+        message: string[];
+      };
+      return message;
+    };
+
+    it('plans every working day for each project, skipping weekends and absences', async () => {
+      await absentOn(member.id, WEDNESDAY);
+
+      const result = await service.planPeriod(
+        period(MONDAY, addDays(NEXT_MONDAY, 4), [
+          { projectId, minutesPerDay: 4 * HOUR },
+          { projectId: otherProjectId, minutesPerDay: 2 * HOUR },
+        ]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 9, created: 18, updated: 0 });
+      const entries = await entriesFor(member.id);
+      expect(entries).toHaveLength(18);
+      expect(entries.map((e) => e.date)).not.toContain(WEDNESDAY);
+      expect(entries.map((e) => e.date)).not.toContain(SATURDAY);
+    });
+
+    it('replaces the listed project and keeps the others', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, MONDAY, HOUR, otherProjectId);
+
+      const result = await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 5 * HOUR }]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 1, created: 0, updated: 1 });
+      const minutesByProject = Object.fromEntries(
+        (await entriesFor(member.id)).map((e) => [
+          e.projectId,
+          e.plannedMinutes,
+        ]),
+      );
+      expect(minutesByProject).toEqual({
+        [projectId]: 5 * HOUR,
+        [otherProjectId]: HOUR,
+      });
+    });
+
+    it('lists every day and week that does not fit, and saves nothing', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 24 * HOUR,
+      });
+      await existingEntry(member.id, TUESDAY, 3 * HOUR, otherProjectId);
+
+      const problems = await problemsOf(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [{ projectId, minutesPerDay: 6 * HOUR }]),
+          manager,
+        ),
+      );
+
+      expect(problems).toEqual([
+        expect.stringMatching(
+          /: 9h planned, over the 8h working day \(3h already planned on other projects\)$/,
+        ),
+        expect.stringMatching(
+          /^Week of .+: 33h planned of 24h available \(3h already planned on other projects\)$/,
+        ),
+      ]);
+      expect(await entriesFor(member.id)).toHaveLength(1);
+    });
+
+    it('lets a day already over the limit be lowered', async () => {
+      await existingEntry(member.id, MONDAY, 9 * HOUR);
+
+      const result = await service.planPeriod(
+        period(MONDAY, MONDAY, [{ projectId, minutesPerDay: 8 * HOUR + 30 }]),
+        manager,
+      );
+
+      expect(result.updated).toBe(1);
+    });
+
+    it('refuses a range with no working day', async () => {
+      await expect(
+        service.planPeriod(
+          period(SATURDAY, addDays(SATURDAY, 1), [
+            { projectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow('There is no working day to plan');
+    });
+
+    it('refuses a range touching a locked month', async () => {
+      await expect(
+        service.planPeriod(
+          period(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4), [
+            { projectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow(/LOCKED reporting period/);
+      expect(await entriesFor(member.id)).toHaveLength(0);
+    });
+
+    it('refuses a project the person is not on, or listed twice', async () => {
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [
+            { projectId: unstaffedProjectId, minutesPerDay: HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow(/not a member of the project/);
+
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [
+            { projectId, minutesPerDay: HOUR },
+            { projectId, minutesPerDay: 2 * HOUR },
+          ]),
+          manager,
+        ),
+      ).rejects.toThrow('Each project can be listed only once');
+    });
+
+    it('refuses an inactive person, an employee and somebody outside the team', async () => {
+      const anHour = [{ projectId, minutesPerDay: HOUR }];
+
+      await expect(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, anHour, outsider.id),
+          manager,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.planPeriod(period(MONDAY, FRIDAY, anHour), member),
+      ).rejects.toThrow(ForbiddenException);
+
+      await dataSource
+        .getRepository(User)
+        .update({ id: member.id }, { status: UserStatus.DEACTIVATED });
+      await expect(
+        service.planPeriod(period(MONDAY, FRIDAY, anHour), manager),
+      ).rejects.toThrow('Planning can only be created for active users');
     });
   });
 

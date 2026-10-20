@@ -243,7 +243,8 @@ Phase 31; D9 says nothing about status, so this is a rule added on top of it.
 manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
-(`GET /planning/week`), the Team week view and the utilisation report. The
+(`GET /planning/week`), the Team week view and the utilisation report. Planning
+a whole period (`POST /planning/period`) reaches the same people. The
 removal count (`GET /planning/removal-count`) counts the same people a save may
 remove. Removing somebody from a project deletes their plans for it from today
 on, and since a save only removes people the caller was shown (§3.5), a manager
