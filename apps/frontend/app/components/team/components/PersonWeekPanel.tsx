@@ -47,18 +47,11 @@ type PersonWeekPanelProps = {
   canWrite: boolean;
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
-  /** The grid's project filter, so the panel shows the same hours as the row. */
   projectId?: string;
   absencesByDate: Record<string, Absence>;
   onClose: () => void;
 };
 
-/**
- * One person's week beside the Team time grid: their entries day by day, with
- * absences and plans where nothing is logged. An owner or manager records the
- * person's time and absences from here. A deactivated person is shown
- * read-only, which the API enforces too.
- */
 export const PersonWeekPanel = ({
   row,
   viewerId,
@@ -93,7 +86,6 @@ export const PersonWeekPanel = ({
     refetch: refetchLogs,
   } = useTimelogs({ userId: user.id, dateFrom, dateTo, projectId });
 
-  // Only needed to fill the form, so a read-only panel does not ask for it.
   const {
     items: pickerItems,
     isLoading: isLoadingPicker,
@@ -101,14 +93,15 @@ export const PersonWeekPanel = ({
     refetch: refetchPicker,
   } = useAssignableActivities(user.id, canEdit);
 
-  // Context for an empty day; a failed load leaves the days without it.
+  // Context for an empty day, narrowed like the entries; a failed load leaves
+  // the days without it.
   const { items: plannedEntries } = usePlanningEntries({
     userId: user.id,
     dateFrom,
     dateTo,
+    projectId,
   });
 
-  // The absences themselves come from the grid, which reads the whole team's.
   const absenceActions = useAbsencesMutations();
 
   const timelogsByDate = useMemo(
@@ -169,7 +162,7 @@ export const PersonWeekPanel = ({
 
   return (
     <SidePanel titleId={titleId} focusKey={user.id} onClose={onClose}>
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-4">
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b border-border px-3">
         <Avatar user={user} size="md" />
 
         <div className="min-w-0 flex-1">

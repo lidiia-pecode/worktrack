@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
@@ -115,10 +115,21 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     return totalsByDate;
   }, [rows]);
 
-  // The panel follows the grid: when the week or a filter drops the person, it goes too.
+  // The panel follows the grid: when the week or a filter drops the person, it
+  // closes, URL included, rather than reopening by itself when they return.
   const openedRow = personId
     ? rows.find((row) => row.user.id === personId)
     : undefined;
+  const isPersonGone =
+    !!personId &&
+    !openedRow &&
+    !isLoadingSummary &&
+    !isShowingPreviousWeek &&
+    !isSummaryError;
+
+  useEffect(() => {
+    if (isPersonGone) closePerson();
+  }, [isPersonGone, closePerson]);
 
   const todayIso = todayISODate(timezone);
   const hasError =

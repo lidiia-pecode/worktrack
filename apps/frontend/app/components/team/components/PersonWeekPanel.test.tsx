@@ -232,6 +232,22 @@ describe("PersonWeekPanel", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("offers nothing on a locked day, and its entries are not buttons", () => {
+    data.timelogs = [entry];
+
+    renderPanel({ isLocked: (date) => date === "2026-10-19" });
+
+    const monday = dayOf("Mon");
+    expect(within(monday).getByLabelText("Locked")).toBeInTheDocument();
+    expect(
+      within(monday).queryByRole("button", { name: /Log time on/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(monday).queryByRole("button", { name: /Website redesign/ }),
+    ).not.toBeInTheDocument();
+    expect(addButtons()).toHaveLength(6);
+  });
+
   it("marks a deactivated person and lets nobody add or edit their entries", () => {
     data.timelogs = [entry];
 

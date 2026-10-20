@@ -178,8 +178,11 @@ export class TeamVisibilityService {
     }
   }
 
-  //  A leaver's time and absences stay as theyare; nobody adds to, edits or deletes them (planning refuses the same way).
-
+  /**
+   * The write counterpart of `assertCanActForUser`: the same scope, and the
+   * target must still be active. A leaver's time and absences stay as they
+   * are; nobody adds to, edits or deletes them (planning refuses the same way).
+   */
   async assertCanWriteForUser(
     userId: string,
     user: AuthUser,

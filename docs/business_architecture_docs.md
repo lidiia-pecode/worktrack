@@ -462,7 +462,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only |
+| **Behind** | They logged less than expected | logged < expected, over finished days only; the figure feeds the utilisation report, and since Phase 31 no screen marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
@@ -701,16 +701,21 @@ see, and how a new company gets started. §7 plans that work.
   can stay a draft without a category until a project uses it.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
-  entries day by day and correct them. Filtered to a project, the rows, the
-  team total and the person's panel show only that project's hours, with no
-  Expected, since that is about the whole week.
+  week in a side panel beside the grid: their entries day by day, their
+  absences and, where nothing is logged, their plan. From there they correct
+  the person's time and record their absences; the open person is in the URL,
+  so a reload keeps the panel. A deactivated person is shown read-only, and
+  the API refuses writes for them. Filtered to a project, the rows, the team
+  total and the panel show only that project's hours, with no Expected, since
+  that is about the whole week.
 - **Absences** — a person records their own days away as a date range with a
-  type, from the timesheet; the timesheet and the team grid mark those days, so
-  an empty week explains itself. A day is either worked or absent, never both.
+  type, from the timesheet, and an owner or manager records them for somebody
+  from Team time; the timesheet and the team grid mark those days, so an empty
+  week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's contracted hours
   from a date; both week views read one backend figure for what was expected,
   absences reduce it, and each shows logged time against it; nothing marks a
-  person behind mid-week (D3).
+  person behind mid-week (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
@@ -784,19 +789,19 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-two
-suites and 730 tests, covering the role-visibility filters, team and invitation
+suites and 739 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has forty-one Vitest files and 208 tests: its date, month,
+The frontend has forty-three Vitest files and 219 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
-the time entry form, the duration stepper, the timesheet day column, the week a
-grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
+the time entry form, the duration stepper, the timesheet day column, the
+person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
