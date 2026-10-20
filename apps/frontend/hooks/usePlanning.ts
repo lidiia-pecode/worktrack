@@ -106,7 +106,6 @@ export function usePeriodPreview(payload: PlanPeriodPayload | null) {
   return {
     preview: query.data,
     isOutdated: isSettling || query.isPlaceholderData || query.isFetching,
-    isLoading: query.isLoading,
     error: query.error,
   };
 }

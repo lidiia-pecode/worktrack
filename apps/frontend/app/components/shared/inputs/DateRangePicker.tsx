@@ -20,7 +20,7 @@ import {
 import { MonthCalendar } from "../MonthCalendar";
 
 /** "Oct 19 – Oct 23, 2026", or the one day. */
-export const formatDateRange = (startDate: string, endDate: string) =>
+const formatDateRange = (startDate: string, endDate: string) =>
   startDate === endDate
     ? formatDayMonthYearLabel(startDate)
     : `${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)}`;

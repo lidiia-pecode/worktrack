@@ -31,7 +31,6 @@ vi.mock("@/hooks/usePlanning", () => ({
   usePeriodPreview: () => ({
     preview: server.preview ?? undefined,
     isOutdated: false,
-    isLoading: false,
     error: server.previewError,
   }),
   usePlanningEntries: () => ({
