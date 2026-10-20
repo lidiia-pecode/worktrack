@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 18 October 2026.** Phases 0 to 28 in §7 are
+**Last verified against the code: 20 October 2026.** Phases 0 to 31 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -714,8 +714,8 @@ see, and how a new company gets started. §7 plans that work.
   week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's contracted hours
   from a date; both week views read one backend figure for what was expected,
-  absences reduce it, and each shows logged time against it; nothing marks a
-  person behind mid-week (Phase 31, by decision).
+  absences reduce it, and each shows logged time against it; no screen marks a
+  person behind (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
@@ -878,6 +878,7 @@ is in its pull request.
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 | 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
 | 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
+| 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
 
 ### Improvement roadmap — high level, flexible
 
@@ -935,10 +936,11 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning.** The manager's and owner's week views:
-the team grid, the per-person panel and the planning grid. Finding who is behind
-and why, correcting somebody's week including their absences, planning more than
-one cell at a time, and grids that draw days, absences and locks the same way.
+**Area 4 — Team oversight and planning** *(started, Phase 31)*. The manager's
+and owner's week views: the team grid, the per-person panel and the planning
+grid. Finding who is behind and why, correcting somebody's week including their
+absences, planning more than one cell at a time, and grids that draw days,
+absences and locks the same way.
 
 **Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
@@ -966,11 +968,11 @@ the details the earlier areas left: the point at which the product is judged
 ready, or not, for the final stage.
 
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
-every later area reuses what it settles; most of Area 5 followed. Areas 3, 4, 6
-and 7 follow roughly in the order people meet them day to day, and can be
-reordered; Area 6 and Area 7 need the most discussion before they are scoped.
-Area 8 closes the stage. A defect that distorts figures can be pulled into
-whichever scope comes first.
+every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
+started. Areas 3, 4, 6 and 7 follow roughly in the order people meet them day to
+day, and can be reordered; Area 6 and Area 7 need the most discussion before
+they are scoped. Area 8 closes the stage. A defect that distorts figures can be
+pulled into whichever scope comes first.
 
 ---
 
@@ -1064,8 +1066,10 @@ lookup tables any manager can still edit or archive across the whole company.
 ever disagree about the catalogue.
 
 **Q5 — Should the app chase people who have not logged time?**
-The team view shows who is short, but somebody still has to look. Phase 3 made
-"short" precise: logged below expected, over days that have finished.
+The team view shows each person's logged time against what was expected, but
+somebody still has to look, and since Phase 31 nothing marks anyone short.
+Phase 3 made "short" precise: logged below expected, over days that have
+finished; today only the utilisation report measures it.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to

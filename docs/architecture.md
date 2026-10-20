@@ -86,8 +86,9 @@ empty states. The Manage pages show users, teams, projects, activities and
 categories as searchable lists that open a shared side panel. Owners and managers have a team time view at `/team` — a week grid
 filtered by team and project, with a per-person panel they can edit through.
 
-Absences are built: a person records days away as a date range with a type, and
-the timesheet and the team view mark those days, so a week with no logged time
+Absences are built: a person records days away as a date range with a type, an
+owner or manager can record them for somebody from the team view, and the
+timesheet and the team view mark those days, so a week with no logged time
 says why. A day is either worked or absent, never both.
 
 Expected hours are capacity minus absences, and owners and managers plan their

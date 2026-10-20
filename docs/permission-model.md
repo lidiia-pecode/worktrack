@@ -273,7 +273,7 @@ project staffed from both teams.
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
-| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Reactivating him changes nothing back, because nothing was removed |
+| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in, and neither Mary nor Olivia can add, edit or delete his time or absences (§3.7). Reactivating him changes nothing back, because nothing was removed |
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |
@@ -343,9 +343,11 @@ responsible person on a project, so whether they must be a member is moot
 (formerly P3).
 
 Everything built afterwards — absences, capacity, planning, reporting and the
-hours export — needed nothing new here: it reuses D9's people through the same
-helpers, so a manager's figures cover the teams they lead and an owner's the
-whole company. Reopening a locked month is the Owner's alone.
+hours export — reuses D9's people through the same helpers, so a manager's
+figures cover the teams they lead and an owner's the whole company. Reopening a
+locked month is the Owner's alone. One rule was added on top in October 2026
+(Phase 31): time and absences can be written for somebody else only while that
+person is active (§3.7).
 
 ---
 
