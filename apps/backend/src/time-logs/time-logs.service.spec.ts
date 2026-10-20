@@ -9,7 +9,7 @@ import { DataSource, In } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -62,6 +62,7 @@ describe('TimeLogsService write scope', () => {
   let unassigned: AuthUser; // in "Alpha" but not on the project
   let stranger: AuthUser; // a different company entirely
   let loneManager: AuthUser; // has the MANAGER role but leads no team
+  let deactivated: AuthUser; // in "Alpha", assigned to the project, deactivated
 
   let teamId: string;
   let projectActivityId: string;
@@ -70,11 +71,13 @@ describe('TimeLogsService write scope', () => {
     name: string,
     role: UserRole,
     inCompanyId = companyId,
+    status = UserStatus.ACTIVE,
   ): Promise<AuthUser> => {
     const email = `${name}-${RUN}@timelog.test`;
     const user = await dataSource.getRepository(User).save({
       companyId: inCompanyId,
       role,
+      status,
       firstName: name,
       lastName: 'Test',
       email,
@@ -148,6 +151,12 @@ describe('TimeLogsService write scope', () => {
     outsider = await createUser('outsider', UserRole.EMPLOYEE);
     unassigned = await createUser('unassigned', UserRole.EMPLOYEE);
     loneManager = await createUser('lonemanager', UserRole.MANAGER);
+    deactivated = await createUser(
+      'deactivated',
+      UserRole.EMPLOYEE,
+      companyId,
+      UserStatus.DEACTIVATED,
+    );
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -163,6 +172,7 @@ describe('TimeLogsService write scope', () => {
       [manager, TeamRole.MANAGER],
       [member, TeamRole.MEMBER],
       [unassigned, TeamRole.MEMBER],
+      [deactivated, TeamRole.MEMBER],
     ] as const) {
       await dataSource.getRepository(TeamMembership).save({
         companyId,
@@ -194,7 +204,14 @@ describe('TimeLogsService write scope', () => {
     projectActivityId = projectActivity.id;
 
     // Everyone but `unassigned` can log against the project.
-    for (const user of [owner, manager, member, outsider, loneManager]) {
+    for (const user of [
+      owner,
+      manager,
+      member,
+      outsider,
+      loneManager,
+      deactivated,
+    ]) {
       await dataSource.query(
         'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
         [project.id, user.id],
@@ -295,6 +312,15 @@ describe('TimeLogsService write scope', () => {
       );
     });
 
+    it('refuses everyone for a deactivated person', async () => {
+      await expect(
+        service.create(logFor(deactivated.id), owner),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        service.create(logFor(deactivated.id), manager),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     it('refuses any role inside a locked period', async () => {
       await expect(
         service.create(logFor(member.id, LOCKED_DATE), owner),
@@ -392,6 +418,17 @@ describe('TimeLogsService write scope', () => {
       await expect(
         service.update(id, { minutes: 90 }, manager),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("leaves a deactivated person's entries as they are", async () => {
+      const id = await existingLogFor(deactivated.id);
+
+      await expect(service.update(id, { minutes: 90 }, owner)).rejects.toThrow(
+        BadRequestException,
+      );
+      await expect(service.delete(id, owner)).rejects.toThrow(
+        BadRequestException,
+      );
     });
 
     it("refuses an employee for someone else's entry", async () => {
@@ -582,6 +619,17 @@ describe('TimeLogsService write scope', () => {
 
       expect(ids.filter((id) => id === manager.id)).toHaveLength(1);
       expect(ids.sort()).toEqual([manager.id, member.id, unassigned.id].sort());
+    });
+
+    it('marks a deactivated person who logged in the range', async () => {
+      await existingLogFor(deactivated.id);
+
+      const { rows } = await weekOf(manager);
+      const statusOf = (id: string) =>
+        rows.find((row) => row.user.id === id)?.user.status;
+
+      expect(statusOf(deactivated.id)).toBe(UserStatus.DEACTIVATED);
+      expect(statusOf(member.id)).toBe(UserStatus.ACTIVE);
     });
 
     it("counts only the filtered project's hours", async () => {

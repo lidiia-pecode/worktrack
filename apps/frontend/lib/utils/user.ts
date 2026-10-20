@@ -19,7 +19,8 @@ export const isDeactivatedUser = (user: { status?: UserStatus }) =>
  * Whether the viewer may create, edit and delete someone's time entries.
  * Write access follows what the viewer can already see, so anyone whose row
  * reaches the team grid is also someone they may correct; everyone else only
- * ever edits their own. The backend enforces the same rule.
+ * ever edits their own. The backend enforces the same rule and also refuses
+ * writes for a deactivated person, which the caller checks from their status.
  */
 export const canWriteTimeLogsFor = (
   role: string | undefined,

@@ -1,4 +1,5 @@
 import { PaginatedResponse, PaginationParams } from ".";
+import { UserStatus } from "./enums";
 import { ProjectActivity } from "./ProjectActivities";
 
 /**
@@ -64,6 +65,7 @@ export interface TeamSummaryUser {
   email: string;
   position?: string | null;
   avatarUrl?: string | null;
+  status: UserStatus;
 }
 
 export interface TeamSummaryDay {

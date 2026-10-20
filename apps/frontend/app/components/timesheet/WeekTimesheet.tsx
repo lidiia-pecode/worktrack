@@ -35,13 +35,13 @@ import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
 import { EmptyState } from "../shared/EmptyState";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
@@ -63,12 +63,6 @@ type AbsenceModalState = {
 
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
-
-const NON_WORK_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  day: "numeric",
-  month: "long",
-});
 
 const noActivitiesMessage = (projects: { name: string }[]) =>
   projects.length === 1
@@ -144,7 +138,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   const {
     expectedMinutes,
-    expectedToDateMinutes,
     expectedByDate,
     isLoading: isLoadingExpected,
     isError: isExpectedError,
@@ -229,7 +222,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     };
   }, [weekDates, timelogsByDate]);
 
-  const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
   const isWeekComplete = expectedMinutes > 0 && totalMinutes >= expectedMinutes;
   const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
@@ -421,16 +413,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
                 {formatDuration(expectedMinutes)}
               </span>
 
-              {behindMinutes > 0 && (
-                <Badge
-                  variant="warning"
-                  title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
-                  className="px-1.5 text-2xs font-medium"
-                >
-                  -{formatDuration(behindMinutes)}
-                </Badge>
-              )}
-
               {isWeekComplete && (
                 <Badge
                   variant="success"
@@ -540,17 +522,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         </>
       )}
 
-      <ConfirmModal
-        isOpen={!!nonWorkDayDate}
+      <NonWorkDayConfirm
+        date={nonWorkDayDate}
         onClose={() => setNonWorkDayDate(null)}
         onConfirm={confirmNonWorkDay}
-        title="Log time on a non-work day?"
-        message={
-          nonWorkDayDate
-            ? `${NON_WORK_DAY_LABEL.format(nonWorkDayDate)} is outside the standard work week.`
-            : undefined
-        }
-        confirmText="Log time"
       />
 
       {absenceForm}

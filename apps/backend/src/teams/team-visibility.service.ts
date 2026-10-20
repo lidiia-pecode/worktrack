@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -20,7 +21,13 @@ export interface UserScopeWording {
 
 export type VisibleUser = Pick<
   User,
-  'id' | 'firstName' | 'lastName' | 'email' | 'position' | 'avatarUrl'
+  | 'id'
+  | 'firstName'
+  | 'lastName'
+  | 'email'
+  | 'position'
+  | 'avatarUrl'
+  | 'status'
 >;
 
 export interface VisibleUsersFilter {
@@ -172,6 +179,32 @@ export class TeamVisibilityService {
   }
 
   /**
+   * The write counterpart of `assertCanActForUser`: the same scope, and the
+   * target must still be active. A leaver's time and absences stay as they
+   * are; nobody adds to, edits or deletes them (planning refuses the same way).
+   */
+  async assertCanWriteForUser(
+    userId: string,
+    user: AuthUser,
+    wording: UserScopeWording,
+  ): Promise<void> {
+    await this.assertCanActForUser(userId, user, wording);
+
+    const isActive = await this.userRepo.exists({
+      where: {
+        id: userId,
+        companyId: user.companyId,
+        status: UserStatus.ACTIVE,
+      },
+    });
+    if (!isActive) {
+      throw new BadRequestException(
+        `You can only ${wording.action} ${wording.subject} of active users`,
+      );
+    }
+  }
+
+  /**
    * The people a week view lists: everyone the caller may see who is active,
    * plus the deactivated ones named in `includeUserIds`.
    */
@@ -189,6 +222,7 @@ export class TeamVisibilityService {
         'u.email',
         'u.position',
         'u.avatarUrl',
+        'u.status',
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
 

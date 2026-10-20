@@ -10,7 +10,6 @@ type TeamWeekRowProps = {
   row: TeamSummaryRow;
   weekDates: Date[];
   absencesByDate: Record<string, Absence>;
-  /** False under a project filter: Expected and "behind" are about the whole week. */
   showsExpected: boolean;
   onOpen: (row: TeamSummaryRow) => void;
 };
@@ -23,9 +22,6 @@ export const TeamWeekRow = ({
   onOpen,
 }: TeamWeekRowProps) => {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
-
-  const behindMinutes = Math.max(0, row.expectedToDateMinutes - row.minutes);
-  const isBehind = showsExpected && behindMinutes > 0;
 
   return (
     <tr
@@ -79,29 +75,15 @@ export const TeamWeekRow = ({
       })}
 
       <td className="p-3 text-right text-sm whitespace-nowrap tabular-nums">
-        <div className="flex items-center justify-end gap-1.5">
-          <div>
-            <span className="font-semibold text-foreground">
-              {formatDuration(row.minutes)}
-            </span>
+        <span className="font-semibold text-foreground">
+          {formatDuration(row.minutes)}
+        </span>
 
-            {showsExpected && (
-              <span className="ml-1.5 text-xs text-muted-foreground">
-                / {formatDuration(row.expectedMinutes)}
-              </span>
-            )}
-          </div>
-
-          {isBehind && (
-            <Badge
-              variant="warning"
-              title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
-              className="px-1.5 text-2xs font-medium"
-            >
-              −{formatDuration(behindMinutes)}
-            </Badge>
-          )}
-        </div>
+        {showsExpected && (
+          <span className="ml-1.5 text-xs text-muted-foreground">
+            / {formatDuration(row.expectedMinutes)}
+          </span>
+        )}
       </td>
     </tr>
   );

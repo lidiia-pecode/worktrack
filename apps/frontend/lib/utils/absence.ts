@@ -1,7 +1,7 @@
 import { Absence } from "@/types";
 import { AbsenceType } from "@/types/enums";
 
-import { addDays, isWeekend, toISODate } from "./date";
+import { addDays, formatDayMonthLabel, isWeekend, toISODate } from "./date";
 
 export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",
@@ -9,12 +9,19 @@ export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.PUBLIC_HOLIDAY]: "Public holiday",
 };
 
-/** Short enough for a day cell in the team grid. */
 export const ABSENCE_TYPE_SHORT_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",
   [AbsenceType.SICK_LEAVE]: "Sick",
   [AbsenceType.PUBLIC_HOLIDAY]: "Holiday",
 };
+
+export function formatAbsenceRange(absence: Absence): string {
+  const start = formatDayMonthLabel(absence.startDate);
+
+  return absence.startDate === absence.endDate
+    ? start
+    : `${start} – ${formatDayMonthLabel(absence.endDate)}`;
+}
 
 /**
  * An absence is stored as a range, so the day-by-day views expand it into the

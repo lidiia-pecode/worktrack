@@ -232,6 +232,13 @@ This model does not change the rule; it changes what it takes to *become* the
 manager of a person, which is what makes the rule trustworthy. Everyone reads
 their own time logs, absences and hours, including a manager who leads no team.
 
+**Writing for somebody else needs them to be active.** Once a person is
+deactivated, their time logs and absences stay as they are: nobody adds to,
+edits or deletes them, and the API answers 400, the way planning already
+refuses an inactive person. Reading them is unchanged, so a leaver's weeks
+still show on Team time and in the reports. Decided on 19 October 2026 for
+Phase 31; D9 says nothing about status, so this is a rule added on top of it.
+
 **Planning follows the same people.** An Owner plans for any active user, a
 manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a

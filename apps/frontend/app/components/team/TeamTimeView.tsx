@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
@@ -10,7 +10,6 @@ import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
-import { TeamSummaryUser } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   formatDuration,
@@ -22,6 +21,7 @@ import {
 } from "@/lib/utils/date";
 import { canWriteTimeLogsFor } from "@/lib/utils/user";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
+import { lockLookupRange } from "@/lib/utils/reporting-period";
 import { UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -33,8 +33,9 @@ import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
 import { TeamFilters } from "./components/TeamFilters";
+import { PersonWeekPanel } from "./components/PersonWeekPanel";
 import { TeamWeekRow } from "./components/TeamWeekRow";
-import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
+import { useOpenedPerson } from "./useOpenedPerson";
 
 type TeamTimeViewProps = {
   role: UserRole;
@@ -52,7 +53,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const { weekStart, showWeekOf } = useShownWeek();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
-  const [openedUser, setOpenedUser] = useState<TeamSummaryUser | null>(null);
+  const { personId, open: openPerson, close: closePerson } = useOpenedPerson();
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -87,12 +88,16 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     [absences, weekDates],
   );
 
+  const todayIso = todayISODate(timezone);
+
+  // An absence is frozen whole once any of its days locks, so its months count.
+  const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
   const {
     isLocked,
     isEditable,
     isError: isLocksError,
     refetch: refetchLocks,
-  } = useLockedDates(dateFrom, dateTo);
+  } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
 
   const {
     options: teamOptions,
@@ -115,7 +120,22 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     return totalsByDate;
   }, [rows]);
 
-  const todayIso = todayISODate(timezone);
+  // The panel follows the grid: when the week or a filter drops the person, it
+  // closes, URL included, rather than reopening by itself when they return.
+  const openedRow = personId
+    ? rows.find((row) => row.user.id === personId)
+    : undefined;
+  const isPersonGone =
+    !!personId &&
+    !openedRow &&
+    !isLoadingSummary &&
+    !isShowingPreviousWeek &&
+    !isSummaryError;
+
+  useEffect(() => {
+    if (isPersonGone) closePerson();
+  }, [isPersonGone, closePerson]);
+
   const hasError =
     isSettingsError || isSummaryError || isAbsencesError || isLocksError;
 
@@ -276,7 +296,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   showsExpected={!projectId}
-                  onOpen={(opened) => setOpenedUser(opened.user)}
+                  onOpen={(opened) => openPerson(opened.user.id)}
                 />
               ))}
             </tbody>
@@ -284,19 +304,20 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
         </div>
       )}
 
-      {openedUser && (
-        <UserTimeDetailPanel
-          key={openedUser.id}
-          user={openedUser}
+      {openedRow && (
+        <PersonWeekPanel
+          key={openedRow.user.id}
+          row={openedRow}
           viewerId={viewerId}
           weekDates={weekDates}
           weekLabel={formatWeekRangeLabel(weekStart)}
           todayIso={todayIso}
-          canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
+          canWrite={canWriteTimeLogsFor(role, viewerId, openedRow.user.id)}
           isLocked={isLocked}
           isEditable={isEditable}
           projectId={projectId}
-          onClose={() => setOpenedUser(null)}
+          absencesByDate={absencesByUser[openedRow.user.id] ?? {}}
+          onClose={closePerson}
         />
       )}
     </div>

@@ -462,7 +462,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only |
+| **Behind** | They logged less than expected | logged < expected, over finished days only; the figure feeds the utilisation report, and since Phase 31 no screen marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
@@ -479,7 +479,7 @@ for the days before they joined; there is no separate start date (§10 Q14). Rou
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which is what **behind** is measured against, and a
+the company's timezone, which the utilisation report measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, an absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -532,7 +532,7 @@ checklist while setup is open, and afterwards a guide to how WorkTrack fits
 together. A manager gets a welcome on Team time instead of a
 checklist, and an employee one on their timesheet; each speaks only to that
 person's own role. An employee with nothing to log sees why — on no project, or
-on projects with no activities yet — and no "behind" for that week. Team
+on projects with no activities yet — and no week figures for that week. Team
 time and Planning always show their people, the viewer included, even before
 anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
@@ -632,7 +632,8 @@ added to a team or a project.
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
-| Time logs — write | whole company | own, plus users in teams they manage | **own only** |
+| Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
+| Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
@@ -651,7 +652,9 @@ membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the team view's per-person panel is
-where an owner or manager acts on it.
+where an owner or manager acts on it. Writing time or an absence for somebody
+else is refused once they are deactivated; their records stay as they were,
+and reading them is unchanged (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member
@@ -698,15 +701,21 @@ see, and how a new company gets started. §7 plans that work.
   can stay a draft without a category until a project uses it.
 - **Team time view** — owners and managers land on `/team`, read their people's
   week filtered by team and project, and open any row to see that person's
-  entries day by day and correct them. Filtered to a project, the rows, the
-  team total and the person's panel show only that project's hours, with no
-  Expected and no "behind", since those are about the whole week.
+  week in a side panel beside the grid: their entries day by day, their
+  absences and, where nothing is logged, their plan. From there they correct
+  the person's time and record their absences; the open person is in the URL,
+  so a reload keeps the panel. A deactivated person is shown read-only, and
+  the API refuses writes for them. Filtered to a project, the rows, the team
+  total and the panel show only that project's hours, with no Expected, since
+  that is about the whole week.
 - **Absences** — a person records their own days away as a date range with a
-  type, from the timesheet; the timesheet and the team grid mark those days, so
-  an empty week explains itself. A day is either worked or absent, never both.
+  type, from the timesheet, and an owner or manager records them for somebody
+  from Team time; the timesheet and the team grid mark those days, so an empty
+  week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's contracted hours
   from a date; both week views read one backend figure for what was expected,
-  absences reduce it, and a person is marked behind once a day has finished.
+  absences reduce it, and each shows logged time against it; nothing marks a
+  person behind mid-week (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
@@ -780,19 +789,19 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-two
-suites and 729 tests, covering the role-visibility filters, team and invitation
+suites and 739 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has forty-one Vitest files and 208 tests: its date, month,
+The frontend has forty-three Vitest files and 219 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
-the time entry form, the duration stepper, the timesheet day column, the week a
-grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
+the time entry form, the duration stepper, the timesheet day column, the
+person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -868,6 +877,7 @@ is in its pull request.
 | 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 | 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
+| 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
 
 ### Improvement roadmap — high level, flexible
 
@@ -930,12 +940,12 @@ the team grid, the per-person panel and the planning grid. Finding who is behind
 and why, correcting somebody's week including their absences, planning more than
 one cell at a time, and grids that draw days, absences and locks the same way.
 
-**Area 5 — Administration and settings** *(mostly done, Phases 20–26; periods
-and company settings remain)*. The owner's and manager's admin screens — people,
-teams, projects, activities, categories, periods and company settings. Lists
-that scale past a few dozen items with search that covers everything,
-confirmations before anything is archived, forms and dialogs that behave the
-same on every screen, and settings that say what a change will do.
+**Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
+owner's and manager's admin screens — people, teams, projects, activities,
+categories, periods and company settings. Lists that scale past a few dozen
+items with search that covers everything, confirmations before anything is
+archived, forms and dialogs that behave the same on every screen, and settings
+that say what a change will do.
 
 **Area 6 — Reporting and insights.** What owners and managers learn from
 `/reports` and the export. Which questions each role actually brings, and how
