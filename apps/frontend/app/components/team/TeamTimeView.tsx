@@ -10,7 +10,6 @@ import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
-import { TeamSummaryUser } from "@/types";
 import { Button } from "@/components/ui/button";
 import {
   formatDuration,
@@ -33,8 +32,9 @@ import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
 import { TeamFilters } from "./components/TeamFilters";
+import { PersonWeekPanel } from "./components/PersonWeekPanel";
 import { TeamWeekRow } from "./components/TeamWeekRow";
-import { UserTimeDetailPanel } from "./components/UserTimeDetailPanel";
+import { useOpenedPerson } from "./useOpenedPerson";
 
 type TeamTimeViewProps = {
   role: UserRole;
@@ -52,7 +52,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
   const { weekStart, showWeekOf } = useShownWeek();
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
-  const [openedUser, setOpenedUser] = useState<TeamSummaryUser | null>(null);
+  const { personId, open: openPerson, close: closePerson } = useOpenedPerson();
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -114,6 +114,11 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
 
     return totalsByDate;
   }, [rows]);
+
+  // The panel follows the grid: when the week or a filter drops the person, it goes too.
+  const openedRow = personId
+    ? rows.find((row) => row.user.id === personId)
+    : undefined;
 
   const todayIso = todayISODate(timezone);
   const hasError =
@@ -276,7 +281,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
                   weekDates={weekDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   showsExpected={!projectId}
-                  onOpen={(opened) => setOpenedUser(opened.user)}
+                  onOpen={(opened) => openPerson(opened.user.id)}
                 />
               ))}
             </tbody>
@@ -284,19 +289,20 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
         </div>
       )}
 
-      {openedUser && (
-        <UserTimeDetailPanel
-          key={openedUser.id}
-          user={openedUser}
+      {openedRow && (
+        <PersonWeekPanel
+          key={openedRow.user.id}
+          row={openedRow}
           viewerId={viewerId}
           weekDates={weekDates}
           weekLabel={formatWeekRangeLabel(weekStart)}
           todayIso={todayIso}
-          canWrite={canWriteTimeLogsFor(role, viewerId, openedUser.id)}
+          canWrite={canWriteTimeLogsFor(role, viewerId, openedRow.user.id)}
           isLocked={isLocked}
           isEditable={isEditable}
           projectId={projectId}
-          onClose={() => setOpenedUser(null)}
+          absencesByDate={absencesByUser[openedRow.user.id] ?? {}}
+          onClose={closePerson}
         />
       )}
     </div>
