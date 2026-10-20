@@ -138,7 +138,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   const {
     expectedMinutes,
-    expectedToDateMinutes,
     expectedByDate,
     isLoading: isLoadingExpected,
     isError: isExpectedError,
@@ -223,7 +222,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     };
   }, [weekDates, timelogsByDate]);
 
-  const behindMinutes = Math.max(0, expectedToDateMinutes - totalMinutes);
   const isWeekComplete = expectedMinutes > 0 && totalMinutes >= expectedMinutes;
   const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
@@ -414,16 +412,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
               <span className="text-muted-foreground">
                 {formatDuration(expectedMinutes)}
               </span>
-
-              {behindMinutes > 0 && (
-                <Badge
-                  variant="warning"
-                  title={`Behind by ${formatDuration(behindMinutes)} on the days so far`}
-                  className="px-1.5 text-2xs font-medium"
-                >
-                  -{formatDuration(behindMinutes)}
-                </Badge>
-              )}
 
               {isWeekComplete && (
                 <Badge

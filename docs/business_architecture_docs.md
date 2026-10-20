@@ -479,7 +479,7 @@ for the days before they joined; there is no separate start date (§10 Q14). Rou
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which is what **behind** is measured against, and a
+the company's timezone, which the utilisation report measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, an absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -532,7 +532,7 @@ checklist while setup is open, and afterwards a guide to how WorkTrack fits
 together. A manager gets a welcome on Team time instead of a
 checklist, and an employee one on their timesheet; each speaks only to that
 person's own role. An employee with nothing to log sees why — on no project, or
-on projects with no activities yet — and no "behind" for that week. Team
+on projects with no activities yet — and no week figures for that week. Team
 time and Planning always show their people, the viewer included, even before
 anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
@@ -703,13 +703,14 @@ see, and how a new company gets started. §7 plans that work.
   week filtered by team and project, and open any row to see that person's
   entries day by day and correct them. Filtered to a project, the rows, the
   team total and the person's panel show only that project's hours, with no
-  Expected and no "behind", since those are about the whole week.
+  Expected, since that is about the whole week.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet; the timesheet and the team grid mark those days, so
   an empty week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's contracted hours
   from a date; both week views read one backend figure for what was expected,
-  absences reduce it, and a person is marked behind once a day has finished.
+  absences reduce it, and each shows logged time against it; nothing marks a
+  person behind mid-week (D3).
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, see planned against available hours and which weeks no longer
   fit; everyone sees their own plan on the timesheet until they log time that
