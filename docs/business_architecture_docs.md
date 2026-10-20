@@ -780,7 +780,7 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-two
-suites and 729 tests, covering the role-visibility filters, team and invitation
+suites and 730 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
@@ -868,6 +868,7 @@ is in its pull request.
 | 27 | Security and dependencies: Next.js 16.3.8 and patched packages; password hashes one at a time; `null` refused where a value is required; session details cut to their column sizes; a session-expiry redirect that works more than once per tab |
 | 28 | Accurate documentation, then the first Area 3 slice: billable independent of project type, with past internal-project entries reset so no figure moved; editing entries on archived projects and clearing notes; each day's expected line from the person's own days; days read-only when locks fail, and the company's week first; "Add absence" from the empty state, a complete week, the shared Billable switch; a check before losing changes in a form; project hours only under Team time's project filter |
 | 29 | Faster time entry: a new entry starts from the last project and activity used for that person, or the only one there is, with Billable off until an activity is chosen; the duration in the dialog header, minutes carrying into hours; the week calendar stepping by month; a tab left open moving on to the new week; a day's entries in the order they were logged; Ctrl/⌘+Enter saving the note |
+| 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
 
 ### Improvement roadmap — high level, flexible
 
@@ -930,12 +931,12 @@ the team grid, the per-person panel and the planning grid. Finding who is behind
 and why, correcting somebody's week including their absences, planning more than
 one cell at a time, and grids that draw days, absences and locks the same way.
 
-**Area 5 — Administration and settings** *(mostly done, Phases 20–26; periods
-and company settings remain)*. The owner's and manager's admin screens — people,
-teams, projects, activities, categories, periods and company settings. Lists
-that scale past a few dozen items with search that covers everything,
-confirmations before anything is archived, forms and dialogs that behave the
-same on every screen, and settings that say what a change will do.
+**Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
+owner's and manager's admin screens — people, teams, projects, activities,
+categories, periods and company settings. Lists that scale past a few dozen
+items with search that covers everything, confirmations before anything is
+archived, forms and dialogs that behave the same on every screen, and settings
+that say what a change will do.
 
 **Area 6 — Reporting and insights.** What owners and managers learn from
 `/reports` and the export. Which questions each role actually brings, and how
