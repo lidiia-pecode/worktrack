@@ -38,6 +38,8 @@ export interface Availability {
   absenceMinutes: number;
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
+  /** Working days an absence covered, from the start date. */
+  absenceDays: number;
 }
 
 /** Unrounded sums, so every figure is rounded once at the end. */
@@ -45,6 +47,7 @@ interface ShareSums {
   available: number;
   availableToDate: number;
   capacityToDate: number;
+  absenceDaysToDate: number;
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
@@ -133,6 +136,7 @@ export class ExpectedHoursService {
         capacityMinutes,
         absenceMinutes: capacityMinutes - availableMinutes,
         availableMinutes,
+        absenceDays: sum.absenceDaysToDate,
       });
     });
 
@@ -176,6 +180,7 @@ export class ExpectedHoursService {
         available: 0,
         availableToDate: 0,
         capacityToDate: 0,
+        absenceDaysToDate: 0,
         availableByDate: [],
       };
 
@@ -194,7 +199,10 @@ export class ExpectedHoursService {
         const isAbsent = absences.some(
           (a) => a.startDate <= date && a.endDate >= date,
         );
-        if (isAbsent) continue;
+        if (isAbsent) {
+          if (hasFinished) sum.absenceDaysToDate += 1;
+          continue;
+        }
 
         available.share = share;
         sum.available += share;

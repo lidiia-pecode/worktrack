@@ -581,9 +581,11 @@ describe('ReportingService', () => {
       const people = await report(owner, HoursReportGroupBy.PERSON);
       const projects = await report(owner, HoursReportGroupBy.PROJECT);
 
+      // The manager has a plan and no time, so comes last.
       expect(people.rows.map((row) => row.name)).toEqual([
         'Member Test',
         'Outsider Test',
+        'Manager Test',
       ]);
       expect(projects.rows.map((row) => [row.name, row.detail])).toEqual([
         [`CRM ${RUN}`, 'Acme'],
@@ -594,7 +596,7 @@ describe('ReportingService', () => {
     it("shows a manager only their team's hours", async () => {
       const { rows, totals } = await report(manager, HoursReportGroupBy.PERSON);
 
-      expect(rows.map((row) => row.id)).toEqual([member.id]);
+      expect(rows.map((row) => row.id)).toEqual([member.id, manager.id]);
       expect(totals.totalMinutes).toBe(480);
     });
 
@@ -744,6 +746,7 @@ describe('ReportingService', () => {
         member.id,
         outsider,
         ...twinIds,
+        manager.id,
       ]);
       expect(
         plannedVsActual.rows
@@ -774,6 +777,79 @@ describe('ReportingService', () => {
         [toMonthKey(monthBefore), 90],
         [lockedMonthKey, 720],
       ]);
+    });
+
+    describe('planned beside the hours', () => {
+      it('sums the plan by project, with the totals', async () => {
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.PROJECT,
+        );
+
+        expect(rows.map((row) => [row.name, row.plannedMinutes])).toEqual([
+          [`CRM ${RUN}`, 540],
+          [`Tooling ${RUN}`, 0],
+        ]);
+        expect(totals.plannedMinutes).toBe(540);
+      });
+
+      it('sums the plan by client, by the same client rule', async () => {
+        const { rows } = await report(owner, HoursReportGroupBy.CLIENT);
+
+        expect(rows.map((row) => [row.name, row.plannedMinutes])).toEqual([
+          ['Acme', 540],
+          [null, 0],
+        ]);
+      });
+
+      it('lists somebody with a plan and no time last, with nothing logged', async () => {
+        const { rows } = await report(owner, HoursReportGroupBy.PERSON);
+
+        expect(rows.at(-1)).toMatchObject({
+          id: manager.id,
+          totalMinutes: 0,
+          plannedMinutes: 60,
+        });
+        expect(rows.find((row) => row.id === member.id)?.plannedMinutes).toBe(
+          480,
+        );
+      });
+
+      it('lists a project that was planned and never logged', async () => {
+        const roadmap = await createProject('Roadmap', 'Acme', activityId);
+        const roadmapPlan = await plan(member.id, roadmap.projectId, 120);
+
+        const { rows } = await report(owner, HoursReportGroupBy.PROJECT);
+        await dataSource.getRepository(PlanningEntry).remove(roadmapPlan);
+
+        expect(rows.at(-1)).toMatchObject({
+          name: `Roadmap ${RUN}`,
+          detail: 'Acme',
+          totalMinutes: 0,
+          plannedMinutes: 120,
+        });
+      });
+
+      it('counts only the plans of the people a manager sees', async () => {
+        const outsiderPlan = await plan(outsider, crmProjectId, 100);
+
+        const forOwner = await report(owner, HoursReportGroupBy.PROJECT);
+        const forManager = await report(manager, HoursReportGroupBy.PROJECT);
+        await dataSource.getRepository(PlanningEntry).remove(outsiderPlan);
+
+        expect(forOwner.totals.plannedMinutes).toBe(640);
+        expect(forManager.totals.plannedMinutes).toBe(540);
+      });
+
+      it('has no plan by activity, which plans are not made for', async () => {
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.ACTIVITY,
+        );
+
+        expect(rows.every((row) => row.plannedMinutes === null)).toBe(true);
+        expect(totals.plannedMinutes).toBeNull();
+      });
     });
 
     describe('hours export', () => {

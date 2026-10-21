@@ -107,16 +107,20 @@ export interface HoursReportRow extends HoursSplit {
   name: string | null;
   /** The client for a project, the category for an activity, the position for a person. */
   detail: string | null;
+  /** Planned for the same days; null by activity or month, which plans don't have. */
+  plannedMinutes: number | null;
 }
 
 export interface HoursReport extends ReportCoverage {
   /** The grouping these rows were built with. */
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
-  totals: HoursSplit;
+  totals: HoursSplit & Pick<HoursReportRow, 'plannedMinutes'>;
 }
 
 interface HoursReportRawRow {
+  /** What the rows are grouped on, to match each one with its plan. */
+  groupKey: string | null;
   id: string | null;
   name: string | null;
   detail: string | null;
@@ -183,41 +187,67 @@ const BILLING = `CASE
   ELSE '${HoursBilling.NON_BILLABLE}'
 END`;
 
-const HOURS_GROUPINGS: Record<
-  HoursReportGroupBy,
-  { id: string; name: string; detail: string; groupBy: string[] }
-> = {
+interface HoursGrouping {
+  /** One value per row, shared by the time and planning queries. */
+  key: string;
+  id: string;
+  name: string;
+  detail: string;
+  groupBy: string[];
+}
+
+const HOURS_GROUPINGS: Record<HoursReportGroupBy, HoursGrouping> = {
   [HoursReportGroupBy.CLIENT]: {
+    key: CLIENT_GROUP,
     id: 'NULL',
     name: CLIENT_DISPLAY_NAME,
     detail: 'NULL',
     groupBy: [CLIENT_GROUP],
   },
   [HoursReportGroupBy.PROJECT]: {
+    key: 'p.id::text',
     id: 'p.id',
     name: 'p.name',
     detail: CLIENT_NAME,
     groupBy: ['p.id'],
   },
   [HoursReportGroupBy.ACTIVITY]: {
+    key: 'a.id::text',
     id: 'a.id',
     name: 'a.name',
     detail: 'c.name',
     groupBy: ['a.id', 'c.name'],
   },
   [HoursReportGroupBy.PERSON]: {
+    key: 'u.id::text',
     id: 'u.id',
     name: `u.first_name || ' ' || u.last_name`,
     detail: 'u.position',
     groupBy: ['u.id'],
   },
   [HoursReportGroupBy.MONTH]: {
+    key: `TO_CHAR(tl.date, 'YYYY-MM')`,
     id: 'NULL',
     name: `TO_CHAR(tl.date, 'YYYY-MM')`,
     detail: 'NULL',
     groupBy: [`TO_CHAR(tl.date, 'YYYY-MM')`],
   },
 };
+
+/** Plans are made per person, project and day, so they can be summed these ways only. */
+const PLANNED_GROUPINGS = new Set([
+  HoursReportGroupBy.CLIENT,
+  HoursReportGroupBy.PROJECT,
+  HoursReportGroupBy.PERSON,
+]);
+
+interface PlannedRawRow {
+  groupKey: string | null;
+  id: string | null;
+  name: string | null;
+  detail: string | null;
+  minutes: string;
+}
 
 const DEFAULT_MONTHS_LISTED = 12;
 const MAX_MONTHS_LISTED = 36;
@@ -559,7 +589,8 @@ export class ReportingService {
   /**
    * Logged time over a date range, finished days only, grouped one way and
    * split into billable and non-billable by each entry's flag, on any project
-   * (D2).
+   * (D2). Grouped by client, project or person, each row also carries what was
+   * planned for the same days, and a row with a plan but no time is listed too.
    */
   async getHoursReport(
     user: AuthUser,
@@ -576,9 +607,12 @@ export class ReportingService {
     const grouping = HOURS_GROUPINGS[groupBy];
     const isClientWork = `${CLIENT_NAME} IS NOT NULL`;
 
+    const countedTo = lastCountedDay(dateTo, today);
+
     const qb = this.periodRepo.manager
       .createQueryBuilder()
-      .select(grouping.id, 'id')
+      .select(grouping.key, 'groupKey')
+      .addSelect(grouping.id, 'id')
       .addSelect(grouping.name, 'name')
       .addSelect(grouping.detail, 'detail')
       .addSelect(
@@ -607,7 +641,7 @@ export class ReportingService {
       .where('tl.company_id = :companyId', { companyId: user.companyId })
       .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom,
-        countedTo: lastCountedDay(dateTo, today),
+        countedTo,
       });
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
@@ -624,9 +658,20 @@ export class ReportingService {
         .addOrderBy('"id"', 'ASC');
     }
 
-    const rawRows = await qb.getRawMany<HoursReportRawRow>();
+    const [rawRows, plannedRows] = await Promise.all([
+      qb.getRawMany<HoursReportRawRow>(),
+      PLANNED_GROUPINGS.has(groupBy)
+        ? this.plannedRows(user, grouping, dateFrom, countedTo)
+        : null,
+    ]);
+    const plannedByKey = new Map(
+      plannedRows?.map((planned) => [
+        planned.groupKey,
+        Number(planned.minutes),
+      ]),
+    );
 
-    const rows = rawRows.map((raw) => ({
+    const rows: HoursReportRow[] = rawRows.map((raw) => ({
       id: raw.id,
       name: raw.name,
       detail: raw.detail,
@@ -635,9 +680,31 @@ export class ReportingService {
       clientMinutes: Number(raw.clientMinutes),
       nonBillableClientMinutes: Number(raw.nonBillableClientMinutes),
       totalMinutes: Number(raw.totalMinutes),
+      plannedMinutes: plannedRows
+        ? (plannedByKey.get(raw.groupKey) ?? 0)
+        : null,
     }));
 
-    const totals = rows.reduce<HoursSplit>(
+    // Planned with nothing logged: after the rows with time, in the planning
+    // query's order by name.
+    const loggedKeys = new Set(rawRows.map((raw) => raw.groupKey));
+    for (const planned of plannedRows ?? []) {
+      if (loggedKeys.has(planned.groupKey)) continue;
+
+      rows.push({
+        id: planned.id,
+        name: planned.name,
+        detail: planned.detail,
+        billableMinutes: 0,
+        nonBillableMinutes: 0,
+        clientMinutes: 0,
+        nonBillableClientMinutes: 0,
+        totalMinutes: 0,
+        plannedMinutes: Number(planned.minutes),
+      });
+    }
+
+    const loggedTotals = rows.reduce<HoursSplit>(
       (sum, row) => ({
         billableMinutes: sum.billableMinutes + row.billableMinutes,
         nonBillableMinutes: sum.nonBillableMinutes + row.nonBillableMinutes,
@@ -655,12 +722,56 @@ export class ReportingService {
       },
     );
 
+    const totals = {
+      ...loggedTotals,
+      plannedMinutes: plannedRows
+        ? rows.reduce((sum, row) => sum + (row.plannedMinutes ?? 0), 0)
+        : null,
+    };
+
     return {
       groupBy,
       rows,
       totals,
       ...(await this.coverageOf(user.companyId, dateFrom, dateTo, today)),
     };
+  }
+
+  /**
+   * Planned minutes over the same days and people as the Hours report, summed
+   * by its grouping, which uses only projects and people.
+   */
+  private plannedRows(
+    user: AuthUser,
+    grouping: HoursGrouping,
+    dateFrom: string,
+    countedTo: string,
+  ): Promise<PlannedRawRow[]> {
+    const qb = this.periodRepo.manager
+      .createQueryBuilder()
+      .select(grouping.key, 'groupKey')
+      .addSelect(grouping.id, 'id')
+      .addSelect(grouping.name, 'name')
+      .addSelect(grouping.detail, 'detail')
+      .addSelect('SUM(e.planned_minutes)', 'minutes')
+      .from('planning_entries', 'e')
+      .innerJoin('projects', 'p', 'p.id = e.project_id')
+      .innerJoin('users', 'u', 'u.id = e.user_id')
+      .where('e.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
+        dateFrom,
+        countedTo,
+      });
+
+    this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
+      includeSelf: true,
+    });
+
+    return qb
+      .groupBy(grouping.groupBy.join(', '))
+      .orderBy('"name"', 'ASC')
+      .addOrderBy('"id"', 'ASC')
+      .getRawMany<PlannedRawRow>();
   }
 
   /**

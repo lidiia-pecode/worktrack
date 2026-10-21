@@ -24,6 +24,7 @@ import { OnboardingModule } from './onboarding/onboarding.module';
 import { AbsencesModule } from './absences/absences.module';
 import { CapacityModule } from './capacity/capacity.module';
 import { UtilisationModule } from './reporting/utilisation/utilisation.module';
+import { PeopleReportModule } from './reporting/people/people-report.module';
 import { createRateLimitOptions } from './auth/rate-limit/rate-limit.options';
 import { AuthPolicyService } from './auth/services/auth-policy.service';
 import { TokenService } from './auth/services/token.service';
@@ -70,6 +71,7 @@ import { TokenService } from './auth/services/token.service';
     AbsencesModule,
     CapacityModule,
     UtilisationModule,
+    PeopleReportModule,
   ],
 
   providers: [
