@@ -13,7 +13,7 @@ export default async function PeriodsPage() {
       <PageHeader title="Periods" hideTitle />
 
       {/* Without a heading, the lock rule is what tells an owner what this page is for. */}
-      <p className="mb-5 flex max-w-2xl items-start gap-2.5 rounded-lg border border-brand/20 bg-brand-subtle px-3.5 py-2.5 text-sm text-foreground">
+      <p className="mb-5 flex max-w-2xl items-start gap-2.5 rounded-lg border border-border bg-muted/40 px-3.5 py-2.5 text-sm text-muted-foreground">
         <LockKeyhole
           aria-hidden
           className="mt-0.5 size-4 shrink-0 text-brand"

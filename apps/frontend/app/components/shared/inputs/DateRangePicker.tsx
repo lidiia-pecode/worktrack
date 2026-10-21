@@ -88,7 +88,7 @@ export const DateRangePicker = ({
       <PopoverTrigger
         aria-invalid={invalid}
         className={cn(
-          "flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-muted/30 focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
+          "flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
           invalid && "border-destructive",
           className,
         )}

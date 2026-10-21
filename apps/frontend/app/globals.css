@@ -41,8 +41,8 @@
   --muted: oklch(0.81 0.018 95);
   --muted-foreground: oklch(0.42 0.018 205);
 
-  --secondary: oklch(0.81 0.018 95);
-  --secondary-foreground: oklch(0.29 0.018 195);
+  --secondary: var(--accent);
+  --secondary-foreground: var(--accent-foreground);
 
   /* Soft teal-tinted accent */
   --accent: oklch(0.91 0.025 200);
@@ -278,20 +278,10 @@
 /* ============================================================================
    DIAGONAL STRIPES
 
-   Used by the timesheet to mark non-work days and time logged past the daily
-   target. Derived from the tokens so they follow the palette instead of
-   carrying a second, hardcoded set of greys and ambers.
+   Absences on every week view, and time logged past the daily target on the
+   timesheet. Derived from the tokens so they follow the palette instead of
+   carrying a second, hardcoded set of colours.
    ============================================================================ */
-
-.bg-stripes-muted {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    var(--card) 0px,
-    var(--card) 8px,
-    color-mix(in oklch, var(--muted) 22%, var(--card)) 8px,
-    color-mix(in oklch, var(--muted) 22%, var(--card)) 16px
-  );
-}
 
 .bg-stripes-warning {
   background-image: repeating-linear-gradient(

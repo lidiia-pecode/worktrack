@@ -64,7 +64,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition"
+          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition"
         >
           <CalendarDays
             size={15}
@@ -90,7 +90,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           className="w-auto"
           onClick={() => onWeekChange(companyToday(timezone))}
         >
-          Today
+          Back to this week
         </Button>
       )}
     </div>

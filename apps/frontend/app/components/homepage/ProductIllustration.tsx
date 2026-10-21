@@ -129,7 +129,7 @@ const ReportCard = ({ className }: { className?: string }) => (
             </span>
           </div>
 
-          <div className="mt-1 h-1.5 rounded-full bg-muted/40">
+          <div className="mt-1 h-1.5 rounded-full bg-muted/30">
             <div
               className="h-full rounded-full bg-brand/70"
               style={{ width: toPercent(minutes, reportMaxMinutes) }}

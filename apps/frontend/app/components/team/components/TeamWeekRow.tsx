@@ -1,9 +1,12 @@
 import { Absence, TeamSummaryRow } from "@/types";
+import { UserStatus } from "@/types/enums";
 import { formatDuration, isWeekend, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
+import { cn } from "@/lib/utils/cn";
 
 import { PersonLabel } from "../../shared/PersonLabel";
+import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
 import { Badge } from "@/components/ui/badge";
 
 type TeamWeekRowProps = {
@@ -42,6 +45,12 @@ export const TeamWeekRow = ({
           className="flex w-full min-w-0 items-center gap-2.5 p-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
         >
           <PersonLabel user={row.user} />
+
+          {row.user.status === UserStatus.DEACTIVATED && (
+            <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
+              Deactivated
+            </Badge>
+          )}
         </button>
       </th>
 
@@ -53,11 +62,11 @@ export const TeamWeekRow = ({
         return (
           <td
             key={iso}
-            className={`
-              border-r border-border/60 p-3 text-center text-sm tabular-nums
-              ${absence ? "bg-brand-subtle" : ""}
-              ${!absence && isWeekend(date) ? "bg-muted/20" : ""}
-            `}
+            className={cn(
+              "border-r border-border/60 p-3 text-center text-sm tabular-nums",
+              absence && ABSENCE_PATTERN,
+              !absence && isWeekend(date) && WEEKEND_FILL,
+            )}
           >
             {absence ? (
               <Badge variant="default" className="text-2xs">

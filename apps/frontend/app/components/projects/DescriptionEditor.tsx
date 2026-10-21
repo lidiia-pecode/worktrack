@@ -161,7 +161,7 @@ export const DescriptionEditor = ({
         className,
       )}
     >
-      <div className="flex items-center gap-0.5 border-b border-border bg-muted/50 px-2 py-1.5">
+      <div className="flex items-center gap-0.5 border-b border-border bg-muted/30 px-2 py-1.5">
         <ToolbarButton
           label="Bold"
           active={editor.isActive("bold")}

@@ -13,7 +13,7 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 
-import { ABSENCE_PATTERN } from "../../timesheet/consts";
+import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
 import { UserTimeEntryRow } from "./UserTimeEntryRow";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
@@ -68,7 +68,7 @@ export const UserTimeDayGroup = ({
       className={cn(
         "border-b border-border last:border-b-0",
         absence && ABSENCE_PATTERN,
-        !absence && isWeekend(date) && "bg-muted/20",
+        !absence && isWeekend(date) && WEEKEND_FILL,
       )}
     >
       <header className="flex items-center justify-between gap-3 px-3 py-2">

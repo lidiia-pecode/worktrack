@@ -6,6 +6,8 @@ import {
   isWeekend,
 } from "@/lib/utils/date";
 
+import { WEEKEND_FILL } from "../../timesheet/consts";
+
 type WeekHeaderDayProps = {
   date: Date;
   isToday: boolean;
@@ -30,7 +32,7 @@ export const WeekHeaderDay = ({
       className={`
         p-2 flex flex-col md:flex-row gap-2 justify-between
         border-r border-border/60 last:border-r-0
-        ${weekend ? "bg-muted/20" : ""}
+        ${weekend ? WEEKEND_FILL : ""}
       `}
     >
       <div className="flex gap-2 items-baseline">

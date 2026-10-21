@@ -106,7 +106,7 @@ export const MonthCalendar = ({
           type="button"
           aria-label="Previous month"
           onClick={() => setViewMonth(firstOfMonth(viewMonth, -1))}
-          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
         >
           <ChevronLeft size={16} aria-hidden />
         </button>
@@ -117,7 +117,7 @@ export const MonthCalendar = ({
           type="button"
           aria-label="Next month"
           onClick={() => setViewMonth(firstOfMonth(viewMonth, 1))}
-          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-muted/40 hover:text-foreground"
+          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
         >
           <ChevronRight size={16} aria-hidden />
         </button>
@@ -171,7 +171,7 @@ export const MonthCalendar = ({
               className={`
                 relative mx-auto h-8 w-8 rounded-md text-xs transition
                 ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}
-                ${isChosen ? "bg-brand-muted" : "hover:bg-muted/40"}
+                ${isChosen ? "bg-brand-muted" : "hover:bg-accent"}
                 ${isEnd ? "font-semibold text-brand" : ""}
               `}
             >
