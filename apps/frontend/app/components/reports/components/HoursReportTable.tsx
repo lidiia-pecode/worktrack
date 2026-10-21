@@ -1,6 +1,10 @@
-import { HoursReport, HoursReportRow } from "@/types";
+import { HoursReport, HoursReportQuery, HoursReportRow } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
+import { useHoursReport } from "@/hooks/useHoursReport";
+import { DateRange } from "@/lib/utils/report-period";
 import { describeGap } from "@/lib/utils/report-table";
+
+import { TableCell, TableRow, TableRowHeader } from "@/components/ui/table";
 
 import { BillableSplit, GapLabel, Minutes } from "./ReportCells";
 import { ReportColumn, ReportTable } from "./ReportTable";
@@ -77,10 +81,83 @@ const PLAN_COLUMNS: ReportColumn<HoursReportRow>[] = [
   },
 ];
 
+type PeopleFilter = Pick<
+  HoursReportQuery,
+  "projectId" | "client" | "withoutClient"
+>;
+
+/** The people behind a project or client row; activities don't open. */
+const peopleFilterFor = (
+  groupBy: HoursTableGrouping,
+  row: HoursReportRow,
+): PeopleFilter | null => {
+  if (groupBy === HoursReportGroupBy.PROJECT) return { projectId: row.id! };
+  if (groupBy === HoursReportGroupBy.CLIENT) {
+    return row.name ? { client: row.name } : { withoutClient: true };
+  }
+  return null;
+};
+
+const PeopleRows = ({
+  range,
+  filter,
+  columns,
+}: {
+  range: DateRange;
+  filter: PeopleFilter;
+  columns: ReportColumn<HoursReportRow>[];
+}) => {
+  const { report, isLoading, isError } = useHoursReport({
+    ...range,
+    groupBy: HoursReportGroupBy.PERSON,
+    ...filter,
+  });
+
+  const note = isLoading
+    ? "Loading the people…"
+    : isError
+      ? "We couldn't load the people for this row."
+      : report?.rows.length === 0
+        ? "Nobody logged or planned time here."
+        : null;
+
+  if (note || !report) {
+    return (
+      <TableRow className="bg-muted/5">
+        <TableCell
+          colSpan={columns.length + 1}
+          className="pl-12 text-xs text-muted-foreground"
+          role="status"
+        >
+          {note}
+        </TableCell>
+      </TableRow>
+    );
+  }
+
+  return report.rows.map((person) => (
+    <TableRow key={person.id} className="bg-muted/5">
+      <TableRowHeader
+        detail={person.detail}
+        className="pl-12 text-sm font-normal"
+      >
+        {person.name}
+      </TableRowHeader>
+      {columns.map((column) => (
+        <TableCell key={column.key} numeric={column.numeric}>
+          {column.render(person)}
+        </TableCell>
+      ))}
+    </TableRow>
+  ));
+};
+
 type HoursReportTableProps = {
   groupBy: HoursTableGrouping;
   rows: HoursReportRow[];
   totals: HoursReport["totals"];
+  /** The period the rows cover, for the people a row opens to. */
+  range: DateRange;
   periodText: string;
 };
 
@@ -88,10 +165,14 @@ export const HoursReportTable = ({
   groupBy,
   rows,
   totals,
+  range,
   periodText,
 }: HoursReportTableProps) => {
   const { one, many } = NAMES[groupBy];
   const hasPlan = totals.plannedMinutes !== null;
+  const columns = hasPlan
+    ? [LOGGED, BILLABLE, ...PLAN_COLUMNS]
+    : [LOGGED, BILLABLE];
 
   return (
     <ReportTable
@@ -102,9 +183,7 @@ export const HoursReportTable = ({
         sortValue: (row) => describeRow(groupBy, row).name ?? "",
         render: (row) => describeRow(groupBy, row),
       }}
-      columns={
-        hasPlan ? [LOGGED, BILLABLE, ...PLAN_COLUMNS] : [LOGGED, BILLABLE]
-      }
+      columns={columns}
       rows={rows}
       rowKey={(row) => row.id ?? row.name ?? "internal"}
       totals={{
@@ -112,6 +191,21 @@ export const HoursReportTable = ({
         detail: `${rows.length} ${rows.length === 1 ? one.toLowerCase() : many}`,
         row: { id: null, name: null, detail: null, ...totals },
       }}
+      opening={
+        groupBy === HoursReportGroupBy.ACTIVITY
+          ? undefined
+          : {
+              describe: (row) =>
+                `people on ${describeRow(groupBy, row).name ?? ""}`,
+              renderRows: (row) => (
+                <PeopleRows
+                  range={range}
+                  filter={peopleFilterFor(groupBy, row)!}
+                  columns={columns}
+                />
+              ),
+            }
+      }
     />
   );
 };

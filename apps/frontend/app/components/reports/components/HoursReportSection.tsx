@@ -40,6 +40,7 @@ export const HoursReportSection = ({
           groupBy={report.groupBy as HoursTableGrouping}
           rows={report.rows}
           totals={report.totals}
+          range={range}
           periodText={periodText}
         />
       )}

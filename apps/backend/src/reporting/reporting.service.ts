@@ -632,6 +632,7 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
+    this.applyProjectFilters(qb, query);
 
     qb.groupBy(grouping.groupBy.join(', '));
 
@@ -646,7 +647,7 @@ export class ReportingService {
     const [rawRows, plannedRows] = await Promise.all([
       qb.getRawMany<HoursReportRawRow>(),
       PLANNED_GROUPINGS.has(groupBy)
-        ? this.plannedRows(user, grouping, dateFrom, countedTo)
+        ? this.plannedRows(user, grouping, query, countedTo)
         : null,
     ]);
     const plannedByKey = new Map(
@@ -720,7 +721,7 @@ export class ReportingService {
   private plannedRows(
     user: AuthUser,
     grouping: HoursGrouping,
-    dateFrom: string,
+    query: HoursReportQuery,
     countedTo: string,
   ): Promise<PlannedRawRow[]> {
     const qb = this.periodRepo.manager
@@ -735,19 +736,39 @@ export class ReportingService {
       .innerJoin('users', 'u', 'u.id = e.user_id')
       .where('e.company_id = :companyId', { companyId: user.companyId })
       .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
-        dateFrom,
+        dateFrom: query.dateFrom,
         countedTo,
       });
 
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
     });
+    this.applyProjectFilters(qb, query);
 
     return qb
       .groupBy(grouping.groupBy.join(', '))
       .orderBy('"name"', 'ASC')
       .addOrderBy('"id"', 'ASC')
       .getRawMany<PlannedRawRow>();
+  }
+
+  /**
+   * Narrows a query that joins projects as `p` to one project, one client or
+   * internal work, the way a Reports row opens to its people.
+   */
+  private applyProjectFilters(
+    qb: SelectQueryBuilder<ObjectLiteral>,
+    { projectId, client, withoutClient }: HoursReportQuery,
+  ): void {
+    if (projectId) {
+      qb.andWhere('p.id = :projectId', { projectId });
+    }
+    if (client) {
+      qb.andWhere(`${CLIENT_GROUP} = LOWER(:client)`, { client });
+    }
+    if (withoutClient) {
+      qb.andWhere(`${CLIENT_NAME} IS NULL`);
+    }
   }
 
   /**

@@ -32,7 +32,7 @@ import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursBilling } from './enums/hours-billing.enum';
-import { ReportingService } from './reporting.service';
+import { HoursReportRow, ReportingService } from './reporting.service';
 import {
   addMonths,
   editableUntil,
@@ -845,6 +845,63 @@ describe('ReportingService', () => {
 
         expect(rows.every((row) => row.plannedMinutes === null)).toBe(true);
         expect(totals.plannedMinutes).toBeNull();
+      });
+    });
+
+    describe("opening a project's or a client's people", () => {
+      const people = (
+        user: AuthUser,
+        filter: {
+          projectId?: string;
+          client?: string;
+          withoutClient?: boolean;
+        },
+      ) =>
+        service.getHoursReport(user, {
+          ...lockedRange,
+          groupBy: HoursReportGroupBy.PERSON,
+          ...filter,
+        });
+
+      const figures = (rows: HoursReportRow[]) =>
+        rows.map((row) => [row.name, row.totalMinutes, row.plannedMinutes]);
+
+      it("lists a project's people with their time and plans on it", async () => {
+        const { rows, totals } = await people(owner, {
+          projectId: crmProjectId,
+        });
+
+        expect(figures(rows)).toEqual([
+          ['Member Test', 360, 480],
+          ['Outsider Test', 240, 0],
+          ['Manager Test', 0, 60],
+        ]);
+        expect(totals).toMatchObject({
+          totalMinutes: 600,
+          plannedMinutes: 540,
+        });
+      });
+
+      it('lists a client the same way, whatever the case of its name', async () => {
+        const { rows } = await people(owner, { client: 'acme' });
+
+        expect(figures(rows)).toEqual([
+          ['Member Test', 360, 480],
+          ['Outsider Test', 240, 0],
+          ['Manager Test', 0, 60],
+        ]);
+      });
+
+      it('opens internal work, the projects with no client', async () => {
+        const { rows } = await people(owner, { withoutClient: true });
+
+        expect(figures(rows)).toEqual([['Member Test', 120, 0]]);
+      });
+
+      it('shows a manager only their team on the project', async () => {
+        const { rows } = await people(manager, { projectId: crmProjectId });
+
+        expect(rows.map((row) => row.id)).toEqual([member.id, manager.id]);
       });
     });
 

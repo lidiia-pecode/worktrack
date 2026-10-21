@@ -1,7 +1,7 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { Fragment, ReactNode, useState } from "react";
+import { ArrowDown, ArrowUp, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 import { nextSort, SortState, sortRows } from "@/lib/utils/report-table";
@@ -39,8 +39,18 @@ type ReportTableProps<T> = {
   rowKey: (row: T) => string;
   /** The first row: the whole period, shaped like a row. */
   totals: { label: string; detail: string; row: T };
+  /** Rows that open to more rows in the same columns; the totals row never does. */
+  opening?: {
+    /** What opening shows, read out on the button, e.g. "people on CRM". */
+    describe: (row: T) => string;
+    /** The rows under an open row, rendered only while it is open. */
+    renderRows: (row: T) => ReactNode;
+  };
   className?: string;
 };
+
+/** Keeps a name in line with the names beside an open-row button. */
+const OPEN_BUTTON_SPACE = "pl-7";
 
 const SortableHead = ({
   label,
@@ -102,9 +112,18 @@ export const ReportTable = <T,>({
   rows,
   rowKey,
   totals,
+  opening,
   className,
 }: ReportTableProps<T>) => {
   const [sort, setSort] = useState<SortState | null>(null);
+  const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set());
+
+  const toggle = (key: string) =>
+    setOpenKeys((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
 
   const sortColumn =
     sort?.column === "name"
@@ -139,7 +158,10 @@ export const ReportTable = <T,>({
 
       <TableBody>
         <TableRow className="bg-brand-subtle font-semibold">
-          <TableRowHeader detail={totals.detail} className="font-semibold">
+          <TableRowHeader
+            detail={totals.detail}
+            className={cn("font-semibold", opening && OPEN_BUTTON_SPACE)}
+          >
             {totals.label}
           </TableRowHeader>
           {columns.map((column) => (
@@ -150,17 +172,51 @@ export const ReportTable = <T,>({
         </TableRow>
 
         {shownRows.map((row) => {
+          const key = rowKey(row);
           const { name: rowName, detail } = name.render(row);
+          const isOpen = openKeys.has(key);
 
           return (
-            <TableRow key={rowKey(row)}>
-              <TableRowHeader detail={detail}>{rowName}</TableRowHeader>
-              {columns.map((column) => (
-                <TableCell key={column.key} numeric={column.numeric}>
-                  {column.render(row)}
-                </TableCell>
-              ))}
-            </TableRow>
+            <Fragment key={key}>
+              <TableRow>
+                <TableRowHeader>
+                  <span className="flex items-start gap-1">
+                    {opening && (
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        aria-label={`${isOpen ? "Hide" : "Show"} ${opening.describe(row)}`}
+                        onClick={() => toggle(key)}
+                        className="-ml-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                      >
+                        <ChevronRight
+                          className={cn(
+                            "size-4 transition-transform",
+                            isOpen && "rotate-90",
+                          )}
+                          aria-hidden
+                        />
+                      </button>
+                    )}
+                    <span className="min-w-0 pt-0.5">
+                      {rowName}
+                      {detail && (
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {detail}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                </TableRowHeader>
+                {columns.map((column) => (
+                  <TableCell key={column.key} numeric={column.numeric}>
+                    {column.render(row)}
+                  </TableCell>
+                ))}
+              </TableRow>
+
+              {opening && isOpen && opening.renderRows(row)}
+            </Fragment>
           );
         })}
       </TableBody>
