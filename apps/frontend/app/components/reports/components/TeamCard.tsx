@@ -14,7 +14,12 @@ import { TargetBar, TargetBarLegend } from "./TargetBar";
 
 const daysOff = (days: number) => `${days} ${days === 1 ? "day" : "days"} off`;
 
-const PersonRow = ({ person }: { person: PeopleReportRow }) => {
+type PersonRowProps = {
+  person: PeopleReportRow;
+  onOpen: (userId: string) => void;
+};
+
+const PersonRow = ({ person, onOpen }: PersonRowProps) => {
   const logged = formatDuration(person.loggedMinutes);
   const expected = formatDuration(person.expectedMinutes);
   const planned = formatDuration(person.plannedMinutes);
@@ -22,6 +27,7 @@ const PersonRow = ({ person }: { person: PeopleReportRow }) => {
   return (
     <ReportRow
       name={person.name}
+      onOpen={() => onOpen(person.userId)}
       detail={person.position}
       note={person.timeOffDays > 0 ? daysOff(person.timeOffDays) : undefined}
       bar={
@@ -49,8 +55,13 @@ const PersonRow = ({ person }: { person: PeopleReportRow }) => {
   );
 };
 
+type TeamCardProps = {
+  people: PeopleReportRow[];
+  onOpenPerson: (userId: string) => void;
+};
+
 /** Each person's logged time against what they were expected to work. */
-export const TeamCard = ({ people }: { people: PeopleReportRow[] }) => {
+export const TeamCard = ({ people, onOpenPerson }: TeamCardProps) => {
   const [sort, setSort] = useState<TeamSort>("name");
 
   return (
@@ -82,9 +93,13 @@ export const TeamCard = ({ people }: { people: PeopleReportRow[] }) => {
         />
       </div>
 
-      <ul aria-label="People" className="mt-2">
+      <ul aria-label="People" className="mt-2 @container">
         {sortPeople(people, sort).map((person) => (
-          <PersonRow key={person.userId} person={person} />
+          <PersonRow
+            key={person.userId}
+            person={person}
+            onOpen={onOpenPerson}
+          />
         ))}
       </ul>
     </Card>

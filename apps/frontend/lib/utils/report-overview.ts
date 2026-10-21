@@ -1,5 +1,7 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
+import { addDays, fromISODate, isWeekend, toISODate } from "./date";
+
 /** How far past its reference a target bar reaches before it is cut off. */
 export const TARGET_BAR_CAP = 1.5;
 
@@ -130,4 +132,80 @@ export const sortPeople = (
       ratioOf(b[field], b.expectedMinutes) -
         ratioOf(a[field], a.expectedMinutes) || byName(a, b),
   );
+};
+
+/**
+ * Up to this many days, a person's panel shows them day by day, a month at
+ * most; a longer period would be a wall of days.
+ */
+export const DAY_GRID_MAX_DAYS = 62;
+
+export type ReportDayKind =
+  "logged" | "off" | "withoutTime" | "today" | "nothingExpected";
+
+export interface ReportDay {
+  date: string;
+  kind: ReportDayKind;
+  minutes: number;
+}
+
+type PersonDaysInput = {
+  dateFrom: string;
+  dateTo: string;
+  /** The last day counted when the period reaches today; then today follows it. */
+  countedUntil: string | null;
+  loggedByDate: Map<string, number>;
+  isOff: (date: string) => boolean;
+  daysWithoutTime: Set<string>;
+};
+
+/**
+ * A person's working days in the period, each logged, off, without time or
+ * with nothing expected (before they started, say), up to the last counted day
+ * and then today. A weekend shows only when time was logged on it.
+ */
+export const personDays = ({
+  dateFrom,
+  dateTo,
+  countedUntil,
+  loggedByDate,
+  isOff,
+  daysWithoutTime,
+}: PersonDaysInput): ReportDay[] => {
+  const lastDay = countedUntil ?? dateTo;
+  const days: ReportDay[] = [];
+
+  for (
+    let day = fromISODate(dateFrom);
+    toISODate(day) <= lastDay;
+    day = addDays(day, 1)
+  ) {
+    const date = toISODate(day);
+    const minutes = loggedByDate.get(date) ?? 0;
+
+    if (isWeekend(day) && minutes === 0) continue;
+
+    const kind: ReportDayKind =
+      minutes > 0
+        ? "logged"
+        : isOff(date)
+          ? "off"
+          : daysWithoutTime.has(date)
+            ? "withoutTime"
+            : "nothingExpected";
+    days.push({ date, kind, minutes });
+  }
+
+  const today =
+    countedUntil && toISODate(addDays(fromISODate(countedUntil), 1));
+  if (
+    today &&
+    today >= dateFrom &&
+    today <= dateTo &&
+    !isWeekend(fromISODate(today))
+  ) {
+    days.push({ date: today, kind: "today", minutes: 0 });
+  }
+
+  return days;
 };

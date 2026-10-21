@@ -54,4 +54,6 @@ export interface HoursReportQuery {
   client?: string;
   /** Only internal work: projects with no client. */
   withoutClient?: boolean;
+  /** Only this person's time and plans. */
+  userId?: string;
 }

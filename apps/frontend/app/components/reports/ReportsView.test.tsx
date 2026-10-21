@@ -12,6 +12,10 @@ import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
+import { useAllAbsencesQuery } from "@/hooks/useAbsences";
+import { addDays, isWeekend, toISODate } from "@/lib/utils/date";
+import { AbsenceType } from "@/types/enums";
 
 import { ReportsView } from "./ReportsView";
 
@@ -26,6 +30,48 @@ vi.mock("@/hooks/auth/useAuth", () => ({
   useAuth: () => ({ user: { role: UserRole.MANAGER } }),
 }));
 vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
+vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
+vi.mock("@/hooks/useAbsences", () => ({ useAllAbsencesQuery: vi.fn() }));
+vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => true }));
+
+// The page keeps its open panel in the URL; this stands in for the router.
+const navigation = vi.hoisted(() => {
+  const listeners = new Set<() => void>();
+  const history: string[] = [""];
+
+  return {
+    listeners,
+    history,
+    get search() {
+      return history.at(-1)!;
+    },
+    go(update: () => void) {
+      update();
+      listeners.forEach((listener) => listener());
+    },
+  };
+});
+
+vi.mock("next/navigation", async () => {
+  const { useSyncExternalStore } = await import("react");
+
+  return {
+    usePathname: () => "/reports",
+    useSearchParams: () =>
+      new URLSearchParams(
+        useSyncExternalStore(
+          (listener) => {
+            navigation.listeners.add(listener);
+            return () => navigation.listeners.delete(listener);
+          },
+          () => navigation.search,
+        ),
+      ),
+  };
+});
+
+const searchOf = (url: string | URL | null | undefined) =>
+  new URL(String(url), "http://localhost").search;
 vi.mock("@/hooks/useHoursReport", () => ({
   useHoursReport: vi.fn(),
   useHoursExport: () => ({ mutate: vi.fn(), isPending: false }),
@@ -38,7 +84,7 @@ const person = (
   expectedHours: number,
   timeOffDays = 0,
 ): PeopleReportRow => ({
-  userId: name,
+  userId: name.toLowerCase().replace(" ", "-"),
   name,
   position: "Developer",
   loggedMinutes: loggedHours * HOUR,
@@ -114,12 +160,25 @@ const loaded = <T,>(report: T) => ({
   refetch: vi.fn(),
 });
 
+/** What the panels load: a person's projects and a project's people. */
+const panelRows = {
+  personProjects: [] as HoursReportRow[],
+  projectPeople: [] as HoursReportRow[],
+};
+
 const showReports = (people: PeopleReport, projects: HoursReport) => {
   vi.mocked(usePeopleReport).mockReturnValue(
     loaded(people) as unknown as ReturnType<typeof usePeopleReport>,
   );
-  vi.mocked(useHoursReport).mockReturnValue(
-    loaded(projects) as unknown as ReturnType<typeof useHoursReport>,
+  vi.mocked(useHoursReport).mockImplementation(
+    (params) =>
+      loaded(
+        params.userId
+          ? projectsReport(panelRows.personProjects)
+          : params.projectId
+            ? projectsReport(panelRows.projectPeople)
+            : projects,
+      ) as unknown as ReturnType<typeof useHoursReport>,
   );
   render(<ReportsView />);
 };
@@ -139,6 +198,19 @@ describe("ReportsView", () => {
   beforeEach(() => {
     vi.mocked(usePeopleReport).mockReset();
     vi.mocked(useHoursReport).mockReset();
+    navigation.history.splice(0, navigation.history.length, "");
+    vi.mocked(useTeamTimeSummary).mockReturnValue({
+      rows: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useTeamTimeSummary>);
+    vi.mocked(useAllAbsencesQuery).mockReturnValue({
+      items: [],
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useAllAbsencesQuery>);
   });
 
   it("sums the period up in three tiles", () => {
@@ -183,7 +255,7 @@ describe("ReportsView", () => {
     const names = () =>
       within(screen.getByRole("list", { name: "People" }))
         .getAllByRole("listitem")
-        .map((row) => row.querySelector("p")?.firstChild?.textContent);
+        .map((row) => row.querySelector("button")?.textContent);
 
     expect(names()).toEqual(["Ava Mitchell", "Ethan Brooks", "Grace Morgan"]);
 
@@ -268,5 +340,146 @@ describe("ReportsView", () => {
 
     expect(screen.getByText(/your teams only/)).toBeInTheDocument();
     expect(screen.getByText("Provisional")).toBeInTheDocument();
+  });
+
+  describe("panels", () => {
+    // The page opens on the current month, so its days come from today.
+    const today = new Date();
+    const weekdays: string[] = [];
+    for (
+      let day = new Date(today.getFullYear(), today.getMonth(), 1);
+      weekdays.length < 3;
+      day = addDays(day, 1)
+    ) {
+      if (!isWeekend(day)) weekdays.push(toISODate(day));
+    }
+    const [loggedDay, offDay, dayWithoutTime] = weekdays;
+
+    beforeEach(() => {
+      vi.spyOn(window.history, "pushState").mockImplementation(
+        (_state, _unused, url) =>
+          navigation.go(() => navigation.history.push(searchOf(url))),
+      );
+      vi.spyOn(window.history, "replaceState").mockImplementation(
+        (_state, _unused, url) =>
+          navigation.go(() => {
+            navigation.history[navigation.history.length - 1] = searchOf(url);
+          }),
+      );
+      vi.spyOn(window.history, "back").mockImplementation(() =>
+        navigation.go(() => navigation.history.pop()),
+      );
+
+      panelRows.personProjects = [
+        project("WorkTrack", null, 40, 30),
+        project("Mobile App", "Retail Corp", 39, 66),
+      ];
+      panelRows.projectPeople = [
+        { ...project("Ava Mitchell", null, 30, 26), detail: "Developer" },
+      ];
+    });
+
+    const ethan = {
+      ...person("Ethan Brooks", 79, 96, 72, 5),
+      daysWithoutTime: [dayWithoutTime],
+    };
+
+    it("opens a person with their figures, days and projects, and closes back to the row", async () => {
+      vi.mocked(useTeamTimeSummary).mockReturnValue({
+        rows: [
+          {
+            user: { id: ethan.userId },
+            days: [{ date: loggedDay, minutes: 8 * HOUR }],
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useTeamTimeSummary>);
+      vi.mocked(useAllAbsencesQuery).mockReturnValue({
+        items: [
+          {
+            id: "a",
+            userId: ethan.userId,
+            type: AbsenceType.VACATION,
+            startDate: offDay,
+            endDate: offDay,
+          },
+        ],
+        isLoading: false,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAllAbsencesQuery>);
+      const user = userEvent.setup();
+      showReports(peopleReport([ethan]), projectsReport(projects));
+
+      const row = screen.getByRole("button", { name: "Ethan Brooks" });
+      await user.click(row);
+
+      expect(navigation.search).toBe("?person=ethan-brooks");
+      const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
+      expect(panel).toHaveTextContent("of 72h expected");
+      expect(panel).toHaveTextContent("+24h against expected");
+      expect(panel).toHaveTextContent("1 day with no time logged");
+      expect(panel).toHaveTextContent("Vacation");
+
+      const days = within(panel)
+        .getAllByRole("listitem")
+        .filter(
+          (item) => item.closest("ul")?.getAttribute("aria-label") === "Days",
+        );
+      expect(days[0]).toHaveTextContent("8h");
+      expect(days[1]).toHaveTextContent("Vacation");
+      expect(days[2]).toHaveTextContent("No time");
+
+      const projectsSection = within(panel).getByRole("region", {
+        name: "Projects",
+      });
+      expect(projectsSection).toHaveTextContent("Mobile App");
+      expect(projectsSection).toHaveTextContent("−27h against plan");
+      expect(
+        within(panel).getByRole("link", { name: /Open in Team time/ }),
+      ).toHaveAttribute("href", "/team?person=ethan-brooks");
+
+      await user.click(
+        within(panel).getByRole("button", { name: "Close panel" }),
+      );
+
+      expect(navigation.search).toBe("");
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+      expect(row).toHaveFocus();
+    });
+
+    it("opens a project from a pasted link, with its people against their plans", () => {
+      navigation.history.splice(0, 1, "?project=Mobile App");
+      showReports(peopleReport(team), projectsReport(projects));
+
+      const panel = screen.getByRole("complementary", { name: "Mobile App" });
+      expect(panel).toHaveTextContent("Retail Corp");
+      expect(panel).toHaveTextContent("of 50h planned");
+      expect(
+        within(panel).getByRole("region", { name: "People" }),
+      ).toHaveTextContent("+4h against plan");
+    });
+
+    it("swaps one open panel for another without a new history entry", async () => {
+      const user = userEvent.setup();
+      showReports(peopleReport([ethan]), projectsReport(projects));
+
+      await user.click(screen.getByRole("button", { name: "Ethan Brooks" }));
+      await user.click(screen.getByRole("button", { name: "Mobile App" }));
+
+      expect(navigation.history).toEqual(["", "?project=Mobile+App"]);
+      expect(
+        screen.getByRole("complementary", { name: "Mobile App" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows nothing for a link to someone outside the rows", () => {
+      navigation.history.splice(0, 1, "?person=somebody-else");
+      showReports(peopleReport(team), projectsReport(projects));
+
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+    });
   });
 });

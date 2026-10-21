@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { cn } from "@/lib/utils/cn";
 import { formatDateRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import {
@@ -21,13 +22,19 @@ import { HoursReportGroupBy, UserRole } from "@/types/enums";
 import { Badge } from "@/components/ui/badge";
 
 import { EmptyState } from "../shared/EmptyState";
+import { useOpenedEntry } from "../shared/useOpenedEntry";
+import { PERSON_PARAM } from "../team/useOpenedPerson";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { ProjectsCard } from "./components/ProjectsCard";
+import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportPeriodPicker } from "./components/ReportPeriodPicker";
 import { ReportTiles } from "./components/ReportTiles";
 import { TeamCard } from "./components/TeamCard";
+
+const PROJECT_PARAM = "project";
+const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 
 type ReportScopeProps = {
   range: DateRange;
@@ -74,6 +81,7 @@ export const ReportsView = () => {
   const { user } = useAuth();
 
   const [chosenPeriod, setChosenPeriod] = useState<ReportPeriod | null>(null);
+  const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
 
   const currentMonth = toMonthKey(todayISODate(company?.timezone));
   const period = chosenPeriod ?? periodHolding("month", currentMonth);
@@ -140,16 +148,59 @@ export const ReportsView = () => {
     }
 
     return (
+      // A container, so the cards follow the room beside an open panel, not the window.
       <div
-        className={isUpdating ? "opacity-60 transition-opacity" : undefined}
+        className={cn(
+          "@container",
+          isUpdating && "opacity-60 transition-opacity",
+        )}
         aria-busy={isUpdating}
       >
         <ReportTiles totals={totals} projects={projects.report.rows} />
-        <div className="mt-4 grid items-start gap-4 xl:grid-cols-2">
-          <TeamCard people={people.report.rows} />
-          <ProjectsCard projects={projects.report.rows} />
+        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">
+          <TeamCard
+            people={people.report.rows}
+            onOpenPerson={(userId) => open(PERSON_PARAM, userId)}
+          />
+          <ProjectsCard
+            projects={projects.report.rows}
+            onOpenProject={(projectId) => open(PROJECT_PARAM, projectId)}
+          />
         </div>
       </div>
+    );
+  };
+
+  // A panel opens from the rows on screen, so a link to someone outside them
+  // shows nothing.
+  const renderPanel = () => {
+    if (!opened || !people.report || !projects.report) return null;
+
+    if (opened.param === PERSON_PARAM) {
+      const person = people.report.rows.find((row) => row.userId === opened.id);
+      return (
+        person && (
+          <PersonPanel
+            key={person.userId}
+            person={person}
+            range={range}
+            countedUntil={people.report.countedUntil}
+            onClose={close}
+          />
+        )
+      );
+    }
+
+    const project = projects.report.rows.find((row) => row.id === opened.id);
+    return (
+      project && (
+        <ProjectPanel
+          key={project.id}
+          project={project}
+          range={range}
+          onClose={close}
+        />
+      )
     );
   };
 
@@ -180,6 +231,8 @@ export const ReportsView = () => {
       </div>
 
       {isRangeValid && renderOverview()}
+
+      {renderPanel()}
     </div>
   );
 };

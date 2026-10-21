@@ -73,7 +73,7 @@ export const ReportTiles = ({ totals, projects }: ReportTilesProps) => {
   );
 
   return (
-    <div className="grid gap-4 md:grid-cols-3">
+    <div className="grid gap-4 @2xl:grid-cols-3">
       <Tile
         label="Time logged"
         figure={formatDuration(loggedMinutes)}

@@ -10,8 +10,14 @@ import { TargetBar, TargetBarLegend } from "./TargetBar";
 const peopleText = (count: number | null) =>
   count ? `${count} ${count === 1 ? "person" : "people"}` : undefined;
 
-const ProjectRow = ({ project }: { project: HoursReportRow }) => {
+type ProjectRowProps = {
+  project: HoursReportRow;
+  onOpen: (projectId: string) => void;
+};
+
+const ProjectRow = ({ project, onOpen }: ProjectRowProps) => {
   const name = project.name ?? "";
+  const open = () => onOpen(project.id!);
   const logged = formatDuration(project.totalMinutes);
   const planned = project.plannedMinutes ?? 0;
 
@@ -19,6 +25,7 @@ const ProjectRow = ({ project }: { project: HoursReportRow }) => {
     return (
       <ReportRow
         name={name}
+        onOpen={open}
         detail={peopleText(project.peopleCount)}
         bar={
           <p className="text-sm text-muted-foreground">
@@ -39,6 +46,7 @@ const ProjectRow = ({ project }: { project: HoursReportRow }) => {
   return (
     <ReportRow
       name={name}
+      onOpen={open}
       detail={peopleText(project.peopleCount)}
       bar={
         <TargetBar
@@ -60,8 +68,16 @@ const ProjectRow = ({ project }: { project: HoursReportRow }) => {
   );
 };
 
+type ProjectsCardProps = {
+  projects: HoursReportRow[];
+  onOpenProject: (projectId: string) => void;
+};
+
 /** Each project's logged time against its plan, under its client. */
-export const ProjectsCard = ({ projects }: { projects: HoursReportRow[] }) => (
+export const ProjectsCard = ({
+  projects,
+  onOpenProject,
+}: ProjectsCardProps) => (
   <Card as="section" aria-labelledby="report-projects" className="p-5">
     <h2 id="report-projects" className="text-base font-semibold">
       Projects
@@ -89,9 +105,13 @@ export const ProjectsCard = ({ projects }: { projects: HoursReportRow[] }) => (
             {percentOf(client.billableMinutes, client.loggedMinutes)}% billable
           </p>
         </div>
-        <ul>
+        <ul className="@container">
           {client.projects.map((project) => (
-            <ProjectRow key={project.id} project={project} />
+            <ProjectRow
+              key={project.id}
+              project={project}
+              onOpen={onOpenProject}
+            />
           ))}
         </ul>
       </section>
