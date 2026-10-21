@@ -111,7 +111,6 @@ export const ActivitiesContent = () => {
     <>
       <ResourcePage
         title="Activities"
-        description="Manage activities that can be assigned to projects."
         listState={listState}
         itemCount={activities.length}
         isLoading={isLoading}

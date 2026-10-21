@@ -1,5 +1,7 @@
 "use client";
 
+import { ReactNode } from "react";
+
 import { Archive, ArchiveRestore } from "lucide-react";
 
 import type { ManageListState } from "@/hooks/useManageListState";
@@ -13,18 +15,23 @@ interface ManageToolbarProps {
   panelId: string;
   archivedLabel: string;
   searchPlaceholder: string;
+  actions?: ReactNode;
 }
 
 export const manageTabId = (panelId: string, tab: string) =>
   `${panelId}-${tab}`;
 
-/** Active / Archived tabs and the search box above a Manage list. */
+/**
+ * Active / Archived tabs, and the search box with the page's actions, above a
+ * Manage list.
+ */
 export const ManageToolbar = ({
   title,
   listState,
   panelId,
   archivedLabel,
   searchPlaceholder,
+  actions,
 }: ManageToolbarProps) => {
   const { tab, setTab, search, setSearch } = listState;
 
@@ -50,12 +57,15 @@ export const ManageToolbar = ({
         />
       </ResourceTabList>
 
-      <SearchInput
-        value={search}
-        onChange={setSearch}
-        placeholder={searchPlaceholder}
-        className="w-full md:mb-2 md:w-72"
-      />
+      <div className="flex items-center gap-2 md:mb-2">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={searchPlaceholder}
+          className="w-full md:w-72"
+        />
+        {actions}
+      </div>
     </div>
   );
 };

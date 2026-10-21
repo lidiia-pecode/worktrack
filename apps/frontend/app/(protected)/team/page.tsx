@@ -9,10 +9,7 @@ export default async function TeamPage() {
 
   return (
     <>
-      <PageHeader
-        title="Team time"
-        description="See who logged time this week, how much, and where it went."
-      />
+      <PageHeader title="Team time" hideTitle />
 
       {user.role === UserRole.MANAGER && (
         <ManagerWelcome userId={user.id} firstName={user.firstName} />

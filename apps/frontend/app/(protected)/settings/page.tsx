@@ -55,10 +55,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Settings"
-        description="Manage your profile, security, and workspace."
-      />
+      <PageHeader title="Settings" hideTitle />
 
       <div className="flex max-w-6xl flex-col gap-10 md:flex-row md:items-start">
         <SettingsSidebar

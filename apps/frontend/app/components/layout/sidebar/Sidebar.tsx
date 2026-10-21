@@ -19,7 +19,7 @@ import { Logo } from "../../shared/Logo";
 import { CloseButton } from "../../shared/buttons/CloseButton";
 import { GettingStartedLink, SidebarNavigation } from "./SidebarNavigation";
 import { UserMenu } from "./UserMenu";
-import { navigationFor } from "./sidebar-navigation";
+import { navigationFor, pageLabelFor } from "./sidebar-navigation";
 
 const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
 
@@ -68,6 +68,7 @@ interface SidebarProps {
 
 export const Sidebar = ({ user }: SidebarProps) => {
   const pathname = usePathname();
+  const pageLabel = pageLabelFor(user.role, pathname);
 
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
   const isMenuOpen = menuOpenedOn === pathname;
@@ -93,8 +94,22 @@ export const Sidebar = ({ user }: SidebarProps) => {
         onOpenChange={(open) => setMenuOpenedOn(open ? pathname : null)}
       >
         <header className="sticky top-0 z-40 border-b border-sidebar-border bg-sidebar text-sidebar-foreground md:hidden">
-          <div className="flex h-16 items-center justify-between px-4">
-            <Logo />
+          <div className="flex h-16 items-center justify-between gap-3 px-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <Logo />
+
+              {pageLabel && (
+                <>
+                  <span
+                    aria-hidden
+                    className="h-5 w-px shrink-0 bg-sidebar-border"
+                  />
+                  <span className="truncate text-sm font-semibold">
+                    {pageLabel}
+                  </span>
+                </>
+              )}
+            </div>
 
             <DialogTrigger
               aria-label="Open menu"

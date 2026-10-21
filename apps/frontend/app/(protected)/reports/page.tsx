@@ -7,10 +7,7 @@ export default async function ReportsPage() {
 
   return (
     <>
-      <PageHeader
-        title="Reports"
-        description="Where logged time went, how it compares with the plan, and how each person's time was used."
-      />
+      <PageHeader title="Reports" hideTitle />
 
       <ReportsView />
     </>

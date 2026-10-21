@@ -26,6 +26,7 @@ const Harness = () => {
         panelId="projects-panel"
         archivedLabel="Archived"
         searchPlaceholder="Search projects..."
+        actions={<button type="button">Create project</button>}
       />
       <output aria-label="Search sent">{listState.searchQuery ?? ""}</output>
     </>
@@ -73,6 +74,17 @@ describe("ManageToolbar", () => {
       "",
       "/admin/projects?onboarding=true",
     );
+  });
+
+  it("shows the page's actions after the search", () => {
+    render(<Harness />);
+
+    const search = screen.getByRole("textbox");
+    const create = screen.getByRole("button", { name: "Create project" });
+
+    expect(
+      search.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("sends the search once typing pauses, trimmed", () => {

@@ -309,12 +309,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       timeLogs: timelogs.length,
     });
 
-  const header = (
-    <PageHeader
-      title="Timesheet"
-      description="Record your working hours, day by day."
-    />
-  );
+  const header = <PageHeader title="Timesheet" hideTitle />;
 
   const addAbsenceButton = (
     <Button type="button" variant="outline" size="sm" onClick={openNewAbsence}>

@@ -83,7 +83,6 @@ export const ProjectsContent = () => {
     <>
       <ResourcePage
         title="Projects"
-        description="Manage projects and organize the work in your workspace."
         listState={listState}
         itemCount={projects.length}
         isLoading={isLoading}

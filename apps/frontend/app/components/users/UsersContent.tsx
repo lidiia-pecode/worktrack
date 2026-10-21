@@ -98,7 +98,6 @@ export const UsersContent = () => {
     <>
       <ResourcePage
         title="Users"
-        description="Manage workspace users, roles and project access."
         listState={listState}
         itemCount={users.length}
         isLoading={isLoading}

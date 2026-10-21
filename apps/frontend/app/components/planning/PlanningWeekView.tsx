@@ -191,7 +191,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pr-3 pb-3">
         <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
         {!hasError && (

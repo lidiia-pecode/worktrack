@@ -78,3 +78,13 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
 
 export const isActivePath = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
+
+const settings = { label: "Settings", href: "/settings" };
+
+/** The current page's name, for the phone header, where the sidebar is hidden. */
+export const pageLabelFor = (role: UserRole, pathname: string) =>
+  [
+    ...navigationFor(role).flatMap((group) => group.items),
+    gettingStarted,
+    settings,
+  ].find((item) => isActivePath(pathname, item.href))?.label;
