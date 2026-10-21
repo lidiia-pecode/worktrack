@@ -33,6 +33,8 @@ export interface Availability {
   availableMinutes: number;
   /** Working days an absence covered, from the start date. */
   absenceDays: number;
+  /** The finished days they were expected to work, in date order. */
+  expectedDates: string[];
 }
 
 /** Unrounded sums, so every figure is rounded once at the end. */
@@ -40,6 +42,8 @@ interface ShareSums {
   available: number;
   availableToDate: number;
   absenceDaysToDate: number;
+  /** The finished dates with an available share, in date order. */
+  expectedDatesToDate: string[];
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
@@ -124,6 +128,7 @@ export class ExpectedHoursService {
       availability.set(userId, {
         availableMinutes: Math.round(sum.availableToDate),
         absenceDays: sum.absenceDaysToDate,
+        expectedDates: sum.expectedDatesToDate,
       });
     });
 
@@ -167,6 +172,7 @@ export class ExpectedHoursService {
         available: 0,
         availableToDate: 0,
         absenceDaysToDate: 0,
+        expectedDatesToDate: [],
         availableByDate: [],
       };
 
@@ -191,7 +197,10 @@ export class ExpectedHoursService {
 
         available.share = share;
         sum.available += share;
-        if (hasFinished) sum.availableToDate += share;
+        if (hasFinished && share > 0) {
+          sum.availableToDate += share;
+          sum.expectedDatesToDate.push(date);
+        }
       }
 
       sums.set(userId, sum);

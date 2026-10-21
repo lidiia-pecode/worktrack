@@ -1,9 +1,5 @@
 import 'reflect-metadata';
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -406,7 +402,6 @@ describe('ReportingService', () => {
     let manager: AuthUser; // leads the team `member` is in
     let member: AuthUser;
     let outsider: string; // on no team
-    let toolingProjectId: string;
     let crmProjectId: string;
     let crmProjectActivityId: string;
     let activityId: string;
@@ -505,7 +500,6 @@ describe('ReportingService', () => {
       activityId = activity.id;
       const crm = await createProject('CRM', 'Acme', activity.id);
       const tooling = await createProject('Tooling', null, activity.id);
-      toolingProjectId = tooling.projectId;
       crmProjectId = crm.projectId;
       crmProjectActivityId = crm.projectActivityId;
 
@@ -620,7 +614,7 @@ describe('ReportingService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('covers at most 366 days, in hours and in planned vs actual', async () => {
+    it('covers at most 366 days', async () => {
       const fullYear = { dateFrom: '2025-01-01', dateTo: '2026-01-01' };
       const tooLong = { dateFrom: '2025-01-01', dateTo: '2026-01-02' };
       const groupBy = HoursReportGroupBy.CLIENT;
@@ -630,13 +624,6 @@ describe('ReportingService', () => {
       ).resolves.toBeDefined();
       await expect(
         service.getHoursReport(owner, { ...tooLong, groupBy }),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(
-        service.getPlannedVsActualReport(owner, fullYear),
-      ).resolves.toBeDefined();
-      await expect(
-        service.getPlannedVsActualReport(owner, tooLong),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -673,23 +660,17 @@ describe('ReportingService', () => {
           ...rangeReachingToday,
           groupBy: HoursReportGroupBy.PERSON,
         });
-        const plannedVsActual = await service.getPlannedVsActualReport(
-          owner,
-          rangeReachingToday,
-        );
         await dataSource.getRepository(TimeLog).remove(logs);
         await dataSource.getRepository(PlanningEntry).remove(plans);
 
-        expect(hours.totals.totalMinutes).toBe(30);
-        expect(hours.countedUntil).toBe(yesterday);
-        expect(plannedVsActual.rows).toEqual([
+        expect(hours.rows).toEqual([
           expect.objectContaining({
-            userId: member.id,
+            id: member.id,
+            totalMinutes: 30,
             plannedMinutes: 120,
-            loggedMinutes: 30,
           }),
         ]);
-        expect(plannedVsActual.countedUntil).toBe(yesterday);
+        expect(hours.countedUntil).toBe(yesterday);
       });
 
       it('counts nothing in a range that starts today', async () => {
@@ -705,14 +686,9 @@ describe('ReportingService', () => {
 
       it('counts the whole of a range that has finished', async () => {
         const hours = await report(owner, HoursReportGroupBy.CLIENT);
-        const plannedVsActual = await service.getPlannedVsActualReport(
-          owner,
-          lockedRange,
-        );
 
         expect(hours).toMatchObject({ countedUntil: null });
         expect(hours.totals.totalMinutes).toBe(720);
-        expect(plannedVsActual).toMatchObject({ countedUntil: null });
       });
     });
 
@@ -732,10 +708,6 @@ describe('ReportingService', () => {
       const twinIds = twins.map((twin) => twin.id).sort();
 
       const hours = await report(owner, HoursReportGroupBy.PERSON);
-      const plannedVsActual = await service.getPlannedVsActualReport(
-        owner,
-        lockedRange,
-      );
       await dataSource.getRepository(TimeLog).remove(twinLogs);
 
       expect(hours.rows.map((row) => row.id)).toEqual([
@@ -744,11 +716,6 @@ describe('ReportingService', () => {
         ...twinIds,
         manager.id,
       ]);
-      expect(
-        plannedVsActual.rows
-          .filter((row) => row.name === 'Twin Test')
-          .map((row) => row.userId),
-      ).toEqual(twinIds);
     });
 
     it('groups by month, oldest first', async () => {
@@ -1041,56 +1008,66 @@ describe('ReportingService', () => {
       });
     });
 
-    describe('planned vs actual', () => {
-      const plannedVsActual = (
-        user: AuthUser,
-        filters: { userId?: string; projectId?: string } = {},
-      ) =>
-        service.getPlannedVsActualReport(user, { ...lockedRange, ...filters });
-
-      const figures = (
-        rows: { name: string; plannedMinutes: number; loggedMinutes: number }[],
-      ) => rows.map((row) => [row.name, row.plannedMinutes, row.loggedMinutes]);
-
-      it('shows planned and logged time per person, by name', async () => {
-        const { rows, totals, isProvisional } = await plannedVsActual(owner);
-
-        expect(figures(rows)).toEqual([
-          ['Manager Test', 60, 0],
-          ['Member Test', 480, 480],
-          ['Outsider Test', 0, 240],
-        ]);
-        expect(totals).toEqual({ plannedMinutes: 540, loggedMinutes: 720 });
-        expect(isProvisional).toBe(false);
-      });
-
-      it("shows a manager only their team's people", async () => {
-        const { rows } = await plannedVsActual(manager);
-
-        expect(rows.map((row) => row.name)).toEqual([
-          'Manager Test',
-          'Member Test',
-        ]);
-      });
-
-      it('narrows to one project', async () => {
-        const { rows } = await plannedVsActual(owner, {
-          projectId: toolingProjectId,
+    describe("a person's projects", () => {
+      const projectsOf = (user: AuthUser, userId: string) =>
+        service.getHoursReport(user, {
+          ...lockedRange,
+          groupBy: HoursReportGroupBy.PROJECT,
+          userId,
         });
 
-        expect(figures(rows)).toEqual([['Member Test', 0, 120]]);
+      it("lists one person's time and plans by project", async () => {
+        const { rows, totals } = await projectsOf(owner, member.id);
+
+        expect(
+          rows.map((row) => [row.name, row.totalMinutes, row.plannedMinutes]),
+        ).toEqual([
+          [`CRM ${RUN}`, 360, 480],
+          [`Tooling ${RUN}`, 120, 0],
+        ]);
+        expect(totals).toMatchObject({ totalMinutes: 480, peopleCount: 1 });
       });
 
-      it('pins an employee to their own figures', async () => {
-        const { rows } = await plannedVsActual(member, { userId: outsider });
+      it('shows a manager nothing of somebody outside their teams', async () => {
+        const { rows } = await projectsOf(manager, outsider);
 
-        expect(rows.map((row) => row.userId)).toEqual([member.id]);
+        expect(rows).toEqual([]);
+      });
+    });
+
+    describe('people on a row', () => {
+      it('counts everybody who logged or planned time on a project, once', async () => {
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.PROJECT,
+        );
+
+        // CRM: the member and the outsider logged, the manager only planned.
+        expect(rows.map((row) => [row.name, row.peopleCount])).toEqual([
+          [`CRM ${RUN}`, 3],
+          [`Tooling ${RUN}`, 1],
+        ]);
+        expect(totals.peopleCount).toBe(3);
       });
 
-      it('refuses a manager asking about someone outside their teams', async () => {
-        await expect(
-          plannedVsActual(manager, { userId: outsider }),
-        ).rejects.toThrow(ForbiddenException);
+      it('counts by client, and only the people a manager sees', async () => {
+        const forOwner = await report(owner, HoursReportGroupBy.CLIENT);
+        const forManager = await report(manager, HoursReportGroupBy.CLIENT);
+
+        expect(forOwner.rows.map((row) => row.peopleCount)).toEqual([3, 1]);
+        expect(forManager.rows.map((row) => row.peopleCount)).toEqual([2, 1]);
+      });
+
+      it('has no count by person or activity', async () => {
+        for (const groupBy of [
+          HoursReportGroupBy.PERSON,
+          HoursReportGroupBy.ACTIVITY,
+        ]) {
+          const { rows, totals } = await report(owner, groupBy);
+
+          expect(rows.every((row) => row.peopleCount === null)).toBe(true);
+          expect(totals.peopleCount).toBeNull();
+        }
       });
     });
   });

@@ -95,7 +95,12 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(Absence),
       capacity,
     );
-    service = new PeopleReportService(reporting, expectedHours, teamVisibility);
+    service = new PeopleReportService(
+      dataSource.getRepository(TimeLog),
+      reporting,
+      expectedHours,
+      teamVisibility,
+    );
 
     const company = await dataSource
       .getRepository(Company)
@@ -231,6 +236,71 @@ describe('PeopleReportService', () => {
     expect(new Set(rows.map((row) => row.userId))).toEqual(
       new Set([manager.id, member, awayAllMonth]),
     );
+  });
+
+  describe('days without time', () => {
+    it('lists the working days somebody logged nothing on, leaving out days off and weekends', async () => {
+      const row = await rowFor(owner, member);
+
+      // 22 working days, two off (9 and 10 March), time on the 16th.
+      expect(row?.daysWithoutTime).toHaveLength(WORKING_DAYS_IN_MARCH - 3);
+      expect(row?.daysWithoutTime[0]).toBe('2026-03-02');
+      expect(row?.daysWithoutTime).not.toContain('2026-03-07');
+      expect(row?.daysWithoutTime).not.toContain('2026-03-09');
+      expect(row?.daysWithoutTime).not.toContain('2026-03-16');
+    });
+
+    it('expects no day of somebody away all month', async () => {
+      expect((await rowFor(owner, awayAllMonth))?.daysWithoutTime).toEqual([]);
+    });
+
+    it('starts on the day somebody joined', async () => {
+      const joiner = await dataSource.getRepository(User).save({
+        companyId,
+        role: UserRole.EMPLOYEE,
+        firstName: 'Joiner',
+        lastName: 'Test',
+        email: `joiner-${RUN}@people-report.test`,
+        createdAt: new Date('2026-03-25T09:00:00Z'),
+      });
+
+      const row = await rowFor(owner, joiner.id);
+      await dataSource.getRepository(User).delete({ id: joiner.id });
+
+      expect(row?.daysWithoutTime).toEqual([
+        '2026-03-25',
+        '2026-03-26',
+        '2026-03-27',
+        '2026-03-30',
+        '2026-03-31',
+      ]);
+    });
+
+    it('never counts today or later', async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+
+      const { rows, totals } = await service.getPeopleReport(owner, {
+        dateFrom: today,
+        dateTo: nextWeek,
+      });
+
+      expect(rows.every((row) => row.daysWithoutTime.length === 0)).toBe(true);
+      expect(totals.daysWithoutTime).toBe(0);
+    });
+
+    it('counts them in the totals, within the people a manager sees', async () => {
+      const { rows, totals } = await service.getPeopleReport(manager, MARCH);
+
+      expect(
+        rows.find((row) => row.userId === manager.id)?.daysWithoutTime,
+      ).toHaveLength(WORKING_DAYS_IN_MARCH);
+      expect(totals.daysWithoutTime).toBe(
+        WORKING_DAYS_IN_MARCH + (WORKING_DAYS_IN_MARCH - 3),
+      );
+    });
   });
 
   it('is final for a locked month, counted in full', async () => {

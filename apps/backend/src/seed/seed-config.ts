@@ -690,7 +690,7 @@ export const TIME_LOGS = [
   },
 ];
 
-/** Planned hours for the same week, so planned-vs-actual has both sides. */
+/** Planned hours for the same week, so Reports have a plan beside the time. */
 export const PLANNING = [
   {
     email: DEV_EMAIL,

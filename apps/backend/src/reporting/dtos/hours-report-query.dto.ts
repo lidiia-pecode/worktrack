@@ -37,4 +37,9 @@ export class HoursReportQuery {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   withoutClient?: boolean;
+
+  /** Only this person's time and plans, within the people the caller sees. */
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
 }

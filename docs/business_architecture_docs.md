@@ -114,7 +114,7 @@ more.
 *Consequence.* Nothing in the time-logging path may ever consult
 `planning_entries`. This holds today — `TimeLogsService` has no reference to
 planning — and must be preserved. The value of planning is forward visibility
-and, later, planned-vs-actual reporting.
+and planned hours beside logged ones in Reports.
 
 ### D4 — No approval workflow
 
@@ -465,7 +465,7 @@ the grid, read-only.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
-for planned-vs-actual. Both membership screens confirm first, naming the count
+for Reports. Both membership screens confirm first, naming the count
 from `GET /planning/removal-count`, which uses the same condition as the delete.
 Archiving a project deletes nothing.
 
@@ -509,7 +509,7 @@ add up to `total`.
 Somebody with no plan at all has the same expectation as anybody else.
 
 **Reports count finished days only.** When a range reaches today or later, the
-hours, planned vs actual and people reports and the hours export stop at
+hours and people reports and the hours export stop at
 yesterday in the company's time zone, for logged and planned time alike, and
 the reports say which day they counted to. Today's entries show in the reports
 and the export the next day.
@@ -534,8 +534,8 @@ once closed again, with who changed it last. No row means the automatic rule.
 `isDateLocked` backs the check in rule 1 above.
 
 **Planning follows locked periods like time logs**, so a plan stays
-correctable until its period is locked, and planned-vs-actual becomes final on
-both sides at the same moment.
+correctable until its period is locked, and Reports' planned and logged hours
+become final at the same moment.
 
 ### Company settings and lifecycle
 
@@ -663,7 +663,7 @@ added to a team or a project.
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
-| Hours report and export | whole company | own, plus users in teams they manage | — |
+| Hours and people reports, hours export | whole company | own, plus users in teams they manage | — |
 
 This matrix is what the code does today. The intended model —
 Owner-owned structure, manager-operated teams — is in
@@ -794,9 +794,9 @@ see, and how a new company gets started. §7 plans that work.
   scanning who logged and how much, the timesheet for what one person's week
   consisted of. "Where did the time go" is answered by the project filter, the
   per-person panel and the hours report.
-- **Reports are for owners and managers.** Planned vs actual is readable
-  through the API by an employee for their own figures, but no employee screen
-  shows it.
+- **Reports are for owners and managers.** No report route is open to
+  employees; the planned-vs-actual route they could read was removed in Phase
+  34, since the People report covers it and no screen used it.
 - **No utilisation ratios** (Phase 34). Billable utilisation, client share,
   non-billable client share and logging completeness were replaced by plain
   hours and gaps in words: comparable products define "utilisation" in
@@ -824,7 +824,7 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-four
-suites and 773 tests, covering the role-visibility filters, team and invitation
+suites and 777 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
@@ -1146,7 +1146,7 @@ columns.
 
 **Q11 — Should employees get a report of their own hours?**
 Belongs to Area 7. An employee sees one week at a time. The API already returns
-their own planned vs actual, week summaries and expected hours; the hours report
+their own week summaries and expected hours; the hours report
 and the people report would each need their route opened to employees, pinned to
 themselves by the visibility filter they already use.
 *Recommendation:* yes — hours by project and activity, logged against expected
