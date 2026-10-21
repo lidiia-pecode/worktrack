@@ -17,6 +17,8 @@ export interface HoursReportRow extends HoursSplit {
   detail: string | null;
   /** Planned for the same days; null by activity, which plans don't have. */
   plannedMinutes: number | null;
+  /** The people who logged or planned time on it; only by project or client. */
+  peopleCount: number | null;
 }
 
 /** What every report returns besides its rows and totals. */
@@ -34,7 +36,7 @@ export interface HoursReport extends ReportCoverage {
   /** The grouping these rows were built with. */
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
-  totals: HoursSplit & Pick<HoursReportRow, "plannedMinutes">;
+  totals: HoursSplit & Pick<HoursReportRow, "plannedMinutes" | "peopleCount">;
 }
 
 export interface HoursExportQuery {

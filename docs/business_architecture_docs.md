@@ -482,7 +482,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People tab says it in words ("less than expected"), and since Phase 31 nothing else marks it |
+| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' Team card shows it as each person's logged time against expected, and since Phase 31 nothing else marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
@@ -499,7 +499,7 @@ for the days before they joined; there is no separate start date (§10 Q14). Rou
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which Reports' People tab measures against, and a
+the company's timezone, which Reports' Team card measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, an absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -757,20 +757,18 @@ see, and how a new company gets started. §7 plans that work.
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
-- **Reports** — owners and managers see one table on `/reports` for a month,
-  quarter, year or custom range of up to 366 days; tabs choose the rows:
-  projects (the default), clients, people or activities. The first row holds
-  the period's totals. Every row shows logged time split into billable and
-  non-billable by each entry's flag, on any project (D2). Projects and clients
-  also show what was planned and the gap in words ("40h less than planned",
-  "On plan" within an hour); people show what was expected of them (capacity
-  minus time off), the gap ("8h more than expected") and their days off;
-  activities have no plan. A project or client row opens to the people who
-  logged or planned time on it, in the same columns. A dot in the brand tone marks a gap over a tenth of
-  the plan or expectation, as a fact rather than a score (D3); nothing is red
-  or green and nobody is ranked unless a column is sorted. Grouped by client,
-  time on projects with no client is one "Internal work" row. A range that
-  includes a month still open to edits is marked provisional. Every tab counts
+- **Reports** — owners and managers see one overview on `/reports` for a
+  month, quarter, year or custom range of up to 366 days. Three tiles sum the
+  period up: time logged against what the team was expected to work (capacity
+  minus time off), billable time and its share (by each entry's flag, D2), and
+  how many planned projects came within a tenth of their plan. Below, the Team
+  card puts each person's logged time against their expected hours, with what
+  was planned and their days off, and the Projects card puts each project's
+  time against its plan, under its client, with internal work last. Each row
+  is a bar whose reference sits in the same place, so rows compare at a
+  glance; time past it is striped. It is a fact, not a score (D3): nothing is
+  red or green, and the team is listed by name unless sorted. A range that
+  includes a month still open to edits is marked provisional. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead.
 - **Hours export** — from Reports, owners and managers download the
@@ -830,7 +828,7 @@ planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-six Vitest files and 285 tests: its date, month,
+The frontend has fifty-five Vitest files and 286 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -1109,7 +1107,7 @@ ever disagree about the catalogue.
 The team view shows each person's logged time against what was expected, but
 somebody still has to look, and since Phase 31 nothing marks anyone short.
 Phase 3 made "short" precise: logged below expected, over days that have
-finished; today only Reports' People tab shows it.
+finished; today only Reports' Team card shows it.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to

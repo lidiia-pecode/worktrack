@@ -15,11 +15,16 @@ export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
+  /** Finished days they were expected to work and logged nothing, in date order. */
+  daysWithoutTime: string[];
 }
 
 export interface PeopleReport extends ReportCoverage {
   rows: PeopleReportRow[];
-  totals: PeopleReportFigures;
+  totals: PeopleReportFigures & {
+    /** How many days without time there are across the rows. */
+    daysWithoutTime: number;
+  };
 }
 
 export interface PeopleReportQuery {

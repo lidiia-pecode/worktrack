@@ -7,11 +7,12 @@ import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function usePeopleReport(params: PeopleReportQuery) {
+export function usePeopleReport(params: PeopleReportQuery, enabled = true) {
   const query = useQuery({
     queryKey: queryKeys.reporting.people({ ...params }),
     queryFn: () => ReportingClientApi.getPeopleReport(params),
     placeholderData: keepPreviousData,
+    enabled,
   });
 
   return {
