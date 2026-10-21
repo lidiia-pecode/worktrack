@@ -1,3 +1,5 @@
+import { ReportCoverage } from "./HoursReport";
+
 export interface PlannedVsActualRow {
   userId: string;
   name: string;
@@ -6,11 +8,9 @@ export interface PlannedVsActualRow {
   loggedMinutes: number;
 }
 
-export interface PlannedVsActualReport {
+export interface PlannedVsActualReport extends ReportCoverage {
   rows: PlannedVsActualRow[];
   totals: { plannedMinutes: number; loggedMinutes: number };
-  /** True while any month in the range can still be edited. */
-  isProvisional: boolean;
 }
 
 export interface PlannedVsActualQuery {

@@ -1,3 +1,5 @@
+import { ReportCoverage } from "./HoursReport";
+
 export interface UtilisationFigures {
   capacityMinutes: number;
   absenceMinutes: number;
@@ -23,11 +25,9 @@ export interface UtilisationRow extends UtilisationFigures {
   position: string | null;
 }
 
-export interface UtilisationReport {
+export interface UtilisationReport extends ReportCoverage {
   rows: UtilisationRow[];
   totals: UtilisationFigures;
-  /** True while any month in the range can still be edited. */
-  isProvisional: boolean;
 }
 
 export interface UtilisationQuery {

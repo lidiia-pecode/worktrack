@@ -17,13 +17,22 @@ export interface HoursReportRow extends HoursSplit {
   detail: string | null;
 }
 
-export interface HoursReport {
+/** What every report returns besides its rows and totals. */
+export interface ReportCoverage {
+  /** True while any month in the range can still be edited. */
+  isProvisional: boolean;
+  /**
+   * The last day counted when the range reaches today or later, since only
+   * finished days count; null when the whole range was counted.
+   */
+  countedUntil: string | null;
+}
+
+export interface HoursReport extends ReportCoverage {
   /** The grouping these rows were built with. */
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
   totals: HoursSplit;
-  /** True while any month in the range can still be edited. */
-  isProvisional: boolean;
 }
 
 export interface HoursExportQuery {

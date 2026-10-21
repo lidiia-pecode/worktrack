@@ -1,20 +1,23 @@
 "use client";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
+import { DateRange } from "@/lib/utils/report-period";
 import { HoursReportGroupBy } from "@/types/enums";
 
-import { DateRange } from "./ReportFilters";
 import { HoursReportTable } from "./HoursReportTable";
 import { ReportSection } from "./ReportSection";
 
 type HoursReportSectionProps = {
   range: DateRange;
   groupBy: HoursReportGroupBy;
+  /** The period in words, for the table's label. */
+  periodText: string;
 };
 
 export const HoursReportSection = ({
   range,
   groupBy,
+  periodText,
 }: HoursReportSectionProps) => {
   const { report, isLoading, isPlaceholderData, isError, refetch } =
     useHoursReport({ ...range, groupBy });
@@ -37,6 +40,7 @@ export const HoursReportSection = ({
           groupBy={report.groupBy}
           rows={report.rows}
           totals={report.totals}
+          periodText={periodText}
         />
       )}
     </ReportSection>

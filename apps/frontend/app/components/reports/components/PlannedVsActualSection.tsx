@@ -4,17 +4,20 @@ import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
 import { usePlannedVsActual } from "@/hooks/usePlannedVsActual";
+import { DateRange } from "@/lib/utils/report-period";
 
-import { DateRange } from "./ReportFilters";
 import { PlannedVsActualTable } from "./PlannedVsActualTable";
 import { ReportSection } from "./ReportSection";
 
 type PlannedVsActualSectionProps = {
   range: DateRange;
+  /** The period in words, for the table's label. */
+  periodText: string;
 };
 
 export const PlannedVsActualSection = ({
   range,
+  periodText,
 }: PlannedVsActualSectionProps) => {
   const { report, isLoading, isPlaceholderData, isError, refetch } =
     usePlannedVsActual(range);
@@ -39,7 +42,11 @@ export const PlannedVsActualSection = ({
       onRetry={refetch}
     >
       {report && (
-        <PlannedVsActualTable rows={report.rows} totals={report.totals} />
+        <PlannedVsActualTable
+          rows={report.rows}
+          totals={report.totals}
+          periodText={periodText}
+        />
       )}
     </ReportSection>
   );

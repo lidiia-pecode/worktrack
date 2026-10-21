@@ -4,8 +4,7 @@ import { FileSpreadsheet } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useHoursExport } from "@/hooks/useHoursReport";
-
-import { DateRange } from "./ReportFilters";
+import { DateRange } from "@/lib/utils/report-period";
 
 type HoursExportButtonProps = {
   range: DateRange;
@@ -19,12 +18,9 @@ export const HoursExportButton = ({
   const exportHours = useHoursExport();
 
   return (
-    // The top margin is the height of a field label, so the button lines up
-    // with the inputs even when one shows an error below it.
     <Button
       variant="outline"
-      size="lg"
-      className="sm:mt-6.5 sm:ml-auto"
+      size="sm"
       disabled={disabled}
       isLoading={exportHours.isPending}
       onClick={() => exportHours.mutate(range)}

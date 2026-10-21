@@ -219,6 +219,15 @@ export function formatMonthLabel(monthKey: string): string {
   return MONTH_YEAR_LABEL.format(new Date(`${monthKey}-01T00:00:00`));
 }
 
+const SHORT_MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+});
+
+/** e.g. "Sep", from a YYYY-MM month key. */
+export function formatShortMonthLabel(monthKey: string): string {
+  return SHORT_MONTH_LABEL.format(new Date(`${monthKey}-01T00:00:00`));
+}
+
 /** e.g. "7 Oct 2026", from a YYYY-MM-DD date. */
 export function formatDayMonthYearLabel(date: string): string {
   return DAY_MONTH_YEAR_LABEL.format(new Date(`${date}T00:00:00`));
@@ -227,6 +236,13 @@ export function formatDayMonthYearLabel(date: string): string {
 /** e.g. "7 Oct", from a YYYY-MM-DD date. */
 export function formatDayMonthLabel(date: string): string {
   return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
+}
+
+/** e.g. "19 Oct – 23 Oct 2026", or the one day. */
+export function formatDateRange(startDate: string, endDate: string): string {
+  return startDate === endDate
+    ? formatDayMonthYearLabel(startDate)
+    : `${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)}`;
 }
 
 /** The 1st of the month `monthsAhead` months from `date`'s month. */

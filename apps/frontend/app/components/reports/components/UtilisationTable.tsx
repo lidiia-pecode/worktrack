@@ -18,6 +18,7 @@ import { Minutes, Percent } from "./ReportCells";
 type UtilisationTableProps = {
   rows: UtilisationRow[];
   totals: UtilisationFigures;
+  periodText: string;
 };
 
 const Figure = ({
@@ -106,8 +107,15 @@ const FigureCells = ({ figures }: { figures: UtilisationFigures }) => (
   </>
 );
 
-export const UtilisationTable = ({ rows, totals }: UtilisationTableProps) => (
-  <Table className="min-w-4xl">
+export const UtilisationTable = ({
+  rows,
+  totals,
+  periodText,
+}: UtilisationTableProps) => (
+  <Table
+    className="min-w-4xl"
+    aria-label={`Utilisation by person, ${periodText}`}
+  >
     <TableHeader>
       <TableHead>Person</TableHead>
       <TableHead numeric detail="finished days only" className="w-28">

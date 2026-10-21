@@ -17,6 +17,7 @@ type HoursReportTableProps = {
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
   totals: HoursSplit;
+  periodText: string;
 };
 
 const NAME_COLUMN_LABEL: Record<HoursReportGroupBy, string> = {
@@ -50,8 +51,12 @@ export const HoursReportTable = ({
   groupBy,
   rows,
   totals,
+  periodText,
 }: HoursReportTableProps) => (
-  <Table className="min-w-2xl">
+  <Table
+    className="min-w-2xl"
+    aria-label={`Hours by ${NAME_COLUMN_LABEL[groupBy].toLowerCase()}, ${periodText}`}
+  >
     <TableHeader>
       <TableHead>{NAME_COLUMN_LABEL[groupBy]}</TableHead>
 

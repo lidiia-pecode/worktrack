@@ -12,8 +12,9 @@ import { toast } from "sonner";
 import { ReportingPeriodsQuery } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
 import { ReportingClientApi } from "@/lib/api/resources";
-import { isoDateInTimeZone, todayISODate, toMonthKey } from "@/lib/utils/date";
+import { todayISODate, toMonthKey } from "@/lib/utils/date";
 import {
+  companyFirstMonth,
   firstPeriodsPage,
   lockedDateLookup,
   olderPeriodsPage,
@@ -45,11 +46,7 @@ export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
 export function useReportingPeriodHistory() {
   const { company, query: companyQuery } = useCompany();
 
-  const firstMonth =
-    company &&
-    toMonthKey(
-      isoDateInTimeZone(new Date(company.createdAt), company.timezone),
-    );
+  const firstMonth = company && companyFirstMonth(company);
   const currentMonth = toMonthKey(todayISODate(company?.timezone));
 
   const query = useInfiniteQuery({

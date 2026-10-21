@@ -4,8 +4,8 @@ import { ReactNode, useRef, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 
 import {
+  formatDateRange,
   formatDayMonthLabel,
-  formatDayMonthYearLabel,
   fromISODate,
   toISODate,
 } from "@/lib/utils/date";
@@ -19,17 +19,11 @@ import {
 
 import { MonthCalendar } from "../MonthCalendar";
 
-/** "Oct 19 – Oct 23, 2026", or the one day. */
-const formatDateRange = (startDate: string, endDate: string) =>
-  startDate === endDate
-    ? formatDayMonthYearLabel(startDate)
-    : `${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)}`;
-
 type DateRangePickerProps = {
   startDate: string;
   endDate: string;
   /** What the field shows; the dates by default. */
-  label?: string;
+  label?: ReactNode;
   invalid?: boolean;
   onChange: (startDate: string, endDate: string) => void;
   /** Shortcuts under the calendar. */

@@ -16,6 +16,7 @@ import { Minutes } from "./ReportCells";
 type PlannedVsActualTableProps = {
   rows: PlannedVsActualRow[];
   totals: PlannedVsActualReport["totals"];
+  periodText: string;
 };
 
 // Deliberately neutral: a plan is guidance, never a target (D3), so a
@@ -35,8 +36,12 @@ const Difference = ({
 export const PlannedVsActualTable = ({
   rows,
   totals,
+  periodText,
 }: PlannedVsActualTableProps) => (
-  <Table className="min-w-xl">
+  <Table
+    className="min-w-xl"
+    aria-label={`Planned vs actual by person, ${periodText}`}
+  >
     <TableHeader>
       <TableHead>Person</TableHead>
       <TableHead numeric className="w-32">

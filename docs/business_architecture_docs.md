@@ -826,7 +826,7 @@ planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has forty-three Vitest files and 219 tests: its date, month,
+The frontend has fifty-four Vitest files and 269 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
