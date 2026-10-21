@@ -8,6 +8,7 @@ import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
+import { attentionItems } from "@/lib/utils/report-attention";
 import { formatDateRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import {
@@ -32,8 +33,11 @@ import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportPeriodPicker } from "./components/ReportPeriodPicker";
 import { ReportTiles } from "./components/ReportTiles";
 import { TeamCard } from "./components/TeamCard";
+import { WorthALook } from "./components/WorthALook";
 
 const PROJECT_PARAM = "project";
+// Until the company loads, a day without time weighs as a common working day.
+const DEFAULT_DAY_HOURS = 8;
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 
 type ReportScopeProps = {
@@ -82,6 +86,8 @@ export const ReportsView = () => {
 
   const [chosenPeriod, setChosenPeriod] = useState<ReportPeriod | null>(null);
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
+  const openPerson = (userId: string) => open(PERSON_PARAM, userId);
+  const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
   const currentMonth = toMonthKey(todayISODate(company?.timezone));
   const period = chosenPeriod ?? periodHolding("month", currentMonth);
@@ -157,14 +163,22 @@ export const ReportsView = () => {
         aria-busy={isUpdating}
       >
         <ReportTiles totals={totals} projects={projects.report.rows} />
-        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">
-          <TeamCard
-            people={people.report.rows}
-            onOpenPerson={(userId) => open(PERSON_PARAM, userId)}
+        <div className="mt-4">
+          <WorthALook
+            items={attentionItems(
+              people.report.rows,
+              projects.report.rows,
+              (company?.standardWorkHoursPerDay ?? DEFAULT_DAY_HOURS) * 60,
+            )}
+            onOpenPerson={openPerson}
+            onOpenProject={openProject}
           />
+        </div>
+        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">
+          <TeamCard people={people.report.rows} onOpenPerson={openPerson} />
           <ProjectsCard
             projects={projects.report.rows}
-            onOpenProject={(projectId) => open(PROJECT_PARAM, projectId)}
+            onOpenProject={openProject}
           />
         </div>
       </div>

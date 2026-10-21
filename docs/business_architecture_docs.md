@@ -761,7 +761,11 @@ see, and how a new company gets started. §7 plans that work.
   month, quarter, year or custom range of up to 366 days. Three tiles sum the
   period up: time logged against what the team was expected to work (capacity
   minus time off), billable time and its share (by each entry's flag, D2), and
-  how many planned projects came within a tenth of their plan. Below, the Team
+  how many planned projects came within a tenth of their plan. "Worth a look"
+  lists up to five facts, largest first: a project at least 8h and over a tenth
+  off its plan, 8h or more logged with no plan, somebody planned beyond what
+  they are expected to work, and working days with no time logged. None is
+  about somebody logging less than expected. Below, the Team
   card puts each person's logged time against their expected hours, with what
   was planned and their days off, and the Projects card puts each project's
   time against its plan, under its client, with internal work last. Each row
@@ -833,7 +837,7 @@ planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-five Vitest files and 292 tests: its date, month,
+The frontend has fifty-six Vitest files and 301 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the

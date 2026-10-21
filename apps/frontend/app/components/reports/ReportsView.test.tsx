@@ -475,6 +475,32 @@ describe("ReportsView", () => {
       ).toBeInTheDocument();
     });
 
+    it("lists what is worth a look, largest first, each opening where it points", async () => {
+      const user = userEvent.setup();
+      showReports(peopleReport(team), projectsReport(projects));
+
+      const card = screen.getByRole("region", { name: "Worth a look" });
+      expect(
+        within(card)
+          .getAllByRole("listitem")
+          .map((item) => item.querySelector(".font-semibold")?.textContent),
+      ).toEqual(["Data Warehouse", "Ethan Brooks", "WorkTrack", "CRM System"]);
+
+      await user.click(
+        within(card).getByRole("button", {
+          name: "Open details: Ethan Brooks",
+        }),
+      );
+      expect(navigation.search).toBe("?person=ethan-brooks");
+
+      await user.click(
+        within(card).getByRole("button", { name: "See who: WorkTrack" }),
+      );
+      expect(
+        screen.getByRole("complementary", { name: "WorkTrack" }),
+      ).toBeInTheDocument();
+    });
+
     it("shows nothing for a link to someone outside the rows", () => {
       navigation.history.splice(0, 1, "?person=somebody-else");
       showReports(peopleReport(team), projectsReport(projects));
