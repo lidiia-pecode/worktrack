@@ -1,8 +1,11 @@
 import { HoursReportRow, TimelineBucket, TimelineInterval } from "@/types";
 
-import { formatDayMonthLabel, fromISODate } from "./date";
+import {
+  formatDayMonthLabel,
+  formatShortMonthLabel,
+  fromISODate,
+} from "./date";
 
-const MONTH_LABEL = new Intl.DateTimeFormat(undefined, { month: "short" });
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 
 /**
@@ -13,7 +16,7 @@ export const bucketLabel = (
   { start, end }: TimelineBucket,
   interval: TimelineInterval,
 ) => {
-  if (interval === "month") return MONTH_LABEL.format(fromISODate(start));
+  if (interval === "month") return formatShortMonthLabel(start.slice(0, 7));
   if (start === end) return formatDayMonthLabel(start);
 
   const sameMonth = start.slice(0, 7) === end.slice(0, 7);
@@ -80,21 +83,21 @@ export const kindOfWork = (
   const withTime = [...minutesByCategory.entries()].filter(
     ([, minutes]) => minutes > 0,
   );
-  const coloured = new Set(
-    [...withTime]
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, CATEGORY_SLOTS)
-      .map(([name]) => name),
-  );
   // A category missing from the list (renamed since, say) goes after the rest.
   const listPlace = (name: string) => {
     const index = categoryNames.indexOf(name);
     return index === -1 ? categoryNames.length : index;
   };
+  const byListPlace = (a: string, b: string) =>
+    listPlace(a) - listPlace(b) || a.localeCompare(b);
+  const coloured = new Set(
+    [...withTime]
+      .sort((a, b) => b[1] - a[1] || byListPlace(a[0], b[0]))
+      .slice(0, CATEGORY_SLOTS)
+      .map(([name]) => name),
+  );
   const slotOf = new Map(
-    [...coloured]
-      .sort((a, b) => listPlace(a) - listPlace(b) || a.localeCompare(b))
-      .map((name, index) => [name, index + 1]),
+    [...coloured].sort(byListPlace).map((name, index) => [name, index + 1]),
   );
 
   const share = (minutes: number) =>

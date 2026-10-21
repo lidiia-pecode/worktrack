@@ -591,11 +591,46 @@ describe("ReportsView", () => {
       ).toBeInTheDocument();
     });
 
-    it("shows nothing for a link to someone outside the rows", () => {
+    it("waits for the person's days off before drawing their days", () => {
+      vi.mocked(useAllAbsencesQuery).mockReturnValue({
+        items: [],
+        isLoading: true,
+        isError: false,
+        refetch: vi.fn(),
+      } as unknown as ReturnType<typeof useAllAbsencesQuery>);
+      navigation.history.splice(0, 1, `?person=${ethan.userId}`);
+      showReports(peopleReport([ethan]), projectsReport(projects));
+
+      const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
+      expect(
+        within(panel).queryByRole("list", { name: "Days" }),
+      ).not.toBeInTheDocument();
+      expect(panel).toHaveTextContent("Loading the days…");
+      expect(panel).not.toHaveTextContent("None");
+    });
+
+    it("drops a link to someone outside the rows", () => {
       navigation.history.splice(0, 1, "?person=somebody-else");
       showReports(peopleReport(team), projectsReport(projects));
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+      expect(navigation.search).toBe("");
+    });
+
+    it("closes the panel, URL included, when another period leaves the person out", async () => {
+      const user = userEvent.setup();
+      showReports(peopleReport([ethan]), projectsReport(projects));
+      await user.click(screen.getByRole("button", { name: "Ethan Brooks" }));
+
+      vi.mocked(usePeopleReport).mockReturnValue(
+        loaded(peopleReport(team.slice(1))) as unknown as ReturnType<
+          typeof usePeopleReport
+        >,
+      );
+      await user.click(screen.getByRole("button", { name: "Previous month" }));
+
+      expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
+      expect(navigation.history).toEqual([""]);
     });
   });
 });

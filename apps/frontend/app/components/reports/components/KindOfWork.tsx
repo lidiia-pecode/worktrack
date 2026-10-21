@@ -42,7 +42,7 @@ export const KindOfWork = ({ shares }: { shares: CategoryShare[] }) => (
         >
           {shares.map(({ name, minutes, slot }) => (
             <span
-              key={name}
+              key={slot ?? name}
               className={cn(
                 "min-w-1 first:rounded-l-full last:rounded-r-full",
                 fillOf(slot),
@@ -55,7 +55,7 @@ export const KindOfWork = ({ shares }: { shares: CategoryShare[] }) => (
         <ul className="mt-3">
           {shares.map(({ name, minutes, share, slot }) => (
             <li
-              key={name}
+              key={slot ?? name}
               className="grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/60 py-2.5 text-sm"
             >
               <span

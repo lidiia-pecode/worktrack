@@ -32,7 +32,7 @@ const TEAM_ITEMS: WelcomeItem[] = [
   {
     icon: BarChart3,
     title: "Report on their hours",
-    description: "Hours, utilisation and planned against actual, in Reports.",
+    description: "Logged hours against expected and planned, in Reports.",
   },
   {
     icon: UserPlus,

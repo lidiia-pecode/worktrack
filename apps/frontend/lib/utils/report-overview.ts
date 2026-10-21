@@ -12,7 +12,7 @@ import {
 /** A planned project this close to its plan, as a share of it, counts as close to plan. */
 export const CLOSE_TO_PLAN_SHARE = 0.1;
 
-const MINUTES_PER_HOUR = 60;
+export const MINUTES_PER_HOUR = 60;
 
 /** Tick steps, in hours, that read as round numbers on an axis. */
 const TICK_STEPS_HOURS = [
@@ -202,8 +202,8 @@ export const sortPeople = (
 };
 
 /**
- * Up to this many days, a person's panel shows them day by day, a month at
- * most; a longer period would be a wall of days.
+ * Up to this many days, about two months, a person's panel shows them day by
+ * day; a longer period would be a wall of days.
  */
 export const DAY_GRID_MAX_DAYS = 62;
 

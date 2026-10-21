@@ -62,6 +62,7 @@ export const WorthALook = ({
             size: "sm",
             className: "shrink-0",
           })}
+          aria-label={`Open in Team time: ${item.who}`}
         >
           Open in Team time
         </Link>

@@ -126,12 +126,6 @@ export const periodLabel = (
   };
 };
 
-/** The period in one line, for labels read out by a screen reader. */
-export const periodText = (period: ReportPeriod, currentMonth: string) => {
-  const { name } = periodLabel(period, currentMonth);
-  return isYearToDate(period, currentMonth) ? `${name} to date` : name;
-};
-
 /** Why a custom range can't be reported on; ranges of whole units always can. */
 export const periodRangeError = (period: ReportPeriod) =>
   period.unit === "custom" &&

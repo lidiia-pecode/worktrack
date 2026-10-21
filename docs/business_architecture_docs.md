@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 21 October 2026.** Phases 0 to 33 in §7 are
+**Last verified against the code: 22 October 2026.** Phases 0 to 34 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -765,7 +765,8 @@ see, and how a new company gets started. §7 plans that work.
   lists the facts largest first, three at once and the rest on request: a project at least 8h and over a tenth
   off its plan, 8h or more logged with no plan, somebody planned beyond what
   they are expected to work, and working days with no time logged. None is
-  about somebody logging less than expected. Below, the Team
+  about somebody logging less than expected, and a deactivated person has no
+  missing days; they are listed only if they logged time in the period. Below, the Team
   card puts each person's logged time against their expected hours, with what
   was planned and their days off, and the Projects card puts each project's
   time against its plan, under its client, with internal work last. Each card
@@ -774,7 +775,7 @@ see, and how a new company gets started. §7 plans that work.
   striped; a missing plan or expectation has no mark and is said in words. It
   is a fact, not a score (D3): nothing is red or green, and the team is listed
   by name unless "Most logged first" is chosen. A person's name
-  opens a panel with their figures, each day of a month or shorter (logged, a
+  opens a panel with their figures, each day of up to two months (logged, a
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
   to their week on Team time; a project's name opens its people against their
@@ -836,13 +837,13 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-four
-suites and 781 tests, covering the role-visibility filters, team and invitation
+suites and 782 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-seven Vitest files and 313 tests: its date, month,
+The frontend has fifty-seven Vitest files and 316 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -928,6 +929,7 @@ is in its pull request.
 | 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
+| 34 | Reports on one overview page: one cut-off at yesterday for every figure and the export, with an Email column in the export; the period by Month, Quarter or Year with a custom range; three tiles, "Worth a look" with the facts that need attention, Team against expected and Projects against plan on one hour scale per card, week by week and kind of work; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1000,7 +1002,7 @@ items with search that covers everything, confirmations before anything is
 archived, forms and dialogs that behave the same on every screen, and settings
 that say what a change will do.
 
-**Area 6 — Reporting and insights.** What owners and managers learn from
+**Area 6 — Reporting and insights** *(started, Phase 34)*. What owners and managers learn from
 `/reports` and the export. Which questions each role actually brings, and how
 the answers are best shown — charts, drill-down from a client to its projects and
 people, trends over months, a team view for the owner, sensible date presets —
@@ -1144,18 +1146,6 @@ Google sign-in URLs registered for it.
 judged ready (§7, final stage). Nothing in the improvement roadmap depends on
 it.
 
-**Q10 — What should the reports answer, and should they show charts?**
-Belongs to Area 6. Today every report is a table; there is no chart library, no
-drill-down from a client to its projects and people, no comparison with earlier
-months and no breakdown by team.
-*Recommendation:* review the three tabs with the people who use them before
-changing anything, and write down the three or four questions each role brings
-to `/reports`. The likely additions are hours per month over time, the billable
-split as a chart, a team breakdown for the owner and drill-down from a row, using
-one small chart library styled from the existing `--chart-*` tokens.
-*Alternative:* keep tables only and add drill-down, presets and trends as table
-columns.
-
 **Q11 — Should employees get a report of their own hours?**
 Belongs to Area 7. An employee sees one week at a time. The API already returns
 their own week summaries and expected hours; the hours report
@@ -1189,6 +1179,11 @@ their time logs, such as anonymising the person and keeping the hours.
 - **Q4** — The hours export is an Excel file, one row per person, day,
   project, activity and billing type, with no notes and a `Period` column
   (Phase 13), and an `Email` column after the name (Phase 34).
+- **Q10** — Reports are one overview page for owners and managers, built around
+  the questions they bring: logged against expected and planned, billable, the
+  facts worth a look, hours week by week and kind of work, with a person or a
+  project opened in a side panel; the export holds every number (Phase 34).
+  Comparison with earlier periods and a breakdown by team stay in Area 6.
 - **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
   no "remember me" (Phase 6).
 - **Q8** — No email verification while only a company's first owner signs up

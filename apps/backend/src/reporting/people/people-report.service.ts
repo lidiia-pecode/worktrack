@@ -13,6 +13,7 @@ import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
@@ -159,9 +160,13 @@ export class PeopleReportService {
         plannedMinutes: personHours?.plannedMinutes ?? 0,
         expectedMinutes: personAvailability?.availableMinutes ?? 0,
         timeOffDays: personAvailability?.absenceDays ?? 0,
-        daysWithoutTime: (personAvailability?.expectedDates ?? []).filter(
-          (date) => !personLoggedDates?.has(date),
-        ),
+        // A deactivated person can no longer log time, so no day is missing.
+        daysWithoutTime:
+          person.status === UserStatus.ACTIVE
+            ? (personAvailability?.expectedDates ?? []).filter(
+                (date) => !personLoggedDates?.has(date),
+              )
+            : [],
       };
     });
 
@@ -210,11 +215,12 @@ export class PeopleReportService {
     if (countedTo < dateFrom) return { interval, buckets: [], ...coverage };
 
     const people = await this.peopleFor(user, hours);
+    const peopleIds = people.map((person) => person.id);
     const [days, expected, weekStartDay] = await Promise.all([
-      this.reportingService.minutesPerDay(user, dateFrom, countedTo),
+      this.reportingService.minutesPerDay(user, peopleIds, dateFrom, countedTo),
       this.expectedHours.expectedFor(
         user.companyId,
-        people.map((person) => person.id),
+        peopleIds,
         dateFrom,
         countedTo,
       ),
@@ -268,12 +274,17 @@ export class PeopleReportService {
 
   /**
    * The same people the team grid lists, plus deactivated people with logged
-   * or planned time in the range.
+   * time in the range. A plan alone, often left over from before they left,
+   * doesn't list them.
    */
   private peopleFor(user: AuthUser, hours: HoursReport) {
     return this.teamVisibility.findVisibleUsers(
       user,
-      { includeUserIds: hours.rows.map((row) => row.id!) },
+      {
+        includeUserIds: hours.rows
+          .filter((row) => row.totalMinutes > 0)
+          .map((row) => row.id!),
+      },
       { includeSelf: true },
     );
   }

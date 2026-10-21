@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
@@ -51,6 +51,8 @@ describe('PeopleReportService', () => {
   let member: string; // full-time, two days off, logs and is planned
   let awayAllMonth: string; // absent for the whole of March
   let partTimer: string; // on no team, 24 hours a week, logs nothing
+  let projectId: string;
+  let projectActivityId: string;
 
   const createUser = async (name: string, role: UserRole) => {
     const email = `${name}-${RUN}@people-report.test`;
@@ -166,6 +168,8 @@ describe('PeopleReportService', () => {
     const projectActivity = await dataSource
       .getRepository(ProjectActivity)
       .save({ companyId, projectId: project.id, activityId: activity.id });
+    projectId = project.id;
+    projectActivityId = projectActivity.id;
 
     await dataSource.getRepository(TimeLog).save(
       [
@@ -303,6 +307,42 @@ describe('PeopleReportService', () => {
         WORKING_DAYS_IN_MARCH + (WORKING_DAYS_IN_MARCH - 3),
       );
     });
+  });
+
+  it('lists a deactivated person only with logged time, and never with missing days', async () => {
+    const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
+    const plannedOnly = await createUser('Plannedonly', UserRole.EMPLOYEE);
+    await dataSource
+      .getRepository(User)
+      .update([leaver.id, plannedOnly.id], { status: UserStatus.DEACTIVATED });
+    await dataSource.getRepository(TimeLog).save({
+      companyId,
+      userId: leaver.id,
+      projectActivityId,
+      date: '2026-03-03',
+      minutes: 120,
+      isBillable: false,
+    });
+    await dataSource.getRepository(PlanningEntry).save({
+      companyId,
+      userId: plannedOnly.id,
+      projectId,
+      date: '2026-03-04',
+      plannedMinutes: 240,
+    });
+
+    const { rows, totals } = await service.getPeopleReport(owner, MARCH);
+    const { buckets } = await service.getTimeline(owner, MARCH);
+    await dataSource.getRepository(User).delete([leaver.id, plannedOnly.id]);
+
+    expect(rows.find((row) => row.userId === leaver.id)).toMatchObject({
+      loggedMinutes: 120,
+      daysWithoutTime: [],
+    });
+    expect(rows.some((row) => row.userId === plannedOnly.id)).toBe(false);
+    expect(
+      buckets.reduce((sum, bucket) => sum + bucket.plannedMinutes, 0),
+    ).toBe(totals.plannedMinutes);
   });
 
   it('is final for a locked month, counted in full', async () => {

@@ -225,7 +225,7 @@ const DayGrid = ({
   countedUntil,
 }: {
   person: PeopleReportRow;
-  absences: Absence[];
+  absences: ReturnType<typeof useAllAbsencesQuery>;
   range: DateRange;
   countedUntil: string | null;
 }) => {
@@ -240,26 +240,30 @@ const DayGrid = ({
       loggedByDate: new Map(
         (row?.days ?? []).map((day) => [day.date, day.minutes]),
       ),
-      isOff: (date) => Boolean(absenceOn(absences, date)),
+      isOff: (date) => Boolean(absenceOn(absences.items, date)),
       daysWithoutTime: new Set(person.daysWithoutTime),
     });
-  }, [summary.rows, absences, person, range, countedUntil]);
+  }, [summary.rows, absences.items, person, range, countedUntil]);
 
-  if (summary.isLoading) {
+  // Days off come from the absences, so the grid waits for both.
+  if (summary.isLoading || absences.isLoading) {
     return <LoadingState size="compact" title="Loading the days…" />;
   }
-  if (summary.isError) {
+  if (summary.isError || absences.isError) {
     return (
       <ErrorState
         size="compact"
         title="We couldn't load the days"
-        onRetry={() => void summary.refetch()}
+        onRetry={() => {
+          if (summary.isError) void summary.refetch();
+          if (absences.isError) void absences.refetch();
+        }}
       />
     );
   }
 
   const offLabel = (date: string) => {
-    const absence = absenceOn(absences, date);
+    const absence = absenceOn(absences.items, date);
     return absence ? ABSENCE_TYPE_SHORT_LABELS[absence.type] : "Off";
   };
 
@@ -366,7 +370,10 @@ export const PersonPanel = ({
           {
             label: "Time off",
             value: `${person.timeOffDays} ${person.timeOffDays === 1 ? "day" : "days"}`,
-            detail: absenceTypes.join(", ") || "None",
+            detail:
+              absences.isLoading || absences.isError
+                ? ""
+                : absenceTypes.join(", ") || "None",
           },
         ]}
       />
@@ -382,13 +389,13 @@ export const PersonPanel = ({
         {daysIn(range) <= DAY_GRID_MAX_DAYS ? (
           <DayGrid
             person={person}
-            absences={absences.items}
+            absences={absences}
             range={range}
             countedUntil={countedUntil}
           />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Pick a month or shorter to see each day.
+            Pick two months or less to see each day.
           </p>
         )}
       </PanelSection>

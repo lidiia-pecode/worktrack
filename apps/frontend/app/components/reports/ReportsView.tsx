@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Clock, FileBarChart } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -9,6 +9,7 @@ import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
 import { attentionItems } from "@/lib/utils/report-attention";
+import { MINUTES_PER_HOUR } from "@/lib/utils/report-overview";
 import { formatDateRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import {
@@ -137,7 +138,7 @@ export const ReportsView = () => {
       return (
         <EmptyState
           title="Nothing counted yet"
-          description="Only finished days count, so this period's figures start tomorrow."
+          description="Only finished days count, and none of this period has finished yet."
           icon={<FileBarChart />}
         />
       );
@@ -169,7 +170,8 @@ export const ReportsView = () => {
             items={attentionItems(
               people.report.rows,
               projects.report.rows,
-              (company?.standardWorkHoursPerDay ?? DEFAULT_DAY_HOURS) * 60,
+              (company?.standardWorkHoursPerDay ?? DEFAULT_DAY_HOURS) *
+                MINUTES_PER_HOUR,
             )}
             onOpenPerson={openPerson}
             onOpenProject={openProject}
@@ -189,32 +191,48 @@ export const ReportsView = () => {
     );
   };
 
-  // A panel opens from the rows on screen, so a link to someone outside them
-  // shows nothing.
-  const renderPanel = () => {
-    if (!opened || !people.report || !projects.report) return null;
+  const openedPerson =
+    opened?.param === PERSON_PARAM
+      ? people.report?.rows.find((row) => row.userId === opened.id)
+      : undefined;
+  const openedProject =
+    opened?.param === PROJECT_PARAM
+      ? projects.report?.rows.find((row) => row.id === opened.id)
+      : undefined;
+  // A panel opens from the rows on screen. When the period drops its person or
+  // project, or a link names someone outside them, it closes, URL included,
+  // as on Team time, rather than reopening by itself later.
+  const isOpenedGone =
+    !!opened &&
+    !!peopleReport &&
+    !!projects.report &&
+    !openedPerson &&
+    !openedProject;
 
-    if (opened.param === PERSON_PARAM) {
-      const person = people.report.rows.find((row) => row.userId === opened.id);
+  useEffect(() => {
+    if (isOpenedGone) close();
+  }, [isOpenedGone, close]);
+
+  const renderPanel = () => {
+    if (!isRangeValid || !people.report) return null;
+
+    if (openedPerson) {
       return (
-        person && (
-          <PersonPanel
-            key={person.userId}
-            person={person}
-            range={range}
-            countedUntil={people.report.countedUntil}
-            onClose={close}
-          />
-        )
+        <PersonPanel
+          key={openedPerson.userId}
+          person={openedPerson}
+          range={range}
+          countedUntil={people.report.countedUntil}
+          onClose={close}
+        />
       );
     }
 
-    const project = projects.report.rows.find((row) => row.id === opened.id);
     return (
-      project && (
+      openedProject && (
         <ProjectPanel
-          key={project.id}
-          project={project}
+          key={openedProject.id}
+          project={openedProject}
           range={range}
           onClose={close}
         />
@@ -243,7 +261,8 @@ export const ReportsView = () => {
           )}
         </div>
 
-        {(peopleReport?.totals.loggedMinutes ?? 0) > 0 && (
+        {/* The last figures keep the button in place while a period loads. */}
+        {(people.report?.totals.loggedMinutes ?? 0) > 0 && (
           <HoursExportButton range={range} disabled={!isRangeValid} />
         )}
       </div>

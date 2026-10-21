@@ -107,6 +107,17 @@ describe("kindOfWork", () => {
     ).toEqual([1]);
   });
 
+  it("past six, keeps the colour for the one earlier in the list when sizes tie", () => {
+    const many = ["A", "B", "C", "D", "E", "F", "G"];
+    const shares = kindOfWork(
+      [...many].reverse().map((name) => activity(name, name, 5)),
+      many,
+    );
+
+    expect(shares.find(({ name }) => name === "F")?.slot).toBe(6);
+    expect(shares.at(-1)).toMatchObject({ name: "Other", slot: null });
+  });
+
   it("past six categories, keeps colours for the six largest and puts the rest in Other", () => {
     const many = ["A", "B", "C", "D", "E", "F", "G", "H"];
     const shares = kindOfWork(

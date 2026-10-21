@@ -11,7 +11,6 @@ import {
   periodLabel,
   periodRange,
   periodRangeError,
-  periodText,
   stepPeriod,
   switchUnit,
 } from "./report-period";
@@ -104,12 +103,12 @@ describe("report periods", () => {
       name: "Q3 2026",
       detail: `${formatShortMonthLabel("2026-07")} – ${formatShortMonthLabel("2026-09")}`,
     });
-    expect(periodText(periodHolding("year", "2026-10"), CURRENT_MONTH)).toBe(
-      "2026 to date",
-    );
-    expect(periodText(periodHolding("year", "2025-10"), CURRENT_MONTH)).toBe(
-      "2025",
-    );
+    expect(
+      periodLabel(periodHolding("year", "2026-10"), CURRENT_MONTH),
+    ).toEqual({ name: "2026", detail: "to date" });
+    expect(
+      periodLabel(periodHolding("year", "2025-10"), CURRENT_MONTH),
+    ).toEqual({ name: "2025", detail: undefined });
   });
 
   it("reports on a custom range of at most 366 days", () => {
@@ -123,9 +122,9 @@ describe("report periods", () => {
       dateFrom: "2026-09-03",
       dateTo: "2026-10-18",
     });
-    expect(periodText(custom, CURRENT_MONTH)).toBe(
-      formatDateRange("2026-09-03", "2026-10-18"),
-    );
+    expect(periodLabel(custom, CURRENT_MONTH)).toEqual({
+      name: formatDateRange("2026-09-03", "2026-10-18"),
+    });
     expect(periodRangeError(custom)).toBeUndefined();
     expect(
       periodRangeError({

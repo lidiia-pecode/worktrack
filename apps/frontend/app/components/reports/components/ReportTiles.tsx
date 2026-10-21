@@ -87,7 +87,11 @@ export const ReportTiles = ({ totals, projects }: ReportTilesProps) => {
             }}
             logged={loggedMinutes}
             expected={expectedMinutes}
-            label={`${formatDuration(loggedMinutes)} logged of ${formatDuration(expectedMinutes)} expected`}
+            label={
+              expectedMinutes > 0
+                ? `${formatDuration(loggedMinutes)} logged of ${formatDuration(expectedMinutes)} expected`
+                : `${formatDuration(loggedMinutes)} logged, nothing expected`
+            }
           />
         }
       >

@@ -777,15 +777,19 @@ export class ReportingService {
   }
 
   /**
-   * Logged, billable and planned minutes per day, for the same people as the
-   * Hours report. The caller has checked the range and cut it at `countedTo`.
+   * Logged, billable and planned minutes per day for the given people, within
+   * what the viewer sees. The caller has checked the range and cut it at
+   * `countedTo`.
    * Days with neither time nor a plan are left out.
    */
   async minutesPerDay(
     user: AuthUser,
+    userIds: string[],
     dateFrom: string,
     countedTo: string,
   ): Promise<DayMinutes[]> {
+    if (userIds.length === 0) return [];
+
     const manager = this.periodRepo.manager;
     const logged = manager
       .createQueryBuilder()
@@ -797,6 +801,7 @@ export class ReportingService {
       )
       .from('time_logs', 'tl')
       .where('tl.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('tl.user_id IN (:...userIds)', { userIds })
       .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom,
         countedTo,
@@ -807,6 +812,7 @@ export class ReportingService {
       .addSelect('SUM(e.planned_minutes)', 'plannedMinutes')
       .from('planning_entries', 'e')
       .where('e.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('e.user_id IN (:...userIds)', { userIds })
       .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom,
         countedTo,
