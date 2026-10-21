@@ -30,7 +30,7 @@ import {
   monthsBetween,
   toMonthKey,
 } from './reporting-months.util';
-import { assertDateRange } from './date-range.util';
+import { assertDateRange, lastCountedDay } from './date-range.util';
 import { AuthUser } from 'src/auth/auth-strategies/types';
 import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { ReportingPeriodsQuery } from './dtos/reporting-month.dto';
@@ -48,11 +48,20 @@ export interface PlannedVsActualRow {
   loggedMinutes: number;
 }
 
-export interface PlannedVsActualReport {
-  rows: PlannedVsActualRow[];
-  totals: { plannedMinutes: number; loggedMinutes: number };
+/** What every report returns besides its rows and totals. */
+export interface ReportCoverage {
   /** True while any month in the range can still be edited. */
   isProvisional: boolean;
+  /**
+   * The last day counted when the range reaches today or later; null when the
+   * whole range was counted.
+   */
+  countedUntil: string | null;
+}
+
+export interface PlannedVsActualReport extends ReportCoverage {
+  rows: PlannedVsActualRow[];
+  totals: { plannedMinutes: number; loggedMinutes: number };
 }
 
 interface PersonMinutesRawRow {
@@ -89,21 +98,22 @@ export interface HoursSplit {
 }
 
 export interface HoursReportRow extends HoursSplit {
-  /** The project, activity or person id; null when grouped by client. */
+  /** The project, activity or person id; null when grouped by client or month. */
   id: string | null;
-  /** Null only for internal work when grouped by client. */
+  /**
+   * The month (YYYY-MM) when grouped by month. Null only for internal work
+   * when grouped by client.
+   */
   name: string | null;
   /** The client for a project, the category for an activity, the position for a person. */
   detail: string | null;
 }
 
-export interface HoursReport {
+export interface HoursReport extends ReportCoverage {
   /** The grouping these rows were built with. */
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
   totals: HoursSplit;
-  /** True while any month in the range can still be edited. */
-  isProvisional: boolean;
 }
 
 interface HoursReportRawRow {
@@ -121,6 +131,7 @@ interface HoursReportRawRow {
 export interface HoursExportRow {
   date: string;
   person: string;
+  email: string;
   client: string | null;
   project: string;
   activity: string;
@@ -134,6 +145,7 @@ export interface HoursExportRow {
 interface HoursExportRawRow {
   date: string;
   person: string;
+  email: string;
   client: string | null;
   project: string;
   activity: string;
@@ -198,6 +210,12 @@ const HOURS_GROUPINGS: Record<
     name: `u.first_name || ' ' || u.last_name`,
     detail: 'u.position',
     groupBy: ['u.id'],
+  },
+  [HoursReportGroupBy.MONTH]: {
+    id: 'NULL',
+    name: `TO_CHAR(tl.date, 'YYYY-MM')`,
+    detail: 'NULL',
+    groupBy: [`TO_CHAR(tl.date, 'YYYY-MM')`],
   },
 };
 
@@ -490,15 +508,30 @@ export class ReportingService {
     return this.changeOf(saved);
   }
 
-  /** Whether any month touching the range is not locked yet. */
-  async hasEditableMonth(
+  /**
+   * Whether the range is still provisional and, when it reaches today or
+   * later, the last day a report counts.
+   */
+  private async coverageOf(
     companyId: string,
     dateFrom: string,
     dateTo: string,
-  ): Promise<boolean> {
-    const locked = await this.findLockedMonths(companyId, dateFrom, dateTo);
+    today: string,
+  ): Promise<ReportCoverage> {
+    const locked = await this.findLockedMonths(
+      companyId,
+      dateFrom,
+      dateTo,
+      today,
+    );
+    const countedTo = lastCountedDay(dateTo, today);
 
-    return monthsBetween(dateFrom, dateTo).some((month) => !locked.has(month));
+    return {
+      isProvisional: monthsBetween(dateFrom, dateTo).some(
+        (month) => !locked.has(month),
+      ),
+      countedUntil: countedTo < dateTo ? countedTo : null,
+    };
   }
 
   /** The first days of the locked months touching the range. */
@@ -506,8 +539,8 @@ export class ReportingService {
     companyId: string,
     dateFrom: string,
     dateTo: string,
+    today: string,
   ): Promise<Set<string>> {
-    const today = await findCompanyToday(this.companyRepo.manager, companyId);
     const months = monthsBetween(dateFrom, dateTo);
     const reopened = await this.findReopenedMonths(companyId, months);
 
@@ -524,8 +557,9 @@ export class ReportingService {
   // ==========================================
 
   /**
-   * Logged time over a date range, grouped one way and split into billable and
-   * non-billable by each entry's flag, on any project (D2).
+   * Logged time over a date range, finished days only, grouped one way and
+   * split into billable and non-billable by each entry's flag, on any project
+   * (D2).
    */
   async getHoursReport(
     user: AuthUser,
@@ -535,6 +569,10 @@ export class ReportingService {
 
     assertDateRange(dateFrom, dateTo);
 
+    const today = await findCompanyToday(
+      this.companyRepo.manager,
+      user.companyId,
+    );
     const grouping = HOURS_GROUPINGS[groupBy];
     const isClientWork = `${CLIENT_NAME} IS NOT NULL`;
 
@@ -567,16 +605,26 @@ export class ReportingService {
       .leftJoin('act_categories', 'c', 'c.id = a.category_id')
       .innerJoin('users', 'u', 'u.id = tl.user_id')
       .where('tl.company_id = :companyId', { companyId: user.companyId })
-      .andWhere('tl.date BETWEEN :dateFrom AND :dateTo', { dateFrom, dateTo });
+      .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
+        dateFrom,
+        countedTo: lastCountedDay(dateTo, today),
+      });
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
 
-    const rawRows = await qb
-      .groupBy(grouping.groupBy.join(', '))
-      .orderBy('"totalMinutes"', 'DESC')
-      .getRawMany<HoursReportRawRow>();
+    qb.groupBy(grouping.groupBy.join(', '));
+
+    if (groupBy === HoursReportGroupBy.MONTH) {
+      qb.orderBy('"name"', 'ASC');
+    } else {
+      qb.orderBy('"totalMinutes"', 'DESC')
+        .addOrderBy('"name"', 'ASC')
+        .addOrderBy('"id"', 'ASC');
+    }
+
+    const rawRows = await qb.getRawMany<HoursReportRawRow>();
 
     const rows = rawRows.map((raw) => ({
       id: raw.id,
@@ -611,17 +659,13 @@ export class ReportingService {
       groupBy,
       rows,
       totals,
-      isProvisional: await this.hasEditableMonth(
-        user.companyId,
-        dateFrom,
-        dateTo,
-      ),
+      ...(await this.coverageOf(user.companyId, dateFrom, dateTo, today)),
     };
   }
 
   /**
-   * The Hours report's time, for the same people, one row per person, day,
-   * project, activity and billing.
+   * The Hours report's time, for the same people and days, one row per
+   * person, day, project, activity and billing.
    */
   async getHoursExport(
     user: AuthUser,
@@ -631,10 +675,15 @@ export class ReportingService {
 
     assertDateRange(dateFrom, dateTo);
 
+    const today = await findCompanyToday(
+      this.companyRepo.manager,
+      user.companyId,
+    );
     const qb = this.periodRepo.manager
       .createQueryBuilder()
       .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
       .addSelect(`u.first_name || ' ' || u.last_name`, 'person')
+      .addSelect('u.email', 'email')
       .addSelect(CLIENT_EXPORT_NAME, 'client')
       .addSelect('p.name', 'project')
       .addSelect('a.name', 'activity')
@@ -648,7 +697,10 @@ export class ReportingService {
       .leftJoin('act_categories', 'c', 'c.id = a.category_id')
       .innerJoin('users', 'u', 'u.id = tl.user_id')
       .where('tl.company_id = :companyId', { companyId: user.companyId })
-      .andWhere('tl.date BETWEEN :dateFrom AND :dateTo', { dateFrom, dateTo });
+      .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
+        dateFrom,
+        countedTo: lastCountedDay(dateTo, today),
+      });
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
@@ -666,7 +718,7 @@ export class ReportingService {
         .addOrderBy('activity')
         .addOrderBy('billing')
         .getRawMany<HoursExportRawRow>(),
-      this.findLockedMonths(user.companyId, dateFrom, dateTo),
+      this.findLockedMonths(user.companyId, dateFrom, dateTo, today),
     ]);
 
     return rawRows.map((raw) => ({
@@ -677,8 +729,9 @@ export class ReportingService {
   }
 
   /**
-   * Planned against logged minutes per person over a date range. Employees
-   * are pinned to their own figures; nobody sees anyone outside their scope.
+   * Planned against logged minutes per person over a date range, both over
+   * finished days only. Employees are pinned to their own figures; nobody sees
+   * anyone outside their scope.
    */
   async getPlannedVsActualReport(
     user: AuthUser,
@@ -705,7 +758,16 @@ export class ReportingService {
       }
     }
 
-    const filters = { dateFrom, dateTo, targetUserId, projectId };
+    const today = await findCompanyToday(
+      this.companyRepo.manager,
+      user.companyId,
+    );
+    const filters = {
+      dateFrom,
+      dateTo: lastCountedDay(dateTo, today),
+      targetUserId,
+      projectId,
+    };
     const manager = this.periodRepo.manager;
 
     const planned = await this.sumMinutesPerPerson(
@@ -749,8 +811,9 @@ export class ReportingService {
       rowFor(person).loggedMinutes = Number(person.minutes);
     });
 
-    const rows = [...rowsByUser.values()].sort((a, b) =>
-      a.name.localeCompare(b.name),
+    const rows = [...rowsByUser.values()].sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId),
     );
 
     return {
@@ -759,11 +822,7 @@ export class ReportingService {
         plannedMinutes: rows.reduce((sum, row) => sum + row.plannedMinutes, 0),
         loggedMinutes: rows.reduce((sum, row) => sum + row.loggedMinutes, 0),
       },
-      isProvisional: await this.hasEditableMonth(
-        user.companyId,
-        dateFrom,
-        dateTo,
-      ),
+      ...(await this.coverageOf(user.companyId, dateFrom, dateTo, today)),
     };
   }
 

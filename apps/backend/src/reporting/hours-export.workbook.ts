@@ -12,6 +12,7 @@ const SHEET_NAME = 'Hours';
 const COLUMNS = [
   { header: 'Date', key: 'date', width: 12, style: { numFmt: 'yyyy-mm-dd' } },
   { header: 'Person', key: 'person', width: 24 },
+  { header: 'Email', key: 'email', width: 28 },
   { header: 'Client', key: 'client', width: 24 },
   { header: 'Project', key: 'project', width: 24 },
   { header: 'Activity', key: 'activity', width: 20 },
@@ -45,6 +46,7 @@ export const buildHoursExportWorkbook = async (
     rows.map((row) => ({
       date: toExcelDate(row.date),
       person: row.person,
+      email: row.email,
       client: row.client,
       project: row.project,
       activity: row.activity,

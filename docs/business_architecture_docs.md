@@ -16,8 +16,7 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 21 October 2026.** Phases 0 to 33 in §7 are
-delivered (Phase 33 on its branch, awaiting its pull request), and so is the
-permission model. The work ahead was re-planned on 28
+delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -509,6 +508,12 @@ add up to `total`.
 **Expected never consults planning, and planning never changes expected** (D3).
 Somebody with no plan at all has the same expectation as anybody else.
 
+**Reports count finished days only.** When a range reaches today or later, the
+hours, planned vs actual and utilisation reports and the hours export stop at
+yesterday in the company's time zone, for logged and planned time alike, and
+the reports say which day they counted to. Today's entries show in the reports
+and the export the next day.
+
 An OWNER sets capacity from the user form. A change may not take effect on or
 before the last locked day — both dating one inside a LOCKED period and
 backdating one to before it are refused, since either would alter what was
@@ -757,22 +762,22 @@ see, and how a new company gets started. §7 plans that work.
   activity or person, and split into billable and non-billable by each entry's
   flag, on any project (D2). Grouped by client, time on projects with no client
   is one "Internal work" row. A range that includes a month still open to edits is marked
-  provisional. Managers see only the teams they lead. A second tab compares
+  provisional. Every tab counts finished days only (§4, capacity and expected
+  hours). Managers see only the teams they lead. A second tab compares
   planned with logged time per person for the same range, shown as a neutral
   difference rather than a score (D3). A third shows utilisation per person —
   billable utilisation (billable time on any project), client share and
   non-billable client share (both about client projects) and logging
   completeness, each labelled with what it is measured against and shown as
-  "—" when there is nothing to measure. Availability and logged time both count
-  only days that have finished.
+  "—" when there is nothing to measure.
 - **Hours export** — from the Hours tab, owners and managers download the
-  selected range as an Excel file for invoicing (D7): one row per person, day,
-  project, activity and billing (Billable or Non-billable, by the entry's flag),
-  in hours and minutes, with no notes. The `Client` column is empty for internal
-  work. The
-  people and totals are the Hours report's, one spelling is used per client, and
-  a `Period` column says whether each row's month is still open to edits. Names
-  are written as text, so a name starting with `=` is never run as a formula.
+  selected range as an Excel file for invoicing (D7): one row per person (with
+  their email after the name), day, project, activity and billing (Billable or
+  Non-billable, by the entry's flag), in hours and minutes, with no notes. The
+  `Client` column is empty for internal work. The people, days and totals are
+  the Hours report's; one spelling is used per client, and a `Period` column
+  says whether each row's month is still open to edits. Names are written as
+  text, so a name starting with `=` is never run as a formula.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
@@ -814,8 +819,8 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-two
-suites and 739 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is forty-three
+suites and 763 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
@@ -1167,7 +1172,7 @@ their time logs, such as anonymising the person and keeping the hours.
 - **Q2** — Planning requires project membership (Phase 4).
 - **Q4** — The hours export is an Excel file, one row per person, day,
   project, activity and billing type, with no notes and a `Period` column
-  (Phase 13).
+  (Phase 13), and an `Email` column after the name (Phase 34).
 - **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
   no "remember me" (Phase 6).
 - **Q8** — No email verification while only a company's first owner signs up

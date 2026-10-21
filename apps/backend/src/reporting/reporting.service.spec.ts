@@ -12,7 +12,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import {
   freezeAtFirstLockedSecond,
   freezeAtLastGraceSecond,
@@ -407,6 +407,8 @@ describe('ReportingService', () => {
     let member: AuthUser;
     let outsider: string; // on no team
     let toolingProjectId: string;
+    let crmProjectId: string;
+    let crmProjectActivityId: string;
     let activityId: string;
 
     const lockedRange = {
@@ -504,6 +506,8 @@ describe('ReportingService', () => {
       const crm = await createProject('CRM', 'Acme', activity.id);
       const tooling = await createProject('Tooling', null, activity.id);
       toolingProjectId = tooling.projectId;
+      crmProjectId = crm.projectId;
+      crmProjectActivityId = crm.projectActivityId;
 
       await log(member.id, crm.projectActivityId, 300, true);
       await log(member.id, crm.projectActivityId, 60, false);
@@ -638,6 +642,140 @@ describe('ReportingService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    describe('counting finished days only', () => {
+      const yesterday = addDays(today, -1);
+      const inThreeDays = addDays(today, 3);
+      const rangeReachingToday = {
+        dateFrom: yesterday,
+        dateTo: addDays(today, 7),
+      };
+
+      it('leaves out today and later days, logged and planned alike, and says where it stopped', async () => {
+        const logs = await dataSource.getRepository(TimeLog).save(
+          [yesterday, today, inThreeDays].map((date, i) => ({
+            companyId,
+            userId: member.id,
+            projectActivityId: crmProjectActivityId,
+            date,
+            minutes: 30 * (i + 1),
+            isBillable: true,
+          })),
+        );
+        const plans = await dataSource.getRepository(PlanningEntry).save(
+          [yesterday, today, inThreeDays].map((date) => ({
+            companyId,
+            userId: member.id,
+            projectId: crmProjectId,
+            date,
+            plannedMinutes: 120,
+          })),
+        );
+
+        const hours = await service.getHoursReport(owner, {
+          ...rangeReachingToday,
+          groupBy: HoursReportGroupBy.PERSON,
+        });
+        const plannedVsActual = await service.getPlannedVsActualReport(
+          owner,
+          rangeReachingToday,
+        );
+        await dataSource.getRepository(TimeLog).remove(logs);
+        await dataSource.getRepository(PlanningEntry).remove(plans);
+
+        expect(hours.totals.totalMinutes).toBe(30);
+        expect(hours.countedUntil).toBe(yesterday);
+        expect(plannedVsActual.rows).toEqual([
+          expect.objectContaining({
+            userId: member.id,
+            plannedMinutes: 120,
+            loggedMinutes: 30,
+          }),
+        ]);
+        expect(plannedVsActual.countedUntil).toBe(yesterday);
+      });
+
+      it('counts nothing in a range that starts today', async () => {
+        const { rows, countedUntil } = await service.getHoursReport(owner, {
+          dateFrom: today,
+          dateTo: inThreeDays,
+          groupBy: HoursReportGroupBy.PERSON,
+        });
+
+        expect(rows).toEqual([]);
+        expect(countedUntil).toBe(yesterday);
+      });
+
+      it('counts the whole of a range that has finished', async () => {
+        const hours = await report(owner, HoursReportGroupBy.CLIENT);
+        const plannedVsActual = await service.getPlannedVsActualReport(
+          owner,
+          lockedRange,
+        );
+
+        expect(hours).toMatchObject({ countedUntil: null });
+        expect(hours.totals.totalMinutes).toBe(720);
+        expect(plannedVsActual).toMatchObject({ countedUntil: null });
+      });
+    });
+
+    it('keeps rows with equal figures in the same order: by name, then id', async () => {
+      const twins = await dataSource.getRepository(User).save(
+        ['first', 'second'].map((which) => ({
+          companyId,
+          role: UserRole.EMPLOYEE,
+          firstName: 'Twin',
+          lastName: 'Test',
+          email: `twin-${which}-${RUN}@reporting.test`,
+        })),
+      );
+      const twinLogs = await Promise.all(
+        twins.map((twin) => log(twin.id, crmProjectActivityId, 240, true)),
+      );
+      const twinIds = twins.map((twin) => twin.id).sort();
+
+      const hours = await report(owner, HoursReportGroupBy.PERSON);
+      const plannedVsActual = await service.getPlannedVsActualReport(
+        owner,
+        lockedRange,
+      );
+      await dataSource.getRepository(TimeLog).remove(twinLogs);
+
+      expect(hours.rows.map((row) => row.id)).toEqual([
+        member.id,
+        outsider,
+        ...twinIds,
+      ]);
+      expect(
+        plannedVsActual.rows
+          .filter((row) => row.name === 'Twin Test')
+          .map((row) => row.userId),
+      ).toEqual(twinIds);
+    });
+
+    it('groups by month, oldest first', async () => {
+      const monthBefore = addMonths(lockedMonth, -1);
+      const earlierLog = await dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId: member.id,
+        projectActivityId: crmProjectActivityId,
+        date: `${toMonthKey(monthBefore)}-10`,
+        minutes: 90,
+        isBillable: false,
+      });
+
+      const { rows } = await service.getHoursReport(owner, {
+        dateFrom: monthBefore,
+        dateTo: lastDayOfMonth(lockedMonth),
+        groupBy: HoursReportGroupBy.MONTH,
+      });
+      await dataSource.getRepository(TimeLog).delete({ id: earlierLog.id });
+
+      expect(rows.map((row) => [row.name, row.totalMinutes])).toEqual([
+        [toMonthKey(monthBefore), 90],
+        [lockedMonthKey, 720],
+      ]);
+    });
+
     describe('hours export', () => {
       const exportRows = (user: AuthUser) =>
         service.getHoursExport(user, lockedRange);
@@ -704,14 +842,12 @@ describe('ReportingService', () => {
       });
 
       it('marks each row closed or open by its month', async () => {
-        const [crm] = await dataSource
-          .getRepository(ProjectActivity)
-          .find({ where: { companyId, activityId }, take: 1 });
+        const yesterday = addDays(today, -1);
         const openLog = await dataSource.getRepository(TimeLog).save({
           companyId,
           userId: member.id,
-          projectActivityId: crm.id,
-          date: today,
+          projectActivityId: crmProjectActivityId,
+          date: yesterday,
           minutes: 45,
           isBillable: true,
         });
@@ -727,10 +863,37 @@ describe('ReportingService', () => {
             .filter((row) => row.date === lockedDate)
             .map((row) => row.isPeriodClosed),
         ).not.toContain(false);
-        expect(rows.find((row) => row.date === today)).toMatchObject({
+        expect(rows.find((row) => row.date === yesterday)).toMatchObject({
           minutes: 45,
           isPeriodClosed: false,
         });
+      });
+
+      it('counts the same finished days as the Hours report', async () => {
+        const todayLog = await dataSource.getRepository(TimeLog).save({
+          companyId,
+          userId: member.id,
+          projectActivityId: crmProjectActivityId,
+          date: today,
+          minutes: 45,
+          isBillable: true,
+        });
+
+        const rows = await service.getHoursExport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+        });
+        const { totals } = await service.getHoursReport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+          groupBy: HoursReportGroupBy.CLIENT,
+        });
+        await dataSource.getRepository(TimeLog).delete({ id: todayLog.id });
+
+        expect(rows.find((row) => row.date === today)).toBeUndefined();
+        expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
+          totals.totalMinutes,
+        );
       });
 
       it('refuses a range that runs backwards or is too long', async () => {

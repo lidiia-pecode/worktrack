@@ -17,3 +17,12 @@ export const assertDateRange = (dateFrom: string, dateTo: string): void => {
     );
   }
 };
+
+/**
+ * The last day a report counts: only finished days count, so a range reaching
+ * today or later stops at yesterday.
+ */
+export const lastCountedDay = (dateTo: string, today: string): string => {
+  const yesterday = addDays(today, -1);
+  return dateTo < yesterday ? dateTo : yesterday;
+};

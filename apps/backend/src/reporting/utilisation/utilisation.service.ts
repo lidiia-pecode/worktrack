@@ -5,13 +5,15 @@ import {
   Availability,
   ExpectedHoursService,
 } from 'src/capacity/expected-hours.service';
-import { CapacityService } from 'src/capacity/capacity.service';
-import { addDays } from 'src/capacity/working-days.util';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 
 import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
-import { HoursReportRow, ReportingService } from '../reporting.service';
+import {
+  HoursReportRow,
+  ReportCoverage,
+  ReportingService,
+} from '../reporting.service';
 import { UtilisationQuery } from './dtos/utilisation-query.dto';
 
 export interface UtilisationFigures extends Availability {
@@ -37,11 +39,9 @@ export interface UtilisationRow extends UtilisationFigures {
   position: string | null;
 }
 
-export interface UtilisationReport {
+export interface UtilisationReport extends ReportCoverage {
   rows: UtilisationRow[];
   totals: UtilisationFigures;
-  /** True while any month in the range can still be edited. */
-  isProvisional: boolean;
 }
 
 type Minutes = Omit<
@@ -90,7 +90,7 @@ const withRatios = (minutes: Minutes): UtilisationFigures => ({
  * than through the expected figure. Both they and logged time count only days
  * that have finished, so a month in progress is not measured against days
  * still to come. Logged time comes from the hours report, so the client and
- * internal split matches it.
+ * internal split and the days counted match it.
  *
  * Lives beside ReportingService rather than in it because capacity already
  * depends on reporting for the period lock.
@@ -100,7 +100,6 @@ export class UtilisationService {
   constructor(
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
-    private readonly capacity: CapacityService,
     private readonly teamVisibility: TeamVisibilityService,
   ) {}
 
@@ -112,8 +111,12 @@ export class UtilisationService {
 
     assertDateRange(dateFrom, dateTo);
 
-    const hoursRows = await this.loggedHoursPerPerson(user, dateFrom, dateTo);
-    const hoursByUser = new Map(hoursRows.map((row) => [row.id!, row]));
+    const hours = await this.reportingService.getHoursReport(user, {
+      dateFrom,
+      dateTo,
+      groupBy: HoursReportGroupBy.PERSON,
+    });
+    const hoursByUser = new Map(hours.rows.map((row) => [row.id!, row]));
 
     // The same people the team grid lists, plus deactivated people who
     // logged time in the range.
@@ -150,36 +153,9 @@ export class UtilisationService {
         ...withRatios(minutes),
       })),
       totals: withRatios(totalMinutes),
-      isProvisional: await this.reportingService.hasEditableMonth(
-        user.companyId,
-        dateFrom,
-        dateTo,
-      ),
+      isProvisional: hours.isProvisional,
+      countedUntil: hours.countedUntil,
     };
-  }
-
-  /**
-   * Logged time up to yesterday only, the same days availability counts, so a
-   * month in progress compares like with like.
-   */
-  private async loggedHoursPerPerson(
-    user: AuthUser,
-    dateFrom: string,
-    dateTo: string,
-  ): Promise<HoursReportRow[]> {
-    const today = await this.capacity.today(user.companyId);
-    const lastFinishedDay = addDays(today, -1);
-    const loggedUntil = dateTo < lastFinishedDay ? dateTo : lastFinishedDay;
-
-    if (loggedUntil < dateFrom) return [];
-
-    const hours = await this.reportingService.getHoursReport(user, {
-      dateFrom,
-      dateTo: loggedUntil,
-      groupBy: HoursReportGroupBy.PERSON,
-    });
-
-    return hours.rows;
   }
 
   private minutesFor(

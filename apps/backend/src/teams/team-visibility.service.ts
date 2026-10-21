@@ -259,6 +259,7 @@ export class TeamVisibilityService {
     return qb
       .orderBy('u.firstName', 'ASC')
       .addOrderBy('u.lastName', 'ASC')
+      .addOrderBy('u.id', 'ASC')
       .getMany();
   }
 

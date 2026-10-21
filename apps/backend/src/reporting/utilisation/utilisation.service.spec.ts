@@ -20,7 +20,7 @@ import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
@@ -103,12 +103,7 @@ describe('UtilisationService', () => {
       dataSource.getRepository(Absence),
       capacity,
     );
-    service = new UtilisationService(
-      reporting,
-      expectedHours,
-      capacity,
-      teamVisibility,
-    );
+    service = new UtilisationService(reporting, expectedHours, teamVisibility);
 
     const company = await dataSource
       .getRepository(Company)
@@ -318,18 +313,20 @@ describe('UtilisationService', () => {
       isBillable: true,
     });
 
-    const { rows } = await service.getUtilisation(owner, {
+    const { rows, countedUntil } = await service.getUtilisation(owner, {
       dateFrom: thisMonth,
       dateTo: lastDayOfMonth(thisMonth),
     });
 
     expect(rows.find((r) => r.userId === partTimer)?.loggedMinutes).toBe(0);
+    expect(countedUntil).toBe(addDays(today, -1));
     await dataSource.getRepository(TimeLog).delete({ id: log.id });
   });
 
-  it('is final for a locked month', async () => {
+  it('is final for a locked month, counted in full', async () => {
     await expect(service.getUtilisation(owner, MARCH)).resolves.toMatchObject({
       isProvisional: false,
+      countedUntil: null,
     });
   });
 

@@ -1,6 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
 
-import { assertDateRange } from './date-range.util';
+import { assertDateRange, lastCountedDay } from './date-range.util';
 
 describe('assertDateRange', () => {
   it('accepts a single day and a full leap year', () => {
@@ -25,5 +25,17 @@ describe('assertDateRange', () => {
     expect(() => assertDateRange('2026-03-10', '2026-03-09')).toThrow(
       'dateFrom cannot be after dateTo',
     );
+  });
+});
+
+describe('lastCountedDay', () => {
+  it('keeps the end of a range that finished before today', () => {
+    expect(lastCountedDay('2026-09-30', '2026-10-21')).toBe('2026-09-30');
+    expect(lastCountedDay('2026-10-20', '2026-10-21')).toBe('2026-10-20');
+  });
+
+  it('stops at yesterday when the range reaches today or later', () => {
+    expect(lastCountedDay('2026-10-21', '2026-10-21')).toBe('2026-10-20');
+    expect(lastCountedDay('2026-10-31', '2026-10-21')).toBe('2026-10-20');
   });
 });
