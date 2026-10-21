@@ -182,8 +182,9 @@ CI runs, and the rules for changes that touch the database.
 
 A local checkout also carries working documents that are deliberately kept out
 of version control and so are not listed above: the active scope, the defects
-and debt no scope owns, context notes for the backend and the frontend, and the
-repository's coding conventions.
+and debt no scope owns, a product assessment against comparable tools, context
+notes for the backend and the frontend, and the repository's coding
+conventions.
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 It is off in production unless `ENABLE_SWAGGER=true` is set.

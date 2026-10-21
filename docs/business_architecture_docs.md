@@ -16,8 +16,7 @@ and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
 **Last verified against the code: 21 October 2026.** Phases 0 to 32 in §7 are
-delivered (Phase 32 on its branch, awaiting its pull request), and so is the
-permission model. The work ahead was re-planned on 28
+delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
