@@ -71,16 +71,13 @@ export interface HoursSplit {
 }
 
 export interface HoursReportRow extends HoursSplit {
-  /** The project, activity or person id; null when grouped by client or month. */
+  /** The project, activity or person id; null when grouped by client. */
   id: string | null;
-  /**
-   * The month (YYYY-MM) when grouped by month. Null only for internal work
-   * when grouped by client.
-   */
+  /** Null only for internal work when grouped by client. */
   name: string | null;
   /** The client for a project, the category for an activity, the position for a person. */
   detail: string | null;
-  /** Planned for the same days; null by activity or month, which plans don't have. */
+  /** Planned for the same days; null by activity, which plans don't have. */
   plannedMinutes: number | null;
   /** The people who logged or planned time on it; only by project or client. */
   peopleCount: number | null;
@@ -103,6 +100,21 @@ interface HoursReportRawRow {
   nonBillableMinutes: string;
   totalMinutes: string;
   userIds: string[];
+}
+
+/** One day's time and plans, over the people the Hours report counts. */
+export interface DayMinutes {
+  date: string;
+  loggedMinutes: number;
+  billableMinutes: number;
+  plannedMinutes: number;
+}
+
+interface DayMinutesRawRow {
+  date: string;
+  loggedMinutes?: string;
+  billableMinutes?: string;
+  plannedMinutes?: string;
 }
 
 /** One row of the hours export: a person's time on one day, project, activity and billing. */
@@ -198,13 +210,6 @@ const HOURS_GROUPINGS: Record<HoursReportGroupBy, HoursGrouping> = {
     name: `u.first_name || ' ' || u.last_name`,
     detail: 'u.position',
     groupBy: ['u.id'],
-  },
-  [HoursReportGroupBy.MONTH]: {
-    key: `TO_CHAR(tl.date, 'YYYY-MM')`,
-    id: 'NULL',
-    name: `TO_CHAR(tl.date, 'YYYY-MM')`,
-    detail: 'NULL',
-    groupBy: [`TO_CHAR(tl.date, 'YYYY-MM')`],
   },
 };
 
@@ -627,13 +632,9 @@ export class ReportingService {
 
     qb.groupBy(grouping.groupBy.join(', '));
 
-    if (groupBy === HoursReportGroupBy.MONTH) {
-      qb.orderBy('"name"', 'ASC');
-    } else {
-      qb.orderBy('"totalMinutes"', 'DESC')
-        .addOrderBy('"name"', 'ASC')
-        .addOrderBy('"id"', 'ASC');
-    }
+    qb.orderBy('"totalMinutes"', 'DESC')
+      .addOrderBy('"name"', 'ASC')
+      .addOrderBy('"id"', 'ASC');
 
     const [rawRows, plannedRows] = await Promise.all([
       qb.getRawMany<HoursReportRawRow>(),
@@ -773,6 +774,73 @@ export class ReportingService {
     if (userId) {
       qb.andWhere('u.id = :userId', { userId });
     }
+  }
+
+  /**
+   * Logged, billable and planned minutes per day, for the same people as the
+   * Hours report. The caller has checked the range and cut it at `countedTo`.
+   * Days with neither time nor a plan are left out.
+   */
+  async minutesPerDay(
+    user: AuthUser,
+    dateFrom: string,
+    countedTo: string,
+  ): Promise<DayMinutes[]> {
+    const manager = this.periodRepo.manager;
+    const logged = manager
+      .createQueryBuilder()
+      .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
+      .addSelect('SUM(tl.minutes)', 'loggedMinutes')
+      .addSelect(
+        'SUM(CASE WHEN tl.is_billable THEN tl.minutes ELSE 0 END)',
+        'billableMinutes',
+      )
+      .from('time_logs', 'tl')
+      .where('tl.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
+        dateFrom,
+        countedTo,
+      });
+    const planned = manager
+      .createQueryBuilder()
+      .select(`TO_CHAR(e.date, 'YYYY-MM-DD')`, 'date')
+      .addSelect('SUM(e.planned_minutes)', 'plannedMinutes')
+      .from('planning_entries', 'e')
+      .where('e.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
+        dateFrom,
+        countedTo,
+      });
+
+    this.teamVisibility.applyUserVisibility(logged, 'tl.user_id', user, {
+      includeSelf: true,
+    });
+    this.teamVisibility.applyUserVisibility(planned, 'e.user_id', user, {
+      includeSelf: true,
+    });
+
+    const rawRows = (
+      await Promise.all([
+        logged.groupBy('tl.date').getRawMany<DayMinutesRawRow>(),
+        planned.groupBy('e.date').getRawMany<DayMinutesRawRow>(),
+      ])
+    ).flat();
+
+    const byDate = new Map<string, DayMinutes>();
+    for (const raw of rawRows) {
+      const day = byDate.get(raw.date) ?? {
+        date: raw.date,
+        loggedMinutes: 0,
+        billableMinutes: 0,
+        plannedMinutes: 0,
+      };
+      day.loggedMinutes += Number(raw.loggedMinutes ?? 0);
+      day.billableMinutes += Number(raw.billableMinutes ?? 0);
+      day.plannedMinutes += Number(raw.plannedMinutes ?? 0);
+      byDate.set(raw.date, day);
+    }
+
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
   }
 
   /**

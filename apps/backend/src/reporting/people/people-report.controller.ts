@@ -21,4 +21,13 @@ export class PeopleReportController {
   ) {
     return this.peopleReportService.getPeopleReport(user, query);
   }
+
+  @Get('timeline')
+  @Role(UserRole.OWNER, UserRole.MANAGER)
+  getTimeline(
+    @CurrentUser() user: AuthUser,
+    @Query() query: PeopleReportQuery,
+  ) {
+    return this.peopleReportService.getTimeline(user, query);
+  }
 }

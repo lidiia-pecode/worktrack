@@ -20,12 +20,13 @@ import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { addDays } from 'src/capacity/working-days.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { ReportingPeriod } from '../entities/reporting-period.entity';
 import { ReportingService } from '../reporting.service';
-import { PeopleReportService } from './people-report.service';
+import { PeopleReportService, TimelineBucket } from './people-report.service';
 
 /**
  * Runs against the development database, so it needs the Docker stack.
@@ -97,6 +98,7 @@ describe('PeopleReportService', () => {
     );
     service = new PeopleReportService(
       dataSource.getRepository(TimeLog),
+      dataSource.getRepository(Company),
       reporting,
       expectedHours,
       teamVisibility,
@@ -310,9 +312,105 @@ describe('PeopleReportService', () => {
     });
   });
 
+  describe('the timeline', () => {
+    const sums = (buckets: TimelineBucket[]) =>
+      buckets.reduce(
+        (sum, bucket) => ({
+          loggedMinutes: sum.loggedMinutes + bucket.loggedMinutes,
+          billableMinutes: sum.billableMinutes + bucket.billableMinutes,
+          plannedMinutes: sum.plannedMinutes + bucket.plannedMinutes,
+          expectedMinutes: sum.expectedMinutes + bucket.expectedMinutes,
+        }),
+        {
+          loggedMinutes: 0,
+          billableMinutes: 0,
+          plannedMinutes: 0,
+          expectedMinutes: 0,
+        },
+      );
+
+    it('shows a month week by week, from Monday, with partial weeks at both ends', async () => {
+      const { interval, buckets } = await service.getTimeline(owner, MARCH);
+
+      expect(interval).toBe('week');
+      expect(
+        buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
+      ).toEqual([
+        ['2026-03-01', '2026-03-01', true],
+        ['2026-03-02', '2026-03-08', false],
+        ['2026-03-09', '2026-03-15', false],
+        ['2026-03-16', '2026-03-22', false],
+        ['2026-03-23', '2026-03-29', false],
+        ['2026-03-30', '2026-03-31', true],
+      ]);
+      expect(buckets.map((bucket) => bucket.workingDays)).toEqual([
+        0, 5, 5, 5, 5, 2,
+      ]);
+      expect(buckets[3]).toMatchObject({
+        loggedMinutes: 1200,
+        billableMinutes: 960,
+        plannedMinutes: 600,
+      });
+    });
+
+    it('adds up to the People report, for an owner and for a manager', async () => {
+      for (const viewer of [owner, manager]) {
+        const { buckets } = await service.getTimeline(viewer, MARCH);
+        const { totals } = await service.getPeopleReport(viewer, MARCH);
+
+        expect(sums(buckets)).toEqual({
+          loggedMinutes: totals.loggedMinutes,
+          billableMinutes: totals.billableMinutes,
+          plannedMinutes: totals.plannedMinutes,
+          expectedMinutes: totals.expectedMinutes,
+        });
+      }
+    });
+
+    it('shows a quarter month by month', async () => {
+      const { interval, buckets } = await service.getTimeline(owner, {
+        dateFrom: '2026-01-01',
+        dateTo: '2026-03-31',
+      });
+
+      expect(interval).toBe('month');
+      expect(
+        buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
+      ).toEqual([
+        ['2026-01-01', '2026-01-31', false],
+        ['2026-02-01', '2026-02-28', false],
+        ['2026-03-01', '2026-03-31', false],
+      ]);
+    });
+
+    it('stops at yesterday, and has nothing for a range that starts today', async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = addDays(today, -1);
+
+      const running = await service.getTimeline(owner, {
+        dateFrom: addDays(today, -10),
+        dateTo: addDays(today, 10),
+      });
+      const ahead = await service.getTimeline(owner, {
+        dateFrom: today,
+        dateTo: addDays(today, 7),
+      });
+
+      expect(running.buckets.at(-1)?.end).toBe(yesterday);
+      expect(running.countedUntil).toBe(yesterday);
+      expect(ahead.buckets).toEqual([]);
+    });
+  });
+
   it('covers at most 366 days', async () => {
     await expect(
       service.getPeopleReport(owner, {
+        dateFrom: '2025-01-01',
+        dateTo: '2026-01-02',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      service.getTimeline(owner, {
         dateFrom: '2025-01-01',
         dateTo: '2026-01-02',
       }),

@@ -718,30 +718,6 @@ describe('ReportingService', () => {
       ]);
     });
 
-    it('groups by month, oldest first', async () => {
-      const monthBefore = addMonths(lockedMonth, -1);
-      const earlierLog = await dataSource.getRepository(TimeLog).save({
-        companyId,
-        userId: member.id,
-        projectActivityId: crmProjectActivityId,
-        date: `${toMonthKey(monthBefore)}-10`,
-        minutes: 90,
-        isBillable: false,
-      });
-
-      const { rows } = await service.getHoursReport(owner, {
-        dateFrom: monthBefore,
-        dateTo: lastDayOfMonth(lockedMonth),
-        groupBy: HoursReportGroupBy.MONTH,
-      });
-      await dataSource.getRepository(TimeLog).delete({ id: earlierLog.id });
-
-      expect(rows.map((row) => [row.name, row.totalMinutes])).toEqual([
-        [toMonthKey(monthBefore), 90],
-        [lockedMonthKey, 720],
-      ]);
-    });
-
     describe('planned beside the hours', () => {
       it('sums the plan by project, with the totals', async () => {
         const { rows, totals } = await report(

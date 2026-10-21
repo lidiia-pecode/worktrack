@@ -4,12 +4,24 @@ import { In, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import {
+  eachDate,
+  isWorkingDay,
+  weekRange,
+} from 'src/capacity/working-days.util';
+import { Company } from 'src/companies/entities/company.entity';
+import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 
 import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
-import { ReportCoverage, ReportingService } from '../reporting.service';
+import { firstDayOfMonth, lastDayOfMonth } from '../reporting-months.util';
+import {
+  HoursReport,
+  ReportCoverage,
+  ReportingService,
+} from '../reporting.service';
 import { PeopleReportQuery } from './dtos/people-report-query.dto';
 
 export interface PeopleReportFigures {
@@ -39,6 +51,31 @@ export interface PeopleReport extends ReportCoverage {
     daysWithoutTime: number;
   };
 }
+
+export type TimelineInterval = 'week' | 'month';
+
+/** One week or month of the range, cut to the days it counts. */
+export interface TimelineBucket {
+  start: string;
+  end: string;
+  /** Working days among the days it counts. */
+  workingDays: number;
+  /** True when the range or the cut-off leaves part of the week or month out. */
+  isPartial: boolean;
+  loggedMinutes: number;
+  billableMinutes: number;
+  plannedMinutes: number;
+  expectedMinutes: number;
+}
+
+export interface Timeline extends ReportCoverage {
+  interval: TimelineInterval;
+  /** Oldest first, up to the last day counted. */
+  buckets: TimelineBucket[];
+}
+
+/** A range up to this long is shown by week, so a month has its weeks; longer ones by month. */
+export const WEEKLY_UP_TO_DAYS = 62;
 
 const NO_FIGURES: PeopleReportFigures = {
   loggedMinutes: 0,
@@ -73,6 +110,8 @@ export class PeopleReportService {
   constructor(
     @InjectRepository(TimeLog)
     private readonly timeLogRepo: Repository<TimeLog>,
+    @InjectRepository(Company)
+    private readonly companyRepo: Repository<Company>,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
     private readonly teamVisibility: TeamVisibilityService,
@@ -92,14 +131,7 @@ export class PeopleReportService {
       groupBy: HoursReportGroupBy.PERSON,
     });
     const hoursByUser = new Map(hours.rows.map((row) => [row.id!, row]));
-
-    // The same people the team grid lists, plus deactivated people with
-    // logged or planned time in the range.
-    const people = await this.teamVisibility.findVisibleUsers(
-      user,
-      { includeUserIds: [...hoursByUser.keys()] },
-      { includeSelf: true },
-    );
+    const people = await this.peopleFor(user, hours);
 
     const peopleIds = people.map((person) => person.id);
     const [availability, loggedDates] = await Promise.all([
@@ -145,6 +177,113 @@ export class PeopleReportService {
       isProvisional: hours.isProvisional,
       countedUntil: hours.countedUntil,
     };
+  }
+
+  /**
+   * The range's time, plans and expected hours week by week, or month by
+   * month for a longer range, over the same people and finished days as the
+   * People report, so the buckets add up to its totals.
+   */
+  async getTimeline(
+    user: AuthUser,
+    query: PeopleReportQuery,
+  ): Promise<Timeline> {
+    const { dateFrom, dateTo } = query;
+
+    assertDateRange(dateFrom, dateTo);
+
+    const interval: TimelineInterval =
+      [...eachDate(dateFrom, dateTo)].length <= WEEKLY_UP_TO_DAYS
+        ? 'week'
+        : 'month';
+    const hours = await this.reportingService.getHoursReport(user, {
+      dateFrom,
+      dateTo,
+      groupBy: HoursReportGroupBy.PERSON,
+    });
+    const coverage: ReportCoverage = {
+      isProvisional: hours.isProvisional,
+      countedUntil: hours.countedUntil,
+    };
+    const countedTo = hours.countedUntil ?? dateTo;
+
+    if (countedTo < dateFrom) return { interval, buckets: [], ...coverage };
+
+    const people = await this.peopleFor(user, hours);
+    const [days, expected, weekStartDay] = await Promise.all([
+      this.reportingService.minutesPerDay(user, dateFrom, countedTo),
+      this.expectedHours.expectedFor(
+        user.companyId,
+        people.map((person) => person.id),
+        dateFrom,
+        countedTo,
+      ),
+      this.weekStartDayOf(user.companyId),
+    ]);
+
+    const buckets: TimelineBucket[] = [];
+    const bucketByDate = new Map<string, TimelineBucket>();
+
+    for (const date of eachDate(dateFrom, countedTo)) {
+      const span =
+        interval === 'week'
+          ? weekRange(date, weekStartDay)
+          : { start: firstDayOfMonth(date), end: lastDayOfMonth(date) };
+      let bucket = buckets.at(-1);
+
+      if (!bucket || date > bucket.end) {
+        const start = date;
+        const end = span.end < countedTo ? span.end : countedTo;
+        bucket = {
+          start,
+          end,
+          workingDays: 0,
+          isPartial: start > span.start || end < span.end,
+          loggedMinutes: 0,
+          billableMinutes: 0,
+          plannedMinutes: 0,
+          expectedMinutes: 0,
+        };
+        buckets.push(bucket);
+      }
+
+      if (isWorkingDay(date)) bucket.workingDays += 1;
+      bucketByDate.set(date, bucket);
+    }
+
+    for (const day of days) {
+      const bucket = bucketByDate.get(day.date)!;
+      bucket.loggedMinutes += day.loggedMinutes;
+      bucket.billableMinutes += day.billableMinutes;
+      bucket.plannedMinutes += day.plannedMinutes;
+    }
+    expected.forEach(({ byDate }) => {
+      for (const { date, minutes } of byDate) {
+        bucketByDate.get(date)!.expectedMinutes += minutes;
+      }
+    });
+
+    return { interval, buckets, ...coverage };
+  }
+
+  /**
+   * The same people the team grid lists, plus deactivated people with logged
+   * or planned time in the range.
+   */
+  private peopleFor(user: AuthUser, hours: HoursReport) {
+    return this.teamVisibility.findVisibleUsers(
+      user,
+      { includeUserIds: hours.rows.map((row) => row.id!) },
+      { includeSelf: true },
+    );
+  }
+
+  private async weekStartDayOf(companyId: string): Promise<WeekDay> {
+    const company = await this.companyRepo.findOneOrFail({
+      where: { id: companyId },
+      select: ['id', 'weekStartDay'],
+    });
+    return company.weekStartDay;
   }
 
   /**

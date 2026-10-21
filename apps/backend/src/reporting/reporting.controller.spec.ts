@@ -53,18 +53,27 @@ describe('ReportingController route roles', () => {
 
 describe('PeopleReportController route roles', () => {
   const guard = new RolesGuard(new Reflector());
-  const handler: keyof PeopleReportController = 'getPeopleReport';
+  const handlers: (keyof PeopleReportController)[] = [
+    'getPeopleReport',
+    'getTimeline',
+  ];
 
-  const allows = (role: UserRole): boolean =>
+  const allows = (
+    handler: keyof PeopleReportController,
+    role: UserRole,
+  ): boolean =>
     guard.canActivate({
       getHandler: () => PeopleReportController.prototype[handler],
       getClass: () => PeopleReportController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
 
-  it('allows owners and managers, and refuses employees', () => {
-    expect(allows(UserRole.OWNER)).toBe(true);
-    expect(allows(UserRole.MANAGER)).toBe(true);
-    expect(allows(UserRole.EMPLOYEE)).toBe(false);
-  });
+  it.each(handlers)(
+    'allows owners and managers on %s, and refuses employees',
+    (handler) => {
+      expect(allows(handler, UserRole.OWNER)).toBe(true);
+      expect(allows(handler, UserRole.MANAGER)).toBe(true);
+      expect(allows(handler, UserRole.EMPLOYEE)).toBe(false);
+    },
+  );
 });
