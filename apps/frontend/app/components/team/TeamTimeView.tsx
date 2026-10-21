@@ -28,7 +28,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
-import { WeekNav } from "../shared/week/WeekNav";
+import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
@@ -185,15 +185,22 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pr-3 pb-3">
         <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
-        {!hasError && (
-          <div className="flex items-center gap-2 text-sm">
-            <span>Team logged:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <BackToThisWeekButton
+            weekStart={weekStart}
+            onWeekChange={showWeekOf}
+          />
 
-            <span className="font-medium text-foreground tabular-nums">
-              {formatDuration(totals.minutes)}
-            </span>
-          </div>
-        )}
+          {!hasError && (
+            <div className="flex items-center gap-2 text-sm">
+              <span>Team logged:</span>
+
+              <span className="font-medium text-foreground tabular-nums">
+                {formatDuration(totals.minutes)}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {!hasError && (
