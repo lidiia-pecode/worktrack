@@ -13,6 +13,7 @@ import { HoursReportGroupBy, UserRole } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
+import { useTimeline } from "@/hooks/useTimeline";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { addDays, isWeekend, toISODate } from "@/lib/utils/date";
 import { AbsenceType } from "@/types/enums";
@@ -31,6 +32,15 @@ vi.mock("@/hooks/auth/useAuth", () => ({
 }));
 vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
+vi.mock("@/hooks/useTimeline", () => ({ useTimeline: vi.fn() }));
+vi.mock("@/hooks/useActivityCategories", () => ({
+  useActivityCategoriesAllPagesQuery: () => ({
+    items: [{ name: "Design" }, { name: "Development" }],
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
+}));
 vi.mock("@/hooks/useAbsences", () => ({ useAllAbsencesQuery: vi.fn() }));
 vi.mock("@/hooks/useMediaQuery", () => ({ useMediaQuery: () => true }));
 
@@ -166,6 +176,12 @@ const panelRows = {
   projectPeople: [] as HoursReportRow[],
 };
 
+/** The activities behind "Kind of work". */
+const activityRows: HoursReportRow[] = [
+  { ...project("Backend", "Development", 30, 0), plannedMinutes: null },
+  { ...project("UI Design", "Design", 10, 0), plannedMinutes: null },
+];
+
 const showReports = (people: PeopleReport, projects: HoursReport) => {
   vi.mocked(usePeopleReport).mockReturnValue(
     loaded(people) as unknown as ReturnType<typeof usePeopleReport>,
@@ -177,7 +193,9 @@ const showReports = (people: PeopleReport, projects: HoursReport) => {
           ? projectsReport(panelRows.personProjects)
           : params.projectId
             ? projectsReport(panelRows.projectPeople)
-            : projects,
+            : params.groupBy === HoursReportGroupBy.ACTIVITY
+              ? projectsReport(activityRows)
+              : projects,
       ) as unknown as ReturnType<typeof useHoursReport>,
   );
   render(<ReportsView />);
@@ -205,6 +223,38 @@ describe("ReportsView", () => {
       isError: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useTeamTimeSummary>);
+    vi.mocked(useTimeline).mockReturnValue({
+      timeline: {
+        interval: "week",
+        buckets: [
+          {
+            start: "2026-10-01",
+            end: "2026-10-04",
+            workingDays: 2,
+            isPartial: true,
+            loggedMinutes: 14 * HOUR,
+            billableMinutes: 0,
+            plannedMinutes: 12 * HOUR,
+            expectedMinutes: 16 * HOUR,
+          },
+          {
+            start: "2026-10-05",
+            end: "2026-10-11",
+            workingDays: 5,
+            isPartial: false,
+            loggedMinutes: 38 * HOUR,
+            billableMinutes: 0,
+            plannedMinutes: 40 * HOUR,
+            expectedMinutes: 40 * HOUR,
+          },
+        ],
+        isProvisional: true,
+        countedUntil: null,
+      },
+      isLoading: false,
+      isError: false,
+      refetch: vi.fn(),
+    } as unknown as ReturnType<typeof useTimeline>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
       items: [],
       isLoading: false,
@@ -305,6 +355,24 @@ describe("ReportsView", () => {
     });
     const stripes = bar.querySelector(".bg-stripes-overlay");
     expect(stripes?.parentElement).toHaveClass("bg-brand");
+  });
+
+  it("shows the period week by week and by kind of work", () => {
+    showReports(peopleReport(team), projectsReport(projects));
+
+    const weeks = screen.getByRole("region", { name: "Week by week" });
+    expect(weeks).toHaveTextContent("Oct 1–4");
+    expect(weeks).toHaveTextContent("2 days");
+    // The text version for screen readers names the part week.
+    expect(
+      within(weeks).getByRole("rowheader", { name: /Oct 1–4, part of a week/ }),
+    ).toBeInTheDocument();
+
+    const kind = screen.getByRole("region", { name: "Kind of work" });
+    expect(
+      within(kind).getByRole("img", { name: "Development 75%, Design 25%" }),
+    ).toBeInTheDocument();
+    expect(kind).toHaveTextContent("30h");
   });
 
   it("says when the period has nothing counted yet", () => {

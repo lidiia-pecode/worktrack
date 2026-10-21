@@ -31,3 +31,25 @@ export interface PeopleReportQuery {
   dateFrom: string;
   dateTo: string;
 }
+
+export type TimelineInterval = "week" | "month";
+
+/** One week or month of the range, cut to the days it counts. */
+export interface TimelineBucket {
+  start: string;
+  end: string;
+  /** Working days among the days it counts. */
+  workingDays: number;
+  /** True when the range or the cut-off leaves part of the week or month out. */
+  isPartial: boolean;
+  loggedMinutes: number;
+  billableMinutes: number;
+  plannedMinutes: number;
+  expectedMinutes: number;
+}
+
+export interface Timeline extends ReportCoverage {
+  interval: TimelineInterval;
+  /** Oldest first, up to the last day counted. */
+  buckets: TimelineBucket[];
+}

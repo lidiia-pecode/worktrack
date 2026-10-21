@@ -29,6 +29,7 @@ import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { ProjectsCard } from "./components/ProjectsCard";
+import { ReportCharts } from "./components/ReportCharts";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportPeriodPicker } from "./components/ReportPeriodPicker";
 import { ReportTiles } from "./components/ReportTiles";
@@ -180,6 +181,9 @@ export const ReportsView = () => {
             projects={projects.report.rows}
             onOpenProject={openProject}
           />
+        </div>
+        <div className="mt-4">
+          <ReportCharts range={range} />
         </div>
       </div>
     );

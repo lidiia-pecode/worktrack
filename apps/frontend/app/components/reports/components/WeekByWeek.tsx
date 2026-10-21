@@ -1,0 +1,190 @@
+import { Timeline } from "@/types";
+import { cn } from "@/lib/utils/cn";
+import { formatDuration } from "@/lib/utils/date";
+import { bucketLabel, bucketNote } from "@/lib/utils/report-charts";
+import { hourScale } from "@/lib/utils/report-overview";
+
+import { Card } from "@/components/ui/card";
+
+const percentOf = (minutes: number, endMinutes: number) =>
+  `${(minutes / endMinutes) * 100}%`;
+
+/**
+ * The period's hours over time, one column per week (or month, for a quarter
+ * or a year), in the same marks as the bars: logged as the column, expected as
+ * a line, planned as a ring. A week the range or yesterday cuts short is pale.
+ */
+export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
+  const { interval, buckets, countedUntil } = timeline;
+  const scale = hourScale(
+    Math.max(
+      0,
+      ...buckets.flatMap((bucket) => [
+        bucket.loggedMinutes,
+        bucket.expectedMinutes,
+        bucket.plannedMinutes,
+      ]),
+    ),
+  );
+  const columns = {
+    gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))`,
+  };
+  const unit = interval === "week" ? "week" : "month";
+
+  return (
+    <Card as="section" aria-labelledby="report-timeline" className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="report-timeline" className="text-base font-semibold">
+            {interval === "week" ? "Week by week" : "Month by month"}
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Hours logged each {unit}, against expected and planned
+          </p>
+        </div>
+        <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <li className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm bg-brand" aria-hidden />
+            Logged
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span
+              className="h-0.5 w-3.5 rounded-full bg-foreground"
+              aria-hidden
+            />
+            Expected
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span
+              className="size-2.5 rounded-full border-2 border-report-plan"
+              aria-hidden
+            />
+            Planned
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="size-2.5 rounded-sm bg-brand/40" aria-hidden />
+            Part of a {unit}
+          </li>
+        </ul>
+      </div>
+
+      <div className="mt-6 flex gap-3" aria-hidden>
+        <div className="relative h-44 w-10 shrink-0 text-2xs text-muted-foreground tabular-nums">
+          {scale.ticks.map((tick) => (
+            <span
+              key={tick}
+              className="absolute right-0 translate-y-1/2"
+              style={{ bottom: percentOf(tick, scale.endMinutes) }}
+            >
+              {formatDuration(tick)}
+            </span>
+          ))}
+        </div>
+        <div className="relative h-44 flex-1">
+          {scale.ticks.map((tick) => (
+            <span
+              key={tick}
+              className="absolute inset-x-0 border-t border-border/70"
+              style={{ bottom: percentOf(tick, scale.endMinutes) }}
+            />
+          ))}
+          <div className="absolute inset-0 grid gap-3" style={columns}>
+            {buckets.map((bucket) => (
+              <div
+                key={bucket.start}
+                className="relative flex h-full items-end justify-center"
+                title={`${bucketLabel(bucket, interval)}: ${formatDuration(bucket.loggedMinutes)} logged, ${formatDuration(bucket.expectedMinutes)} expected, ${formatDuration(bucket.plannedMinutes)} planned`}
+              >
+                <span
+                  className="absolute text-2xs font-medium tabular-nums"
+                  style={{
+                    bottom: `calc(${percentOf(bucket.loggedMinutes, scale.endMinutes)} + 0.5rem)`,
+                  }}
+                >
+                  {formatDuration(bucket.loggedMinutes)}
+                </span>
+                <span
+                  className={cn(
+                    "w-3/5 max-w-12 rounded-t-md",
+                    bucket.isPartial ? "bg-brand/40" : "bg-brand",
+                  )}
+                  style={{
+                    height: percentOf(bucket.loggedMinutes, scale.endMinutes),
+                  }}
+                />
+                {bucket.expectedMinutes > 0 && (
+                  <span
+                    className="absolute inset-x-[15%] h-0.5 translate-y-1/2 rounded-full bg-foreground"
+                    style={{
+                      bottom: percentOf(
+                        bucket.expectedMinutes,
+                        scale.endMinutes,
+                      ),
+                    }}
+                  />
+                )}
+                {bucket.plannedMinutes > 0 && (
+                  <span
+                    className="absolute left-1/2 size-2.5 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-report-plan bg-card"
+                    style={{
+                      bottom: percentOf(
+                        bucket.plannedMinutes,
+                        scale.endMinutes,
+                      ),
+                    }}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div
+        className="mt-2 ml-13 grid gap-3 text-center"
+        style={columns}
+        aria-hidden
+      >
+        {buckets.map((bucket) => (
+          <div key={bucket.start} className="min-w-0">
+            <p className="truncate text-xs font-medium">
+              {bucketLabel(bucket, interval)}
+            </p>
+            {interval === "week" && (
+              <p className="truncate text-2xs text-muted-foreground">
+                {bucketNote(bucket, countedUntil)}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <table className="sr-only">
+        <caption>
+          Hours logged each {unit}, against expected and planned
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">{interval === "week" ? "Week" : "Month"}</th>
+            <th scope="col">Logged</th>
+            <th scope="col">Expected</th>
+            <th scope="col">Planned</th>
+          </tr>
+        </thead>
+        <tbody>
+          {buckets.map((bucket) => (
+            <tr key={bucket.start}>
+              <th scope="row">
+                {bucketLabel(bucket, interval)}
+                {bucket.isPartial && ", part of a " + unit}
+              </th>
+              <td>{formatDuration(bucket.loggedMinutes)}</td>
+              <td>{formatDuration(bucket.expectedMinutes)}</td>
+              <td>{formatDuration(bucket.plannedMinutes)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </Card>
+  );
+};

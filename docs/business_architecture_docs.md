@@ -778,7 +778,10 @@ see, and how a new company gets started. §7 plans that work.
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
   to their week on Team time; a project's name opens its people against their
-  plans. A range that
+  plans. Below, the period's hours week by week (month by month for a quarter
+  or a year) against expected and planned, with weeks cut short marked, and
+  logged time by activity category, each category in a colour of its own and
+  named with its hours. A range that
   includes a month still open to edits is marked provisional. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead.
@@ -839,7 +842,7 @@ planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-six Vitest files and 306 tests: its date, month,
+The frontend has fifty-seven Vitest files and 313 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the

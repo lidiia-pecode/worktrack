@@ -146,6 +146,22 @@
   --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
   --report-plan: oklch(0.58 0.12 50);
 
+  /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
+     honey, lavender, rose. Checked for colour vision as a set; mint beside
+     coral is close for red-blind readers, so slices keep a gap and every one is
+     named beside its hours. Fills only: text stays in the text colours. */
+  --category-1: #5f95dc;
+  --category-2: #ec8a62;
+  --category-3: #3fb38f;
+  --category-4: #d9a832;
+  --category-5: #9a7fd9;
+  --category-6: #e07a7a;
+  --category-other: color-mix(
+    in oklch,
+    var(--muted-foreground) 45%,
+    var(--card)
+  );
+
   /* ------------------------------------------------------------------------
      Project colours
      ------------------------------------------------------------------------ */
@@ -269,6 +285,14 @@
 
   --color-report-track: var(--report-track);
   --color-report-plan: var(--report-plan);
+
+  --color-category-1: var(--category-1);
+  --color-category-2: var(--category-2);
+  --color-category-3: var(--category-3);
+  --color-category-4: var(--category-4);
+  --color-category-5: var(--category-5);
+  --color-category-6: var(--category-6);
+  --color-category-other: var(--category-other);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
