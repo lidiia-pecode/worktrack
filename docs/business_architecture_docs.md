@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 21 October 2026.** Phases 0 to 32 in §7 are
-delivered (Phase 32 on its branch, awaiting its pull request), and so is the
+**Last verified against the code: 21 October 2026.** Phases 0 to 33 in §7 are
+delivered (Phase 33 on its branch, awaiting its pull request), and so is the
 permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -906,6 +906,7 @@ is in its pull request.
 | 30 | Periods and Settings: the Periods page as a full-width table with a lock icon on locked months and who last reopened or closed a month and when; a confirmation before Close as well as Reopen, and a list that ends at the company's first month; the period lock check inside each write's transaction, so a Close waits for an open write; Settings tabs that ask before dropping unsaved edits, and a standard-day change that says what it affects |
 | 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
+| 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
 
 ### Improvement roadmap — high level, flexible
 
@@ -947,7 +948,7 @@ activities properly, clients and billable defaults included. The public landing
 and sign-in pages, the invitation email and the Google sign-in paths belong
 here, as do the basics of a person's own account settings.
 
-**Area 2 — Application shell and shared UI** *(done, Phases 18–19)*. The frame
+**Area 2 — Application shell and shared UI** *(done, Phases 18–19 and 33)*. The frame
 every page sits in and the parts every page is built from: navigation per role,
 the sidebar, header and user menu, page layout and headers, and one version each
 of the table, card, form field, select, dialog, confirmation, loading, empty and
@@ -967,7 +968,9 @@ it should work on a phone.
 and owner's week views: the team grid, the per-person panel and the planning
 grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,
-absences and locks the same way.
+absences and locks the same way. Planning and Team time stay separate screens by
+decision: they share the chrome, not the job (actuals and corrections on one,
+intent and limits on the other).
 
 **Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
@@ -994,26 +997,12 @@ flow in the product, role by role and on a phone, for consistency, wording and
 the details the earlier areas left: the point at which the product is judged
 ready, or not, for the final stage.
 
-**Proposed next: Phase 33 — cross-cutting UI from the 21 October 2026 review**
-*(Area 2 revisited; not scoped yet, kept out of Phase 32 by decision)*. Remove
-the page headings and subtitles on Team time, Timesheet, Planning, Reports,
-Users, Teams, Projects, Activities, Categories and Periods: an `sr-only` h1
-stays for assistive technology, the Manage pages' Create button moves into the
-toolbar beside the search, Periods keeps its lock rule as one muted line above
-the list, and the phone header names the current page beside the logo, since
-the sidebar's highlight is not visible there; whether Settings and Getting
-started keep their headings is open. Planning cells drawn as project-coloured
-chips, so the board reads as a plan beside Team time's numbers. The beige
-`secondary` surface ("Today", "Clear filters") retuned to the cool accent, if
-wanted. Not in it, by decision: merging or restructuring Planning and Team
-time — they share the chrome, not the job (actuals and corrections on one,
-intent and limits on the other).
-
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
-started. Areas 3, 4, 6 and 7 follow roughly in the order people meet them day to
-day, and can be reordered; Area 6 and Area 7 need the most discussion before
-they are scoped. Area 8 closes the stage. A defect that distorts figures can be
+started. After Phase 33, by decision (21 October 2026), Area 6 comes next,
+starting with its two counting bugs, then Area 7; the rest of Areas 3 and 4,
+the phone layout among it, follows. Area 6 and Area 7 need the most discussion
+before they are scoped. Area 8 closes the stage. A defect that distorts figures can be
 pulled into whichever scope comes first.
 
 ---

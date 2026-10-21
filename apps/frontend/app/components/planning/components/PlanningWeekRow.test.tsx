@@ -1,10 +1,11 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { PlanningEntry, PlanningWeekRow as Row } from "@/types";
-import { UserStatus } from "@/types/enums";
+import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
+import { AbsenceType, UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
+import { getProjectColor } from "@/lib/utils/project-colors";
 
 import { PlanningWeekRow } from "./PlanningWeekRow";
 
@@ -36,7 +37,19 @@ const row = (
   entries,
 });
 
-const renderRow = (status?: UserStatus, entries?: PlanningEntry[]) => {
+const WEEKEND_VACATION = {
+  id: "absence-1",
+  userId: "user-alice",
+  type: AbsenceType.VACATION,
+  startDate: "2026-11-07",
+  endDate: "2026-11-08",
+} as Absence;
+
+const renderRow = (
+  status?: UserStatus,
+  entries?: PlanningEntry[],
+  absencesByDate: Record<string, Absence> = {},
+) => {
   const onPlanPeriod = vi.fn();
   const onOpenDay = vi.fn();
   const view = render(
@@ -45,7 +58,7 @@ const renderRow = (status?: UserStatus, entries?: PlanningEntry[]) => {
         <PlanningWeekRow
           row={row(status, entries)}
           weekDates={WEEK_DATES}
-          absencesByDate={{}}
+          absencesByDate={absencesByDate}
           isLocked={() => false}
           isEditable={() => true}
           onOpenDay={onOpenDay}
@@ -90,6 +103,28 @@ describe("PlanningWeekRow", () => {
         name: /^Tuesday, November 3:\s*nothing planned$/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it("draws each plan as a chip in its project's colour", () => {
+    renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
+
+    expect(screen.getByText("Northwind").parentElement).toHaveStyle({
+      backgroundColor: getProjectColor("project-northwind"),
+    });
+  });
+
+  it("shows an absence on a weekend, striped, and leaves a plain weekend flat", () => {
+    renderRow(UserStatus.ACTIVE, [], {
+      "2026-11-07": WEEKEND_VACATION,
+    });
+
+    const saturday = screen.getByText("Vacation").closest("td");
+    expect(saturday).toHaveClass("bg-stripes-brand");
+    expect(within(saturday!).queryByRole("button")).not.toBeInTheDocument();
+
+    const sunday = screen.getAllByRole("cell").at(-2);
+    expect(sunday).toHaveTextContent("-");
+    expect(sunday).toHaveClass("bg-muted/20");
   });
 
   it("shows the plus on an empty day without hovering", () => {

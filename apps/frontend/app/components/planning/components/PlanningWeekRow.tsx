@@ -10,11 +10,13 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
+import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
 
 import { PersonLabel } from "../../shared/PersonLabel";
+import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -29,14 +31,23 @@ type PlanningWeekRowProps = {
 const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
   const isArchived = entry.project.status === ProjectStatus.ARCHIVED;
 
+  // In the project's colour, like the timesheet's entries, so the board reads
+  // as a plan; an archived project stays grey.
   return (
     <span
       title={
         isArchived ? `${entry.project.name} (archived)` : entry.project.name
       }
+      style={
+        isArchived
+          ? undefined
+          : { backgroundColor: getProjectColor(entry.project.id) }
+      }
       className={cn(
-        "flex items-baseline justify-between gap-1.5 text-xs",
-        isArchived ? "text-muted-foreground line-through" : "text-foreground",
+        "flex items-baseline justify-between gap-1.5 rounded-md px-1.5 py-0.5 text-xs",
+        isArchived
+          ? "bg-muted/30 text-muted-foreground line-through"
+          : "text-foreground",
       )}
     >
       <span className="truncate">{entry.project.name}</span>
@@ -128,11 +139,16 @@ export const PlanningWeekRow = ({
         const entries = entriesByDate.get(iso) ?? [];
         const absence = absencesByDate[iso];
 
-        if (isWeekend(date)) {
+        const weekend = isWeekend(date);
+
+        if (weekend && !absence) {
           return (
             <td
               key={iso}
-              className="border-r border-border/60 bg-muted/20 p-3 text-center text-sm text-muted-foreground"
+              className={cn(
+                "border-r border-border/60 p-3 text-center text-sm text-muted-foreground",
+                WEEKEND_FILL,
+              )}
             >
               -
             </td>
@@ -140,15 +156,16 @@ export const PlanningWeekRow = ({
         }
 
         // A deactivated person's plans stay visible, but nothing can be
-        // written for them, like a locked day.
-        if (!isActive || !isEditable(iso)) {
+        // written for them, like a locked day. An absence on a weekend is
+        // shown, as on the other week views, but plans never go there.
+        if (weekend || !isActive || !isEditable(iso)) {
           return (
             <td
               key={iso}
               className={cn(
                 "border-r border-border/60 p-2 align-top",
                 absence
-                  ? "bg-brand-subtle"
+                  ? ABSENCE_PATTERN
                   : (!isActive || isLocked(iso)) && "bg-muted/20",
               )}
             >
@@ -164,7 +181,7 @@ export const PlanningWeekRow = ({
             key={iso}
             className={cn(
               "h-px border-r border-border/60 p-0 align-top",
-              absence && "bg-brand-subtle",
+              absence && ABSENCE_PATTERN,
             )}
           >
             {/* The button's name is the day and its contents, read in order. */}

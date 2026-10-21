@@ -1,4 +1,4 @@
-export const WEEKEND_PATTERN = "bg-stripes-muted";
+export const WEEKEND_FILL = "bg-muted/20";
 
 export const OVERTIME_PATTERN = "bg-stripes-warning";
 

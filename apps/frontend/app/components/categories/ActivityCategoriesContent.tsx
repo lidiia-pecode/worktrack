@@ -126,7 +126,6 @@ export const ActivityCategoriesContent = () => {
     <>
       <ResourcePage
         title="Activity categories"
-        description="Organize activities into categories for easier time tracking."
         listState={listState}
         itemCount={categories.length}
         isLoading={isLoading}

@@ -172,7 +172,7 @@ export const PanelList = <T,>({
             return (
               <Fragment key={getKey(item)}>
                 {startsGroup && (
-                  <li className="bg-muted/15 px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
+                  <li className="bg-muted/10 px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
                     {group.heading}
                   </li>
                 )}

@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -68,6 +68,15 @@ const openMenu = async () => {
 describe("Sidebar phone menu", () => {
   beforeEach(() => {
     navigation.pathname = "/timesheet";
+  });
+
+  it("names the current page beside the logo", () => {
+    navigation.pathname = "/settings";
+    render(<Sidebar user={employee} />);
+
+    expect(
+      within(screen.getByRole("banner")).getByText("Settings"),
+    ).toBeVisible();
   });
 
   it("closes on Escape and returns focus to the menu button", async () => {

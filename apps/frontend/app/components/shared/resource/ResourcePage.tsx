@@ -19,7 +19,6 @@ const SKELETON_ROWS = 5;
 
 interface ResourcePageProps {
   title: string;
-  description?: string;
 
   listState: ManageListState;
   itemCount: number;
@@ -52,7 +51,6 @@ interface ResourcePageProps {
 
 export const ResourcePage = ({
   title,
-  description,
 
   listState,
   itemCount,
@@ -117,11 +115,7 @@ export const ResourcePage = ({
 
   return (
     <section className="flex flex-1 flex-col">
-      <PageHeader
-        title={title}
-        description={description}
-        actions={createAction === "header" && createButton}
-      />
+      <PageHeader title={title} hideTitle />
 
       <ManageToolbar
         title={title}
@@ -129,6 +123,7 @@ export const ResourcePage = ({
         panelId={panelId}
         archivedLabel={archivedLabel}
         searchPlaceholder={searchPlaceholder}
+        actions={createAction === "toolbar" && createButton}
       />
 
       <div

@@ -29,7 +29,7 @@ import { onlyViewerReason } from "../shared/week/only-viewer";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
-import { WeekNav } from "../shared/week/WeekNav";
+import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanningDayModal } from "./components/PlanningDayModal";
@@ -191,24 +191,31 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   return (
     <div className="flex flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 pr-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pr-3 pb-3">
         <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
-        {!hasError && (
-          <div className="flex items-center gap-2 text-sm">
-            <span>Team planned:</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <BackToThisWeekButton
+            weekStart={weekStart}
+            onWeekChange={showWeekOf}
+          />
 
-            <span className="font-medium text-foreground tabular-nums">
-              {formatDuration(totalPlanned)}
-            </span>
+          {!hasError && (
+            <div className="flex items-center gap-2 text-sm">
+              <span>Team planned:</span>
 
-            <span className="text-muted-foreground">/</span>
+              <span className="font-medium text-foreground tabular-nums">
+                {formatDuration(totalPlanned)}
+              </span>
 
-            <span className="text-muted-foreground tabular-nums">
-              {formatDuration(totalAvailable)} available
-            </span>
-          </div>
-        )}
+              <span className="text-muted-foreground">/</span>
+
+              <span className="text-muted-foreground tabular-nums">
+                {formatDuration(totalAvailable)} available
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {!hasError && <TeamFilters teamId={teamId} onTeamChange={setTeamId} />}

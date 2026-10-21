@@ -6,6 +6,7 @@ import {
   isActivePath,
   NavigationGroup,
   navigationFor,
+  pageLabelFor,
 } from "./sidebar-navigation";
 
 const labelsOf = (groups: NavigationGroup[]) =>
@@ -50,5 +51,24 @@ describe("isActivePath", () => {
     expect(isActivePath("/team", "/team")).toBe(true);
     expect(isActivePath("/admin/users/42", "/admin/users")).toBe(true);
     expect(isActivePath("/teams", "/team")).toBe(false);
+  });
+});
+
+describe("pageLabelFor", () => {
+  it("names the page from the menu, a page under it included", () => {
+    expect(pageLabelFor(UserRole.MANAGER, "/planning")).toBe("Planning");
+    expect(pageLabelFor(UserRole.OWNER, "/admin/periods")).toBe("Periods");
+    expect(pageLabelFor(UserRole.OWNER, "/admin/users/42")).toBe("Users");
+  });
+
+  it("names Getting started and Settings, which sit outside the menu", () => {
+    expect(pageLabelFor(UserRole.OWNER, "/getting-started")).toBe(
+      "Getting started",
+    );
+    expect(pageLabelFor(UserRole.EMPLOYEE, "/settings")).toBe("Settings");
+  });
+
+  it("names nothing for a page it does not know", () => {
+    expect(pageLabelFor(UserRole.EMPLOYEE, "/")).toBeUndefined();
   });
 });

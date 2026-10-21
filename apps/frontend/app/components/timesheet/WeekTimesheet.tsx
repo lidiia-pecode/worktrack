@@ -39,7 +39,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
-import { WeekNav } from "../shared/week/WeekNav";
+import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Badge } from "@/components/ui/badge";
@@ -309,12 +309,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       timeLogs: timelogs.length,
     });
 
-  const header = (
-    <PageHeader
-      title="Timesheet"
-      description="Record your working hours, day by day."
-    />
-  );
+  const header = <PageHeader title="Timesheet" hideTitle />;
 
   const addAbsenceButton = (
     <Button type="button" variant="outline" size="sm" onClick={openNewAbsence}>
@@ -368,7 +363,14 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
-          {addAbsenceButton}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <BackToThisWeekButton
+              weekStart={weekStart}
+              onWeekChange={showWeekOf}
+            />
+            {addAbsenceButton}
+          </div>
         </div>
 
         {content === "notOnProjects" ? (
@@ -397,11 +399,11 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
       <div className="border-b border-border">
-        <div className="flex items-center justify-between pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
           <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
           {showsFigures && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-base">
               <span>Time logged:</span>
 
               <span className="font-medium text-foreground">
@@ -428,19 +430,26 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           )}
         </div>
 
-        {!hasError && (
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-            {addAbsenceButton}
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
+          {!hasError && (
+            <div className="flex flex-wrap items-center gap-3">
+              {addAbsenceButton}
 
-            {graceMonth?.editableUntil && (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Clock className="size-3.5 text-warning-text" aria-hidden />
-                {formatMonthLabel(graceMonth.month)} can still be edited until{" "}
-                {formatDayMonthLabel(graceMonth.editableUntil)}.
-              </p>
-            )}
-          </div>
-        )}
+              {graceMonth?.editableUntil && (
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Clock className="size-3.5 text-warning-text" aria-hidden />
+                  {formatMonthLabel(graceMonth.month)} can still be edited until{" "}
+                  {formatDayMonthLabel(graceMonth.editableUntil)}.
+                </p>
+              )}
+            </div>
+          )}
+
+          <BackToThisWeekButton
+            weekStart={weekStart}
+            onWeekChange={showWeekOf}
+          />
+        </div>
 
         {showsFigures && (
           <div className="pb-3">

@@ -18,7 +18,7 @@ export const GettingStarted = () => {
   if (isError || !data) {
     return (
       <section className="w-full max-w-3xl">
-        <PageHeader title="Getting started" />
+        <PageHeader title="Getting started" hideTitle />
         <ErrorState
           title="Getting started could not be loaded"
           description="We couldn't check what is already set up. Try again in a moment."

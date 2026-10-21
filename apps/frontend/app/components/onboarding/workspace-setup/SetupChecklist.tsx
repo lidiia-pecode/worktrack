@@ -237,7 +237,7 @@ export const SetupChecklist = ({ state }: SetupChecklistProps) => {
               aria-valuemax={required.length}
               aria-valuenow={doneCount}
               aria-valuetext={`${doneCount} of ${required.length} steps done`}
-              className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-muted"
+              className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-muted/30"
             >
               <div
                 className="h-full rounded-full bg-primary transition-[width] duration-300"

@@ -149,7 +149,6 @@ export const TeamsContent = () => {
     <>
       <ResourcePage
         title="Teams"
-        description="Manage teams and organize workspace members."
         listState={listState}
         itemCount={teams.length}
         isLoading={isLoading}

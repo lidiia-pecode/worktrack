@@ -18,7 +18,7 @@ import {
   ABSENCE_PATTERN,
   DAY_COLUMN_CLASS,
   OVERTIME_PATTERN,
-  WEEKEND_PATTERN,
+  WEEKEND_FILL,
 } from "../consts";
 import { Badge } from "@/components/ui/badge";
 
@@ -124,9 +124,10 @@ export const DayColumn = ({
       className={cn(
         DAY_COLUMN_CLASS,
         isEditable &&
-          "cursor-pointer hover:bg-muted/20 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+          "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+        isEditable && !absence && !weekend && "hover:bg-muted/10",
         absence && ABSENCE_PATTERN,
-        !absence && weekend && WEEKEND_PATTERN,
+        !absence && weekend && WEEKEND_FILL,
         !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
       )}
     >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Undo2 } from "lucide-react";
 import {
   addWeeks,
   companyToday,
@@ -14,20 +14,40 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { Button } from "@/components/ui/button";
 
-type Props = {
+type BackToThisWeekProps = {
   weekStart: Date;
   onWeekChange: (date: Date) => void;
 };
 
-export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
-  const [calendarOpen, setCalendarOpen] = useState(false);
-  const calendarToggleRef = useRef<HTMLButtonElement>(null);
+export const BackToThisWeekButton = ({
+  weekStart,
+  onWeekChange,
+}: BackToThisWeekProps) => {
   const { weekStartDay, timezone } = useWorkSettings();
 
   const isCurrentWeek = isSameDay(
     weekStart,
     getWeekStart(companyToday(timezone), weekStartDay),
   );
+
+  if (isCurrentWeek) return null;
+
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="w-auto"
+      onClick={() => onWeekChange(companyToday(timezone))}
+    >
+      <Undo2 className="size-3.5" aria-hidden />
+      Back to this week
+    </Button>
+  );
+};
+
+export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const calendarToggleRef = useRef<HTMLButtonElement>(null);
 
   const closeCalendar = () => {
     setCalendarOpen(false);
@@ -49,7 +69,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9 border-x border-border"
+          className="rounded-none w-9 border-0 border-l border-border"
           aria-label="Next week"
           onClick={() => onWeekChange(addWeeks(weekStart, 1))}
         >
@@ -64,7 +84,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted/30 transition"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition"
         >
           <CalendarDays
             size={15}
@@ -82,17 +102,6 @@ export const WeekNav = ({ weekStart, onWeekChange }: Props) => {
           />
         )}
       </div>
-
-      {!isCurrentWeek && (
-        <Button
-          variant="secondary"
-          size="sm"
-          className="w-auto"
-          onClick={() => onWeekChange(companyToday(timezone))}
-        >
-          Today
-        </Button>
-      )}
     </div>
   );
 };
