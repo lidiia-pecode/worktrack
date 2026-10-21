@@ -23,6 +23,10 @@ import {
 import { DateRange } from "@/lib/utils/report-period";
 import {
   DAY_GRID_MAX_DAYS,
+  describeAgainstPlan,
+  HourScale,
+  hourScaleOf,
+  NARROW_TICK_INTERVALS,
   percentOf,
   personDays,
   ReportDay,
@@ -35,8 +39,8 @@ import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
 import { PERSON_PARAM } from "../../team/useOpenedPerson";
-import { ReportRow } from "./ReportRow";
-import { TargetBar } from "./TargetBar";
+import { BarLegend, HourBar } from "./HourBar";
+import { ReportAxisRow, ReportRow } from "./ReportRow";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -120,49 +124,40 @@ const PanelSection = ({
   </section>
 );
 
-/** Logged time against a plan, or the time alone when there was no plan. */
+/** Logged time against a plan, on the list's scale; no plan draws no ring. */
 const AgainstPlanRow = ({
   name,
   detail,
   row,
+  scale,
 }: {
   name: string;
   detail?: string | null;
   row: HoursReportRow;
+  scale: HourScale;
 }) => {
   const logged = formatDuration(row.totalMinutes);
-  const planned = row.plannedMinutes ?? 0;
+  const againstPlan = describeAgainstPlan(row);
 
   return (
     <ReportRow
       name={name}
       detail={detail}
       bar={
-        planned > 0 ? (
-          <TargetBar
-            value={row.totalMinutes}
-            reference={planned}
-            label={`${name}: ${logged} logged of ${formatDuration(planned)} planned`}
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">No plan</p>
-        )
+        <HourBar
+          scale={scale}
+          logged={row.totalMinutes}
+          planned={row.plannedMinutes}
+          label={`${name}: ${logged} logged, ${againstPlan.replace(" · ", ", ")}`}
+        />
       }
       figure={
         <>
           {logged}{" "}
-          {planned > 0 && (
-            <span className="font-normal text-muted-foreground">
-              of {formatDuration(planned)}
-            </span>
-          )}
+          <span className="font-normal text-muted-foreground">logged</span>
         </>
       }
-      subFigure={
-        planned > 0
-          ? `${formatSignedDuration(row.totalMinutes - planned)} against plan`
-          : `${formatDuration(row.billableMinutes)} billable`
-      }
+      subFigure={againstPlan}
     />
   );
 };
@@ -175,7 +170,7 @@ const PanelList = ({
 }: {
   report: ReturnType<typeof useHoursReport>;
   empty: string;
-  children: (rows: HoursReportRow[]) => ReactNode;
+  children: (rows: HoursReportRow[], scale: HourScale) => ReactNode;
 }) => {
   if (report.isLoading) return <LoadingState size="compact" title="Loading…" />;
   if (report.isError) {
@@ -190,7 +185,18 @@ const PanelList = ({
   if (!report.report?.rows.length) {
     return <p className="py-3 text-sm text-muted-foreground">{empty}</p>;
   }
-  return <ul className="@container">{children(report.report.rows)}</ul>;
+  const { rows } = report.report;
+  const scale = hourScaleOf(rows, NARROW_TICK_INTERVALS);
+
+  return (
+    <div className="@container">
+      <BarLegend showExpected={false} past="Logged past the plan" />
+      <div className="mt-3">
+        <ReportAxisRow scale={scale} />
+        <ul>{children(rows, scale)}</ul>
+      </div>
+    </div>
+  );
 };
 
 const DAY_STYLES: Record<ReportDay["kind"], string> = {
@@ -392,10 +398,11 @@ export const PersonPanel = ({
           report={projects}
           empty="No time or plans on any project in this period."
         >
-          {(rows) =>
+          {(rows, scale) =>
             rows.map((row) => (
               <AgainstPlanRow
                 key={row.id}
+                scale={scale}
                 name={row.name ?? ""}
                 detail={row.detail ?? "Internal work"}
                 row={row}
@@ -464,10 +471,11 @@ export const ProjectPanel = ({
 
       <PanelSection title="People" note="Logged against planned">
         <PanelList report={people} empty="Nobody logged or planned time here.">
-          {(rows) =>
+          {(rows, scale) =>
             rows.map((row) => (
               <AgainstPlanRow
                 key={row.id}
+                scale={scale}
                 name={row.name ?? ""}
                 detail={row.detail}
                 row={row}

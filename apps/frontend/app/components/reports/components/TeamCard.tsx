@@ -3,26 +3,42 @@
 import { useState } from "react";
 
 import { PeopleReportRow } from "@/types";
+import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
-import { sortPeople, TEAM_SORTS, TeamSort } from "@/lib/utils/report-overview";
+import {
+  HourScale,
+  hourScale,
+  sortPeople,
+  TEAM_ORDERS,
+  TeamOrder,
+} from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
-import { FormSelect } from "../../shared/FormSelect";
-import { ReportRow } from "./ReportRow";
-import { TargetBar, TargetBarLegend } from "./TargetBar";
+import { BarLegend, HourBar } from "./HourBar";
+import { ReportAxisRow, ReportRow } from "./ReportRow";
 
 const daysOff = (days: number) => `${days} ${days === 1 ? "day" : "days"} off`;
 
+/** Expected and planned hours in words; a missing one is said, never shown as 0h. */
+const otherValues = ({ expectedMinutes, plannedMinutes }: PeopleReportRow) => [
+  expectedMinutes > 0
+    ? `${formatDuration(expectedMinutes)} expected`
+    : "nothing expected",
+  plannedMinutes > 0
+    ? `${formatDuration(plannedMinutes)} planned`
+    : "not planned",
+];
+
 type PersonRowProps = {
   person: PeopleReportRow;
+  scale: HourScale;
   onOpen: (userId: string) => void;
 };
 
-const PersonRow = ({ person, onOpen }: PersonRowProps) => {
+const PersonRow = ({ person, scale, onOpen }: PersonRowProps) => {
   const logged = formatDuration(person.loggedMinutes);
-  const expected = formatDuration(person.expectedMinutes);
-  const planned = formatDuration(person.plannedMinutes);
+  const others = otherValues(person);
 
   return (
     <ReportRow
@@ -31,26 +47,21 @@ const PersonRow = ({ person, onOpen }: PersonRowProps) => {
       detail={person.position}
       note={person.timeOffDays > 0 ? daysOff(person.timeOffDays) : undefined}
       bar={
-        person.expectedMinutes > 0 ? (
-          <TargetBar
-            value={person.loggedMinutes}
-            reference={person.expectedMinutes}
-            planned={person.plannedMinutes}
-            label={`${person.name}: ${logged} logged of ${expected} expected, ${planned} planned`}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">Nothing expected</p>
-        )
+        <HourBar
+          scale={scale}
+          logged={person.loggedMinutes}
+          expected={person.expectedMinutes}
+          planned={person.plannedMinutes}
+          label={`${person.name}: ${logged} logged, ${others.join(", ")}`}
+        />
       }
       figure={
         <>
           {logged}{" "}
-          <span className="font-normal text-muted-foreground">
-            of {expected}
-          </span>
+          <span className="font-normal text-muted-foreground">logged</span>
         </>
       }
-      subFigure={`${planned} planned`}
+      subFigure={others.join(" · ")}
     />
   );
 };
@@ -60,9 +71,19 @@ type TeamCardProps = {
   onOpenPerson: (userId: string) => void;
 };
 
-/** Each person's logged time against what they were expected to work. */
+/** Each person's logged hours against what they were expected to work and what was planned. */
 export const TeamCard = ({ people, onOpenPerson }: TeamCardProps) => {
-  const [sort, setSort] = useState<TeamSort>("name");
+  const [order, setOrder] = useState<TeamOrder>("name");
+  const scale = hourScale(
+    Math.max(
+      0,
+      ...people.flatMap((person) => [
+        person.loggedMinutes,
+        person.expectedMinutes,
+        person.plannedMinutes,
+      ]),
+    ),
+  );
 
   return (
     <Card as="section" aria-labelledby="report-team" className="p-5">
@@ -72,36 +93,57 @@ export const TeamCard = ({ people, onOpenPerson }: TeamCardProps) => {
             Team
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Logged time against what each person was expected to work
+            Hours logged, against what each person was expected to work and what
+            was planned
           </p>
         </div>
-        <FormSelect
-          aria-label="Sort the team"
-          className="w-48"
-          triggerClassName="h-9"
-          value={sort}
-          options={TEAM_SORTS}
-          onValueChange={(value) => setSort(value as TeamSort)}
-        />
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <div
+            role="group"
+            aria-label="Order the team"
+            className="flex h-8 overflow-hidden rounded-lg border border-border"
+          >
+            {TEAM_ORDERS.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={order === value}
+                onClick={() => setOrder(value)}
+                className={cn(
+                  "border-l border-border px-3 text-sm transition first:border-l-0",
+                  "focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none focus-visible:ring-inset",
+                  order === value
+                    ? "bg-accent font-semibold text-accent-foreground"
+                    : "text-foreground hover:bg-accent hover:text-accent-foreground",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {TEAM_ORDERS.find(({ value }) => value === order)!.hint}
+          </p>
+        </div>
       </div>
 
       <div className="mt-4">
-        <TargetBarLegend
-          reference="Expected"
-          past="Past expected"
-          showPlanned
-        />
+        <BarLegend showExpected past="Logged past expected" />
       </div>
 
-      <ul aria-label="People" className="mt-2 @container">
-        {sortPeople(people, sort).map((person) => (
-          <PersonRow
-            key={person.userId}
-            person={person}
-            onOpen={onOpenPerson}
-          />
-        ))}
-      </ul>
+      <div className="mt-3 @container">
+        <ReportAxisRow scale={scale} />
+        <ul aria-label="People">
+          {sortPeople(people, order).map((person) => (
+            <PersonRow
+              key={person.userId}
+              person={person}
+              scale={scale}
+              onOpen={onOpenPerson}
+            />
+          ))}
+        </ul>
+      </div>
     </Card>
   );
 };

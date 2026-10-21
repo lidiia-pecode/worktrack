@@ -1,48 +1,114 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import { addDays, fromISODate, isWeekend, toISODate } from "./date";
-
-/** How far past its reference a target bar reaches before it is cut off. */
-export const TARGET_BAR_CAP = 1.5;
-
-/**
- * Where the reference sits along every target bar, as a percentage of its
- * width, so rows compare at a glance whatever their size.
- */
-export const REFERENCE_PERCENT = 100 / TARGET_BAR_CAP;
+import {
+  addDays,
+  formatDuration,
+  formatSignedDuration,
+  fromISODate,
+  isWeekend,
+  toISODate,
+} from "./date";
 
 /** A planned project this close to its plan, as a share of it, counts as close to plan. */
 export const CLOSE_TO_PLAN_SHARE = 0.1;
 
-export interface TargetBarGeometry {
-  /** The part up to the reference, as a percentage of the bar. */
-  filledPercent: number;
-  /** The part past the reference, as a percentage of the bar. */
-  pastPercent: number;
-  /** True when the value runs beyond the bar's end. */
-  isCapped: boolean;
+const MINUTES_PER_HOUR = 60;
+
+/** Tick steps, in hours, that read as round numbers on an axis. */
+const TICK_STEPS_HOURS = [
+  1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 200, 250, 400, 500, 1000, 2000, 2500,
+  5000,
+];
+
+/** An axis has at most this many intervals, so its labels never crowd. */
+const MAX_TICK_INTERVALS = 4;
+
+/** A narrow list, such as a panel's, keeps to fewer. */
+export const NARROW_TICK_INTERVALS = 2;
+
+export interface HourScale {
+  /** Where the scale ends, a round number at or just above the largest figure. */
+  endMinutes: number;
+  /** From 0 to `endMinutes`, evenly spaced. */
+  ticks: number[];
 }
 
-/** Null when there is no reference to measure against. */
-export const targetBarGeometry = (
-  value: number,
-  reference: number,
-): TargetBarGeometry | null => {
-  if (reference <= 0) return null;
-
-  const ratio = value / reference;
-  const shown = Math.min(ratio, TARGET_BAR_CAP);
+/** The hour scale a card or list shares, from its largest figure. */
+export const hourScale = (
+  maxMinutes: number,
+  maxIntervals = MAX_TICK_INTERVALS,
+): HourScale => {
+  const maxHours = Math.max(maxMinutes / MINUTES_PER_HOUR, 1);
+  const step =
+    TICK_STEPS_HOURS.find((hours) => hours * maxIntervals >= maxHours) ??
+    TICK_STEPS_HOURS.at(-1)!;
+  const intervals = Math.ceil(maxHours / step);
 
   return {
-    filledPercent: (Math.min(shown, 1) / TARGET_BAR_CAP) * 100,
-    pastPercent: (Math.max(shown - 1, 0) / TARGET_BAR_CAP) * 100,
-    isCapped: ratio > TARGET_BAR_CAP,
+    endMinutes: intervals * step * MINUTES_PER_HOUR,
+    ticks: Array.from(
+      { length: intervals + 1 },
+      (_, i) => i * step * MINUTES_PER_HOUR,
+    ),
   };
 };
 
-/** Where a second value, such as the plan, sits along the same bar. */
-export const markerPercent = (value: number, reference: number) =>
-  (Math.min(value / reference, TARGET_BAR_CAP) / TARGET_BAR_CAP) * 100;
+export interface BarValues {
+  logged: number;
+  /** Null or 0 when nothing was expected, so there is no line. */
+  expected?: number | null;
+  /** Null or 0 when nothing was planned, so there is no ring. */
+  planned?: number | null;
+}
+
+export interface BarMarks {
+  /** Logged up to the line, or up to the ring when there is no line. */
+  loggedPercent: number;
+  /** Logged past it, drawn striped; 0 when there is none. */
+  pastPercent: number;
+  linePercent: number | null;
+  ringPercent: number | null;
+}
+
+/**
+ * Where a bar's marks sit on its scale. Nothing missing is ever drawn at zero:
+ * no expected hours means no line, no plan means no ring.
+ */
+export const barMarks = (
+  { logged, expected, planned }: BarValues,
+  { endMinutes }: HourScale,
+): BarMarks => {
+  const at = (minutes: number) => (minutes / endMinutes) * 100;
+  // What the stripes start from: expected for a person, the plan for a project.
+  const reference = expected || planned || 0;
+  const solid = reference > 0 ? Math.min(logged, reference) : logged;
+
+  return {
+    loggedPercent: at(solid),
+    pastPercent: at(logged - solid),
+    linePercent: expected ? at(expected) : null,
+    ringPercent: planned ? at(planned) : null,
+  };
+};
+
+/** The scale for a list of Hours report rows: their logged and planned time. */
+export const hourScaleOf = (rows: HoursReportRow[], maxIntervals?: number) =>
+  hourScale(
+    Math.max(
+      0,
+      ...rows.flatMap((row) => [row.totalMinutes, row.plannedMinutes ?? 0]),
+    ),
+    maxIntervals,
+  );
+
+/** "210h planned · +16h", or that there was no plan, never "0h planned". */
+export const describeAgainstPlan = ({
+  totalMinutes,
+  plannedMinutes,
+}: HoursReportRow) =>
+  plannedMinutes
+    ? `${formatDuration(plannedMinutes)} planned · ${formatSignedDuration(totalMinutes - plannedMinutes)}`
+    : "not planned";
 
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
@@ -104,33 +170,34 @@ export const groupProjectsByClient = (
   );
 };
 
-export type TeamSort = "name" | "logged" | "planned";
+export type TeamOrder = "name" | "logged";
 
-export const TEAM_SORTS: { value: TeamSort; label: string }[] = [
-  { value: "name", label: "Name" },
-  { value: "logged", label: "Logged vs expected" },
-  { value: "planned", label: "Planned vs expected" },
-];
+export const TEAM_ORDERS: { value: TeamOrder; label: string; hint: string }[] =
+  [
+    { value: "name", label: "Name", hint: "Alphabetical" },
+    {
+      value: "logged",
+      label: "Most logged first",
+      hint: "Largest share of expected hours first",
+    },
+  ];
 
-// People with nothing expected have no ratio, so they go last.
-const ratioOf = (minutes: number, expectedMinutes: number) =>
-  expectedMinutes > 0 ? minutes / expectedMinutes : -1;
+// People with nothing expected have no share, so they go last.
+const loggedShare = ({ loggedMinutes, expectedMinutes }: PeopleReportRow) =>
+  expectedMinutes > 0 ? loggedMinutes / expectedMinutes : -1;
 
-/** A sorted copy; the ratios run largest first, equal ones by name. */
+/** A sorted copy: by name, or by the share of expected hours logged, largest first. */
 export const sortPeople = (
   people: PeopleReportRow[],
-  sort: TeamSort,
+  order: TeamOrder,
 ): PeopleReportRow[] => {
   const byName = (a: PeopleReportRow, b: PeopleReportRow) =>
     a.name.localeCompare(b.name);
 
-  if (sort === "name") return [...people].sort(byName);
+  if (order === "name") return [...people].sort(byName);
 
-  const field = sort === "logged" ? "loggedMinutes" : "plannedMinutes";
   return [...people].sort(
-    (a, b) =>
-      ratioOf(b[field], b.expectedMinutes) -
-        ratioOf(a[field], a.expectedMinutes) || byName(a, b),
+    (a, b) => loggedShare(b) - loggedShare(a) || byName(a, b),
   );
 };
 

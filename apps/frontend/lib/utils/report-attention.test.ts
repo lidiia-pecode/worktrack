@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import { ATTENTION_MAX_ITEMS, attentionItems } from "./report-attention";
+import { attentionItems } from "./report-attention";
 
 const HOUR = 60;
 const STANDARD_DAY = 8 * HOUR;
@@ -146,7 +146,7 @@ describe("attentionItems", () => {
     ).toEqual([]);
   });
 
-  it("puts the largest first and keeps the list short", () => {
+  it("puts the largest first and keeps every fact", () => {
     const projects = [10, 20, 30, 40, 50, 60].map((gap) =>
       project(`Project ${gap}`, 100 + gap, 100),
     );
@@ -156,9 +156,9 @@ describe("attentionItems", () => {
       STANDARD_DAY,
     );
 
-    expect(items).toHaveLength(ATTENTION_MAX_ITEMS);
+    // Project 10 is exactly a tenth off, so it is left out.
     expect(items.map((item) => item.minutes)).toEqual(
-      [60, 50, 40, 30, 20].map((hours) => hours * HOUR),
+      [60, 50, 40, 30, 20, 8].map((hours) => hours * HOUR),
     );
   });
 });

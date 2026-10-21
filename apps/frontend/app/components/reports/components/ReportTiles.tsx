@@ -11,7 +11,7 @@ import {
 
 import { Card } from "@/components/ui/card";
 
-import { TargetBar } from "./TargetBar";
+import { HourBar } from "./HourBar";
 
 const Tile = ({
   label,
@@ -78,10 +78,15 @@ export const ReportTiles = ({ totals, projects }: ReportTilesProps) => {
         label="Time logged"
         figure={formatDuration(loggedMinutes)}
         bar={
-          <TargetBar
+          <HourBar
             className="h-1.5"
-            value={loggedMinutes}
-            reference={expectedMinutes}
+            // No axis on a tile, so no gridlines either.
+            scale={{
+              endMinutes: Math.max(loggedMinutes, expectedMinutes, 1),
+              ticks: [],
+            }}
+            logged={loggedMinutes}
+            expected={expectedMinutes}
             label={`${formatDuration(loggedMinutes)} logged of ${formatDuration(expectedMinutes)} expected`}
           />
         }

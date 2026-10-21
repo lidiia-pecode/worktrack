@@ -3,13 +3,13 @@ import { describe, expect, it } from "vitest";
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
 import {
+  barMarks,
+  describeAgainstPlan,
   groupProjectsByClient,
+  hourScale,
   isCloseToPlan,
-  markerPercent,
   personDays,
-  REFERENCE_PERCENT,
   sortPeople,
-  targetBarGeometry,
 } from "./report-overview";
 
 const HOUR = 60;
@@ -48,33 +48,96 @@ const person = (
   daysWithoutTime: [],
 });
 
-describe("targetBarGeometry", () => {
-  it("fills up to the reference, which sits at two thirds", () => {
-    expect(REFERENCE_PERCENT).toBeCloseTo(66.67, 1);
-    expect(targetBarGeometry(75, 100)).toEqual({
-      filledPercent: 50,
+describe("hourScale", () => {
+  it("ends on a round number just above the largest figure, in a few even steps", () => {
+    expect(hourScale(114.5 * HOUR)).toEqual({
+      endMinutes: 120 * HOUR,
+      ticks: [0, 40, 80, 120].map((hours) => hours * HOUR),
+    });
+    expect(hourScale(394 * HOUR).ticks).toEqual(
+      [0, 100, 200, 300, 400].map((hours) => hours * HOUR),
+    );
+  });
+
+  it("keeps to fewer steps for a narrow list", () => {
+    expect(hourScale(18.5 * HOUR, 2).ticks).toEqual(
+      [0, 10, 20].map((hours) => hours * HOUR),
+    );
+  });
+
+  it("still draws a scale when everything is zero", () => {
+    expect(hourScale(0).endMinutes).toBeGreaterThan(0);
+  });
+});
+
+describe("barMarks", () => {
+  const scale = hourScale(120 * HOUR);
+  const marks = (
+    logged: number,
+    expected?: number | null,
+    planned?: number | null,
+  ) =>
+    barMarks(
+      {
+        logged: logged * HOUR,
+        expected: expected && expected * HOUR,
+        planned: planned && planned * HOUR,
+      },
+      scale,
+    );
+
+  it("puts logged, expected and planned on the same scale", () => {
+    expect(marks(90, 102, 96)).toEqual({
+      loggedPercent: 75,
       pastPercent: 0,
-      isCapped: false,
+      linePercent: 85,
+      ringPercent: 80,
     });
   });
 
-  it("goes on past the reference, and stops at half as much again", () => {
-    const past = targetBarGeometry(125, 100)!;
-    expect(past.filledPercent).toBeCloseTo(REFERENCE_PERCENT);
-    expect(past.pastPercent).toBeCloseTo(REFERENCE_PERCENT / 4);
-    expect(past.isCapped).toBe(false);
-    const capped = targetBarGeometry(300, 100)!;
-    expect(capped.filledPercent + capped.pastPercent).toBeCloseTo(100);
-    expect(capped.isCapped).toBe(true);
+  it("stripes the time logged past expected", () => {
+    expect(marks(114, 102, 102)).toMatchObject({
+      loggedPercent: 85,
+      pastPercent: 10,
+    });
   });
 
-  it("draws nothing without a reference", () => {
-    expect(targetBarGeometry(60, 0)).toBeNull();
+  it("stripes a project's time past its plan, with no line", () => {
+    expect(marks(108, null, 96)).toEqual({
+      loggedPercent: 80,
+      pastPercent: 10,
+      linePercent: null,
+      ringPercent: 80,
+    });
   });
 
-  it("places a marker on the same scale", () => {
-    expect(markerPercent(100, 100)).toBeCloseTo(REFERENCE_PERCENT);
-    expect(markerPercent(500, 100)).toBe(100);
+  it("keeps the line and ring when nothing was logged", () => {
+    expect(marks(0, 108, 60)).toEqual({
+      loggedPercent: 0,
+      pastPercent: 0,
+      linePercent: 90,
+      ringPercent: 50,
+    });
+  });
+
+  it("draws no mark for what is missing, never one at zero", () => {
+    expect(marks(6, 0, 0)).toEqual({
+      loggedPercent: 5,
+      pastPercent: 0,
+      linePercent: null,
+      ringPercent: null,
+    });
+  });
+});
+
+describe("describeAgainstPlan", () => {
+  it("says the plan and the gap, or that there was no plan", () => {
+    expect(describeAgainstPlan(project("A", "Acme", 226, 210))).toBe(
+      "210h planned · +16h",
+    );
+    expect(describeAgainstPlan(project("B", "Acme", 46, 0))).toBe(
+      "not planned",
+    );
   });
 });
 
@@ -131,15 +194,10 @@ describe("sortPeople", () => {
     ]);
   });
 
-  it("sorts by logged or planned against expected, nothing expected last", () => {
+  it("puts the largest share of expected hours logged first, nothing expected last", () => {
     expect(sortPeople(people, "logged").map((row) => row.name)).toEqual([
       "Abel",
       "Cara",
-      "Bea",
-    ]);
-    expect(sortPeople(people, "planned").map((row) => row.name)).toEqual([
-      "Cara",
-      "Abel",
       "Bea",
     ]);
   });

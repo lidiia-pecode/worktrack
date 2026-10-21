@@ -8,8 +8,8 @@ export const ATTENTION_MIN_MINUTES = 8 * 60;
 /** And more than this share of what it is measured against. */
 export const ATTENTION_MIN_SHARE = 0.1;
 
-/** The list stops here, so it stays a short read. */
-export const ATTENTION_MAX_ITEMS = 5;
+/** The list shows this many at first, so it stays a short read; the rest open on request. */
+export const ATTENTION_SHOWN_AT_FIRST = 3;
 
 /** Days or people named one by one before the rest are counted. */
 const NAMED_IN_FULL = 3;
@@ -178,5 +178,4 @@ export const attentionItems = (
     daysWithoutTimeItem(people, standardDayMinutes),
   ]
     .filter((item): item is AttentionItem => item !== null)
-    .sort((a, b) => b.minutes - a.minutes || a.who.localeCompare(b.who))
-    .slice(0, ATTENTION_MAX_ITEMS);
+    .sort((a, b) => b.minutes - a.minutes || a.who.localeCompare(b.who));

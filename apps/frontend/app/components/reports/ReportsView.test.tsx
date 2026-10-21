@@ -237,16 +237,16 @@ describe("ReportsView", () => {
       .getByText("Ethan Brooks")
       .closest("li")!;
     expect(ethan).toHaveTextContent("5 days off");
-    expect(ethan).toHaveTextContent("79h of 72h");
-    expect(ethan).toHaveTextContent("96h planned");
+    expect(ethan).toHaveTextContent("79h logged");
+    expect(ethan).toHaveTextContent("72h expected · 96h planned");
     expect(
       within(ethan).getByRole("img", {
-        name: "Ethan Brooks: 79h logged of 72h expected, 96h planned",
+        name: "Ethan Brooks: 79h logged, 72h expected, 96h planned",
       }),
     ).toBeInTheDocument();
   });
 
-  it("sorts the team by logged time against expected", async () => {
+  it("orders the team by name, or by the share of expected hours logged", async () => {
     const user = userEvent.setup();
     showReports(
       peopleReport([...team, person("Grace Morgan", 10, 0, 100)]),
@@ -258,12 +258,21 @@ describe("ReportsView", () => {
         .map((row) => row.querySelector("button")?.textContent);
 
     expect(names()).toEqual(["Ava Mitchell", "Ethan Brooks", "Grace Morgan"]);
-
-    await user.click(screen.getByRole("combobox", { name: "Sort the team" }));
-    await user.click(
-      await screen.findByRole("option", { name: "Logged vs expected" }),
+    expect(screen.getByText("Alphabetical")).toBeInTheDocument();
+    // A missing plan is said in words, not drawn as 0h.
+    expect(screen.getByText("Grace Morgan").closest("li")).toHaveTextContent(
+      "100h expected · not planned",
     );
 
+    const mostLogged = screen.getByRole("button", {
+      name: "Most logged first",
+    });
+    await user.click(mostLogged);
+
+    expect(mostLogged).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByText("Largest share of expected hours first"),
+    ).toBeInTheDocument();
     expect(names()).toEqual(["Ethan Brooks", "Ava Mitchell", "Grace Morgan"]);
   });
 
@@ -280,22 +289,22 @@ describe("ReportsView", () => {
       name: "Fintech Group",
     });
     expect(fintech).toHaveTextContent("13h · 100% billable");
-    expect(fintech).toHaveTextContent("No plan for this period");
-    expect(fintech).toHaveTextContent("−27h against plan");
+    expect(fintech).toHaveTextContent("10h logged");
+    expect(fintech).toHaveTextContent("not planned");
+    expect(fintech).toHaveTextContent("30h planned · −27h");
     expect(
       within(card).getByRole("region", { name: "Internal work" }),
-    ).toHaveTextContent("+20h against plan");
+    ).toHaveTextContent("100h planned · +20h");
   });
 
   it("draws time past the plan striped in the brand colour", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
     const bar = screen.getByRole("img", {
-      name: "WorkTrack: 120h logged of 100h planned",
+      name: "WorkTrack: 120h logged, 100h planned, +20h",
     });
-    const past = bar.children[1];
-    expect(past).toHaveClass("bg-brand");
-    expect(past.firstElementChild).toHaveClass("bg-stripes-overlay");
+    const stripes = bar.querySelector(".bg-stripes-overlay");
+    expect(stripes?.parentElement).toHaveClass("bg-brand");
   });
 
   it("says when the period has nothing counted yet", () => {
@@ -436,7 +445,7 @@ describe("ReportsView", () => {
         name: "Projects",
       });
       expect(projectsSection).toHaveTextContent("Mobile App");
-      expect(projectsSection).toHaveTextContent("−27h against plan");
+      expect(projectsSection).toHaveTextContent("66h planned · −27h");
       expect(
         within(panel).getByRole("link", { name: /Open in Team time/ }),
       ).toHaveAttribute("href", "/team?person=ethan-brooks");
@@ -459,7 +468,7 @@ describe("ReportsView", () => {
       expect(panel).toHaveTextContent("of 50h planned");
       expect(
         within(panel).getByRole("region", { name: "People" }),
-      ).toHaveTextContent("+4h against plan");
+      ).toHaveTextContent("26h planned · +4h");
     });
 
     it("swaps one open panel for another without a new history entry", async () => {
@@ -475,16 +484,29 @@ describe("ReportsView", () => {
       ).toBeInTheDocument();
     });
 
-    it("lists what is worth a look, largest first, each opening where it points", async () => {
+    it("lists what is worth a look, largest first, three at first, each opening where it points", async () => {
       const user = userEvent.setup();
       showReports(peopleReport(team), projectsReport(projects));
 
       const card = screen.getByRole("region", { name: "Worth a look" });
-      expect(
+      const whos = () =>
         within(card)
           .getAllByRole("listitem")
-          .map((item) => item.querySelector(".font-semibold")?.textContent),
-      ).toEqual(["Data Warehouse", "Ethan Brooks", "WorkTrack", "CRM System"]);
+          .map((item) => item.querySelector(".font-semibold")?.textContent);
+      expect(card).toHaveTextContent("4 facts from this period");
+      expect(whos()).toEqual(["Data Warehouse", "Ethan Brooks", "WorkTrack"]);
+
+      const more = within(card).getByRole("button", { name: /Show 1 more/ });
+      await user.click(more);
+      expect(more).toHaveAttribute("aria-expanded", "true");
+      expect(whos()).toEqual([
+        "Data Warehouse",
+        "Ethan Brooks",
+        "WorkTrack",
+        "CRM System",
+      ]);
+      await user.click(within(card).getByRole("button", { name: /Show less/ }));
+      expect(whos()).toHaveLength(3);
 
       await user.click(
         within(card).getByRole("button", {

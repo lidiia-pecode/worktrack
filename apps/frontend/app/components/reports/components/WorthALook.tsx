@@ -1,7 +1,21 @@
-import Link from "next/link";
-import { CalendarX2, FolderKanban, LucideIcon, UserRound } from "lucide-react";
+"use client";
 
-import { AttentionItem, AttentionKind } from "@/lib/utils/report-attention";
+import { useId, useState } from "react";
+import Link from "next/link";
+import {
+  CalendarX2,
+  ChevronDown,
+  FolderKanban,
+  LucideIcon,
+  UserRound,
+} from "lucide-react";
+
+import { cn } from "@/lib/utils/cn";
+import {
+  ATTENTION_SHOWN_AT_FIRST,
+  AttentionItem,
+  AttentionKind,
+} from "@/lib/utils/report-attention";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -22,12 +36,17 @@ type WorthALookProps = {
   onOpenProject: (projectId: string) => void;
 };
 
-/** The few facts of the period worth a look, each with where to act on it. */
+/** The period's facts worth a look, largest first, each with where to act on it. */
 export const WorthALook = ({
   items,
   onOpenPerson,
   onOpenProject,
 }: WorthALookProps) => {
+  const listId = useId();
+  const [isExpanded, setIsExpanded] = useState(false);
+  const hidden = items.length - ATTENTION_SHOWN_AT_FIRST;
+  const shown = isExpanded ? items : items.slice(0, ATTENTION_SHOWN_AT_FIRST);
+
   const action = (item: AttentionItem) => {
     if (
       item.kind === "daysWithoutTime" ||
@@ -74,9 +93,12 @@ export const WorthALook = ({
         <h2 id="report-worth-a-look" className="text-base font-semibold">
           Worth a look
         </h2>
-        <p className="text-xs text-muted-foreground">
-          Facts from this period, largest first
-        </p>
+        {items.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {items.length} {items.length === 1 ? "fact" : "facts"} from this
+            period, largest first
+          </p>
+        )}
       </div>
 
       {items.length === 0 ? (
@@ -84,8 +106,8 @@ export const WorthALook = ({
           Nothing stands out in this period.
         </p>
       ) : (
-        <ul className="mt-2">
-          {items.map((item) => {
+        <ul id={listId} className="mt-2">
+          {shown.map((item) => {
             const Icon = ICONS[item.kind];
 
             return (
@@ -108,6 +130,25 @@ export const WorthALook = ({
             );
           })}
         </ul>
+      )}
+
+      {hidden > 0 && (
+        <div className="border-t border-border/60 pt-2">
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            aria-expanded={isExpanded}
+            aria-controls={listId}
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {isExpanded ? "Show less" : `Show ${hidden} more`}
+            <ChevronDown
+              className={cn("transition-transform", isExpanded && "rotate-180")}
+              aria-hidden
+            />
+          </Button>
+        </div>
       )}
     </Card>
   );
