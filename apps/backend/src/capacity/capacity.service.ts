@@ -18,6 +18,12 @@ export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
 }
 
+/** What a day-by-day walk needs from the company, read in one query. */
+export interface CompanyCalendar {
+  timezone: string;
+  defaultMinutesPerWeek: number;
+}
+
 export interface CurrentCapacity {
   userId: string;
   minutesPerWeek: number;
@@ -37,17 +43,24 @@ export class CapacityService {
     private readonly reportingService: ReportingService,
   ) {}
 
-  async defaultMinutesPerWeek(companyId: string): Promise<number> {
+  async calendarFor(companyId: string): Promise<CompanyCalendar> {
     const company = await this.companyRepo.findOne({
       where: { id: companyId },
-      select: ['id', 'standardWorkHoursPerDay'],
+      select: ['id', 'timezone', 'standardWorkHoursPerDay'],
     });
 
     if (!company) throw new NotFoundException('Company not found');
 
-    return (
-      Math.round(company.standardWorkHoursPerDay * 60) * WORKING_DAYS_PER_WEEK
-    );
+    return {
+      timezone: company.timezone,
+      defaultMinutesPerWeek:
+        Math.round(company.standardWorkHoursPerDay * 60) *
+        WORKING_DAYS_PER_WEEK,
+    };
+  }
+
+  async defaultMinutesPerWeek(companyId: string): Promise<number> {
+    return (await this.calendarFor(companyId)).defaultMinutesPerWeek;
   }
 
   /**
@@ -58,8 +71,10 @@ export class CapacityService {
     companyId: string,
     userIds: string[],
     until: string,
+    defaultMinutesPerWeek?: number,
   ): Promise<Map<string, CapacityTimeline>> {
-    const fallback = await this.defaultMinutesPerWeek(companyId);
+    const fallback =
+      defaultMinutesPerWeek ?? (await this.defaultMinutesPerWeek(companyId));
     const timelines = new Map<string, CapacityTimeline>();
 
     if (userIds.length === 0) return timelines;
@@ -114,24 +129,19 @@ export class CapacityService {
   async startDatesFor(
     companyId: string,
     userIds: string[],
+    timezone: string,
   ): Promise<Map<string, string>> {
     const startDates = new Map<string, string>();
 
     if (userIds.length === 0) return startDates;
 
-    const [company, users] = await Promise.all([
-      this.companyRepo.findOne({
-        where: { id: companyId },
-        select: ['id', 'timezone'],
-      }),
-      this.userRepo.find({
-        where: { companyId, id: In(userIds) },
-        select: ['id', 'createdAt'],
-      }),
-    ]);
+    const users = await this.userRepo.find({
+      where: { companyId, id: In(userIds) },
+      select: ['id', 'createdAt'],
+    });
 
     for (const user of users) {
-      startDates.set(user.id, isoDateIn(user.createdAt, company?.timezone));
+      startDates.set(user.id, isoDateIn(user.createdAt, timezone));
     }
 
     return startDates;

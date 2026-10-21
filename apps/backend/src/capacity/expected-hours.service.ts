@@ -10,6 +10,7 @@ import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
   isWorkingDay,
+  todayISODate,
 } from './working-days.util';
 
 export interface ExpectedDay {
@@ -154,11 +155,17 @@ export class ExpectedHoursService {
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 
-    const [timelines, startDates, absencesByUser, today] = await Promise.all([
-      this.capacity.timelinesFor(companyId, userIds, to),
-      this.capacity.startDatesFor(companyId, userIds),
+    const calendar = await this.capacity.calendarFor(companyId);
+    const today = todayISODate(calendar.timezone);
+    const [timelines, startDates, absencesByUser] = await Promise.all([
+      this.capacity.timelinesFor(
+        companyId,
+        userIds,
+        to,
+        calendar.defaultMinutesPerWeek,
+      ),
+      this.capacity.startDatesFor(companyId, userIds, calendar.timezone),
       this.absenceRangesFor(companyId, userIds, from, to),
-      this.capacity.today(companyId),
     ]);
 
     for (const userId of userIds) {

@@ -675,6 +675,24 @@ describe('ExpectedHoursService', () => {
       expect(expected.get(fullTimer)?.total).toBe(FULL_WEEK);
       expect(expected.get(partTimer)?.total).toBe(PART_WEEK);
     });
+
+    it('reads the company once per call', async () => {
+      const companyReads = jest.spyOn(
+        dataSource.getRepository(Company),
+        'findOne',
+      );
+
+      await service.expectedFor(
+        companyId,
+        [fullTimer, partTimer],
+        MONDAY,
+        SUNDAY,
+      );
+      const reads = companyReads.mock.calls.length;
+      companyReads.mockRestore();
+
+      expect(reads).toBe(1);
+    });
   });
 
   describe("locking on the company's clock", () => {
