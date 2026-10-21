@@ -1,43 +1,27 @@
-import { HoursReportRow, HoursSplit } from "@/types";
+import { HoursReport, HoursReportRow } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableFooter,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowHeader,
-} from "@/components/ui/table";
+import { describeGap } from "@/lib/utils/report-table";
 
-import { Minutes } from "./ReportCells";
+import { BillableSplit, GapLabel, Minutes } from "./ReportCells";
+import { ReportColumn, ReportTable } from "./ReportTable";
 
-type HoursReportTableProps = {
-  groupBy: HoursReportGroupBy;
-  rows: HoursReportRow[];
-  totals: HoursSplit;
-  periodText: string;
+/** The groupings a Reports tab shows; people have their own report. */
+export type HoursTableGrouping =
+  | HoursReportGroupBy.PROJECT
+  | HoursReportGroupBy.CLIENT
+  | HoursReportGroupBy.ACTIVITY;
+
+const NAMES: Record<HoursTableGrouping, { one: string; many: string }> = {
+  [HoursReportGroupBy.PROJECT]: { one: "Project", many: "projects" },
+  [HoursReportGroupBy.CLIENT]: { one: "Client", many: "clients" },
+  [HoursReportGroupBy.ACTIVITY]: { one: "Activity", many: "activities" },
 };
-
-const NAME_COLUMN_LABEL: Record<HoursReportGroupBy, string> = {
-  [HoursReportGroupBy.CLIENT]: "Client",
-  [HoursReportGroupBy.PROJECT]: "Project",
-  [HoursReportGroupBy.ACTIVITY]: "Activity",
-  [HoursReportGroupBy.PERSON]: "Person",
-};
-
-const SPLIT_COLUMNS: { key: keyof HoursSplit; label: string }[] = [
-  { key: "billableMinutes", label: "Billable" },
-  { key: "nonBillableMinutes", label: "Non-billable" },
-  { key: "totalMinutes", label: "Total" },
-];
 
 // Projects have no client when the work is internal, so say so rather than
 // leaving the detail blank.
-const describeRow = (groupBy: HoursReportGroupBy, row: HoursReportRow) => {
+const describeRow = (groupBy: HoursTableGrouping, row: HoursReportRow) => {
   if (groupBy === HoursReportGroupBy.CLIENT) {
-    return { name: row.name ?? "Internal work", detail: null };
+    return { name: row.name ?? "Internal work" };
   }
 
   if (groupBy === HoursReportGroupBy.PROJECT) {
@@ -47,55 +31,87 @@ const describeRow = (groupBy: HoursReportGroupBy, row: HoursReportRow) => {
   return { name: row.name, detail: row.detail };
 };
 
+const LOGGED: ReportColumn<HoursReportRow> = {
+  key: "logged",
+  label: "Logged",
+  numeric: true,
+  className: "w-28",
+  sortValue: (row) => row.totalMinutes,
+  render: (row) => <Minutes value={row.totalMinutes} strong />,
+};
+
+const BILLABLE: ReportColumn<HoursReportRow> = {
+  key: "billable",
+  label: "Billable",
+  numeric: true,
+  className: "w-48",
+  sortValue: (row) => row.billableMinutes,
+  render: (row) => (
+    <BillableSplit
+      billableMinutes={row.billableMinutes}
+      totalMinutes={row.totalMinutes}
+    />
+  ),
+};
+
+// Only rows grouped by project or client carry a plan.
+const PLAN_COLUMNS: ReportColumn<HoursReportRow>[] = [
+  {
+    key: "planned",
+    label: "Planned",
+    numeric: true,
+    className: "w-28",
+    sortValue: (row) => row.plannedMinutes ?? 0,
+    render: (row) => <Minutes value={row.plannedMinutes ?? 0} />,
+  },
+  {
+    key: "plan-gap",
+    label: "Against plan",
+    className: "w-52",
+    sortValue: (row) => row.totalMinutes - (row.plannedMinutes ?? 0),
+    render: (row) => (
+      <GapLabel
+        gap={describeGap(row.totalMinutes, row.plannedMinutes ?? 0, "planned")}
+      />
+    ),
+  },
+];
+
+type HoursReportTableProps = {
+  groupBy: HoursTableGrouping;
+  rows: HoursReportRow[];
+  totals: HoursReport["totals"];
+  periodText: string;
+};
+
 export const HoursReportTable = ({
   groupBy,
   rows,
   totals,
   periodText,
-}: HoursReportTableProps) => (
-  <Table
-    className="min-w-2xl"
-    aria-label={`Hours by ${NAME_COLUMN_LABEL[groupBy].toLowerCase()}, ${periodText}`}
-  >
-    <TableHeader>
-      <TableHead>{NAME_COLUMN_LABEL[groupBy]}</TableHead>
+}: HoursReportTableProps) => {
+  const { one, many } = NAMES[groupBy];
+  const hasPlan = totals.plannedMinutes !== null;
 
-      {SPLIT_COLUMNS.map((column) => (
-        <TableHead key={column.key} numeric className="w-32">
-          {column.label}
-        </TableHead>
-      ))}
-    </TableHeader>
-
-    <TableBody>
-      {rows.map((row) => {
-        const { name, detail } = describeRow(groupBy, row);
-
-        return (
-          <TableRow key={row.id ?? row.name ?? "internal"}>
-            <TableRowHeader detail={detail}>{name}</TableRowHeader>
-
-            {SPLIT_COLUMNS.map((column) => (
-              <TableCell key={column.key} numeric>
-                <Minutes
-                  value={row[column.key]}
-                  strong={column.key === "totalMinutes"}
-                />
-              </TableCell>
-            ))}
-          </TableRow>
-        );
-      })}
-    </TableBody>
-
-    <TableFooter>
-      <TableRowHeader className="font-semibold">Total</TableRowHeader>
-
-      {SPLIT_COLUMNS.map((column) => (
-        <TableCell key={column.key} numeric className="font-semibold">
-          <Minutes value={totals[column.key]} strong />
-        </TableCell>
-      ))}
-    </TableFooter>
-  </Table>
-);
+  return (
+    <ReportTable
+      className={hasPlan ? "min-w-3xl" : "min-w-xl"}
+      label={`${one}s, ${periodText}`}
+      name={{
+        label: one,
+        sortValue: (row) => describeRow(groupBy, row).name ?? "",
+        render: (row) => describeRow(groupBy, row),
+      }}
+      columns={
+        hasPlan ? [LOGGED, BILLABLE, ...PLAN_COLUMNS] : [LOGGED, BILLABLE]
+      }
+      rows={rows}
+      rowKey={(row) => row.id ?? row.name ?? "internal"}
+      totals={{
+        label: `All ${many}`,
+        detail: `${rows.length} ${rows.length === 1 ? one.toLowerCase() : many}`,
+        row: { id: null, name: null, detail: null, ...totals },
+      }}
+    />
+  );
+};

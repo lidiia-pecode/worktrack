@@ -482,7 +482,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only; the figure feeds the utilisation report, and since Phase 31 no screen marks it |
+| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People tab says it in words ("less than expected"), and since Phase 31 nothing else marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
@@ -499,7 +499,7 @@ for the days before they joined; there is no separate start date (§10 Q14). Rou
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which the utilisation report measures against, and a
+the company's timezone, which Reports' People tab measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, an absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -509,7 +509,7 @@ add up to `total`.
 Somebody with no plan at all has the same expectation as anybody else.
 
 **Reports count finished days only.** When a range reaches today or later, the
-hours, planned vs actual and utilisation reports and the hours export stop at
+hours, planned vs actual and people reports and the hours export stop at
 yesterday in the company's time zone, for logged and planned time alike, and
 the reports say which day they counted to. Today's entries show in the reports
 and the export the next day.
@@ -757,20 +757,22 @@ see, and how a new company gets started. §7 plans that work.
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
-- **Hours report** — owners and managers see logged time on `/reports` for a
-  month or a custom range of up to 366 days, grouped by client, project,
-  activity or person, and split into billable and non-billable by each entry's
-  flag, on any project (D2). Grouped by client, time on projects with no client
-  is one "Internal work" row. A range that includes a month still open to edits is marked
-  provisional. Every tab counts finished days only (§4, capacity and expected
-  hours). Managers see only the teams they lead. A second tab compares
-  planned with logged time per person for the same range, shown as a neutral
-  difference rather than a score (D3). A third shows utilisation per person —
-  billable utilisation (billable time on any project), client share and
-  non-billable client share (both about client projects) and logging
-  completeness, each labelled with what it is measured against and shown as
-  "—" when there is nothing to measure.
-- **Hours export** — from the Hours tab, owners and managers download the
+- **Reports** — owners and managers see one table on `/reports` for a month,
+  quarter, year or custom range of up to 366 days; tabs choose the rows:
+  projects (the default), clients, people or activities. The first row holds
+  the period's totals. Every row shows logged time split into billable and
+  non-billable by each entry's flag, on any project (D2). Projects and clients
+  also show what was planned and the gap in words ("40h less than planned",
+  "On plan" within an hour); people show what was expected of them (capacity
+  minus time off), the gap ("8h more than expected") and their days off;
+  activities have no plan. A dot in the brand tone marks a gap over a tenth of
+  the plan or expectation, as a fact rather than a score (D3); nothing is red
+  or green and nobody is ranked unless a column is sorted. Grouped by client,
+  time on projects with no client is one "Internal work" row. A range that
+  includes a month still open to edits is marked provisional. Every tab counts
+  finished days only (§4, capacity and expected hours). Managers see only the
+  teams they lead.
+- **Hours export** — from Reports, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person (with
   their email after the name), day, project, activity and billing (Billable or
   Non-billable, by the entry's flag), in hours and minutes, with no notes. The
@@ -794,9 +796,10 @@ see, and how a new company gets started. §7 plans that work.
 - **Reports are for owners and managers.** Planned vs actual is readable
   through the API by an employee for their own figures, but no employee screen
   shows it.
-- **Utilisation has four figures** — billable utilisation, client share,
-  non-billable client share and logging completeness. Billable hours over
-  *capacity* was left out as unfair per person.
+- **No utilisation ratios** (Phase 34). Billable utilisation, client share,
+  non-billable client share and logging completeness were replaced by plain
+  hours and gaps in words: comparable products define "utilisation" in
+  inconsistent ways, and a ratio per person reads as a score.
 - **Periods are calendar months that lock by themselves**, worked out from the
   date on every check, because a scheduled job would miss days while the
   backend sleeps.
@@ -819,14 +822,14 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-four
-suites and 777 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is forty-three
+suites and 766 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-four Vitest files and 269 tests: its date, month,
+The frontend has fifty-six Vitest files and 281 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -1105,7 +1108,7 @@ ever disagree about the catalogue.
 The team view shows each person's logged time against what was expected, but
 somebody still has to look, and since Phase 31 nothing marks anyone short.
 Phase 3 made "short" precise: logged below expected, over days that have
-finished; today only the utilisation report measures it.
+finished; today only Reports' People tab shows it.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to
@@ -1143,7 +1146,7 @@ columns.
 **Q11 — Should employees get a report of their own hours?**
 Belongs to Area 7. An employee sees one week at a time. The API already returns
 their own planned vs actual, week summaries and expected hours; the hours report
-and utilisation would each need their route opened to employees, pinned to
+and the people report would each need their route opened to employees, pinned to
 themselves by the visibility filter they already use.
 *Recommendation:* yes — hours by project and activity, logged against expected
 by week and month, and absences taken, for the employee alone. Opening the two
@@ -1193,7 +1196,7 @@ their time logs, such as anonymising the person and keeping the hours.
   that backfills older history.
 - **Q15** — Time on a project with no client can be billable: project type and
   billable status are independent (D2). Internal work starts non-billable and
-  can be switched on, and the reports, the export and utilisation count
+  can be switched on, and the reports and the export count
   billable by the flag on every project. Existing entries on internal projects
   were reset to non-billable by a data migration, so no past billable figure
   changed (Phase 28).

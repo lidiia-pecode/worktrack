@@ -2,15 +2,15 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { PlannedVsActualQuery } from "@/types";
+import { PeopleReportQuery } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function usePlannedVsActual(params: PlannedVsActualQuery) {
+export function usePeopleReport(params: PeopleReportQuery) {
   const query = useQuery({
-    queryKey: queryKeys.reporting.plannedVsActual({ ...params }),
-    queryFn: () => ReportingClientApi.getPlannedVsActual(params),
+    queryKey: queryKeys.reporting.people({ ...params }),
+    queryFn: () => ReportingClientApi.getPeopleReport(params),
     placeholderData: keepPreviousData,
   });
 

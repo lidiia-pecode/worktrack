@@ -2,14 +2,13 @@
 
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { DateRange } from "@/lib/utils/report-period";
-import { HoursReportGroupBy } from "@/types/enums";
 
-import { HoursReportTable } from "./HoursReportTable";
+import { HoursReportTable, HoursTableGrouping } from "./HoursReportTable";
 import { ReportSection } from "./ReportSection";
 
 type HoursReportSectionProps = {
   range: DateRange;
-  groupBy: HoursReportGroupBy;
+  groupBy: HoursTableGrouping;
   /** The period in words, for the table's label. */
   periodText: string;
 };
@@ -29,7 +28,7 @@ export const HoursReportSection = ({
       isEmpty={!report || report.rows.length === 0}
       isPlaceholderData={isPlaceholderData}
       isProvisional={Boolean(report?.isProvisional)}
-      emptyTitle="No time logged in this range"
+      emptyTitle="Nothing logged or planned in this range"
       emptyDescription="Pick another period, or check that people have logged their time."
       onRetry={refetch}
     >
@@ -37,7 +36,8 @@ export const HoursReportSection = ({
         // The rows' own grouping, not the selected one: while the next
         // grouping loads, the previous rows stay on screen.
         <HoursReportTable
-          groupBy={report.groupBy}
+          key={report.groupBy}
+          groupBy={report.groupBy as HoursTableGrouping}
           rows={report.rows}
           totals={report.totals}
           periodText={periodText}

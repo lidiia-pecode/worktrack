@@ -13,7 +13,6 @@ type ReportSectionProps = {
   isProvisional: boolean;
   emptyTitle: string;
   emptyDescription: string;
-  emptyAction?: ReactNode;
   onRetry: () => void;
   children: ReactNode;
 };
@@ -26,7 +25,6 @@ export const ReportSection = ({
   isProvisional,
   emptyTitle,
   emptyDescription,
-  emptyAction,
   onRetry,
   children,
 }: ReportSectionProps) => {
@@ -56,7 +54,6 @@ export const ReportSection = ({
           title={emptyTitle}
           description={emptyDescription}
           icon={<FileBarChart />}
-          action={emptyAction}
         />
       </div>
     );

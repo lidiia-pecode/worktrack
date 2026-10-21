@@ -526,16 +526,12 @@ describe('ReportingService', () => {
           name: 'Acme',
           billableMinutes: 540,
           nonBillableMinutes: 60,
-          clientMinutes: 600,
-          nonBillableClientMinutes: 60,
           totalMinutes: 600,
         }),
         expect.objectContaining({
           name: null,
           billableMinutes: 120,
           nonBillableMinutes: 0,
-          clientMinutes: 0,
-          nonBillableClientMinutes: 0,
           totalMinutes: 120,
         }),
       ]);

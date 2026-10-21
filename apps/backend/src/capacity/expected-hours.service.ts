@@ -27,15 +27,8 @@ export interface ExpectedMinutes {
   byDate: ExpectedDay[];
 }
 
-/**
- * The two halves of Expected, kept apart for utilisation, over the days of the
- * range that have finished.
- */
+/** Expected over the days of the range that have finished, with the days off behind it. */
 export interface Availability {
-  /** Contracted minutes, ignoring absences. */
-  capacityMinutes: number;
-  /** The part of that capacity an absence covered. */
-  absenceMinutes: number;
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
   /** Working days an absence covered, from the start date. */
@@ -46,7 +39,6 @@ export interface Availability {
 interface ShareSums {
   available: number;
   availableToDate: number;
-  capacityToDate: number;
   absenceDaysToDate: number;
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
@@ -115,7 +107,7 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Capacity and absences read separately, counting only days that have
+   * Expected and the days off behind it, counting only days that have
    * finished, so a month in progress is measured against the time that has
    * actually passed.
    */
@@ -129,13 +121,8 @@ export class ExpectedHoursService {
     const availability = new Map<string, Availability>();
 
     sums.forEach((sum, userId) => {
-      const capacityMinutes = Math.round(sum.capacityToDate);
-      const availableMinutes = Math.round(sum.availableToDate);
-
       availability.set(userId, {
-        capacityMinutes,
-        absenceMinutes: capacityMinutes - availableMinutes,
-        availableMinutes,
+        availableMinutes: Math.round(sum.availableToDate),
         absenceDays: sum.absenceDaysToDate,
       });
     });
@@ -179,7 +166,6 @@ export class ExpectedHoursService {
       const sum: ShareSums = {
         available: 0,
         availableToDate: 0,
-        capacityToDate: 0,
         absenceDaysToDate: 0,
         availableByDate: [],
       };
@@ -194,7 +180,6 @@ export class ExpectedHoursService {
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
         const hasFinished = date < today;
-        if (hasFinished) sum.capacityToDate += share;
 
         const isAbsent = absences.some(
           (a) => a.startDate <= date && a.endDate >= date,

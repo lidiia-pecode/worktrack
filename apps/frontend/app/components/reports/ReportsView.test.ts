@@ -1,23 +1,23 @@
 import { describe, expect, it } from "vitest";
 
-import { describeListedPeople } from "./ReportsView";
+import { describeListedRows } from "./ReportsView";
 
-describe("describeListedPeople", () => {
-  it("says who each tab lists", () => {
-    expect(describeListedPeople("hours", false)).toBe(
-      "People with logged time in this period.",
+describe("describeListedRows", () => {
+  it("says what each tab lists", () => {
+    expect(describeListedRows("projects", false)).toBe(
+      "Projects with logged or planned time in this period.",
     );
-    expect(describeListedPeople("planned-vs-actual", false)).toBe(
-      "People with a plan or logged time in this period.",
+    expect(describeListedRows("activities", false)).toBe(
+      "Activities with logged time. Plans are made per project, so there is no plan here.",
     );
-    expect(describeListedPeople("utilisation", false)).toBe(
-      "Everyone active, plus deactivated people with logged time. “—” means there was nothing to measure.",
+    expect(describeListedRows("people", false)).toContain(
+      "Expected is their capacity minus time off.",
     );
   });
 
   it("tells a manager the figures cover only their teams", () => {
-    expect(describeListedPeople("hours", true)).toBe(
-      "People with logged time in this period. Only you and the teams you lead are counted.",
+    expect(describeListedRows("clients", true)).toBe(
+      "Clients with logged or planned time in this period. Only you and the teams you lead are counted.",
     );
   });
 });

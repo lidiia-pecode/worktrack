@@ -1,26 +1,23 @@
 "use client";
 
-import Link from "next/link";
-
-import { buttonVariants } from "@/components/ui/button";
-import { usePlannedVsActual } from "@/hooks/usePlannedVsActual";
+import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { DateRange } from "@/lib/utils/report-period";
 
-import { PlannedVsActualTable } from "./PlannedVsActualTable";
+import { PeopleReportTable } from "./PeopleReportTable";
 import { ReportSection } from "./ReportSection";
 
-type PlannedVsActualSectionProps = {
+type PeopleReportSectionProps = {
   range: DateRange;
   /** The period in words, for the table's label. */
   periodText: string;
 };
 
-export const PlannedVsActualSection = ({
+export const PeopleReportSection = ({
   range,
   periodText,
-}: PlannedVsActualSectionProps) => {
+}: PeopleReportSectionProps) => {
   const { report, isLoading, isPlaceholderData, isError, refetch } =
-    usePlannedVsActual(range);
+    usePeopleReport(range);
 
   return (
     <ReportSection
@@ -29,20 +26,12 @@ export const PlannedVsActualSection = ({
       isEmpty={!report || report.rows.length === 0}
       isPlaceholderData={isPlaceholderData}
       isProvisional={Boolean(report?.isProvisional)}
-      emptyTitle="Nothing planned or logged in this range"
-      emptyDescription="Pick another period, or plan your team's week."
-      emptyAction={
-        <Link
-          href="/planning"
-          className={buttonVariants({ variant: "secondary" })}
-        >
-          Open Planning
-        </Link>
-      }
+      emptyTitle="Nobody to show for this range"
+      emptyDescription="Once people join your teams, their hours appear here."
       onRetry={refetch}
     >
       {report && (
-        <PlannedVsActualTable
+        <PeopleReportTable
           rows={report.rows}
           totals={report.totals}
           periodText={periodText}

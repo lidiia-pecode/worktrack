@@ -90,10 +90,6 @@ export interface HoursSplit {
   billableMinutes: number;
   /** Time not marked billable, on any project. */
   nonBillableMinutes: number;
-  /** Time on projects with a client. Not shown on the report screen; utilisation reads it. */
-  clientMinutes: number;
-  /** Client work not marked billable. Not shown on the report screen; utilisation reads it. */
-  nonBillableClientMinutes: number;
   totalMinutes: number;
 }
 
@@ -126,8 +122,6 @@ interface HoursReportRawRow {
   detail: string | null;
   billableMinutes: string;
   nonBillableMinutes: string;
-  clientMinutes: string;
-  nonBillableClientMinutes: string;
   totalMinutes: string;
 }
 
@@ -605,7 +599,6 @@ export class ReportingService {
       user.companyId,
     );
     const grouping = HOURS_GROUPINGS[groupBy];
-    const isClientWork = `${CLIENT_NAME} IS NOT NULL`;
 
     const countedTo = lastCountedDay(dateTo, today);
 
@@ -622,14 +615,6 @@ export class ReportingService {
       .addSelect(
         'SUM(CASE WHEN NOT tl.is_billable THEN tl.minutes ELSE 0 END)',
         'nonBillableMinutes',
-      )
-      .addSelect(
-        `SUM(CASE WHEN ${isClientWork} THEN tl.minutes ELSE 0 END)`,
-        'clientMinutes',
-      )
-      .addSelect(
-        `SUM(CASE WHEN ${isClientWork} AND NOT tl.is_billable THEN tl.minutes ELSE 0 END)`,
-        'nonBillableClientMinutes',
       )
       .addSelect('SUM(tl.minutes)', 'totalMinutes')
       .from('time_logs', 'tl')
@@ -677,8 +662,6 @@ export class ReportingService {
       detail: raw.detail,
       billableMinutes: Number(raw.billableMinutes),
       nonBillableMinutes: Number(raw.nonBillableMinutes),
-      clientMinutes: Number(raw.clientMinutes),
-      nonBillableClientMinutes: Number(raw.nonBillableClientMinutes),
       totalMinutes: Number(raw.totalMinutes),
       plannedMinutes: plannedRows
         ? (plannedByKey.get(raw.groupKey) ?? 0)
@@ -697,8 +680,6 @@ export class ReportingService {
         detail: planned.detail,
         billableMinutes: 0,
         nonBillableMinutes: 0,
-        clientMinutes: 0,
-        nonBillableClientMinutes: 0,
         totalMinutes: 0,
         plannedMinutes: Number(planned.minutes),
       });
@@ -708,16 +689,11 @@ export class ReportingService {
       (sum, row) => ({
         billableMinutes: sum.billableMinutes + row.billableMinutes,
         nonBillableMinutes: sum.nonBillableMinutes + row.nonBillableMinutes,
-        clientMinutes: sum.clientMinutes + row.clientMinutes,
-        nonBillableClientMinutes:
-          sum.nonBillableClientMinutes + row.nonBillableClientMinutes,
         totalMinutes: sum.totalMinutes + row.totalMinutes,
       }),
       {
         billableMinutes: 0,
         nonBillableMinutes: 0,
-        clientMinutes: 0,
-        nonBillableClientMinutes: 0,
         totalMinutes: 0,
       },
     );

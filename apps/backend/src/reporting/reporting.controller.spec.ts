@@ -6,7 +6,7 @@ import { RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { ReportingController } from './reporting.controller';
-import { UtilisationController } from './utilisation/utilisation.controller';
+import { PeopleReportController } from './people/people-report.controller';
 
 type Handler = keyof ReportingController;
 
@@ -52,14 +52,14 @@ describe('ReportingController route roles', () => {
   });
 });
 
-describe('UtilisationController route roles', () => {
+describe('PeopleReportController route roles', () => {
   const guard = new RolesGuard(new Reflector());
-  const handler: keyof UtilisationController = 'getUtilisation';
+  const handler: keyof PeopleReportController = 'getPeopleReport';
 
   const allows = (role: UserRole): boolean =>
     guard.canActivate({
-      getHandler: () => UtilisationController.prototype[handler],
-      getClass: () => UtilisationController,
+      getHandler: () => PeopleReportController.prototype[handler],
+      getClass: () => PeopleReportController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
 
