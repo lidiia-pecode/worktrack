@@ -39,6 +39,7 @@ const person = (
   userId: name,
   name,
   position: null,
+  teams: [],
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: 0,
   nonBillableMinutes: loggedHours * HOUR,

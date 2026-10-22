@@ -11,10 +11,17 @@ export interface PeopleReportFigures {
   timeOffDays: number;
 }
 
+export interface ReportTeam {
+  id: string;
+  name: string;
+}
+
 export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
+  /** Their active teams, by name; for a manager, only the teams they lead. */
+  teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
   daysWithoutTime: string[];
 }
@@ -32,15 +39,13 @@ export interface PeopleReportQuery {
   dateTo: string;
 }
 
-export type TimelineInterval = "week" | "month";
-
-/** One week or month of the range, cut to the days it counts. */
+/** One week of the range, cut to the days it counts. */
 export interface TimelineBucket {
   start: string;
   end: string;
   /** Working days among the days it counts. */
   workingDays: number;
-  /** True when the range or the cut-off leaves part of the week or month out. */
+  /** True when the range or the cut-off leaves part of the week out. */
   isPartial: boolean;
   loggedMinutes: number;
   billableMinutes: number;
@@ -49,7 +54,6 @@ export interface TimelineBucket {
 }
 
 export interface Timeline extends ReportCoverage {
-  interval: TimelineInterval;
   /** Oldest first, up to the last day counted. */
   buckets: TimelineBucket[];
 }

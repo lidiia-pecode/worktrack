@@ -9,6 +9,7 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -53,6 +54,8 @@ describe('PeopleReportService', () => {
   let partTimer: string; // on no team, 24 hours a week, logs nothing
   let projectId: string;
   let projectActivityId: string;
+  let teamId: string;
+  let expectedHours: ExpectedHoursService;
 
   const createUser = async (name: string, role: UserRole) => {
     const email = `${name}-${RUN}@people-report.test`;
@@ -94,13 +97,14 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(User),
       reporting,
     );
-    const expectedHours = new ExpectedHoursService(
+    expectedHours = new ExpectedHoursService(
       dataSource.getRepository(Absence),
       capacity,
     );
     service = new PeopleReportService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(Company),
+      dataSource.getRepository(TeamMembership),
       reporting,
       expectedHours,
       teamVisibility,
@@ -120,6 +124,7 @@ describe('PeopleReportService', () => {
     const team = await dataSource
       .getRepository(Team)
       .save({ companyId, name: `Team ${RUN}` });
+    teamId = team.id;
 
     for (const [userId, roleInTeam] of [
       [manager.id, TeamRole.MANAGER],
@@ -345,6 +350,80 @@ describe('PeopleReportService', () => {
     ).toBe(totals.plannedMinutes);
   });
 
+  describe('teams', () => {
+    it("names each person's active teams, leaving out an archived one", async () => {
+      const [design, archived] = await dataSource.getRepository(Team).save([
+        { companyId, name: `Design ${RUN}` },
+        { companyId, name: `Archived ${RUN}`, status: TeamStatus.ARCHIVED },
+      ]);
+      await dataSource.getRepository(TeamMembership).save(
+        [design, archived].map((team) => ({
+          companyId,
+          teamId: team.id,
+          userId: member,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: '2020-01-01',
+        })),
+      );
+
+      const forOwner = await rowFor(owner, member);
+      const forManager = await rowFor(manager, member);
+      const nobody = await rowFor(owner, partTimer);
+      await dataSource.getRepository(Team).delete([design.id, archived.id]);
+
+      expect(forOwner?.teams).toEqual([
+        { id: design.id, name: `Design ${RUN}` },
+        { id: teamId, name: `Team ${RUN}` },
+      ]);
+      // The manager leads only the first team, so the other isn't named.
+      expect(forManager?.teams).toEqual([{ id: teamId, name: `Team ${RUN}` }]);
+      expect(nobody?.teams).toEqual([]);
+    });
+  });
+
+  describe('the owner', () => {
+    it('is listed only with logged time, and never with days without time', async () => {
+      const before = await rowFor(owner, owner.id);
+      const log = await dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId: owner.id,
+        projectActivityId,
+        date: '2026-03-05',
+        minutes: 60,
+        isBillable: false,
+      });
+
+      const after = await rowFor(owner, owner.id);
+      const { buckets } = await service.getTimeline(owner, MARCH);
+      const { totals } = await service.getPeopleReport(owner, MARCH);
+      await dataSource.getRepository(TimeLog).remove(log);
+
+      expect(before).toBeUndefined();
+      expect(after).toMatchObject({ loggedMinutes: 60, daysWithoutTime: [] });
+      expect(
+        buckets.reduce((sum, bucket) => sum + bucket.expectedMinutes, 0),
+      ).toBe(totals.expectedMinutes);
+    });
+  });
+
+  it('counts expected only to the day the Hours report counted to', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const walk = jest.spyOn(expectedHours, 'availabilityToDateFor');
+
+    await service.getPeopleReport(owner, {
+      dateFrom: addDays(today, -10),
+      dateTo: addDays(today, 10),
+    });
+
+    expect(walk).toHaveBeenCalledWith(
+      companyId,
+      expect.any(Array),
+      addDays(today, -10),
+      addDays(today, -1),
+    );
+    walk.mockRestore();
+  });
+
   it('is final for a locked month, counted in full', async () => {
     await expect(service.getPeopleReport(owner, MARCH)).resolves.toMatchObject({
       isProvisional: false,
@@ -370,9 +449,8 @@ describe('PeopleReportService', () => {
       );
 
     it('shows a month week by week, from Monday, with partial weeks at both ends', async () => {
-      const { interval, buckets } = await service.getTimeline(owner, MARCH);
+      const { buckets } = await service.getTimeline(owner, MARCH);
 
-      expect(interval).toBe('week');
       expect(
         buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
       ).toEqual([
@@ -407,20 +485,16 @@ describe('PeopleReportService', () => {
       }
     });
 
-    it('shows a quarter month by month', async () => {
-      const { interval, buckets } = await service.getTimeline(owner, {
+    it('shows a longer range week by week too', async () => {
+      const { buckets } = await service.getTimeline(owner, {
         dateFrom: '2026-01-01',
         dateTo: '2026-03-31',
       });
 
-      expect(interval).toBe('month');
+      expect(buckets).toHaveLength(14);
       expect(
-        buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
-      ).toEqual([
-        ['2026-01-01', '2026-01-31', false],
-        ['2026-02-01', '2026-02-28', false],
-        ['2026-03-01', '2026-03-31', false],
-      ]);
+        buckets.every((bucket) => bucket.end <= addDays(bucket.start, 6)),
+      ).toBe(true);
     });
 
     it('stops at yesterday, and has nothing for a range that starts today', async () => {

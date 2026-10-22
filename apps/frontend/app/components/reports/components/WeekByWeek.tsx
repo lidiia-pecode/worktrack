@@ -28,7 +28,7 @@ const MIN_COLUMN_REM = 3.75;
  * a line, planned as a ring. A week the range or yesterday cuts short is pale.
  */
 export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
-  const { interval, buckets, countedUntil } = timeline;
+  const { buckets, countedUntil } = timeline;
   const scale = hourScale(
     Math.max(
       0,
@@ -42,17 +42,16 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
   const columns = {
     gridTemplateColumns: `repeat(${buckets.length}, minmax(0, 1fr))`,
   };
-  const unit = interval === "week" ? "week" : "month";
 
   return (
     <Card as="section" aria-labelledby="report-timeline" className="p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="report-timeline" className="text-base font-semibold">
-            {interval === "week" ? "Week by week" : "Month by month"}
+            Week by week
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Hours logged each {unit}, against expected and planned
+            Hours logged each week, against expected and planned
           </p>
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -76,7 +75,7 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
           </li>
           <li className="inline-flex items-center gap-1.5">
             <span className="size-2.5 rounded-sm bg-brand/40" aria-hidden />
-            Part of a {unit}
+            Part of a week
           </li>
         </ul>
       </div>
@@ -98,7 +97,7 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
         </div>
         <div
           role="group"
-          aria-label={`Hours each ${unit}, scrolls sideways when narrow`}
+          aria-label={"Hours each week, scrolls sideways when narrow"}
           tabIndex={0}
           className="min-w-0 flex-1 overflow-x-auto rounded-md pt-4 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
@@ -119,7 +118,7 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
                   <div
                     key={bucket.start}
                     className="relative flex h-full items-end justify-center"
-                    title={`${bucketLabel(bucket, interval)}: ${formatDuration(bucket.loggedMinutes)} logged, ${expectedText(bucket)}, ${plannedText(bucket)}`}
+                    title={`${bucketLabel(bucket)}: ${formatDuration(bucket.loggedMinutes)} logged, ${expectedText(bucket)}, ${plannedText(bucket)}`}
                   >
                     <span
                       className="absolute text-2xs font-medium tabular-nums"
@@ -172,13 +171,11 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
               {buckets.map((bucket) => (
                 <div key={bucket.start} className="min-w-0">
                   <p className="truncate text-xs font-medium">
-                    {bucketLabel(bucket, interval)}
+                    {bucketLabel(bucket)}
                   </p>
-                  {interval === "week" && (
-                    <p className="truncate text-2xs text-muted-foreground">
-                      {bucketNote(bucket, countedUntil)}
-                    </p>
-                  )}
+                  <p className="truncate text-2xs text-muted-foreground">
+                    {bucketNote(bucket, countedUntil)}
+                  </p>
                 </div>
               ))}
             </div>
@@ -187,12 +184,10 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
       </div>
 
       <table className="sr-only">
-        <caption>
-          Hours logged each {unit}, against expected and planned
-        </caption>
+        <caption>Hours logged each week, against expected and planned</caption>
         <thead>
           <tr>
-            <th scope="col">{interval === "week" ? "Week" : "Month"}</th>
+            <th scope="col">Week</th>
             <th scope="col">Logged</th>
             <th scope="col">Expected</th>
             <th scope="col">Planned</th>
@@ -202,8 +197,8 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
           {buckets.map((bucket) => (
             <tr key={bucket.start}>
               <th scope="row">
-                {bucketLabel(bucket, interval)}
-                {bucket.isPartial && ", part of a " + unit}
+                {bucketLabel(bucket)}
+                {bucket.isPartial && ", part of a week"}
               </th>
               <td>{formatDuration(bucket.loggedMinutes)}</td>
               <td>{expectedText(bucket)}</td>

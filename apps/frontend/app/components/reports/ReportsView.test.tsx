@@ -97,6 +97,7 @@ const person = (
   userId: name.toLowerCase().replace(" ", "-"),
   name,
   position: "Developer",
+  teams: [],
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: (loggedHours / 2) * HOUR,
   nonBillableMinutes: (loggedHours / 2) * HOUR,
@@ -225,7 +226,6 @@ describe("ReportsView", () => {
     } as unknown as ReturnType<typeof useTeamTimeSummary>);
     vi.mocked(useTimeline).mockReturnValue({
       timeline: {
-        interval: "week",
         buckets: [
           {
             start: "2026-10-01",

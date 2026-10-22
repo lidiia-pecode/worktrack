@@ -28,6 +28,7 @@ export type VisibleUser = Pick<
   | 'position'
   | 'avatarUrl'
   | 'status'
+  | 'role'
 >;
 
 export interface VisibleUsersFilter {
@@ -224,6 +225,7 @@ export class TeamVisibilityService {
         'u.position',
         'u.avatarUrl',
         'u.status',
+        'u.role',
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
 

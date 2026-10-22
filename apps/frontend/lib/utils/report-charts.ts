@@ -1,23 +1,12 @@
-import { HoursReportRow, TimelineBucket, TimelineInterval } from "@/types";
+import { HoursReportRow, TimelineBucket } from "@/types";
 
-import {
-  formatDayMonthLabel,
-  formatShortMonthLabel,
-  fromISODate,
-} from "./date";
+import { formatDayMonthLabel, fromISODate } from "./date";
 import { countLabel } from "./text";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 
-/**
- * A bucket's name under its bar: "Oct 5–9" or "Sep 29 – Oct 3" for a week,
- * "Oct" for a month.
- */
-export const bucketLabel = (
-  { start, end }: TimelineBucket,
-  interval: TimelineInterval,
-) => {
-  if (interval === "month") return formatShortMonthLabel(start.slice(0, 7));
+/** A week's name under its bar: "Oct 5–9", or "Sep 29 – Oct 3". */
+export const bucketLabel = ({ start, end }: TimelineBucket) => {
   if (start === end) return formatDayMonthLabel(start);
 
   const sameMonth = start.slice(0, 7) === end.slice(0, 7);

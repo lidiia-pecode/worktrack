@@ -1,9 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import {
+  Availability,
+  ExpectedHoursService,
+} from 'src/capacity/expected-hours.service';
 import {
   eachDate,
   isWorkingDay,
@@ -11,13 +14,17 @@ import {
 } from 'src/capacity/working-days.util';
 import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
+import { TeamStatus } from 'src/teams/enums/team-status.enum';
+import {
+  TeamVisibilityService,
+  VisibleUser,
+} from 'src/teams/team-visibility.service';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
-import { UserStatus } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
 import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
-import { firstDayOfMonth, lastDayOfMonth } from '../reporting-months.util';
 import {
   HoursReport,
   ReportCoverage,
@@ -37,10 +44,17 @@ export interface PeopleReportFigures {
   timeOffDays: number;
 }
 
+export interface ReportTeam {
+  id: string;
+  name: string;
+}
+
 export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
+  /** Their active teams, by name; for a manager, only the teams they lead. */
+  teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
   daysWithoutTime: string[];
 }
@@ -53,15 +67,13 @@ export interface PeopleReport extends ReportCoverage {
   };
 }
 
-export type TimelineInterval = 'week' | 'month';
-
-/** One week or month of the range, cut to the days it counts. */
+/** One week of the range, cut to the days it counts. */
 export interface TimelineBucket {
   start: string;
   end: string;
   /** Working days among the days it counts. */
   workingDays: number;
-  /** True when the range or the cut-off leaves part of the week or month out. */
+  /** True when the range or the cut-off leaves part of the week out. */
   isPartial: boolean;
   loggedMinutes: number;
   billableMinutes: number;
@@ -70,13 +82,16 @@ export interface TimelineBucket {
 }
 
 export interface Timeline extends ReportCoverage {
-  interval: TimelineInterval;
   /** Oldest first, up to the last day counted. */
   buckets: TimelineBucket[];
 }
 
-/** A range up to this long is shown by week, so a month has its weeks; longer ones by month. */
-export const WEEKLY_UP_TO_DAYS = 62;
+/**
+ * Days without time apply only to people expected to log it: not a
+ * deactivated person, who can no longer, nor an owner (Decision 27).
+ */
+const isExpectedToLog = (person: VisibleUser) =>
+  person.status === UserStatus.ACTIVE && person.role !== UserRole.OWNER;
 
 const NO_FIGURES: PeopleReportFigures = {
   loggedMinutes: 0,
@@ -113,6 +128,8 @@ export class PeopleReportService {
     private readonly timeLogRepo: Repository<TimeLog>,
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(TeamMembership)
+    private readonly membershipRepo: Repository<TeamMembership>,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
     private readonly teamVisibility: TeamVisibilityService,
@@ -133,16 +150,23 @@ export class PeopleReportService {
     });
     const hoursByUser = new Map(hours.rows.map((row) => [row.id!, row]));
     const people = await this.peopleFor(user, hours);
+    // Expected stops where the Hours report stopped counting, so both use the
+    // same "today" even across the company's midnight.
+    const countedTo = hours.countedUntil ?? dateTo;
+    const hasCountedDays = countedTo >= dateFrom;
 
     const peopleIds = people.map((person) => person.id);
-    const [availability, loggedDates] = await Promise.all([
-      this.expectedHours.availabilityToDateFor(
-        user.companyId,
-        peopleIds,
-        dateFrom,
-        dateTo,
-      ),
-      this.loggedDatesFor(user.companyId, peopleIds, dateFrom, dateTo),
+    const [availability, loggedDates, teams] = await Promise.all([
+      hasCountedDays
+        ? this.expectedHours.availabilityToDateFor(
+            user.companyId,
+            peopleIds,
+            dateFrom,
+            countedTo,
+          )
+        : new Map<string, Availability>(),
+      this.loggedDatesFor(user.companyId, peopleIds, dateFrom, countedTo),
+      this.teamsFor(user, peopleIds),
     ]);
 
     const rows = people.map((person): PeopleReportRow => {
@@ -154,19 +178,18 @@ export class PeopleReportService {
         userId: person.id,
         name: `${person.firstName} ${person.lastName}`,
         position: person.position ?? null,
+        teams: teams.get(person.id) ?? [],
         loggedMinutes: personHours?.totalMinutes ?? 0,
         billableMinutes: personHours?.billableMinutes ?? 0,
         nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
         plannedMinutes: personHours?.plannedMinutes ?? 0,
         expectedMinutes: personAvailability?.availableMinutes ?? 0,
         timeOffDays: personAvailability?.absenceDays ?? 0,
-        // A deactivated person can no longer log time, so no day is missing.
-        daysWithoutTime:
-          person.status === UserStatus.ACTIVE
-            ? (personAvailability?.expectedDates ?? []).filter(
-                (date) => !personLoggedDates?.has(date),
-              )
-            : [],
+        daysWithoutTime: isExpectedToLog(person)
+          ? (personAvailability?.expectedDates ?? []).filter(
+              (date) => !personLoggedDates?.has(date),
+            )
+          : [],
       };
     });
 
@@ -185,9 +208,9 @@ export class PeopleReportService {
   }
 
   /**
-   * The range's time, plans and expected hours week by week, or month by
-   * month for a longer range, over the same people and finished days as the
-   * People report, so the buckets add up to its totals.
+   * The range's time, plans and expected hours week by week, over the same
+   * people and finished days as the People report, so the buckets add up to
+   * its totals.
    */
   async getTimeline(
     user: AuthUser,
@@ -197,10 +220,6 @@ export class PeopleReportService {
 
     assertDateRange(dateFrom, dateTo);
 
-    const interval: TimelineInterval =
-      [...eachDate(dateFrom, dateTo)].length <= WEEKLY_UP_TO_DAYS
-        ? 'week'
-        : 'month';
     const hours = await this.reportingService.getHoursReport(user, {
       dateFrom,
       dateTo,
@@ -212,7 +231,7 @@ export class PeopleReportService {
     };
     const countedTo = hours.countedUntil ?? dateTo;
 
-    if (countedTo < dateFrom) return { interval, buckets: [], ...coverage };
+    if (countedTo < dateFrom) return { buckets: [], ...coverage };
 
     const people = await this.peopleFor(user, hours);
     const peopleIds = people.map((person) => person.id);
@@ -231,10 +250,7 @@ export class PeopleReportService {
     const bucketByDate = new Map<string, TimelineBucket>();
 
     for (const date of eachDate(dateFrom, countedTo)) {
-      const span =
-        interval === 'week'
-          ? weekRange(date, weekStartDay)
-          : { start: firstDayOfMonth(date), end: lastDayOfMonth(date) };
+      const span = weekRange(date, weekStartDay);
       let bucket = buckets.at(-1);
 
       if (!bucket || date > bucket.end) {
@@ -269,24 +285,65 @@ export class PeopleReportService {
       }
     });
 
-    return { interval, buckets, ...coverage };
+    return { buckets, ...coverage };
   }
 
   /**
    * The same people the team grid lists, plus deactivated people with logged
    * time in the range. A plan alone, often left over from before they left,
-   * doesn't list them.
+   * doesn't list them. An owner is listed only with logged time: owners often
+   * don't track their own (Decision 27).
    */
-  private peopleFor(user: AuthUser, hours: HoursReport) {
-    return this.teamVisibility.findVisibleUsers(
+  private async peopleFor(user: AuthUser, hours: HoursReport) {
+    const loggedIds = new Set(
+      hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id!),
+    );
+    const people = await this.teamVisibility.findVisibleUsers(
       user,
-      {
-        includeUserIds: hours.rows
-          .filter((row) => row.totalMinutes > 0)
-          .map((row) => row.id!),
-      },
+      { includeUserIds: [...loggedIds] },
       { includeSelf: true },
     );
+
+    return people.filter(
+      (person) => person.role !== UserRole.OWNER || loggedIds.has(person.id),
+    );
+  }
+
+  /**
+   * Each person's active teams, by name. A manager gets only the teams they
+   * lead, so Reports never names a team they can't open elsewhere.
+   */
+  private async teamsFor(
+    user: AuthUser,
+    userIds: string[],
+  ): Promise<Map<string, ReportTeam[]>> {
+    const byUser = new Map<string, ReportTeam[]>();
+    if (userIds.length === 0) return byUser;
+
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    if (visibleTeamIds?.length === 0) return byUser;
+
+    const memberships = await this.membershipRepo.find({
+      relations: { team: true },
+      where: {
+        companyId: user.companyId,
+        userId: In(userIds),
+        leftAt: IsNull(),
+        team: {
+          status: TeamStatus.ACTIVE,
+          ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
+        },
+      },
+      order: { team: { name: 'ASC' } },
+    });
+
+    for (const { userId, team } of memberships) {
+      const teams = byUser.get(userId) ?? [];
+      teams.push({ id: team.id, name: team.name });
+      byUser.set(userId, teams);
+    }
+
+    return byUser;
   }
 
   private async weekStartDayOf(companyId: string): Promise<WeekDay> {

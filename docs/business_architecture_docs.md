@@ -765,8 +765,9 @@ see, and how a new company gets started. §7 plans that work.
   lists the facts largest first, three at once and the rest on request: a project at least 8h and over a tenth
   off its plan, 8h or more logged with no plan, somebody planned beyond what
   they are expected to work, and working days with no time logged. None is
-  about somebody logging less than expected, and a deactivated person has no
-  missing days; they are listed only if they logged time in the period. Below, the Team
+  about somebody logging less than expected. A deactivated person and an owner
+  have no missing days, and are listed only if they logged time in the period:
+  owners often don't track their own time. Below, the Team
   card puts each person's logged time against their expected hours, with what
   was planned and their days off, and the Projects card puts each project's
   time against its plan, under its client, with internal work last. Each card

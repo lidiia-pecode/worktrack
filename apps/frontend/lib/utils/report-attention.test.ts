@@ -29,6 +29,7 @@ const person = (
   userId: name,
   name,
   position: null,
+  teams: [],
   loggedMinutes: 0,
   billableMinutes: 0,
   nonBillableMinutes: 0,
