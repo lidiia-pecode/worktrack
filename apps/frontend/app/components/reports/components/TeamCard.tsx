@@ -6,6 +6,7 @@ import { PeopleReportRow } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
 import {
+  daysOffLabel,
   HourScale,
   hourScale,
   sortPeople,
@@ -17,8 +18,6 @@ import { Card } from "@/components/ui/card";
 
 import { BarLegend, HourBar } from "./HourBar";
 import { ReportAxisRow, ReportRow } from "./ReportRow";
-
-const daysOff = (days: number) => `${days} ${days === 1 ? "day" : "days"} off`;
 
 /** Expected and planned hours in words; a missing one is said, never shown as 0h. */
 const otherValues = ({ expectedMinutes, plannedMinutes }: PeopleReportRow) => [
@@ -45,7 +44,9 @@ const PersonRow = ({ person, scale, onOpen }: PersonRowProps) => {
       name={person.name}
       onOpen={() => onOpen(person.userId)}
       detail={person.position}
-      note={person.timeOffDays > 0 ? daysOff(person.timeOffDays) : undefined}
+      note={
+        person.timeOffDays > 0 ? daysOffLabel(person.timeOffDays) : undefined
+      }
       bar={
         <HourBar
           scale={scale}

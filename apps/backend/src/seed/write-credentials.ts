@@ -4,7 +4,14 @@ import * as path from 'path';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 
-import { COMPANY, SEED_PASSWORD, TEAMS, PROJECTS, USERS } from './seed-config';
+import {
+  COMPANY,
+  HISTORY_START,
+  SEED_PASSWORD,
+  TEAMS,
+  PROJECTS,
+  USERS,
+} from './seed-config';
 
 const TARGET = path.resolve(__dirname, '../../docs/TEST-CREDENTIALS.md');
 
@@ -69,6 +76,13 @@ by hand.
 ## Project members
 
 ${projects}
+
+## Reports history
+
+Time, plans and absences from ${HISTORY_START} up to yesterday, so Reports have
+July to the current month to show; the company starts in June, which is empty.
+What each person logs and plans is \`REPORT_HISTORY\` in the seed config. Sign
+in as the owner for the whole company, or as Sarah Manager for her two teams.
 
 > This file contains a password, so it is not committed: the repository ignores
 > \`*.md\` by default. Re-run \`make seed\` to recreate it.

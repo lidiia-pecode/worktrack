@@ -1,55 +1,17 @@
 import { HoursReportRow } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import {
-  describeAgainstPlan,
   groupProjectsByClient,
-  HourScale,
   hourScaleOf,
+  peopleCountLabel,
   percentOf,
 } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
-import { BarLegend, HourBar } from "./HourBar";
-import { ReportAxisRow, ReportRow } from "./ReportRow";
-
-const peopleText = (count: number | null) =>
-  count ? `${count} ${count === 1 ? "person" : "people"}` : undefined;
-
-type ProjectRowProps = {
-  project: HoursReportRow;
-  scale: HourScale;
-  onOpen: (projectId: string) => void;
-};
-
-const ProjectRow = ({ project, scale, onOpen }: ProjectRowProps) => {
-  const name = project.name ?? "";
-  const logged = formatDuration(project.totalMinutes);
-  const againstPlan = describeAgainstPlan(project);
-
-  return (
-    <ReportRow
-      name={name}
-      onOpen={() => onOpen(project.id!)}
-      detail={peopleText(project.peopleCount)}
-      bar={
-        <HourBar
-          scale={scale}
-          logged={project.totalMinutes}
-          planned={project.plannedMinutes}
-          label={`${name}: ${logged} logged, ${againstPlan.replace(" · ", ", ")}`}
-        />
-      }
-      figure={
-        <>
-          {logged}{" "}
-          <span className="font-normal text-muted-foreground">logged</span>
-        </>
-      }
-      subFigure={againstPlan}
-    />
-  );
-};
+import { AgainstPlanRow } from "./AgainstPlanRow";
+import { BarLegend } from "./HourBar";
+import { ReportAxisRow } from "./ReportRow";
 
 type ProjectsCardProps = {
   projects: HoursReportRow[];
@@ -96,11 +58,12 @@ export const ProjectsCard = ({
             </div>
             <ul>
               {client.projects.map((project) => (
-                <ProjectRow
+                <AgainstPlanRow
                   key={project.id}
-                  project={project}
+                  row={project}
                   scale={scale}
-                  onOpen={onOpenProject}
+                  detail={peopleCountLabel(project.peopleCount)}
+                  onOpen={() => onOpenProject(project.id!)}
                 />
               ))}
             </ul>

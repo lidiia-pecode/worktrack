@@ -8,6 +8,7 @@ import {
   isWeekend,
   toISODate,
 } from "./date";
+import { countLabel } from "./text";
 
 /** A planned project this close to its plan, as a share of it, counts as close to plan. */
 export const CLOSE_TO_PLAN_SHARE = 0.1;
@@ -109,6 +110,13 @@ export const describeAgainstPlan = ({
   plannedMinutes
     ? `${formatDuration(plannedMinutes)} planned · ${formatSignedDuration(totalMinutes - plannedMinutes)}`
     : "not planned";
+
+/** "3 people" on a project, or nothing when nobody is counted. */
+export const peopleCountLabel = (count: number | null) =>
+  count ? countLabel(count, "person", "people") : null;
+
+export const daysOffLabel = (days: number) =>
+  `${countLabel(days, "day", "days")} off`;
 
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>

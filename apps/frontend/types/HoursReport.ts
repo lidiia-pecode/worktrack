@@ -50,10 +50,6 @@ export interface HoursReportQuery {
   groupBy: HoursReportGroupBy;
   /** Only this project's time and plans. */
   projectId?: string;
-  /** Only this client's time and plans. */
-  client?: string;
-  /** Only internal work: projects with no client. */
-  withoutClient?: boolean;
   /** Only this person's time and plans. */
   userId?: string;
 }

@@ -16,11 +16,12 @@ const bucket = (
   start: string,
   end: string,
   workingDays = 5,
+  isPartial = false,
 ): TimelineBucket => ({
   start,
   end,
   workingDays,
-  isPartial: false,
+  isPartial,
   loggedMinutes: 0,
   billableMinutes: 0,
   plannedMinutes: 0,
@@ -60,8 +61,14 @@ describe("bucketNote", () => {
   it("counts the working days, and says so far where the counting stopped", () => {
     expect(bucketNote(bucket("2026-10-05", "2026-10-11"), null)).toBe("5 days");
     expect(
-      bucketNote(bucket("2026-10-19", "2026-10-20", 2), "2026-10-20"),
+      bucketNote(bucket("2026-10-19", "2026-10-20", 2, true), "2026-10-20"),
     ).toBe("2 days so far");
+  });
+
+  it("never says so far for a week that ended on the last counted day", () => {
+    expect(bucketNote(bucket("2026-10-12", "2026-10-18"), "2026-10-18")).toBe(
+      "5 days",
+    );
   });
 });
 

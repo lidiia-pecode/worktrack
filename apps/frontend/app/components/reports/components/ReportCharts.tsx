@@ -4,6 +4,7 @@ import { HoursReportGroupBy } from "@/types/enums";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useTimeline } from "@/hooks/useTimeline";
+import { cn } from "@/lib/utils/cn";
 import { kindOfWork } from "@/lib/utils/report-charts";
 import { DateRange } from "@/lib/utils/report-period";
 
@@ -48,8 +49,18 @@ export const ReportCharts = ({ range }: { range: DateRange }) => {
     );
   }
 
+  // The charts load on their own, so they can still show the previous period
+  // after the cards above have updated.
+  const isUpdating = timeline.isPlaceholderData || activities.isPlaceholderData;
+
   return (
-    <div className="grid items-start gap-4 @5xl:grid-cols-[2fr_1fr]">
+    <div
+      className={cn(
+        "grid items-start gap-4 @5xl:grid-cols-[2fr_1fr]",
+        isUpdating && "opacity-60 transition-opacity",
+      )}
+      aria-busy={isUpdating}
+    >
       {timeline.timeline.buckets.length > 0 && (
         <WeekByWeek timeline={timeline.timeline} />
       )}

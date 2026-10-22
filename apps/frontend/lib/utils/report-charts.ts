@@ -5,6 +5,7 @@ import {
   formatShortMonthLabel,
   fromISODate,
 } from "./date";
+import { countLabel } from "./text";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 
@@ -30,11 +31,11 @@ export const bucketLabel = (
  * far" when the counting stopped at yesterday inside it.
  */
 export const bucketNote = (
-  { end, workingDays }: TimelineBucket,
+  { end, workingDays, isPartial }: TimelineBucket,
   countedUntil: string | null,
 ) => {
-  const days = `${workingDays} ${workingDays === 1 ? "day" : "days"}`;
-  return end === countedUntil ? `${days} so far` : days;
+  const days = countLabel(workingDays, "day", "days");
+  return isPartial && end === countedUntil ? `${days} so far` : days;
 };
 
 /** Categories with a colour of their own; the rest share a grey "Other". */

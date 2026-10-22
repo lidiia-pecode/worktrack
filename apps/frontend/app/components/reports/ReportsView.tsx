@@ -223,6 +223,7 @@ export const ReportsView = () => {
           person={openedPerson}
           range={range}
           countedUntil={people.report.countedUntil}
+          isUpdating={isUpdating}
           onClose={close}
         />
       );
@@ -234,6 +235,7 @@ export const ReportsView = () => {
           key={openedProject.id}
           project={openedProject}
           range={range}
+          isUpdating={isUpdating}
           onClose={close}
         />
       )

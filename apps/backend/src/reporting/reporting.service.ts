@@ -36,6 +36,7 @@ import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import { HoursBilling } from './enums/hours-billing.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 /** What every report returns besides its rows and totals. */
 export interface ReportCoverage {
@@ -716,7 +717,9 @@ export class ReportingService {
 
   /**
    * Planned minutes over the same days and people as the Hours report, summed
-   * by its grouping, which uses only projects and people.
+   * by its grouping, which uses only projects and people. A deactivated
+   * person's plan counts only when they logged time in the range, as in the
+   * People report: a plan alone is usually left over from before they left.
    */
   private plannedRows(
     user: AuthUser,
@@ -739,7 +742,15 @@ export class ReportingService {
       .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom: query.dateFrom,
         countedTo,
-      });
+      })
+      .andWhere(
+        `(u.status = :activeStatus OR EXISTS (
+          SELECT 1 FROM time_logs l
+          WHERE l.user_id = u.id
+            AND l.date BETWEEN :dateFrom AND :countedTo
+        ))`,
+        { activeStatus: UserStatus.ACTIVE },
+      );
 
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
@@ -755,21 +766,15 @@ export class ReportingService {
 
   /**
    * Narrows a query that joins projects as `p` and users as `u` to one
-   * project, one client, internal work or one person, the way Reports opens a
-   * project's people or a person's projects.
+   * project or one person, the way Reports opens a project's people or a
+   * person's projects.
    */
   private applyRowFilters(
     qb: SelectQueryBuilder<ObjectLiteral>,
-    { projectId, client, withoutClient, userId }: HoursReportQuery,
+    { projectId, userId }: HoursReportQuery,
   ): void {
     if (projectId) {
       qb.andWhere('p.id = :projectId', { projectId });
-    }
-    if (client) {
-      qb.andWhere(`${CLIENT_GROUP} = LOWER(:client)`, { client });
-    }
-    if (withoutClient) {
-      qb.andWhere(`${CLIENT_NAME} IS NULL`);
     }
     if (userId) {
       qb.andWhere('u.id = :userId', { userId });

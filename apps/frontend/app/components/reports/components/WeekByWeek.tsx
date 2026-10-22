@@ -1,4 +1,4 @@
-import { Timeline } from "@/types";
+import { Timeline, TimelineBucket } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
 import { bucketLabel, bucketNote } from "@/lib/utils/report-charts";
@@ -8,6 +8,16 @@ import { Card } from "@/components/ui/card";
 
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
+
+// A missing value is said, never shown as 0h, as on the bars.
+const expectedText = ({ expectedMinutes }: TimelineBucket) =>
+  expectedMinutes > 0
+    ? `${formatDuration(expectedMinutes)} expected`
+    : "nothing expected";
+const plannedText = ({ plannedMinutes }: TimelineBucket) =>
+  plannedMinutes > 0
+    ? `${formatDuration(plannedMinutes)} planned`
+    : "not planned";
 
 /** Room for a column's label and hours, gap included; past it the chart scrolls. */
 const MIN_COLUMN_REM = 3.75;
@@ -109,7 +119,7 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
                   <div
                     key={bucket.start}
                     className="relative flex h-full items-end justify-center"
-                    title={`${bucketLabel(bucket, interval)}: ${formatDuration(bucket.loggedMinutes)} logged, ${formatDuration(bucket.expectedMinutes)} expected, ${formatDuration(bucket.plannedMinutes)} planned`}
+                    title={`${bucketLabel(bucket, interval)}: ${formatDuration(bucket.loggedMinutes)} logged, ${expectedText(bucket)}, ${plannedText(bucket)}`}
                   >
                     <span
                       className="absolute text-2xs font-medium tabular-nums"
@@ -196,8 +206,8 @@ export const WeekByWeek = ({ timeline }: { timeline: Timeline }) => {
                 {bucket.isPartial && ", part of a " + unit}
               </th>
               <td>{formatDuration(bucket.loggedMinutes)}</td>
-              <td>{formatDuration(bucket.expectedMinutes)}</td>
-              <td>{formatDuration(bucket.plannedMinutes)}</td>
+              <td>{expectedText(bucket)}</td>
+              <td>{plannedText(bucket)}</td>
             </tr>
           ))}
         </tbody>

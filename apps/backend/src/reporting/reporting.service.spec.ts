@@ -5,7 +5,7 @@ import { DataSource } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { addDays, todayISODate } from 'src/capacity/working-days.util';
@@ -780,6 +780,24 @@ describe('ReportingService', () => {
         expect(forManager.totals.plannedMinutes).toBe(540);
       });
 
+      it("leaves out a deactivated person's plan unless they logged time", async () => {
+        const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
+        await dataSource
+          .getRepository(User)
+          .update(leaver.id, { status: UserStatus.DEACTIVATED });
+        const leftoverPlan = await plan(leaver.id, crmProjectId, 100);
+
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.PROJECT,
+        );
+        await dataSource.getRepository(PlanningEntry).remove(leftoverPlan);
+        await dataSource.getRepository(User).delete(leaver.id);
+
+        expect(rows[0].plannedMinutes).toBe(540);
+        expect(totals.plannedMinutes).toBe(540);
+      });
+
       it('has no plan by activity, which plans are not made for', async () => {
         const { rows, totals } = await report(
           owner,
@@ -791,13 +809,11 @@ describe('ReportingService', () => {
       });
     });
 
-    describe("opening a project's or a client's people", () => {
+    describe("opening a project's people", () => {
       const people = (
         user: AuthUser,
         filter: {
           projectId?: string;
-          client?: string;
-          withoutClient?: boolean;
         },
       ) =>
         service.getHoursReport(user, {
@@ -823,22 +839,6 @@ describe('ReportingService', () => {
           totalMinutes: 600,
           plannedMinutes: 540,
         });
-      });
-
-      it('lists a client the same way, whatever the case of its name', async () => {
-        const { rows } = await people(owner, { client: 'acme' });
-
-        expect(figures(rows)).toEqual([
-          ['Member Test', 360, 480],
-          ['Outsider Test', 240, 0],
-          ['Manager Test', 0, 60],
-        ]);
-      });
-
-      it('opens internal work, the projects with no client', async () => {
-        const { rows } = await people(owner, { withoutClient: true });
-
-        expect(figures(rows)).toEqual([['Member Test', 120, 0]]);
       });
 
       it('shows a manager only their team on the project', async () => {

@@ -508,6 +508,10 @@ describe("ReportsView", () => {
       expect(days[0]).toHaveTextContent("8h");
       expect(days[1]).toHaveTextContent("Vacation");
       expect(days[2]).toHaveTextContent("No time");
+      // Each day sits in its weekday's column, Monday first.
+      expect(days[0]).toHaveStyle({
+        gridColumnStart: String(new Date(`${loggedDay}T00:00`).getDay()),
+      });
 
       const projectsSection = within(panel).getByRole("region", {
         name: "Projects",
@@ -525,6 +529,19 @@ describe("ReportsView", () => {
       expect(navigation.search).toBe("");
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
       expect(row).toHaveFocus();
+    });
+
+    it("says when a person has no plan or nothing expected, with no gap", () => {
+      navigation.history.splice(0, 1, "?person=noah-reed");
+      showReports(
+        peopleReport([person("Noah Reed", 10, 0, 0, 0)]),
+        projectsReport(projects),
+      );
+
+      const panel = screen.getByRole("complementary", { name: "Noah Reed" });
+      expect(panel).toHaveTextContent("Nothing expected");
+      expect(panel).toHaveTextContent("Not planned");
+      expect(panel).not.toHaveTextContent("against expected");
     });
 
     it("opens a project from a pasted link, with its people against their plans", () => {

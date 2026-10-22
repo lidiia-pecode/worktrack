@@ -1,6 +1,8 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
 import { formatDayMonthLabel, formatDuration } from "./date";
+import { daysOffLabel, peopleCountLabel } from "./report-overview";
+import { byCount } from "./text";
 
 /** A gap has to be at least this big, in minutes, to be worth a look. */
 export const ATTENTION_MIN_MINUTES = 8 * 60;
@@ -36,11 +38,8 @@ const isBigGap = (gap: number, reference: number) =>
   Math.abs(gap) >= ATTENTION_MIN_MINUTES &&
   Math.abs(gap) > reference * ATTENTION_MIN_SHARE;
 
-const peopleText = (count: number | null) =>
-  count ? `${count} ${count === 1 ? "person" : "people"}` : null;
-
 const projectContext = (project: HoursReportRow) =>
-  [project.detail ?? "Internal work", peopleText(project.peopleCount)]
+  [project.detail ?? "Internal work", peopleCountLabel(project.peopleCount)]
     .filter(Boolean)
     .join(" · ");
 
@@ -78,8 +77,6 @@ const projectItem = (project: HoursReportRow): AttentionItem | null => {
   };
 };
 
-const daysOff = (days: number) => `${days} ${days === 1 ? "day" : "days"} off`;
-
 /** A plan beyond what someone can work is a planning fact, not a verdict on them. */
 const plannedBeyondItem = (person: PeopleReportRow): AttentionItem | null => {
   const gap = person.plannedMinutes - person.expectedMinutes;
@@ -92,7 +89,7 @@ const plannedBeyondItem = (person: PeopleReportRow): AttentionItem | null => {
     what: `is planned for ${formatDuration(person.plannedMinutes)} but expected to work ${formatDuration(person.expectedMinutes)}`,
     why:
       person.timeOffDays > 0
-        ? `${daysOff(person.timeOffDays)} leave less room than the plan assumes`
+        ? `${daysOffLabel(person.timeOffDays)} leave less room than the plan assumes`
         : "The plan is more than their working hours",
     minutes: gap,
   };
@@ -109,7 +106,7 @@ const listOf = (names: string[]) => {
 };
 
 const workingDays = (days: number) =>
-  `${days} working ${days === 1 ? "day" : "days"}`;
+  `${days} working ${byCount(days, "day", "days")}`;
 
 const INVOICE_NOTE = "Worth checking before you invoice.";
 

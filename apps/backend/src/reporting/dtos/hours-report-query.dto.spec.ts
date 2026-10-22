@@ -15,18 +15,9 @@ const parse = async (query: Record<string, string>) => {
 };
 
 describe('HoursReportQuery', () => {
-  it('reads withoutClient from the query string as a flag', async () => {
-    expect((await parse({ withoutClient: 'true' })).dto.withoutClient).toBe(
-      true,
-    );
-    expect((await parse({ withoutClient: 'false' })).dto.withoutClient).toBe(
-      false,
-    );
-  });
-
-  it('refuses an empty client and a project id that is not a uuid', async () => {
-    expect((await parse({ client: '' })).errors).not.toHaveLength(0);
+  it('refuses a project or person id that is not a uuid', async () => {
     expect((await parse({ projectId: 'crm' })).errors).not.toHaveLength(0);
+    expect((await parse({ userId: 'john' })).errors).not.toHaveLength(0);
   });
 
   it('needs no filter at all', async () => {
