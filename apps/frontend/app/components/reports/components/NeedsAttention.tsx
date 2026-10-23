@@ -97,7 +97,13 @@ export const NeedsAttention = ({
       {facts.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">{emptyLine}</p>
       ) : (
-        <ul className="mt-2">
+        // Side by side when there are two; one card takes the whole width.
+        <ul
+          className={cn(
+            "mt-4 grid gap-3",
+            facts.length > 1 && "@3xl:grid-cols-2",
+          )}
+        >
           {facts.map((fact) => {
             const onOpen =
               fact.kind === "daysWithoutTime" ? onOpenPerson : onOpenProject;
@@ -105,13 +111,13 @@ export const NeedsAttention = ({
             return (
               <li
                 key={fact.kind}
-                className="flex items-start gap-3 border-t border-border/60 py-3 first:border-t-0"
+                className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/8 px-4 py-3.5"
               >
                 {/* One line high, so the dot sits beside the first line. */}
                 <span className="flex h-6 items-center">
                   <AttentionDot />
                 </span>
-                <div className="flex min-w-0 flex-col gap-0.5">
+                <div className="flex min-w-0 flex-col gap-1.5">
                   <p className="font-semibold">
                     {fact.subject && (
                       <>
