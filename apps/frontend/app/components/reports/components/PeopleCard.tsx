@@ -89,8 +89,10 @@ const TeamRows = ({
         <span className="col-span-2 flex min-w-0 items-start gap-2 @sm:col-span-1">
           <Chevron className="mt-0.5 size-4 shrink-0" aria-hidden />
           <span className="min-w-0">
-            <span className="flex items-center gap-2">
-              <span className="font-semibold">{group.name}</span>
+            <span className="flex min-w-0 items-center gap-2">
+              <span title={group.name} className="truncate font-semibold">
+                {group.name}
+              </span>
               {needsAttention && !isOpen && (
                 <AttentionDot title="Someone here needs attention" />
               )}

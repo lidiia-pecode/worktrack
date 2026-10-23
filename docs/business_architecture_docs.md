@@ -781,17 +781,18 @@ see, and how a new company gets started. §7 plans that work.
   819h"); the export and a person's days keep exact time. It is a fact, not a score (D3): nothing is red or green, and
   people are listed by name. Beside it, "Where the time went" switches between
   projects and the kind of work: each project, most logged first with its
-  client, as one bar of its time against its plan (a grey bar and "no plan"
-  without one), or logged time by activity category, the five largest each in
+  client, as one bar of its time against its plan (a full, lighter bar and
+  "no plan" without one), or logged time by activity category, the five largest each in
   a colour of its own and named with its hours, the rest in an "Other" that
   opens. A person's name opens a panel with what the row doesn't say (their
   plan, billable time and kinds of time off), each day of the month (logged, a
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
   to their week on Team time; a project's name opens its billable time and its
-  people against their plans. A month still open to edits is marked so. Everything counts
+  people against their plans. One line under the month says how far it is
+  counted and whether it is open for edits or locked. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
-  teams they lead.
+  teams they lead, and are told that projects show their teams' time only.
 - **Hours export** — from Reports, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person (with
   their email after the name), day, project, activity and billing (Billable or

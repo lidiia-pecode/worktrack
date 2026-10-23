@@ -10,12 +10,14 @@ import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
-import { bucketLabel } from "@/lib/utils/report-charts";
+import {
+  formatDayMonthLabel,
+  getMonthRange,
+  todayISODate,
+  toMonthKey,
+} from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
-
-import { Badge } from "@/components/ui/badge";
 
 import { EmptyState } from "../shared/EmptyState";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
@@ -34,41 +36,27 @@ const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 
 type ReportScopeProps = {
-  range: ReportRange;
   countedUntil: string | null;
   isProvisional: boolean;
   isManager: boolean;
 };
 
-/** Which days the figures cover, and whose. */
+/**
+ * One line saying how far the month is counted, whether it can still change,
+ * and whose figures they are: "Up to Oct 23 · open for edits · your teams".
+ */
 const ReportScope = ({
-  range,
   countedUntil,
   isProvisional,
   isManager,
 }: ReportScopeProps) => {
-  const parts = [
-    bucketLabel({ start: range.dateFrom, end: countedUntil ?? range.dateTo }),
-    countedUntil && "today’s time counts tomorrow",
-    isManager && "your teams",
-  ].filter(Boolean);
+  const state = isProvisional ? "open for edits" : "locked";
+  const parts = countedUntil
+    ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
+    : [isProvisional ? "Open for edits" : "Locked"];
+  if (isManager) parts.push("your teams");
 
-  return (
-    <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-      {parts.join(" · ")}
-      {isProvisional && (
-        <Badge
-          variant="neutral"
-          title="Some days in this month can still be edited, so these figures may change."
-        >
-          Month still open
-          <span className="sr-only">
-            : some days can still be edited, so these figures may change
-          </span>
-        </Badge>
-      )}
-    </p>
-  );
+  return <p className="text-sm text-muted-foreground">{parts.join(" · ")}</p>;
 };
 
 export const ReportsView = () => {
@@ -184,6 +172,7 @@ export const ReportsView = () => {
             range={range}
             projects={projects.report.rows}
             marked={attention.projects}
+            isManager={isManager}
             onOpenProject={openProject}
           />
         </div>
@@ -254,7 +243,6 @@ export const ReportsView = () => {
           />
           {peopleReport && !isNothingCounted && (
             <ReportScope
-              range={range}
               countedUntil={peopleReport.countedUntil}
               isProvisional={peopleReport.isProvisional}
               isManager={isManager}

@@ -11,7 +11,8 @@ type ReportBarProps = {
 
 /**
  * One bar: logged time as a share of what it is measured against, full at or
- * past it. With nothing to measure against, logged time is a plain grey bar.
+ * past it. With nothing to measure against, logged time is a full bar in a
+ * lighter teal, so it doesn't read as reaching a plan.
  */
 export const ReportBar = ({
   value,
@@ -35,7 +36,7 @@ export const ReportBar = ({
       <div
         className={cn(
           "h-full rounded-full",
-          hasReference ? "bg-brand" : "bg-muted-foreground/40",
+          hasReference ? "bg-brand" : "bg-report-unplanned",
         )}
         style={{ width: `${percent}%` }}
       />

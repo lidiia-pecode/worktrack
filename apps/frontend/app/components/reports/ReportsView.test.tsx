@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,8 +27,11 @@ vi.mock("@/hooks/auth/useCompany", () => ({
     company: { timezone: "UTC", createdAt: "2024-01-01T00:00:00Z" },
   }),
 }));
+const auth = vi.hoisted(() => ({ isOwner: false }));
 vi.mock("@/hooks/auth/useAuth", () => ({
-  useAuth: () => ({ user: { role: UserRole.MANAGER } }),
+  useAuth: () => ({
+    user: { role: auth.isOwner ? UserRole.OWNER : UserRole.MANAGER },
+  }),
 }));
 vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
@@ -221,6 +224,7 @@ describe("ReportsView", () => {
   ];
 
   beforeEach(() => {
+    auth.isOwner = false;
     vi.mocked(usePeopleReport).mockReset();
     vi.mocked(useHoursReport).mockReset();
     navigation.history.splice(0, navigation.history.length, "");
@@ -362,6 +366,12 @@ describe("ReportsView", () => {
       }),
     ).toBeInTheDocument();
     expect(row("CRM System")).toHaveTextContent("no plan");
+    // Logged with nothing to measure it against: a full, lighter bar.
+    expect(
+      within(row("CRM System"))
+        .getByRole("img", { name: "CRM System: 10h logged, no plan" })
+        .querySelector(".bg-report-unplanned"),
+    ).toHaveStyle({ width: "100%" });
     expect(
       within(row("CRM System")).getByRole("img", {
         name: "Logged with no plan",
@@ -445,11 +455,37 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("tells a manager the figures cover their teams, and that the month is open", () => {
-    showReports(peopleReport(team), projectsReport(projects));
+  it("says how far the month is counted, whether it can change, and whose it is", () => {
+    const report = peopleReport(team);
 
-    expect(screen.getByText(/· your teams$/)).toBeInTheDocument();
-    expect(screen.getByText("Month still open")).toBeInTheDocument();
+    showReports(
+      { ...report, countedUntil: "2026-10-23" },
+      projectsReport(projects),
+    );
+    expect(
+      screen.getByText("Up to Oct 23 · open for edits · your teams"),
+    ).toBeInTheDocument();
+    cleanup();
+
+    showReports(report, projectsReport(projects));
+    expect(screen.getByText("Open for edits · your teams")).toBeInTheDocument();
+    cleanup();
+
+    auth.isOwner = true;
+    showReports({ ...report, isProvisional: false }, projectsReport(projects));
+    expect(screen.getByText("Locked")).toBeInTheDocument();
+  });
+
+  it("tells only a manager that projects show their teams' time", () => {
+    showReports(peopleReport(team), projectsReport(projects));
+    const card = () =>
+      screen.getByRole("region", { name: "Where the time went" });
+    expect(card()).toHaveTextContent("Your teams’ time only");
+    cleanup();
+
+    auth.isOwner = true;
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(card()).not.toHaveTextContent("Your teams’ time only");
   });
 
   describe("panels", () => {

@@ -83,6 +83,8 @@ type WhereTheTimeWentProps = {
   projects: HoursReportRow[];
   /** The projects Needs attention names, with why. */
   marked: Map<string, string>;
+  /** A manager sees only their teams' time, which a project's figures don't say. */
+  isManager: boolean;
   onOpenProject: (projectId: string) => void;
 };
 
@@ -91,6 +93,7 @@ export const WhereTheTimeWent = ({
   range,
   projects,
   marked,
+  isManager,
   onOpenProject,
 }: WhereTheTimeWentProps) => {
   const [view, setView] = useState<WhereView>("projects");
@@ -98,9 +101,16 @@ export const WhereTheTimeWent = ({
   return (
     <Card as="section" aria-labelledby="report-where" className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="report-where" className="text-base font-semibold">
-          Where the time went
-        </h2>
+        <div>
+          <h2 id="report-where" className="text-base font-semibold">
+            Where the time went
+          </h2>
+          {isManager && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Your teams’ time only
+            </p>
+          )}
+        </div>
         <div
           role="group"
           aria-label="Show"
