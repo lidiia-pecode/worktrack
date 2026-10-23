@@ -562,42 +562,44 @@ describe("ReportsView", () => {
       ).toBeInTheDocument();
     });
 
-    it("lists what is worth a look, largest first, three at first, each opening where it points", async () => {
+    it("says what needs attention, one card per kind, each acting where it points", async () => {
       const user = userEvent.setup();
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
       showReports(peopleReport(team), projectsReport(projects));
 
-      const card = screen.getByRole("region", { name: "Worth a look" });
-      const whos = () =>
+      const card = screen.getByRole("region", { name: "Needs attention" });
+      expect(
         within(card)
           .getAllByRole("listitem")
-          .map((item) => item.querySelector(".font-semibold")?.textContent);
-      expect(card).toHaveTextContent("4 facts from this period");
-      expect(whos()).toEqual(["Data Warehouse", "Ethan Brooks", "WorkTrack"]);
-
-      const more = within(card).getByRole("button", { name: /Show 1 more/ });
-      await user.click(more);
-      expect(more).toHaveAttribute("aria-expanded", "true");
-      expect(whos()).toEqual([
-        "Data Warehouse",
-        "Ethan Brooks",
-        "WorkTrack",
-        "CRM System",
+          .map((item) => item.firstChild?.textContent),
+      ).toEqual([
+        "3 projects are more than 10% off plan",
+        "Ethan Brooks is planned beyond their hours",
       ]);
-      await user.click(within(card).getByRole("button", { name: /Show less/ }));
-      expect(whos()).toHaveLength(3);
+      expect(card).toHaveTextContent(
+        "Largest: Data Warehouse −27h · WorkTrack +20h",
+      );
 
       await user.click(
-        within(card).getByRole("button", {
-          name: "Open details: Ethan Brooks",
-        }),
+        within(card).getByRole("button", { name: /^See projects/ }),
+      );
+      expect(scrollIntoView).toHaveBeenCalled();
+
+      await user.click(
+        within(card).getByRole("button", { name: /^Open person/ }),
       );
       expect(navigation.search).toBe("?person=ethan-brooks");
+    });
 
-      await user.click(
-        within(card).getByRole("button", { name: "See who: WorkTrack" }),
+    it("says when nothing needs attention", () => {
+      showReports(
+        peopleReport([person("Ava Mitchell", 112, 112, 112)]),
+        projectsReport([project("Mobile App", "Retail Corp", 50, 50)]),
       );
+
       expect(
-        screen.getByRole("complementary", { name: "WorkTrack" }),
+        screen.getByText("Nothing needs attention this month."),
       ).toBeInTheDocument();
     });
 

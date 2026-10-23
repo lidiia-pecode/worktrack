@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import { attentionItems } from "./report-attention";
+import { formatDayMonthLabel } from "./date";
+import { attentionFacts } from "./report-attention";
 
 const HOUR = 60;
-const STANDARD_DAY = 8 * HOUR;
 
 const project = (
   name: string,
@@ -40,126 +40,147 @@ const person = (
   ...figures,
 });
 
-const kindsFor = (people: PeopleReportRow[], projects: HoursReportRow[]) =>
-  attentionItems(people, projects, STANDARD_DAY).map((item) => [
-    item.who,
-    item.kind,
-  ]);
+const factOf = (
+  kind: string,
+  people: PeopleReportRow[],
+  projects: HoursReportRow[] = [],
+) => attentionFacts(people, projects).find((fact) => fact.kind === kind);
 
-describe("attentionItems", () => {
-  it("flags a project off its plan by at least 8h and over a tenth", () => {
+describe("attentionFacts", () => {
+  it("has nothing to say about a month on plan", () => {
     expect(
-      kindsFor(
-        [],
-        [
-          project("Over", 120, 100), // +20h, 20%
-          project("Under", 10, 100), // −90h
-          project("Small", 107, 100), // +7h: under 8h
-          project("Big but close", 560, 520), // +40h, under 10%
-        ],
+      attentionFacts(
+        [person("Ava Mitchell", { loggedMinutes: 100 * HOUR })],
+        [project("Mobile App", 100, 100)],
       ),
-    ).toEqual([
-      ["Under", "projectOffPlan"],
-      ["Over", "projectOffPlan"],
-    ]);
-  });
-
-  it("says how a project is off its plan", () => {
-    const [under, over] = attentionItems(
-      [],
-      [project("Over", 120, 100), project("Under", 10, 100)],
-      STANDARD_DAY,
-    );
-
-    expect(under.what).toBe("has 10h logged of 100h planned");
-    expect(over.what).toBe("has 20h more logged than planned");
-    expect(over.why).toBe("Retail Corp · 3 people");
-  });
-
-  it("flags time logged with no plan, from 8h", () => {
-    expect(
-      kindsFor([], [project("Unplanned", 8, 0), project("Tiny", 7, 0)]),
-    ).toEqual([["Unplanned", "projectWithoutPlan"]]);
-  });
-
-  it("flags somebody planned beyond what they are expected to work", () => {
-    const [item] = attentionItems(
-      [
-        person("Ethan Brooks", {
-          plannedMinutes: 96 * HOUR,
-          expectedMinutes: 72 * HOUR,
-          timeOffDays: 5,
-        }),
-        person("Close", { plannedMinutes: 105 * HOUR }),
-      ],
-      [],
-      STANDARD_DAY,
-    );
-
-    expect(item).toMatchObject({
-      kind: "plannedBeyondExpected",
-      who: "Ethan Brooks",
-      what: "is planned for 96h but expected to work 72h",
-      why: "5 days off leave less room than the plan assumes",
-    });
-  });
-
-  it("names the days somebody logged nothing on", () => {
-    const [item] = attentionItems(
-      [
-        person("Liam Carter", {
-          daysWithoutTime: ["2026-10-15", "2026-10-16", "2026-10-19"],
-        }),
-      ],
-      [],
-      STANDARD_DAY,
-    );
-
-    expect(item.what).toBe("has 3 working days with no time logged");
-    expect(item.why).toMatch(/ and .+\. Worth checking before you invoice\.$/);
-  });
-
-  it("gathers several people's missing days into one item, so other facts stay in view", () => {
-    const missing = (days: number) =>
-      Array.from({ length: days }, (_, i) => `2026-10-${10 + i}`);
-    const items = attentionItems(
-      ["Ava Mitchell", "Ethan Brooks", "Liam Carter", "Mia Collins"].map(
-        (name, i) => person(name, { daysWithoutTime: missing(10 - i) }),
-      ),
-      [project("Over", 120, 100)],
-      STANDARD_DAY,
-    );
-
-    expect(items.map((item) => item.kind)).toEqual([
-      "teamDaysWithoutTime",
-      "projectOffPlan",
-    ]);
-    expect(items[0]).toMatchObject({
-      who: "4 people",
-      what: "have 34 working days with no time logged between them",
-      why: "Ava Mitchell (10), Ethan Brooks (9), Liam Carter (8) and 1 more. Worth checking before you invoice.",
-    });
-  });
-
-  it("never flags somebody for logging less than expected", () => {
-    expect(
-      kindsFor([person("Grace Morgan", { loggedMinutes: 10 * HOUR })], []),
     ).toEqual([]);
   });
 
-  it("puts the largest first and keeps every fact", () => {
-    const projects = [10, 20, 30, 40, 50, 60].map((gap) =>
-      project(`Project ${gap}`, 100 + gap, 100),
-    );
-    const items = attentionItems(
-      [person("Liam Carter", { daysWithoutTime: ["2026-10-15"] })],
-      projects,
-      STANDARD_DAY,
+  it("puts missing time first, then projects, then plans beyond hours", () => {
+    const facts = attentionFacts(
+      [
+        person("Ethan Brooks", { plannedMinutes: 130 * HOUR }),
+        person("Liam Carter", { daysWithoutTime: ["2026-10-02"] }),
+      ],
+      [project("CRM System", 50, 20)],
     );
 
-    // Project 10 is exactly a tenth off, so it is left out.
-    expect(items.map((item) => item.minutes)).toEqual(
-      [60, 50, 40, 30, 20, 8].map((hours) => hours * HOUR),
-    );
+    expect(facts.map((fact) => fact.kind)).toEqual([
+      "daysWithoutTime",
+      "projectsOffPlan",
+      "plannedBeyondHours",
+    ]);
+  });
+
+  describe("days with no time", () => {
+    it("names one person's days, and opens that person", () => {
+      const days = ["2026-10-02", "2026-10-09", "2026-10-16", "2026-10-23"];
+      const fact = factOf("daysWithoutTime", [
+        person("Liam Carter", { daysWithoutTime: days }),
+      ]);
+
+      expect(fact).toEqual({
+        kind: "daysWithoutTime",
+        headline: "Liam Carter has 4 days with no time logged",
+        detail: `${days.slice(0, 3).map(formatDayMonthLabel).join(", ")} and 1 more`,
+        subjectId: "Liam Carter",
+      });
+    });
+
+    it("groups several people, most days first, with no single person to open", () => {
+      const fact = factOf("daysWithoutTime", [
+        person("Noah Turner", { daysWithoutTime: ["2026-10-01"] }),
+        person("Samuel Bell", {
+          daysWithoutTime: ["2026-10-12", "2026-10-13"],
+        }),
+        person("Liam Carter", { daysWithoutTime: ["2026-10-02"] }),
+        person("Mark Nobody", { daysWithoutTime: ["2026-10-21"] }),
+      ]);
+
+      expect(fact?.headline).toBe("4 people have days with no time logged");
+      expect(fact?.detail).toBe(
+        "Samuel Bell · 2, Liam Carter · 1, Mark Nobody · 1 and 1 more",
+      );
+      expect(fact?.subjectId).toBeUndefined();
+    });
+  });
+
+  describe("projects off plan", () => {
+    it("flags a gap of at least 8h and over 10%, either way, and no other", () => {
+      const flagged = (logged: number, planned: number) =>
+        Boolean(factOf("projectsOffPlan", [], [project("A", logged, planned)]));
+
+      expect(flagged(108, 100)).toBe(false); // 8h but only 8%
+      expect(flagged(111, 100)).toBe(true); // 11h and 11%
+      expect(flagged(27, 20)).toBe(false); // 35% but under 8h
+      expect(flagged(28, 20)).toBe(true);
+      expect(flagged(89, 100)).toBe(true); // under the plan too
+    });
+
+    it("counts time with no plan from 8h", () => {
+      expect(factOf("projectsOffPlan", [], [project("A", 7, 0)])).toBe(
+        undefined,
+      );
+      expect(factOf("projectsOffPlan", [], [project("A", 8, 0)])).toEqual({
+        kind: "projectsOffPlan",
+        headline: "A is more than 10% off plan",
+        detail: "8h logged with no plan",
+        subjectId: "A",
+      });
+    });
+
+    it("counts several and names the two largest gaps", () => {
+      const fact = factOf(
+        "projectsOffPlan",
+        [],
+        [
+          project("CRM System", 139, 88),
+          project("Support Desk", 193, 0),
+          project("Energy Usage Dashboard", 153, 216),
+          project("Mobile App", 50, 50),
+        ],
+      );
+
+      expect(fact?.headline).toBe("3 projects are more than 10% off plan");
+      expect(fact?.detail).toBe(
+        "Largest: Support Desk, 193h with no plan · Energy Usage Dashboard −63h",
+      );
+      expect(fact?.subjectId).toBeUndefined();
+    });
+  });
+
+  describe("planned beyond their hours", () => {
+    it("flags a plan beyond expected hours, never logging less than expected", () => {
+      const people = [
+        person("Ethan Brooks", {
+          plannedMinutes: 120 * HOUR,
+          expectedMinutes: 96 * HOUR,
+        }),
+        person("Mia Collins", {
+          loggedMinutes: 10 * HOUR,
+          plannedMinutes: 100 * HOUR,
+        }),
+      ];
+
+      expect(attentionFacts(people, [])).toEqual([
+        {
+          kind: "plannedBeyondHours",
+          headline: "Ethan Brooks is planned beyond their hours",
+          detail: "120h planned, 96h expected",
+          subjectId: "Ethan Brooks",
+        },
+      ]);
+    });
+
+    it("groups several people by name", () => {
+      const overPlanned = { plannedMinutes: 130 * HOUR };
+      const fact = factOf("plannedBeyondHours", [
+        person("Ethan Brooks", overPlanned),
+        person("Lucas Reed", overPlanned),
+      ]);
+
+      expect(fact?.headline).toBe("2 people are planned beyond their hours");
+      expect(fact?.detail).toBe("Ethan Brooks and Lucas Reed");
+    });
   });
 });

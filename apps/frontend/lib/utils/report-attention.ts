@@ -1,99 +1,37 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import { formatDayMonthLabel, formatDuration } from "./date";
-import { daysOffLabel, peopleCountLabel } from "./report-overview";
-import { byCount } from "./text";
+import {
+  formatDayMonthLabel,
+  formatDuration,
+  formatSignedDuration,
+} from "./date";
+import { countLabel } from "./text";
 
-/** A gap has to be at least this big, in minutes, to be worth a look. */
+/** A gap has to be at least this big, in minutes, to need attention. */
 export const ATTENTION_MIN_MINUTES = 8 * 60;
 
 /** And more than this share of what it is measured against. */
 export const ATTENTION_MIN_SHARE = 0.1;
 
-/** The list shows this many at first, so it stays a short read; the rest open on request. */
-export const ATTENTION_SHOWN_AT_FIRST = 3;
-
-/** Days or people named one by one before the rest are counted. */
+/** Names, days or projects spelled out before the rest are counted. */
 const NAMED_IN_FULL = 3;
+const LARGEST_PROJECTS_NAMED = 2;
 
 export type AttentionKind =
-  | "projectOffPlan"
-  | "projectWithoutPlan"
-  | "plannedBeyondExpected"
-  | "daysWithoutTime"
-  | "teamDaysWithoutTime";
+  "daysWithoutTime" | "projectsOffPlan" | "plannedBeyondHours";
 
-export interface AttentionItem {
+/** One kind of problem in the month, said once however many it covers. */
+export interface AttentionFact {
   kind: AttentionKind;
-  /** The project's or the person's id, for the item's action; empty for the team. */
-  subjectId: string;
-  who: string;
-  what: string;
-  why: string;
-  /** How big the fact is, in minutes, to put the largest first. */
-  minutes: number;
+  headline: string;
+  detail: string;
+  /** The one person or project the fact is about, for its action. */
+  subjectId?: string;
 }
 
 const isBigGap = (gap: number, reference: number) =>
   Math.abs(gap) >= ATTENTION_MIN_MINUTES &&
   Math.abs(gap) > reference * ATTENTION_MIN_SHARE;
-
-const projectContext = (project: HoursReportRow) =>
-  [project.detail ?? "Internal work", peopleCountLabel(project.peopleCount)]
-    .filter(Boolean)
-    .join(" · ");
-
-const projectItem = (project: HoursReportRow): AttentionItem | null => {
-  const logged = project.totalMinutes;
-  const planned = project.plannedMinutes ?? 0;
-  const base = {
-    subjectId: project.id!,
-    who: project.name ?? "",
-    why: projectContext(project),
-  };
-
-  if (planned === 0) {
-    return logged >= ATTENTION_MIN_MINUTES
-      ? {
-          ...base,
-          kind: "projectWithoutPlan",
-          what: `has ${formatDuration(logged)} logged and no plan`,
-          minutes: logged,
-        }
-      : null;
-  }
-
-  const gap = logged - planned;
-  if (!isBigGap(gap, planned)) return null;
-
-  return {
-    ...base,
-    kind: "projectOffPlan",
-    what:
-      gap > 0
-        ? `has ${formatDuration(gap)} more logged than planned`
-        : `has ${formatDuration(logged)} logged of ${formatDuration(planned)} planned`,
-    minutes: Math.abs(gap),
-  };
-};
-
-/** A plan beyond what someone can work is a planning fact, not a verdict on them. */
-const plannedBeyondItem = (person: PeopleReportRow): AttentionItem | null => {
-  const gap = person.plannedMinutes - person.expectedMinutes;
-  if (gap <= 0 || !isBigGap(gap, person.expectedMinutes)) return null;
-
-  return {
-    kind: "plannedBeyondExpected",
-    subjectId: person.userId,
-    who: person.name,
-    what: `is planned for ${formatDuration(person.plannedMinutes)} but expected to work ${formatDuration(person.expectedMinutes)}`,
-    why:
-      person.timeOffDays > 0
-        ? `${daysOffLabel(person.timeOffDays)} leave less room than the plan assumes`
-        : "The plan is more than their working hours",
-    minutes: gap,
-  };
-};
 
 /** "a, b and c", or "a, b, c and 2 more". */
 const listOf = (names: string[]) => {
@@ -105,19 +43,9 @@ const listOf = (names: string[]) => {
   return `${named.slice(0, -1).join(", ")} and ${named.at(-1)}`;
 };
 
-const workingDays = (days: number) =>
-  `${days} working ${byCount(days, "day", "days")}`;
-
-const INVOICE_NOTE = "Worth checking before you invoice.";
-
-/**
- * Missing days are one item: one person's, named by date, or the team's,
- * named by person, so a half-logged month doesn't push every other fact out.
- */
-const daysWithoutTimeItem = (
+const daysWithoutTimeFact = (
   people: PeopleReportRow[],
-  standardDayMinutes: number,
-): AttentionItem | null => {
+): AttentionFact | null => {
   const missing = people
     .filter((person) => person.daysWithoutTime.length > 0)
     .sort(
@@ -127,52 +55,110 @@ const daysWithoutTimeItem = (
     );
   if (missing.length === 0) return null;
 
-  const days = missing.reduce(
-    (sum, person) => sum + person.daysWithoutTime.length,
-    0,
-  );
-  // A day counts as a standard day, so it compares with the hour gaps.
-  const minutes = days * standardDayMinutes;
-
   if (missing.length === 1) {
     const [person] = missing;
     return {
       kind: "daysWithoutTime",
+      headline: `${person.name} has ${countLabel(person.daysWithoutTime.length, "day", "days")} with no time logged`,
+      detail: listOf(person.daysWithoutTime.map(formatDayMonthLabel)),
       subjectId: person.userId,
-      who: person.name,
-      what: `has ${workingDays(days)} with no time logged`,
-      why: `${listOf(person.daysWithoutTime.map(formatDayMonthLabel))}. ${INVOICE_NOTE}`,
-      minutes,
     };
   }
 
   return {
-    kind: "teamDaysWithoutTime",
-    subjectId: "",
-    who: `${missing.length} people`,
-    what: `have ${workingDays(days)} with no time logged between them`,
-    why: `${listOf(
+    kind: "daysWithoutTime",
+    headline: `${missing.length} people have days with no time logged`,
+    detail: listOf(
       missing.map(
-        (person) => `${person.name} (${person.daysWithoutTime.length})`,
+        (person) => `${person.name} · ${person.daysWithoutTime.length}`,
       ),
-    )}. ${INVOICE_NOTE}`,
-    minutes,
+    ),
+  };
+};
+
+/** How far a project is off its plan, or all its time when it has none; 0 when close enough. */
+const offPlanGap = ({ totalMinutes, plannedMinutes }: HoursReportRow) => {
+  if (!plannedMinutes) {
+    return totalMinutes >= ATTENTION_MIN_MINUTES ? totalMinutes : 0;
+  }
+  const gap = totalMinutes - plannedMinutes;
+  return isBigGap(gap, plannedMinutes) ? gap : 0;
+};
+
+const describeGap = (project: HoursReportRow) =>
+  project.plannedMinutes
+    ? `${project.name} ${formatSignedDuration(offPlanGap(project))}`
+    : `${project.name}, ${formatDuration(project.totalMinutes)} with no plan`;
+
+const projectsOffPlanFact = (
+  projects: HoursReportRow[],
+): AttentionFact | null => {
+  const offPlan = projects
+    .filter((project) => offPlanGap(project) !== 0)
+    .sort((a, b) => Math.abs(offPlanGap(b)) - Math.abs(offPlanGap(a)));
+  if (offPlan.length === 0) return null;
+
+  if (offPlan.length === 1) {
+    const [project] = offPlan;
+    return {
+      kind: "projectsOffPlan",
+      headline: `${project.name} is more than 10% off plan`,
+      detail: project.plannedMinutes
+        ? `${formatDuration(project.totalMinutes)} logged of ${formatDuration(project.plannedMinutes)} planned`
+        : `${formatDuration(project.totalMinutes)} logged with no plan`,
+      subjectId: project.id!,
+    };
+  }
+
+  return {
+    kind: "projectsOffPlan",
+    headline: `${offPlan.length} projects are more than 10% off plan`,
+    detail: `Largest: ${offPlan
+      .slice(0, LARGEST_PROJECTS_NAMED)
+      .map(describeGap)
+      .join(" · ")}`,
+  };
+};
+
+/** A plan beyond what someone can work is a planning fact, not a verdict on them. */
+const plannedBeyondHoursFact = (
+  people: PeopleReportRow[],
+): AttentionFact | null => {
+  const overPlanned = people.filter(
+    ({ plannedMinutes, expectedMinutes }) =>
+      plannedMinutes > expectedMinutes &&
+      isBigGap(plannedMinutes - expectedMinutes, expectedMinutes),
+  );
+  if (overPlanned.length === 0) return null;
+
+  if (overPlanned.length === 1) {
+    const [person] = overPlanned;
+    return {
+      kind: "plannedBeyondHours",
+      headline: `${person.name} is planned beyond their hours`,
+      detail: `${formatDuration(person.plannedMinutes)} planned, ${formatDuration(person.expectedMinutes)} expected`,
+      subjectId: person.userId,
+    };
+  }
+
+  return {
+    kind: "plannedBeyondHours",
+    headline: `${overPlanned.length} people are planned beyond their hours`,
+    detail: listOf(overPlanned.map((person) => person.name)),
   };
 };
 
 /**
- * The few facts in a period worth a manager's look, largest first. They point
- * at plans and missing time, never at someone logging less than expected (D3).
+ * At most one fact per kind of problem, so the month's problems read at a
+ * glance: missing time first, then the plans. Nothing is about someone logging
+ * less than expected (D3).
  */
-export const attentionItems = (
+export const attentionFacts = (
   people: PeopleReportRow[],
   projects: HoursReportRow[],
-  standardDayMinutes: number,
-): AttentionItem[] =>
+): AttentionFact[] =>
   [
-    ...projects.map(projectItem),
-    ...people.map(plannedBeyondItem),
-    daysWithoutTimeItem(people, standardDayMinutes),
-  ]
-    .filter((item): item is AttentionItem => item !== null)
-    .sort((a, b) => b.minutes - a.minutes || a.who.localeCompare(b.who));
+    daysWithoutTimeFact(people),
+    projectsOffPlanFact(projects),
+    plannedBeyondHoursFact(people),
+  ].filter((fact): fact is AttentionFact => fact !== null);

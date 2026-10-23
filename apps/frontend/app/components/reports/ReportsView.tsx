@@ -8,8 +8,7 @@ import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
-import { attentionItems } from "@/lib/utils/report-attention";
-import { MINUTES_PER_HOUR } from "@/lib/utils/report-overview";
+import { attentionFacts } from "@/lib/utils/report-attention";
 import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { bucketLabel } from "@/lib/utils/report-charts";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
@@ -30,12 +29,17 @@ import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportMonthStepper } from "./components/ReportMonthStepper";
 import { TeamCard } from "./components/TeamCard";
 import { WeekByWeek } from "./components/WeekByWeek";
-import { WorthALook } from "./components/WorthALook";
+import { NeedsAttention } from "./components/NeedsAttention";
 
 const PROJECT_PARAM = "project";
-// Until the company loads, a day without time weighs as a common working day.
-const DEFAULT_DAY_HOURS = 8;
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
+
+/** Brings a card into view by its heading's id. */
+const scrollToSection = (headingId: string) =>
+  document
+    .getElementById(headingId)
+    ?.closest("section")
+    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 type ReportScopeProps = {
   range: DateRange;
@@ -157,15 +161,12 @@ export const ReportsView = () => {
       >
         <WeekByWeek range={range} totals={totals} />
         <div className="mt-4">
-          <WorthALook
-            items={attentionItems(
-              people.report.rows,
-              projects.report.rows,
-              (company?.standardWorkHoursPerDay ?? DEFAULT_DAY_HOURS) *
-                MINUTES_PER_HOUR,
-            )}
+          <NeedsAttention
+            facts={attentionFacts(people.report.rows, projects.report.rows)}
             onOpenPerson={openPerson}
             onOpenProject={openProject}
+            onSeePeople={() => scrollToSection("report-team")}
+            onSeeProjects={() => scrollToSection("report-projects")}
           />
         </div>
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">

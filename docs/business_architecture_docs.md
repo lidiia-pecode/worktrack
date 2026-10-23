@@ -763,11 +763,11 @@ see, and how a new company gets started. §7 plans that work.
   work (capacity minus time off), what was planned, and billable time and its
   share (by each entry's flag, D2): each week a pale block of what was expected
   with what was logged and planned standing inside it, and weeks cut short
-  marked. "Worth a look"
-  lists the facts largest first, three at once and the rest on request: a project at least 8h and over a tenth
-  off its plan, 8h or more logged with no plan, somebody planned beyond what
-  they are expected to work, and working days with no time logged. None is
-  about somebody logging less than expected. A deactivated person and an owner
+  marked. "Needs attention" says each kind of problem once, in at most three
+  cards: people with working days with no time logged, projects at least 8h
+  and over a tenth off their plan or with 8h or more logged and no plan, and
+  people planned beyond what they are expected to work. None is about somebody
+  logging less than expected. A deactivated person and an owner
   have no missing days, and are listed only if they logged time in the period:
   owners often don't track their own time. Below, the Team
   card puts each person's logged time against their expected hours, with what
