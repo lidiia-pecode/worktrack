@@ -8,12 +8,11 @@ import { saveFile } from "@/lib/utils/save-file";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function useHoursReport(params: HoursReportQuery, enabled = true) {
+export function useHoursReport(params: HoursReportQuery) {
   const query = useQuery({
     queryKey: queryKeys.reporting.hours({ ...params }),
     queryFn: () => ReportingClientApi.getHoursReport(params),
     placeholderData: keepPreviousData,
-    enabled,
   });
 
   return {

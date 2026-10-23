@@ -5,8 +5,11 @@ import { countLabel } from "./text";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
 
-/** A week's name under its bar: "Oct 5–9", or "Sep 29 – Oct 3". */
-export const bucketLabel = ({ start, end }: TimelineBucket) => {
+/** A run of days by name: "Oct 5–9", "Sep 29 – Oct 3", or the one day. */
+export const bucketLabel = ({
+  start,
+  end,
+}: Pick<TimelineBucket, "start" | "end">) => {
   if (start === end) return formatDayMonthLabel(start);
 
   const sameMonth = start.slice(0, 7) === end.slice(0, 7);

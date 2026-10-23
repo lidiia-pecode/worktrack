@@ -7,7 +7,6 @@ import {
   describeAgainstPlan,
   groupProjectsByClient,
   hourScale,
-  isCloseToPlan,
   personDays,
   sortPeople,
 } from "./report-overview";
@@ -139,18 +138,6 @@ describe("describeAgainstPlan", () => {
     expect(describeAgainstPlan(project("B", "Acme", 46, 0))).toBe(
       "not planned",
     );
-  });
-});
-
-describe("isCloseToPlan", () => {
-  it("counts a project within a tenth of its plan, either way", () => {
-    expect(isCloseToPlan(project("A", "Acme", 90, 100))).toBe(true);
-    expect(isCloseToPlan(project("B", "Acme", 110, 100))).toBe(true);
-    expect(isCloseToPlan(project("C", "Acme", 89, 100))).toBe(false);
-  });
-
-  it("never counts a project with no plan", () => {
-    expect(isCloseToPlan(project("D", "Acme", 0, 0))).toBe(false);
   });
 });
 

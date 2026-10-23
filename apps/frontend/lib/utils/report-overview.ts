@@ -10,9 +10,6 @@ import {
 } from "./date";
 import { countLabel } from "./text";
 
-/** A planned project this close to its plan, as a share of it, counts as close to plan. */
-export const CLOSE_TO_PLAN_SHARE = 0.1;
-
 export const MINUTES_PER_HOUR = 60;
 
 /** Tick steps, in hours, that read as round numbers on an axis. */
@@ -121,14 +118,6 @@ export const daysOffLabel = (days: number) =>
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
-
-export const isCloseToPlan = ({
-  totalMinutes,
-  plannedMinutes,
-}: HoursReportRow) =>
-  Boolean(plannedMinutes) &&
-  Math.abs(totalMinutes - plannedMinutes!) <=
-    plannedMinutes! * CLOSE_TO_PLAN_SHARE;
 
 export interface ClientGroup {
   key: string;

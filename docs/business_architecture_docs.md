@@ -757,11 +757,13 @@ see, and how a new company gets started. §7 plans that work.
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
-- **Reports** — owners and managers see one overview on `/reports` for a
-  month, quarter, year or custom range of up to 366 days. Three tiles sum the
-  period up: time logged against what the team was expected to work (capacity
-  minus time off), billable time and its share (by each entry's flag, D2), and
-  how many planned projects came within a tenth of their plan. "Worth a look"
+- **Reports** — owners and managers see one overview on `/reports`, one month
+  at a time, stepped with arrows from the company's first month. At the top,
+  week by week, the month's time logged against what the team was expected to
+  work (capacity minus time off), what was planned, and billable time and its
+  share (by each entry's flag, D2): each week a pale block of what was expected
+  with what was logged and planned standing inside it, and weeks cut short
+  marked. "Worth a look"
   lists the facts largest first, three at once and the rest on request: a project at least 8h and over a tenth
   off its plan, 8h or more logged with no plan, somebody planned beyond what
   they are expected to work, and working days with no time logged. None is
@@ -780,11 +782,8 @@ see, and how a new company gets started. §7 plans that work.
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
   to their week on Team time; a project's name opens its people against their
-  plans. Below, the period's hours week by week (month by month for a quarter
-  or a year) against expected and planned, with weeks cut short marked, and
-  logged time by activity category, each category in a colour of its own and
-  named with its hours. A range that
-  includes a month still open to edits is marked provisional. Everything counts
+  plans. Below, logged time by activity category, each category in a colour of
+  its own and named with its hours. A month still open to edits is marked so. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead.
 - **Hours export** — from Reports, owners and managers download the

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Clock, FileBarChart } from "lucide-react";
+import { FileBarChart } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
@@ -10,15 +10,10 @@ import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
 import { attentionItems } from "@/lib/utils/report-attention";
 import { MINUTES_PER_HOUR } from "@/lib/utils/report-overview";
-import { formatDateRange, todayISODate, toMonthKey } from "@/lib/utils/date";
+import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
+import { bucketLabel } from "@/lib/utils/report-charts";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
-import {
-  DateRange,
-  periodHolding,
-  periodRange,
-  periodRangeError,
-  ReportPeriod,
-} from "@/lib/utils/report-period";
+import { DateRange } from "@/lib/utils/report-period";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,12 +24,12 @@ import { PERSON_PARAM } from "../team/useOpenedPerson";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
+import { KindOfWork } from "./components/KindOfWork";
 import { ProjectsCard } from "./components/ProjectsCard";
-import { ReportCharts } from "./components/ReportCharts";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
-import { ReportPeriodPicker } from "./components/ReportPeriodPicker";
-import { ReportTiles } from "./components/ReportTiles";
+import { ReportMonthStepper } from "./components/ReportMonthStepper";
 import { TeamCard } from "./components/TeamCard";
+import { WeekByWeek } from "./components/WeekByWeek";
 import { WorthALook } from "./components/WorthALook";
 
 const PROJECT_PARAM = "project";
@@ -57,9 +52,9 @@ const ReportScope = ({
   isManager,
 }: ReportScopeProps) => {
   const parts = [
-    formatDateRange(range.dateFrom, countedUntil ?? range.dateTo),
-    countedUntil && "today’s time counts from tomorrow",
-    isManager && "your teams only",
+    bucketLabel({ start: range.dateFrom, end: countedUntil ?? range.dateTo }),
+    countedUntil && "today’s time counts tomorrow",
+    isManager && "your teams",
   ].filter(Boolean);
 
   return (
@@ -68,13 +63,11 @@ const ReportScope = ({
       {isProvisional && (
         <Badge
           variant="neutral"
-          title="Some days in this period can still be edited, so these figures may change."
+          title="Some days in this month can still be edited, so these figures may change."
         >
-          <Clock className="size-3" aria-hidden />
-          Provisional
+          Month still open
           <span className="sr-only">
-            : some days in this period can still be edited, so these figures may
-            change
+            : some days can still be edited, so these figures may change
           </span>
         </Badge>
       )}
@@ -86,25 +79,23 @@ export const ReportsView = () => {
   const { company } = useCompany();
   const { user } = useAuth();
 
-  const [chosenPeriod, setChosenPeriod] = useState<ReportPeriod | null>(null);
+  const [chosenMonth, setChosenMonth] = useState<string | null>(null);
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
   const currentMonth = toMonthKey(todayISODate(company?.timezone));
-  const period = chosenPeriod ?? periodHolding("month", currentMonth);
-  const range = periodRange(period);
-  const rangeError = periodRangeError(period);
-  const isRangeValid = !rangeError;
+  const month = chosenMonth ?? currentMonth;
+  const range: DateRange = getMonthRange(month);
 
-  const people = usePeopleReport(range, isRangeValid);
-  const projects = useHoursReport(
-    { ...range, groupBy: HoursReportGroupBy.PROJECT },
-    isRangeValid,
-  );
+  const people = usePeopleReport(range);
+  const projects = useHoursReport({
+    ...range,
+    groupBy: HoursReportGroupBy.PROJECT,
+  });
   const isUpdating = people.isPlaceholderData || projects.isPlaceholderData;
-  const peopleReport = isRangeValid && !isUpdating ? people.report : null;
-  // Only finished days count, so a period starting today has nothing yet.
+  const peopleReport = isUpdating ? null : people.report;
+  // Only finished days count, so a month starting today has nothing yet.
   const isNothingCounted = Boolean(
     peopleReport?.countedUntil && peopleReport.countedUntil < range.dateFrom,
   );
@@ -114,7 +105,7 @@ export const ReportsView = () => {
       return (
         <LoadingState
           title="Loading the report"
-          description="Adding up the time for this period."
+          description="Adding up the time for this month."
         />
       );
     }
@@ -123,7 +114,7 @@ export const ReportsView = () => {
       return (
         <ErrorState
           title="We couldn't load the report"
-          description="The figures for this period are unavailable right now."
+          description="The figures for this month are unavailable right now."
           onRetry={() => {
             void people.refetch();
             void projects.refetch();
@@ -138,7 +129,7 @@ export const ReportsView = () => {
       return (
         <EmptyState
           title="Nothing counted yet"
-          description="Only finished days count, and none of this period has finished yet."
+          description="Only finished days count, and none of this month has finished yet."
           icon={<FileBarChart />}
         />
       );
@@ -148,8 +139,8 @@ export const ReportsView = () => {
     if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
       return (
         <EmptyState
-          title="Nothing logged or planned in this period"
-          description="Pick another period, or check that people have logged their time."
+          title="Nothing logged or planned in this month"
+          description="Pick another month, or check that people have logged their time."
           icon={<FileBarChart />}
         />
       );
@@ -164,7 +155,7 @@ export const ReportsView = () => {
         )}
         aria-busy={isUpdating}
       >
-        <ReportTiles totals={totals} projects={projects.report.rows} />
+        <WeekByWeek range={range} totals={totals} />
         <div className="mt-4">
           <WorthALook
             items={attentionItems(
@@ -185,7 +176,7 @@ export const ReportsView = () => {
           />
         </div>
         <div className="mt-4">
-          <ReportCharts range={range} />
+          <KindOfWork range={range} />
         </div>
       </div>
     );
@@ -199,7 +190,7 @@ export const ReportsView = () => {
     opened?.param === PROJECT_PARAM
       ? projects.report?.rows.find((row) => row.id === opened.id)
       : undefined;
-  // A panel opens from the rows on screen. When the period drops its person or
+  // A panel opens from the rows on screen. When the month drops its person or
   // project, or a link names someone outside them, it closes, URL included,
   // as on Team time, rather than reopening by itself later.
   const isOpenedGone =
@@ -214,7 +205,7 @@ export const ReportsView = () => {
   }, [isOpenedGone, close]);
 
   const renderPanel = () => {
-    if (!isRangeValid || !people.report) return null;
+    if (!people.report) return null;
 
     if (openedPerson) {
       return (
@@ -246,12 +237,11 @@ export const ReportsView = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
-          <ReportPeriodPicker
-            period={period}
+          <ReportMonthStepper
+            month={month}
             currentMonth={currentMonth}
             companyFirstMonth={company ? companyFirstMonth(company) : undefined}
-            error={rangeError}
-            onChange={setChosenPeriod}
+            onChange={setChosenMonth}
           />
           {peopleReport && !isNothingCounted && (
             <ReportScope
@@ -263,13 +253,13 @@ export const ReportsView = () => {
           )}
         </div>
 
-        {/* The last figures keep the button in place while a period loads. */}
+        {/* The last figures keep the button in place while a month loads. */}
         {(people.report?.totals.loggedMinutes ?? 0) > 0 && (
-          <HoursExportButton range={range} disabled={!isRangeValid} />
+          <HoursExportButton range={range} />
         )}
       </div>
 
-      {isRangeValid && renderOverview()}
+      {renderOverview()}
 
       {renderPanel()}
     </div>

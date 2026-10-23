@@ -263,21 +263,13 @@ describe("ReportsView", () => {
     } as unknown as ReturnType<typeof useAllAbsencesQuery>);
   });
 
-  it("sums the period up in three tiles", () => {
+  it("sums the month up above its weeks", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const logged = screen.getByRole("region", { name: "Time logged" });
-    expect(logged).toHaveTextContent("187h");
-    expect(logged).toHaveTextContent(
-      "102% of the 184h the team was expected to work",
-    );
-    expect(screen.getByRole("region", { name: "Billable" })).toHaveTextContent(
-      "50% of logged time",
-    );
-    // Mobile App is within 10% of its plan; WorkTrack and Data Warehouse are not.
-    expect(
-      screen.getByRole("region", { name: "Close to plan" }),
-    ).toHaveTextContent("1 of 3");
+    const weeks = screen.getByRole("region", { name: "Week by week" });
+    expect(weeks).toHaveTextContent("Logged187h102% of 184h expected");
+    expect(weeks).toHaveTextContent("50% of logged");
+    expect(screen.queryByRole("region", { name: "Close to plan" })).toBeNull();
   });
 
   it("puts each person against what was expected, with their days off", () => {
@@ -357,16 +349,17 @@ describe("ReportsView", () => {
     expect(stripes?.parentElement).toHaveClass("bg-brand");
   });
 
-  it("shows the period week by week and by kind of work", () => {
+  it("shows the month week by week and by kind of work", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
     const weeks = screen.getByRole("region", { name: "Week by week" });
     expect(weeks).toHaveTextContent("Oct 1–4");
     expect(weeks).toHaveTextContent("2 days");
-    // The text version for screen readers names the part week.
-    expect(
-      within(weeks).getByRole("rowheader", { name: /Oct 1–4, part of a week/ }),
-    ).toBeInTheDocument();
+    // Each week can be focused, and names all three of its figures.
+    const week = within(weeks).getByRole("img", {
+      name: "Oct 5–11: 38h logged · 40h planned · 40h expected",
+    });
+    expect(week).toHaveAttribute("tabindex", "0");
 
     const kind = screen.getByRole("region", { name: "Kind of work" });
     expect(
@@ -391,7 +384,7 @@ describe("ReportsView", () => {
     );
 
     expect(
-      screen.getByText("Nothing logged or planned in this period"),
+      screen.getByText("Nothing logged or planned in this month"),
     ).toBeInTheDocument();
   });
 
@@ -412,11 +405,11 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("tells a manager the figures cover their teams, and that they can change", () => {
+  it("tells a manager the figures cover their teams, and that the month is open", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    expect(screen.getByText(/your teams only/)).toBeInTheDocument();
-    expect(screen.getByText("Provisional")).toBeInTheDocument();
+    expect(screen.getByText(/your teams/)).toBeInTheDocument();
+    expect(screen.getByText("Month still open")).toBeInTheDocument();
   });
 
   describe("panels", () => {
