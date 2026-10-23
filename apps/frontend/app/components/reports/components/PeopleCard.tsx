@@ -5,7 +5,6 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
 import { formatReportHours } from "@/lib/utils/date";
-import { personNeedsAttention } from "@/lib/utils/report-attention";
 import {
   daysOffLabel,
   groupPeopleByTeam,
@@ -26,18 +25,14 @@ const againstExpected = (logged: number, expected: number) =>
     ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
     : formatReportHours(logged);
 
-const flagOf = (person: PeopleReportRow) =>
-  !personNeedsAttention(person)
-    ? undefined
-    : person.daysWithoutTime.length > 0
-      ? `${countLabel(person.daysWithoutTime.length, "day", "days")} with no time logged`
-      : "Planned beyond their hours";
-
 const PersonRow = ({
   person,
+  flag,
   onOpen,
 }: {
   person: PeopleReportRow;
+  /** Why Needs attention names them, when it does. */
+  flag?: string;
   onOpen: (userId: string) => void;
 }) => {
   const figure = againstExpected(person.loggedMinutes, person.expectedMinutes);
@@ -50,7 +45,7 @@ const PersonRow = ({
       note={
         person.timeOffDays > 0 ? daysOffLabel(person.timeOffDays) : undefined
       }
-      flag={flagOf(person)}
+      flag={flag}
       bar={
         <ReportBar
           value={person.loggedMinutes}
@@ -66,18 +61,22 @@ const PersonRow = ({
 
 const TeamRows = ({
   group,
+  marked,
   isOpen,
   onToggle,
   onOpenPerson,
 }: {
   group: TeamGroup;
+  marked: Map<string, string>;
   isOpen: boolean;
   onToggle: () => void;
   onOpenPerson: (userId: string) => void;
 }) => {
   const figure = againstExpected(group.loggedMinutes, group.expectedMinutes);
   const Chevron = isOpen ? ChevronDown : ChevronRight;
-  const needsAttention = group.people.some(personNeedsAttention);
+  const needsAttention = group.people.some((person) =>
+    marked.has(person.userId),
+  );
 
   return (
     <li className="border-t border-border first:border-t-0">
@@ -116,6 +115,7 @@ const TeamRows = ({
             <PersonRow
               key={person.userId}
               person={person}
+              flag={marked.get(person.userId)}
               onOpen={onOpenPerson}
             />
           ))}
@@ -127,6 +127,8 @@ const TeamRows = ({
 
 type PeopleCardProps = {
   people: PeopleReportRow[];
+  /** The people Needs attention names, with why. */
+  marked: Map<string, string>;
   onOpenPerson: (userId: string) => void;
 };
 
@@ -134,7 +136,11 @@ type PeopleCardProps = {
  * People by team, each with one bar of what they logged against what they
  * were expected to work. A long list starts folded to its teams.
  */
-export const PeopleCard = ({ people, onOpenPerson }: PeopleCardProps) => {
+export const PeopleCard = ({
+  people,
+  marked,
+  onOpenPerson,
+}: PeopleCardProps) => {
   const groups = groupPeopleByTeam(people);
   const startsOpen = people.length <= PEOPLE_SHOWN_OPEN;
   // Only the teams opened or folded by hand; the rest follow the default.
@@ -155,7 +161,7 @@ export const PeopleCard = ({ people, onOpenPerson }: PeopleCardProps) => {
           <p className="mt-0.5 text-sm text-muted-foreground">
             Hours logged against what each person was expected to work
           </p>
-          {people.some(personNeedsAttention) && <AttentionLegend />}
+          {marked.size > 0 && <AttentionLegend />}
         </div>
         {groups.length > 1 && (
           <Button
@@ -175,6 +181,7 @@ export const PeopleCard = ({ people, onOpenPerson }: PeopleCardProps) => {
           <TeamRows
             key={group.id}
             group={group}
+            marked={marked}
             isOpen={isOpen(group)}
             onToggle={() =>
               setToggled({ ...toggled, [group.id]: !isOpen(group) })

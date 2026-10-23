@@ -9,7 +9,7 @@ import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
-import { attentionFacts } from "@/lib/utils/report-attention";
+import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { bucketLabel } from "@/lib/utils/report-charts";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
@@ -26,19 +26,12 @@ import { HoursExportButton } from "./components/HoursExportButton";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportMonthStepper } from "./components/ReportMonthStepper";
 import { WeekByWeek } from "./components/WeekByWeek";
-import { WhereTheTimeWent, WhereView } from "./components/WhereTheTimeWent";
+import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
 import { NeedsAttention } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
 
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
-
-/** Brings a card into view by its heading's id. */
-const scrollToSection = (headingId: string) =>
-  document
-    .getElementById(headingId)
-    ?.closest("section")
-    ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 type ReportScopeProps = {
   range: ReportRange;
@@ -83,7 +76,6 @@ export const ReportsView = () => {
   const { user } = useAuth();
 
   const [chosenMonth, setChosenMonth] = useState<string | null>(null);
-  const [whereView, setWhereView] = useState<WhereView>("projects");
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
@@ -97,6 +89,7 @@ export const ReportsView = () => {
     ...range,
     groupBy: HoursReportGroupBy.PROJECT,
   });
+  const isManager = user?.role === UserRole.MANAGER;
   const isUpdating = people.isPlaceholderData || projects.isPlaceholderData;
   const peopleReport = isUpdating ? null : people.report;
   // Only finished days count, so a month starting today has nothing yet.
@@ -139,7 +132,7 @@ export const ReportsView = () => {
       );
     }
 
-    const { totals } = people.report;
+    const { totals, isProvisional, countedUntil } = people.report;
     if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
       return (
         <EmptyState
@@ -149,6 +142,16 @@ export const ReportsView = () => {
         />
       );
     }
+
+    // A locked month is for reference only, so nothing is marked (Decision 34).
+    const attention = isProvisional
+      ? reportAttention({
+          people: people.report.rows,
+          projects: projects.report.rows,
+          countedUntil,
+          isManager,
+        })
+      : NO_ATTENTION;
 
     return (
       // A container, so the cards follow the room beside an open panel, not the window.
@@ -160,25 +163,27 @@ export const ReportsView = () => {
         aria-busy={isUpdating}
       >
         <WeekByWeek range={range} totals={totals} />
-        <div className="mt-4">
-          <NeedsAttention
-            facts={attentionFacts(people.report.rows, projects.report.rows)}
-            onOpenPerson={openPerson}
-            onOpenProject={openProject}
-            onSeePeople={() => scrollToSection("report-people")}
-            onSeeProjects={() => {
-              setWhereView("projects");
-              scrollToSection("report-where");
-            }}
-          />
-        </div>
+        {isProvisional && (
+          <div className="mt-4">
+            <NeedsAttention
+              facts={attention.facts}
+              month={range.dateFrom}
+              isMonthRunning={countedUntil !== null}
+              onOpenPerson={openPerson}
+              onOpenProject={openProject}
+            />
+          </div>
+        )}
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
-          <PeopleCard people={people.report.rows} onOpenPerson={openPerson} />
+          <PeopleCard
+            people={people.report.rows}
+            marked={attention.people}
+            onOpenPerson={openPerson}
+          />
           <WhereTheTimeWent
             range={range}
             projects={projects.report.rows}
-            view={whereView}
-            onViewChange={setWhereView}
+            marked={attention.projects}
             onOpenProject={openProject}
           />
         </div>
@@ -252,7 +257,7 @@ export const ReportsView = () => {
               range={range}
               countedUntil={peopleReport.countedUntil}
               isProvisional={peopleReport.isProvisional}
-              isManager={user?.role === UserRole.MANAGER}
+              isManager={isManager}
             />
           )}
         </div>

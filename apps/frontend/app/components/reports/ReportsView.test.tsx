@@ -183,6 +183,12 @@ const activityRows: HoursReportRow[] = [
   { ...project("UI Design", "Design", 10, 0), plannedMinutes: null },
 ];
 
+/** A person's name in the People card, which opens their panel. */
+const peopleRow = (name: string) =>
+  within(screen.getByRole("region", { name: "People" })).getByRole("button", {
+    name,
+  });
+
 const showReports = (people: PeopleReport, projects: HoursReport) => {
   vi.mocked(usePeopleReport).mockReturnValue(
     loaded(people) as unknown as ReturnType<typeof usePeopleReport>,
@@ -276,7 +282,7 @@ describe("ReportsView", () => {
     const core = { id: "core", name: "Core Development" };
     showReports(
       peopleReport([
-        { ...team[0], teams: [core] },
+        { ...team[0], teams: [core], daysWithoutTime: ["2026-10-02"] },
         { ...team[1], teams: [core] },
         person("Grace Morgan", 10, 0, 0),
       ]),
@@ -298,9 +304,9 @@ describe("ReportsView", () => {
         name: "Ethan Brooks: 79h of 72h expected",
       }),
     ).toBeInTheDocument();
-    // Planned beyond their hours, so marked as in Needs attention.
+    // A day with no time, so marked as in Needs attention.
     expect(
-      within(ethan).getByRole("img", { name: "Planned beyond their hours" }),
+      within(ethan).getByRole("img", { name: "1 day with no time logged" }),
     ).toBeInTheDocument();
 
     // Somebody in no team is listed last, and says when nothing was expected.
@@ -442,7 +448,7 @@ describe("ReportsView", () => {
   it("tells a manager the figures cover their teams, and that the month is open", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    expect(screen.getByText(/your teams/)).toBeInTheDocument();
+    expect(screen.getByText(/· your teams$/)).toBeInTheDocument();
     expect(screen.getByText("Month still open")).toBeInTheDocument();
   });
 
@@ -517,7 +523,7 @@ describe("ReportsView", () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
 
-      const row = screen.getByRole("button", { name: "Ethan Brooks" });
+      const row = peopleRow("Ethan Brooks");
       await user.click(row);
 
       expect(navigation.search).toBe("?person=ethan-brooks");
@@ -588,7 +594,7 @@ describe("ReportsView", () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
 
-      await user.click(screen.getByRole("button", { name: "Ethan Brooks" }));
+      await user.click(peopleRow("Ethan Brooks"));
       await user.click(screen.getByRole("button", { name: "Mobile App" }));
 
       expect(navigation.history).toEqual(["", "?project=Mobile+App"]);
@@ -597,57 +603,116 @@ describe("ReportsView", () => {
       ).toBeInTheDocument();
     });
 
-    it("says what needs attention, one card per kind, each acting where it points", async () => {
+    it("says what needs attention, one row per kind, each name opening its panel", async () => {
       const user = userEvent.setup();
-      const scrollIntoView = vi.fn();
-      Element.prototype.scrollIntoView = scrollIntoView;
-      showReports(peopleReport(team), projectsReport(projects));
+      showReports(
+        peopleReport([ethan, person("Ava Mitchell", 108, 104, 112)]),
+        projectsReport(projects),
+      );
 
       const card = screen.getByRole("region", { name: "Needs attention" });
-      expect(
-        within(card)
-          .getAllByRole("listitem")
-          .map((item) => item.firstChild?.textContent),
-      ).toEqual([
-        "3 projects are off plan or not planned",
-        "Ethan Brooks is planned beyond their hours",
-      ]);
-      expect(card).toHaveTextContent(
-        "Largest: Data Warehouse −27h · WorkTrack +20h",
-      );
-      // The dot beside those rows says what it means.
-      expect(
-        within(screen.getByRole("region", { name: "People" })).getByText(
-          "In Needs attention",
+      const rows = within(card).getAllByRole("listitem");
+      expect(rows.map((row) => row.textContent)).toEqual([
+        expect.stringContaining("Ethan Brooks has 1 day with no time logged"),
+        expect.stringContaining(
+          "3 projects are off plan or not planned · your teams' share",
         ),
-      ).toBeInTheDocument();
-      expect(
-        within(
-          screen.getByRole("region", { name: "Where the time went" }),
-        ).getByText("In Needs attention"),
-      ).toBeInTheDocument();
-
-      await user.click(
-        within(card).getByRole("button", { name: /^See projects/ }),
+      ]);
+      expect(rows[1]).toHaveTextContent(
+        "Data Warehouse · −27h, WorkTrack · +20h, CRM System · 10h with no plan",
       );
-      expect(scrollIntoView).toHaveBeenCalled();
+      // Planned beyond their hours is left to Planning.
+      expect(card).not.toHaveTextContent("beyond their hours");
+      // The dot beside the rows it names says what it means.
+      for (const name of ["People", "Where the time went"]) {
+        expect(
+          within(screen.getByRole("region", { name })).getByText(
+            "In Needs attention",
+          ),
+        ).toBeInTheDocument();
+      }
 
       await user.click(
-        within(card).getByRole("button", { name: /^Open person/ }),
+        within(card).getByRole("button", { name: "Ethan Brooks" }),
       );
       expect(navigation.search).toBe("?person=ethan-brooks");
+
+      await user.click(
+        within(card).getByRole("button", { name: "Data Warehouse · −27h" }),
+      );
+      expect(navigation.search).toBe("?project=Data+Warehouse");
     });
 
-    it("says when nothing needs attention", () => {
+    it("names the first three and opens the rest on request", async () => {
+      const user = userEvent.setup();
+      showReports(
+        peopleReport(team),
+        projectsReport(
+          ["A", "B", "C", "D"].map((name) =>
+            project(name, "Retail Corp", 50, 20),
+          ),
+        ),
+      );
+
+      const card = screen.getByRole("region", { name: "Needs attention" });
+      expect(within(card).queryByRole("button", { name: /^D ·/ })).toBeNull();
+
+      await user.click(
+        within(card).getByRole("button", { name: "and 1 more" }),
+      );
+      expect(
+        within(card).getByRole("button", { name: /^D ·/ }),
+      ).toBeInTheDocument();
+
+      await user.click(
+        within(card).getByRole("button", { name: "Show fewer" }),
+      );
+      expect(within(card).queryByRole("button", { name: /^D ·/ })).toBeNull();
+    });
+
+    it("says when nothing needs attention before the month locks", () => {
       showReports(
         peopleReport([person("Ava Mitchell", 112, 112, 112)]),
         projectsReport([project("Mobile App", "Retail Corp", 50, 50)]),
       );
 
       expect(
-        screen.getByText("Nothing needs attention this month."),
+        screen.getByText(/^Nothing needs attention before \w+ locks\.$/),
       ).toBeInTheDocument();
       expect(screen.queryByText("In Needs attention")).not.toBeInTheDocument();
+    });
+
+    it("says missing time waits for a week to end while the month runs", () => {
+      showReports(
+        {
+          ...peopleReport([person("Ava Mitchell", 112, 112, 112)]),
+          countedUntil: toISODate(new Date()),
+        },
+        projectsReport([project("Mobile App", "Retail Corp", 50, 50)]),
+      );
+
+      expect(
+        screen.getByText(
+          "Nothing needs attention so far. Missing time is checked once a week ends.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("marks nothing in a locked month", () => {
+      showReports(
+        { ...peopleReport([ethan]), isProvisional: false },
+        projectsReport(projects),
+      );
+
+      expect(
+        screen.queryByRole("region", { name: "Needs attention" }),
+      ).toBeNull();
+      expect(screen.queryByText("In Needs attention")).toBeNull();
+      expect(
+        screen.queryByRole("img", {
+          name: /with no time logged$|^More than 10% off plan$|^Logged with no plan$/,
+        }),
+      ).toBeNull();
     });
 
     it("waits for the person's days off before drawing their days", () => {
@@ -679,7 +744,7 @@ describe("ReportsView", () => {
     it("closes the panel, URL included, when another period leaves the person out", async () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
-      await user.click(screen.getByRole("button", { name: "Ethan Brooks" }));
+      await user.click(peopleRow("Ethan Brooks"));
 
       vi.mocked(usePeopleReport).mockReturnValue(
         loaded(peopleReport(team.slice(1))) as unknown as ReturnType<

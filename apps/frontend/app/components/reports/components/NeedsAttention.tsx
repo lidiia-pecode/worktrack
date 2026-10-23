@@ -1,77 +1,92 @@
 "use client";
 
-import Link from "next/link";
+import { useState } from "react";
 
 import { cn } from "@/lib/utils/cn";
-import { AttentionFact } from "@/lib/utils/report-attention";
+import { AttentionFact, AttentionItem } from "@/lib/utils/report-attention";
 
-import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { PERSON_PARAM } from "../../team/useOpenedPerson";
 import { AttentionDot } from "./ReportRow";
+
+/** People or projects named before the rest open on request. */
+const ITEMS_SHOWN = 3;
+
+const MONTH_NAME = new Intl.DateTimeFormat(undefined, { month: "long" });
+
+const NAME_CLASS =
+  "rounded-sm underline-offset-2 hover:text-brand hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+
+const NameButton = ({
+  item,
+  onOpen,
+}: {
+  item: AttentionItem;
+  onOpen: (id: string) => void;
+}) => (
+  <button type="button" className={NAME_CLASS} onClick={() => onOpen(item.id)}>
+    {item.label}
+  </button>
+);
+
+/** Everyone a fact names, the first few at once and the rest on request. */
+const ItemList = ({
+  items,
+  onOpen,
+}: {
+  items: AttentionItem[];
+  onOpen: (id: string) => void;
+}) => {
+  const [showsAll, setShowsAll] = useState(false);
+  const shown = showsAll ? items : items.slice(0, ITEMS_SHOWN);
+  const hidden = items.length - shown.length;
+
+  return (
+    <p className="text-sm text-muted-foreground">
+      {shown.map((item, index) => (
+        <span key={item.id}>
+          {index > 0 && ", "}
+          <NameButton item={item} onOpen={onOpen} />
+        </span>
+      ))}
+      {items.length > ITEMS_SHOWN && (
+        <>
+          {" "}
+          <button
+            type="button"
+            aria-expanded={showsAll}
+            className={cn(NAME_CLASS, "font-medium text-foreground")}
+            onClick={() => setShowsAll(!showsAll)}
+          >
+            {showsAll ? "Show fewer" : `and ${hidden} more`}
+          </button>
+        </>
+      )}
+    </p>
+  );
+};
 
 type NeedsAttentionProps = {
   facts: AttentionFact[];
+  /** The month's first day, for the line when nothing needs attention. */
+  month: string;
+  /** Whether the month is still running, rather than over and not yet locked. */
+  isMonthRunning: boolean;
   onOpenPerson: (userId: string) => void;
   onOpenProject: (projectId: string) => void;
-  onSeePeople: () => void;
-  onSeeProjects: () => void;
 };
 
-// The action sits flush under the text, a link or a button alike.
-const ACTION_CLASS = "h-auto self-start px-0";
-
-/** The month's problems, one card per kind, each with where to act on it. */
+/** The open month's problems, one row per kind; each name opens its panel. */
 export const NeedsAttention = ({
   facts,
+  month,
+  isMonthRunning,
   onOpenPerson,
   onOpenProject,
-  onSeePeople,
-  onSeeProjects,
 }: NeedsAttentionProps) => {
-  const action = ({ kind, subjectId, headline }: AttentionFact) => {
-    if (kind === "daysWithoutTime") {
-      return (
-        <Link
-          href={subjectId ? `/team?${PERSON_PARAM}=${subjectId}` : "/team"}
-          className={cn(
-            buttonVariants({ variant: "link", size: "sm" }),
-            ACTION_CLASS,
-          )}
-          aria-label={`Open in Team time: ${headline}`}
-        >
-          Open in Team time
-        </Link>
-      );
-    }
-
-    const isPerson = kind === "plannedBeyondHours";
-    const label = subjectId
-      ? isPerson
-        ? "Open person"
-        : "Open project"
-      : isPerson
-        ? "See people"
-        : "See projects";
-    const onClick = () => {
-      if (!subjectId) return isPerson ? onSeePeople() : onSeeProjects();
-      return isPerson ? onOpenPerson(subjectId) : onOpenProject(subjectId);
-    };
-
-    return (
-      <Button
-        type="button"
-        variant="link"
-        size="sm"
-        className={ACTION_CLASS}
-        aria-label={`${label}: ${headline}`}
-        onClick={onClick}
-      >
-        {label}
-      </Button>
-    );
-  };
+  const emptyLine = isMonthRunning
+    ? "Nothing needs attention so far. Missing time is checked once a week ends."
+    : `Nothing needs attention before ${MONTH_NAME.format(new Date(`${month}T00:00:00`))} locks.`;
 
   return (
     <Card as="section" aria-labelledby="report-attention" className="p-6">
@@ -80,27 +95,49 @@ export const NeedsAttention = ({
       </h2>
 
       {facts.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">
-          Nothing needs attention this month.
-        </p>
+        <p className="mt-3 text-sm text-muted-foreground">{emptyLine}</p>
       ) : (
-        <ul className="mt-4 grid gap-3 @3xl:grid-cols-3">
-          {facts.map((fact) => (
-            <li
-              key={fact.kind}
-              className="flex flex-col gap-1.5 rounded-xl border border-warning/25 bg-warning/8 px-4 py-3.5"
-            >
-              <p className="flex items-start gap-2 font-semibold">
+        <ul className="mt-2">
+          {facts.map((fact) => {
+            const onOpen =
+              fact.kind === "daysWithoutTime" ? onOpenPerson : onOpenProject;
+
+            return (
+              <li
+                key={fact.kind}
+                className="flex items-start gap-3 border-t border-border/60 py-3 first:border-t-0"
+              >
                 {/* One line high, so the dot sits beside the first line. */}
                 <span className="flex h-6 items-center">
                   <AttentionDot />
                 </span>
-                {fact.headline}
-              </p>
-              <p className="text-sm text-muted-foreground">{fact.detail}</p>
-              {action(fact)}
-            </li>
-          ))}
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <p className="font-semibold">
+                    {fact.subject && (
+                      <>
+                        <NameButton item={fact.subject} onOpen={onOpen} />{" "}
+                      </>
+                    )}
+                    {fact.headline}
+                    {fact.note && (
+                      <span className="font-normal text-muted-foreground">
+                        {" "}
+                        · {fact.note}
+                      </span>
+                    )}
+                  </p>
+                  {fact.detail && (
+                    <p className="text-sm text-muted-foreground">
+                      {fact.detail}
+                    </p>
+                  )}
+                  {fact.items.length > 0 && (
+                    <ItemList items={fact.items} onOpen={onOpen} />
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </Card>

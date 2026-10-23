@@ -763,11 +763,15 @@ see, and how a new company gets started. §7 plans that work.
   work (capacity minus time off), what was planned, and billable time and its
   share (by each entry's flag, D2): each week a pale block of what was expected
   with what was logged and planned standing inside it, and weeks cut short
-  marked. "Needs attention" says each kind of problem once, in at most three
-  cards: people with working days with no time logged, projects at least 8h
-  and over a tenth off their plan or with 8h or more logged and no plan, and
-  people planned beyond what they are expected to work. None is about somebody
-  logging less than expected. A deactivated person and an owner
+  marked. While the month is open, "Needs attention" says each kind of
+  problem once, in at most two rows, each name opening its panel: people with
+  working days with no time logged (in a month still running, only for weeks
+  that have ended, since many log their week on Friday), and projects at least
+  8h and over a tenth off their plan, or client projects with 8h or more and no
+  plan (in a month still running, only over plan, since late logging only
+  lowers logged time). None is about somebody logging less than expected; a
+  plan beyond someone's hours is Planning's to warn about. A locked month is
+  for reference and marks nothing. A deactivated person and an owner
   have no missing days, and are listed only if they logged time in the period:
   owners often don't track their own time. Below, People lists everyone by team (somebody in
   two teams under both), each with one bar of their logged time against their

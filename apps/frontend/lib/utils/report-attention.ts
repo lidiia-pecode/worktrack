@@ -1,6 +1,12 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import { formatDayMonthLabel, formatReportHours } from "./date";
+import {
+  addDays,
+  formatDayMonthLabel,
+  formatReportHours,
+  fromISODate,
+  toISODate,
+} from "./date";
 import { countLabel } from "./text";
 
 /** A gap has to be at least this big, in minutes, to need attention. */
@@ -9,21 +15,48 @@ export const ATTENTION_MIN_MINUTES = 8 * 60;
 /** And more than this share of what it is measured against. */
 export const ATTENTION_MIN_SHARE = 0.1;
 
-/** Names, days or projects spelled out before the rest are counted. */
-const NAMED_IN_FULL = 3;
-const LARGEST_PROJECTS_NAMED = 2;
+/** Days spelled out for one person before the rest are counted. */
+const DAYS_NAMED = 3;
 
-export type AttentionKind =
-  "daysWithoutTime" | "projectsOffPlan" | "plannedBeyondHours";
+const FRIDAY = 5;
+
+export type AttentionKind = "daysWithoutTime" | "projectsOffPlan";
+
+/** A person or a project named in Needs attention; it opens their panel. */
+export interface AttentionItem {
+  id: string;
+  label: string;
+}
 
 /** One kind of problem in the month, said once however many it covers. */
 export interface AttentionFact {
   kind: AttentionKind;
+  /** The one person or project it is about, named at the start of the sentence. */
+  subject?: AttentionItem;
+  /** The sentence, after the subject's name when there is one. */
   headline: string;
-  detail: string;
-  /** The one person or project the fact is about, for its action. */
-  subjectId?: string;
+  /** What the sentence covers: "up to Oct 16", "your teams' share". */
+  note?: string;
+  /** About the one subject: their days or their hours. */
+  detail?: string;
+  /** For several, each one, largest first. */
+  items: AttentionItem[];
 }
+
+export interface ReportAttention {
+  facts: AttentionFact[];
+  /** Why a person or a project is marked, by id, for the dot beside its row. */
+  people: Map<string, string>;
+  projects: Map<string, string>;
+}
+
+type AttentionInput = {
+  people: PeopleReportRow[];
+  projects: HoursReportRow[];
+  /** The last day counted when the month is still running, else null. */
+  countedUntil: string | null;
+  isManager: boolean;
+};
 
 const isBigGap = (gap: number, reference: number) =>
   Math.abs(gap) >= ATTENTION_MIN_MINUTES &&
@@ -31,7 +64,7 @@ const isBigGap = (gap: number, reference: number) =>
 
 /** "a, b and c", or "a, b, c and 2 more". */
 const listOf = (names: string[]) => {
-  const named = names.slice(0, NAMED_IN_FULL);
+  const named = names.slice(0, DAYS_NAMED);
   const rest = names.length - named.length;
 
   if (rest > 0) return `${named.join(", ")} and ${rest} more`;
@@ -39,145 +72,185 @@ const listOf = (names: string[]) => {
   return `${named.slice(0, -1).join(", ")} and ${named.at(-1)}`;
 };
 
-const daysWithoutTimeFact = (
+/**
+ * While the month runs, missing time counts only for weeks that have ended,
+ * since many people log their week on Friday: up to the last Friday on or
+ * before the last counted day. A finished month counts every day (Decision 35).
+ */
+export const lastCheckedDay = (countedUntil: string) => {
+  let day = fromISODate(countedUntil);
+  while (day.getDay() !== FRIDAY) day = addDays(day, -1);
+  return toISODate(day);
+};
+
+const missingDaysOf = (
   people: PeopleReportRow[],
-): AttentionFact | null => {
-  const missing = people
-    .filter((person) => person.daysWithoutTime.length > 0)
+  checkedUntil: string | null,
+) =>
+  people
+    .map((person) => ({
+      person,
+      days: checkedUntil
+        ? person.daysWithoutTime.filter((date) => date <= checkedUntil)
+        : person.daysWithoutTime,
+    }))
+    .filter(({ days }) => days.length > 0)
     .sort(
       (a, b) =>
-        b.daysWithoutTime.length - a.daysWithoutTime.length ||
-        a.name.localeCompare(b.name),
+        b.days.length - a.days.length ||
+        a.person.name.localeCompare(b.person.name),
     );
+
+const daysWithoutTimeFact = (
+  missing: ReturnType<typeof missingDaysOf>,
+  checkedUntil: string | null,
+): AttentionFact | null => {
   if (missing.length === 0) return null;
 
+  const note = checkedUntil
+    ? `up to ${formatDayMonthLabel(checkedUntil)}`
+    : undefined;
+
   if (missing.length === 1) {
-    const [person] = missing;
+    const [{ person, days }] = missing;
     return {
       kind: "daysWithoutTime",
-      headline: `${person.name} has ${countLabel(person.daysWithoutTime.length, "day", "days")} with no time logged`,
-      detail: listOf(person.daysWithoutTime.map(formatDayMonthLabel)),
-      subjectId: person.userId,
+      subject: { id: person.userId, label: person.name },
+      headline: `has ${countLabel(days.length, "day", "days")} with no time logged`,
+      note,
+      detail: listOf(days.map(formatDayMonthLabel)),
+      items: [],
     };
   }
 
   return {
     kind: "daysWithoutTime",
     headline: `${missing.length} people have days with no time logged`,
-    detail: listOf(
-      missing.map(
-        (person) => `${person.name} · ${person.daysWithoutTime.length}`,
-      ),
-    ),
+    note,
+    items: missing.map(({ person, days }) => ({
+      id: person.userId,
+      label: `${person.name} · ${days.length}`,
+    })),
   };
 };
 
-/** How far a project is off its plan, or all its time when it has none; 0 when close enough. */
-const offPlanGap = ({ totalMinutes, plannedMinutes }: HoursReportRow) => {
+/**
+ * How far a project is off its plan, or all its time when it has none; 0 when
+ * it needs no attention. Unplanned time counts only on a client project, since
+ * internal work is often left unplanned on purpose; while the month runs, only
+ * time over the plan counts, since late logging only lowers logged time
+ * (Decision 36).
+ */
+const offPlanGap = (
+  { totalMinutes, plannedMinutes, detail: client }: HoursReportRow,
+  isMonthRunning: boolean,
+) => {
   if (!plannedMinutes) {
-    return totalMinutes >= ATTENTION_MIN_MINUTES ? totalMinutes : 0;
+    return client && totalMinutes >= ATTENTION_MIN_MINUTES ? totalMinutes : 0;
   }
   const gap = totalMinutes - plannedMinutes;
+  if (isMonthRunning && gap < 0) return 0;
   return isBigGap(gap, plannedMinutes) ? gap : 0;
 };
 
-/** Whether a project is counted in Needs attention, for the mark beside it. */
-export const projectNeedsAttention = (project: HoursReportRow) =>
-  offPlanGap(project) !== 0;
-
-const describeGap = (project: HoursReportRow) => {
-  if (!project.plannedMinutes) {
-    return `${project.name}, ${formatReportHours(project.totalMinutes)} with no plan`;
-  }
-  const gap = offPlanGap(project);
-  return `${project.name} ${gap > 0 ? "+" : "−"}${formatReportHours(Math.abs(gap))}`;
-};
+const signedHours = (minutes: number) =>
+  `${minutes > 0 ? "+" : "−"}${formatReportHours(Math.abs(minutes))}`;
 
 const projectsOffPlanFact = (
-  projects: HoursReportRow[],
+  offPlan: { project: HoursReportRow; gap: number }[],
+  isManager: boolean,
 ): AttentionFact | null => {
-  const offPlan = projects
-    .filter((project) => offPlanGap(project) !== 0)
-    .sort((a, b) => Math.abs(offPlanGap(b)) - Math.abs(offPlanGap(a)));
   if (offPlan.length === 0) return null;
 
+  const note = isManager ? "your teams' share" : undefined;
+
   if (offPlan.length === 1) {
-    const [project] = offPlan;
-    return {
-      kind: "projectsOffPlan",
-      ...(project.plannedMinutes
-        ? {
-            headline: `${project.name} is more than 10% off plan`,
-            detail: `${formatReportHours(project.totalMinutes)} logged of ${formatReportHours(project.plannedMinutes)} planned`,
-          }
-        : {
-            headline: `${project.name} has ${formatReportHours(project.totalMinutes)} logged with no plan`,
-            detail: "Nothing was planned on it this month",
-          }),
-      subjectId: project.id!,
-    };
+    const [{ project }] = offPlan;
+    const subject = { id: project.id!, label: project.name ?? "" };
+    return project.plannedMinutes
+      ? {
+          kind: "projectsOffPlan",
+          subject,
+          headline: "is more than 10% off plan",
+          note,
+          detail: `${formatReportHours(project.totalMinutes)} logged of ${formatReportHours(project.plannedMinutes)} planned`,
+          items: [],
+        }
+      : {
+          kind: "projectsOffPlan",
+          subject,
+          headline: `has ${formatReportHours(project.totalMinutes)} logged with no plan`,
+          note,
+          detail: "Nothing was planned on it this month",
+          items: [],
+        };
   }
 
   // A project with time and no plan isn't "off" a plan, so the headline says both.
-  const hasUnplanned = offPlan.some((project) => !project.plannedMinutes);
+  const hasUnplanned = offPlan.some(({ project }) => !project.plannedMinutes);
   return {
     kind: "projectsOffPlan",
     headline: hasUnplanned
       ? `${offPlan.length} projects are off plan or not planned`
       : `${offPlan.length} projects are more than 10% off plan`,
-    detail: `Largest: ${offPlan
-      .slice(0, LARGEST_PROJECTS_NAMED)
-      .map(describeGap)
-      .join(" · ")}`,
-  };
-};
-
-/** A plan beyond what someone can work is a planning fact, not a verdict on them. */
-const isPlannedBeyondHours = ({
-  plannedMinutes,
-  expectedMinutes,
-}: PeopleReportRow) =>
-  plannedMinutes > expectedMinutes &&
-  isBigGap(plannedMinutes - expectedMinutes, expectedMinutes);
-
-/** Whether a person is named in Needs attention, for the mark beside them. */
-export const personNeedsAttention = (person: PeopleReportRow) =>
-  person.daysWithoutTime.length > 0 || isPlannedBeyondHours(person);
-
-const plannedBeyondHoursFact = (
-  people: PeopleReportRow[],
-): AttentionFact | null => {
-  const overPlanned = people.filter(isPlannedBeyondHours);
-  if (overPlanned.length === 0) return null;
-
-  if (overPlanned.length === 1) {
-    const [person] = overPlanned;
-    return {
-      kind: "plannedBeyondHours",
-      headline: `${person.name} is planned beyond their hours`,
-      detail: `${formatReportHours(person.plannedMinutes)} planned, ${formatReportHours(person.expectedMinutes)} expected`,
-      subjectId: person.userId,
-    };
-  }
-
-  return {
-    kind: "plannedBeyondHours",
-    headline: `${overPlanned.length} people are planned beyond their hours`,
-    detail: listOf(overPlanned.map((person) => person.name)),
+    note,
+    items: offPlan.map(({ project, gap }) => ({
+      id: project.id!,
+      label: project.plannedMinutes
+        ? `${project.name} · ${signedHours(gap)}`
+        : `${project.name} · ${formatReportHours(project.totalMinutes)} with no plan`,
+    })),
   };
 };
 
 /**
- * At most one fact per kind of problem, so the month's problems read at a
- * glance: missing time first, then the plans. Nothing is about someone logging
- * less than expected (D3).
+ * What needs attention in an open month, at most one fact per kind of
+ * problem — missing time first, then the plans — with the people and projects
+ * it names, so a dot beside a row always matches the section. Nothing is
+ * about someone logging less than expected (D3), and a plan beyond someone's
+ * hours is left to Planning (Decision 37).
  */
-export const attentionFacts = (
-  people: PeopleReportRow[],
-  projects: HoursReportRow[],
-): AttentionFact[] =>
-  [
-    daysWithoutTimeFact(people),
-    projectsOffPlanFact(projects),
-    plannedBeyondHoursFact(people),
-  ].filter((fact): fact is AttentionFact => fact !== null);
+export const reportAttention = ({
+  people,
+  projects,
+  countedUntil,
+  isManager,
+}: AttentionInput): ReportAttention => {
+  const checkedUntil = countedUntil && lastCheckedDay(countedUntil);
+  const missing = missingDaysOf(people, checkedUntil);
+  const offPlan = projects
+    .map((project) => ({
+      project,
+      gap: offPlanGap(project, countedUntil !== null),
+    }))
+    .filter(({ gap }) => gap !== 0)
+    .sort((a, b) => Math.abs(b.gap) - Math.abs(a.gap));
+
+  return {
+    facts: [
+      daysWithoutTimeFact(missing, checkedUntil),
+      projectsOffPlanFact(offPlan, isManager),
+    ].filter((fact): fact is AttentionFact => fact !== null),
+    people: new Map(
+      missing.map(({ person, days }) => [
+        person.userId,
+        `${countLabel(days.length, "day", "days")} with no time logged`,
+      ]),
+    ),
+    projects: new Map(
+      offPlan.map(({ project }) => [
+        project.id!,
+        project.plannedMinutes
+          ? "More than 10% off plan"
+          : "Logged with no plan",
+      ]),
+    ),
+  };
+};
+
+/** Nothing marked, for a locked month (Decision 34). */
+export const NO_ATTENTION: ReportAttention = {
+  facts: [],
+  people: new Map(),
+  projects: new Map(),
+};
