@@ -482,7 +482,7 @@ and this document:
 | **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
-| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' Team card shows it as each person's logged time against expected, and since Phase 31 nothing else marks it |
+| **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People card shows it as each person's logged time against expected, and since Phase 31 nothing else marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
 it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
@@ -499,7 +499,7 @@ for the days before they joined; there is no separate start date (§10 Q14). Rou
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
-the company's timezone, which Reports' Team card measures against, and a
+the company's timezone, which Reports' People card measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
 warning from. A day expects nothing on a weekend, an absence or before the
 account was created. The days are rounded along a running total, so they always
@@ -769,15 +769,15 @@ see, and how a new company gets started. §7 plans that work.
   people planned beyond what they are expected to work. None is about somebody
   logging less than expected. A deactivated person and an owner
   have no missing days, and are listed only if they logged time in the period:
-  owners often don't track their own time. Below, the Team
-  card puts each person's logged time against their expected hours, with what
-  was planned and their days off, and the Projects card puts each project's
-  time against its plan, under its client, with internal work last. Each card
-  draws its rows on one hour scale with an axis: the bar is logged time, a
-  line marks expected hours and a ring planned hours, and time past them is
-  striped; a missing plan or expectation has no mark and is said in words. It
-  is a fact, not a score (D3): nothing is red or green, and the team is listed
-  by name unless "Most logged first" is chosen. A person's name
+  owners often don't track their own time. Below, People lists everyone by team (somebody in
+  two teams under both), each with one bar of their logged time against their
+  expected hours and their days off; a long list starts folded to its teams,
+  each with its people's total. The one mark is a dot beside somebody Needs
+  attention names. It is a fact, not a score (D3): nothing is red or green, and
+  people are listed by name. The Projects card puts each project's time against
+  its plan, under its client, with internal work last, on one hour scale with
+  an axis: the bar is logged time, a ring marks planned hours and time past it
+  is striped; a missing plan has no mark and is said in words. A person's name
   opens a panel with their figures, each day of up to two months (logged, a
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
@@ -1123,7 +1123,7 @@ ever disagree about the catalogue.
 The team view shows each person's logged time against what was expected, but
 somebody still has to look, and since Phase 31 nothing marks anyone short.
 Phase 3 made "short" precise: logged below expected, over days that have
-finished; today only Reports' Team card shows it.
+finished; today only Reports' People card shows it.
 *Recommendation: defer until the team view has been used for a while.* If chasing
 turns out to be the recurring cost, a weekly email to people with an incomplete
 week is the smallest thing that helps. Notifications are easy to add and hard to

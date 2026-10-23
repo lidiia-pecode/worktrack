@@ -8,7 +8,7 @@ import {
   groupProjectsByClient,
   hourScale,
   personDays,
-  sortPeople,
+  groupPeopleByTeam,
 } from "./report-overview";
 
 const HOUR = 60;
@@ -167,27 +167,39 @@ describe("groupProjectsByClient", () => {
   });
 });
 
-describe("sortPeople", () => {
-  const people = [
-    person("Cara", 50, 120, 100),
-    person("Abel", 110, 40, 100),
-    person("Bea", 0, 0, 0),
-  ];
+describe("groupPeopleByTeam", () => {
+  const team = (id: string) => ({ id, name: `${id} team` });
+  const withTeams = (name: string, ...teams: string[]) => ({
+    ...person(name, 10, 0, 20),
+    teams: teams.map(team),
+  });
 
-  it("sorts by name", () => {
-    expect(sortPeople(people, "name").map((row) => row.name)).toEqual([
-      "Abel",
-      "Bea",
-      "Cara",
+  it("puts people under each of their teams, by team name, with no team last", () => {
+    const groups = groupPeopleByTeam([
+      withTeams("Emma Clarke", "Platform", "Core"),
+      withTeams("Mark Nobody"),
+      withTeams("Liam Carter", "Core"),
+    ]);
+
+    expect(
+      groups.map((group) => [group.name, group.people.map((row) => row.name)]),
+    ).toEqual([
+      ["Core team", ["Emma Clarke", "Liam Carter"]],
+      ["Platform team", ["Emma Clarke"]],
+      ["No team", ["Mark Nobody"]],
     ]);
   });
 
-  it("puts the largest share of expected hours logged first, nothing expected last", () => {
-    expect(sortPeople(people, "logged").map((row) => row.name)).toEqual([
-      "Abel",
-      "Cara",
-      "Bea",
+  it("adds up each team's logged and expected hours", () => {
+    const [core] = groupPeopleByTeam([
+      withTeams("Emma Clarke", "Core"),
+      withTeams("Liam Carter", "Core"),
     ]);
+
+    expect(core).toMatchObject({
+      loggedMinutes: 20 * HOUR,
+      expectedMinutes: 40 * HOUR,
+    });
   });
 });
 

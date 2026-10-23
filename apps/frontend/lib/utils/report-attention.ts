@@ -121,14 +121,21 @@ const projectsOffPlanFact = (
 };
 
 /** A plan beyond what someone can work is a planning fact, not a verdict on them. */
+const isPlannedBeyondHours = ({
+  plannedMinutes,
+  expectedMinutes,
+}: PeopleReportRow) =>
+  plannedMinutes > expectedMinutes &&
+  isBigGap(plannedMinutes - expectedMinutes, expectedMinutes);
+
+/** Whether a person is named in Needs attention, for the mark beside them. */
+export const personNeedsAttention = (person: PeopleReportRow) =>
+  person.daysWithoutTime.length > 0 || isPlannedBeyondHours(person);
+
 const plannedBeyondHoursFact = (
   people: PeopleReportRow[],
 ): AttentionFact | null => {
-  const overPlanned = people.filter(
-    ({ plannedMinutes, expectedMinutes }) =>
-      plannedMinutes > expectedMinutes &&
-      isBigGap(plannedMinutes - expectedMinutes, expectedMinutes),
-  );
+  const overPlanned = people.filter(isPlannedBeyondHours);
   if (overPlanned.length === 0) return null;
 
   if (overPlanned.length === 1) {

@@ -272,50 +272,74 @@ describe("ReportsView", () => {
     expect(screen.queryByRole("region", { name: "Close to plan" })).toBeNull();
   });
 
-  it("puts each person against what was expected, with their days off", () => {
-    showReports(peopleReport(team), projectsReport(projects));
-
-    const ethan = within(screen.getByRole("region", { name: "Team" }))
-      .getByText("Ethan Brooks")
-      .closest("li")!;
-    expect(ethan).toHaveTextContent("5 days off");
-    expect(ethan).toHaveTextContent("79h logged");
-    expect(ethan).toHaveTextContent("72h expected · 96h planned");
-    expect(
-      within(ethan).getByRole("img", {
-        name: "Ethan Brooks: 79h logged, 72h expected, 96h planned",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("orders the team by name, or by the share of expected hours logged", async () => {
-    const user = userEvent.setup();
+  it("puts each person under their team, against what was expected, with their days off", () => {
+    const core = { id: "core", name: "Core Development" };
     showReports(
-      peopleReport([...team, person("Grace Morgan", 10, 0, 100)]),
+      peopleReport([
+        { ...team[0], teams: [core] },
+        { ...team[1], teams: [core] },
+        person("Grace Morgan", 10, 0, 0),
+      ]),
       projectsReport(projects),
     );
-    const names = () =>
-      within(screen.getByRole("list", { name: "People" }))
-        .getAllByRole("listitem")
-        .map((row) => row.querySelector("button")?.textContent);
 
-    expect(names()).toEqual(["Ava Mitchell", "Ethan Brooks", "Grace Morgan"]);
-    expect(screen.getByText("Alphabetical")).toBeInTheDocument();
-    // A missing plan is said in words, not drawn as 0h.
-    expect(screen.getByText("Grace Morgan").closest("li")).toHaveTextContent(
-      "100h expected · not planned",
-    );
-
-    const mostLogged = screen.getByRole("button", {
-      name: "Most logged first",
+    const people = screen.getByRole("region", { name: "People" });
+    const coreRow = within(people).getByRole("button", {
+      name: /Core Development/,
     });
-    await user.click(mostLogged);
+    expect(coreRow).toHaveAttribute("aria-expanded", "true");
+    expect(coreRow).toHaveTextContent("187h of 184h");
 
-    expect(mostLogged).toHaveAttribute("aria-pressed", "true");
+    const ethan = within(people).getByText("Ethan Brooks").closest("li")!;
+    expect(ethan).toHaveTextContent("5 days off");
+    expect(ethan).toHaveTextContent("79h of 72h");
     expect(
-      screen.getByText("Largest share of expected hours first"),
+      within(ethan).getByRole("img", {
+        name: "Ethan Brooks: 79h of 72h expected",
+      }),
     ).toBeInTheDocument();
-    expect(names()).toEqual(["Ethan Brooks", "Ava Mitchell", "Grace Morgan"]);
+    // Planned beyond their hours, so marked as in Needs attention.
+    expect(
+      within(ethan).getByRole("img", { name: "Planned beyond their hours" }),
+    ).toBeInTheDocument();
+
+    // Somebody in no team is listed last, and says when nothing was expected.
+    const grace = within(people).getByText("Grace Morgan").closest("li")!;
+    expect(grace).toHaveTextContent("nothing expected");
+    expect(
+      within(people)
+        .getAllByRole("button", { expanded: true })
+        .map((button) => button.textContent),
+    ).toEqual([
+      expect.stringContaining("Core Development"),
+      expect.stringContaining("No team"),
+    ]);
+  });
+
+  it("folds a long list to its teams, and opens them on request", async () => {
+    const user = userEvent.setup();
+    const many = Array.from({ length: 16 }, (_, i) => ({
+      ...person(`Person ${String(i).padStart(2, "0")}`, 40, 40, 40),
+      teams: [{ id: i < 8 ? "a" : "b", name: i < 8 ? "Alpha" : "Beta" }],
+    }));
+    showReports(peopleReport(many), projectsReport(projects));
+
+    const people = screen.getByRole("region", { name: "People" });
+    const alpha = within(people).getByRole("button", { name: /Alpha/ });
+    expect(alpha).toHaveAttribute("aria-expanded", "false");
+    expect(within(people).queryByText("Person 00")).toBeNull();
+
+    await user.click(alpha);
+    expect(alpha).toHaveAttribute("aria-expanded", "true");
+    expect(within(people).getByText("Person 00")).toBeInTheDocument();
+
+    await user.click(
+      within(people).getByRole("button", { name: "Expand all" }),
+    );
+    expect(within(people).getByText("Person 15")).toBeInTheDocument();
+    expect(
+      within(people).getByRole("button", { name: "Collapse all" }),
+    ).toBeInTheDocument();
   });
 
   it("groups projects under their client, internal work last", () => {

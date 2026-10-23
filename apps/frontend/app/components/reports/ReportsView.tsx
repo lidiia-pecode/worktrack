@@ -27,9 +27,9 @@ import { KindOfWork } from "./components/KindOfWork";
 import { ProjectsCard } from "./components/ProjectsCard";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportMonthStepper } from "./components/ReportMonthStepper";
-import { TeamCard } from "./components/TeamCard";
 import { WeekByWeek } from "./components/WeekByWeek";
 import { NeedsAttention } from "./components/NeedsAttention";
+import { PeopleCard } from "./components/PeopleCard";
 
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
@@ -165,12 +165,12 @@ export const ReportsView = () => {
             facts={attentionFacts(people.report.rows, projects.report.rows)}
             onOpenPerson={openPerson}
             onOpenProject={openProject}
-            onSeePeople={() => scrollToSection("report-team")}
+            onSeePeople={() => scrollToSection("report-people")}
             onSeeProjects={() => scrollToSection("report-projects")}
           />
         </div>
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">
-          <TeamCard people={people.report.rows} onOpenPerson={openPerson} />
+          <PeopleCard people={people.report.rows} onOpenPerson={openPerson} />
           <ProjectsCard
             projects={projects.report.rows}
             onOpenProject={openProject}

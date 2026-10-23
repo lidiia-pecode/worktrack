@@ -17,10 +17,22 @@ type ReportRowProps = {
   note?: string;
   bar: ReactNode;
   figure: ReactNode;
-  subFigure: ReactNode;
+  subFigure?: ReactNode;
+  /** Marks the row as named in Needs attention, saying why on hover. */
+  flag?: string;
   /** Makes the name a button that opens the row's panel. */
   onOpen?: () => void;
 };
+
+/** The one mark on Reports: somebody or something named in Needs attention. */
+export const AttentionDot = ({ title }: { title: string }) => (
+  <span
+    className="inline-block size-2 shrink-0 rounded-full bg-warning"
+    title={title}
+    role="img"
+    aria-label={title}
+  />
+);
 
 /** One row of the Team or Projects card or a panel: the name, its bar and its figures. */
 export const ReportRow = ({
@@ -30,6 +42,7 @@ export const ReportRow = ({
   bar,
   figure,
   subFigure,
+  flag,
   onOpen,
 }: ReportRowProps) => (
   <li
@@ -39,17 +52,20 @@ export const ReportRow = ({
     )}
   >
     <div className="col-span-2 min-w-0 @sm:col-span-1">
-      {onOpen ? (
-        <button
-          type="button"
-          onClick={onOpen}
-          className="block max-w-full truncate rounded-sm text-left text-sm font-medium transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          {name}
-        </button>
-      ) : (
-        <p className="truncate text-sm font-medium">{name}</p>
-      )}
+      <div className="flex items-center gap-2">
+        {onOpen ? (
+          <button
+            type="button"
+            onClick={onOpen}
+            className="block max-w-full truncate rounded-sm text-left text-sm font-medium transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          >
+            {name}
+          </button>
+        ) : (
+          <p className="truncate text-sm font-medium">{name}</p>
+        )}
+        {flag && <AttentionDot title={flag} />}
+      </div>
       {(detail || note) && (
         <p className="text-xs text-muted-foreground">
           {[detail, note].filter(Boolean).join(" · ")}
@@ -59,7 +75,9 @@ export const ReportRow = ({
     <div className="min-w-0">{bar}</div>
     <div className="text-right tabular-nums">
       <p className="text-sm font-medium whitespace-nowrap">{figure}</p>
-      <p className="text-xs text-muted-foreground">{subFigure}</p>
+      {subFigure && (
+        <p className="text-xs text-muted-foreground">{subFigure}</p>
+      )}
     </div>
   </li>
 );

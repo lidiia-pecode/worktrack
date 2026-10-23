@@ -167,34 +167,49 @@ export const groupProjectsByClient = (
   );
 };
 
-export type TeamOrder = "name" | "logged";
+/** Up to this many people, every team starts open; past it, folded. */
+export const PEOPLE_SHOWN_OPEN = 15;
 
-export const TEAM_ORDERS: { value: TeamOrder; label: string; hint: string }[] =
-  [
-    { value: "name", label: "Name", hint: "Alphabetical" },
-    {
-      value: "logged",
-      label: "Most logged first",
-      hint: "Largest share of expected hours first",
-    },
-  ];
+export interface TeamGroup {
+  /** The team's id, or "" for the people in no team. */
+  id: string;
+  name: string;
+  people: PeopleReportRow[];
+  loggedMinutes: number;
+  expectedMinutes: number;
+}
 
-// People with nothing expected have no share, so they go last.
-const loggedShare = ({ loggedMinutes, expectedMinutes }: PeopleReportRow) =>
-  expectedMinutes > 0 ? loggedMinutes / expectedMinutes : -1;
+const NO_TEAM = "No team";
 
-/** A sorted copy: by name, or by the share of expected hours logged, largest first. */
-export const sortPeople = (
-  people: PeopleReportRow[],
-  order: TeamOrder,
-): PeopleReportRow[] => {
-  const byName = (a: PeopleReportRow, b: PeopleReportRow) =>
-    a.name.localeCompare(b.name);
+/**
+ * People under each of their teams, so somebody in two teams is in both, and
+ * those in no team last under "No team". Teams run by name, people keep their
+ * order; each team's figures add up its people.
+ */
+export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
+  const groups = new Map<string, TeamGroup>();
+  const add = (id: string, name: string, person: PeopleReportRow) => {
+    const group = groups.get(id) ?? {
+      id,
+      name,
+      people: [],
+      loggedMinutes: 0,
+      expectedMinutes: 0,
+    };
+    group.people.push(person);
+    group.loggedMinutes += person.loggedMinutes;
+    group.expectedMinutes += person.expectedMinutes;
+    groups.set(id, group);
+  };
 
-  if (order === "name") return [...people].sort(byName);
+  for (const person of people) {
+    if (person.teams.length === 0) add("", NO_TEAM, person);
+    for (const team of person.teams) add(team.id, team.name, person);
+  }
 
-  return [...people].sort(
-    (a, b) => loggedShare(b) - loggedShare(a) || byName(a, b),
+  return [...groups.values()].sort(
+    (a, b) =>
+      Number(a.id === "") - Number(b.id === "") || a.name.localeCompare(b.name),
   );
 };
 
