@@ -342,35 +342,32 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("groups projects under their client, internal work last", () => {
+  it("lists projects with their client, against the plan, marking those off it", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const card = screen.getByRole("region", { name: "Projects" });
-    const clients = within(card)
-      .getAllByRole("heading", { level: 3 })
-      .map((heading) => heading.textContent);
-    expect(clients).toEqual(["Retail Corp", "Fintech Group", "Internal work"]);
+    const card = screen.getByRole("region", { name: "Where the time went" });
+    const row = (name: string) => within(card).getByText(name).closest("li")!;
 
-    const fintech = within(card).getByRole("region", {
-      name: "Fintech Group",
-    });
-    expect(fintech).toHaveTextContent("13h · 100% billable");
-    expect(fintech).toHaveTextContent("10h logged");
-    expect(fintech).toHaveTextContent("not planned");
-    expect(fintech).toHaveTextContent("30h planned · −27h");
+    expect(row("WorkTrack")).toHaveTextContent("Internal work");
+    expect(row("WorkTrack")).toHaveTextContent("120h of 100h");
     expect(
-      within(card).getByRole("region", { name: "Internal work" }),
-    ).toHaveTextContent("100h planned · +20h");
-  });
-
-  it("draws time past the plan striped in the brand colour", () => {
-    showReports(peopleReport(team), projectsReport(projects));
-
-    const bar = screen.getByRole("img", {
-      name: "WorkTrack: 120h logged, 100h planned, +20h",
-    });
-    const stripes = bar.querySelector(".bg-stripes-overlay");
-    expect(stripes?.parentElement).toHaveClass("bg-brand");
+      within(row("WorkTrack")).getByRole("img", {
+        name: "More than 10% off plan",
+      }),
+    ).toBeInTheDocument();
+    expect(row("CRM System")).toHaveTextContent("no plan");
+    expect(
+      within(row("CRM System")).getByRole("img", {
+        name: "Logged with no plan",
+      }),
+    ).toBeInTheDocument();
+    // Mobile App is within 10% of its plan, so it has no mark.
+    expect(row("Mobile App")).toHaveTextContent("54h of 50h");
+    expect(
+      within(row("Mobile App")).queryByRole("img", {
+        name: /off plan|no plan/,
+      }),
+    ).toBeNull();
   });
 
   it("shows the month week by week and by kind of work", () => {
@@ -384,12 +381,25 @@ describe("ReportsView", () => {
       name: "Oct 5–11: 38h logged · 40h planned · 40h expected",
     });
     expect(week).toHaveAttribute("tabindex", "0");
+  });
 
-    const kind = screen.getByRole("region", { name: "Kind of work" });
+  it("switches where the time went to the kind of work", async () => {
+    const user = userEvent.setup();
+    showReports(peopleReport(team), projectsReport(projects));
+
+    const card = screen.getByRole("region", { name: "Where the time went" });
+    await user.click(
+      within(card).getByRole("button", { name: "Kind of work" }),
+    );
+
     expect(
-      within(kind).getByRole("img", { name: "Development 75%, Design 25%" }),
+      within(card).getByRole("button", { name: "Kind of work" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      within(card).getByRole("img", { name: "Development 75%, Design 25%" }),
     ).toBeInTheDocument();
-    expect(kind).toHaveTextContent("30h");
+    expect(card).toHaveTextContent("30h");
+    expect(within(card).queryByText("WorkTrack")).toBeNull();
   });
 
   it("says when the period has nothing counted yet", () => {
@@ -512,8 +522,10 @@ describe("ReportsView", () => {
 
       expect(navigation.search).toBe("?person=ethan-brooks");
       const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
-      expect(panel).toHaveTextContent("of 72h expected");
-      expect(panel).toHaveTextContent("+24h against expected");
+      // Only what the row doesn't say: the plan, billable time and time off.
+      expect(panel).toHaveTextContent("Planned96h");
+      expect(panel).toHaveTextContent("Billable39h 30m · 50%");
+      expect(panel).not.toHaveTextContent("of 72h expected");
       expect(panel).toHaveTextContent("1 day with no time logged");
       expect(panel).toHaveTextContent("Vacation");
 
@@ -534,7 +546,7 @@ describe("ReportsView", () => {
         name: "Projects",
       });
       expect(projectsSection).toHaveTextContent("Mobile App");
-      expect(projectsSection).toHaveTextContent("66h planned · −27h");
+      expect(projectsSection).toHaveTextContent("39h of 66h");
       expect(
         within(panel).getByRole("link", { name: /Open in Team time/ }),
       ).toHaveAttribute("href", "/team?person=ethan-brooks");
@@ -548,7 +560,7 @@ describe("ReportsView", () => {
       expect(row).toHaveFocus();
     });
 
-    it("says when a person has no plan or nothing expected, with no gap", () => {
+    it("says when a person has no plan, with no gap", () => {
       navigation.history.splice(0, 1, "?person=noah-reed");
       showReports(
         peopleReport([person("Noah Reed", 10, 0, 0, 0)]),
@@ -556,7 +568,6 @@ describe("ReportsView", () => {
       );
 
       const panel = screen.getByRole("complementary", { name: "Noah Reed" });
-      expect(panel).toHaveTextContent("Nothing expected");
       expect(panel).toHaveTextContent("Not planned");
       expect(panel).not.toHaveTextContent("against expected");
     });
@@ -567,10 +578,10 @@ describe("ReportsView", () => {
 
       const panel = screen.getByRole("complementary", { name: "Mobile App" });
       expect(panel).toHaveTextContent("Retail Corp");
-      expect(panel).toHaveTextContent("of 50h planned");
+      expect(panel).toHaveTextContent("Billable54h · 100%");
       expect(
         within(panel).getByRole("region", { name: "People" }),
-      ).toHaveTextContent("26h planned · +4h");
+      ).toHaveTextContent("30h of 26h");
     });
 
     it("swaps one open panel for another without a new history entry", async () => {

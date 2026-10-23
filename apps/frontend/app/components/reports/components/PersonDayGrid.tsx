@@ -58,7 +58,8 @@ export const PersonDayGrid = ({
   range,
   countedUntil,
 }: PersonDayGridProps) => {
-  const summary = useTeamTimeSummary(range);
+  // Only this person's days, not the whole team's.
+  const summary = useTeamTimeSummary({ ...range, userId: person.userId });
 
   const days = useMemo(() => {
     const row = summary.rows.find((entry) => entry.user.id === person.userId);

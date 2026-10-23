@@ -181,6 +181,7 @@ export class TimeLogsService {
       {
         teamId: query.teamId,
         projectId: query.projectId,
+        userId: query.userId,
         includeUserIds: loggedUserIds,
       },
       { includeSelf: true },
@@ -409,6 +410,10 @@ export class TimeLogsService {
       query.teamId,
       user,
     );
+
+    if (query.userId) {
+      qb.andWhere('t.user_id = :userId', { userId: query.userId });
+    }
 
     if (query.projectId) {
       qb.innerJoin(

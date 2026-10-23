@@ -34,6 +34,7 @@ export type VisibleUser = Pick<
 export interface VisibleUsersFilter {
   teamId?: string;
   projectId?: string;
+  userId?: string;
   /** Deactivated people who still belong in the view, e.g. they have data in it. */
   includeUserIds?: string[];
 }
@@ -231,6 +232,10 @@ export class TeamVisibilityService {
 
     this.applyUserVisibility(qb, 'u.id', user, options);
     this.applyTeamMembershipFilter(qb, 'u.id', filter.teamId, user);
+
+    if (filter.userId) {
+      qb.andWhere('u.id = :visibleUserId', { visibleUserId: filter.userId });
+    }
 
     if (filter.projectId) {
       qb.andWhere(

@@ -109,18 +109,18 @@ describe("kindOfWork", () => {
     ).toEqual([1]);
   });
 
-  it("past six, keeps the colour for the one earlier in the list when sizes tie", () => {
-    const many = ["A", "B", "C", "D", "E", "F", "G"];
+  it("past five, keeps the colour for the one earlier in the list when sizes tie", () => {
+    const many = ["A", "B", "C", "D", "E", "F"];
     const shares = kindOfWork(
       [...many].reverse().map((name) => activity(name, name, 5)),
       many,
     );
 
-    expect(shares.find(({ name }) => name === "F")?.slot).toBe(6);
+    expect(shares.find(({ name }) => name === "E")?.slot).toBe(5);
     expect(shares.at(-1)).toMatchObject({ name: "Other", slot: null });
   });
 
-  it("past six categories, keeps colours for the six largest and puts the rest in Other", () => {
+  it("past five categories, keeps colours for the five largest and lists the rest in Other", () => {
     const many = ["A", "B", "C", "D", "E", "F", "G", "H"];
     const shares = kindOfWork(
       [
@@ -130,17 +130,18 @@ describe("kindOfWork", () => {
       many,
     );
 
-    // A and B are the smallest, so they join Other; C to H keep colours in list order.
+    // A to C are the smallest, so they join Other; D to H keep colours in list order.
     expect(shares.map(({ name, slot }) => [name, slot])).toEqual([
-      ["H", 6],
-      ["G", 5],
-      ["F", 4],
-      ["E", 3],
-      ["D", 2],
-      ["C", 1],
+      ["H", 5],
+      ["G", 4],
+      ["F", 3],
+      ["E", 2],
+      ["D", 1],
       [OTHER_CATEGORIES, null],
       [NO_CATEGORY, null],
     ]);
-    expect(shares.at(-2)?.minutes).toBe(21 * HOUR);
+    const other = shares.at(-2)!;
+    expect(other.minutes).toBe(33 * HOUR);
+    expect(other.includes?.map(({ name }) => name)).toEqual(["C", "B", "A"]);
   });
 });

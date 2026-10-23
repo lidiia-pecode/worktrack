@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
+import { ChevronDown } from "lucide-react";
+
 import { HoursReportGroupBy } from "@/types/enums";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
-import { kindOfWork } from "@/lib/utils/report-charts";
+import {
+  CategoryShare,
+  kindOfWork,
+  OTHER_CATEGORIES,
+} from "@/lib/utils/report-charts";
 import { DateRange } from "@/lib/utils/report-period";
-
-import { Card } from "@/components/ui/card";
 
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
@@ -20,17 +25,30 @@ const FILLS: Record<number, string> = {
   3: "bg-category-3",
   4: "bg-category-4",
   5: "bg-category-5",
-  6: "bg-category-6",
 };
 
 const fillOf = (slot: number | null) =>
   slot === null ? "bg-category-other" : FILLS[slot];
 
+const ROW_CLASS =
+  "grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/60 py-2.5 text-sm";
+
+const Figures = ({ minutes, share }: CategoryShare) => (
+  <>
+    <span className="font-medium tabular-nums">{formatDuration(minutes)}</span>
+    <span className="text-right text-xs text-muted-foreground tabular-nums">
+      {share}%
+    </span>
+  </>
+);
+
 /**
- * Logged time by activity category: one bar of shares, and each category named
- * with its hours. It loads on its own, so it never holds up the figures above.
+ * Logged time by activity category: one bar of shares and the five largest
+ * named with their hours, the rest in an "Other" that opens. It loads only
+ * when shown.
  */
 export const KindOfWork = ({ range }: { range: DateRange }) => {
+  const [isOtherOpen, setIsOtherOpen] = useState(false);
   const activities = useHoursReport({
     ...range,
     groupBy: HoursReportGroupBy.ACTIVITY,
@@ -58,70 +76,95 @@ export const KindOfWork = ({ range }: { range: DateRange }) => {
     categories.items.map((category) => category.name),
   );
 
+  if (shares.length === 0) {
+    return (
+      <p className="mt-4 text-sm text-muted-foreground">
+        No time logged this month.
+      </p>
+    );
+  }
+
   return (
-    <Card
-      as="section"
-      aria-labelledby="report-kind"
+    <div
       aria-busy={activities.isPlaceholderData}
       className={cn(
-        "p-5",
         activities.isPlaceholderData && "opacity-60 transition-opacity",
       )}
     >
-      <h2 id="report-kind" className="text-base font-semibold">
-        Kind of work
-      </h2>
-      <p className="mt-0.5 text-sm text-muted-foreground">
-        Logged time by activity category
-      </p>
+      <div
+        role="img"
+        aria-label={shares
+          .map(({ name, share }) => `${name} ${share}%`)
+          .join(", ")}
+        className="mt-4 flex h-3 gap-[3px]"
+      >
+        {shares.map(({ name, minutes, slot }) => (
+          <span
+            key={slot ?? name}
+            className={cn(
+              "min-w-1 first:rounded-l-full last:rounded-r-full",
+              fillOf(slot),
+            )}
+            style={{ flexGrow: minutes, flexBasis: 0 }}
+          />
+        ))}
+      </div>
 
-      {shares.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">
-          No time logged in this period.
-        </p>
-      ) : (
-        <>
-          <div
-            role="img"
-            aria-label={shares
-              .map(({ name, share }) => `${name} ${share}%`)
-              .join(", ")}
-            className="mt-4 flex h-3 gap-[3px]"
-          >
-            {shares.map(({ name, minutes, slot }) => (
-              <span
-                key={slot ?? name}
-                className={cn(
-                  "min-w-1 first:rounded-l-full last:rounded-r-full",
-                  fillOf(slot),
-                )}
-                style={{ flexGrow: minutes, flexBasis: 0 }}
-              />
-            ))}
-          </div>
-
-          <ul className="mt-3">
-            {shares.map(({ name, minutes, share, slot }) => (
-              <li
-                key={slot ?? name}
-                className="grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/60 py-2.5 text-sm"
-              >
+      <ul className="mt-3">
+        {shares.map((category) =>
+          category.name === OTHER_CATEGORIES && category.includes ? (
+            <li key={category.name}>
+              <div className={ROW_CLASS}>
                 <span
-                  className={cn("size-2.5 rounded-sm", fillOf(slot))}
+                  className={cn("size-2.5 rounded-full", fillOf(null))}
                   aria-hidden
                 />
-                <span className="truncate">{name}</span>
-                <span className="font-medium tabular-nums">
-                  {formatDuration(minutes)}
-                </span>
-                <span className="text-right text-xs text-muted-foreground tabular-nums">
-                  {share}%
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </Card>
+                <button
+                  type="button"
+                  aria-expanded={isOtherOpen}
+                  onClick={() => setIsOtherOpen(!isOtherOpen)}
+                  className="flex min-w-0 items-center gap-1.5 rounded-sm text-left focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  Other
+                  <span className="text-xs text-muted-foreground">
+                    {category.includes.length} categories
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "size-3.5 shrink-0 transition-transform",
+                      isOtherOpen && "rotate-180",
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                <Figures {...category} />
+              </div>
+              {isOtherOpen && (
+                <ul className="pl-6">
+                  {category.includes.map((inner) => (
+                    <li key={inner.name} className={ROW_CLASS}>
+                      <span />
+                      <span className="truncate text-muted-foreground">
+                        {inner.name}
+                      </span>
+                      <Figures {...inner} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          ) : (
+            <li key={category.slot ?? category.name} className={ROW_CLASS}>
+              <span
+                className={cn("size-2.5 rounded-full", fillOf(category.slot))}
+                aria-hidden
+              />
+              <span className="truncate">{category.name}</span>
+              <Figures {...category} />
+            </li>
+          ),
+        )}
+      </ul>
+    </div>
   );
 };

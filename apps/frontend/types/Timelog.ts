@@ -55,6 +55,7 @@ export type TeamSummaryQuery = {
   dateTo: string;
   teamId?: string;
   projectId?: string;
+  userId?: string;
 };
 
 // Mirrors the backend `TeamSummaryResponse` DTO.

@@ -30,8 +30,8 @@ export const bucketNote = (
   return isPartial && end === countedUntil ? `${days} so far` : days;
 };
 
-/** Categories with a colour of their own; the rest share a grey "Other". */
-export const CATEGORY_SLOTS = 6;
+/** Categories shown with a colour of their own; the rest share a grey "Other". */
+export const CATEGORY_SLOTS = 5;
 
 export const NO_CATEGORY = "No category";
 export const OTHER_CATEGORIES = "Other";
@@ -43,6 +43,8 @@ export interface CategoryShare {
   share: number;
   /** 1 to `CATEGORY_SLOTS`; null for the grey "Other" and "No category". */
   slot: number | null;
+  /** For "Other": the categories in it, largest first. */
+  includes?: CategoryShare[];
 }
 
 /**
@@ -50,8 +52,9 @@ export interface CategoryShare {
  *
  * The categories with time get the colours in the order of the company's
  * Categories list, not by size, so a category keeps its colour while the same
- * ones have time. Past six, the six largest keep a colour and the rest join a
- * grey "Other"; time on activities without a category is a grey "No category".
+ * ones have time. Past five, the five largest keep a colour and the rest join a
+ * grey "Other", which lists them; time on activities without a category is a
+ * grey "No category".
  */
 export const kindOfWork = (
   activities: HoursReportRow[],
@@ -95,9 +98,16 @@ export const kindOfWork = (
 
   const share = (minutes: number) =>
     total > 0 ? Math.round((minutes / total) * 100) : 0;
-  const other = withTime
+  const inOther = withTime
     .filter(([name]) => !coloured.has(name))
-    .reduce((sum, [, minutes]) => sum + minutes, 0);
+    .sort((a, b) => b[1] - a[1] || byListPlace(a[0], b[0]))
+    .map(([name, minutes]) => ({
+      name,
+      minutes,
+      share: share(minutes),
+      slot: null,
+    }));
+  const other = inOther.reduce((sum, { minutes }) => sum + minutes, 0);
 
   return [
     ...withTime
@@ -116,6 +126,7 @@ export const kindOfWork = (
             minutes: other,
             share: share(other),
             slot: null,
+            includes: inOther,
           },
         ]
       : []),

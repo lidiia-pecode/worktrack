@@ -10,19 +10,9 @@ import { useHoursReport } from "@/hooks/useHoursReport";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
-import {
-  formatDuration,
-  formatSignedDuration,
-  fromISODate,
-} from "@/lib/utils/date";
+import { formatDuration } from "@/lib/utils/date";
 import { DateRange } from "@/lib/utils/report-period";
-import {
-  DAY_GRID_MAX_DAYS,
-  HourScale,
-  hourScaleOf,
-  NARROW_TICK_INTERVALS,
-  percentOf,
-} from "@/lib/utils/report-overview";
+import { percentOf } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -33,17 +23,7 @@ import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
 import { PERSON_PARAM } from "../../team/useOpenedPerson";
 import { AgainstPlanRow } from "./AgainstPlanRow";
-import { BarLegend } from "./HourBar";
 import { PersonDayGrid } from "./PersonDayGrid";
-import { ReportAxisRow } from "./ReportRow";
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-const daysIn = ({ dateFrom, dateTo }: DateRange) =>
-  Math.round(
-    (fromISODate(dateTo).getTime() - fromISODate(dateFrom).getTime()) /
-      MS_PER_DAY,
-  ) + 1;
 
 const ReportPanel = ({
   focusKey,
@@ -87,24 +67,13 @@ const ReportPanel = ({
   );
 };
 
-const Figures = ({
-  figures,
-}: {
-  figures: { label: string; value: string; detail: string }[];
-}) => (
-  <dl className="grid grid-cols-2 gap-2">
-    {figures.map((figure) => (
-      <div
-        key={figure.label}
-        className="rounded-xl border border-border bg-card px-3.5 py-3"
-      >
-        <dt className="text-xs font-medium text-muted-foreground">
-          {figure.label}
-        </dt>
-        <dd className="mt-1 text-lg font-semibold tracking-tight tabular-nums">
-          {figure.value}
-        </dd>
-        <dd className="text-xs text-muted-foreground">{figure.detail}</dd>
+/** What the panel adds to its row, in one line: never the row's own figures again. */
+const Facts = ({ facts }: { facts: { label: string; value: string }[] }) => (
+  <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+    {facts.map((fact) => (
+      <div key={fact.label}>
+        <dt className="text-muted-foreground">{fact.label}</dt>
+        <dd className="font-medium tabular-nums">{fact.value}</dd>
       </div>
     ))}
   </dl>
@@ -136,7 +105,7 @@ const PanelList = ({
 }: {
   report: ReturnType<typeof useHoursReport>;
   empty: string;
-  children: (rows: HoursReportRow[], scale: HourScale) => ReactNode;
+  children: (rows: HoursReportRow[]) => ReactNode;
 }) => {
   if (report.isLoading) return <LoadingState size="compact" title="Loading…" />;
   if (report.isError) {
@@ -151,18 +120,7 @@ const PanelList = ({
   if (!report.report?.rows.length) {
     return <p className="py-3 text-sm text-muted-foreground">{empty}</p>;
   }
-  const { rows } = report.report;
-  const scale = hourScaleOf(rows, NARROW_TICK_INTERVALS);
-
-  return (
-    <div className="@container">
-      <BarLegend showExpected={false} past="Logged past the plan" />
-      <div className="mt-3">
-        <ReportAxisRow scale={scale} />
-        <ul>{children(rows, scale)}</ul>
-      </div>
-    </div>
-  );
+  return <ul className="@container">{children(report.report.rows)}</ul>;
 };
 
 type PersonPanelProps = {
@@ -173,7 +131,7 @@ type PersonPanelProps = {
   onClose: () => void;
 };
 
-/** One person's period: figures, days and projects. */
+/** One person's month: what the row doesn't say, their days and their projects. */
 export const PersonPanel = ({
   person,
   range,
@@ -193,7 +151,6 @@ export const PersonPanel = ({
     ),
   ];
   const withoutTime = person.daysWithoutTime.length;
-  const { loggedMinutes, expectedMinutes, plannedMinutes } = person;
 
   return (
     <ReportPanel
@@ -203,40 +160,22 @@ export const PersonPanel = ({
       isUpdating={isUpdating}
       onClose={onClose}
     >
-      <Figures
-        figures={[
-          {
-            label: "Logged",
-            value: formatDuration(loggedMinutes),
-            detail:
-              expectedMinutes > 0
-                ? `of ${formatDuration(expectedMinutes)} expected`
-                : "Nothing expected",
-          },
+      <Facts
+        facts={[
           {
             label: "Planned",
-            value: plannedMinutes > 0 ? formatDuration(plannedMinutes) : "—",
-            // A gap only between two real figures, never against a missing one.
-            detail:
-              plannedMinutes === 0
-                ? "Not planned"
-                : expectedMinutes > 0
-                  ? `${formatSignedDuration(plannedMinutes - expectedMinutes)} against expected`
-                  : "Nothing expected",
+            value:
+              person.plannedMinutes > 0
+                ? formatDuration(person.plannedMinutes)
+                : "Not planned",
           },
           {
             label: "Billable",
-            value: formatDuration(person.billableMinutes),
-            detail: `${percentOf(person.billableMinutes, person.loggedMinutes)}% of logged`,
+            value: `${formatDuration(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
           },
-          {
-            label: "Time off",
-            value: countLabel(person.timeOffDays, "day", "days"),
-            detail:
-              absences.isLoading || absences.isError
-                ? ""
-                : absenceTypes.join(", ") || "None",
-          },
+          ...(person.timeOffDays > 0 && absenceTypes.length > 0
+            ? [{ label: "Time off", value: absenceTypes.join(", ") }]
+            : []),
         ]}
       />
 
@@ -248,31 +187,24 @@ export const PersonPanel = ({
             : undefined
         }
       >
-        {daysIn(range) <= DAY_GRID_MAX_DAYS ? (
-          <PersonDayGrid
-            person={person}
-            absences={absences}
-            range={range}
-            countedUntil={countedUntil}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Pick two months or less to see each day.
-          </p>
-        )}
+        <PersonDayGrid
+          person={person}
+          absences={absences}
+          range={range}
+          countedUntil={countedUntil}
+        />
       </PanelSection>
 
       <PanelSection title="Projects" note="Logged against planned">
         <PanelList
           report={projects}
-          empty="No time or plans on any project in this period."
+          empty="No time or plans on any project this month."
         >
-          {(rows, scale) =>
+          {(rows) =>
             rows.map((row) => (
               <AgainstPlanRow
                 key={row.id}
                 row={row}
-                scale={scale}
                 detail={row.detail ?? "Internal work"}
               />
             ))
@@ -300,7 +232,7 @@ type ProjectPanelProps = {
   onClose: () => void;
 };
 
-/** One project's period: figures and the people on it. */
+/** One project's month: its billable time and the people on it. */
 export const ProjectPanel = ({
   project,
   range,
@@ -312,7 +244,6 @@ export const ProjectPanel = ({
     groupBy: HoursReportGroupBy.PERSON,
     projectId: project.id!,
   });
-  const planned = project.plannedMinutes ?? 0;
 
   return (
     <ReportPanel
@@ -322,34 +253,20 @@ export const ProjectPanel = ({
       isUpdating={isUpdating}
       onClose={onClose}
     >
-      <Figures
-        figures={[
-          {
-            label: "Logged",
-            value: formatDuration(project.totalMinutes),
-            detail:
-              planned > 0
-                ? `of ${formatDuration(planned)} planned`
-                : "No plan for this period",
-          },
+      <Facts
+        facts={[
           {
             label: "Billable",
-            value: formatDuration(project.billableMinutes),
-            detail: `${percentOf(project.billableMinutes, project.totalMinutes)}% of logged`,
+            value: `${formatDuration(project.billableMinutes)} · ${percentOf(project.billableMinutes, project.totalMinutes)}%`,
           },
         ]}
       />
 
       <PanelSection title="People" note="Logged against planned">
         <PanelList report={people} empty="Nobody logged or planned time here.">
-          {(rows, scale) =>
+          {(rows) =>
             rows.map((row) => (
-              <AgainstPlanRow
-                key={row.id}
-                row={row}
-                scale={scale}
-                detail={row.detail}
-              />
+              <AgainstPlanRow key={row.id} row={row} detail={row.detail} />
             ))
           }
         </PanelList>

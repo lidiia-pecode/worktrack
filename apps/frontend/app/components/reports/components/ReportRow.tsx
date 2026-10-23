@@ -1,12 +1,9 @@
 import { ReactNode } from "react";
 
 import { cn } from "@/lib/utils/cn";
-import { HourScale } from "@/lib/utils/report-overview";
-
-import { HourAxis } from "./HourBar";
 
 // The name, the bar and the figures; in a narrow list (an `@container`) the
-// name sits above the bar and the figures. The axis row uses the same columns.
+// name sits above the bar and the figures.
 const COLUMNS =
   "grid grid-cols-[minmax(0,1fr)_10rem] gap-x-4 @sm:grid-cols-[minmax(8rem,1fr)_minmax(0,1.2fr)_10rem]";
 
@@ -34,7 +31,7 @@ export const AttentionDot = ({ title }: { title: string }) => (
   />
 );
 
-/** One row of the Team or Projects card or a panel: the name, its bar and its figures. */
+/** One row of People, Projects or a panel: the name, its bar and its figures. */
 export const ReportRow = ({
   name,
   detail,
@@ -57,12 +54,15 @@ export const ReportRow = ({
           <button
             type="button"
             onClick={onOpen}
-            className="block max-w-full truncate rounded-sm text-left text-sm font-medium transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            title={name}
+            className="line-clamp-2 max-w-full rounded-sm text-left text-sm font-medium transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {name}
           </button>
         ) : (
-          <p className="truncate text-sm font-medium">{name}</p>
+          <p title={name} className="line-clamp-2 text-sm font-medium">
+            {name}
+          </p>
         )}
         {flag && <AttentionDot title={flag} />}
       </div>
@@ -80,12 +80,4 @@ export const ReportRow = ({
       )}
     </div>
   </li>
-);
-
-/** The hour scale over a list of rows, lined up with their bars. */
-export const ReportAxisRow = ({ scale }: { scale: HourScale }) => (
-  <div className={cn(COLUMNS, "pb-1")}>
-    <span className="hidden @sm:block" />
-    <HourAxis scale={scale} />
-  </div>
 );

@@ -15,4 +15,9 @@ export class TeamSummaryQuery {
   @IsOptional()
   @IsUUID()
   projectId?: string;
+
+  /** Only this person, within the people the caller sees (Reports' day grid). */
+  @IsOptional()
+  @IsUUID()
+  userId?: string;
 }

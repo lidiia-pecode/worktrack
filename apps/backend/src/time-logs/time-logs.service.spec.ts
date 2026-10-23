@@ -592,7 +592,10 @@ describe('TimeLogsService write scope', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    const weekOf = (by: AuthUser, filter: { teamId?: string } = {}) =>
+    const weekOf = (
+      by: AuthUser,
+      filter: { teamId?: string; userId?: string } = {},
+    ) =>
       service.getTeamSummary({ dateFrom: DATE, dateTo: DATE, ...filter }, by);
 
     it('gives a manager who leads no team their own row with their time', async () => {
@@ -603,6 +606,19 @@ describe('TimeLogsService write scope', () => {
 
       expect(rows.map((row) => row.user.id)).toEqual([loneManager.id]);
       expect(rows[0].minutes).toBe(60);
+    });
+
+    it('narrows to one person, within the people the caller sees', async () => {
+      await existingLogFor(member.id);
+      await existingLogFor(loneManager.id);
+
+      const forManager = await weekOf(manager, { userId: member.id });
+      const outside = await weekOf(manager, { userId: loneManager.id });
+
+      expect(forManager.rows.map((row) => row.user.id)).toEqual([member.id]);
+      expect(forManager.minutes).toBe(forManager.rows[0].minutes);
+      expect(outside.rows).toEqual([]);
+      expect(outside.minutes).toBe(0);
     });
 
     it('leaves them out of a team they are not in', async () => {

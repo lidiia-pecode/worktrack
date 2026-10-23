@@ -23,11 +23,10 @@ import { PERSON_PARAM } from "../team/useOpenedPerson";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
-import { KindOfWork } from "./components/KindOfWork";
-import { ProjectsCard } from "./components/ProjectsCard";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportMonthStepper } from "./components/ReportMonthStepper";
 import { WeekByWeek } from "./components/WeekByWeek";
+import { WhereTheTimeWent, WhereView } from "./components/WhereTheTimeWent";
 import { NeedsAttention } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
 
@@ -84,6 +83,7 @@ export const ReportsView = () => {
   const { user } = useAuth();
 
   const [chosenMonth, setChosenMonth] = useState<string | null>(null);
+  const [whereView, setWhereView] = useState<WhereView>("projects");
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
@@ -166,18 +166,21 @@ export const ReportsView = () => {
             onOpenPerson={openPerson}
             onOpenProject={openProject}
             onSeePeople={() => scrollToSection("report-people")}
-            onSeeProjects={() => scrollToSection("report-projects")}
+            onSeeProjects={() => {
+              setWhereView("projects");
+              scrollToSection("report-where");
+            }}
           />
         </div>
-        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-2">
+        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
           <PeopleCard people={people.report.rows} onOpenPerson={openPerson} />
-          <ProjectsCard
+          <WhereTheTimeWent
+            range={range}
             projects={projects.report.rows}
+            view={whereView}
+            onViewChange={setWhereView}
             onOpenProject={openProject}
           />
-        </div>
-        <div className="mt-4">
-          <KindOfWork range={range} />
         </div>
       </div>
     );

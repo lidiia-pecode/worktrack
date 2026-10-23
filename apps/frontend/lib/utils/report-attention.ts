@@ -85,6 +85,10 @@ const offPlanGap = ({ totalMinutes, plannedMinutes }: HoursReportRow) => {
   return isBigGap(gap, plannedMinutes) ? gap : 0;
 };
 
+/** Whether a project is counted in Needs attention, for the mark beside it. */
+export const projectNeedsAttention = (project: HoursReportRow) =>
+  offPlanGap(project) !== 0;
+
 const describeGap = (project: HoursReportRow) =>
   project.plannedMinutes
     ? `${project.name} ${formatSignedDuration(offPlanGap(project))}`
