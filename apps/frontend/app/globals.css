@@ -141,16 +141,12 @@
   --chart-4: var(--destructive);
   --chart-5: var(--success);
 
-  /* Reports' target bars: the track behind a bar, and the ring marking what
-     was planned. The ring is a graphic, so it needs 3:1 against the card. */
+  /* Reports: the track behind a row's bar. In Week by week, what was expected
+     is a pale block behind each week and what was planned a soft bar beside
+     the logged one, so all three read as one kind of mark. */
   --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
-  --report-plan: oklch(0.58 0.12 50);
-
-  /* Week by week: what was expected is a pale block behind each week, and
-     what was planned a soft bar beside the logged one, so all three read as
-     one kind of mark. */
   --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
-  --report-planned: color-mix(in oklch, var(--report-plan) 50%, var(--card));
+  --report-planned: color-mix(in oklch, oklch(0.58 0.12 50) 50%, var(--card));
 
   /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
      honey, lavender. Checked for colour vision as a set; mint beside
@@ -289,7 +285,6 @@
   --color-chart-5: var(--chart-5);
 
   --color-report-track: var(--report-track);
-  --color-report-plan: var(--report-plan);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
 

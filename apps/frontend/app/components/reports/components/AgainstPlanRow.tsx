@@ -1,5 +1,5 @@
 import { HoursReportRow } from "@/types";
-import { formatDuration } from "@/lib/utils/date";
+import { formatReportHours } from "@/lib/utils/date";
 
 import { ReportBar } from "./ReportBar";
 import { ReportRow } from "./ReportRow";
@@ -23,8 +23,8 @@ export const AgainstPlanRow = ({
   const planned = row.plannedMinutes ?? 0;
   const figure =
     planned > 0
-      ? `${formatDuration(row.totalMinutes)} of ${formatDuration(planned)}`
-      : formatDuration(row.totalMinutes);
+      ? `${formatReportHours(row.totalMinutes)} of ${formatReportHours(planned)}`
+      : formatReportHours(row.totalMinutes);
 
   return (
     <ReportRow

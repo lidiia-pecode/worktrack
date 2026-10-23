@@ -4,14 +4,13 @@ import { ReactNode, useId } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { HoursReportRow, PeopleReportRow } from "@/types";
+import { HoursReportRow, PeopleReportRow, ReportRange } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
-import { formatDuration } from "@/lib/utils/date";
-import { DateRange } from "@/lib/utils/report-period";
+import { formatReportHours } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
@@ -125,7 +124,7 @@ const PanelList = ({
 
 type PersonPanelProps = {
   person: PeopleReportRow;
-  range: DateRange;
+  range: ReportRange;
   countedUntil: string | null;
   isUpdating: boolean;
   onClose: () => void;
@@ -166,12 +165,12 @@ export const PersonPanel = ({
             label: "Planned",
             value:
               person.plannedMinutes > 0
-                ? formatDuration(person.plannedMinutes)
+                ? formatReportHours(person.plannedMinutes)
                 : "Not planned",
           },
           {
             label: "Billable",
-            value: `${formatDuration(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
+            value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
           },
           ...(person.timeOffDays > 0 && absenceTypes.length > 0
             ? [{ label: "Time off", value: absenceTypes.join(", ") }]
@@ -227,7 +226,7 @@ export const PersonPanel = ({
 
 type ProjectPanelProps = {
   project: HoursReportRow;
-  range: DateRange;
+  range: ReportRange;
   isUpdating: boolean;
   onClose: () => void;
 };
@@ -257,7 +256,7 @@ export const ProjectPanel = ({
         facts={[
           {
             label: "Billable",
-            value: `${formatDuration(project.billableMinutes)} · ${percentOf(project.billableMinutes, project.totalMinutes)}%`,
+            value: `${formatReportHours(project.billableMinutes)} · ${percentOf(project.billableMinutes, project.totalMinutes)}%`,
           },
         ]}
       />

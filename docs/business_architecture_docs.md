@@ -773,7 +773,8 @@ see, and how a new company gets started. §7 plans that work.
   two teams under both), each with one bar of their logged time against their
   expected hours and their days off; a long list starts folded to its teams,
   each with its people's total. The one mark is a dot beside somebody Needs
-  attention names. It is a fact, not a score (D3): nothing is red or green, and
+  attention names, with a legend saying so. Figures are whole hours ("694h of
+  819h"); the export and a person's days keep exact time. It is a fact, not a score (D3): nothing is red or green, and
   people are listed by name. Beside it, "Where the time went" switches between
   projects and the kind of work: each project, most logged first with its
   client, as one bar of its time against its plan (a grey bar and "no plan"
@@ -930,7 +931,7 @@ is in its pull request.
 | 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
-| 34 | Reports on one overview page: one cut-off at yesterday for every figure and the export, with an Email column in the export; the period by Month, Quarter or Year with a custom range; three tiles, "Worth a look" with the facts that need attention, Team against expected and Projects against plan on one hour scale per card, week by week and kind of work; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual |
+| 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" in at most three cards, one per kind of problem; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, and one dot for what needs attention; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1180,11 +1181,12 @@ their time logs, such as anonymising the person and keeping the hours.
 - **Q4** — The hours export is an Excel file, one row per person, day,
   project, activity and billing type, with no notes and a `Period` column
   (Phase 13), and an `Email` column after the name (Phase 34).
-- **Q10** — Reports are one overview page for owners and managers, built around
-  the questions they bring: logged against expected and planned, billable, the
-  facts worth a look, hours week by week and kind of work, with a person or a
-  project opened in a side panel; the export holds every number (Phase 34).
-  Comparison with earlier periods and a breakdown by team stay in Area 6.
+- **Q10** — Reports are one overview page for owners and managers, one month
+  at a time, built around the questions they bring: logged against expected and
+  planned, and billable, week by week; what needs attention; people by team;
+  where the time went by project and kind of work, with a person or a project
+  opened in a side panel; the export holds every number (Phase 34). Comparison
+  with earlier periods stays in Area 6.
 - **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
   no "remember me" (Phase 6).
 - **Q8** — No email verification while only a company's first owner signs up

@@ -2,11 +2,11 @@
 
 import { FileSpreadsheet } from "lucide-react";
 
+import { ReportRange } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useHoursExport } from "@/hooks/useHoursReport";
-import { DateRange } from "@/lib/utils/report-period";
 
-export const HoursExportButton = ({ range }: { range: DateRange }) => {
+export const HoursExportButton = ({ range }: { range: ReportRange }) => {
   const exportHours = useHoursExport();
 
   return (

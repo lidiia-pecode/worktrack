@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { PeopleReportRow } from "@/types";
 
-import { hourScale, personDays, groupPeopleByTeam } from "./report-overview";
+import { personDays, groupPeopleByTeam } from "./report-overview";
 
 const HOUR = 60;
 
@@ -23,28 +23,6 @@ const person = (
   expectedMinutes: expectedHours * HOUR,
   timeOffDays: 0,
   daysWithoutTime: [],
-});
-
-describe("hourScale", () => {
-  it("ends on a round number just above the largest figure, in a few even steps", () => {
-    expect(hourScale(114.5 * HOUR)).toEqual({
-      endMinutes: 120 * HOUR,
-      ticks: [0, 40, 80, 120].map((hours) => hours * HOUR),
-    });
-    expect(hourScale(394 * HOUR).ticks).toEqual(
-      [0, 100, 200, 300, 400].map((hours) => hours * HOUR),
-    );
-  });
-
-  it("keeps to fewer steps for a narrow list", () => {
-    expect(hourScale(18.5 * HOUR, 2).ticks).toEqual(
-      [0, 10, 20].map((hours) => hours * HOUR),
-    );
-  });
-
-  it("still draws a scale when everything is zero", () => {
-    expect(hourScale(0).endMinutes).toBeGreaterThan(0);
-  });
 });
 
 describe("groupPeopleByTeam", () => {

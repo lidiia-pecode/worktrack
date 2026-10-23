@@ -39,14 +39,13 @@ export interface HoursReport extends ReportCoverage {
   totals: HoursSplit & Pick<HoursReportRow, "plannedMinutes" | "peopleCount">;
 }
 
-export interface HoursExportQuery {
+/** The days a report covers: one month on Reports. */
+export interface ReportRange {
   dateFrom: string;
   dateTo: string;
 }
 
-export interface HoursReportQuery {
-  dateFrom: string;
-  dateTo: string;
+export interface HoursReportQuery extends ReportRange {
   groupBy: HoursReportGroupBy;
   /** Only this project's time and plans. */
   projectId?: string;

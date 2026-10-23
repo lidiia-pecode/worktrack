@@ -123,8 +123,8 @@ describe("attentionFacts", () => {
       );
       expect(factOf("projectsOffPlan", [], [project("A", 8, 0)])).toEqual({
         kind: "projectsOffPlan",
-        headline: "A is more than 10% off plan",
-        detail: "8h logged with no plan",
+        headline: "A has 8h logged with no plan",
+        detail: "Nothing was planned on it this month",
         subjectId: "A",
       });
     });
@@ -141,11 +141,22 @@ describe("attentionFacts", () => {
         ],
       );
 
-      expect(fact?.headline).toBe("3 projects are more than 10% off plan");
+      expect(fact?.headline).toBe("3 projects are off plan or not planned");
       expect(fact?.detail).toBe(
         "Largest: Support Desk, 193h with no plan · Energy Usage Dashboard −63h",
       );
       expect(fact?.subjectId).toBeUndefined();
+    });
+
+    it("says only off plan when every project has a plan", () => {
+      const fact = factOf(
+        "projectsOffPlan",
+        [],
+        [project("CRM System", 139, 88), project("Mobile App", 30, 50)],
+      );
+
+      expect(fact?.headline).toBe("2 projects are more than 10% off plan");
+      expect(fact?.detail).toBe("Largest: CRM System +51h · Mobile App −20h");
     });
   });
 

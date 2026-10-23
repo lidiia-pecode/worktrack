@@ -73,6 +73,20 @@ export function formatSignedDuration(minutes: number): string {
   return `${sign}${formatDuration(Math.abs(minutes))}`;
 }
 
+const HOURS_LABEL = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
+
+/**
+ * Whole hours for report figures, e.g. "1,203h", where minutes are noise;
+ * under an hour stays in minutes ("45m").
+ */
+export function formatReportHours(minutes: number): string {
+  if (minutes < 60) return formatDuration(minutes);
+
+  return `${HOURS_LABEL.format(Math.round(minutes / 60))}h`;
+}
+
 export function getWeekStart(
   date: Date,
   weekStartDay: WeekDay = WeekDay.MONDAY,

@@ -30,6 +30,41 @@ export const bucketNote = (
   return isPartial && end === countedUntil ? `${days} so far` : days;
 };
 
+const MINUTES_PER_HOUR = 60;
+
+/** Tick steps, in hours, that read as round numbers on an axis. */
+const TICK_STEPS_HOURS = [
+  1, 2, 4, 5, 8, 10, 20, 25, 40, 50, 100, 200, 250, 400, 500, 1000, 2000, 2500,
+  5000,
+];
+
+/** An axis has at most this many intervals, so its labels never crowd. */
+const MAX_TICK_INTERVALS = 4;
+
+export interface HourScale {
+  /** Where the scale ends, a round number at or just above the largest figure. */
+  endMinutes: number;
+  /** From 0 to `endMinutes`, evenly spaced. */
+  ticks: number[];
+}
+
+/** The hour scale of the Week by week chart, from its largest figure. */
+export const hourScale = (maxMinutes: number): HourScale => {
+  const maxHours = Math.max(maxMinutes / MINUTES_PER_HOUR, 1);
+  const step =
+    TICK_STEPS_HOURS.find((hours) => hours * MAX_TICK_INTERVALS >= maxHours) ??
+    TICK_STEPS_HOURS.at(-1)!;
+  const intervals = Math.ceil(maxHours / step);
+
+  return {
+    endMinutes: intervals * step * MINUTES_PER_HOUR,
+    ticks: Array.from(
+      { length: intervals + 1 },
+      (_, i) => i * step * MINUTES_PER_HOUR,
+    ),
+  };
+};
+
 /** Categories shown with a colour of their own; the rest share a grey "Other". */
 export const CATEGORY_SLOTS = 5;
 

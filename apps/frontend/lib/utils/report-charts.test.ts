@@ -5,6 +5,7 @@ import { HoursReportRow, TimelineBucket } from "@/types";
 import {
   bucketLabel,
   bucketNote,
+  hourScale,
   kindOfWork,
   NO_CATEGORY,
   OTHER_CATEGORIES,
@@ -143,5 +144,21 @@ describe("kindOfWork", () => {
     const other = shares.at(-2)!;
     expect(other.minutes).toBe(33 * HOUR);
     expect(other.includes?.map(({ name }) => name)).toEqual(["C", "B", "A"]);
+  });
+});
+
+describe("hourScale", () => {
+  it("ends on a round number just above the largest figure, in a few even steps", () => {
+    expect(hourScale(114.5 * HOUR)).toEqual({
+      endMinutes: 120 * HOUR,
+      ticks: [0, 40, 80, 120].map((hours) => hours * HOUR),
+    });
+    expect(hourScale(394 * HOUR).ticks).toEqual(
+      [0, 100, 200, 300, 400].map((hours) => hours * HOUR),
+    );
+  });
+
+  it("still draws a scale when everything is zero", () => {
+    expect(hourScale(0).endMinutes).toBeGreaterThan(0);
   });
 });

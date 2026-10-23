@@ -34,11 +34,6 @@ export interface PeopleReport extends ReportCoverage {
   };
 }
 
-export interface PeopleReportQuery {
-  dateFrom: string;
-  dateTo: string;
-}
-
 /** One week of the range, cut to the days it counts. */
 export interface TimelineBucket {
   start: string;

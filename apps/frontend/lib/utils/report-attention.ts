@@ -1,10 +1,6 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
 
-import {
-  formatDayMonthLabel,
-  formatDuration,
-  formatSignedDuration,
-} from "./date";
+import { formatDayMonthLabel, formatReportHours } from "./date";
 import { countLabel } from "./text";
 
 /** A gap has to be at least this big, in minutes, to need attention. */
@@ -89,10 +85,13 @@ const offPlanGap = ({ totalMinutes, plannedMinutes }: HoursReportRow) => {
 export const projectNeedsAttention = (project: HoursReportRow) =>
   offPlanGap(project) !== 0;
 
-const describeGap = (project: HoursReportRow) =>
-  project.plannedMinutes
-    ? `${project.name} ${formatSignedDuration(offPlanGap(project))}`
-    : `${project.name}, ${formatDuration(project.totalMinutes)} with no plan`;
+const describeGap = (project: HoursReportRow) => {
+  if (!project.plannedMinutes) {
+    return `${project.name}, ${formatReportHours(project.totalMinutes)} with no plan`;
+  }
+  const gap = offPlanGap(project);
+  return `${project.name} ${gap > 0 ? "+" : "−"}${formatReportHours(Math.abs(gap))}`;
+};
 
 const projectsOffPlanFact = (
   projects: HoursReportRow[],
@@ -106,17 +105,26 @@ const projectsOffPlanFact = (
     const [project] = offPlan;
     return {
       kind: "projectsOffPlan",
-      headline: `${project.name} is more than 10% off plan`,
-      detail: project.plannedMinutes
-        ? `${formatDuration(project.totalMinutes)} logged of ${formatDuration(project.plannedMinutes)} planned`
-        : `${formatDuration(project.totalMinutes)} logged with no plan`,
+      ...(project.plannedMinutes
+        ? {
+            headline: `${project.name} is more than 10% off plan`,
+            detail: `${formatReportHours(project.totalMinutes)} logged of ${formatReportHours(project.plannedMinutes)} planned`,
+          }
+        : {
+            headline: `${project.name} has ${formatReportHours(project.totalMinutes)} logged with no plan`,
+            detail: "Nothing was planned on it this month",
+          }),
       subjectId: project.id!,
     };
   }
 
+  // A project with time and no plan isn't "off" a plan, so the headline says both.
+  const hasUnplanned = offPlan.some((project) => !project.plannedMinutes);
   return {
     kind: "projectsOffPlan",
-    headline: `${offPlan.length} projects are more than 10% off plan`,
+    headline: hasUnplanned
+      ? `${offPlan.length} projects are off plan or not planned`
+      : `${offPlan.length} projects are more than 10% off plan`,
     detail: `Largest: ${offPlan
       .slice(0, LARGEST_PROJECTS_NAMED)
       .map(describeGap)
@@ -147,7 +155,7 @@ const plannedBeyondHoursFact = (
     return {
       kind: "plannedBeyondHours",
       headline: `${person.name} is planned beyond their hours`,
-      detail: `${formatDuration(person.plannedMinutes)} planned, ${formatDuration(person.expectedMinutes)} expected`,
+      detail: `${formatReportHours(person.plannedMinutes)} planned, ${formatReportHours(person.expectedMinutes)} expected`,
       subjectId: person.userId,
     };
   }

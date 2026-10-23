@@ -21,14 +21,25 @@ type ReportRowProps = {
   onOpen?: () => void;
 };
 
-/** The one mark on Reports: somebody or something named in Needs attention. */
-export const AttentionDot = ({ title }: { title: string }) => (
+/**
+ * The one mark on Reports: somebody or something named in Needs attention.
+ * Without a title it only repeats what the text beside it says.
+ */
+export const AttentionDot = ({ title }: { title?: string }) => (
   <span
     className="inline-block size-2 shrink-0 rounded-full bg-warning"
-    title={title}
-    role="img"
-    aria-label={title}
+    {...(title
+      ? { title, role: "img", "aria-label": title }
+      : { "aria-hidden": true })}
   />
+);
+
+/** What the dot means, under a card's heading while a row in it has one. */
+export const AttentionLegend = () => (
+  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+    <AttentionDot />
+    In Needs attention
+  </p>
 );
 
 /** One row of People, Projects or a panel: the name, its bar and its figures. */

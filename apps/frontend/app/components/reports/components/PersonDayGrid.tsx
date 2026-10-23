@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 
-import { Absence, PeopleReportRow } from "@/types";
+import { Absence, PeopleReportRow, ReportRange } from "@/types";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
@@ -13,7 +13,6 @@ import {
   fromISODate,
   isWeekend,
 } from "@/lib/utils/date";
-import { DateRange } from "@/lib/utils/report-period";
 import { personDays, ReportDay } from "@/lib/utils/report-overview";
 
 import { ErrorState } from "../../shared/ErrorState";
@@ -44,7 +43,7 @@ const dayLabel = (date: string) =>
 type PersonDayGridProps = {
   person: PeopleReportRow;
   absences: ReturnType<typeof useAllAbsencesQuery>;
-  range: DateRange;
+  range: ReportRange;
   countedUntil: string | null;
 };
 

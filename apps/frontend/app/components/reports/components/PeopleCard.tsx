@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
-import { formatDuration } from "@/lib/utils/date";
+import { formatReportHours } from "@/lib/utils/date";
 import { personNeedsAttention } from "@/lib/utils/report-attention";
 import {
   daysOffLabel,
@@ -18,13 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { ReportBar } from "./ReportBar";
-import { AttentionDot, ReportRow } from "./ReportRow";
+import { AttentionDot, AttentionLegend, ReportRow } from "./ReportRow";
 
 /** "96h of 120h", or the hours alone when nothing was expected. */
 const againstExpected = (logged: number, expected: number) =>
   expected > 0
-    ? `${formatDuration(logged)} of ${formatDuration(expected)}`
-    : formatDuration(logged);
+    ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
+    : formatReportHours(logged);
 
 const flagOf = (person: PeopleReportRow) =>
   !personNeedsAttention(person)
@@ -155,6 +155,7 @@ export const PeopleCard = ({ people, onOpenPerson }: PeopleCardProps) => {
           <p className="mt-0.5 text-sm text-muted-foreground">
             Hours logged against what each person was expected to work
           </p>
+          {people.some(personNeedsAttention) && <AttentionLegend />}
         </div>
         {groups.length > 1 && (
           <Button

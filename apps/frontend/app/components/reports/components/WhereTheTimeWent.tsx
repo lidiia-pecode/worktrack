@@ -2,10 +2,9 @@
 
 import { useState } from "react";
 
-import { HoursReportRow } from "@/types";
+import { HoursReportRow, ReportRange } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { projectNeedsAttention } from "@/lib/utils/report-attention";
-import { DateRange } from "@/lib/utils/report-period";
 import { countLabel } from "@/lib/utils/text";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ import { Card } from "@/components/ui/card";
 
 import { AgainstPlanRow } from "./AgainstPlanRow";
 import { KindOfWork } from "./KindOfWork";
+import { AttentionLegend } from "./ReportRow";
 
 export type WhereView = "projects" | "work";
 
@@ -47,6 +47,7 @@ const ProjectList = ({
       <p className="mt-1 text-sm text-muted-foreground">
         Hours logged against the plan
       </p>
+      {projects.some(projectNeedsAttention) && <AttentionLegend />}
       <ul className="mt-3 @container">
         {shown.map((project) => (
           <AgainstPlanRow
@@ -83,7 +84,7 @@ const ProjectList = ({
 };
 
 type WhereTheTimeWentProps = {
-  range: DateRange;
+  range: ReportRange;
   projects: HoursReportRow[];
   view: WhereView;
   onViewChange: (view: WhereView) => void;

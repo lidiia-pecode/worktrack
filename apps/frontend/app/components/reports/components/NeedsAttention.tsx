@@ -9,6 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { PERSON_PARAM } from "../../team/useOpenedPerson";
+import { AttentionDot } from "./ReportRow";
 
 type NeedsAttentionProps = {
   facts: AttentionFact[];
@@ -89,7 +90,13 @@ export const NeedsAttention = ({
               key={fact.kind}
               className="flex flex-col gap-1.5 rounded-xl border border-warning/25 bg-warning/8 px-4 py-3.5"
             >
-              <p className="font-semibold">{fact.headline}</p>
+              <p className="flex items-start gap-2 font-semibold">
+                {/* One line high, so the dot sits beside the first line. */}
+                <span className="flex h-6 items-center">
+                  <AttentionDot />
+                </span>
+                {fact.headline}
+              </p>
               <p className="text-sm text-muted-foreground">{fact.detail}</p>
               {action(fact)}
             </li>

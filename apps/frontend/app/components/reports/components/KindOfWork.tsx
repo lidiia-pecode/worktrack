@@ -3,17 +3,17 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
+import { ReportRange } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { cn } from "@/lib/utils/cn";
-import { formatDuration } from "@/lib/utils/date";
+import { formatReportHours } from "@/lib/utils/date";
 import {
   CategoryShare,
   kindOfWork,
   OTHER_CATEGORIES,
 } from "@/lib/utils/report-charts";
-import { DateRange } from "@/lib/utils/report-period";
 
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
@@ -35,7 +35,9 @@ const ROW_CLASS =
 
 const Figures = ({ minutes, share }: CategoryShare) => (
   <>
-    <span className="font-medium tabular-nums">{formatDuration(minutes)}</span>
+    <span className="font-medium tabular-nums">
+      {formatReportHours(minutes)}
+    </span>
     <span className="text-right text-xs text-muted-foreground tabular-nums">
       {share}%
     </span>
@@ -47,7 +49,7 @@ const Figures = ({ minutes, share }: CategoryShare) => (
  * named with their hours, the rest in an "Other" that opens. It loads only
  * when shown.
  */
-export const KindOfWork = ({ range }: { range: DateRange }) => {
+export const KindOfWork = ({ range }: { range: ReportRange }) => {
   const [isOtherOpen, setIsOtherOpen] = useState(false);
   const activities = useHoursReport({
     ...range,

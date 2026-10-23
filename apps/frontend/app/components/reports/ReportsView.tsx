@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { FileBarChart } from "lucide-react";
 
+import { ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
@@ -12,7 +13,6 @@ import { attentionFacts } from "@/lib/utils/report-attention";
 import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { bucketLabel } from "@/lib/utils/report-charts";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
-import { DateRange } from "@/lib/utils/report-period";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +41,7 @@ const scrollToSection = (headingId: string) =>
     ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
 type ReportScopeProps = {
-  range: DateRange;
+  range: ReportRange;
   countedUntil: string | null;
   isProvisional: boolean;
   isManager: boolean;
@@ -90,7 +90,7 @@ export const ReportsView = () => {
 
   const currentMonth = toMonthKey(todayISODate(company?.timezone));
   const month = chosenMonth ?? currentMonth;
-  const range: DateRange = getMonthRange(month);
+  const range: ReportRange = getMonthRange(month);
 
   const people = usePeopleReport(range);
   const projects = useHoursReport({

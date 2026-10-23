@@ -524,7 +524,7 @@ describe("ReportsView", () => {
       const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
       // Only what the row doesn't say: the plan, billable time and time off.
       expect(panel).toHaveTextContent("Planned96h");
-      expect(panel).toHaveTextContent("Billable39h 30m · 50%");
+      expect(panel).toHaveTextContent("Billable40h · 50%");
       expect(panel).not.toHaveTextContent("of 72h expected");
       expect(panel).toHaveTextContent("1 day with no time logged");
       expect(panel).toHaveTextContent("Vacation");
@@ -609,12 +609,23 @@ describe("ReportsView", () => {
           .getAllByRole("listitem")
           .map((item) => item.firstChild?.textContent),
       ).toEqual([
-        "3 projects are more than 10% off plan",
+        "3 projects are off plan or not planned",
         "Ethan Brooks is planned beyond their hours",
       ]);
       expect(card).toHaveTextContent(
         "Largest: Data Warehouse −27h · WorkTrack +20h",
       );
+      // The dot beside those rows says what it means.
+      expect(
+        within(screen.getByRole("region", { name: "People" })).getByText(
+          "In Needs attention",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(
+          screen.getByRole("region", { name: "Where the time went" }),
+        ).getByText("In Needs attention"),
+      ).toBeInTheDocument();
 
       await user.click(
         within(card).getByRole("button", { name: /^See projects/ }),
@@ -636,6 +647,7 @@ describe("ReportsView", () => {
       expect(
         screen.getByText("Nothing needs attention this month."),
       ).toBeInTheDocument();
+      expect(screen.queryByText("In Needs attention")).not.toBeInTheDocument();
     });
 
     it("waits for the person's days off before drawing their days", () => {

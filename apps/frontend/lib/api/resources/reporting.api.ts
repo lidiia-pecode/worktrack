@@ -1,11 +1,10 @@
 "use client";
 
 import {
-  HoursExportQuery,
   HoursReport,
   HoursReportQuery,
   PeopleReport,
-  PeopleReportQuery,
+  ReportRange,
   ReportingMonth,
   ReportingPeriodsQuery,
   Timeline,
@@ -28,12 +27,12 @@ export const ReportingClientApi = {
   getHoursReport: (params: HoursReportQuery) =>
     client.get<HoursReport>(`/hours${buildQueryString(params)}`),
 
-  exportHours: (params: HoursExportQuery) =>
+  exportHours: (params: ReportRange) =>
     client.download(`/hours/export${buildQueryString(params)}`),
 
-  getPeopleReport: (params: PeopleReportQuery) =>
+  getPeopleReport: (params: ReportRange) =>
     client.get<PeopleReport>(`/people${buildQueryString(params)}`),
 
-  getTimeline: (params: PeopleReportQuery) =>
+  getTimeline: (params: ReportRange) =>
     client.get<Timeline>(`/timeline${buildQueryString(params)}`),
 };

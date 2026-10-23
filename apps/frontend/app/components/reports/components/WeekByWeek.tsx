@@ -1,12 +1,11 @@
 "use client";
 
-import { PeopleReport, TimelineBucket } from "@/types";
+import { PeopleReport, ReportRange, TimelineBucket } from "@/types";
 import { useTimeline } from "@/hooks/useTimeline";
 import { cn } from "@/lib/utils/cn";
-import { formatDuration } from "@/lib/utils/date";
-import { bucketLabel, bucketNote } from "@/lib/utils/report-charts";
-import { hourScale, percentOf } from "@/lib/utils/report-overview";
-import { DateRange } from "@/lib/utils/report-period";
+import { formatReportHours } from "@/lib/utils/date";
+import { bucketLabel, bucketNote, hourScale } from "@/lib/utils/report-charts";
+import { percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
@@ -46,12 +45,12 @@ const Figure = ({
 /** A week's figures in words, for its panel and for screen readers. */
 const weekSummary = (bucket: TimelineBucket) =>
   [
-    `${formatDuration(bucket.loggedMinutes)} logged`,
+    `${formatReportHours(bucket.loggedMinutes)} logged`,
     bucket.plannedMinutes > 0
-      ? `${formatDuration(bucket.plannedMinutes)} planned`
+      ? `${formatReportHours(bucket.plannedMinutes)} planned`
       : "not planned",
     bucket.expectedMinutes > 0
-      ? `${formatDuration(bucket.expectedMinutes)} expected`
+      ? `${formatReportHours(bucket.expectedMinutes)} expected`
       : "nothing expected",
   ].join(" · ");
 
@@ -91,7 +90,7 @@ const WeekColumn = ({
 );
 
 type WeekByWeekProps = {
-  range: DateRange;
+  range: ReportRange;
   totals: PeopleReport["totals"];
 };
 
@@ -152,7 +151,7 @@ export const WeekByWeek = ({ range, totals }: WeekByWeekProps) => {
               className="absolute right-0 translate-y-1/2"
               style={{ bottom: heightOn(tick, scale.endMinutes) }}
             >
-              {formatDuration(tick)}
+              {formatReportHours(tick)}
             </span>
           ))}
         </div>
@@ -191,7 +190,7 @@ export const WeekByWeek = ({ range, totals }: WeekByWeekProps) => {
                 <div key={bucket.start} className="min-w-0">
                   <p className="truncate font-medium">{bucketLabel(bucket)}</p>
                   <p className="tabular-nums">
-                    {formatDuration(bucket.loggedMinutes)}
+                    {formatReportHours(bucket.loggedMinutes)}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {bucketNote(bucket, countedUntil)}
@@ -227,16 +226,16 @@ export const WeekByWeek = ({ range, totals }: WeekByWeekProps) => {
       <dl className="mt-4 flex flex-wrap gap-x-14 gap-y-4">
         <Figure
           label="Logged"
-          value={formatDuration(loggedMinutes)}
+          value={formatReportHours(loggedMinutes)}
           note={
             expectedMinutes > 0
-              ? `${percentOf(loggedMinutes, expectedMinutes)}% of ${formatDuration(expectedMinutes)} expected`
+              ? `${percentOf(loggedMinutes, expectedMinutes)}% of ${formatReportHours(expectedMinutes)} expected`
               : "Nobody was expected to work"
           }
         />
         <Figure
           label="Planned"
-          value={formatDuration(plannedMinutes)}
+          value={formatReportHours(plannedMinutes)}
           note={
             expectedMinutes > 0
               ? `${percentOf(plannedMinutes, expectedMinutes)}% of expected`
@@ -245,7 +244,7 @@ export const WeekByWeek = ({ range, totals }: WeekByWeekProps) => {
         />
         <Figure
           label="Billable"
-          value={formatDuration(billableMinutes)}
+          value={formatReportHours(billableMinutes)}
           note={`${percentOf(billableMinutes, loggedMinutes)}% of logged`}
         />
       </dl>
