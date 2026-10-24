@@ -20,6 +20,10 @@ describe('HoursReportQuery', () => {
     expect((await parse({ userId: 'john' })).errors).not.toHaveLength(0);
   });
 
+  it('groups only by project, activity or person', async () => {
+    expect((await parse({ groupBy: 'client' })).errors).not.toHaveLength(0);
+  });
+
   it('needs no filter at all', async () => {
     expect((await parse({})).errors).toHaveLength(0);
   });

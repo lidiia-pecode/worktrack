@@ -19,7 +19,7 @@ export const AgainstPlanRow = ({
   flag,
   onOpen,
 }: AgainstPlanRowProps) => {
-  const name = row.name ?? "";
+  const { name } = row;
   const planned = row.plannedMinutes ?? 0;
   const figure =
     planned > 0

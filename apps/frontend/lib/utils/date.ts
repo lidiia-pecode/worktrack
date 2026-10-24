@@ -65,14 +65,6 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-/** e.g. "+1h 30m", "−2h" or "−30m"; zero has no sign. */
-export function formatSignedDuration(minutes: number): string {
-  if (minutes === 0) return formatDuration(0);
-
-  const sign = minutes > 0 ? "+" : "−";
-  return `${sign}${formatDuration(Math.abs(minutes))}`;
-}
-
 const HOURS_LABEL = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 0,
 });

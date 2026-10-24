@@ -513,40 +513,23 @@ describe('ReportingService', () => {
     });
 
     it('splits by the billable flag on every project, internal ones included', async () => {
-      const { rows, totals } = await report(owner, HoursReportGroupBy.CLIENT);
+      const { rows, totals } = await report(owner, HoursReportGroupBy.PROJECT);
 
       expect(rows).toEqual([
         expect.objectContaining({
-          name: 'Acme',
+          name: `CRM ${RUN}`,
           billableMinutes: 540,
           nonBillableMinutes: 60,
           totalMinutes: 600,
         }),
         expect.objectContaining({
-          name: null,
+          name: `Tooling ${RUN}`,
           billableMinutes: 120,
           nonBillableMinutes: 0,
           totalMinutes: 120,
         }),
       ]);
       expect(totals.totalMinutes).toBe(720);
-    });
-
-    it('groups client names that differ only in case, keeping the capitals', async () => {
-      const legacy = await createProject('Legacy', 'acme', activityId);
-      const legacyLog = await log(
-        member.id,
-        legacy.projectActivityId,
-        30,
-        true,
-      );
-
-      const { rows } = await report(owner, HoursReportGroupBy.CLIENT);
-      await dataSource.getRepository(TimeLog).delete({ id: legacyLog.id });
-
-      expect(rows.filter((row) => row.name !== null)).toEqual([
-        expect.objectContaining({ name: 'Acme', totalMinutes: 630 }),
-      ]);
     });
 
     it('returns the grouping it was built with', async () => {
@@ -592,14 +575,14 @@ describe('ReportingService', () => {
 
     it('is final for a locked month and provisional once it touches an open one', async () => {
       await expect(
-        report(owner, HoursReportGroupBy.CLIENT),
+        report(owner, HoursReportGroupBy.PROJECT),
       ).resolves.toMatchObject({ isProvisional: false });
 
       await expect(
         service.getHoursReport(owner, {
           dateFrom: lockedMonth,
           dateTo: today,
-          groupBy: HoursReportGroupBy.CLIENT,
+          groupBy: HoursReportGroupBy.PROJECT,
         }),
       ).resolves.toMatchObject({ isProvisional: true });
     });
@@ -609,7 +592,7 @@ describe('ReportingService', () => {
         service.getHoursReport(owner, {
           dateFrom: today,
           dateTo: lockedMonth,
-          groupBy: HoursReportGroupBy.CLIENT,
+          groupBy: HoursReportGroupBy.PROJECT,
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -617,7 +600,7 @@ describe('ReportingService', () => {
     it('covers at most 366 days', async () => {
       const fullYear = { dateFrom: '2025-01-01', dateTo: '2026-01-01' };
       const tooLong = { dateFrom: '2025-01-01', dateTo: '2026-01-02' };
-      const groupBy = HoursReportGroupBy.CLIENT;
+      const groupBy = HoursReportGroupBy.PROJECT;
 
       await expect(
         service.getHoursReport(owner, { ...fullYear, groupBy }),
@@ -685,7 +668,7 @@ describe('ReportingService', () => {
       });
 
       it('counts the whole of a range that has finished', async () => {
-        const hours = await report(owner, HoursReportGroupBy.CLIENT);
+        const hours = await report(owner, HoursReportGroupBy.PROJECT);
 
         expect(hours).toMatchObject({ countedUntil: null });
         expect(hours.totals.totalMinutes).toBe(720);
@@ -730,15 +713,6 @@ describe('ReportingService', () => {
           [`Tooling ${RUN}`, 0],
         ]);
         expect(totals.plannedMinutes).toBe(540);
-      });
-
-      it('sums the plan by client, by the same client rule', async () => {
-        const { rows } = await report(owner, HoursReportGroupBy.CLIENT);
-
-        expect(rows.map((row) => [row.name, row.plannedMinutes])).toEqual([
-          ['Acme', 540],
-          [null, 0],
-        ]);
       });
 
       it('lists somebody with a plan and no time last, with nothing logged', async () => {
@@ -880,7 +854,7 @@ describe('ReportingService', () => {
       it('adds up to the Hours report for the same people', async () => {
         for (const user of [owner, manager]) {
           const rows = await exportRows(user);
-          const { totals } = await report(user, HoursReportGroupBy.CLIENT);
+          const { totals } = await report(user, HoursReportGroupBy.PROJECT);
 
           expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
             totals.totalMinutes,
@@ -958,7 +932,7 @@ describe('ReportingService', () => {
         const { totals } = await service.getHoursReport(owner, {
           dateFrom: lockedMonth,
           dateTo: today,
-          groupBy: HoursReportGroupBy.CLIENT,
+          groupBy: HoursReportGroupBy.PROJECT,
         });
         await dataSource.getRepository(TimeLog).delete({ id: todayLog.id });
 
@@ -1001,49 +975,13 @@ describe('ReportingService', () => {
           [`CRM ${RUN}`, 360, 480],
           [`Tooling ${RUN}`, 120, 0],
         ]);
-        expect(totals).toMatchObject({ totalMinutes: 480, peopleCount: 1 });
+        expect(totals).toMatchObject({ totalMinutes: 480 });
       });
 
       it('shows a manager nothing of somebody outside their teams', async () => {
         const { rows } = await projectsOf(manager, outsider);
 
         expect(rows).toEqual([]);
-      });
-    });
-
-    describe('people on a row', () => {
-      it('counts everybody who logged or planned time on a project, once', async () => {
-        const { rows, totals } = await report(
-          owner,
-          HoursReportGroupBy.PROJECT,
-        );
-
-        // CRM: the member and the outsider logged, the manager only planned.
-        expect(rows.map((row) => [row.name, row.peopleCount])).toEqual([
-          [`CRM ${RUN}`, 3],
-          [`Tooling ${RUN}`, 1],
-        ]);
-        expect(totals.peopleCount).toBe(3);
-      });
-
-      it('counts by client, and only the people a manager sees', async () => {
-        const forOwner = await report(owner, HoursReportGroupBy.CLIENT);
-        const forManager = await report(manager, HoursReportGroupBy.CLIENT);
-
-        expect(forOwner.rows.map((row) => row.peopleCount)).toEqual([3, 1]);
-        expect(forManager.rows.map((row) => row.peopleCount)).toEqual([2, 1]);
-      });
-
-      it('has no count by person or activity', async () => {
-        for (const groupBy of [
-          HoursReportGroupBy.PERSON,
-          HoursReportGroupBy.ACTIVITY,
-        ]) {
-          const { rows, totals } = await report(owner, groupBy);
-
-          expect(rows.every((row) => row.peopleCount === null)).toBe(true);
-          expect(totals.peopleCount).toBeNull();
-        }
       });
     });
   });

@@ -41,7 +41,6 @@ const activity = (
   nonBillableMinutes: hours * HOUR,
   totalMinutes: hours * HOUR,
   plannedMinutes: null,
-  peopleCount: null,
 });
 
 describe("bucketLabel", () => {

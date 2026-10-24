@@ -72,35 +72,29 @@ export interface HoursSplit {
 }
 
 export interface HoursReportRow extends HoursSplit {
-  /** The project, activity or person id; null when grouped by client. */
-  id: string | null;
-  /** Null only for internal work when grouped by client. */
-  name: string | null;
+  /** The project, activity or person id. */
+  id: string;
+  name: string;
   /** The client for a project, the category for an activity, the position for a person. */
   detail: string | null;
   /** Planned for the same days; null by activity, which plans don't have. */
   plannedMinutes: number | null;
-  /** The people who logged or planned time on it; only by project or client. */
-  peopleCount: number | null;
 }
 
 export interface HoursReport extends ReportCoverage {
   /** The grouping these rows were built with. */
   groupBy: HoursReportGroupBy;
   rows: HoursReportRow[];
-  totals: HoursSplit & Pick<HoursReportRow, 'plannedMinutes' | 'peopleCount'>;
+  totals: HoursSplit & Pick<HoursReportRow, 'plannedMinutes'>;
 }
 
 interface HoursReportRawRow {
-  /** What the rows are grouped on, to match each one with its plan. */
-  groupKey: string | null;
-  id: string | null;
-  name: string | null;
+  id: string;
+  name: string;
   detail: string | null;
   billableMinutes: string;
   nonBillableMinutes: string;
   totalMinutes: string;
-  userIds: string[];
 }
 
 /** One day's time and plans, over the people the Hours report counts. */
@@ -150,19 +144,10 @@ const CLIENT_NAME = `NULLIF(p.client_name, '')`;
 
 /**
  * Client names are free text and older ones were stored lowercase, so "Acme"
- * and "acme" are grouped as one client, shown with a spelling that has
- * capitals when there is one.
+ * and "acme" are one client. The export shows each with a spelling that has
+ * capitals when there is one, the same on every row.
  */
 const CLIENT_GROUP = `LOWER(${CLIENT_NAME})`;
-const CLIENT_DISPLAY_NAME = `COALESCE(
-  MAX(CASE WHEN ${CLIENT_NAME} <> LOWER(${CLIENT_NAME}) THEN ${CLIENT_NAME} END),
-  MIN(${CLIENT_NAME})
-)`;
-
-/**
- * The same spelling rule as `CLIENT_DISPLAY_NAME`, applied across every row of
- * the export, so one client never appears under two spellings.
- */
 const CLIENT_EXPORT_NAME = `COALESCE(
   MAX(CASE WHEN ${CLIENT_NAME} <> LOWER(${CLIENT_NAME}) THEN ${CLIENT_NAME} END)
     OVER (PARTITION BY ${CLIENT_GROUP}),
@@ -175,8 +160,6 @@ const BILLING = `CASE
 END`;
 
 interface HoursGrouping {
-  /** One value per row, shared by the time and planning queries. */
-  key: string;
   id: string;
   name: string;
   detail: string;
@@ -184,29 +167,19 @@ interface HoursGrouping {
 }
 
 const HOURS_GROUPINGS: Record<HoursReportGroupBy, HoursGrouping> = {
-  [HoursReportGroupBy.CLIENT]: {
-    key: CLIENT_GROUP,
-    id: 'NULL',
-    name: CLIENT_DISPLAY_NAME,
-    detail: 'NULL',
-    groupBy: [CLIENT_GROUP],
-  },
   [HoursReportGroupBy.PROJECT]: {
-    key: 'p.id::text',
     id: 'p.id',
     name: 'p.name',
     detail: CLIENT_NAME,
     groupBy: ['p.id'],
   },
   [HoursReportGroupBy.ACTIVITY]: {
-    key: 'a.id::text',
     id: 'a.id',
     name: 'a.name',
     detail: 'c.name',
     groupBy: ['a.id', 'c.name'],
   },
   [HoursReportGroupBy.PERSON]: {
-    key: 'u.id::text',
     id: 'u.id',
     name: `u.first_name || ' ' || u.last_name`,
     detail: 'u.position',
@@ -216,28 +189,16 @@ const HOURS_GROUPINGS: Record<HoursReportGroupBy, HoursGrouping> = {
 
 /** Plans are made per person, project and day, so they can be summed these ways only. */
 const PLANNED_GROUPINGS = new Set([
-  HoursReportGroupBy.CLIENT,
   HoursReportGroupBy.PROJECT,
   HoursReportGroupBy.PERSON,
 ]);
 
 interface PlannedRawRow {
-  groupKey: string | null;
-  id: string | null;
-  name: string | null;
+  id: string;
+  name: string;
   detail: string | null;
   minutes: string;
-  userIds: string[];
 }
-
-/** The groupings whose rows say how many people worked on them. */
-const PEOPLE_COUNTED_GROUPINGS = new Set([
-  HoursReportGroupBy.CLIENT,
-  HoursReportGroupBy.PROJECT,
-]);
-
-/** The ids of everybody behind a row, to count each person once across time and plans. */
-const USER_IDS = 'ARRAY_AGG(DISTINCT u.id::text)';
 
 const DEFAULT_MONTHS_LISTED = 12;
 const MAX_MONTHS_LISTED = 36;
@@ -579,7 +540,7 @@ export class ReportingService {
   /**
    * Logged time over a date range, finished days only, grouped one way and
    * split into billable and non-billable by each entry's flag, on any project
-   * (D2). Grouped by client, project or person, each row also carries what was
+   * (D2). Grouped by project or person, each row also carries what was
    * planned for the same days, and a row with a plan but no time is listed too.
    */
   async getHoursReport(
@@ -600,8 +561,7 @@ export class ReportingService {
 
     const qb = this.periodRepo.manager
       .createQueryBuilder()
-      .select(grouping.key, 'groupKey')
-      .addSelect(grouping.id, 'id')
+      .select(grouping.id, 'id')
       .addSelect(grouping.name, 'name')
       .addSelect(grouping.detail, 'detail')
       .addSelect(
@@ -613,7 +573,6 @@ export class ReportingService {
         'nonBillableMinutes',
       )
       .addSelect('SUM(tl.minutes)', 'totalMinutes')
-      .addSelect(USER_IDS, 'userIds')
       .from('time_logs', 'tl')
       .innerJoin('project_activities', 'pa', 'pa.id = tl.project_activity_id')
       .innerJoin('projects', 'p', 'p.id = pa.project_id')
@@ -643,15 +602,12 @@ export class ReportingService {
         ? this.plannedRows(user, grouping, query, countedTo)
         : null,
     ]);
-    const plannedByKey = new Map(
-      plannedRows?.map((planned) => [planned.groupKey, planned]),
+    const plannedById = new Map(
+      plannedRows?.map((planned) => [planned.id, planned]),
     );
-    const countsPeople = PEOPLE_COUNTED_GROUPINGS.has(groupBy);
-    const peopleCountOf = (...userIds: string[][]) =>
-      countsPeople ? new Set(userIds.flat()).size : null;
 
     const rows: HoursReportRow[] = rawRows.map((raw) => {
-      const planned = plannedByKey.get(raw.groupKey);
+      const planned = plannedById.get(raw.id);
 
       return {
         id: raw.id,
@@ -661,15 +617,14 @@ export class ReportingService {
         nonBillableMinutes: Number(raw.nonBillableMinutes),
         totalMinutes: Number(raw.totalMinutes),
         plannedMinutes: plannedRows ? Number(planned?.minutes ?? 0) : null,
-        peopleCount: peopleCountOf(raw.userIds, planned?.userIds ?? []),
       };
     });
 
     // Planned with nothing logged: after the rows with time, in the planning
     // query's order by name.
-    const loggedKeys = new Set(rawRows.map((raw) => raw.groupKey));
+    const loggedIds = new Set(rawRows.map((raw) => raw.id));
     for (const planned of plannedRows ?? []) {
-      if (loggedKeys.has(planned.groupKey)) continue;
+      if (loggedIds.has(planned.id)) continue;
 
       rows.push({
         id: planned.id,
@@ -679,7 +634,6 @@ export class ReportingService {
         nonBillableMinutes: 0,
         totalMinutes: 0,
         plannedMinutes: Number(planned.minutes),
-        peopleCount: peopleCountOf(planned.userIds),
       });
     }
 
@@ -701,10 +655,6 @@ export class ReportingService {
       plannedMinutes: plannedRows
         ? rows.reduce((sum, row) => sum + (row.plannedMinutes ?? 0), 0)
         : null,
-      peopleCount: peopleCountOf(
-        ...rawRows.map((raw) => raw.userIds),
-        ...(plannedRows ?? []).map((planned) => planned.userIds),
-      ),
     };
 
     return {
@@ -729,12 +679,10 @@ export class ReportingService {
   ): Promise<PlannedRawRow[]> {
     const qb = this.periodRepo.manager
       .createQueryBuilder()
-      .select(grouping.key, 'groupKey')
-      .addSelect(grouping.id, 'id')
+      .select(grouping.id, 'id')
       .addSelect(grouping.name, 'name')
       .addSelect(grouping.detail, 'detail')
       .addSelect('SUM(e.planned_minutes)', 'minutes')
-      .addSelect(USER_IDS, 'userIds')
       .from('planning_entries', 'e')
       .innerJoin('projects', 'p', 'p.id = e.project_id')
       .innerJoin('users', 'u', 'u.id = e.user_id')

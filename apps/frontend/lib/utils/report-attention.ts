@@ -10,10 +10,10 @@ import {
 import { countLabel } from "./text";
 
 /** A gap has to be at least this big, in minutes, to need attention. */
-export const ATTENTION_MIN_MINUTES = 8 * 60;
+const ATTENTION_MIN_MINUTES = 8 * 60;
 
 /** And more than this share of what it is measured against. */
-export const ATTENTION_MIN_SHARE = 0.1;
+const ATTENTION_MIN_SHARE = 0.1;
 
 /** Days spelled out for one person before the rest are counted. */
 const DAYS_NAMED = 3;
@@ -166,7 +166,7 @@ const projectsOffPlanFact = (
 
   if (offPlan.length === 1) {
     const [{ project }] = offPlan;
-    const subject = { id: project.id!, label: project.name ?? "" };
+    const subject = { id: project.id, label: project.name };
     return project.plannedMinutes
       ? {
           kind: "projectsOffPlan",
@@ -195,7 +195,7 @@ const projectsOffPlanFact = (
       : `${offPlan.length} projects are more than 10% off plan`,
     note,
     items: offPlan.map(({ project, gap }) => ({
-      id: project.id!,
+      id: project.id,
       label: project.plannedMinutes
         ? `${project.name} · ${signedHours(gap)}`
         : `${project.name} · ${formatReportHours(project.totalMinutes)} with no plan`,
@@ -239,7 +239,7 @@ export const reportAttention = ({
     ),
     projects: new Map(
       offPlan.map(({ project }) => [
-        project.id!,
+        project.id,
         project.plannedMinutes
           ? "More than 10% off plan"
           : "Logged with no plan",

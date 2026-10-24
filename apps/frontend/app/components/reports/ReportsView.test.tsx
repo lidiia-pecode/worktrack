@@ -123,7 +123,6 @@ const project = (
   nonBillableMinutes: client ? 0 : loggedHours * HOUR,
   totalMinutes: loggedHours * HOUR,
   plannedMinutes: plannedHours * HOUR,
-  peopleCount: 2,
 });
 
 const peopleReport = (rows: PeopleReportRow[]): PeopleReport => ({
@@ -160,7 +159,6 @@ const projectsReport = (rows: HoursReportRow[]): HoursReport => ({
     nonBillableMinutes: 0,
     totalMinutes: 0,
     plannedMinutes: 0,
-    peopleCount: 0,
   },
   isProvisional: true,
   countedUntil: null,
@@ -279,7 +277,6 @@ describe("ReportsView", () => {
     const weeks = screen.getByRole("region", { name: "Week by week" });
     expect(weeks).toHaveTextContent("Logged187h102% of 184h expected");
     expect(weeks).toHaveTextContent("50% of logged");
-    expect(screen.queryByRole("region", { name: "Close to plan" })).toBeNull();
   });
 
   it("puts each person under their team, against what was expected, with their days off", () => {

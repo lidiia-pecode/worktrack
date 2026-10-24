@@ -55,8 +55,8 @@ const ProjectList = ({
             key={project.id}
             row={project}
             detail={project.detail ?? "Internal work"}
-            flag={marked.get(project.id!)}
-            onOpen={() => onOpenProject(project.id!)}
+            flag={marked.get(project.id)}
+            onOpen={() => onOpenProject(project.id)}
           />
         ))}
       </ul>

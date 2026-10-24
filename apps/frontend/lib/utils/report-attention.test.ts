@@ -20,7 +20,6 @@ const project = (
   nonBillableMinutes: 0,
   totalMinutes: loggedHours * HOUR,
   plannedMinutes: plannedHours * HOUR,
-  peopleCount: 3,
 });
 
 const person = (

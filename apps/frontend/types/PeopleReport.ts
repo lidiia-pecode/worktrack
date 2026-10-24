@@ -28,10 +28,7 @@ export interface PeopleReportRow extends PeopleReportFigures {
 
 export interface PeopleReport extends ReportCoverage {
   rows: PeopleReportRow[];
-  totals: PeopleReportFigures & {
-    /** How many days without time there are across the rows. */
-    daysWithoutTime: number;
-  };
+  totals: PeopleReportFigures;
 }
 
 /** One week of the range, cut to the days it counts. */

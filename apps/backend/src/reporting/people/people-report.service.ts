@@ -61,10 +61,7 @@ export interface PeopleReportRow extends PeopleReportFigures {
 
 export interface PeopleReport extends ReportCoverage {
   rows: PeopleReportRow[];
-  totals: PeopleReportFigures & {
-    /** How many days without time there are across the rows. */
-    daysWithoutTime: number;
-  };
+  totals: PeopleReportFigures;
 }
 
 /** One week of the range, cut to the days it counts. */
@@ -148,7 +145,7 @@ export class PeopleReportService {
       dateTo,
       groupBy: HoursReportGroupBy.PERSON,
     });
-    const hoursByUser = new Map(hours.rows.map((row) => [row.id!, row]));
+    const hoursByUser = new Map(hours.rows.map((row) => [row.id, row]));
     const people = await this.peopleFor(user, hours);
     // Expected stops where the Hours report stopped counting, so both use the
     // same "today" even across the company's midnight.
@@ -195,13 +192,7 @@ export class PeopleReportService {
 
     return {
       rows,
-      totals: {
-        ...rows.reduce<PeopleReportFigures>(addFigures, NO_FIGURES),
-        daysWithoutTime: rows.reduce(
-          (sum, row) => sum + row.daysWithoutTime.length,
-          0,
-        ),
-      },
+      totals: rows.reduce<PeopleReportFigures>(addFigures, NO_FIGURES),
       isProvisional: hours.isProvisional,
       countedUntil: hours.countedUntil,
     };
@@ -296,7 +287,7 @@ export class PeopleReportService {
    */
   private async peopleFor(user: AuthUser, hours: HoursReport) {
     const loggedIds = new Set(
-      hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id!),
+      hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id),
     );
     const people = await this.teamVisibility.findVisibleUsers(
       user,

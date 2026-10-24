@@ -293,24 +293,20 @@ describe('PeopleReportService', () => {
         .toISOString()
         .slice(0, 10);
 
-      const { rows, totals } = await service.getPeopleReport(owner, {
+      const { rows } = await service.getPeopleReport(owner, {
         dateFrom: today,
         dateTo: nextWeek,
       });
 
       expect(rows.every((row) => row.daysWithoutTime.length === 0)).toBe(true);
-      expect(totals.daysWithoutTime).toBe(0);
     });
 
-    it('counts them in the totals, within the people a manager sees', async () => {
-      const { rows, totals } = await service.getPeopleReport(manager, MARCH);
+    it('gives a manager the days of the people they see', async () => {
+      const { rows } = await service.getPeopleReport(manager, MARCH);
 
       expect(
         rows.find((row) => row.userId === manager.id)?.daysWithoutTime,
       ).toHaveLength(WORKING_DAYS_IN_MARCH);
-      expect(totals.daysWithoutTime).toBe(
-        WORKING_DAYS_IN_MARCH + (WORKING_DAYS_IN_MARCH - 3),
-      );
     });
   });
 

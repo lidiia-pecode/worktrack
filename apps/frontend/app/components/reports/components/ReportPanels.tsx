@@ -241,13 +241,13 @@ export const ProjectPanel = ({
   const people = useHoursReport({
     ...range,
     groupBy: HoursReportGroupBy.PERSON,
-    projectId: project.id!,
+    projectId: project.id,
   });
 
   return (
     <ReportPanel
-      focusKey={project.id!}
-      title={project.name ?? ""}
+      focusKey={project.id}
+      title={project.name}
       detail={project.detail ?? "Internal work"}
       isUpdating={isUpdating}
       onClose={onClose}
