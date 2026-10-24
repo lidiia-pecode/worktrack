@@ -24,6 +24,12 @@ export interface CompanyCalendar {
   defaultMinutesPerWeek: number;
 }
 
+/** The first day somebody is expected to work and, once deactivated, the first day they are not. */
+export interface ActiveDates {
+  startDate: string;
+  deactivatedOn: string | null;
+}
+
 export interface CurrentCapacity {
   userId: string;
   minutesPerWeek: number;
@@ -122,29 +128,34 @@ export class CapacityService {
   }
 
   /**
-   * The day each person's account was created, where the company is. Nothing
-   * is expected of anybody before it, so someone who joins on a Wednesday is
-   * not behind for Monday and Tuesday.
+   * The days each person can be expected to work, where the company is: from
+   * the day their account was created, so someone who joins on a Wednesday is
+   * not behind for Monday and Tuesday, to the day before it was deactivated.
    */
-  async startDatesFor(
+  async activeDatesFor(
     companyId: string,
     userIds: string[],
     timezone: string,
-  ): Promise<Map<string, string>> {
-    const startDates = new Map<string, string>();
+  ): Promise<Map<string, ActiveDates>> {
+    const activeDates = new Map<string, ActiveDates>();
 
-    if (userIds.length === 0) return startDates;
+    if (userIds.length === 0) return activeDates;
 
     const users = await this.userRepo.find({
       where: { companyId, id: In(userIds) },
-      select: ['id', 'createdAt'],
+      select: ['id', 'createdAt', 'deactivatedAt'],
     });
 
     for (const user of users) {
-      startDates.set(user.id, isoDateIn(user.createdAt, timezone));
+      activeDates.set(user.id, {
+        startDate: isoDateIn(user.createdAt, timezone),
+        deactivatedOn: user.deactivatedAt
+          ? isoDateIn(user.deactivatedAt, timezone)
+          : null,
+      });
     }
 
-    return startDates;
+    return activeDates;
   }
 
   /** Today where the company is, so every view agrees on which day it is. */

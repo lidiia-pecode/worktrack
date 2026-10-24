@@ -6,7 +6,7 @@ import { DataSource, In } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 
@@ -286,6 +286,56 @@ describe('ExpectedHoursService', () => {
       } finally {
         await companies.update(companyId, { timezone: 'UTC' });
       }
+    });
+  });
+
+  describe('the day an account was deactivated', () => {
+    const WEDNESDAY = '2026-02-11';
+    const TWO_WORKING_DAYS = (2 * FULL_WEEK) / 5;
+
+    const deactivateOn = async (name: string, deactivatedAt: string | null) => {
+      const userId = await createUser(name);
+      await dataSource.getRepository(User).update(userId, {
+        status: UserStatus.DEACTIVATED,
+        deactivatedAt: deactivatedAt ? new Date(deactivatedAt) : null,
+      });
+
+      return userId;
+    };
+
+    it('expects nothing from the day somebody was deactivated', async () => {
+      const leaver = await deactivateOn('leaver', `${WEDNESDAY}T17:00:00Z`);
+
+      await expect(expectedFor(leaver)).resolves.toBe(TWO_WORKING_DAYS);
+    });
+
+    it('expects the whole week of somebody deactivated the weekend after', async () => {
+      const leaver = await deactivateOn(
+        'weekend-leaver',
+        '2026-02-14T10:00:00Z',
+      );
+
+      await expect(expectedFor(leaver)).resolves.toBe(FULL_WEEK);
+    });
+
+    it("takes the deactivation day in the company's time zone", async () => {
+      // Late on Tuesday in UTC is already Wednesday in Kyiv.
+      const leaver = await deactivateOn('kyiv-leaver', '2026-02-10T23:30:00Z');
+      const companies = dataSource.getRepository(Company);
+
+      await companies.update(companyId, { timezone: 'Europe/Kyiv' });
+
+      try {
+        await expect(expectedFor(leaver)).resolves.toBe(TWO_WORKING_DAYS);
+      } finally {
+        await companies.update(companyId, { timezone: 'UTC' });
+      }
+    });
+
+    it('still expects a person deactivated before the day was recorded', async () => {
+      const leaver = await deactivateOn('undated-leaver', null);
+
+      await expect(expectedFor(leaver)).resolves.toBe(FULL_WEEK);
     });
   });
 

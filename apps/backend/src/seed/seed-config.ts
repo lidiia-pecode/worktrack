@@ -104,6 +104,8 @@ export interface SeedUser {
   joinedOn?: string;
   /** A later contract: the weekly hours from a date on. */
   capacityFrom?: { validFrom: string; hoursPerWeek: number };
+  /** The day a deactivated account was deactivated; nothing is expected from it. */
+  deactivatedOn?: string;
 }
 
 export const USERS: SeedUser[] = [
@@ -375,6 +377,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Robinson',
     role: UserRole.EMPLOYEE,
     status: UserStatus.DEACTIVATED,
+    deactivatedOn: '2026-08-29',
     position: 'Compliance Analyst',
     capacityHoursPerWeek: 40,
     note: 'Left at the end of August: time in July and August only.',

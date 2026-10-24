@@ -42,6 +42,7 @@ export const useAbsencesMutations = createEntityMutations<
     queryKeys.capacity.all,
     queryKeys.timelogs.all,
     queryKeys.planning.all,
+    queryKeys.reporting.figures,
   ],
 
   api: {

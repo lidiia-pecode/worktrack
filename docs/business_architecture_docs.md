@@ -265,6 +265,7 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── User            role: OWNER | MANAGER | EMPLOYEE
 │                   status: ACTIVE | DEACTIVATED
+│                   deactivatedAt: set by Deactivate, cleared by Reactivate
 │
 ├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
 │                   contracted hours, effective from a date
@@ -479,7 +480,7 @@ and this document:
 
 | Word | What it means | How it is worked out |
 | :--- | :--- | :--- |
-| **Expected** | How much somebody was supposed to work | capacity from the day their account was created, minus the days they were away |
+| **Expected** | How much somebody was supposed to work | capacity from the day their account was created to the day before it was deactivated, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
 | **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People card shows it as each person's logged time against expected, and since Phase 31 nothing else marks it |
@@ -495,7 +496,10 @@ stops a contract change rewriting weeks somebody has already worked.
 Friday day in the range that no absence covers, from the day the person's
 account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
-for the days before they joined; there is no separate start date (§10 Q14). Rounding once is
+for the days before they joined, and nothing is expected from the day they were
+deactivated (`deactivatedAt`, Phase 34; a person deactivated before that stamp
+existed has none and is expected as before); there is no separate start date
+(§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
@@ -635,7 +639,9 @@ backend's host. Archiving a team
 revokes its pending invitations and closes the team (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
-Deactivate and Reactivate. A user cannot deactivate themselves, an OWNER account
+Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
+Reactivate clears it; nothing is expected of a person from that day (§4,
+capacity). A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, only an OWNER may modify another OWNER or grant the
 OWNER role, and nobody changes their own role, so a company always keeps its
 owner. A deactivated person keeps their teams and projects but cannot be
@@ -771,9 +777,11 @@ see, and how a new company gets started. §7 plans that work.
   plan (in a month still running, only over plan, since late logging only
   lowers logged time). None is about somebody logging less than expected; a
   plan beyond someone's hours is Planning's to warn about. A locked month is
-  for reference and marks nothing. A deactivated person and an owner
-  have no missing days, and are listed only if they logged time in the period:
-  owners often don't track their own time. Below, People lists everyone by team (somebody in
+  for reference and marks nothing. A deactivated person and an owner have no
+  missing days; a deactivated person is listed only if they logged time in the
+  period, with expected hours up to the day they left, and an owner only if
+  they logged or planned time: owners often don't track their own, but a plan
+  made for them is part of the month's plan. Below, People lists everyone by team (somebody in
   two teams under both), each with one bar of their logged time against their
   expected hours and their days off; a long list starts folded to its teams,
   each with its people's total. The one mark is a dot beside somebody Needs
@@ -845,13 +853,13 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-four
-suites and 780 tests, covering the role-visibility filters, team and invitation
+suites and 786 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-six Vitest files and 309 tests: its date, month,
+The frontend has fifty-six Vitest files and 310 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -937,7 +945,7 @@ is in its pull request.
 | 31 | The person's week on Team time as a side panel beside the grid, with their absences and, on empty days, their plan; owners and managers record a person's absences from it; the open person in the URL; a deactivated person shown read-only, with the API refusing time and absence writes for them; no "−Xh" behind badge on Team time or the timesheet |
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
-| 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual |
+| 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual; an owner listed with a plan too; expected hours stopping on the day an account is deactivated, which Deactivate now records |
 
 ### Improvement roadmap — high level, flexible
 

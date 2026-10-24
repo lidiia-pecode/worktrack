@@ -27,6 +27,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { ReportingPeriod } from '../entities/reporting-period.entity';
 import { ReportingService } from '../reporting.service';
+import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import { PeopleReportService, TimelineBucket } from './people-report.service';
 
 /**
@@ -56,6 +57,7 @@ describe('PeopleReportService', () => {
   let projectActivityId: string;
   let teamId: string;
   let expectedHours: ExpectedHoursService;
+  let reporting: ReportingService;
 
   const createUser = async (name: string, role: UserRole) => {
     const email = `${name}-${RUN}@people-report.test`;
@@ -86,7 +88,7 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(TeamMembership),
       dataSource.getRepository(User),
     );
-    const reporting = new ReportingService(
+    reporting = new ReportingService(
       dataSource.getRepository(ReportingPeriod),
       dataSource.getRepository(Company),
       teamVisibility,
@@ -310,12 +312,16 @@ describe('PeopleReportService', () => {
     });
   });
 
-  it('lists a deactivated person only with logged time, and never with missing days', async () => {
+  it('lists a deactivated person only with logged time, expected up to the day they left, and never with missing days', async () => {
     const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
     const plannedOnly = await createUser('Plannedonly', UserRole.EMPLOYEE);
     await dataSource
       .getRepository(User)
       .update([leaver.id, plannedOnly.id], { status: UserStatus.DEACTIVATED });
+    // Deactivated on Tuesday 10 March: six working days before it.
+    await dataSource.getRepository(User).update(leaver.id, {
+      deactivatedAt: new Date('2026-03-10T09:00:00Z'),
+    });
     await dataSource.getRepository(TimeLog).save({
       companyId,
       userId: leaver.id,
@@ -338,6 +344,7 @@ describe('PeopleReportService', () => {
 
     expect(rows.find((row) => row.userId === leaver.id)).toMatchObject({
       loggedMinutes: 120,
+      expectedMinutes: 6 * FULL_DAY,
       daysWithoutTime: [],
     });
     expect(rows.some((row) => row.userId === plannedOnly.id)).toBe(false);
@@ -399,6 +406,31 @@ describe('PeopleReportService', () => {
       expect(
         buckets.reduce((sum, bucket) => sum + bucket.expectedMinutes, 0),
       ).toBe(totals.expectedMinutes);
+    });
+
+    it('is listed with a plan too, so the planned total matches the projects', async () => {
+      const plan = await dataSource.getRepository(PlanningEntry).save({
+        companyId,
+        userId: owner.id,
+        projectId,
+        date: '2026-03-12',
+        plannedMinutes: 300,
+      });
+
+      const row = await rowFor(owner, owner.id);
+      const { totals } = await service.getPeopleReport(owner, MARCH);
+      const projects = await reporting.getHoursReport(owner, {
+        ...MARCH,
+        groupBy: HoursReportGroupBy.PROJECT,
+      });
+      await dataSource.getRepository(PlanningEntry).remove(plan);
+
+      expect(row).toMatchObject({
+        loggedMinutes: 0,
+        plannedMinutes: 300,
+        daysWithoutTime: [],
+      });
+      expect(totals.plannedMinutes).toBe(projects.totals.plannedMinutes);
     });
   });
 

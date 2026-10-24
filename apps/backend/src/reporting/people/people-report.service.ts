@@ -282,12 +282,18 @@ export class PeopleReportService {
   /**
    * The same people the team grid lists, plus deactivated people with logged
    * time in the range. A plan alone, often left over from before they left,
-   * doesn't list them. An owner is listed only with logged time: owners often
-   * don't track their own (Decision 27).
+   * doesn't list them. An owner is listed only with logged or planned time:
+   * owners often don't track their own, but a plan made for them is part of
+   * the month's plan (Decision 27, refined by Decision 44).
    */
   private async peopleFor(user: AuthUser, hours: HoursReport) {
     const loggedIds = new Set(
       hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id),
+    );
+    const plannedIds = new Set(
+      hours.rows
+        .filter((row) => (row.plannedMinutes ?? 0) > 0)
+        .map((row) => row.id),
     );
     const people = await this.teamVisibility.findVisibleUsers(
       user,
@@ -296,7 +302,10 @@ export class PeopleReportService {
     );
 
     return people.filter(
-      (person) => person.role !== UserRole.OWNER || loggedIds.has(person.id),
+      (person) =>
+        person.role !== UserRole.OWNER ||
+        loggedIds.has(person.id) ||
+        plannedIds.has(person.id),
     );
   }
 

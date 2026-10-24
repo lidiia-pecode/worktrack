@@ -473,6 +473,25 @@ describe("ReportsView", () => {
     expect(screen.getByText("Locked")).toBeInTheDocument();
   });
 
+  it("says nothing about the month while the next one loads", () => {
+    const report = { ...peopleReport(team), countedUntil: "2026-10-23" };
+    vi.mocked(usePeopleReport).mockReturnValue({
+      ...loaded(report),
+      isPlaceholderData: true,
+    } as unknown as ReturnType<typeof usePeopleReport>);
+    vi.mocked(useHoursReport).mockReturnValue(
+      loaded(projectsReport(projects)) as unknown as ReturnType<
+        typeof useHoursReport
+      >,
+    );
+    render(<ReportsView />);
+
+    expect(screen.queryByText(/Up to Oct 23/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "People" }).closest("[aria-busy]"),
+    ).toHaveAttribute("aria-busy", "true");
+  });
+
   it("tells only a manager that projects show their teams' time", () => {
     showReports(peopleReport(team), projectsReport(projects));
     const card = () =>

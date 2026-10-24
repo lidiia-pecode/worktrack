@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { FileBarChart } from "lucide-react";
 
-import { ReportRange } from "@/types";
+import { ReportCoverage, ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
@@ -35,28 +35,21 @@ import { PeopleCard } from "./components/PeopleCard";
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 
-type ReportScopeProps = {
-  countedUntil: string | null;
-  isProvisional: boolean;
-  isManager: boolean;
-};
-
 /**
  * One line saying how far the month is counted, whether it can still change,
  * and whose figures they are: "Up to Oct 23 · open for edits · your teams".
  */
-const ReportScope = ({
-  countedUntil,
-  isProvisional,
-  isManager,
-}: ReportScopeProps) => {
+const reportScope = (
+  { countedUntil, isProvisional }: ReportCoverage,
+  isManager: boolean,
+) => {
   const state = isProvisional ? "open for edits" : "locked";
   const parts = countedUntil
     ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
     : [isProvisional ? "Open for edits" : "Locked"];
   if (isManager) parts.push("your teams");
 
-  return <p className="text-sm text-muted-foreground">{parts.join(" · ")}</p>;
+  return parts.join(" · ");
 };
 
 export const ReportsView = () => {
@@ -241,13 +234,13 @@ export const ReportsView = () => {
             companyFirstMonth={company ? companyFirstMonth(company) : undefined}
             onChange={setChosenMonth}
           />
-          {peopleReport && !isNothingCounted && (
-            <ReportScope
-              countedUntil={peopleReport.countedUntil}
-              isProvisional={peopleReport.isProvisional}
-              isManager={isManager}
-            />
-          )}
+          {/* One line high even while a month loads, so the header holds still and
+              says nothing about the month before. */}
+          <p className="min-h-5 text-sm text-muted-foreground">
+            {peopleReport &&
+              !isNothingCounted &&
+              reportScope(peopleReport, isManager)}
+          </p>
         </div>
 
         {/* The last figures keep the button in place while a month loads. */}

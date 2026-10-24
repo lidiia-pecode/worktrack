@@ -34,6 +34,9 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
         position: data.position,
         passwordHash,
         status: data.status ?? UserStatus.ACTIVE,
+        deactivatedAt: data.deactivatedOn
+          ? new Date(`${data.deactivatedOn}T00:00:00Z`)
+          : null,
         createdAt: data.joinedOn
           ? new Date(`${data.joinedOn}T00:00:00Z`)
           : ACCOUNTS_CREATED_AT,

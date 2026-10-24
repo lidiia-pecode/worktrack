@@ -576,6 +576,7 @@ export class UsersService {
       }
 
       user.status = UserStatus.DEACTIVATED;
+      user.deactivatedAt = new Date();
       return repo.save(user);
     };
 
@@ -596,6 +597,7 @@ export class UsersService {
       }
 
       user.status = UserStatus.ACTIVE;
+      user.deactivatedAt = null;
       return repo.save(user);
     };
 

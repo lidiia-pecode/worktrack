@@ -36,6 +36,7 @@ export function useSetCapacity() {
       queryClient.invalidateQueries({ queryKey: queryKeys.capacity.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
       // The Manage list shows each person's weekly hours.
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
 

@@ -23,7 +23,7 @@ export interface ExpectedMinutes {
   total: number;
   /** Only the days that have finished, which is what "behind" is measured against. */
   toDate: number;
-  /** Every date in the range, 0 on weekends, absences and before the start date. Adds up to `total`. */
+  /** Every date in the range, 0 on weekends, absences, before the start date and from the deactivation day. Adds up to `total`. */
   byDate: ExpectedDay[];
 }
 
@@ -136,9 +136,9 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Walks every working day in the range from the person's start date: each
-   * contributes a fifth of the capacity in force that day, and counts as
-   * available unless an absence covers it.
+   * Walks every working day in the range from the person's start date to the
+   * day before they were deactivated: each contributes a fifth of the capacity
+   * in force that day, and counts as available unless an absence covers it.
    */
   private async sumSharesFor(
     companyId: string,
@@ -153,20 +153,20 @@ export class ExpectedHoursService {
 
     const calendar = await this.capacity.calendarFor(companyId);
     const today = todayISODate(calendar.timezone);
-    const [timelines, startDates, absencesByUser] = await Promise.all([
+    const [timelines, activeDates, absencesByUser] = await Promise.all([
       this.capacity.timelinesFor(
         companyId,
         userIds,
         to,
         calendar.defaultMinutesPerWeek,
       ),
-      this.capacity.startDatesFor(companyId, userIds, calendar.timezone),
+      this.capacity.activeDatesFor(companyId, userIds, calendar.timezone),
       this.absenceRangesFor(companyId, userIds, from, to),
     ]);
 
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
-      const startDate = startDates.get(userId);
+      const active = activeDates.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
       const sum: ShareSums = {
         available: 0,
@@ -181,7 +181,8 @@ export class ExpectedHoursService {
         sum.availableByDate.push(available);
 
         if (!isWorkingDay(date)) continue;
-        if (startDate && date < startDate) continue;
+        if (active && date < active.startDate) continue;
+        if (active?.deactivatedOn && date >= active.deactivatedOn) continue;
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
