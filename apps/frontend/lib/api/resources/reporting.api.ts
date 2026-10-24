@@ -1,15 +1,13 @@
 "use client";
 
 import {
-  HoursExportQuery,
   HoursReport,
   HoursReportQuery,
-  PlannedVsActualQuery,
-  PlannedVsActualReport,
+  PeopleReport,
+  ReportRange,
   ReportingMonth,
   ReportingPeriodsQuery,
-  UtilisationQuery,
-  UtilisationReport,
+  Timeline,
 } from "@/types";
 
 import { buildQueryString, createClient } from "../core";
@@ -29,14 +27,12 @@ export const ReportingClientApi = {
   getHoursReport: (params: HoursReportQuery) =>
     client.get<HoursReport>(`/hours${buildQueryString(params)}`),
 
-  exportHours: (params: HoursExportQuery) =>
+  exportHours: (params: ReportRange) =>
     client.download(`/hours/export${buildQueryString(params)}`),
 
-  getPlannedVsActual: (params: PlannedVsActualQuery) =>
-    client.get<PlannedVsActualReport>(
-      `/planned-vs-actual${buildQueryString(params)}`,
-    ),
+  getPeopleReport: (params: ReportRange) =>
+    client.get<PeopleReport>(`/people${buildQueryString(params)}`),
 
-  getUtilisation: (params: UtilisationQuery) =>
-    client.get<UtilisationReport>(`/utilisation${buildQueryString(params)}`),
+  getTimeline: (params: ReportRange) =>
+    client.get<Timeline>(`/timeline${buildQueryString(params)}`),
 };

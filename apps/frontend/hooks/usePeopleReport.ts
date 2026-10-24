@@ -2,15 +2,15 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { UtilisationQuery } from "@/types";
+import { ReportRange } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function useUtilisation(params: UtilisationQuery) {
+export function usePeopleReport(params: ReportRange) {
   const query = useQuery({
-    queryKey: queryKeys.reporting.utilisation({ ...params }),
-    queryFn: () => ReportingClientApi.getUtilisation(params),
+    queryKey: queryKeys.reporting.people({ ...params }),
+    queryFn: () => ReportingClientApi.getPeopleReport(params),
     placeholderData: keepPreviousData,
   });
 

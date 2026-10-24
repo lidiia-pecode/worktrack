@@ -10,6 +10,7 @@ import {
 const row: HoursExportRow = {
   date: '2026-09-15',
   person: 'Emma Clarke',
+  email: 'emma.clarke@example.com',
   client: null,
   project: 'Tooling',
   activity: 'Backend',
@@ -22,12 +23,13 @@ const row: HoursExportRow = {
 /** Column keys are not saved in the file, so cells are read back by letter. */
 const COLUMN = {
   date: 'A',
-  client: 'C',
-  project: 'D',
-  category: 'F',
-  hours: 'H',
-  minutes: 'I',
-  period: 'J',
+  email: 'C',
+  client: 'D',
+  project: 'E',
+  category: 'G',
+  hours: 'I',
+  minutes: 'J',
+  period: 'K',
 };
 
 const readSheet = async (rows: HoursExportRow[]): Promise<Worksheet> => {
@@ -45,6 +47,7 @@ describe('hours export workbook', () => {
       undefined,
       'Date',
       'Person',
+      'Email',
       'Client',
       'Project',
       'Activity',
@@ -67,6 +70,12 @@ describe('hours export workbook', () => {
     expect(cells.getCell(COLUMN.hours).value).toBe(7.5);
     expect(cells.getCell(COLUMN.hours).numFmt).toBe('0.00');
     expect(cells.getCell(COLUMN.minutes).value).toBe(450);
+  });
+
+  it('writes the email after the name, so two people with one name differ', async () => {
+    const cells = (await readSheet([row])).getRow(2);
+
+    expect(cells.getCell(COLUMN.email).value).toBe('emma.clarke@example.com');
   });
 
   it('leaves a missing client and category empty', async () => {

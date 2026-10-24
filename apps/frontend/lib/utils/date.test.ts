@@ -8,7 +8,7 @@ import {
   companyToday,
   firstOfMonth,
   formatDuration,
-  formatSignedDuration,
+  formatReportHours,
   formatWeekRangeLabel,
   getMonthGridDates,
   getMonthRange,
@@ -192,12 +192,11 @@ describe("durations", () => {
     expect(formatDuration(61)).toBe("1h 1m");
   });
 
-  it("signs a difference, but not zero", () => {
-    expect(formatSignedDuration(90)).toBe("+1h 30m");
-    expect(formatSignedDuration(-120)).toBe("−2h");
-    expect(formatSignedDuration(-30)).toBe("−30m");
-    expect(formatSignedDuration(45)).toBe("+45m");
-    expect(formatSignedDuration(0)).toBe("0h");
+  it("rounds report figures to whole hours, keeping minutes under an hour", () => {
+    expect(formatReportHours(693 * 60 + 54)).toBe("694h");
+    expect(formatReportHours(1203 * 60 + 20)).toBe("1,203h");
+    expect(formatReportHours(45)).toBe("45m");
+    expect(formatReportHours(0)).toBe("0h");
   });
 });
 

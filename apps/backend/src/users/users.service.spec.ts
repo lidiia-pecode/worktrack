@@ -622,4 +622,18 @@ describe('UsersService scope', () => {
       );
     });
   });
+
+  describe('deactivating and reactivating', () => {
+    it('stamps the day somebody was deactivated, and clears it when they come back', async () => {
+      const leaver = await createUser('stamped', UserRole.EMPLOYEE);
+
+      const archived = await service.archive(leaver.id, owner.id, companyId);
+      const restored = await service.unarchive(leaver.id, companyId);
+
+      expect(archived.status).toBe(UserStatus.DEACTIVATED);
+      expect(archived.deactivatedAt).toBeInstanceOf(Date);
+      expect(restored.status).toBe(UserStatus.ACTIVE);
+      expect(restored.deactivatedAt).toBeNull();
+    });
+  });
 });

@@ -31,6 +31,7 @@ const useTimeLogsMutations = createEntityMutations<
   unknown
 >({
   queryKey: queryKeys.timelogs.all,
+  alsoInvalidate: [queryKeys.reporting.figures],
 
   api: {
     create: TimeLogsClientApi.create,

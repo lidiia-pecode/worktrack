@@ -65,12 +65,18 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-/** e.g. "+1h 30m", "−2h" or "−30m"; zero has no sign. */
-export function formatSignedDuration(minutes: number): string {
-  if (minutes === 0) return formatDuration(0);
+const HOURS_LABEL = new Intl.NumberFormat(undefined, {
+  maximumFractionDigits: 0,
+});
 
-  const sign = minutes > 0 ? "+" : "−";
-  return `${sign}${formatDuration(Math.abs(minutes))}`;
+/**
+ * Whole hours for report figures, e.g. "1,203h", where minutes are noise;
+ * under an hour stays in minutes ("45m").
+ */
+export function formatReportHours(minutes: number): string {
+  if (minutes < 60) return formatDuration(minutes);
+
+  return `${HOURS_LABEL.format(Math.round(minutes / 60))}h`;
 }
 
 export function getWeekStart(

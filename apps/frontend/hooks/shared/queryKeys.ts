@@ -169,14 +169,17 @@ export const queryKeys = {
 
     periodHistory: () => ["reporting", "periods", "history"] as const,
 
+    /** The figures Reports draws from time, plans, absences and capacity; their writes refresh these. */
+    figures: ["reporting", "figures"] as const,
+
     hours: (params?: QueryParams) =>
-      ["reporting", "hours", params ?? {}] as const,
+      ["reporting", "figures", "hours", params ?? {}] as const,
 
-    plannedVsActual: (params?: QueryParams) =>
-      ["reporting", "planned-vs-actual", params ?? {}] as const,
+    people: (params?: QueryParams) =>
+      ["reporting", "figures", "people", params ?? {}] as const,
 
-    utilisation: (params?: QueryParams) =>
-      ["reporting", "utilisation", params ?? {}] as const,
+    timeline: (params?: QueryParams) =>
+      ["reporting", "figures", "timeline", params ?? {}] as const,
   },
 
   projectActivities: {

@@ -116,8 +116,10 @@ export function usePlanPeriod() {
 
   return useMutation({
     mutationFn: PlanningClientApi.planPeriod,
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
+    },
     onError: (error) => {
       if (!isClientError(error)) toast.error(getErrorMessage(error));
     },
@@ -131,6 +133,7 @@ export const usePlanningMutations = createEntityMutations<
   unknown
 >({
   queryKey: queryKeys.planning.all,
+  alsoInvalidate: [queryKeys.reporting.figures],
 
   api: {
     create: PlanningClientApi.create,

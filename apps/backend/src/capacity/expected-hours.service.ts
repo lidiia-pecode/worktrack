@@ -10,6 +10,7 @@ import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
   isWorkingDay,
+  todayISODate,
 } from './working-days.util';
 
 export interface ExpectedDay {
@@ -22,28 +23,27 @@ export interface ExpectedMinutes {
   total: number;
   /** Only the days that have finished, which is what "behind" is measured against. */
   toDate: number;
-  /** Every date in the range, 0 on weekends, absences and before the start date. Adds up to `total`. */
+  /** Every date in the range, 0 on weekends, absences, before the start date and from the deactivation day. Adds up to `total`. */
   byDate: ExpectedDay[];
 }
 
-/**
- * The two halves of Expected, kept apart for utilisation, over the days of the
- * range that have finished.
- */
+/** Expected over the days of the range that have finished, with the days off behind it. */
 export interface Availability {
-  /** Contracted minutes, ignoring absences. */
-  capacityMinutes: number;
-  /** The part of that capacity an absence covered. */
-  absenceMinutes: number;
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
+  /** Working days an absence covered, from the start date. */
+  absenceDays: number;
+  /** The finished days they were expected to work, in date order. */
+  expectedDates: string[];
 }
 
 /** Unrounded sums, so every figure is rounded once at the end. */
 interface ShareSums {
   available: number;
   availableToDate: number;
-  capacityToDate: number;
+  absenceDaysToDate: number;
+  /** The finished dates with an available share, in date order. */
+  expectedDatesToDate: string[];
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
@@ -111,7 +111,7 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Capacity and absences read separately, counting only days that have
+   * Expected and the days off behind it, counting only days that have
    * finished, so a month in progress is measured against the time that has
    * actually passed.
    */
@@ -125,13 +125,10 @@ export class ExpectedHoursService {
     const availability = new Map<string, Availability>();
 
     sums.forEach((sum, userId) => {
-      const capacityMinutes = Math.round(sum.capacityToDate);
-      const availableMinutes = Math.round(sum.availableToDate);
-
       availability.set(userId, {
-        capacityMinutes,
-        absenceMinutes: capacityMinutes - availableMinutes,
-        availableMinutes,
+        availableMinutes: Math.round(sum.availableToDate),
+        absenceDays: sum.absenceDaysToDate,
+        expectedDates: sum.expectedDatesToDate,
       });
     });
 
@@ -139,9 +136,9 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Walks every working day in the range from the person's start date: each
-   * contributes a fifth of the capacity in force that day, and counts as
-   * available unless an absence covers it.
+   * Walks every working day in the range from the person's start date to the
+   * day before they were deactivated: each contributes a fifth of the capacity
+   * in force that day, and counts as available unless an absence covers it.
    */
   private async sumSharesFor(
     companyId: string,
@@ -154,21 +151,28 @@ export class ExpectedHoursService {
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 
-    const [timelines, startDates, absencesByUser, today] = await Promise.all([
-      this.capacity.timelinesFor(companyId, userIds, to),
-      this.capacity.startDatesFor(companyId, userIds),
+    const calendar = await this.capacity.calendarFor(companyId);
+    const today = todayISODate(calendar.timezone);
+    const [timelines, activeDates, absencesByUser] = await Promise.all([
+      this.capacity.timelinesFor(
+        companyId,
+        userIds,
+        to,
+        calendar.defaultMinutesPerWeek,
+      ),
+      this.capacity.activeDatesFor(companyId, userIds, calendar.timezone),
       this.absenceRangesFor(companyId, userIds, from, to),
-      this.capacity.today(companyId),
     ]);
 
     for (const userId of userIds) {
       const timeline = timelines.get(userId);
-      const startDate = startDates.get(userId);
+      const active = activeDates.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
       const sum: ShareSums = {
         available: 0,
         availableToDate: 0,
-        capacityToDate: 0,
+        absenceDaysToDate: 0,
+        expectedDatesToDate: [],
         availableByDate: [],
       };
 
@@ -177,21 +181,27 @@ export class ExpectedHoursService {
         sum.availableByDate.push(available);
 
         if (!isWorkingDay(date)) continue;
-        if (startDate && date < startDate) continue;
+        if (active && date < active.startDate) continue;
+        if (active?.deactivatedOn && date >= active.deactivatedOn) continue;
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
         const hasFinished = date < today;
-        if (hasFinished) sum.capacityToDate += share;
 
         const isAbsent = absences.some(
           (a) => a.startDate <= date && a.endDate >= date,
         );
-        if (isAbsent) continue;
+        if (isAbsent) {
+          if (hasFinished) sum.absenceDaysToDate += 1;
+          continue;
+        }
 
         available.share = share;
         sum.available += share;
-        if (hasFinished) sum.availableToDate += share;
+        if (hasFinished && share > 0) {
+          sum.availableToDate += share;
+          sum.expectedDatesToDate.push(date);
+        }
       }
 
       sums.set(userId, sum);

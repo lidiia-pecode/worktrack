@@ -243,7 +243,7 @@ Phase 31; D9 says nothing about status, so this is a rule added on top of it.
 manager for themselves and people in teams they lead, and an employee for
 nobody — not even themselves. Everyone can read their own plan, including a
 manager who leads no team, and sees their own row in the planning grid
-(`GET /planning/week`), the Team week view and the utilisation report. Planning
+(`GET /planning/week`), the Team week view and Reports' People card. Planning
 a whole period (`POST /planning/period`), and its preview
 (`POST /planning/period/preview`, the same checks without a write), reach the
 same people. One write

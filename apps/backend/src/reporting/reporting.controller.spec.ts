@@ -6,14 +6,13 @@ import { RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { ReportingController } from './reporting.controller';
-import { UtilisationController } from './utilisation/utilisation.controller';
+import { PeopleReportController } from './people/people-report.controller';
 
 type Handler = keyof ReportingController;
 
 const OWNER_ONLY: Handler[] = ['reopenPeriod', 'closePeriod'];
 const OWNER_AND_MANAGER: Handler[] = ['getHoursReport', 'exportHours'];
-// Employees read their own figures here; no employee screen shows them.
-const EVERY_ROLE: Handler[] = ['listPeriods', 'getPlannedVsActualReport'];
+const EVERY_ROLE: Handler[] = ['listPeriods'];
 
 describe('ReportingController route roles', () => {
   const guard = new RolesGuard(new Reflector());
@@ -52,20 +51,29 @@ describe('ReportingController route roles', () => {
   });
 });
 
-describe('UtilisationController route roles', () => {
+describe('PeopleReportController route roles', () => {
   const guard = new RolesGuard(new Reflector());
-  const handler: keyof UtilisationController = 'getUtilisation';
+  const handlers: (keyof PeopleReportController)[] = [
+    'getPeopleReport',
+    'getTimeline',
+  ];
 
-  const allows = (role: UserRole): boolean =>
+  const allows = (
+    handler: keyof PeopleReportController,
+    role: UserRole,
+  ): boolean =>
     guard.canActivate({
-      getHandler: () => UtilisationController.prototype[handler],
-      getClass: () => UtilisationController,
+      getHandler: () => PeopleReportController.prototype[handler],
+      getClass: () => PeopleReportController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
 
-  it('allows owners and managers, and refuses employees', () => {
-    expect(allows(UserRole.OWNER)).toBe(true);
-    expect(allows(UserRole.MANAGER)).toBe(true);
-    expect(allows(UserRole.EMPLOYEE)).toBe(false);
-  });
+  it.each(handlers)(
+    'allows owners and managers on %s, and refuses employees',
+    (handler) => {
+      expect(allows(handler, UserRole.OWNER)).toBe(true);
+      expect(allows(handler, UserRole.MANAGER)).toBe(true);
+      expect(allows(handler, UserRole.EMPLOYEE)).toBe(false);
+    },
+  );
 });

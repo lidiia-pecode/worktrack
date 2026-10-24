@@ -12,7 +12,6 @@ import { ReportingService } from './reporting.service';
 import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
-import { PlannedVsActualQuery } from './dtos/planned-vs-actual-query.dto';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import {
@@ -86,13 +85,5 @@ export class ReportingController {
       type: XLSX_CONTENT_TYPE,
       disposition: `attachment; filename="${hoursExportFileName(query)}"`,
     });
-  }
-
-  @Get('planned-vs-actual')
-  getPlannedVsActualReport(
-    @CurrentUser() user: AuthUser,
-    @Query() query: PlannedVsActualQuery,
-  ) {
-    return this.reportingService.getPlannedVsActualReport(user, query);
   }
 }

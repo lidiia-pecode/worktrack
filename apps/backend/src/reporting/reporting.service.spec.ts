@@ -1,18 +1,14 @@
 import 'reflect-metadata';
-import {
-  BadRequestException,
-  ConflictException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import {
   freezeAtFirstLockedSecond,
   freezeAtLastGraceSecond,
@@ -32,7 +28,7 @@ import { ReportingPeriod } from './entities/reporting-period.entity';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursBilling } from './enums/hours-billing.enum';
-import { ReportingService } from './reporting.service';
+import { HoursReportRow, ReportingService } from './reporting.service';
 import {
   addMonths,
   editableUntil,
@@ -406,7 +402,8 @@ describe('ReportingService', () => {
     let manager: AuthUser; // leads the team `member` is in
     let member: AuthUser;
     let outsider: string; // on no team
-    let toolingProjectId: string;
+    let crmProjectId: string;
+    let crmProjectActivityId: string;
     let activityId: string;
 
     const lockedRange = {
@@ -503,7 +500,8 @@ describe('ReportingService', () => {
       activityId = activity.id;
       const crm = await createProject('CRM', 'Acme', activity.id);
       const tooling = await createProject('Tooling', null, activity.id);
-      toolingProjectId = tooling.projectId;
+      crmProjectId = crm.projectId;
+      crmProjectActivityId = crm.projectActivityId;
 
       await log(member.id, crm.projectActivityId, 300, true);
       await log(member.id, crm.projectActivityId, 60, false);
@@ -515,44 +513,23 @@ describe('ReportingService', () => {
     });
 
     it('splits by the billable flag on every project, internal ones included', async () => {
-      const { rows, totals } = await report(owner, HoursReportGroupBy.CLIENT);
+      const { rows, totals } = await report(owner, HoursReportGroupBy.PROJECT);
 
       expect(rows).toEqual([
         expect.objectContaining({
-          name: 'Acme',
+          name: `CRM ${RUN}`,
           billableMinutes: 540,
           nonBillableMinutes: 60,
-          clientMinutes: 600,
-          nonBillableClientMinutes: 60,
           totalMinutes: 600,
         }),
         expect.objectContaining({
-          name: null,
+          name: `Tooling ${RUN}`,
           billableMinutes: 120,
           nonBillableMinutes: 0,
-          clientMinutes: 0,
-          nonBillableClientMinutes: 0,
           totalMinutes: 120,
         }),
       ]);
       expect(totals.totalMinutes).toBe(720);
-    });
-
-    it('groups client names that differ only in case, keeping the capitals', async () => {
-      const legacy = await createProject('Legacy', 'acme', activityId);
-      const legacyLog = await log(
-        member.id,
-        legacy.projectActivityId,
-        30,
-        true,
-      );
-
-      const { rows } = await report(owner, HoursReportGroupBy.CLIENT);
-      await dataSource.getRepository(TimeLog).delete({ id: legacyLog.id });
-
-      expect(rows.filter((row) => row.name !== null)).toEqual([
-        expect.objectContaining({ name: 'Acme', totalMinutes: 630 }),
-      ]);
     });
 
     it('returns the grouping it was built with', async () => {
@@ -577,9 +554,11 @@ describe('ReportingService', () => {
       const people = await report(owner, HoursReportGroupBy.PERSON);
       const projects = await report(owner, HoursReportGroupBy.PROJECT);
 
+      // The manager has a plan and no time, so comes last.
       expect(people.rows.map((row) => row.name)).toEqual([
         'Member Test',
         'Outsider Test',
+        'Manager Test',
       ]);
       expect(projects.rows.map((row) => [row.name, row.detail])).toEqual([
         [`CRM ${RUN}`, 'Acme'],
@@ -590,20 +569,20 @@ describe('ReportingService', () => {
     it("shows a manager only their team's hours", async () => {
       const { rows, totals } = await report(manager, HoursReportGroupBy.PERSON);
 
-      expect(rows.map((row) => row.id)).toEqual([member.id]);
+      expect(rows.map((row) => row.id)).toEqual([member.id, manager.id]);
       expect(totals.totalMinutes).toBe(480);
     });
 
     it('is final for a locked month and provisional once it touches an open one', async () => {
       await expect(
-        report(owner, HoursReportGroupBy.CLIENT),
+        report(owner, HoursReportGroupBy.PROJECT),
       ).resolves.toMatchObject({ isProvisional: false });
 
       await expect(
         service.getHoursReport(owner, {
           dateFrom: lockedMonth,
           dateTo: today,
-          groupBy: HoursReportGroupBy.CLIENT,
+          groupBy: HoursReportGroupBy.PROJECT,
         }),
       ).resolves.toMatchObject({ isProvisional: true });
     });
@@ -613,15 +592,15 @@ describe('ReportingService', () => {
         service.getHoursReport(owner, {
           dateFrom: today,
           dateTo: lockedMonth,
-          groupBy: HoursReportGroupBy.CLIENT,
+          groupBy: HoursReportGroupBy.PROJECT,
         }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('covers at most 366 days, in hours and in planned vs actual', async () => {
+    it('covers at most 366 days', async () => {
       const fullYear = { dateFrom: '2025-01-01', dateTo: '2026-01-01' };
       const tooLong = { dateFrom: '2025-01-01', dateTo: '2026-01-02' };
-      const groupBy = HoursReportGroupBy.CLIENT;
+      const groupBy = HoursReportGroupBy.PROJECT;
 
       await expect(
         service.getHoursReport(owner, { ...fullYear, groupBy }),
@@ -629,13 +608,218 @@ describe('ReportingService', () => {
       await expect(
         service.getHoursReport(owner, { ...tooLong, groupBy }),
       ).rejects.toThrow(BadRequestException);
+    });
 
-      await expect(
-        service.getPlannedVsActualReport(owner, fullYear),
-      ).resolves.toBeDefined();
-      await expect(
-        service.getPlannedVsActualReport(owner, tooLong),
-      ).rejects.toThrow(BadRequestException);
+    describe('counting finished days only', () => {
+      const yesterday = addDays(today, -1);
+      const inThreeDays = addDays(today, 3);
+      const rangeReachingToday = {
+        dateFrom: yesterday,
+        dateTo: addDays(today, 7),
+      };
+
+      it('leaves out today and later days, logged and planned alike, and says where it stopped', async () => {
+        const logs = await dataSource.getRepository(TimeLog).save(
+          [yesterday, today, inThreeDays].map((date, i) => ({
+            companyId,
+            userId: member.id,
+            projectActivityId: crmProjectActivityId,
+            date,
+            minutes: 30 * (i + 1),
+            isBillable: true,
+          })),
+        );
+        const plans = await dataSource.getRepository(PlanningEntry).save(
+          [yesterday, today, inThreeDays].map((date) => ({
+            companyId,
+            userId: member.id,
+            projectId: crmProjectId,
+            date,
+            plannedMinutes: 120,
+          })),
+        );
+
+        const hours = await service.getHoursReport(owner, {
+          ...rangeReachingToday,
+          groupBy: HoursReportGroupBy.PERSON,
+        });
+        await dataSource.getRepository(TimeLog).remove(logs);
+        await dataSource.getRepository(PlanningEntry).remove(plans);
+
+        expect(hours.rows).toEqual([
+          expect.objectContaining({
+            id: member.id,
+            totalMinutes: 30,
+            plannedMinutes: 120,
+          }),
+        ]);
+        expect(hours.countedUntil).toBe(yesterday);
+      });
+
+      it('counts nothing in a range that starts today', async () => {
+        const { rows, countedUntil } = await service.getHoursReport(owner, {
+          dateFrom: today,
+          dateTo: inThreeDays,
+          groupBy: HoursReportGroupBy.PERSON,
+        });
+
+        expect(rows).toEqual([]);
+        expect(countedUntil).toBe(yesterday);
+      });
+
+      it('counts the whole of a range that has finished', async () => {
+        const hours = await report(owner, HoursReportGroupBy.PROJECT);
+
+        expect(hours).toMatchObject({ countedUntil: null });
+        expect(hours.totals.totalMinutes).toBe(720);
+      });
+    });
+
+    it('keeps rows with equal figures in the same order: by name, then id', async () => {
+      const twins = await dataSource.getRepository(User).save(
+        ['first', 'second'].map((which) => ({
+          companyId,
+          role: UserRole.EMPLOYEE,
+          firstName: 'Twin',
+          lastName: 'Test',
+          email: `twin-${which}-${RUN}@reporting.test`,
+        })),
+      );
+      const twinLogs = await Promise.all(
+        twins.map((twin) => log(twin.id, crmProjectActivityId, 240, true)),
+      );
+      const twinIds = twins.map((twin) => twin.id).sort();
+
+      const hours = await report(owner, HoursReportGroupBy.PERSON);
+      await dataSource.getRepository(TimeLog).remove(twinLogs);
+
+      expect(hours.rows.map((row) => row.id)).toEqual([
+        member.id,
+        outsider,
+        ...twinIds,
+        manager.id,
+      ]);
+    });
+
+    describe('planned beside the hours', () => {
+      it('sums the plan by project, with the totals', async () => {
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.PROJECT,
+        );
+
+        expect(rows.map((row) => [row.name, row.plannedMinutes])).toEqual([
+          [`CRM ${RUN}`, 540],
+          [`Tooling ${RUN}`, 0],
+        ]);
+        expect(totals.plannedMinutes).toBe(540);
+      });
+
+      it('lists somebody with a plan and no time last, with nothing logged', async () => {
+        const { rows } = await report(owner, HoursReportGroupBy.PERSON);
+
+        expect(rows.at(-1)).toMatchObject({
+          id: manager.id,
+          totalMinutes: 0,
+          plannedMinutes: 60,
+        });
+        expect(rows.find((row) => row.id === member.id)?.plannedMinutes).toBe(
+          480,
+        );
+      });
+
+      it('lists a project that was planned and never logged', async () => {
+        const roadmap = await createProject('Roadmap', 'Acme', activityId);
+        const roadmapPlan = await plan(member.id, roadmap.projectId, 120);
+
+        const { rows } = await report(owner, HoursReportGroupBy.PROJECT);
+        await dataSource.getRepository(PlanningEntry).remove(roadmapPlan);
+
+        expect(rows.at(-1)).toMatchObject({
+          name: `Roadmap ${RUN}`,
+          detail: 'Acme',
+          totalMinutes: 0,
+          plannedMinutes: 120,
+        });
+      });
+
+      it('counts only the plans of the people a manager sees', async () => {
+        const outsiderPlan = await plan(outsider, crmProjectId, 100);
+
+        const forOwner = await report(owner, HoursReportGroupBy.PROJECT);
+        const forManager = await report(manager, HoursReportGroupBy.PROJECT);
+        await dataSource.getRepository(PlanningEntry).remove(outsiderPlan);
+
+        expect(forOwner.totals.plannedMinutes).toBe(640);
+        expect(forManager.totals.plannedMinutes).toBe(540);
+      });
+
+      it("leaves out a deactivated person's plan unless they logged time", async () => {
+        const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
+        await dataSource
+          .getRepository(User)
+          .update(leaver.id, { status: UserStatus.DEACTIVATED });
+        const leftoverPlan = await plan(leaver.id, crmProjectId, 100);
+
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.PROJECT,
+        );
+        await dataSource.getRepository(PlanningEntry).remove(leftoverPlan);
+        await dataSource.getRepository(User).delete(leaver.id);
+
+        expect(rows[0].plannedMinutes).toBe(540);
+        expect(totals.plannedMinutes).toBe(540);
+      });
+
+      it('has no plan by activity, which plans are not made for', async () => {
+        const { rows, totals } = await report(
+          owner,
+          HoursReportGroupBy.ACTIVITY,
+        );
+
+        expect(rows.every((row) => row.plannedMinutes === null)).toBe(true);
+        expect(totals.plannedMinutes).toBeNull();
+      });
+    });
+
+    describe("opening a project's people", () => {
+      const people = (
+        user: AuthUser,
+        filter: {
+          projectId?: string;
+        },
+      ) =>
+        service.getHoursReport(user, {
+          ...lockedRange,
+          groupBy: HoursReportGroupBy.PERSON,
+          ...filter,
+        });
+
+      const figures = (rows: HoursReportRow[]) =>
+        rows.map((row) => [row.name, row.totalMinutes, row.plannedMinutes]);
+
+      it("lists a project's people with their time and plans on it", async () => {
+        const { rows, totals } = await people(owner, {
+          projectId: crmProjectId,
+        });
+
+        expect(figures(rows)).toEqual([
+          ['Member Test', 360, 480],
+          ['Outsider Test', 240, 0],
+          ['Manager Test', 0, 60],
+        ]);
+        expect(totals).toMatchObject({
+          totalMinutes: 600,
+          plannedMinutes: 540,
+        });
+      });
+
+      it('shows a manager only their team on the project', async () => {
+        const { rows } = await people(manager, { projectId: crmProjectId });
+
+        expect(rows.map((row) => row.id)).toEqual([member.id, manager.id]);
+      });
     });
 
     describe('hours export', () => {
@@ -670,7 +854,7 @@ describe('ReportingService', () => {
       it('adds up to the Hours report for the same people', async () => {
         for (const user of [owner, manager]) {
           const rows = await exportRows(user);
-          const { totals } = await report(user, HoursReportGroupBy.CLIENT);
+          const { totals } = await report(user, HoursReportGroupBy.PROJECT);
 
           expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
             totals.totalMinutes,
@@ -704,14 +888,12 @@ describe('ReportingService', () => {
       });
 
       it('marks each row closed or open by its month', async () => {
-        const [crm] = await dataSource
-          .getRepository(ProjectActivity)
-          .find({ where: { companyId, activityId }, take: 1 });
+        const yesterday = addDays(today, -1);
         const openLog = await dataSource.getRepository(TimeLog).save({
           companyId,
           userId: member.id,
-          projectActivityId: crm.id,
-          date: today,
+          projectActivityId: crmProjectActivityId,
+          date: yesterday,
           minutes: 45,
           isBillable: true,
         });
@@ -727,10 +909,37 @@ describe('ReportingService', () => {
             .filter((row) => row.date === lockedDate)
             .map((row) => row.isPeriodClosed),
         ).not.toContain(false);
-        expect(rows.find((row) => row.date === today)).toMatchObject({
+        expect(rows.find((row) => row.date === yesterday)).toMatchObject({
           minutes: 45,
           isPeriodClosed: false,
         });
+      });
+
+      it('counts the same finished days as the Hours report', async () => {
+        const todayLog = await dataSource.getRepository(TimeLog).save({
+          companyId,
+          userId: member.id,
+          projectActivityId: crmProjectActivityId,
+          date: today,
+          minutes: 45,
+          isBillable: true,
+        });
+
+        const rows = await service.getHoursExport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+        });
+        const { totals } = await service.getHoursReport(owner, {
+          dateFrom: lockedMonth,
+          dateTo: today,
+          groupBy: HoursReportGroupBy.PROJECT,
+        });
+        await dataSource.getRepository(TimeLog).delete({ id: todayLog.id });
+
+        expect(rows.find((row) => row.date === today)).toBeUndefined();
+        expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
+          totals.totalMinutes,
+        );
       });
 
       it('refuses a range that runs backwards or is too long', async () => {
@@ -749,56 +958,30 @@ describe('ReportingService', () => {
       });
     });
 
-    describe('planned vs actual', () => {
-      const plannedVsActual = (
-        user: AuthUser,
-        filters: { userId?: string; projectId?: string } = {},
-      ) =>
-        service.getPlannedVsActualReport(user, { ...lockedRange, ...filters });
-
-      const figures = (
-        rows: { name: string; plannedMinutes: number; loggedMinutes: number }[],
-      ) => rows.map((row) => [row.name, row.plannedMinutes, row.loggedMinutes]);
-
-      it('shows planned and logged time per person, by name', async () => {
-        const { rows, totals, isProvisional } = await plannedVsActual(owner);
-
-        expect(figures(rows)).toEqual([
-          ['Manager Test', 60, 0],
-          ['Member Test', 480, 480],
-          ['Outsider Test', 0, 240],
-        ]);
-        expect(totals).toEqual({ plannedMinutes: 540, loggedMinutes: 720 });
-        expect(isProvisional).toBe(false);
-      });
-
-      it("shows a manager only their team's people", async () => {
-        const { rows } = await plannedVsActual(manager);
-
-        expect(rows.map((row) => row.name)).toEqual([
-          'Manager Test',
-          'Member Test',
-        ]);
-      });
-
-      it('narrows to one project', async () => {
-        const { rows } = await plannedVsActual(owner, {
-          projectId: toolingProjectId,
+    describe("a person's projects", () => {
+      const projectsOf = (user: AuthUser, userId: string) =>
+        service.getHoursReport(user, {
+          ...lockedRange,
+          groupBy: HoursReportGroupBy.PROJECT,
+          userId,
         });
 
-        expect(figures(rows)).toEqual([['Member Test', 0, 120]]);
+      it("lists one person's time and plans by project", async () => {
+        const { rows, totals } = await projectsOf(owner, member.id);
+
+        expect(
+          rows.map((row) => [row.name, row.totalMinutes, row.plannedMinutes]),
+        ).toEqual([
+          [`CRM ${RUN}`, 360, 480],
+          [`Tooling ${RUN}`, 120, 0],
+        ]);
+        expect(totals).toMatchObject({ totalMinutes: 480 });
       });
 
-      it('pins an employee to their own figures', async () => {
-        const { rows } = await plannedVsActual(member, { userId: outsider });
+      it('shows a manager nothing of somebody outside their teams', async () => {
+        const { rows } = await projectsOf(manager, outsider);
 
-        expect(rows.map((row) => row.userId)).toEqual([member.id]);
-      });
-
-      it('refuses a manager asking about someone outside their teams', async () => {
-        await expect(
-          plannedVsActual(manager, { userId: outsider }),
-        ).rejects.toThrow(ForbiddenException);
+        expect(rows).toEqual([]);
       });
     });
   });

@@ -1,6 +1,6 @@
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 
-export class UtilisationQuery {
+export class PeopleReportQuery {
   @IsDateWithoutTimeString()
   dateFrom!: string;
 

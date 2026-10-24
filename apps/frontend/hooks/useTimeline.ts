@@ -2,23 +2,24 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { PlannedVsActualQuery } from "@/types";
+import { ReportRange } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function usePlannedVsActual(params: PlannedVsActualQuery) {
+/** The month's hours week by week. */
+export function useTimeline(params: ReportRange) {
   const query = useQuery({
-    queryKey: queryKeys.reporting.plannedVsActual({ ...params }),
-    queryFn: () => ReportingClientApi.getPlannedVsActual(params),
+    queryKey: queryKeys.reporting.timeline({ ...params }),
+    queryFn: () => ReportingClientApi.getTimeline(params),
     placeholderData: keepPreviousData,
   });
 
   return {
-    report: query.data ?? null,
+    timeline: query.data ?? null,
     isLoading: query.isLoading,
-    isPlaceholderData: query.isPlaceholderData,
     isError: query.isError,
+    isPlaceholderData: query.isPlaceholderData,
     refetch: query.refetch,
   };
 }

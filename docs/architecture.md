@@ -94,10 +94,11 @@ says why. A day is either worked or absent, never both.
 Expected hours are capacity minus absences, and owners and managers plan their
 people's week by project at `/planning`, against the hours each person has
 available. Each month locks by itself a week after it ends, and an owner can
-reopen one at `/admin/periods`. Owners and managers read hours, planned vs
-actual and utilisation at `/reports`, and download hours as an Excel file for
-invoicing. The authorization gaps are all closed. The work ahead is making it a
-better product; a production launch comes last, once it is ready.
+reopen one at `/admin/periods`. Owners and managers read an overview of
+logged, planned and expected hours at `/reports`, and download hours as an
+Excel file for invoicing. The authorization gaps are all closed. The work
+ahead is making it a better product; a production launch comes last, once it
+is ready.
 
 See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
 fuller assessment, test coverage and the engineering state, and §7 for the

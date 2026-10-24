@@ -34,7 +34,12 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
         position: data.position,
         passwordHash,
         status: data.status ?? UserStatus.ACTIVE,
-        createdAt: ACCOUNTS_CREATED_AT,
+        deactivatedAt: data.deactivatedOn
+          ? new Date(`${data.deactivatedOn}T00:00:00Z`)
+          : null,
+        createdAt: data.joinedOn
+          ? new Date(`${data.joinedOn}T00:00:00Z`)
+          : ACCOUNTS_CREATED_AT,
       }),
     );
 
@@ -47,6 +52,17 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
           userId: user.id,
           validFrom: CAPACITY_VALID_FROM,
           minutesPerWeek,
+        }),
+      );
+    }
+
+    if (data.capacityFrom) {
+      await capacityRepo.save(
+        capacityRepo.create({
+          companyId,
+          userId: user.id,
+          validFrom: data.capacityFrom.validFrom,
+          minutesPerWeek: data.capacityFrom.hoursPerWeek * 60,
         }),
       );
     }

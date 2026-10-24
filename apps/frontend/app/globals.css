@@ -141,6 +141,30 @@
   --chart-4: var(--destructive);
   --chart-5: var(--success);
 
+  /* Reports: the track behind a row's bar. In Week by week, what was expected
+     is a pale block behind each week and what was planned a soft bar beside
+     the logged one, so all three read as one kind of mark. */
+  --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
+  --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
+  --report-planned: color-mix(in oklch, oklch(0.58 0.12 50) 50%, var(--card));
+  /* Logged time with no plan to measure it against: the logged teal, lighter. */
+  --report-unplanned: color-mix(in oklch, var(--brand) 35%, var(--card));
+
+  /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
+     honey, lavender. Checked for colour vision as a set; mint beside
+     coral is close for red-blind readers, so slices keep a gap and every one is
+     named beside its hours. Fills only: text stays in the text colours. */
+  --category-1: #5f95dc;
+  --category-2: #ec8a62;
+  --category-3: #3fb38f;
+  --category-4: #d9a832;
+  --category-5: #9a7fd9;
+  --category-other: color-mix(
+    in oklch,
+    var(--muted-foreground) 45%,
+    var(--card)
+  );
+
   /* ------------------------------------------------------------------------
      Project colours
      ------------------------------------------------------------------------ */
@@ -261,6 +285,18 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+
+  --color-report-track: var(--report-track);
+  --color-report-expected: var(--report-expected);
+  --color-report-planned: var(--report-planned);
+  --color-report-unplanned: var(--report-unplanned);
+
+  --color-category-1: var(--category-1);
+  --color-category-2: var(--category-2);
+  --color-category-3: var(--category-3);
+  --color-category-4: var(--category-4);
+  --color-category-5: var(--category-5);
+  --color-category-other: var(--category-other);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

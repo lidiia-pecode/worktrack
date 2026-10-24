@@ -1,7 +1,13 @@
 import { Absence, ReportingMonth, ReportingPeriodsQuery } from "@/types";
+import { Company } from "@/types/Company";
 import { ReportingMonthState } from "@/types/enums";
 
-import { addMonthsToKey, getMonthRange, toMonthKey } from "./date";
+import {
+  addMonthsToKey,
+  getMonthRange,
+  isoDateInTimeZone,
+  toMonthKey,
+} from "./date";
 
 /** The most months `GET /periods` returns in one request. */
 export const MAX_PERIOD_MONTHS_PER_REQUEST = 36;
@@ -11,6 +17,13 @@ export const GRACE_DAYS = 7;
 
 /** How many months the Periods page lists at a time. */
 export const PERIOD_MONTHS_PER_PAGE = 12;
+
+/** The month the company was created in, where the company is. Nothing is reported before it. */
+export function companyFirstMonth(company: Company): string {
+  return toMonthKey(
+    isoDateInTimeZone(new Date(company.createdAt), company.timezone),
+  );
+}
 
 const notBefore = (monthKey: string, firstMonth: string) =>
   monthKey < firstMonth ? firstMonth : monthKey;
