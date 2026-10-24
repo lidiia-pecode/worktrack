@@ -146,7 +146,9 @@ npx typeorm-ts-node-commonjs migration:show -d src/data-source.ts
 ```
 
 `[X]` is applied, `[ ]` is pending. Run this before and after every apply,
-everywhere. It is the cheapest check in this whole document.
+everywhere. It is the cheapest check in this whole document. Against Neon,
+`make migrate-neon` without `APPLY=1` is the same check with the risk of each
+pending migration added (see *Running a migration against Neon*).
 
 ### The four rules
 
@@ -194,19 +196,13 @@ A change that contains both is applied in two sittings, not one.
 
 `migration:run` has no "stop at this one" option — it applies every pending
 migration it can find. When a branch carries an additive and a destructive
-migration together, hide the destructive one from the run by moving its
-**compiled** files out of the way:
-
-```bash
-cd apps/backend && npm run build
-mkdir -p /tmp/held
-mv dist/migrations/<timestamp>-<DestructiveName>.* /tmp/held/
-# migration:show now lists only the additive one as pending
-```
-
-Only `dist/` is touched — the source file stays committed, and `npm run build`
-afterwards puts it back. Confirm with `migration:show` that the held-back
-migration has genuinely disappeared from the list before running anything.
+migration together, `make migrate-neon ONLY=<name>` loads just the one named
+(a part of its class name that matches exactly one pending migration; it
+refuses when several match) and lists the rest as held back, so the additive
+one can go before the merge and the destructive one after. TypeORM does not
+mind the order, so a held-back migration with an earlier timestamp still runs
+later. Against the local database the question never arises: `make migrate`
+applies them all.
 
 ### Testing a schema change
 
@@ -252,8 +248,8 @@ Vercel builds and promotes the frontend. Render rebuilds the backend image and
 swaps the service over.
 
 **Migrations are not automatic.** Render's pre-deploy command is a paid feature,
-so every migration is run by hand against Neon from a laptop. That has to become
-a real release step before any of this is called production.
+so every migration is run from a laptop with `make migrate-neon` (below). That
+has to become a real release step before any of this is called production.
 
 **When by hand means depends on the kind of migration**, per the table in
 *Database changes*: additive ones go before the merge, destructive ones after
@@ -272,66 +268,63 @@ holds `DATABASE_URL` (ending in `sslmode=verify-full`) and `DATABASE_SSL=true`.
 Render has its own copy in its dashboard; the file is for running migrations
 from a laptop.
 
-Node 22 reads an env file without the shell touching it, which is what these
-commands rely on:
+One command does the whole runbook, and does nothing until told to:
 
 ```bash
-cd apps/backend
-npm run build                 # required: the compiled data source is what runs
-
-# 1. which database is this, really?
-node --env-file=.env.neon ../../node_modules/.bin/typeorm \
-  query "select current_database(), current_user, version()" -d dist/data-source.js
-
-# 2. what is pending?
-node --env-file=.env.neon ../../node_modules/.bin/typeorm \
-  migration:show -d dist/data-source.js
-
-# 3. apply
-node --env-file=.env.neon ../../node_modules/.bin/typeorm \
-  migration:run -d dist/data-source.js
-
-# 4. confirm
-node --env-file=.env.neon ../../node_modules/.bin/typeorm \
-  migration:show -d dist/data-source.js
+make migrate-neon                                   # dry run: target, pending list, risk of each
+make migrate-neon APPLY=1                           # the same, then applies after you type the database name
+make migrate-neon APPLY=1 ONLY=AddUserDeactivatedAt # one of several pending; the rest stay held back
+make migrate-neon APPLY=1 ALLOW_DESTRUCTIVE=1       # needed for a DROP, RENAME, NOT NULL or type change
 ```
 
-Four things that cost time the first time:
+It is `apps/backend/src/scripts/migrate-neon.ts`, started by `npm run
+migrate:neon`, which loads `.env.neon` with Node's `--env-file` so the shell
+never sees the connection string (it contains `&`, which `source` would read as
+a background operator). It runs from the TypeScript source like the local
+`migration:run`, so there is nothing to build first. In order, it:
 
-- **Build first.** The run reads `dist/data-source.js`, so a migration added
-  since the last build is simply invisible to it.
-- **Do not `source .env.neon`.** The connection string contains `&`, so the shell
-  parses it as a background operator and the file fails to load. `--env-file`
-  avoids this entirely — the value never reaches the shell. (`npm run
-  migration:run:prod` is the same command without the env file, so it will talk
-  to whatever `.env` points at. Prefer the explicit form above.)
-- **`dotenv.config()` does not override.** `data-source.ts` calls it, and it
-  leaves existing environment variables alone, so the Neon values win over
-  `.env`.
-- **Neon is Postgres 18 and the user is `worktrack_owner`**; local is Postgres 16
-  as `worktrack`. Step 1 above prints both, so there is no guessing about which
-  database is about to be written to.
+1. **Checks the target.** `DATABASE_URL` has to name a `.neon.tech` host and
+   `DATABASE_SSL` has to be `true`, or it stops before connecting. It then
+   prints the host, database, user and server version — Neon is Postgres 18 as
+   `worktrack_owner`; local is Postgres 16 as `worktrack`.
+2. **Checks the files.** Every migration file has to be committed as it is
+   (`git status` clean under `src/migrations/`), because a committed migration
+   is immutable and what runs has to be what the branch holds.
+3. **Lists what is pending**, reads each pending migration's `up()` and prints
+   its statements with a class: *additive* (a new table, nullable column,
+   index or enum label), *data* (`UPDATE`, `DELETE`, `INSERT` — the schema is
+   unchanged, the rows are not), or *destructive* (`DROP`, `RENAME`,
+   `ALTER COLUMN … TYPE`, `SET NOT NULL`, `TRUNCATE`). SQL it cannot read as a
+   plain string counts as destructive. The rules are `migration-risk.ts`, with
+   their tests.
+4. **Refuses a destructive migration without `ALLOW_DESTRUCTIVE=1`**, and with
+   it reminds you to confirm first that Render is serving the new code (the
+   route probe under *Verifying a production migration*).
+5. **Stops here unless `APPLY=1`.** With it, you type the database name back
+   in the terminal (a piped stdin is refused), and the pending migrations run
+   in one transaction. It then lists what was applied and points to the checks
+   below.
 
-Step 1 and step 2 together are the pre-flight: the first names the server, the
-second proves the state — local and Neon are always at different counts, so a
-pending list matching local means the connection went to the wrong place.
+A dry run is read-only and safe at any time; running it before every merge
+that carries a migration is the habit to keep.
 
 #### Verifying a production migration
 
 Before applying, all of these:
 
-- the pre-flight above names Neon, and lists exactly the migrations you expect
-  to be pending — no more;
+- the dry run names Neon and lists exactly the migrations you expect to be
+  pending — no more;
 - for a destructive migration, **Render is genuinely serving the new code.**
   "Live" in the dashboard is not proof. Probe a route that only exists in the new
   build: a registered route answers `401` behind `AccessGuard`, while a path that
   does not exist answers `404` with `Cannot GET`. That difference is conclusive;
 - the migration file on your machine matches what merged —
-  `git show origin/main:<path> | diff - <path>`.
+  `git show origin/main:<path> | diff - <path>` (the script checks it is
+  committed, not that it is on `main`).
 
 After applying, all of these:
 
-- `migration:show` lists it as `[X]`;
+- a second dry run lists nothing pending;
 - the schema itself agrees, read from `information_schema` and `pg_constraint`
   rather than trusted from the `migrations` table — columns, constraints,
   indexes, foreign keys and enum labels;
@@ -345,7 +338,7 @@ After applying, all of these:
 | :--- | :--- | :--- | :--- |
 | **Local** | `make migrate` | `src/data-source.ts` via ts-node | You, whenever you pull a schema change |
 | **CI** | every pull request, before the tests | `src/data-source.ts` | `ci.yml`, against a throwaway Postgres |
-| **Neon** | by hand from a laptop | `dist/data-source.js` | You, around the deploy |
+| **Neon** | `make migrate-neon` from a laptop | the same options as `src/data-source.ts`, via ts-node | You, around the deploy |
 
 CI proves a migration runs on an **empty** database, since its Postgres is
 created fresh per job. It says nothing about running as an upgrade over existing
@@ -363,7 +356,7 @@ There is one environment and one person deploying to it, so "who" mostly means
 | Prove it runs on an empty database | CI, on every pull request |
 | Prove it runs over existing data | Author, locally, before opening the PR |
 | Decide additive-before / destructive-after | Author and reviewer, from the table above |
-| Run the pre-flight and apply against Neon | You, from a laptop — nothing automates this |
+| Run the dry run and apply against Neon | You, with `make migrate-neon`; nothing automates the timing |
 | Confirm Render is serving new code before a destructive run | You, with the route probe |
 | Verify schema and application after applying | You |
 | Deploy the code itself | Vercel and Render, automatically on merge |
@@ -388,8 +381,8 @@ What was done instead:
 
 1. `CreateAbsenceEntity` applied to Neon **before** merging, with
    `RemoveActivityIsAbsence` held back by moving its compiled files out of
-   `dist/migrations/` — `migration:show` confirmed it had vanished from the
-   pending list before anything ran.
+   `dist/migrations/` (what `ONLY=` does today) — `migration:show` confirmed it
+   had vanished from the pending list before anything ran.
 2. Verified: table, enum, check constraint, index and both foreign keys present;
    `activities.is_absence` still present; the deployed activities API still
    returning `200`.

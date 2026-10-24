@@ -110,6 +110,7 @@ make db         # Start PostgreSQL only
 make down       # Stop PostgreSQL, keep its data
 make down-hard  # Stop PostgreSQL and delete its data
 make migrate    # Run database migrations
+make migrate-neon  # Dry run of pending migrations against Neon; APPLY=1 applies (see docs/workflow.md)
 make seed       # Seed the test company and write TEST-CREDENTIALS.md
 make init       # Run migrations and seed data
 make setup      # First-time project setup (same as init)
@@ -202,8 +203,10 @@ logging time.
 
 The original feature plan is complete. The work ahead improves the product
 itself, area by area: first run and onboarding, the application shell and shared
-UI, and most of administration are done. A production launch comes last, once
-the product is ready. The roadmap, test coverage and engineering state are in
+UI, administration and settings, everyday time entry, team oversight and
+planning, and reporting have each had a pass; the employee's own view and a
+whole-product review remain. A production launch comes last, once the product
+is ready. The roadmap, test coverage and engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
 and §7.
 
