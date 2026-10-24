@@ -819,8 +819,9 @@ see, and how a new company gets started. §7 plans that work.
   34, since the People report covers it and no screen used it.
 - **No utilisation ratios** (Phase 34). Billable utilisation, client share,
   non-billable client share and logging completeness were replaced by plain
-  hours and gaps in words: comparable products define "utilisation" in
-  inconsistent ways, and a ratio per person reads as a score.
+  hours: one bar per row against expected or planned hours, with whole-hour
+  figures. Comparable products define "utilisation" in inconsistent ways, and
+  a ratio per person reads as a score.
 - **Periods are calendar months that lock by themselves**, worked out from the
   date on every check, because a scheduled job would miss days while the
   backend sleeps.
