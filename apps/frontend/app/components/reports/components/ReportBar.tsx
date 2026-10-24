@@ -28,18 +28,19 @@ export const ReportBar = ({
       : 0;
 
   return (
-    <div
+    // Spans, so a team row can put the bar inside its button.
+    <span
       role="img"
       aria-label={label}
-      className={cn("h-2 rounded-full bg-report-track", className)}
+      className={cn("block h-2 rounded-full bg-report-track", className)}
     >
-      <div
+      <span
         className={cn(
-          "h-full rounded-full",
+          "block h-full rounded-full",
           hasReference ? "bg-brand" : "bg-report-unplanned",
         )}
         style={{ width: `${percent}%` }}
       />
-    </div>
+    </span>
   );
 };

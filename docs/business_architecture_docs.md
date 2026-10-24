@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 22 October 2026.** Phases 0 to 34 in §7 are
+**Last verified against the code: 24 October 2026.** Phases 0 to 34 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -845,13 +845,13 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-four
-suites and 782 tests, covering the role-visibility filters, team and invitation
+suites and 780 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, and session refresh, rate limits and token
 clean-up — most against a real database.
-The frontend has fifty-seven Vitest files and 316 tests: its date, month,
+The frontend has fifty-six Vitest files and 309 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the

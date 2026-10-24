@@ -30,7 +30,7 @@ export const ReportMonthStepper = ({
         size="iconSm"
         className="w-9 rounded-none"
         aria-label="Previous month"
-        disabled={Boolean(companyFirstMonth) && month <= companyFirstMonth!}
+        disabled={companyFirstMonth !== undefined && month <= companyFirstMonth}
         onClick={() => onChange(addMonthsToKey(month, -1))}
       >
         <ChevronLeft size={16} aria-hidden />
