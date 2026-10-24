@@ -25,6 +25,7 @@
     "migration:run": "npm run typeorm -- migration:run -d src/data-source.ts",
     "migration:run:prod": "typeorm migration:run -d dist/data-source.js",
     "migration:revert": "npm run typeorm -- migration:revert -d src/data-source.ts",
+    "migrate:neon": "node --env-file=.env.neon -r ts-node/register -r tsconfig-paths/register src/scripts/migrate-neon.ts",
     "seed": "ts-node -r tsconfig-paths/register src/seed/run-seeds.ts"
   },
   "dependencies": {
