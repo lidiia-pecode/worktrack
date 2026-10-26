@@ -50,6 +50,8 @@ import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 type ModalState = {
   date: string;
   timelog?: TimeLog;
+  /** A new entry opened from a plan starts on its project. */
+  plannedProjectId?: string;
 };
 
 type AbsenceModalState = {
@@ -59,6 +61,8 @@ type AbsenceModalState = {
 
 const PX_PER_HOUR = 56;
 const PX_PER_MINUTE = PX_PER_HOUR / 60;
+/** Below the busiest day, so a full day still has room to click and add. */
+const GRID_FOOT_PX = 40;
 
 const noActivitiesMessage = (projects: { name: string }[]) =>
   projects.length === 1
@@ -238,17 +242,16 @@ export const WeekTimesheet = ({
     ...Object.values(dailyTotals),
   );
 
-  const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + 100;
+  const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + GRID_FOOT_PX;
 
-  const openCreate = (date: Date) => {
+  // Plans never fall on a weekend, so the confirmation needs no project.
+  const openCreate = (date: Date, plannedProjectId?: string) => {
     if (isWeekend(date)) {
       setNonWorkDayDate(date);
       return;
     }
 
-    setModalState({
-      date: toISODate(date),
-    });
+    setModalState({ date: toISODate(date), plannedProjectId });
   };
 
   const confirmNonWorkDay = () => {
@@ -530,6 +533,7 @@ export const WeekTimesheet = ({
           onClose={closeModal}
           date={modalState.date}
           rememberKey={lastEntryChoiceKey(userId, userId)}
+          plannedProjectId={modalState.plannedProjectId}
           timelog={modalState.timelog}
           pickerItems={pickerItems}
           onCreate={(payload) => actions.create.mutateAsync(payload)}

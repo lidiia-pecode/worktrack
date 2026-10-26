@@ -6,7 +6,7 @@ import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 
 type TimelogSegmentProps = {
-  segment: Segment;
+  segment: Segment<TimeLog>;
   onClick?: (timelog: TimeLog) => void;
   onHover: (timelog: TimeLog, target: HTMLElement) => void;
   onLeave: () => void;
@@ -18,7 +18,7 @@ export const TimelogSegment = ({
   onHover,
   onLeave,
 }: TimelogSegmentProps) => {
-  const { timelog, offsetTop, height } = segment;
+  const { item: timelog, offsetTop, height } = segment;
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
 

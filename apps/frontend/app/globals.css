@@ -153,12 +153,12 @@
   /* Day states on the week views (see DAY STATES below). */
   --stripe-weekend: color-mix(
     in oklch,
-    var(--muted-foreground) 11%,
+    var(--muted-foreground) 6%,
     var(--card)
   );
   --stripe-weekend-ground: color-mix(
     in oklch,
-    var(--muted-foreground) 3%,
+    var(--muted-foreground) 2%,
     var(--card)
   );
   --stripe-day-off: color-mix(in oklch, var(--brand) 24%, var(--card));

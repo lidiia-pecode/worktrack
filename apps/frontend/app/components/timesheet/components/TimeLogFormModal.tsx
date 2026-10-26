@@ -71,20 +71,46 @@ const findPickerItem = (
     (item) => item.projectId === projectId && item.activityId === activityId,
   );
 
+/** A project with its activity when the activity is clear: the only one. */
+const choiceOn = (items: PickerProjectActivity[]): EntryChoice => ({
+  projectId: items[0].projectId,
+  activityId: items.length === 1 ? items[0].activityId : "",
+});
+
+/**
+ * Where a new entry starts. From a plan, on its project, with the activity
+ * last logged on it if any; otherwise the pair last logged, or the only
+ * project there is.
+ */
 const startingChoice = (
   pickerItems: PickerProjectActivity[],
   rememberKey: string,
+  plannedProjectId?: string,
 ): EntryChoice => {
   const remembered = readLastEntryChoice(rememberKey);
-  if (remembered && findPickerItem(pickerItems, remembered)) return remembered;
+  // Only a pair the person can still log on.
+  const rememberedChoice =
+    remembered && findPickerItem(pickerItems, remembered) ? remembered : null;
+
+  if (plannedProjectId) {
+    const planned = pickerItems.filter(
+      (item) => item.projectId === plannedProjectId,
+    );
+    // A project the person has since left can't be logged on, so the plan
+    // starts nothing.
+    if (planned.length === 0) return { projectId: "", activityId: "" };
+    if (rememberedChoice?.projectId === plannedProjectId) {
+      return rememberedChoice;
+    }
+    return choiceOn(planned);
+  }
+
+  if (rememberedChoice) return rememberedChoice;
 
   const projectIds = new Set(pickerItems.map((item) => item.projectId));
   if (projectIds.size !== 1) return { projectId: "", activityId: "" };
 
-  return {
-    projectId: pickerItems[0].projectId,
-    activityId: pickerItems.length === 1 ? pickerItems[0].activityId : "",
-  };
+  return choiceOn(pickerItems);
 };
 
 type Props = {
@@ -94,6 +120,8 @@ type Props = {
   subjectName?: string;
   /** From `lastEntryChoiceKey`: where the last pair logged for this person is kept. */
   rememberKey: string;
+  /** A new entry opened from a plan starts on its project. */
+  plannedProjectId?: string;
   timelog?: TimeLog;
   pickerItems: PickerProjectActivity[];
   onCreate: (payload: TimeLogPayload) => Promise<unknown>;
@@ -109,6 +137,7 @@ export const TimeLogFormModal = ({
   date,
   subjectName,
   rememberKey,
+  plannedProjectId,
   timelog,
   pickerItems,
   onCreate,
@@ -123,7 +152,7 @@ export const TimeLogFormModal = ({
   // has loaded; a background refetch must not reset what is being typed.
   const defaultValues = useMemo<TimeLogFormData>(() => {
     if (!timelog) {
-      const choice = startingChoice(pickerItems, rememberKey);
+      const choice = startingChoice(pickerItems, rememberKey, plannedProjectId);
 
       return {
         ...choice,

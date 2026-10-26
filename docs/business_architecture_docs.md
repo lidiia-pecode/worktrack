@@ -768,8 +768,9 @@ see, and how a new company gets started. §7 plans that work.
   and anything that does not fit before saving, all-or-nothing. They see
   planned against available hours and which weeks no longer fit, and open an
   absence day straight into its form. Everyone sees their own plan on the
-  timesheet until they log time that day; recording an absence removes the
-  plans on its days.
+  timesheet until they log time that day, as faint blocks in the project's
+  colour that open the time form on that project; recording an absence removes
+  the plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -883,7 +884,7 @@ an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has fifty-nine Vitest files and 330 tests: its date, month,
+The frontend has sixty Vitest files and 340 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the

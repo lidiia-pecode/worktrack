@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
-import { CalendarClock, Lock } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -12,7 +12,8 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
-import { buildSegments } from "../helpers/build-segments";
+import { stackSegments } from "../helpers/build-segments";
+import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
 import {
   ABSENCE_PATTERN,
@@ -37,7 +38,8 @@ type Props = {
   isEditable: boolean;
   /** False for a day that hasn't happened: its entries and absence still open. */
   canLogTime?: boolean;
-  onAddClick: (date: Date) => void;
+  /** With a project when it comes from that project's plan. */
+  onAddClick: (date: Date, projectId?: string) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
 };
@@ -58,7 +60,6 @@ export const DayColumn = ({
   onAbsenceClick,
   onEntryClick,
 }: Props) => {
-  const plannedId = useId();
   const [hovered, setHovered] = useState<{
     timelogId: string;
     anchor: DOMRect;
@@ -75,12 +76,24 @@ export const DayColumn = ({
 
   const targetLineOffset = overTargetFrom * pixelsPerMinute;
 
+  // Once any time is logged, the record replaces the plan.
   const showsPlan =
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
-    () => buildSegments(timelogs, pixelsPerMinute),
+    () => stackSegments(timelogs, (log) => log.minutes, pixelsPerMinute),
     [timelogs, pixelsPerMinute],
+  );
+  const plannedSegments = useMemo(
+    () =>
+      showsPlan
+        ? stackSegments(
+            plannedEntries,
+            (plan) => plan.plannedMinutes,
+            pixelsPerMinute,
+          )
+        : [],
+    [showsPlan, plannedEntries, pixelsPerMinute],
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
@@ -96,9 +109,8 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // Time cannot be logged on a day an absence covers, so the column opens the
-  // absence instead.
-  // The day itself opens its absence, or a new entry where time can be logged.
+  // Time cannot be logged on a day an absence covers, so the day opens the
+  // absence instead; otherwise a new entry, where time can be logged.
   const opensDay = isEditable && (Boolean(absence) || canLogTime);
 
   const openDay = () => {
@@ -121,9 +133,10 @@ export const DayColumn = ({
             : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
-      aria-describedby={opensDay && showsPlan ? plannedId : undefined}
       onClick={opensDay ? openDay : undefined}
       onKeyDown={(e) => {
+        // Keys on a block inside the day belong to that block.
+        if (e.target !== e.currentTarget) return;
         if (opensDay && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           openDay();
@@ -163,39 +176,15 @@ export const DayColumn = ({
         </div>
       )}
 
-      {/* Once any time is logged, the record replaces the plan. */}
-      {!absence && timelogs.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          {showsPlan && (
-            <div
-              id={plannedId}
-              className="flex max-w-full flex-col items-center gap-1"
-            >
-              <span className="flex items-center gap-1 text-2xs uppercase tracking-wider text-muted-foreground">
-                <CalendarClock className="size-3" aria-hidden />
-                Planned
-              </span>
-
-              {plannedEntries.map((entry) => (
-                <span
-                  key={entry.id}
-                  className="max-w-full truncate text-xs text-muted-foreground"
-                >
-                  {entry.project.name} · {formatDuration(entry.plannedMinutes)}
-                </span>
-              ))}
-            </div>
+      {!absence && timelogs.length === 0 && !showsPlan && (
+        <div className="absolute inset-0 flex items-center justify-center gap-1 px-2 text-center text-2xs text-muted-foreground">
+          {isLocked && (
+            <>
+              <Lock className="size-3" aria-hidden />
+              Locked
+            </>
           )}
-
-          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-            {isLocked && (
-              <>
-                <Lock className="size-3" aria-hidden />
-                Locked
-              </>
-            )}
-            {opensDay && "Click to log time"}
-          </span>
+          {opensDay && "Click to log time"}
         </div>
       )}
 
@@ -212,10 +201,8 @@ export const DayColumn = ({
         <>
           <div
             className={`pointer-events-none absolute left-0 right-0 ${EXCESS_FILL}`}
-            style={{
-              top: targetLineOffset,
-              height: overTargetMinutes * pixelsPerMinute,
-            }}
+            // To the column's foot, as a weekend's stripes run.
+            style={{ top: targetLineOffset, bottom: 0 }}
           />
 
           <Badge
@@ -229,9 +216,19 @@ export const DayColumn = ({
       )}
 
       <div className="absolute inset-0">
+        {plannedSegments.map((segment) => (
+          <PlannedSegment
+            key={segment.item.id}
+            segment={segment}
+            dayLabel={formatLongDayLabel(date)}
+            onClick={
+              opensDay ? (projectId) => onAddClick(date, projectId) : undefined
+            }
+          />
+        ))}
         {segments.map((segment) => (
           <TimelogSegment
-            key={segment.timelog.id}
+            key={segment.item.id}
             segment={segment}
             onClick={isEditable ? onEntryClick : undefined}
             onHover={showPopover}
