@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils/cn";
 /** The look every text-like control shares: inputs, selects and text areas. */
 export const fieldControlClassName = (hasError?: boolean) =>
   cn(
-    "w-full min-w-0 rounded-lg border border-input-placeholder/50 bg-input px-3.5 text-sm text-input-foreground outline-none transition",
+    "w-full min-w-0 rounded-lg border border-input-border bg-input px-3.5 text-sm text-input-foreground outline-none transition",
     "placeholder:text-input-placeholder hover:bg-input/80",
     "focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20",
     "disabled:cursor-not-allowed disabled:opacity-50",

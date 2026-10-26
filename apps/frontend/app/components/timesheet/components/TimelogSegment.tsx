@@ -4,6 +4,7 @@ import { TimeLog } from "@/types";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
+import { timelogDetailsId } from "./TimelogPopover";
 
 type TimelogSegmentProps = {
   segment: Segment<TimeLog>;
@@ -29,6 +30,7 @@ export const TimelogSegment = ({
       role="button"
       tabIndex={0}
       aria-label={`${formatDuration(timelog.minutes)} — ${projectName} / ${activityName}`}
+      aria-describedby={timelogDetailsId(timelog)}
       aria-disabled={!onClick}
       onClick={(e) => {
         e.stopPropagation();

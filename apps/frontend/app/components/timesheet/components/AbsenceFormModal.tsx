@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Info, Trash2 } from "lucide-react";
+import { CalendarOff, Info, Lock, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
-import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
+import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { formatDuration, isISODateRange } from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
@@ -288,3 +288,54 @@ export const AbsenceFormModal = ({
     </>
   );
 };
+
+type LockedAbsenceModalProps = {
+  absence: Absence;
+  onClose: () => void;
+};
+
+/** An absence in a locked month, to read in full: nothing about it can change. */
+export const LockedAbsenceModal = ({
+  absence,
+  onClose,
+}: LockedAbsenceModalProps) => (
+  <ResourceFormModal
+    open
+    onClose={onClose}
+    title="Absence"
+    icon={<CalendarOff className="size-5" />}
+    footer={
+      <Button type="button" variant="outline" size="sm" onClick={onClose}>
+        Close
+      </Button>
+    }
+  >
+    <dl className="grid grid-cols-2 gap-x-4 gap-y-4">
+      <div>
+        <dt className="text-xs text-muted-foreground">Reason</dt>
+        <dd className="mt-1 text-sm text-foreground">
+          {ABSENCE_TYPE_LABELS[absence.type]}
+        </dd>
+      </div>
+      <div>
+        <dt className="text-xs text-muted-foreground">Days</dt>
+        <dd className="mt-1 text-sm text-foreground">
+          {formatAbsenceRange(absence)}
+        </dd>
+      </div>
+      {absence.note && (
+        <div className="col-span-2">
+          <dt className="text-xs text-muted-foreground">Note</dt>
+          <dd className="mt-1 text-sm break-words whitespace-pre-line text-foreground">
+            {absence.note}
+          </dd>
+        </div>
+      )}
+    </dl>
+
+    <p className="mt-6 flex gap-2 text-sm text-muted-foreground">
+      <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+      Part of it is in a locked month, so it can no longer be changed.
+    </p>
+  </ResourceFormModal>
+);

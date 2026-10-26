@@ -5,7 +5,7 @@ import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { assertDateRange } from 'src/reporting/date-range.util';
 
-import { CapacityService } from './capacity.service';
+import { CapacityService, InactiveSpell } from './capacity.service';
 import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
@@ -23,7 +23,7 @@ export interface ExpectedMinutes {
   total: number;
   /** Only the days that have finished, which is what "behind" is measured against. */
   toDate: number;
-  /** Every date in the range, 0 on weekends, absences, before the start date and from the deactivation day. Adds up to `total`. */
+  /** Every date in the range, 0 on weekends, absences, before the start date and while deactivated. Adds up to `total`. */
   byDate: ExpectedDay[];
 }
 
@@ -47,6 +47,9 @@ interface ShareSums {
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
+
+const isWithin = ({ from, until }: InactiveSpell, date: string) =>
+  date >= from && (until === null || date < until);
 
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0, byDate: [] };
 
@@ -96,6 +99,7 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ExpectedMinutes>> {
+    assertDateRange(from, to);
     const sums = await this.sumSharesFor(companyId, userIds, from, to);
     const expected = new Map<string, ExpectedMinutes>();
 
@@ -111,6 +115,36 @@ export class ExpectedHoursService {
   }
 
   /**
+   * One person's expected minutes for each of several consecutive ranges, such
+   * as the weeks of a period, from a single walk. Each range is rounded on its
+   * own, so it matches `expectedForUser` called for that range alone. The
+   * caller bounds the overall span; each range is checked like any other.
+   */
+  async expectedForRanges(
+    companyId: string,
+    userId: string,
+    ranges: { start: string; end: string }[],
+  ): Promise<Pick<ExpectedMinutes, 'total' | 'byDate'>[]> {
+    if (ranges.length === 0) return [];
+    ranges.forEach(({ start, end }) => assertDateRange(start, end));
+
+    const sums = await this.sumSharesFor(
+      companyId,
+      [userId],
+      ranges[0].start,
+      ranges[ranges.length - 1].end,
+    );
+    const days = sums.get(userId)?.availableByDate ?? [];
+
+    return ranges.map(({ start, end }) => {
+      const inRange = days.filter(({ date }) => date >= start && date <= end);
+      const total = inRange.reduce((sum, { share }) => sum + share, 0);
+
+      return { total: Math.round(total), byDate: roundDays(inRange) };
+    });
+  }
+
+  /**
    * Expected and the days off behind it, counting only days that have
    * finished, so a month in progress is measured against the time that has
    * actually passed.
@@ -121,6 +155,7 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, Availability>> {
+    assertDateRange(from, to);
     const sums = await this.sumSharesFor(companyId, userIds, from, to);
     const availability = new Map<string, Availability>();
 
@@ -136,9 +171,10 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Walks every working day in the range from the person's start date to the
-   * day before they were deactivated: each contributes a fifth of the capacity
-   * in force that day, and counts as available unless an absence covers it.
+   * Walks every working day in the range from the person's start date,
+   * skipping the spells they were deactivated: each contributes a fifth of the
+   * capacity in force that day, and counts as available unless an absence
+   * covers it.
    */
   private async sumSharesFor(
     companyId: string,
@@ -146,8 +182,6 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ShareSums>> {
-    assertDateRange(from, to);
-
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 
@@ -182,7 +216,9 @@ export class ExpectedHoursService {
 
         if (!isWorkingDay(date)) continue;
         if (active && date < active.startDate) continue;
-        if (active?.deactivatedOn && date >= active.deactivatedOn) continue;
+        if (active?.inactiveSpells.some((spell) => isWithin(spell, date))) {
+          continue;
+        }
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;

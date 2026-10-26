@@ -153,7 +153,7 @@ export const DescriptionEditor = ({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-lg border border-input-placeholder/50 bg-input",
+        "overflow-hidden rounded-lg border border-input-border bg-input",
         "transition",
         "focus-within:border-ring",
         "focus-within:ring-2 focus-within:ring-ring/20",

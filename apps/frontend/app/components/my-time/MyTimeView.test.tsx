@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HoursReport, PeopleReport, PeopleReportRow } from "@/types";
-import { AbsenceType, HoursReportGroupBy } from "@/types/enums";
+import { AbsenceType, HoursReportGroupBy, UserRole } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 
@@ -53,6 +53,7 @@ const myRow: PeopleReportRow = {
   userId: ME,
   name: "Emma Carter",
   position: "Developer",
+  role: UserRole.EMPLOYEE,
   teams: [],
   loggedMinutes: 120 * HOUR,
   billableMinutes: 90 * HOUR,

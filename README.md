@@ -204,8 +204,8 @@ company is guided from sign-up to somebody logging time.
 The original feature plan is complete. The work ahead improves the product
 itself, area by area: first run and onboarding, the application shell and shared
 UI, administration and settings, everyday time entry, team oversight and
-planning, reporting and the employee's own view have each had a pass; a
-whole-product review remains. A production launch comes last, once the product
+planning, reporting and the employee's own view have each had a pass, followed
+by a round of fixes across them; a whole-product review remains. A production launch comes last, once the product
 is ready. The roadmap, test coverage and engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
 and §7.

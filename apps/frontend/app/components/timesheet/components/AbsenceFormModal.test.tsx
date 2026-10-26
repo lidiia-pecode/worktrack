@@ -1,9 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { PlanningEntry } from "@/types";
+import { Absence, PlanningEntry } from "@/types";
+import { AbsenceType } from "@/types/enums";
+import { formatAbsenceRange } from "@/lib/utils/absence";
 
-import { AbsenceFormModal } from "./AbsenceFormModal";
+import { AbsenceFormModal, LockedAbsenceModal } from "./AbsenceFormModal";
 
 const data = vi.hoisted(() => ({ plans: [] as PlanningEntry[] }));
 
@@ -63,5 +65,28 @@ describe("AbsenceFormModal", () => {
     renderForm();
 
     expect(screen.queryByText(/^Removes/)).not.toBeInTheDocument();
+  });
+});
+
+describe("LockedAbsenceModal", () => {
+  it("shows the whole absence to read, with nothing to save or delete", () => {
+    const absence = {
+      id: "absence-1",
+      userId: "user-1",
+      type: AbsenceType.VACATION,
+      startDate: "2026-09-28",
+      endDate: "2026-10-02",
+      note: "Family trip to the coast, back on Monday.\nCall if urgent.",
+    } as Absence;
+
+    render(<LockedAbsenceModal absence={absence} onClose={vi.fn()} />);
+
+    expect(screen.getByText("Vacation")).toBeInTheDocument();
+    expect(screen.getByText(formatAbsenceRange(absence))).toBeInTheDocument();
+    expect(screen.getByText(/Family trip to the coast/)).toBeInTheDocument();
+    expect(screen.getByText(/in a locked month/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Save|Delete/ }),
+    ).not.toBeInTheDocument();
   });
 });

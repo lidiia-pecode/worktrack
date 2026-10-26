@@ -9,5 +9,6 @@ const client = createClient({
 export const NotificationsClientApi = {
   list: () => client.get<NotificationList>(""),
 
-  markAllRead: () => client.post("/read"),
+  markRead: (ids: string[]) =>
+    client.post<Pick<NotificationList, "unreadCount">>("/read", { ids }),
 };

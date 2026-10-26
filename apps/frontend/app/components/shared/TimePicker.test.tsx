@@ -106,6 +106,24 @@ describe("TimePicker", () => {
     expect(shown()).toBe("02:30");
   });
 
+  it("carries typed minutes over 59 into the hours", async () => {
+    const user = userEvent.setup();
+    render(<Picker initialMinutes={60} />);
+
+    await typeInto(user, "Minutes", "75{Tab}");
+
+    expect(shown()).toBe("02:15");
+  });
+
+  it("stops typed hours at 24", async () => {
+    const user = userEvent.setup();
+    render(<Picker initialMinutes={30} />);
+
+    await typeInto(user, "Hours", "30{Tab}");
+
+    expect(shown()).toBe("24:00");
+  });
+
   it("stops at 24 hours", async () => {
     const user = userEvent.setup();
     render(<Picker initialMinutes={23 * 60 + 30} />);

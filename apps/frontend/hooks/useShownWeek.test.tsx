@@ -49,9 +49,20 @@ describe("useShownWeek", () => {
     const linked = renderHook(() => useShownWeek("2026-09-09"));
     expect(toISODate(linked.result.current.weekStart)).toBe("2026-09-07");
 
-    for (const day of ["next-week", "2026-13-40"]) {
+    for (const day of ["next-week", "2026-13-40", "2026-02-31"]) {
       const { result } = renderHook(() => useShownWeek(day));
       expect(toISODate(result.current.weekStart)).toBe("2026-10-12");
     }
+  });
+
+  it("drops the link's week from the URL once somebody moves", () => {
+    vi.useFakeTimers({ now: SUNDAY_EVENING, toFake: ["Date"] });
+    window.history.replaceState(null, "", "/team?week=2026-09-09&person=p1");
+    const { result } = renderHook(() => useShownWeek("2026-09-09"));
+
+    act(() => result.current.showWeekOf(new Date(2026, 8, 16)));
+
+    expect(window.location.search).toBe("?person=p1");
+    expect(toISODate(result.current.weekStart)).toBe("2026-09-14");
   });
 });

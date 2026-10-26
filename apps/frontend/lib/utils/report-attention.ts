@@ -1,4 +1,5 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
+import { UserRole } from "@/types/enums";
 
 import {
   addDays,
@@ -83,11 +84,13 @@ export const lastCheckedDay = (countedUntil: string) => {
   return toISODate(day);
 };
 
+// Owners see their own days on My time, but are never named here (Decision 27).
 const missingDaysOf = (
   people: PeopleReportRow[],
   checkedUntil: string | null,
 ) =>
   people
+    .filter((person) => person.role !== UserRole.OWNER)
     .map((person) => ({
       person,
       days: checkedUntil

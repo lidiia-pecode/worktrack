@@ -544,6 +544,15 @@ export class TeamsService {
       throw new BadRequestException('This membership is already closed');
     }
 
+    // A manager's removal may only narrow their own reach, so taking a manager
+    // off a team, themselves included, is the owner's.
+    if (
+      user.role !== UserRole.OWNER &&
+      membership.roleInTeam === TeamRole.MANAGER
+    ) {
+      throw new ForbiddenException('Only an owner can remove a team manager');
+    }
+
     const today = await findCompanyToday(this.dataSource.manager, companyId);
 
     // A membership that has not started yet closes on its start date, so the

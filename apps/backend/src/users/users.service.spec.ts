@@ -26,6 +26,7 @@ import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { User } from './entities/user.entity';
+import { UserInactivePeriod } from './entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from './enums/user-role.enum';
 import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
 import { UsersQuery } from './dtos/users-query.dto';
@@ -93,6 +94,7 @@ describe('UsersService scope', () => {
       dataSource.getRepository(UserCapacity),
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
+      dataSource.getRepository(UserInactivePeriod),
       new ReportingService(
         dataSource.getRepository(ReportingPeriod),
         dataSource.getRepository(Company),
@@ -633,6 +635,37 @@ describe('UsersService scope', () => {
       expect(archived.deactivatedAt).toBeInstanceOf(Date);
       expect(restored.status).toBe(UserStatus.ACTIVE);
       expect(restored.deactivatedAt).toBeNull();
+    });
+
+    it('keeps the spell somebody was away for once they come back', async () => {
+      const returner = await createUser('returner', UserRole.EMPLOYEE);
+
+      const archived = await service.archive(returner.id, owner.id, companyId);
+      await service.unarchive(returner.id, companyId);
+
+      const spells = await dataSource
+        .getRepository(UserInactivePeriod)
+        .findBy({ companyId, userId: returner.id });
+      expect(spells).toHaveLength(1);
+      expect(spells[0].deactivatedAt).toEqual(archived.deactivatedAt);
+      expect(spells[0].reactivatedAt.getTime()).toBeGreaterThanOrEqual(
+        spells[0].deactivatedAt.getTime(),
+      );
+    });
+
+    it('keeps no spell for somebody deactivated before the day was recorded', async () => {
+      const undated = await createUser('undated', UserRole.EMPLOYEE);
+      await dataSource
+        .getRepository(User)
+        .update(undated.id, { status: UserStatus.DEACTIVATED });
+
+      await service.unarchive(undated.id, companyId);
+
+      await expect(
+        dataSource
+          .getRepository(UserInactivePeriod)
+          .countBy({ companyId, userId: undated.id }),
+      ).resolves.toBe(0);
     });
   });
 });

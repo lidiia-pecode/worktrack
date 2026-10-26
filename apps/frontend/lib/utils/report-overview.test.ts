@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { PeopleReportRow } from "@/types";
+import { UserRole } from "@/types/enums";
 
 import { personDays, groupPeopleByTeam } from "./report-overview";
 
@@ -15,6 +16,7 @@ const person = (
   userId: name,
   name,
   position: null,
+  role: UserRole.EMPLOYEE,
   teams: [],
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: 0,

@@ -167,7 +167,7 @@ export const PanelTitleInput = forwardRef<
       aria-invalid={Boolean(error)}
       aria-describedby={error ? `${id}-error` : undefined}
       className={cn(
-        "w-full border-0 border-b-2 border-border/60 bg-transparent px-0 pt-0 pb-1 text-xl font-semibold tracking-tight text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-brand",
+        "w-full border-0 border-b-2 border-border/60 bg-transparent px-0 pt-0 pb-1 text-xl font-semibold tracking-tight text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-input-placeholder focus:border-brand",
         error && "border-destructive focus:border-destructive",
         className,
       )}

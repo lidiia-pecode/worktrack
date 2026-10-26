@@ -33,8 +33,14 @@ export const useOpenedEntry = <Param extends string>(
   const urlBeforeOpen = useRef<string | null>(null);
   const returnFocusTo = useRef<HTMLElement | null>(null);
 
+  // Back or Alt+Left closes the panel without `close`, so focus returns here
+  // too; otherwise it is lost with the panel.
   useEffect(() => {
-    if (!openedKey) urlBeforeOpen.current = null;
+    if (openedKey) return;
+
+    urlBeforeOpen.current = null;
+    if (returnFocusTo.current?.isConnected) returnFocusTo.current.focus();
+    returnFocusTo.current = null;
   }, [openedKey]);
 
   // The names, not the array, so a caller's new array keeps the callbacks stable.

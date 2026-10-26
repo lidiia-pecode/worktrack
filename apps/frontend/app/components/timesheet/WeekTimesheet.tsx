@@ -40,8 +40,12 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Button } from "@/components/ui/button";
-import { AbsenceFormModal } from "./components/AbsenceFormModal";
+import {
+  AbsenceFormModal,
+  LockedAbsenceModal,
+} from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
+import { dayDrawingHeight } from "./helpers/build-segments";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
@@ -235,12 +239,20 @@ export const WeekTimesheet = ({
     .reduce((sum, date) => sum + (dailyTotals[toISODate(date)] ?? 0), 0);
   const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
-  const maxDailyMinutes = Math.max(
-    dailyTargetMinutes,
-    ...Object.values(dailyTotals),
+  const tallestDayPx = Math.max(
+    dailyTargetMinutes * PX_PER_MINUTE,
+    ...weekDates.map((date) => {
+      const iso = toISODate(date);
+      return dayDrawingHeight(
+        timelogsByDate[iso] ?? [],
+        (log) => log.minutes,
+        expectedByDate[iso] ?? 0,
+        PX_PER_MINUTE,
+      );
+    }),
   );
 
-  const minGridHeightPx = maxDailyMinutes * PX_PER_MINUTE + GRID_FOOT_PX;
+  const minGridHeightPx = tallestDayPx + GRID_FOOT_PX;
 
   // Plans never fall on a weekend, so the confirmation needs no project.
   const openCreate = (date: Date, plannedProjectId?: string) => {
@@ -333,22 +345,33 @@ export const WeekTimesheet = ({
     </Button>
   );
 
-  const absenceForm = absenceModal && (
-    <AbsenceFormModal
-      open
-      onClose={() => setAbsenceModal(null)}
-      userId={userId}
-      date={absenceModal.date}
-      absence={absenceModal.absence}
-      onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
-      onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
-      onDelete={(id) => absenceActions.delete.mutateAsync(id)}
-      isSaving={
-        absenceActions.create.isPending || absenceActions.update.isPending
-      }
-      isDeleting={absenceActions.delete.isPending}
-    />
-  );
+  const openedAbsence = absenceModal?.absence;
+  // Locked as a whole once any of its days is, like the day column.
+  const isOpenedAbsenceLocked =
+    !!openedAbsence &&
+    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+  const closeAbsence = () => setAbsenceModal(null);
+
+  const absenceForm =
+    absenceModal &&
+    (openedAbsence && isOpenedAbsenceLocked ? (
+      <LockedAbsenceModal absence={openedAbsence} onClose={closeAbsence} />
+    ) : (
+      <AbsenceFormModal
+        open
+        onClose={closeAbsence}
+        userId={userId}
+        date={absenceModal.date}
+        absence={openedAbsence}
+        onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
+        onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
+        onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+        isSaving={
+          absenceActions.create.isPending || absenceActions.update.isPending
+        }
+        isDeleting={absenceActions.delete.isPending}
+      />
+    ));
 
   if (
     isLoadingSettings ||

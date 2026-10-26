@@ -9,6 +9,7 @@ import { DataSource, In } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -162,6 +163,7 @@ describe('AbsencesService', () => {
           dataSource.getRepository(UserCapacity),
           dataSource.getRepository(Company),
           dataSource.getRepository(User),
+          dataSource.getRepository(UserInactivePeriod),
           reporting,
         ),
       ),

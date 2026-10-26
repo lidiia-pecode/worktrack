@@ -1,3 +1,4 @@
+import { UserRole } from "./enums";
 import { ReportCoverage } from "./HoursReport";
 
 export interface PeopleReportFigures {
@@ -20,6 +21,7 @@ export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
+  role: UserRole;
   /** Their active teams, by name; for a manager, only the teams they lead. */
   teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */

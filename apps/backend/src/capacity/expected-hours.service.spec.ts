@@ -6,6 +6,7 @@ import { DataSource, In } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
@@ -131,6 +132,7 @@ describe('ExpectedHoursService', () => {
       dataSource.getRepository(UserCapacity),
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
+      dataSource.getRepository(UserInactivePeriod),
       reporting,
     );
 
@@ -339,6 +341,80 @@ describe('ExpectedHoursService', () => {
     });
   });
 
+  describe('a spell somebody was deactivated for and came back from', () => {
+    const awayFor = (userId: string, from: string, until: string) =>
+      dataSource.getRepository(UserInactivePeriod).save({
+        companyId,
+        userId,
+        deactivatedAt: new Date(from),
+        reactivatedAt: new Date(until),
+      });
+
+    it('expects nothing while they were away, and again from the day they came back', async () => {
+      const returner = await createUser('returner');
+      // Away Tuesday and Wednesday, back on Thursday.
+      await awayFor(returner, '2026-02-10T09:00:00Z', '2026-02-12T08:00:00Z');
+
+      const expected = await service.expectedForUser(
+        companyId,
+        returner,
+        MONDAY,
+        SUNDAY,
+      );
+
+      expect(expected.byDate.map((day) => day.minutes)).toEqual([
+        480, 0, 0, 480, 480, 0, 0,
+      ]);
+    });
+
+    it('skips a finished spell and the one still running after it', async () => {
+      const leaver = await createUser('leaver-again');
+      await awayFor(leaver, '2026-02-09T09:00:00Z', '2026-02-10T09:00:00Z');
+      await dataSource.getRepository(User).update(leaver, {
+        status: UserStatus.DEACTIVATED,
+        deactivatedAt: new Date('2026-02-12T09:00:00Z'),
+      });
+
+      const expected = await service.expectedForUser(
+        companyId,
+        leaver,
+        MONDAY,
+        SUNDAY,
+      );
+
+      expect(expected.byDate.map((day) => day.minutes)).toEqual([
+        0, 480, 480, 0, 0, 0, 0,
+      ]);
+    });
+
+    it('counts no time off while they were away', async () => {
+      const returner = await createUser('away-on-leave');
+      await awayFor(returner, '2026-02-10T09:00:00Z', '2026-02-12T09:00:00Z');
+      await setAbsence(returner, '2026-02-10', '2026-02-12');
+
+      const availability = await service.availabilityToDateFor(
+        companyId,
+        [returner],
+        MONDAY,
+        SUNDAY,
+      );
+
+      // Thursday's absence counts; Tuesday's and Wednesday's fall in the spell.
+      expect(availability.get(returner)).toMatchObject({
+        absenceDays: 1,
+        expectedDates: ['2026-02-09', '2026-02-13'],
+      });
+    });
+
+    it('skips every spell, however many', async () => {
+      const returner = await createUser('twice-returner');
+      await awayFor(returner, '2026-02-09T09:00:00Z', '2026-02-10T09:00:00Z');
+      await awayFor(returner, '2026-02-12T09:00:00Z', '2026-02-13T09:00:00Z');
+
+      await expect(expectedFor(returner)).resolves.toBe((3 * FULL_WEEK) / 5);
+    });
+  });
+
   describe('absences', () => {
     it('brings a full week away to exactly zero for a full-timer', async () => {
       await setAbsence(fullTimer, MONDAY, FRIDAY);
@@ -402,6 +478,33 @@ describe('ExpectedHoursService', () => {
 
       expect(sum).toBe(expected.total);
       expect(expected.total).toBe(20 * 60 + 1);
+    });
+  });
+
+  describe('several ranges from one walk', () => {
+    it('matches a call per range, rounding each range on its own', async () => {
+      await setCapacity(fullTimer, 20 * 60 + 1, '2020-01-01');
+      await setAbsence(fullTimer, '2026-02-17', '2026-02-18');
+      const weeks = [
+        { start: MONDAY, end: SUNDAY },
+        { start: '2026-02-16', end: '2026-02-22' },
+        { start: '2026-02-23', end: '2026-03-01' },
+      ];
+
+      const fromOneWalk = await service.expectedForRanges(
+        companyId,
+        fullTimer,
+        weeks,
+      );
+      const fromACallEach = await Promise.all(
+        weeks.map(({ start, end }) =>
+          service.expectedForUser(companyId, fullTimer, start, end),
+        ),
+      );
+
+      expect(fromOneWalk).toEqual(
+        fromACallEach.map(({ total, byDate }) => ({ total, byDate })),
+      );
     });
   });
 

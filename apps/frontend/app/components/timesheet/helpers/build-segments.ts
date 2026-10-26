@@ -23,3 +23,52 @@ export function stackSegments<T>(
     return segment;
   });
 }
+
+/**
+ * Where a stack reaches `minutes`: inside the entry that crosses it, or past
+ * the last one on the same scale, so a line drawn there meets the entries.
+ */
+export function offsetAtMinutes<T>(
+  segments: Segment<T>[],
+  minutesOf: (item: T) => number,
+  minutes: number,
+  pixelsPerMinute: number,
+): number {
+  let before = 0;
+
+  for (const segment of segments) {
+    const itemMinutes = minutesOf(segment.item);
+    if (itemMinutes > 0 && minutes <= before + itemMinutes) {
+      return (
+        segment.offsetTop + ((minutes - before) / itemMinutes) * segment.height
+      );
+    }
+    before += itemMinutes;
+  }
+
+  const last = segments.at(-1);
+  const stackEnd = last ? last.offsetTop + last.height : STACK_TOP_INSET_PX;
+  return stackEnd + (minutes - before) * pixelsPerMinute;
+}
+
+/**
+ * How far down a day's drawing reaches: the end of its stack, gaps and minimum
+ * heights included, or its target line when that falls lower.
+ */
+export function dayDrawingHeight<T>(
+  items: T[],
+  minutesOf: (item: T) => number,
+  targetMinutes: number,
+  pixelsPerMinute: number,
+): number {
+  const segments = stackSegments(items, minutesOf, pixelsPerMinute);
+  const last = segments.at(-1);
+  const stackEnd = last ? last.offsetTop + last.height : 0;
+
+  return targetMinutes > 0
+    ? Math.max(
+        stackEnd,
+        offsetAtMinutes(segments, minutesOf, targetMinutes, pixelsPerMinute),
+      )
+    : stackEnd;
+}

@@ -100,6 +100,7 @@ const person = (
   userId: name.toLowerCase().replace(" ", "-"),
   name,
   position: "Developer",
+  role: UserRole.EMPLOYEE,
   teams: [],
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: (loggedHours / 2) * HOUR,

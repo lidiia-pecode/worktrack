@@ -10,6 +10,7 @@ import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
 import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
+import { UserInactivePeriod } from './entities/user-inactive-period.entity';
 import { UsersQuery } from './dtos/users-query.dto';
 import { AssignableUsersQuery } from './dtos/assignable-users-query.dto';
 import { UserRole, UserStatus } from './enums/user-role.enum';
@@ -591,10 +592,26 @@ export class UsersService {
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
+      // So two reactivations at once can't both record the spell.
+      await repo.findOne({
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.ACTIVE) {
         throw new BadRequestException('User is already active');
+      }
+
+      if (user.deactivatedAt) {
+        await man.save(
+          man.create(UserInactivePeriod, {
+            companyId,
+            userId: user.id,
+            deactivatedAt: user.deactivatedAt,
+            reactivatedAt: new Date(),
+          }),
+        );
       }
 
       user.status = UserStatus.ACTIVE;

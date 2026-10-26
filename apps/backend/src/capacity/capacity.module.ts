@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { ReportingModule } from 'src/reporting/reporting.module';
 
 import { UserCapacity } from './entities/user-capacity.entity';
@@ -13,7 +14,13 @@ import { ExpectedHoursService } from './expected-hours.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([UserCapacity, Company, Absence, User]),
+    TypeOrmModule.forFeature([
+      UserCapacity,
+      Company,
+      Absence,
+      User,
+      UserInactivePeriod,
+    ]),
     ReportingModule,
   ],
   controllers: [CapacityController],

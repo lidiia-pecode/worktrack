@@ -39,9 +39,10 @@ export const TimePicker = ({
 }: TimePickerProps) => {
   const total = hours * 60 + minutes;
 
-  // Steps move the whole duration, so minutes carry into the hours.
-  const stepBy = (amount: number) => {
-    const next = Math.max(0, Math.min(MAX_MINUTES, total + amount));
+  // Steps and typing both set the whole duration, so minutes carry into the
+  // hours: "75" in the minutes is an hour and a quarter more.
+  const setTotal = (minutesInAll: number) => {
+    const next = Math.max(0, Math.min(MAX_MINUTES, minutesInAll));
     onHoursChange(Math.floor(next / 60));
     onMinutesChange(next % 60);
   };
@@ -61,7 +62,7 @@ export const TimePicker = ({
         "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
         error
           ? "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
-          : "border-input-placeholder/50",
+          : "border-input-border",
         className,
       )}
     >
@@ -70,8 +71,8 @@ export const TimePicker = ({
         label="Hours"
         value={hours}
         max={24}
-        onStep={(direction) => stepBy(direction * 60)}
-        onChange={onHoursChange}
+        onStep={(direction) => setTotal(total + direction * 60)}
+        onChange={(value) => setTotal(value * 60 + minutes)}
       />
       <span
         aria-hidden="true"
@@ -84,8 +85,8 @@ export const TimePicker = ({
         label="Minutes"
         value={minutes}
         max={59}
-        onStep={(direction) => stepBy(direction * minuteStep)}
-        onChange={onMinutesChange}
+        onStep={(direction) => setTotal(total + direction * minuteStep)}
+        onChange={(value) => setTotal(hours * 60 + value)}
       />
     </div>
   );
@@ -131,7 +132,7 @@ const TimeField = ({
 
   const commit = (raw: string) => {
     setDraft(null);
-    if (raw !== "") onChange(Math.min(max, Number(raw)));
+    if (raw !== "") onChange(Number(raw));
   };
 
   return (
@@ -146,7 +147,6 @@ const TimeField = ({
         inputMode="numeric"
         maxLength={2}
         onFocus={(e) => {
-          setDraft(value.toString().padStart(2, "0"));
           requestAnimationFrame(() => e.target.select());
         }}
         onChange={(e) => {

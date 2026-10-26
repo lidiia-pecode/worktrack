@@ -9,30 +9,28 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
   catch(exception: QueryFailedError, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
 
-    const driverError = exception.driverError as {
+    // The driver's `detail` and some messages (an invalid uuid, a bad date)
+    // repeat the values sent, personal data included, so neither the log nor
+    // the answer carries them.
+    const { code, constraint, table } = exception.driverError as {
       code?: string;
-      detail?: string;
       constraint?: string;
+      table?: string;
     };
 
-    this.logger.error('DATABASE ERROR');
-    this.logger.error(`exception: ${exception.constructor.name}`);
-    this.logger.error(`driverError: ${JSON.stringify(driverError)}`);
-    this.logger.error(`code: ${driverError?.code}`);
-    this.logger.error(`constraint: ${driverError?.constraint}`);
-    this.logger.error(`detail: ${driverError?.detail}`);
+    this.logger.error(
+      `Database error ${code} on ${table ?? 'unknown table'} (${constraint ?? 'no constraint'})`,
+    );
 
-    if (driverError.code === '23505') {
-      const detail = driverError.detail || 'Resource already exists';
-
+    if (code === '23505') {
       return response.status(409).json({
         statusCode: 409,
         error: 'Conflict',
-        message: detail,
+        message: 'This already exists',
       });
     }
 
-    if (driverError.code === '23503') {
+    if (code === '23503') {
       return response.status(400).json({
         statusCode: 400,
         error: 'Bad Request',
@@ -40,11 +38,6 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
           'Cannot delete or update resource because it is referenced by another entity',
       });
     }
-
-    this.logger.error(
-      `Database Exception: ${exception.message}`,
-      exception.stack,
-    );
 
     return response.status(500).json({
       statusCode: 500,

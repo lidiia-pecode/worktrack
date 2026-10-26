@@ -28,7 +28,7 @@ export class CookieStateStore implements StateStore {
     if (res) {
       res.cookie(this.cookieName, state, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: this.configService.getOrThrow<boolean>('auth.cookie.secure'),
         sameSite: 'lax',
         maxAge: this.configService.getOrThrow<number>(
           'auth.google.oauthStateExpiresInMs',

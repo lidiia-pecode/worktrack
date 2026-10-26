@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 26 October 2026.** Phases 0 to 35 in §7 are
+**Last verified against the code: 26 October 2026.** Phases 0 to 36 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -275,6 +275,7 @@ Company  (tenant root — everything below carries companyId)
 ├── User            role: OWNER | MANAGER | EMPLOYEE
 │                   status: ACTIVE | DEACTIVATED
 │                   deactivatedAt: set by Deactivate, cleared by Reactivate
+│                   (each spell kept in user_inactive_periods once they return)
 │
 ├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
 │                   contracted hours, effective from a date
@@ -511,7 +512,9 @@ account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
 for the days before they joined, and nothing is expected from the day they were
 deactivated (`deactivatedAt`, Phase 34; a person deactivated before that stamp
-existed has none and is expected as before); there is no separate start date
+existed has none and is expected as before), nor, once they are reactivated,
+for the spell they were away (kept in `user_inactive_periods`, Phase 36); there
+is no separate start date
 (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
@@ -653,7 +656,8 @@ revokes its pending invitations and closes the team (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
-Reactivate clears it; nothing is expected of a person from that day (§4,
+Reactivate clears it, keeping the spell they were away; nothing is expected of a
+person from the day they were deactivated until the day they come back (§4,
 capacity). A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, only an OWNER may modify another OWNER or grant the
 OWNER role, and nobody changes their own role, so a company always keeps its
@@ -673,7 +677,7 @@ added to a team or a project.
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD | read, within their teams; remove a member | — |
+| Teams | full CRUD | read, within their teams; remove a member (not a team manager) | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
@@ -704,7 +708,9 @@ and reading them is unchanged (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member
-from a team they lead, because removal only narrows their own reach.
+from a team they lead, because removal only narrows their own reach; taking a
+team's manager off it, themselves included, is the owner's (Phase 36), since
+that would narrow someone else's reach or leave the team without its lead.
 
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
@@ -800,8 +806,9 @@ see, and how a new company gets started. §7 plans that work.
   plan (in a month still running, only over plan, since late logging only
   lowers logged time). None is about somebody logging less than expected; a
   plan beyond someone's hours is Planning's to warn about. A locked month is
-  for reference and marks nothing. A deactivated person and an owner have no
-  missing days; a deactivated person is listed only if they logged time in the
+  for reference and marks nothing. A deactivated person has no missing days,
+  and Needs attention never names an owner, though an owner's own days without
+  time show on My time and in their panel (Phase 36); a deactivated person is listed only if they logged time in the
   period, with expected hours up to the day they left, and an owner only if
   they logged or planned time: owners often don't track their own, but a plan
   made for them is part of the month's plan. Below, People lists everyone by team (somebody in
@@ -885,21 +892,21 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-five
-suites and 809 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is forty-seven
+suites and 828 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has sixty Vitest files and 340 tests: its date, month,
+The frontend has sixty-six Vitest files and 371 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
+person's week panel on Team time, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, My time, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -981,6 +988,7 @@ is in its pull request.
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
 | 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual; an owner listed with a plan too; expected hours stopping on the day an account is deactivated, which Deactivate now records |
 | 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
+| 36 | Fixes across areas: nothing expected of a person for a spell they were deactivated and came back from, and an owner's own days without time on My time and in their panel; planning edits that can't deadlock with a period plan, and a period preview walking expected hours once; notifications read only once shown, unread first; sessions kept through a sign-in page, a throttled refresh or a backend asleep, and a deleted session no longer locking anyone out of sign-in, with lookups refusing a missing value and database conflicts repeating nothing sent; the timesheet's excess in line with its entries, locked absences opened to read, typed minutes carried into hours and the week link tidied; a team's manager removable by an owner only, focus back after Back, Team time's empty days named for a screen reader, and lighter placeholders |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1075,8 +1083,9 @@ ready, or not, for the final stage.
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
 started. After Phase 33, by decision (21 October 2026), Area 6 came next,
-starting with its two counting bugs, then Area 7, done by Phase 35; the rest of
-Areas 3 and 4, the phone layout among it, follows. Area 8 closes the stage. A
+starting with its two counting bugs, then Area 7, done by Phase 35. Phase 36
+then fixed the defects open across areas; the rest of Areas 3 and 4, the phone
+layout among it, follows. Area 8 closes the stage. A
 defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
@@ -1092,10 +1101,10 @@ decision, and the free development stand is enough.
   sign-in URLs registered. Nothing is copied from the stand.
 - **Migrations as a real release step**, replacing the hand-run step from a
   laptop, which the free tier forces today.
-- **Session handling at the edge** — the `/login` lockout after a deleted
-  session, a throttled refresh signing people out, and the per-client sign-in
-  limit that counts Cloudflare rather than the person are all fixed or settled
-  against the production host.
+- **Session handling at the edge** — the per-client sign-in limit that counts
+  Cloudflare rather than the person, and the client IP and user agent a
+  refresh through the proxy records, are settled against the production host.
+  The sign-outs and the `/login` lockout were fixed in Phase 36.
 - **A release checklist**: environment variables, rollback, and the first
   deployment verified the way the stand's were.
 
