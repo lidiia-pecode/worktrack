@@ -370,7 +370,7 @@ export class PlanningService {
     user: AuthUser,
   ): Promise<PlanningEntry> {
     return this.dataSource.transaction(async (manager) => {
-      const entry = await this.getEntryForUpdate(id, user, manager);
+      const entry = await this.lockEntryAndOwner(id, user, manager);
 
       const targetUser = await this.getActiveUser(
         entry.userId,
@@ -378,8 +378,6 @@ export class PlanningService {
         manager,
       );
       await this.assertCanPlanForUser(targetUser, user);
-
-      await this.lockUser(manager, entry.userId, user.companyId);
 
       await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
@@ -602,7 +600,7 @@ export class PlanningService {
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
     await this.dataSource.transaction(async (manager) => {
-      const entry = await this.getEntryForUpdate(id, user, manager);
+      const entry = await this.lockEntryAndOwner(id, user, manager);
 
       // A deactivated person's leftover plans can still be cleared.
       const targetUser = await manager.findOne(User, {
@@ -709,11 +707,25 @@ export class PlanningService {
   // VALIDATION / INTEGRITY HELPERS
   // ==========================================
 
-  private async getEntryForUpdate(
+  /**
+   * Locks the entry's person before the entry, the order the other writes for
+   * a person use (a plan, a period, a time log, an absence), so two of them
+   * never wait on each other in a circle. An entry never changes person, so
+   * reading its owner first is safe.
+   */
+  private async lockEntryAndOwner(
     id: string,
     user: AuthUser,
     manager: EntityManager,
   ): Promise<PlanningEntry> {
+    const owner = await manager.findOne(PlanningEntry, {
+      where: { id, companyId: user.companyId },
+      select: ['id', 'userId'],
+    });
+    if (!owner) throw new NotFoundException('Planning entry not found');
+
+    await this.lockUser(manager, owner.userId, user.companyId);
+
     const entry = await manager.findOne(PlanningEntry, {
       where: { id, companyId: user.companyId },
       lock: { mode: 'pessimistic_write' },
@@ -856,25 +868,20 @@ export class PlanningService {
       ranges.push(week);
     }
 
-    return Promise.all(
-      ranges.map(async ({ start, end }) => {
-        const expected = await this.expectedHours.expectedForUser(
-          company.id,
-          userId,
-          start,
-          end,
-        );
-
-        return {
-          start,
-          end,
-          availableMinutes: expected.total,
-          workingDays: expected.byDate
-            .filter((day) => day.minutes > 0)
-            .map((day) => day.date),
-        };
-      }),
+    const expectedByWeek = await this.expectedHours.expectedForRanges(
+      company.id,
+      userId,
+      ranges,
     );
+
+    return ranges.map(({ start, end }, index) => ({
+      start,
+      end,
+      availableMinutes: expectedByWeek[index].total,
+      workingDays: expectedByWeek[index].byDate
+        .filter((day) => day.minutes > 0)
+        .map((day) => day.date),
+    }));
   }
 
   /** Runs inside the write's transaction, so a Close at the same moment waits for it. */

@@ -96,6 +96,7 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ExpectedMinutes>> {
+    assertDateRange(from, to);
     const sums = await this.sumSharesFor(companyId, userIds, from, to);
     const expected = new Map<string, ExpectedMinutes>();
 
@@ -111,6 +112,36 @@ export class ExpectedHoursService {
   }
 
   /**
+   * One person's expected minutes for each of several consecutive ranges, such
+   * as the weeks of a period, from a single walk. Each range is rounded on its
+   * own, so it matches `expectedForUser` called for that range alone. The
+   * caller bounds the overall span; each range is checked like any other.
+   */
+  async expectedForRanges(
+    companyId: string,
+    userId: string,
+    ranges: { start: string; end: string }[],
+  ): Promise<Pick<ExpectedMinutes, 'total' | 'byDate'>[]> {
+    if (ranges.length === 0) return [];
+    ranges.forEach(({ start, end }) => assertDateRange(start, end));
+
+    const sums = await this.sumSharesFor(
+      companyId,
+      [userId],
+      ranges[0].start,
+      ranges[ranges.length - 1].end,
+    );
+    const days = sums.get(userId)?.availableByDate ?? [];
+
+    return ranges.map(({ start, end }) => {
+      const inRange = days.filter(({ date }) => date >= start && date <= end);
+      const total = inRange.reduce((sum, { share }) => sum + share, 0);
+
+      return { total: Math.round(total), byDate: roundDays(inRange) };
+    });
+  }
+
+  /**
    * Expected and the days off behind it, counting only days that have
    * finished, so a month in progress is measured against the time that has
    * actually passed.
@@ -121,6 +152,7 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, Availability>> {
+    assertDateRange(from, to);
     const sums = await this.sumSharesFor(companyId, userIds, from, to);
     const availability = new Map<string, Availability>();
 
@@ -146,8 +178,6 @@ export class ExpectedHoursService {
     from: string,
     to: string,
   ): Promise<Map<string, ShareSums>> {
-    assertDateRange(from, to);
-
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
 

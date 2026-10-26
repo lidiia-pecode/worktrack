@@ -4,7 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { DataSource, In } from 'typeorm';
+import { DataSource, In, QueryRunner } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
@@ -32,6 +32,7 @@ import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
+  isWorkingDay,
   toISODate,
   todayISODate,
   weekRange,
@@ -736,6 +737,26 @@ describe('PlanningService', () => {
       expect(await entriesFor(member.id)).toHaveLength(1);
     });
 
+    it('previews a whole year, though its weeks reach past it', async () => {
+      // Starts on a Wednesday, so the first and last weeks stick out of the
+      // 366 days and the walk covers more than the range allows on its own.
+      const preview = await service.previewPeriod(
+        period(WEDNESDAY, addDays(WEDNESDAY, 365), [
+          { projectId, minutesPerDay: HOUR },
+        ]),
+        manager,
+      );
+
+      const workingDays: string[] = [];
+      for (let day = 0; day <= 365; day++) {
+        const date = addDays(WEDNESDAY, day);
+        if (isWorkingDay(date)) workingDays.push(date);
+      }
+
+      expect(preview.plannedDays).toEqual(workingDays);
+      expect(preview.problems).toEqual([]);
+    });
+
     it('previews a range with no working day, and one with no project yet', async () => {
       await expect(
         service.previewPeriod(
@@ -841,6 +862,62 @@ describe('PlanningService', () => {
       await expect(
         service.planPeriod(period(MONDAY, FRIDAY, anHour), manager),
       ).rejects.toThrow('Planning can only be created for active users');
+    });
+  });
+
+  describe('lock order', () => {
+    /** Resolves once another connection is waiting on a lock this one holds. */
+    const waitUntilBlockedBy = async (holder: QueryRunner) => {
+      const [{ pid }] = (await holder.query(
+        'SELECT pg_backend_pid() AS pid',
+      )) as { pid: number }[];
+
+      for (let attempt = 0; attempt < 100; attempt++) {
+        const waiting: unknown[] = await dataSource.query(
+          'SELECT 1 FROM pg_stat_activity WHERE $1 = ANY(pg_blocking_pids(pid))',
+          [pid],
+        );
+        if (waiting.length > 0) return;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      }
+      throw new Error('The write never waited on the held lock');
+    };
+
+    // Waits on the person's row before touching the entry, as a period plan
+    // does, so the two never hold one lock each and wait for the other.
+    it.each([
+      [
+        'an edit',
+        (id: string) => service.update(id, { note: 'Moved' }, manager),
+      ],
+      ['a delete', (id: string) => service.delete(id, manager)],
+    ])('%s locks the person before the entry', async (_, write) => {
+      const id = await existingEntry(member.id, MONDAY, HOUR);
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+
+      try {
+        await holder.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+          member.id,
+        ]);
+        const pending = write(id);
+        await waitUntilBlockedBy(holder);
+
+        // The write is waiting on the person, so the entry is still free.
+        await expect(
+          holder.query(
+            'SELECT id FROM planning_entries WHERE id = $1 FOR UPDATE NOWAIT',
+            [id],
+          ),
+        ).resolves.toHaveLength(1);
+
+        await holder.commitTransaction();
+        await pending;
+      } finally {
+        if (holder.isTransactionActive) await holder.rollbackTransaction();
+        await holder.release();
+      }
     });
   });
 

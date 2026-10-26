@@ -405,6 +405,33 @@ describe('ExpectedHoursService', () => {
     });
   });
 
+  describe('several ranges from one walk', () => {
+    it('matches a call per range, rounding each range on its own', async () => {
+      await setCapacity(fullTimer, 20 * 60 + 1, '2020-01-01');
+      await setAbsence(fullTimer, '2026-02-17', '2026-02-18');
+      const weeks = [
+        { start: MONDAY, end: SUNDAY },
+        { start: '2026-02-16', end: '2026-02-22' },
+        { start: '2026-02-23', end: '2026-03-01' },
+      ];
+
+      const fromOneWalk = await service.expectedForRanges(
+        companyId,
+        fullTimer,
+        weeks,
+      );
+      const fromACallEach = await Promise.all(
+        weeks.map(({ start, end }) =>
+          service.expectedForUser(companyId, fullTimer, start, end),
+        ),
+      );
+
+      expect(fromOneWalk).toEqual(
+        fromACallEach.map(({ total, byDate }) => ({ total, byDate })),
+      );
+    });
+  });
+
   describe('capacity changes over time', () => {
     it('applies a change from its date forward', async () => {
       await setCapacity(fullTimer, 32 * 60, '2026-02-11');
