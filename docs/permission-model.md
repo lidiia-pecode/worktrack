@@ -256,6 +256,14 @@ remove. Removing somebody from a project deletes their plans for it from today
 on, and since a save only removes people the caller was shown (§3.5), a manager
 can never clear plans for someone outside their teams.
 
+**Reports follow the same people.** The hours and people reports
+(`GET /reporting/hours`, `GET /reporting/people`) are open to every role and
+read through the same visibility: an employee gets their own figures alone,
+with no team names, and a filter naming somebody else returns nothing. The
+export and the timeline stay with owners and managers. Opened on 26 October
+2026 for My time (Phase 35); the employee's own report was Q11 in the business
+reference.
+
 ### 3.8 Delegation summary
 
 The Owner keeps: structure, role grants, moving people, and everything a manager

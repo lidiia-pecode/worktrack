@@ -11,8 +11,8 @@ import { PeopleReportController } from './people/people-report.controller';
 type Handler = keyof ReportingController;
 
 const OWNER_ONLY: Handler[] = ['reopenPeriod', 'closePeriod'];
-const OWNER_AND_MANAGER: Handler[] = ['getHoursReport', 'exportHours'];
-const EVERY_ROLE: Handler[] = ['listPeriods'];
+const OWNER_AND_MANAGER: Handler[] = ['exportHours'];
+const EVERY_ROLE: Handler[] = ['listPeriods', 'getHoursReport'];
 
 describe('ReportingController route roles', () => {
   const guard = new RolesGuard(new Reflector());
@@ -53,10 +53,6 @@ describe('ReportingController route roles', () => {
 
 describe('PeopleReportController route roles', () => {
   const guard = new RolesGuard(new Reflector());
-  const handlers: (keyof PeopleReportController)[] = [
-    'getPeopleReport',
-    'getTimeline',
-  ];
 
   const allows = (
     handler: keyof PeopleReportController,
@@ -68,12 +64,16 @@ describe('PeopleReportController route roles', () => {
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
 
-  it.each(handlers)(
-    'allows owners and managers on %s, and refuses employees',
-    (handler) => {
-      expect(allows(handler, UserRole.OWNER)).toBe(true);
-      expect(allows(handler, UserRole.MANAGER)).toBe(true);
-      expect(allows(handler, UserRole.EMPLOYEE)).toBe(false);
+  it('allows owners and managers on the timeline, and refuses employees', () => {
+    expect(allows('getTimeline', UserRole.OWNER)).toBe(true);
+    expect(allows('getTimeline', UserRole.MANAGER)).toBe(true);
+    expect(allows('getTimeline', UserRole.EMPLOYEE)).toBe(false);
+  });
+
+  it.each(Object.values(UserRole))(
+    'allows the people report for a %s',
+    (role) => {
+      expect(allows('getPeopleReport', role)).toBe(true);
     },
   );
 });

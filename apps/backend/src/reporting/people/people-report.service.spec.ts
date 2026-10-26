@@ -251,6 +251,25 @@ describe('PeopleReportService', () => {
     );
   });
 
+  it('shows an employee their own row alone, without naming teams', async () => {
+    const employee = {
+      id: member,
+      email: '',
+      companyId,
+      role: UserRole.EMPLOYEE,
+    };
+    const { rows, totals } = await service.getPeopleReport(employee, MARCH);
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        userId: member,
+        loggedMinutes: 1200,
+        teams: [],
+      }),
+    ]);
+    expect(totals.loggedMinutes).toBe(1200);
+  });
+
   describe('days without time', () => {
     it('lists the working days somebody logged nothing on, leaving out days off and weekends', async () => {
       const row = await rowFor(owner, member);

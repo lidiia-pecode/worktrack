@@ -14,7 +14,6 @@ export class PeopleReportController {
   constructor(private readonly peopleReportService: PeopleReportService) {}
 
   @Get('people')
-  @Role(UserRole.OWNER, UserRole.MANAGER)
   getPeopleReport(
     @CurrentUser() user: AuthUser,
     @Query() query: PeopleReportQuery,
