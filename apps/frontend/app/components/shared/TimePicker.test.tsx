@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -60,13 +60,17 @@ const PickerInDialog = ({ onSave }: { onSave: (saved: string) => void }) => {
   );
 };
 
-/** Types into a field the way a person does once its text is selected. */
+/**
+ * Types into a field the way a person does: the field selects its text on the
+ * next frame after focus, and what is typed then replaces it.
+ */
 const typeInto = async (
   user: ReturnType<typeof userEvent.setup>,
   name: string,
   text: string,
 ) => {
-  await user.clear(screen.getByRole("spinbutton", { name }));
+  await user.click(screen.getByRole("spinbutton", { name }));
+  await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
   await user.keyboard(text);
 };
 

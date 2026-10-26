@@ -19,7 +19,7 @@ const entry: TimeLog = {
 
 const renderDay = (
   timelogs: TimeLog[],
-  { date = "2026-10-14", expectedMinutes = 480 } = {},
+  { date = "2026-10-14", expectedMinutes = 480, canLogTime = true } = {},
 ) => (
   <DayColumn
     date={new Date(`${date}T00:00:00`)}
@@ -31,6 +31,7 @@ const renderDay = (
     expectedMinutes={expectedMinutes}
     isLocked={false}
     isEditable
+    canLogTime={canLogTime}
     onAddClick={vi.fn()}
     onAbsenceClick={vi.fn()}
     onEntryClick={vi.fn()}
@@ -50,15 +51,30 @@ describe("DayColumn", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
-  it("marks time over the day's figure on a working day", () => {
-    render(renderDay([{ ...entry, minutes: 540 }]));
+  it("puts time over the day's figure on solid amber, with how much", () => {
+    const { container } = render(renderDay([{ ...entry, minutes: 540 }]));
 
     expect(screen.getByText("+1h")).toBeInTheDocument();
+    expect(container.querySelector(".bg-excess")).toBeInTheDocument();
   });
 
-  it("draws a weekend entry like any other: a day that expects nothing is never over", () => {
-    render(renderDay([entry], { date: "2026-10-17", expectedMinutes: 0 }));
+  it("stripes a weekend, in amber once it has time, with no badge over the entry", () => {
+    const weekend = { date: "2026-10-17", expectedMinutes: 0 };
+    const { container, rerender } = render(renderDay([], weekend));
+    expect(container.firstChild).toHaveClass("bg-stripes-weekend");
 
+    rerender(renderDay([entry], weekend));
+
+    expect(container.firstChild).toHaveClass("bg-stripes-extra");
     expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
+  });
+
+  it("offers no new entry on a day that hasn't happened, but its entries still open", () => {
+    render(renderDay([entry], { canLogTime: false }));
+
+    expect(
+      screen.queryByRole("button", { name: /^Log time on/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^1h 30m/ })).toBeInTheDocument();
   });
 });

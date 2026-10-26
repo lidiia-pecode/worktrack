@@ -13,7 +13,7 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 
-import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
+import { dayFill, isOverFill } from "../../timesheet/helpers/day-fill";
 import { UserTimeEntryRow } from "./UserTimeEntryRow";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
@@ -41,6 +41,8 @@ type UserTimeDayGroupProps = {
   isAbsenceLocked?: boolean;
   /** Shown where nothing is logged and no absence covers the day. */
   plannedEntries?: PlanningEntry[];
+  /** The person's figure for the day, when the day's time can be compared to it. */
+  expectedMinutes?: number;
   onAdd?: (date: string) => void;
   onEdit?: (timelog: TimeLog) => void;
   onAbsenceClick?: (absence: Absence) => void;
@@ -54,6 +56,7 @@ export const UserTimeDayGroup = ({
   absence,
   isAbsenceLocked = false,
   plannedEntries = [],
+  expectedMinutes,
   onAdd,
   onEdit,
   onAbsenceClick,
@@ -62,15 +65,15 @@ export const UserTimeDayGroup = ({
   const totalMinutes = timelogs.reduce((sum, log) => sum + log.minutes, 0);
   const showsPlan =
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
+  const fill = dayFill({
+    isAbsent: Boolean(absence),
+    isWeekend: isWeekend(date),
+    minutes: totalMinutes,
+    expectedMinutes,
+  });
 
   return (
-    <section
-      className={cn(
-        "border-b border-border last:border-b-0",
-        absence && ABSENCE_PATTERN,
-        !absence && isWeekend(date) && WEEKEND_FILL,
-      )}
-    >
+    <section className={cn("border-b border-border last:border-b-0", fill)}>
       <header className="flex items-center justify-between gap-3 px-3 py-2">
         <h3 className="flex items-baseline gap-2">
           <span className="text-2xs uppercase tracking-wider text-muted-foreground">
@@ -94,7 +97,12 @@ export const UserTimeDayGroup = ({
         </h3>
 
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium tabular-nums text-muted-foreground">
+          <span
+            className={cn(
+              "text-xs font-medium tabular-nums",
+              isOverFill(fill) ? "text-warning-text" : "text-muted-foreground",
+            )}
+          >
             {totalMinutes > 0 ? formatDuration(totalMinutes) : "-"}
           </span>
 

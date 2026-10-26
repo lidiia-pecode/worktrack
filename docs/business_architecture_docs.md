@@ -336,23 +336,27 @@ All verified in the current implementation.
 
 ### Time logging
 
-Every write passes four checks, in this order:
+Every write passes five checks, in this order:
 
 1. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
    update, both the old and the new date are checked, so an entry cannot be
    moved into or out of a locked period.
-2. **Write scope** — the caller must be allowed to act for the entry's owner
+2. **No future date** — a time entry records work done (D6), so one dated
+   after the company's today is rejected (400), for every role, on create and
+   on update. An entry already in the future can be moved back or deleted.
+   Absences may be booked ahead (Phase 35, Decision 13).
+3. **Write scope** — the caller must be allowed to act for the entry's owner
    (D9), through `assertCanActForUser`: an owner for anyone in the company, a
    manager for the people in the teams they lead, an employee for themselves.
    The entry is always matched on `companyId` too.
-3. **Project-activity validity** — the `ProjectActivity` must belong to the
+4. **Project-activity validity** — the `ProjectActivity` must belong to the
    caller's company, be active, and sit on an ACTIVE project with an ACTIVE
    activity.
-4. **Project membership** — a `project_users` row must exist for
+5. **Project membership** — a `project_users` row must exist for
    `(projectId, userId)`. Submitting a valid `projectActivityId` for a project
    you are not assigned to is rejected (403).
 
-On update, checks 3 and 4 run only when the entry moves to another project or
+On update, checks 4 and 5 run only when the entry moves to another project or
 activity. An entry on an archived project or activity, or on a project its owner
 has left, keeps its project and activity and can still have its duration, note
 and billable flag corrected. Notes on time entries and absences can be cleared.
@@ -725,7 +729,14 @@ see, and how a new company gets started. §7 plans that work.
   driven by company work settings, with loading, error, empty and over-target
   states. A new entry starts from the last project and activity logged for
   that person, or the only one there is. A week says when it is complete: its
-  logged time has reached what was expected.
+  logged time has reached what was expected. One row of controls carries the
+  week's figures, which open a breakdown (expected and the days off that lower
+  it, billable, non-billable, how much is past expected and how much of that at
+  the weekend), and a lock during a month's grace week. A day that expects
+  nothing is striped: a weekend in grey, turning amber once it has time, since
+  weekend hours are always extra; a day off in the brand colour. Time past a
+  working day's figure sits on solid amber with a "+Xh" badge. A day that
+  hasn't happened yet can't be logged on.
 - **Manage pages** — users, teams, projects, activities and categories as
   searchable lists. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
@@ -740,7 +751,8 @@ see, and how a new company gets started. §7 plans that work.
   so a reload keeps the panel. A deactivated person is shown read-only, and
   the API refuses writes for them. Filtered to a project, the rows, the team
   total and the panel show only that project's hours, with no Expected, since
-  that is about the whole week.
+  that is about the whole week. Days follow the timesheet's look: a day over
+  the person's hours on solid amber, a weekend with time in amber stripes.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet, and an owner or manager records them for somebody
   from Team time; the timesheet and the team grid mark those days, so an empty
@@ -804,8 +816,10 @@ see, and how a new company gets started. §7 plans that work.
   teams they lead, and are told that projects show their teams' time only.
 - **My time** — every role has `/my-time`, their own month, one at a time,
   back to the company's first: logged against expected with their days off,
-  planned, billable and its share, each day of the month (a working day with no
-  time opens that week on the timesheet while the month is open), and their
+  planned, billable and its share, every working day of the month (a past day
+  with no time opens that week on the timesheet while the month is open, today
+  is ringed, and the days to come are dashed, showing any day off already on
+  them), and their
   projects against plan. The figures are the ones a manager sees in their
   panel on Reports, through the
   same routes pinned to the person (§5), and count finished days only, with the
@@ -862,20 +876,20 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-five
-suites and 801 tests, covering the role-visibility filters, team and invitation
+suites and 806 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has fifty-eight Vitest files and 323 tests: its date, month,
+The frontend has fifty-nine Vitest files and 330 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the week calendar, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
+person's week panel on Team time, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 

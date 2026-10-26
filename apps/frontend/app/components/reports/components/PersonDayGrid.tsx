@@ -16,22 +16,31 @@ import {
 } from "@/lib/utils/date";
 import { personDays, ReportDay } from "@/lib/utils/report-overview";
 
+import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 
-const DAY_STYLES: Record<ReportDay["kind"], string> = {
+const KIND_STYLES: Record<ReportDay["kind"], string> = {
   logged: "border-brand/25 bg-brand-subtle",
-  off: "border-border bg-stripes-brand",
-  withoutTime: "border-dashed border-muted-foreground/50 bg-card",
-  today: "border-border bg-card",
+  off: cn("border-border", ABSENCE_PATTERN),
+  withoutTime: "border-border bg-card",
   nothingExpected: "border-border bg-card",
+  pending: "border-border",
 };
 
-const DAY_LEGEND: { kind: ReportDay["kind"]; label: string }[] = [
-  { kind: "logged", label: "Logged" },
-  { kind: "off", label: "Day off" },
-  { kind: "withoutTime", label: "No time logged" },
-];
+// Today is ringed in the brand colour; a day to come is dashed, so dashed
+// only ever means "not yet", and keeps whatever is already on it.
+const WHEN_STYLES: Record<ReportDay["when"], string> = {
+  past: "",
+  today: "border-2 border-brand px-[7px] py-[5px]",
+  future: "border-dashed border-muted-foreground/40",
+};
+
+const SWATCH = "size-3 rounded-sm border";
+
+const WarningDot = () => (
+  <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
+);
 
 const absenceOn = (absences: Absence[], date: string) =>
   absences.find(
@@ -101,40 +110,83 @@ export const PersonDayGrid = ({
   const weekdays = days.filter((day) => !isWeekend(fromISODate(day.date)));
   const weekendDays = days.filter((day) => isWeekend(fromISODate(day.date)));
 
+  // Only what the grid shows is explained.
+  const legend = [
+    {
+      label: "Logged",
+      shows: days.some((day) => day.kind === "logged"),
+      swatch: <span className={cn(SWATCH, KIND_STYLES.logged)} />,
+    },
+    {
+      label: "Day off",
+      shows: days.some((day) => day.kind === "off"),
+      swatch: <span className={cn(SWATCH, KIND_STYLES.off)} />,
+    },
+    {
+      label: "No time logged",
+      shows: days.some((day) => day.kind === "withoutTime"),
+      swatch: <WarningDot />,
+    },
+    {
+      label: "Today",
+      shows: days.some((day) => day.when === "today"),
+      swatch: <span className={cn(SWATCH, "border-2 border-brand")} />,
+    },
+    {
+      label: "Still to come",
+      shows: days.some((day) => day.when === "future"),
+      swatch: <span className={cn(SWATCH, WHEN_STYLES.future)} />,
+    },
+  ].filter((item) => item.shows);
+
   return (
     <>
       <ul aria-label="Days" className="grid grid-cols-5 gap-1.5">
         {weekdays.map((day) => {
           const href =
             day.kind === "withoutTime" && dayWithoutTimeHref?.(day.date);
+          const isToday = day.when === "today";
           const content = (
             <>
-              <span className="text-2xs text-muted-foreground">
+              <span
+                className={cn(
+                  "text-2xs",
+                  isToday
+                    ? "font-semibold text-brand"
+                    : "text-muted-foreground",
+                )}
+              >
                 {dayLabel(day.date)}
+                {isToday && " · Today"}
               </span>
               <span
                 className={cn(
-                  "text-xs font-medium tabular-nums",
+                  "flex min-h-4 items-center gap-1.5 text-xs font-medium tabular-nums",
                   href
                     ? "text-brand underline underline-offset-2"
                     : day.kind !== "logged" && "text-muted-foreground",
                 )}
               >
+                {day.kind === "withoutTime" && <WarningDot />}
                 {day.kind === "logged"
                   ? formatDuration(day.minutes)
                   : day.kind === "off"
                     ? offLabel(day.date)
                     : day.kind === "withoutTime"
                       ? "No time"
-                      : day.kind === "today"
-                        ? "Today"
-                        : "—"}
+                      : day.kind === "nothingExpected"
+                        ? "—"
+                        : isToday
+                          ? "Counts tomorrow"
+                          : null}
               </span>
             </>
           );
           const dayStyle = cn(
             "flex h-full flex-col gap-0.5 rounded-lg border px-2 py-1.5",
-            DAY_STYLES[day.kind],
+            KIND_STYLES[day.kind],
+            WHEN_STYLES[day.when],
+            isToday && day.kind !== "off" && "bg-brand-muted",
           );
 
           return (
@@ -149,7 +201,7 @@ export const PersonDayGrid = ({
                   aria-label={`${dayLabel(day.date)}: no time logged, open its week`}
                   className={cn(
                     dayStyle,
-                    "border-brand/50 transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    "transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
                   )}
                 >
                   {content}
@@ -172,12 +224,9 @@ export const PersonDayGrid = ({
         </p>
       )}
       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {DAY_LEGEND.map(({ kind, label }) => (
-          <li key={kind} className="inline-flex items-center gap-1.5">
-            <span
-              className={cn("size-3 rounded-sm border", DAY_STYLES[kind])}
-              aria-hidden
-            />
+        {legend.map(({ label, swatch }) => (
+          <li key={label} className="inline-flex items-center gap-1.5">
+            {swatch}
             {label}
           </li>
         ))}

@@ -1,16 +1,8 @@
 "use client";
 
 import { ReactNode, useMemo, useState } from "react";
-import Link from "next/link";
 
-import {
-  ArrowRight,
-  CalendarOff,
-  Check,
-  Clock,
-  FolderKanban,
-  ListTodo,
-} from "lucide-react";
+import { CalendarOff, FolderKanban, ListTodo } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
 import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
@@ -22,9 +14,7 @@ import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import {
   companyToday,
-  formatDayMonthLabel,
-  formatDuration,
-  formatMonthLabel,
+  formatWeekdayLabel,
   getWeekDates,
   getWeekEnd,
   isWeekend,
@@ -33,7 +23,11 @@ import {
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
-import { mapAbsencesByDate, newAbsenceStartDate } from "@/lib/utils/absence";
+import {
+  ABSENCE_TYPE_LABELS,
+  mapAbsencesByDate,
+  newAbsenceStartDate,
+} from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 
@@ -44,13 +38,13 @@ import { LoadingState } from "../shared/LoadingState";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
-import { WeekProgressBar } from "./components/WeekProgressBar";
+import { WeekSummary } from "./components/WeekSummary";
+import { GraceMonthNote } from "./components/GraceMonthNote";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
 type ModalState = {
@@ -202,11 +196,6 @@ export const WeekTimesheet = ({
     return totals;
   }, [weekDates, timelogsByDate]);
 
-  const totalMinutes = Object.values(dailyTotals).reduce(
-    (sum, minutes) => sum + minutes,
-    0,
-  );
-
   // Only the shown week's dates count, like the daily totals, so the previous
   // week kept on screen while the next one loads adds nothing.
   const { billableMinutes, nonBillableMinutes } = useMemo(() => {
@@ -229,7 +218,19 @@ export const WeekTimesheet = ({
     };
   }, [weekDates, timelogsByDate]);
 
-  const isWeekComplete = expectedMinutes > 0 && totalMinutes >= expectedMinutes;
+  // What the breakdown explains: the days off that lower the week's figure,
+  // and how much of the time is on the weekend, where all of it is extra.
+  const daysOff = weekDates
+    .filter((date) => !isWeekend(date) && absencesByDate[toISODate(date)])
+    .map(
+      (date) =>
+        `${formatWeekdayLabel(date)} ${date.getDate()}, ${ABSENCE_TYPE_LABELS[
+          absencesByDate[toISODate(date)].type
+        ].toLowerCase()}`,
+    );
+  const weekendMinutes = weekDates
+    .filter(isWeekend)
+    .reduce((sum, date) => sum + (dailyTotals[toISODate(date)] ?? 0), 0);
   const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
 
   const maxDailyMinutes = Math.max(
@@ -319,9 +320,15 @@ export const WeekTimesheet = ({
   const header = <PageHeader title="Timesheet" hideTitle />;
 
   const addAbsenceButton = (
-    <Button type="button" variant="outline" size="sm" onClick={openNewAbsence}>
-      <CalendarOff className="size-4" />
-      Add absence
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={openNewAbsence}
+      className="max-sm:size-10 max-sm:px-0"
+    >
+      <CalendarOff className="size-4" aria-hidden />
+      <span className="max-sm:sr-only">Add absence</span>
     </Button>
   );
 
@@ -405,76 +412,40 @@ export const WeekTimesheet = ({
 
       {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
-      <div className="border-b border-border">
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-2">
-          <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+      {/* One row where there is room; below it the figures take their own. */}
+      <div className="@container border-b border-border pb-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-5">
+          <div className="flex items-center gap-2">
+            <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+            <BackToThisWeekButton
+              weekStart={weekStart}
+              onWeekChange={showWeekOf}
+            />
+          </div>
 
           {showsFigures && (
-            <div className="flex items-center gap-2 text-base">
-              <span>Time logged:</span>
-
-              <span className="font-medium text-foreground">
-                {formatDuration(totalMinutes)}
-              </span>
-
-              <span className="text-muted-foreground">/</span>
-
-              <span className="text-muted-foreground">
-                {formatDuration(expectedMinutes)}
-              </span>
-
-              {isWeekComplete && (
-                <Badge
-                  variant="success"
-                  title="Everything expected this week is logged"
-                  className="px-1.5 text-2xs font-medium"
-                >
-                  <Check className="size-3" aria-hidden />
-                  Complete
-                </Badge>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3">
-          {!hasError && (
-            <div className="flex flex-wrap items-center gap-3">
-              {addAbsenceButton}
-
-              <Link
-                href="/my-time"
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
-              >
-                Your month
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
-
-              {graceMonth?.editableUntil && (
-                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="size-3.5 text-warning-text" aria-hidden />
-                  {formatMonthLabel(graceMonth.month)} can still be edited until{" "}
-                  {formatDayMonthLabel(graceMonth.editableUntil)}.
-                </p>
-              )}
-            </div>
-          )}
-
-          <BackToThisWeekButton
-            weekStart={weekStart}
-            onWeekChange={showWeekOf}
-          />
-        </div>
-
-        {showsFigures && (
-          <div className="pb-3">
-            <WeekProgressBar
+            <WeekSummary
               billableMinutes={billableMinutes}
               nonBillableMinutes={nonBillableMinutes}
               expectedMinutes={expectedMinutes}
+              daysOff={daysOff}
+              weekendMinutes={weekendMinutes}
+              className="order-last w-full @5xl:order-none @5xl:ml-auto @5xl:w-auto"
             />
-          </div>
-        )}
+          )}
+
+          {!hasError && (
+            <div className="ml-auto flex items-center gap-2 @5xl:ml-0">
+              {graceMonth?.editableUntil && (
+                <GraceMonthNote
+                  month={graceMonth.month}
+                  editableUntil={graceMonth.editableUntil}
+                />
+              )}
+              {addAbsenceButton}
+            </div>
+          )}
+        </div>
       </div>
 
       {hasError && (
@@ -531,6 +502,8 @@ export const WeekTimesheet = ({
                       expectedMinutes={expectedByDate[iso]}
                       isLocked={isLocked(iso)}
                       isEditable={isEditable(iso) && !isAbsenceLocked}
+                      // Time is logged only for a day that has happened (Decision 13).
+                      canLogTime={iso <= todayIso}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}
                       onEntryClick={openEdit}

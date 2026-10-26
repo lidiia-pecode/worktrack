@@ -7,38 +7,18 @@ export const STACK_TOP_INSET_PX = 3;
 
 export function buildSegments(
   timelogs: TimeLog[],
-  expectedMinutes: number,
   pixelsPerMinute: number,
 ): Segment[] {
-  let cumulativeMinutes = 0;
   let offsetTop = STACK_TOP_INSET_PX;
 
   return timelogs.map((timelog) => {
-    const startMinutes = cumulativeMinutes;
-    const endMinutes = cumulativeMinutes + timelog.minutes;
     const height = Math.max(
       timelog.minutes * pixelsPerMinute,
       MIN_SEGMENT_HEIGHT,
     );
-
-    let overtimeHeight = 0;
-
-    if (startMinutes >= expectedMinutes) {
-      overtimeHeight = height;
-    } else if (endMinutes > expectedMinutes) {
-      overtimeHeight =
-        height * ((endMinutes - expectedMinutes) / timelog.minutes);
-    }
-
-    const segment: Segment = {
-      timelog,
-      offsetTop,
-      height,
-      overtimeHeight,
-    };
+    const segment: Segment = { timelog, offsetTop, height };
 
     offsetTop += height + SEGMENT_GAP_PX;
-    cumulativeMinutes = endMinutes;
     return segment;
   });
 }

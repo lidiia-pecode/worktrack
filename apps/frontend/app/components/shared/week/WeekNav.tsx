@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CalendarDays, Undo2 } from "lucide-react";
 import {
   addWeeks,
   companyToday,
+  formatShortWeekRangeLabel,
   formatWeekRangeLabel,
   getWeekStart,
   isSameDay,
@@ -14,7 +15,11 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { Button } from "@/components/ui/button";
 
-/** The way back to the current week or month from another one. */
+/**
+ * The way back to the current week or month from another one: a soft brand
+ * tint, as tall as the controls beside it but the one in the brand colour.
+ * On a phone it is the icon alone; the label stays for screen readers.
+ */
 export const BackToNowButton = ({
   label,
   onClick,
@@ -22,15 +27,14 @@ export const BackToNowButton = ({
   label: string;
   onClick: () => void;
 }) => (
-  // A brand outline, so the way back stands out from the quiet week controls.
   <Button
-    variant="outline"
+    variant="ghost"
     size="sm"
-    className="w-auto border-brand text-brand hover:bg-brand-subtle hover:text-brand"
+    className="w-auto bg-brand-subtle text-brand hover:bg-brand-muted hover:text-brand max-sm:size-10 max-sm:px-0"
     onClick={onClick}
   >
     <Undo2 className="size-3.5" aria-hidden />
-    {label}
+    <span className="max-sm:sr-only">{label}</span>
   </Button>
 );
 
@@ -75,7 +79,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9"
+          className="rounded-none w-9 max-sm:size-10"
           aria-label="Previous week"
           onClick={() => onWeekChange(addWeeks(weekStart, -1))}
         >
@@ -84,7 +88,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9 border-0 border-l border-border"
+          className="rounded-none w-9 border-0 border-l border-border max-sm:size-10"
           aria-label="Next week"
           onClick={() => onWeekChange(addWeeks(weekStart, 1))}
         >
@@ -99,14 +103,20 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition max-sm:h-10"
         >
           <CalendarDays
             size={15}
-            className="text-muted-foreground"
+            className="text-muted-foreground max-sm:hidden"
             aria-hidden
           />
-          {formatWeekRangeLabel(weekStart)}
+          <span className="max-sm:hidden">
+            {formatWeekRangeLabel(weekStart)}
+          </span>
+          {/* A phone has no room for the year beside the week's controls. */}
+          <span className="sm:hidden">
+            {formatShortWeekRangeLabel(weekStart)}
+          </span>
         </button>
 
         {calendarOpen && (

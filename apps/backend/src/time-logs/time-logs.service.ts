@@ -30,7 +30,11 @@ import {
 } from './dtos/time-log-payload.dto';
 import { TimeLogsQuery } from './dtos/time-logs-query.dto';
 import { TeamSummaryQuery } from './dtos/team-summary-query.dto';
-import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import {
+  ExpectedDay,
+  ExpectedHoursService,
+} from 'src/capacity/expected-hours.service';
+import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 interface DailyMinutesRaw {
@@ -54,6 +58,8 @@ export interface TeamSummaryRow {
   nonBillableMinutes: number;
   expectedMinutes: number;
   expectedToDateMinutes: number;
+  /** Every date in the range, so a grid can tell a day over the person's hours. */
+  expectedByDate: ExpectedDay[];
   days: TeamSummaryDay[];
 }
 
@@ -204,6 +210,7 @@ export class TimeLogsService {
           nonBillableMinutes: 0,
           expectedMinutes: expected.get(summaryUser.id)?.total ?? 0,
           expectedToDateMinutes: expected.get(summaryUser.id)?.toDate ?? 0,
+          expectedByDate: expected.get(summaryUser.id)?.byDate ?? [],
           days: [],
         },
       ]),
@@ -258,6 +265,7 @@ export class TimeLogsService {
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
+      await this.assertNotFuture(manager, user.companyId, payload.date);
 
       const projectActivity = await this.resolveProjectActivity(
         payload.projectActivityId,
@@ -316,6 +324,11 @@ export class TimeLogsService {
 
       // 1. Reporting Period Check for existing and new target dates
       await this.assertDateNotLocked(manager, user.companyId, log.date);
+      await this.assertNotFuture(
+        manager,
+        user.companyId,
+        payload.date ?? log.date,
+      );
       if (payload.date && payload.date !== log.date) {
         await this.assertDateNotLocked(manager, user.companyId, payload.date);
         await this.assertNotAbsent(
@@ -447,6 +460,24 @@ export class TimeLogsService {
     if (isLocked) {
       throw new ForbiddenException(
         `Cannot modify time logs for date ${date} because it belongs to a LOCKED reporting period.`,
+      );
+    }
+  }
+
+  /**
+   * A time log records work done (D6), so it can't be dated after the
+   * company's today; an entry already in the future can only be moved back or
+   * deleted. Absences are not bound by this.
+   */
+  private async assertNotFuture(
+    manager: EntityManager,
+    companyId: string,
+    date: string,
+  ): Promise<void> {
+    const today = await findCompanyToday(manager, companyId);
+    if (date > today) {
+      throw new BadRequestException(
+        `Time can't be logged for ${date}: that day hasn't happened yet.`,
       );
     }
   }

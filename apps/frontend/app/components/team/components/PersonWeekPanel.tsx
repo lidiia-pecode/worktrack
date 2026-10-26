@@ -66,6 +66,9 @@ export const PersonWeekPanel = ({
   onClose,
 }: PersonWeekPanelProps) => {
   const { user } = row;
+  const expectedByDate = Object.fromEntries(
+    row.expectedByDate.map((day) => [day.date, day.minutes]),
+  );
   const titleId = useId();
   const [formState, setFormState] = useState<FormState | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
@@ -264,8 +267,12 @@ export const PersonWeekPanel = ({
                 absence={absence}
                 isAbsenceLocked={isAbsenceLocked}
                 plannedEntries={plannedByDate[iso]}
+                expectedMinutes={projectId ? undefined : expectedByDate[iso]}
+                // Time is logged only for a day that has happened (Decision 13).
                 onAdd={
-                  canWriteDay && !absence ? () => openCreate(date) : undefined
+                  canWriteDay && !absence && iso <= todayIso
+                    ? () => openCreate(date)
+                    : undefined
                 }
                 onEdit={
                   canWriteDay

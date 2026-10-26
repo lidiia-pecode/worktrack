@@ -6,7 +6,7 @@ import {
   isWeekend,
 } from "@/lib/utils/date";
 
-import { WEEKEND_FILL } from "../../timesheet/consts";
+import { WEEKEND_EXTRA_PATTERN, WEEKEND_PATTERN } from "../../timesheet/consts";
 
 type WeekHeaderDayProps = {
   date: Date;
@@ -24,18 +24,16 @@ export const WeekHeaderDay = ({
   isLocked = false,
 }: WeekHeaderDayProps) => {
   const weekend = isWeekend(date);
-  // A day that expects nothing, such as a weekend, is never over.
+  // A weekend expects nothing, so any time on it is over.
   const isOverTarget =
-    targetMinutes !== undefined &&
-    targetMinutes > 0 &&
-    totalMinutes > targetMinutes;
+    targetMinutes !== undefined && totalMinutes > targetMinutes;
 
   return (
     <div
       className={`
         p-2 flex flex-col md:flex-row gap-2 justify-between
         border-r border-border/60 last:border-r-0
-        ${weekend ? WEEKEND_FILL : ""}
+        ${weekend ? (totalMinutes > 0 ? WEEKEND_EXTRA_PATTERN : WEEKEND_PATTERN) : ""}
       `}
     >
       <div className="flex gap-2 items-baseline">

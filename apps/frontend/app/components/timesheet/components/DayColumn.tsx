@@ -17,8 +17,9 @@ import { TimelogSegment } from "./TimelogSegment";
 import {
   ABSENCE_PATTERN,
   DAY_COLUMN_CLASS,
-  OVERTIME_PATTERN,
-  WEEKEND_FILL,
+  EXCESS_FILL,
+  WEEKEND_EXTRA_PATTERN,
+  WEEKEND_PATTERN,
 } from "../consts";
 import { Badge } from "@/components/ui/badge";
 
@@ -34,6 +35,8 @@ type Props = {
   expectedMinutes?: number;
   isLocked: boolean;
   isEditable: boolean;
+  /** False for a day that hasn't happened: its entries and absence still open. */
+  canLogTime?: boolean;
   onAddClick: (date: Date) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
@@ -50,6 +53,7 @@ export const DayColumn = ({
   expectedMinutes,
   isLocked,
   isEditable,
+  canLogTime = true,
   onAddClick,
   onAbsenceClick,
   onEntryClick,
@@ -62,7 +66,8 @@ export const DayColumn = ({
 
   const weekend = isWeekend(date);
   // A day that expects nothing, such as a weekend or an absence, has no line
-  // and nothing on it is over; nor is anything until the figure has loaded.
+  // and no excess fill (a weekend's time shows in its stripes instead); nothing
+  // is over until the figure has loaded.
   const hasTargetLine = expectedMinutes !== undefined && expectedMinutes > 0;
   const overTargetFrom = hasTargetLine ? expectedMinutes : Infinity;
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
@@ -74,8 +79,8 @@ export const DayColumn = ({
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
-    () => buildSegments(timelogs, overTargetFrom, pixelsPerMinute),
-    [timelogs, overTargetFrom, pixelsPerMinute],
+    () => buildSegments(timelogs, pixelsPerMinute),
+    [timelogs, pixelsPerMinute],
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
@@ -93,6 +98,9 @@ export const DayColumn = ({
 
   // Time cannot be logged on a day an absence covers, so the column opens the
   // absence instead.
+  // The day itself opens its absence, or a new entry where time can be logged.
+  const opensDay = isEditable && (Boolean(absence) || canLogTime);
+
   const openDay = () => {
     if (absence) {
       onAbsenceClick(date);
@@ -104,30 +112,33 @@ export const DayColumn = ({
 
   return (
     <div
-      role={isEditable ? "button" : undefined}
-      tabIndex={isEditable ? 0 : undefined}
+      role={opensDay ? "button" : undefined}
+      tabIndex={opensDay ? 0 : undefined}
       aria-label={
-        isEditable
+        opensDay
           ? absence
             ? `Edit the absence on ${formatLongDayLabel(date)}`
             : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
-      aria-describedby={isEditable && showsPlan ? plannedId : undefined}
-      onClick={isEditable ? openDay : undefined}
+      aria-describedby={opensDay && showsPlan ? plannedId : undefined}
+      onClick={opensDay ? openDay : undefined}
       onKeyDown={(e) => {
-        if (isEditable && (e.key === "Enter" || e.key === " ")) {
+        if (opensDay && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           openDay();
         }
       }}
       className={cn(
         DAY_COLUMN_CLASS,
-        isEditable &&
+        opensDay &&
           "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-        isEditable && !absence && !weekend && "hover:bg-muted/10",
+        opensDay && !absence && !weekend && "hover:bg-muted/10",
         absence && ABSENCE_PATTERN,
-        !absence && weekend && WEEKEND_FILL,
+        // Time on a weekend is all extra, so its stripes turn amber.
+        !absence &&
+          weekend &&
+          (totalMinutes > 0 ? WEEKEND_EXTRA_PATTERN : WEEKEND_PATTERN),
         !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
       )}
     >
@@ -183,7 +194,7 @@ export const DayColumn = ({
                 Locked
               </>
             )}
-            {isEditable && "Click to log time"}
+            {opensDay && "Click to log time"}
           </span>
         </div>
       )}
@@ -200,7 +211,7 @@ export const DayColumn = ({
       {isOverTarget && (
         <>
           <div
-            className={`pointer-events-none absolute left-0 right-0 ${OVERTIME_PATTERN}`}
+            className={`pointer-events-none absolute left-0 right-0 ${EXCESS_FILL}`}
             style={{
               top: targetLineOffset,
               height: overTargetMinutes * pixelsPerMinute,

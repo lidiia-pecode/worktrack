@@ -1,10 +1,13 @@
-export const WEEKEND_FILL = "bg-muted/20";
+// A day that expects nothing is striped; time past a working day's figure
+// sits on solid amber (`globals.css`, DAY STATES).
+export const WEEKEND_PATTERN = "bg-stripes-weekend";
 
-export const OVERTIME_PATTERN = "bg-stripes-warning";
+/** A weekend with time logged: all of it is extra. */
+export const WEEKEND_EXTRA_PATTERN = "bg-stripes-extra";
 
-export const ABSENCE_PATTERN = "bg-stripes-brand";
+export const ABSENCE_PATTERN = "bg-stripes-day-off";
 
-export const OVERTIME_SEGMENT_PATTERN = "bg-stripes-overlay";
+export const EXCESS_FILL = "bg-excess";
 
 export const DAY_COLUMN_CLASS =
   "relative h-full border-r border-border last:border-r-0 overflow-hidden transition-colors";

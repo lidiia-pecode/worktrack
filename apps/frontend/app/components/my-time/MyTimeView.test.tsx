@@ -153,6 +153,26 @@ describe("MyTimeView", () => {
     ).toHaveAttribute("href", "/timesheet?week=2026-10-14");
   });
 
+  it("shows the rest of the month as days to come, with a day off already on them", () => {
+    showMyTime(peopleReport([myRow]));
+
+    const wednesday = screen.getByText("Wed 28").parentElement;
+    expect(wednesday).toHaveClass("border-dashed", "bg-stripes-day-off");
+    expect(wednesday).toHaveTextContent("Sick");
+    expect(screen.getByText("Fri 30").parentElement).toHaveClass(
+      "border-dashed",
+    );
+    expect(screen.getByText("Still to come")).toBeInTheDocument();
+  });
+
+  it("rings today, the day after the last one counted", () => {
+    showMyTime({ ...peopleReport([myRow]), countedUntil: "2026-10-22" });
+
+    const today = screen.getByText(/Fri 23 · Today/).parentElement;
+    expect(today).toHaveClass("border-brand");
+    expect(today).toHaveTextContent("Counts tomorrow");
+  });
+
   it("treats a locked month as done: its days lead nowhere and its gap is only less than expected", () => {
     showMyTime({ ...peopleReport([myRow]), isProvisional: false });
 
