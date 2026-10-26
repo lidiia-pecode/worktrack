@@ -12,7 +12,7 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
-import { stackSegments } from "../helpers/build-segments";
+import { offsetAtMinutes, stackSegments } from "../helpers/build-segments";
 import { dayFill } from "../helpers/day-fill";
 import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
@@ -39,6 +39,8 @@ type Props = {
   onEntryClick: (timelog: TimeLog) => void;
 };
 
+const minutesOfLog = (log: TimeLog) => log.minutes;
+
 export const DayColumn = ({
   date,
   timelogs,
@@ -57,7 +59,7 @@ export const DayColumn = ({
 }: Props) => {
   const [hovered, setHovered] = useState<{
     timelogId: string;
-    anchor: DOMRect;
+    anchor: HTMLElement;
   } | null>(null);
 
   const weekend = isWeekend(date);
@@ -68,16 +70,18 @@ export const DayColumn = ({
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
 
-  const targetLineOffset = overTargetFrom * pixelsPerMinute;
-
   // Once any time is logged, the record replaces the plan.
   const showsPlan =
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
-    () => stackSegments(timelogs, (log) => log.minutes, pixelsPerMinute),
+    () => stackSegments(timelogs, minutesOfLog, pixelsPerMinute),
     [timelogs, pixelsPerMinute],
   );
+
+  const targetLineOffset = hasTargetLine
+    ? offsetAtMinutes(segments, minutesOfLog, expectedMinutes, pixelsPerMinute)
+    : 0;
   const plannedSegments = useMemo(
     () =>
       showsPlan
@@ -91,10 +95,7 @@ export const DayColumn = ({
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
-    setHovered({
-      timelogId: timelog.id,
-      anchor: target.getBoundingClientRect(),
-    });
+    setHovered({ timelogId: timelog.id, anchor: target });
 
   // Read from the current entries: a deleted entry's segment unmounts without
   // a mouse leave, so its card must not outlive it.
@@ -103,8 +104,11 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // A day an absence covers opens the absence instead of a new entry.
-  const opensDay = isEditable && (Boolean(absence) || canLogTime);
+  // A day an absence covers opens the absence instead of a new entry, to read
+  // once it is locked.
+  const opensDay = absence
+    ? isEditable || isAbsenceLocked
+    : isEditable && canLogTime;
 
   const openDay = () => {
     if (absence) {
@@ -122,7 +126,7 @@ export const DayColumn = ({
       aria-label={
         opensDay
           ? absence
-            ? `Edit the absence on ${formatLongDayLabel(date)}`
+            ? `${isEditable ? "Edit" : "View"} the absence on ${formatLongDayLabel(date)}`
             : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }

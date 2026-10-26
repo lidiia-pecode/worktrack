@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CalendarDays, Clock, StickyNote, Tag } from "lucide-react";
 
@@ -19,41 +19,63 @@ const POPOVER_WIDTH = 240;
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 8;
 
+/** What the entry names in `aria-describedby`, while its card is shown. */
+export const timelogDetailsId = (timelog: TimeLog) =>
+  `timelog-details-${timelog.id}`;
+
 type Props = {
   timelog: TimeLog;
-  anchor: DOMRect;
+  anchor: HTMLElement;
+};
+
+/** Where the entry is now; it moves when the page scrolls under it. */
+const useAnchorRect = (anchor: HTMLElement) => {
+  const [rect, setRect] = useState(() => anchor.getBoundingClientRect());
+
+  useEffect(() => {
+    const measure = () => setRect(anchor.getBoundingClientRect());
+
+    // Capture, so a scroll inside the page's own container counts too.
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [anchor]);
+
+  return rect;
 };
 
 export const TimelogPopover = ({ timelog, anchor }: Props) => {
-  const style = useMemo(() => {
+  const rect = useAnchorRect(anchor);
+  const style = (() => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
     const left = Math.min(
-      Math.max(
-        anchor.left + anchor.width / 2 - POPOVER_WIDTH / 2,
-        VIEWPORT_MARGIN,
-      ),
+      Math.max(rect.left + rect.width / 2 - POPOVER_WIDTH / 2, VIEWPORT_MARGIN),
       viewportWidth - POPOVER_WIDTH - VIEWPORT_MARGIN,
     );
 
-    const spaceAbove = anchor.top;
-    const spaceBelow = viewportHeight - anchor.bottom;
+    const spaceAbove = rect.top;
+    const spaceBelow = viewportHeight - rect.bottom;
     const openUpward = spaceAbove > spaceBelow;
 
     return {
       left,
       ...(openUpward
-        ? { bottom: viewportHeight - anchor.top + ANCHOR_GAP }
-        : { top: anchor.bottom + ANCHOR_GAP }),
+        ? { bottom: viewportHeight - rect.top + ANCHOR_GAP }
+        : { top: rect.bottom + ANCHOR_GAP }),
     };
-  }, [anchor]);
+  })();
 
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
 
   return createPortal(
     <div
+      id={timelogDetailsId(timelog)}
       role="tooltip"
       className="pointer-events-none fixed z-50 w-60 rounded-xl border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
       style={style}

@@ -1,8 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { PlanningEntry, TimeLog } from "@/types";
+import { Absence, PlanningEntry, TimeLog } from "@/types";
+import { AbsenceType } from "@/types/enums";
 
 import { DayColumn } from "./DayColumn";
 
@@ -66,6 +67,27 @@ describe("DayColumn", () => {
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 
+  it("describes the entry with its card, and keeps the card by it on scroll", async () => {
+    const user = userEvent.setup();
+    render(renderDay([entry]));
+    const block = screen.getByRole("button", { name: /^1h 30m/ });
+    let top = 300;
+    block.getBoundingClientRect = () =>
+      ({ top, bottom: top + 90, left: 100, width: 120 }) as DOMRect;
+
+    await user.hover(block);
+    expect(block).toHaveAccessibleDescription(/Sprint review/);
+    const card = screen.getByRole("tooltip");
+    const placedAt = card.style.cssText;
+
+    top = 100;
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(card.style.cssText).not.toBe(placedAt);
+  });
+
   it("puts time over the day's figure on solid amber, with how much", () => {
     const { container } = render(renderDay([{ ...entry, minutes: 540 }]));
 
@@ -96,10 +118,27 @@ describe("DayColumn", () => {
   it("runs the excess fill from the day's line to the column's foot", () => {
     const { container } = render(renderDay([{ ...entry, minutes: 540 }]));
 
+    // Below the stack's 3px inset, where the entry passes 8h.
     expect(container.querySelector(".bg-excess")).toHaveStyle({
-      top: "480px",
+      top: "483px",
       bottom: "0px",
     });
+  });
+
+  it("starts the excess where the stacked entries cross the day's figure", () => {
+    const sixEntries = [90, 90, 90, 90, 90, 35].map((minutes, index) => ({
+      ...entry,
+      id: `log-${index}`,
+      minutes,
+    }));
+    const { container } = render(renderDay(sixEntries));
+
+    // Five 90-minute entries and their gaps end at 468px; 8h falls 30
+    // minutes into the sixth.
+    expect(container.querySelector(".bg-excess")).toHaveStyle({
+      top: "498px",
+    });
+    expect(screen.getByText("+5m")).toBeInTheDocument();
   });
 
   describe("plans", () => {
@@ -162,5 +201,37 @@ describe("DayColumn", () => {
 
       expect(screen.queryByText("Atlas")).not.toBeInTheDocument();
     });
+  });
+
+  it("opens a locked absence to read, and names it so", async () => {
+    const onAbsenceClick = vi.fn();
+    render(
+      <DayColumn
+        date={new Date("2026-10-14T00:00:00")}
+        timelogs={[]}
+        plannedEntries={[]}
+        absence={
+          {
+            id: "absence-1",
+            type: AbsenceType.SICK_LEAVE,
+            startDate: "2026-09-30",
+            endDate: "2026-10-14",
+          } as Absence
+        }
+        isAbsenceLocked
+        totalMinutes={0}
+        pixelsPerMinute={1}
+        isLocked={false}
+        isEditable={false}
+        onAddClick={vi.fn()}
+        onAbsenceClick={onAbsenceClick}
+        onEntryClick={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^View the absence on/ }),
+    );
+    expect(onAbsenceClick).toHaveBeenCalled();
   });
 });
