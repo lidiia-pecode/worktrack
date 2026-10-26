@@ -185,6 +185,31 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
     });
 
+    it('refuses a manager removing themselves or another manager', async () => {
+      const own = await dataSource
+        .getRepository(TeamMembership)
+        .findOneByOrFail({ teamId: alpha, userId: alphaManager.id });
+      const coManager = await addToTeam(alpha, employee, TeamRole.MANAGER);
+
+      for (const membershipId of [own.id, coManager]) {
+        await expect(
+          service.removeMember(membershipId, companyId, alpha, alphaManager),
+        ).rejects.toThrow(ForbiddenException);
+      }
+
+      await expect(activeMemberIds(alpha)).resolves.toEqual(
+        [alphaManager.id, employee.id].sort(),
+      );
+    });
+
+    it('lets an owner remove a team manager', async () => {
+      const coManager = await addToTeam(alpha, employee, TeamRole.MANAGER);
+
+      await service.removeMember(coManager, companyId, alpha, owner);
+
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+    });
+
     it('lets an owner remove from any team', async () => {
       const membershipId = await addToTeam(beta, employee);
 

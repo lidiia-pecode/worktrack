@@ -64,6 +64,16 @@ describe("TeamWeekRow", () => {
     expect(screen.getByText("Deactivated")).toBeInTheDocument();
   });
 
+  it("names an empty day for a screen reader, and opens the person from the keyboard", () => {
+    renderRow();
+
+    // Monday has time and Tuesday an absence: five days are empty.
+    expect(screen.getAllByText("No time")).toHaveLength(5);
+    expect(
+      screen.getByRole("button", { name: "Open Alice Cooper's entries" }),
+    ).toBeInTheDocument();
+  });
+
   it("marks nobody who is active", () => {
     renderRow();
 

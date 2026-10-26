@@ -109,7 +109,14 @@
 
   --input: var(--card);
   --input-foreground: var(--foreground);
-  --input-placeholder: var(--muted-foreground);
+  /* Lighter than typed text, so an empty field never reads as filled in, and
+     still AA (about 5:1) on the input. Borders keep their own colour. */
+  --input-placeholder: color-mix(
+    in oklab,
+    var(--muted-foreground) 80%,
+    var(--input)
+  );
+  --input-border: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
 
   --ring: var(--brand);
 
@@ -279,6 +286,7 @@
   --color-input: var(--input);
   --color-input-foreground: var(--input-foreground);
   --color-input-placeholder: var(--input-placeholder);
+  --color-input-border: var(--input-border);
   --color-ring: var(--ring);
 
   --color-glow-primary: var(--glow-primary);

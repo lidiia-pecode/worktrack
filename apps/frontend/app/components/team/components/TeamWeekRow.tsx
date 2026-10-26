@@ -29,6 +29,8 @@ export const TeamWeekRow = ({
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
 
+  // The whole row opens the person for the mouse; the keyboard has the name's
+  // button, so the row adds no second tab stop.
   return (
     <tr
       onClick={() => onOpen(row)}
@@ -91,7 +93,12 @@ export const TeamWeekRow = ({
                 {formatDuration(minutes)}
               </span>
             ) : (
-              <span className="text-muted-foreground">-</span>
+              <>
+                <span aria-hidden className="text-muted-foreground">
+                  -
+                </span>
+                <span className="sr-only">No time</span>
+              </>
             )}
           </td>
         );

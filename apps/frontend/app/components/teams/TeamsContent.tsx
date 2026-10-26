@@ -163,6 +163,11 @@ export const TeamsContent = () => {
             : MANAGER_WITHOUT_TEAM_MESSAGE
         }
         emptyIcon={<UsersRound className="size-6" />}
+        archivedEmptyDescription={
+          isOwner
+            ? undefined
+            : "Only an owner archives a team, and an archived team is no longer listed for its managers."
+        }
         createLabel="Create team"
         onCreate={() => setCreateOpen(true)}
         canCreate={isOwner}

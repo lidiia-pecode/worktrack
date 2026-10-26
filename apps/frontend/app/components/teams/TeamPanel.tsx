@@ -140,6 +140,10 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   const canChangeRole = (membership: MembershipWithUser) =>
     isOwner && !isEditing && !isDeactivatedUser(membership.user);
 
+  // A manager removes members; a team's managers are the owner's to remove.
+  const canRemove = (membership: MembershipWithUser) =>
+    !isEditing && (isOwner || membership.roleInTeam === TeamRole.MEMBER);
+
   return (
     <>
       <EntityPanelLayout
@@ -203,12 +207,12 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
                 }
               />
             ),
-            remove: isEditing
-              ? undefined
-              : {
+            remove: canRemove(membership)
+              ? {
                   label: `Remove ${fullName(membership.user)} from ${team.name}`,
                   onClick: () => changes.remove(membership),
-                },
+                }
+              : undefined,
           })}
           emptyText={
             isOwner

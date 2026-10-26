@@ -62,7 +62,7 @@ export const TimePicker = ({
         "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
         error
           ? "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
-          : "border-input-placeholder/50",
+          : "border-input-border",
         className,
       )}
     >

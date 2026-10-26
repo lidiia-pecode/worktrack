@@ -677,7 +677,7 @@ added to a team or a project.
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD | read, within their teams; remove a member | — |
+| Teams | full CRUD | read, within their teams; remove a member (not a team manager) | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
@@ -708,7 +708,9 @@ and reading them is unchanged (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member
-from a team they lead, because removal only narrows their own reach.
+from a team they lead, because removal only narrows their own reach; taking a
+team's manager off it, themselves included, is the owner's (Phase 36), since
+that would narrow someone else's reach or leave the team without its lead.
 
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
