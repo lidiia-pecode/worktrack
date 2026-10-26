@@ -23,6 +23,7 @@ import {
 } from './dtos/absence-payload.dto';
 import { AbsencesQuery } from './dtos/absences-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 @Injectable()
 export class AbsencesService {
@@ -76,8 +77,8 @@ export class AbsencesService {
       .orderBy('a.startDate', 'DESC')
       .addOrderBy('a.createdAt', 'DESC')
       .addOrderBy('a.id', 'DESC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };

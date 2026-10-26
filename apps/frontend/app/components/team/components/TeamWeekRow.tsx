@@ -6,7 +6,7 @@ import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { PersonLabel } from "../../shared/PersonLabel";
-import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
+import { dayFill, isOverFill } from "../../timesheet/helpers/day-fill";
 import { Badge } from "@/components/ui/badge";
 
 type TeamWeekRowProps = {
@@ -25,6 +25,9 @@ export const TeamWeekRow = ({
   onOpen,
 }: TeamWeekRowProps) => {
   const minutesByDate = new Map(row.days.map((day) => [day.date, day.minutes]));
+  const expectedByDate = new Map(
+    row.expectedByDate.map((day) => [day.date, day.minutes]),
+  );
 
   return (
     <tr
@@ -58,14 +61,20 @@ export const TeamWeekRow = ({
         const iso = toISODate(date);
         const minutes = minutesByDate.get(iso) ?? 0;
         const absence = absencesByDate[iso];
+        // Hours on one project say nothing about the day as a whole.
+        const fill = dayFill({
+          isAbsent: Boolean(absence),
+          isWeekend: isWeekend(date),
+          minutes,
+          expectedMinutes: showsExpected ? expectedByDate.get(iso) : undefined,
+        });
 
         return (
           <td
             key={iso}
             className={cn(
               "border-r border-border/60 p-3 text-center text-sm tabular-nums",
-              absence && ABSENCE_PATTERN,
-              !absence && isWeekend(date) && WEEKEND_FILL,
+              fill,
             )}
           >
             {absence ? (
@@ -73,7 +82,12 @@ export const TeamWeekRow = ({
                 {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
               </Badge>
             ) : minutes > 0 ? (
-              <span className="font-medium text-foreground">
+              <span
+                className={cn(
+                  "font-medium",
+                  isOverFill(fill) ? "text-warning-text" : "text-foreground",
+                )}
+              >
                 {formatDuration(minutes)}
               </span>
             ) : (

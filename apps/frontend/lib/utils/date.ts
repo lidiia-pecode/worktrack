@@ -253,6 +253,11 @@ export function getMonthGridDates(
   return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
 }
 
+/** "Oct 19 – Oct 25": the week without its year, where room is short. */
+export function formatShortWeekRangeLabel(weekStart: Date): string {
+  return `${DAY_MONTH_LABEL.format(weekStart)} – ${DAY_MONTH_LABEL.format(getWeekEnd(weekStart))}`;
+}
+
 /** e.g. "30 Jun – 6 Jul, 2026", or "29 Dec 2026 – 4 Jan 2027" across a new year. */
 export function formatWeekRangeLabel(weekStart: Date): string {
   const weekEnd = getWeekEnd(weekStart);

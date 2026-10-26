@@ -1,10 +1,11 @@
 import 'reflect-metadata';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 
 import { TimeLogsQuery } from 'src/time-logs/dtos/time-logs-query.dto';
 
-import { PaginationQuery } from './pagination-query.dto';
+import { PaginationQuery, pageOffset } from './pagination-query.dto';
 
 // Query strings arrive as text, as they do through the ValidationPipe.
 const invalidFields = async (query: Record<string, string>) => {
@@ -35,4 +36,32 @@ describe('PaginationQuery', () => {
 
     expect(errors.map((error) => error.property)).toEqual(['pageSize']);
   });
+
+  it('skips the rows before the requested page', () => {
+    const query = plainToInstance(PaginationQuery, {
+      page: '3',
+      pageSize: '10',
+    });
+
+    expect(pageOffset(query)).toBe(20);
+  });
+
+  it.each(['offset', 'limit'])(
+    "refuses %s as an unknown parameter through the app's pipe",
+    async (name) => {
+      // The options `main.ts` gives the app's pipe.
+      const pipe = new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        forbidNonWhitelisted: true,
+      });
+
+      await expect(
+        pipe.transform(
+          { [name]: '100' },
+          { type: 'query', metatype: PaginationQuery },
+        ),
+      ).rejects.toThrow(BadRequestException);
+    },
+  );
 });

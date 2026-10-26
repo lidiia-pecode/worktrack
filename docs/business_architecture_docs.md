@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 24 October 2026.** Phases 0 to 34 in §7 are
+**Last verified against the code: 26 October 2026.** Phases 0 to 35 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -51,6 +51,15 @@ building them here would be scope creep:
   clock-out times.
 - **Not a task tracker.** Projects and activities are the unit of work. There
   are no tickets, tasks or subtasks.
+- **Not an HR system.** People belong to an HR product: the directory and org
+  chart, who reports to whom, leave requests, approvals and balances, a public
+  holiday calendar, attendance and onboarding. WorkTrack owns the work record:
+  hours by project and activity, billable time, contracted capacity, plans,
+  team actuals, reports, the export and locked periods. The two facts expected
+  hours need, days away (D6) and contracted hours, stay plain facts with no
+  balances, approvals or requests, and can come as a feed from the HR product
+  one day. So an employee gets the timesheet and their own month, and nothing
+  about other people (Phase 35).
 
 ### Multi-company
 
@@ -336,23 +345,27 @@ All verified in the current implementation.
 
 ### Time logging
 
-Every write passes four checks, in this order:
+Every write passes five checks, in this order:
 
 1. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
    update, both the old and the new date are checked, so an entry cannot be
    moved into or out of a locked period.
-2. **Write scope** — the caller must be allowed to act for the entry's owner
+2. **No future date** — a time entry records work done (D6), so one dated
+   after the company's today is rejected (400), for every role, on create and
+   on update. An entry already in the future can be moved back or deleted.
+   Absences may be booked ahead (Phase 35, Decision 13).
+3. **Write scope** — the caller must be allowed to act for the entry's owner
    (D9), through `assertCanActForUser`: an owner for anyone in the company, a
    manager for the people in the teams they lead, an employee for themselves.
    The entry is always matched on `companyId` too.
-3. **Project-activity validity** — the `ProjectActivity` must belong to the
+4. **Project-activity validity** — the `ProjectActivity` must belong to the
    caller's company, be active, and sit on an ACTIVE project with an ACTIVE
    activity.
-4. **Project membership** — a `project_users` row must exist for
+5. **Project membership** — a `project_users` row must exist for
    `(projectId, userId)`. Submitting a valid `projectActivityId` for a project
    you are not assigned to is rejected (403).
 
-On update, checks 3 and 4 run only when the entry moves to another project or
+On update, checks 4 and 5 run only when the entry moves to another project or
 activity. An entry on an archived project or activity, or on a project its owner
 has left, keeps its project and activity and can still have its duration, note
 and billable flag corrected. Notes on time entries and absences can be cleared.
@@ -669,7 +682,8 @@ added to a team or a project.
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
-| Hours and people reports, hours export | whole company | own, plus users in teams they manage | — |
+| Hours and people reports | whole company | own, plus users in teams they manage | own only, through the same routes |
+| Hours export, timeline | whole company | own, plus users in teams they manage | — |
 
 This matrix is what the code does today. The intended model —
 Owner-owned structure, manager-operated teams — is in
@@ -723,8 +737,15 @@ see, and how a new company gets started. §7 plans that work.
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
   states. A new entry starts from the last project and activity logged for
-  that person, or the only one there is. A week says when it is complete: its
-  logged time has reached what was expected.
+  that person, or the only one there is. A week says "Complete" when its logged
+  time is exactly what was expected, and how far past it when it is over. One row of controls carries the
+  week's figures, which open a breakdown (expected and the days off that lower
+  it, billable, non-billable, how much is past expected and how much of that at
+  the weekend), and a lock during a month's grace week. A day that expects
+  nothing is striped: a weekend in grey, turning amber once it has time, since
+  weekend hours are always extra; a day off in the brand colour. Time past a
+  working day's figure sits on solid amber with a "+Xh" badge. A day that
+  hasn't happened yet can't be logged on.
 - **Manage pages** — users, teams, projects, activities and categories as
   searchable lists. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
@@ -739,7 +760,8 @@ see, and how a new company gets started. §7 plans that work.
   so a reload keeps the panel. A deactivated person is shown read-only, and
   the API refuses writes for them. Filtered to a project, the rows, the team
   total and the panel show only that project's hours, with no Expected, since
-  that is about the whole week.
+  that is about the whole week. Days follow the timesheet's look: a day over
+  the person's hours on solid amber, a weekend with time in amber stripes.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet, and an owner or manager records them for somebody
   from Team time; the timesheet and the team grid mark those days, so an empty
@@ -755,8 +777,9 @@ see, and how a new company gets started. §7 plans that work.
   and anything that does not fit before saving, all-or-nothing. They see
   planned against available hours and which weeks no longer fit, and open an
   absence day straight into its form. Everyone sees their own plan on the
-  timesheet until they log time that day; recording an absence removes the
-  plans on its days.
+  timesheet until they log time that day, as faint blocks in the project's
+  colour that open the time form on that project; recording an absence removes
+  the plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -801,6 +824,16 @@ see, and how a new company gets started. §7 plans that work.
   counted and whether it is open for edits or locked. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead, and are told that projects show their teams' time only.
+- **My time** — every role has `/my-time`, their own month, one at a time,
+  back to the company's first: logged against expected with their days off,
+  planned, billable and its share, every working day of the month (a past day
+  with no time opens that week on the timesheet while the month is open, today
+  is ringed, and the days to come are dashed, showing any day off already on
+  them), and their
+  projects against plan. The figures are the ones a manager sees in their
+  panel on Reports, through the
+  same routes pinned to the person (§5), and count finished days only, with the
+  same line under the month. Nothing about anybody else is shown.
 - **Hours export** — from Reports, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person (with
   their email after the name), day, project, activity and billing (Billable or
@@ -852,20 +885,21 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-four
-suites and 786 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is forty-five
+suites and 809 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
-checks, the seed's local-only guard, and session refresh, rate limits and token
-clean-up — most against a real database.
-The frontend has fifty-six Vitest files and 310 tests: its date, month,
+checks, the seed's local-only guard, the Neon migration risk check, and
+session refresh, rate limits and token clean-up — most against a real
+database.
+The frontend has sixty Vitest files and 340 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
+person's week panel on Team time, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -946,6 +980,7 @@ is in its pull request.
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
 | 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual; an owner listed with a plan too; expected hours stopping on the day an account is deactivated, which Deactivate now records |
+| 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1025,11 +1060,12 @@ people, trends over months, a team view for the owner, sensible date presets —
 together with the figures that can mislead today. To be reviewed with the people
 who use the reports before it is scoped.
 
-**Area 7 — The employee's own view.** What an employee can see beyond one week:
-a report of their own hours, how their time and plan compare over longer
-periods, and what they may see of their own team and manager
-([`permission-model.md`](./permission-model.md) P5). Any change to who may see
-what is a permission decision and is settled as one.
+**Area 7 — The employee's own view.** Done by Phase 35, its first and only
+phase by design: an employee has the timesheet and My time, their own month
+from the same figures a manager sees in Reports. What they may see of their
+team and manager ([`permission-model.md`](./permission-model.md) P5) is
+answered no: it is the HR product's directory, outside WorkTrack's boundary
+(§1).
 
 **Area 8 — Whole-product review and finish.** A last pass over every page and
 flow in the product, role by role and on a phone, for consistency, wording and
@@ -1038,11 +1074,10 @@ ready, or not, for the final stage.
 
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
-started. After Phase 33, by decision (21 October 2026), Area 6 comes next,
-starting with its two counting bugs, then Area 7; the rest of Areas 3 and 4,
-the phone layout among it, follows. Area 6 and Area 7 need the most discussion
-before they are scoped. Area 8 closes the stage. A defect that distorts figures can be
-pulled into whichever scope comes first.
+started. After Phase 33, by decision (21 October 2026), Area 6 came next,
+starting with its two counting bugs, then Area 7, done by Phase 35; the rest of
+Areas 3 and 4, the phone layout among it, follows. Area 8 closes the stage. A
+defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
 
@@ -1074,8 +1109,15 @@ need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a dark
 theme, which Area 2's shared tokens have unblocked; per-person working patterns,
 a configurable working week, a versioned company default capacity, a
 configurable grace period and closing a month early; your own list of sessions
-and two-factor sign-in; and the permission questions in
-[`permission-model.md`](./permission-model.md) §6 other than P5.
+and two-factor sign-in; and the open permission questions in
+[`permission-model.md`](./permission-model.md) §6. From Phase 35, by the
+product boundary (§1): a team schedule for employees, their teammates' plans
+and absences (P5, revisited only with the HR product); employees comparing
+hours between people (no action for them, and against D3 and §3.4);
+configurable visibility as Float has it (a code path per choice in every list,
+for a choice nobody has made); and logging straight from the plan or copying a
+day or a week (Area 3, only on evidence; a plan already opens the time form on
+its project).
 
 ---
 
@@ -1162,17 +1204,6 @@ Google sign-in URLs registered for it.
 judged ready (§7, final stage). Nothing in the improvement roadmap depends on
 it.
 
-**Q11 — Should employees get a report of their own hours?**
-Belongs to Area 7. An employee sees one week at a time. The API already returns
-their own week summaries and expected hours; the hours report
-and the people report would each need their route opened to employees, pinned to
-themselves by the visibility filter they already use.
-*Recommendation:* yes — hours by project and activity, logged against expected
-by week and month, and absences taken, for the employee alone. Opening the two
-routes is a change to the §5 matrix and would be recorded as one.
-*Alternative:* build it only from the routes already open to employees, with no
-permission change and no billable split by project.
-
 **Q16 — Can someone delete their own account, or an owner their company?**
 Raised on 1 October 2026; no area yet. Nobody can delete an account today:
 people are deactivated, never deleted (§8 rule 6). A user row also cannot be
@@ -1202,6 +1233,9 @@ their time logs, such as anonymising the person and keeping the hours.
   where the time went by project and kind of work, with a person or a project
   opened in a side panel; the export holds every number (Phase 34). Comparison
   with earlier periods stays in Area 6.
+- **Q11** — Employees get their own month on My time, from the hours and
+  people reports opened to them and pinned to themselves; the export and the
+  timeline stay closed (Phase 35).
 - **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
   no "remember me" (Phase 6).
 - **Q8** — No email verification while only a company's first owner signs up

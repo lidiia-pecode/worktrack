@@ -1,44 +1,25 @@
-import { TimeLog } from "@/types";
 import { Segment } from "../types";
 
 export const MIN_SEGMENT_HEIGHT = 6;
 export const SEGMENT_GAP_PX = 3;
 export const STACK_TOP_INSET_PX = 3;
 
-export function buildSegments(
-  timelogs: TimeLog[],
-  expectedMinutes: number,
+/** Stacks a day's entries or plans from the top, each as tall as its minutes. */
+export function stackSegments<T>(
+  items: T[],
+  minutesOf: (item: T) => number,
   pixelsPerMinute: number,
-): Segment[] {
-  let cumulativeMinutes = 0;
+): Segment<T>[] {
   let offsetTop = STACK_TOP_INSET_PX;
 
-  return timelogs.map((timelog) => {
-    const startMinutes = cumulativeMinutes;
-    const endMinutes = cumulativeMinutes + timelog.minutes;
+  return items.map((item) => {
     const height = Math.max(
-      timelog.minutes * pixelsPerMinute,
+      minutesOf(item) * pixelsPerMinute,
       MIN_SEGMENT_HEIGHT,
     );
-
-    let overtimeHeight = 0;
-
-    if (startMinutes >= expectedMinutes) {
-      overtimeHeight = height;
-    } else if (endMinutes > expectedMinutes) {
-      overtimeHeight =
-        height * ((endMinutes - expectedMinutes) / timelog.minutes);
-    }
-
-    const segment: Segment = {
-      timelog,
-      offsetTop,
-      height,
-      overtimeHeight,
-    };
+    const segment = { item, offsetTop, height };
 
     offsetTop += height + SEGMENT_GAP_PX;
-    cumulativeMinutes = endMinutes;
     return segment;
   });
 }

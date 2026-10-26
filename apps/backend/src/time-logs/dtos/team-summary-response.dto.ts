@@ -1,5 +1,6 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 
+import { ExpectedDayResponse } from 'src/capacity/dtos/expected-hours-response.dto';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 
 @Exclude()
@@ -61,6 +62,10 @@ export class TeamSummaryRowResponse {
 
   @Expose()
   expectedToDateMinutes!: number;
+
+  @Expose()
+  @Type(() => ExpectedDayResponse)
+  expectedByDate!: ExpectedDayResponse[];
 
   @Expose()
   @Type(() => TeamSummaryDayResponse)

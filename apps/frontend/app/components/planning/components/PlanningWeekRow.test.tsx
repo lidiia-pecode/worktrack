@@ -113,18 +113,18 @@ describe("PlanningWeekRow", () => {
     });
   });
 
-  it("shows an absence on a weekend, striped, and leaves a plain weekend flat", () => {
+  it("shows an absence on a weekend in the day-off stripes, and a plain weekend in the weekend stripes", () => {
     renderRow(UserStatus.ACTIVE, [], {
       "2026-11-07": WEEKEND_VACATION,
     });
 
     const saturday = screen.getByText("Vacation").closest("td");
-    expect(saturday).toHaveClass("bg-stripes-brand");
+    expect(saturday).toHaveClass("bg-stripes-day-off");
     expect(within(saturday!).queryByRole("button")).not.toBeInTheDocument();
 
     const sunday = screen.getAllByRole("cell").at(-2);
     expect(sunday).toHaveTextContent("-");
-    expect(sunday).toHaveClass("bg-muted/20");
+    expect(sunday).toHaveClass("bg-stripes-weekend");
   });
 
   it("shows the plus on an empty day without hovering", () => {

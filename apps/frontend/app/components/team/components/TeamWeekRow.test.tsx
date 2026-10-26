@@ -31,6 +31,7 @@ const row = (status = UserStatus.ACTIVE): TeamSummaryRow => ({
   nonBillableMinutes: 0,
   expectedMinutes: 2400,
   expectedToDateMinutes: 2400,
+  expectedByDate: [],
   days: [
     {
       date: "2026-11-02",
@@ -41,12 +42,12 @@ const row = (status = UserStatus.ACTIVE): TeamSummaryRow => ({
   ],
 });
 
-const renderRow = (status?: UserStatus) =>
+const renderRow = (status?: UserStatus, rowValue = row(status)) =>
   render(
     <table>
       <tbody>
         <TeamWeekRow
-          row={row(status)}
+          row={rowValue}
           weekDates={WEEK_DATES}
           absencesByDate={{ "2026-11-03": SICK_TUESDAY }}
           showsExpected
@@ -69,16 +70,42 @@ describe("TeamWeekRow", () => {
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
-  it("stripes an absence and leaves a weekend flat", () => {
+  it("stripes a day off and a weekend, each in its own colour", () => {
     renderRow();
 
     expect(screen.getByText("Sick").closest("td")).toHaveClass(
-      "bg-stripes-brand",
+      "bg-stripes-day-off",
     );
 
     const [, , , , , saturday, sunday] = screen.getAllByRole("cell");
-    expect(saturday).toHaveClass("bg-muted/20");
-    expect(sunday).toHaveClass("bg-muted/20");
-    expect(sunday).not.toHaveClass("bg-stripes-brand");
+    expect(saturday).toHaveClass("bg-stripes-weekend");
+    expect(sunday).toHaveClass("bg-stripes-weekend");
+  });
+
+  it("marks a day over the person's hours, and a weekend with time, as extra", () => {
+    const day = (date: string, minutes: number) => ({
+      date,
+      minutes,
+      billableMinutes: 0,
+      nonBillableMinutes: minutes,
+    });
+    renderRow(UserStatus.ACTIVE, {
+      ...row(),
+      expectedByDate: [
+        { date: "2026-11-02", minutes: 480 },
+        { date: "2026-11-04", minutes: 480 },
+      ],
+      days: [
+        day("2026-11-02", 600),
+        day("2026-11-04", 480),
+        day("2026-11-07", 120),
+      ],
+    });
+
+    const [monday, , wednesday, , , saturday] = screen.getAllByRole("cell");
+    expect(monday).toHaveClass("bg-excess");
+    expect(screen.getByText("10h")).toHaveClass("text-warning-text");
+    expect(wednesday).not.toHaveClass("bg-excess");
+    expect(saturday).toHaveClass("bg-stripes-extra");
   });
 });

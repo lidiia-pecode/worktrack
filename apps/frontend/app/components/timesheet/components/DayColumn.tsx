@@ -1,7 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
-import { CalendarClock, Lock } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Lock } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -12,14 +12,11 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
-import { buildSegments } from "../helpers/build-segments";
+import { stackSegments } from "../helpers/build-segments";
+import { dayFill } from "../helpers/day-fill";
+import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
-import {
-  ABSENCE_PATTERN,
-  DAY_COLUMN_CLASS,
-  OVERTIME_PATTERN,
-  WEEKEND_FILL,
-} from "../consts";
+import { DAY_COLUMN_CLASS, EXCESS_FILL } from "../consts";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {
@@ -34,7 +31,10 @@ type Props = {
   expectedMinutes?: number;
   isLocked: boolean;
   isEditable: boolean;
-  onAddClick: (date: Date) => void;
+  /** False for a day that hasn't happened: its entries and absence still open. */
+  canLogTime?: boolean;
+  /** With a project when it comes from that project's plan. */
+  onAddClick: (date: Date, projectId?: string) => void;
   onAbsenceClick: (date: Date) => void;
   onEntryClick: (timelog: TimeLog) => void;
 };
@@ -50,32 +50,44 @@ export const DayColumn = ({
   expectedMinutes,
   isLocked,
   isEditable,
+  canLogTime = true,
   onAddClick,
   onAbsenceClick,
   onEntryClick,
 }: Props) => {
-  const plannedId = useId();
   const [hovered, setHovered] = useState<{
     timelogId: string;
     anchor: DOMRect;
   } | null>(null);
 
   const weekend = isWeekend(date);
-  // Nothing counts as over the day's figure until it has loaded. A day that
-  // expects nothing, such as a weekend or an absence, has no line.
-  const overTargetFrom = expectedMinutes ?? Infinity;
+  // A day that expects nothing (a weekend, an absence) has no line or excess
+  // fill; nothing is over until the figure has loaded.
+  const hasTargetLine = expectedMinutes !== undefined && expectedMinutes > 0;
+  const overTargetFrom = hasTargetLine ? expectedMinutes : Infinity;
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
-  const hasTargetLine = (expectedMinutes ?? 0) > 0;
 
   const targetLineOffset = overTargetFrom * pixelsPerMinute;
 
+  // Once any time is logged, the record replaces the plan.
   const showsPlan =
     !absence && timelogs.length === 0 && plannedEntries.length > 0;
 
   const segments = useMemo(
-    () => buildSegments(timelogs, overTargetFrom, pixelsPerMinute),
-    [timelogs, overTargetFrom, pixelsPerMinute],
+    () => stackSegments(timelogs, (log) => log.minutes, pixelsPerMinute),
+    [timelogs, pixelsPerMinute],
+  );
+  const plannedSegments = useMemo(
+    () =>
+      showsPlan
+        ? stackSegments(
+            plannedEntries,
+            (plan) => plan.plannedMinutes,
+            pixelsPerMinute,
+          )
+        : [],
+    [showsPlan, plannedEntries, pixelsPerMinute],
   );
 
   const showPopover = (timelog: TimeLog, target: HTMLElement) =>
@@ -91,8 +103,9 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // Time cannot be logged on a day an absence covers, so the column opens the
-  // absence instead.
+  // A day an absence covers opens the absence instead of a new entry.
+  const opensDay = isEditable && (Boolean(absence) || canLogTime);
+
   const openDay = () => {
     if (absence) {
       onAbsenceClick(date);
@@ -104,31 +117,36 @@ export const DayColumn = ({
 
   return (
     <div
-      role={isEditable ? "button" : undefined}
-      tabIndex={isEditable ? 0 : undefined}
+      role={opensDay ? "button" : undefined}
+      tabIndex={opensDay ? 0 : undefined}
       aria-label={
-        isEditable
+        opensDay
           ? absence
             ? `Edit the absence on ${formatLongDayLabel(date)}`
             : `Log time on ${formatLongDayLabel(date)}`
           : undefined
       }
-      aria-describedby={isEditable && showsPlan ? plannedId : undefined}
-      onClick={isEditable ? openDay : undefined}
+      onClick={opensDay ? openDay : undefined}
       onKeyDown={(e) => {
-        if (isEditable && (e.key === "Enter" || e.key === " ")) {
+        // Keys on a block inside the day belong to that block.
+        if (e.target !== e.currentTarget) return;
+        if (opensDay && (e.key === "Enter" || e.key === " ")) {
           e.preventDefault();
           openDay();
         }
       }}
       className={cn(
         DAY_COLUMN_CLASS,
-        isEditable &&
+        opensDay &&
           "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-        isEditable && !absence && !weekend && "hover:bg-muted/10",
-        absence && ABSENCE_PATTERN,
-        !absence && weekend && WEEKEND_FILL,
-        !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
+        opensDay && !absence && !weekend && "hover:bg-muted/10",
+        // A working day's excess is drawn on the grid's scale below, so the
+        // column itself takes no figure.
+        dayFill({
+          isAbsent: Boolean(absence),
+          isWeekend: weekend,
+          minutes: totalMinutes,
+        }) ?? (isLocked ? "bg-muted/20" : "bg-card"),
       )}
     >
       {absence && (
@@ -152,39 +170,15 @@ export const DayColumn = ({
         </div>
       )}
 
-      {/* Once any time is logged, the record replaces the plan. */}
-      {!absence && timelogs.length === 0 && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          {showsPlan && (
-            <div
-              id={plannedId}
-              className="flex max-w-full flex-col items-center gap-1"
-            >
-              <span className="flex items-center gap-1 text-2xs uppercase tracking-wider text-muted-foreground">
-                <CalendarClock className="size-3" aria-hidden />
-                Planned
-              </span>
-
-              {plannedEntries.map((entry) => (
-                <span
-                  key={entry.id}
-                  className="max-w-full truncate text-xs text-muted-foreground"
-                >
-                  {entry.project.name} · {formatDuration(entry.plannedMinutes)}
-                </span>
-              ))}
-            </div>
+      {!absence && timelogs.length === 0 && !showsPlan && (
+        <div className="absolute inset-0 flex items-center justify-center gap-1 px-2 text-center text-2xs text-muted-foreground">
+          {isLocked && (
+            <>
+              <Lock className="size-3" aria-hidden />
+              Locked
+            </>
           )}
-
-          <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-            {isLocked && (
-              <>
-                <Lock className="size-3" aria-hidden />
-                Locked
-              </>
-            )}
-            {isEditable && "Click to log time"}
-          </span>
+          {opensDay && "Click to log time"}
         </div>
       )}
 
@@ -200,11 +194,8 @@ export const DayColumn = ({
       {isOverTarget && (
         <>
           <div
-            className={`pointer-events-none absolute left-0 right-0 ${OVERTIME_PATTERN}`}
-            style={{
-              top: targetLineOffset,
-              height: overTargetMinutes * pixelsPerMinute,
-            }}
+            className={`pointer-events-none absolute left-0 right-0 ${EXCESS_FILL}`}
+            style={{ top: targetLineOffset, bottom: 0 }}
           />
 
           <Badge
@@ -218,9 +209,19 @@ export const DayColumn = ({
       )}
 
       <div className="absolute inset-0">
+        {plannedSegments.map((segment) => (
+          <PlannedSegment
+            key={segment.item.id}
+            segment={segment}
+            dayLabel={formatLongDayLabel(date)}
+            onClick={
+              opensDay ? (projectId) => onAddClick(date, projectId) : undefined
+            }
+          />
+        ))}
         {segments.map((segment) => (
           <TimelogSegment
-            key={segment.timelog.id}
+            key={segment.item.id}
             segment={segment}
             onClick={isEditable ? onEntryClick : undefined}
             onHover={showPopover}

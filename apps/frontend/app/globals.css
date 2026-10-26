@@ -150,6 +150,23 @@
   /* Logged time with no plan to measure it against: the logged teal, lighter. */
   --report-unplanned: color-mix(in oklch, var(--brand) 35%, var(--card));
 
+  /* Day states on the week views (see DAY STATES below). */
+  --stripe-weekend: color-mix(
+    in oklch,
+    var(--muted-foreground) 6%,
+    var(--card)
+  );
+  --stripe-weekend-ground: color-mix(
+    in oklch,
+    var(--muted-foreground) 2%,
+    var(--card)
+  );
+  --stripe-day-off: color-mix(in oklch, var(--brand) 24%, var(--card));
+  --stripe-day-off-ground: color-mix(in oklch, var(--brand) 7%, var(--card));
+  --stripe-extra: color-mix(in oklch, var(--warning) 28%, var(--card));
+  --stripe-extra-ground: color-mix(in oklch, var(--warning) 8%, var(--card));
+  --excess: color-mix(in oklch, var(--warning) 14%, var(--card));
+
   /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
      honey, lavender. Checked for colour vision as a set; mint beside
      coral is close for red-blind readers, so slices keep a gap and every one is
@@ -287,6 +304,7 @@
   --color-chart-5: var(--chart-5);
 
   --color-report-track: var(--report-track);
+  --color-excess: var(--excess);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
   --color-report-unplanned: var(--report-unplanned);
@@ -312,42 +330,39 @@
 }
 
 /* ============================================================================
-   DIAGONAL STRIPES
+   DAY STATES ON THE WEEK VIEWS
 
-   Absences on every week view, and time logged past the daily target on the
-   timesheet. Derived from the tokens so they follow the palette instead of
-   carrying a second, hardcoded set of colours.
+   Stripes mark a day that expects nothing: a weekend in a quiet grey, a day
+   off in the brand colour, and a weekend with time logged in amber, since all
+   of it is extra. Time past a working day's figure sits on solid amber
+   (`bg-excess`) instead. One geometry, so only the colour tells them apart.
    ============================================================================ */
 
-.bg-stripes-warning {
+.bg-stripes-weekend,
+.bg-stripes-day-off,
+.bg-stripes-extra {
   background-image: repeating-linear-gradient(
     -45deg,
-    color-mix(in oklch, var(--warning) 12%, var(--card)) 0px,
-    color-mix(in oklch, var(--warning) 12%, var(--card)) 6px,
-    color-mix(in oklch, var(--warning) 26%, var(--card)) 6px,
-    color-mix(in oklch, var(--warning) 26%, var(--card)) 12px
+    var(--stripe-line) 0px,
+    var(--stripe-line) 2px,
+    var(--stripe-ground) 2px,
+    var(--stripe-ground) 8px
   );
 }
 
-.bg-stripes-brand {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in oklch, var(--brand) 10%, var(--card)) 0px,
-    color-mix(in oklch, var(--brand) 10%, var(--card)) 6px,
-    color-mix(in oklch, var(--brand) 22%, var(--card)) 6px,
-    color-mix(in oklch, var(--brand) 22%, var(--card)) 12px
-  );
+.bg-stripes-weekend {
+  --stripe-line: var(--stripe-weekend);
+  --stripe-ground: var(--stripe-weekend-ground);
 }
 
-/* Sits on top of a coloured surface, so both stops stay translucent. */
-.bg-stripes-overlay {
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in oklch, var(--card) 35%, transparent) 0px,
-    color-mix(in oklch, var(--card) 35%, transparent) 4px,
-    color-mix(in oklch, var(--foreground) 10%, transparent) 4px,
-    color-mix(in oklch, var(--foreground) 10%, transparent) 8px
-  );
+.bg-stripes-day-off {
+  --stripe-line: var(--stripe-day-off);
+  --stripe-ground: var(--stripe-day-off-ground);
+}
+
+.bg-stripes-extra {
+  --stripe-line: var(--stripe-extra);
+  --stripe-ground: var(--stripe-extra-ground);
 }
 
 html,

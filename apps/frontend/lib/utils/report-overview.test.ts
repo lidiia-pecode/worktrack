@@ -86,14 +86,20 @@ describe("personDays", () => {
     ]);
   });
 
-  it("stops at the last counted day, then shows today", () => {
-    const days = personDays({ ...input, countedUntil: "2026-10-07" });
+  it("shows the whole period: today, then the days to come with what is already on them", () => {
+    const days = personDays({
+      ...input,
+      countedUntil: "2026-10-06",
+      isOff: (date: string) => date === "2026-10-09",
+    });
 
-    expect(days.map((day) => [day.date, day.kind])).toEqual([
-      ["2026-10-05", "logged"],
-      ["2026-10-06", "off"],
-      ["2026-10-07", "withoutTime"],
-      ["2026-10-08", "today"],
+    expect(days.map((day) => [day.date, day.kind, day.when])).toEqual([
+      ["2026-10-05", "logged", "past"],
+      ["2026-10-06", "nothingExpected", "past"],
+      ["2026-10-07", "pending", "today"],
+      ["2026-10-08", "pending", "future"],
+      ["2026-10-09", "off", "future"],
+      ["2026-10-11", "logged", "future"],
     ]);
   });
 });

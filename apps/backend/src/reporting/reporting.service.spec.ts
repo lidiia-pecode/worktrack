@@ -573,6 +573,28 @@ describe('ReportingService', () => {
       expect(totals.totalMinutes).toBe(480);
     });
 
+    it('shows an employee only their own hours and plans', async () => {
+      const people = await report(member, HoursReportGroupBy.PERSON);
+      const projects = await report(member, HoursReportGroupBy.PROJECT);
+
+      expect(people.rows.map((row) => row.id)).toEqual([member.id]);
+      expect(people.totals).toMatchObject({
+        totalMinutes: 480,
+        plannedMinutes: 480,
+      });
+      // CRM holds the outsider's 240 minutes and the manager's plan too.
+      expect(
+        projects.rows.map((row) => [
+          row.name,
+          row.totalMinutes,
+          row.plannedMinutes,
+        ]),
+      ).toEqual([
+        [`CRM ${RUN}`, 360, 480],
+        [`Tooling ${RUN}`, 120, 0],
+      ]);
+    });
+
     it('is final for a locked month and provisional once it touches an open one', async () => {
       await expect(
         report(owner, HoursReportGroupBy.PROJECT),
@@ -980,6 +1002,12 @@ describe('ReportingService', () => {
 
       it('shows a manager nothing of somebody outside their teams', async () => {
         const { rows } = await projectsOf(manager, outsider);
+
+        expect(rows).toEqual([]);
+      });
+
+      it("shows an employee nothing of somebody else's", async () => {
+        const { rows } = await projectsOf(member, outsider);
 
         expect(rows).toEqual([]);
       });

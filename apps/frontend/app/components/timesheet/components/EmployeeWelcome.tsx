@@ -1,6 +1,12 @@
 "use client";
 
-import { CalendarOff, Clock, Gauge, UserRound } from "lucide-react";
+import {
+  CalendarCheck,
+  CalendarOff,
+  Clock,
+  Gauge,
+  UserRound,
+} from "lucide-react";
 
 import { WelcomeCard, type WelcomeItem } from "../../shared/WelcomeCard";
 
@@ -27,6 +33,12 @@ const ITEMS: WelcomeItem[] = [
     title: "Your week at a glance",
     description:
       "The top of the page compares what you logged with what is expected.",
+  },
+  {
+    icon: CalendarCheck,
+    title: "Your month",
+    description:
+      "My time shows your month: hours against expected, days still to fill and your projects.",
   },
   {
     icon: UserRound,

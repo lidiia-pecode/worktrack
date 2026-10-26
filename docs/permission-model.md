@@ -256,6 +256,14 @@ remove. Removing somebody from a project deletes their plans for it from today
 on, and since a save only removes people the caller was shown (§3.5), a manager
 can never clear plans for someone outside their teams.
 
+**Reports follow the same people.** The hours and people reports
+(`GET /reporting/hours`, `GET /reporting/people`) are open to every role and
+read through the same visibility: an employee gets their own figures alone,
+with no team names, and a filter naming somebody else returns nothing. The
+export and the timeline stay with owners and managers. Opened on 26 October
+2026 for My time (Phase 35); the employee's own report was Q11 in the business
+reference.
+
 ### 3.8 Delegation summary
 
 The Owner keeps: structure, role grants, moving people, and everything a manager
@@ -303,9 +311,7 @@ company-wide for managers, which is intended rather than a defect.
 
 ## 6. Open decisions
 
-Visible and deliberately unanswered. P5 is part of the improvement roadmap in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §7; the
-others wait for a real need.
+Visible and deliberately unanswered; each waits for a real need.
 
 - **P1 — Multi-team membership.** For now one person belongs to one team.
   Allowing several raises: do both managers see them, and who may edit their
@@ -315,9 +321,12 @@ others wait for a real need.
   *Deferred by decision.*
 - **P4 — Should time visibility be bounded by membership dates?** Recommend no
   while §3.3 holds; revisit if transfers become common.
-- **P5 — Should an employee see their own team and teammates?** Today they see
-  neither — not their team's name, its members, nor what projects anyone else is
-  on. Whether they should, and how much, is open.
+- **P5 — Should an employee see their own team and teammates?** *Answered 24
+  October 2026: no.* Who is in a team, who manages it and who is away belong to
+  an HR product's directory, outside WorkTrack's boundary
+  ([`business_architecture_docs.md`](./business_architecture_docs.md) §1). An
+  employee sees their own time and their own month, and none of anyone else's.
+  Revisit only together with the HR product.
 - **P7 — What happens to a team when its only manager leaves?** Still open. Scope
   D settled the neighbouring case only: an invitation sent by a manager who has
   since stopped leading the team still creates the membership.

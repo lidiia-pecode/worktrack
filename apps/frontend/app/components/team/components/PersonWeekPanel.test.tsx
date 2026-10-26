@@ -80,6 +80,7 @@ const row = (status = UserStatus.ACTIVE): TeamSummaryRow => ({
   nonBillableMinutes: 0,
   expectedMinutes: 2400,
   expectedToDateMinutes: 960,
+  expectedByDate: [],
   days: [],
 });
 
@@ -135,7 +136,10 @@ const renderPanel = ({
   status = UserStatus.ACTIVE,
   absencesByDate = {},
   isLocked = () => false,
+  // The week's last day, so every day of it has happened.
+  todayIso = "2026-10-25",
 }: {
+  todayIso?: string;
   status?: UserStatus;
   absencesByDate?: Record<string, Absence>;
   isLocked?: (date: string) => boolean;
@@ -146,7 +150,7 @@ const renderPanel = ({
       viewerId="viewer-1"
       weekDates={WEEK_DATES}
       weekLabel="19 Oct – 25 Oct, 2026"
-      todayIso="2026-10-20"
+      todayIso={todayIso}
       canWrite
       isLocked={isLocked}
       isEditable={(date) => !isLocked(date)}
@@ -297,5 +301,16 @@ describe("PersonWeekPanel", () => {
     expect(
       screen.getByRole("dialog", { name: "Time entry form" }),
     ).toBeInTheDocument();
+  });
+
+  it("offers no new entry on a day that hasn't happened yet", () => {
+    renderPanel({ todayIso: "2026-10-21" });
+
+    expect(
+      within(dayOf("Wed")).getByRole("button", { name: /Log time on/ }),
+    ).toBeInTheDocument();
+    expect(
+      within(dayOf("Thu")).queryByRole("button", { name: /Log time on/ }),
+    ).not.toBeInTheDocument();
   });
 });

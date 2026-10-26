@@ -608,6 +608,19 @@ describe('TimeLogsService write scope', () => {
       expect(rows[0].minutes).toBe(60);
     });
 
+    it("gives each row every day's expected minutes, adding up to the week", async () => {
+      const { rows } = await service.getTeamSummary(
+        { dateFrom: '2026-02-09', dateTo: '2026-02-15' },
+        loneManager,
+      );
+      const [row] = rows;
+
+      expect(row.expectedByDate).toHaveLength(7);
+      expect(
+        row.expectedByDate.reduce((sum, day) => sum + day.minutes, 0),
+      ).toBe(row.expectedMinutes);
+    });
+
     it('narrows to one person, within the people the caller sees', async () => {
       await existingLogFor(member.id);
       await existingLogFor(loneManager.id);
@@ -684,6 +697,46 @@ describe('TimeLogsService write scope', () => {
         expect.objectContaining({ date: DATE, minutes: 60 }),
       ]);
       expect(summary.minutes).toBe(60);
+    });
+  });
+
+  describe("a day that hasn't happened yet", () => {
+    // The test company is on UTC, so its today is the UTC date.
+    const today = () => new Date().toISOString().slice(0, 10);
+    const tomorrow = () =>
+      new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+    it('accepts an entry for today', async () => {
+      await expect(
+        service.create(logFor(member.id, today()), member),
+      ).resolves.toBeDefined();
+    });
+
+    it('refuses an entry for tomorrow, for every role', async () => {
+      for (const caller of [member, manager, owner]) {
+        await expect(
+          service.create(logFor(member.id, tomorrow()), caller),
+        ).rejects.toThrow(/hasn't happened yet/);
+      }
+    });
+
+    it('refuses moving an entry to tomorrow', async () => {
+      const id = await existingLogFor(member.id);
+
+      await expect(
+        service.update(id, { date: tomorrow() }, member),
+      ).rejects.toThrow(/hasn't happened yet/);
+    });
+
+    it('lets an entry already in the future be moved back, but not changed where it is', async () => {
+      const id = await existingLogFor(member.id, tomorrow());
+
+      await expect(service.update(id, { minutes: 90 }, member)).rejects.toThrow(
+        /hasn't happened yet/,
+      );
+      await expect(
+        service.update(id, { date: today() }, member),
+      ).resolves.toMatchObject({ date: today() });
     });
   });
 

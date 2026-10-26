@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { useRef, useState } from "react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { TimePicker } from "./TimePicker";
 
@@ -17,6 +17,61 @@ const Picker = ({ initialMinutes }: { initialMinutes: number }) => {
       onMinutesChange={setMinutes}
     />
   );
+};
+
+/**
+ * The picker outside its form, as in the time form's header. The form reads
+ * the values the moment they change, as react-hook-form's `setValue` does.
+ */
+const PickerInDialog = ({ onSave }: { onSave: (saved: string) => void }) => {
+  const [hours, setHours] = useState(1);
+  const [minutes, setMinutes] = useState(30);
+  const values = useRef({ hours: 1, minutes: 30 });
+
+  return (
+    <div
+      role="dialog"
+      onKeyDown={(e) => e.key === "Escape" && onSave("closed")}
+    >
+      <TimePicker
+        hours={hours}
+        minutes={minutes}
+        onHoursChange={(value) => {
+          values.current.hours = value;
+          setHours(value);
+        }}
+        onMinutesChange={(value) => {
+          values.current.minutes = value;
+          setMinutes(value);
+        }}
+        formId="duration-form"
+      />
+      <form
+        id="duration-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSave(`${values.current.hours}h ${values.current.minutes}m`);
+        }}
+      />
+      <button type="submit" form="duration-form">
+        Save
+      </button>
+    </div>
+  );
+};
+
+/**
+ * Types into a field the way a person does: the field selects its text on the
+ * next frame after focus, and what is typed then replaces it.
+ */
+const typeInto = async (
+  user: ReturnType<typeof userEvent.setup>,
+  name: string,
+  text: string,
+) => {
+  await user.click(screen.getByRole("spinbutton", { name }));
+  await act(() => new Promise((resolve) => requestAnimationFrame(resolve)));
+  await user.keyboard(text);
 };
 
 const shown = () =>
@@ -60,5 +115,29 @@ describe("TimePicker", () => {
     expect(
       screen.getByRole("button", { name: "Increase: Minutes" }),
     ).toBeDisabled();
+  });
+
+  it("saves the form on Enter, with the value just typed", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<PickerInDialog onSave={onSave} />);
+
+    await typeInto(user, "Minutes", "45{Enter}");
+
+    expect(onSave).toHaveBeenCalledWith("1h 45m");
+  });
+
+  it("undoes the typing on Escape without closing the dialog, and closes it with nothing typed", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn();
+    render(<PickerInDialog onSave={onSave} />);
+
+    await typeInto(user, "Hours", "7{Escape}");
+    expect(shown()).toBe("01:30");
+    expect(onSave).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("spinbutton", { name: "Hours" }));
+    await user.keyboard("{Escape}");
+    expect(onSave).toHaveBeenCalledWith("closed");
   });
 });

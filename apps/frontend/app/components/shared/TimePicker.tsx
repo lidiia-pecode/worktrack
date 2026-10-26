@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
@@ -13,6 +13,8 @@ type TimePickerProps = {
   className?: string;
   error?: boolean;
   minuteStep?: number;
+  /** The form Enter saves, through its submit button. */
+  formId?: string;
   /** Names the pair where no visible label does, e.g. in a row of controls. */
   "aria-label"?: string;
 };
@@ -32,6 +34,7 @@ export const TimePicker = ({
   className,
   error,
   minuteStep = 5,
+  formId,
   "aria-label": ariaLabel,
 }: TimePickerProps) => {
   const total = hours * 60 + minutes;
@@ -46,6 +49,7 @@ export const TimePicker = ({
   const fieldProps = {
     canIncrease: total < MAX_MINUTES,
     canDecrease: total > 0,
+    formId,
   };
 
   return (
@@ -96,6 +100,7 @@ type TimeFieldProps = {
   max: number;
   canIncrease: boolean;
   canDecrease: boolean;
+  formId?: string;
   onStep: (direction: 1 | -1) => void;
   onChange: (value: number) => void;
 };
@@ -106,13 +111,17 @@ const TimeField = ({
   max,
   canIncrease,
   canDecrease,
+  formId,
   onStep,
   onChange,
 }: TimeFieldProps) => {
   // What is typed, until the field commits it on blur.
   const [draft, setDraft] = useState<string | null>(null);
+  // Escape blurs without committing what was typed.
+  const isCancelling = useRef(false);
 
-  const displayValue = draft ?? value.toString().padStart(2, "0");
+  const shownValue = value.toString().padStart(2, "0");
+  const displayValue = draft ?? shownValue;
 
   // Drops the draft, so the field shows the stepped value and commits that.
   const step = (direction: 1 | -1) => {
@@ -144,12 +153,38 @@ const TimeField = ({
           const digits = e.target.value.replace(/\D/g, "").slice(-2);
           setDraft(digits);
         }}
-        onBlur={(e) => commit(e.target.value)}
+        onBlur={(e) => {
+          if (isCancelling.current) {
+            isCancelling.current = false;
+            setDraft(null);
+            return;
+          }
+          commit(e.target.value);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
-            e.currentTarget.blur();
-          } else if (e.key === "Escape") {
-            setDraft(null);
+            e.preventDefault();
+            if (!formId) {
+              e.currentTarget.blur();
+              return;
+            }
+            commit(e.currentTarget.value);
+            // Pressing the form's own button, so a disabled or busy save
+            // stays as it is, as with a click.
+            document
+              .querySelector<HTMLButtonElement>(
+                `button[type="submit"][form="${formId}"]`,
+              )
+              ?.click();
+          } else if (
+            e.key === "Escape" &&
+            draft !== null &&
+            draft !== shownValue
+          ) {
+            // Undoes the typing only; with nothing typed, Escape reaches the
+            // dialog as usual.
+            e.stopPropagation();
+            isCancelling.current = true;
             e.currentTarget.blur();
           } else if (e.key === "ArrowUp" && canIncrease) {
             e.preventDefault();

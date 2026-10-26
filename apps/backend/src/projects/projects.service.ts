@@ -33,6 +33,7 @@ import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 /**
  * What a project offers people to log against. A removed link is kept for the
@@ -420,8 +421,8 @@ export class ProjectsService {
     const [results, count] = await qb
       .orderBy('project.createdAt', 'DESC')
       .addOrderBy('project.id', 'DESC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results: results.map(withOfferedActivities), count };
@@ -731,8 +732,8 @@ export class ProjectsService {
       })
       .orderBy('project.name', 'ASC')
       .addOrderBy('activity.name', 'ASC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };
@@ -753,8 +754,8 @@ export class ProjectsService {
     }
 
     const [results, count] = await this.scopedMembersQuery(projectId, user)
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };

@@ -65,7 +65,6 @@ export class ReportingController {
   // ==========================================
 
   @Get('hours')
-  @Role(UserRole.OWNER, UserRole.MANAGER)
   getHoursReport(
     @CurrentUser() user: AuthUser,
     @Query() query: HoursReportQuery,

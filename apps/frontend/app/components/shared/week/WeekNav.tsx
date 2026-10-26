@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, Undo2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
 import {
   addWeeks,
   companyToday,
+  formatShortWeekRangeLabel,
   formatWeekRangeLabel,
   getWeekStart,
   isSameDay,
@@ -12,6 +13,7 @@ import {
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
+import { BackToNowButton } from "../buttons/BackToNowButton";
 import { Button } from "@/components/ui/button";
 
 type BackToThisWeekProps = {
@@ -33,15 +35,10 @@ export const BackToThisWeekButton = ({
   if (isCurrentWeek) return null;
 
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="w-auto"
+    <BackToNowButton
+      label="Back to this week"
       onClick={() => onWeekChange(companyToday(timezone))}
-    >
-      <Undo2 className="size-3.5" aria-hidden />
-      Back to this week
-    </Button>
+    />
   );
 };
 
@@ -60,7 +57,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9"
+          className="rounded-none w-9 max-sm:size-10"
           aria-label="Previous week"
           onClick={() => onWeekChange(addWeeks(weekStart, -1))}
         >
@@ -69,7 +66,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
         <Button
           variant="ghost"
           size="iconSm"
-          className="rounded-none w-9 border-0 border-l border-border"
+          className="rounded-none w-9 border-0 border-l border-border max-sm:size-10"
           aria-label="Next week"
           onClick={() => onWeekChange(addWeeks(weekStart, 1))}
         >
@@ -84,14 +81,19 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition max-sm:h-10"
         >
           <CalendarDays
             size={15}
-            className="text-muted-foreground"
+            className="text-muted-foreground max-sm:hidden"
             aria-hidden
           />
-          {formatWeekRangeLabel(weekStart)}
+          <span className="max-sm:hidden">
+            {formatWeekRangeLabel(weekStart)}
+          </span>
+          <span className="sm:hidden">
+            {formatShortWeekRangeLabel(weekStart)}
+          </span>
         </button>
 
         {calendarOpen && (

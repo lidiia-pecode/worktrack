@@ -4,8 +4,13 @@ import { PageHeader } from "@/app/components/shared/PageHeader";
 import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 import { ManagerWelcome } from "@/app/components/team/components/ManagerWelcome";
 
-export default async function TeamPage() {
+type TeamPageProps = {
+  searchParams: Promise<{ week?: string }>;
+};
+
+export default async function TeamPage({ searchParams }: TeamPageProps) {
   const user = await requireManagerAccess();
+  const { week } = await searchParams;
 
   return (
     <>
@@ -15,7 +20,13 @@ export default async function TeamPage() {
         <ManagerWelcome userId={user.id} firstName={user.firstName} />
       )}
 
-      <TeamTimeView role={user.role} viewerId={user.id} />
+      <TeamTimeView
+        // A new link starts from its own week, even while on Team time.
+        key={week}
+        role={user.role}
+        viewerId={user.id}
+        startingDay={week}
+      />
     </>
   );
 }

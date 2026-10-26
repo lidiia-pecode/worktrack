@@ -421,6 +421,7 @@ export const PlanningDayModal = ({
                   hours={Number(hours)}
                   minutes={Number(minutes)}
                   minuteStep={MINUTE_STEP}
+                  formId={FORM_ID}
                   onHoursChange={(value) =>
                     setValue("hours", value, { shouldDirty: true })
                   }

@@ -1,8 +1,5 @@
-import { TimeLog } from "@/types";
-
-export interface Segment {
-  timelog: TimeLog;
+export interface Segment<T> {
+  item: T;
   offsetTop: number;
   height: number;
-  overtimeHeight: number;
 }

@@ -1,12 +1,6 @@
 import { Lock } from "lucide-react";
 
-import {
-  formatDuration,
-  formatWeekdayLabel,
-  isWeekend,
-} from "@/lib/utils/date";
-
-import { WEEKEND_FILL } from "../../timesheet/consts";
+import { formatDuration, formatWeekdayLabel } from "@/lib/utils/date";
 
 type WeekHeaderDayProps = {
   date: Date;
@@ -23,7 +17,7 @@ export const WeekHeaderDay = ({
   targetMinutes,
   isLocked = false,
 }: WeekHeaderDayProps) => {
-  const weekend = isWeekend(date);
+  // A weekend expects nothing, so any time on it is over.
   const isOverTarget =
     targetMinutes !== undefined && totalMinutes > targetMinutes;
 
@@ -32,7 +26,6 @@ export const WeekHeaderDay = ({
       className={`
         p-2 flex flex-col md:flex-row gap-2 justify-between
         border-r border-border/60 last:border-r-0
-        ${weekend ? WEEKEND_FILL : ""}
       `}
     >
       <div className="flex gap-2 items-baseline">

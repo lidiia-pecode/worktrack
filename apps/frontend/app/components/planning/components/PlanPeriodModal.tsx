@@ -334,6 +334,7 @@ export const PlanPeriodModal = ({
                       hours={Number(chosen[index]?.hours ?? 0)}
                       minutes={Number(chosen[index]?.minutes ?? 0)}
                       minuteStep={MINUTE_STEP}
+                      formId={FORM_ID}
                       onHoursChange={(value) =>
                         setValue(`projects.${index}.hours`, value, {
                           shouldDirty: true,

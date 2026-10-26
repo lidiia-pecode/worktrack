@@ -15,7 +15,7 @@ const labelsOf = (groups: NavigationGroup[]) =>
     items: group.items.map((item) => item.label),
   }));
 
-const WORK = ["Team time", "Timesheet", "Planning", "Reports"];
+const WORK = ["Team time", "Timesheet", "My time", "Planning", "Reports"];
 const MANAGE = ["Users", "Teams", "Projects", "Activities", "Categories"];
 
 describe("navigationFor", () => {
@@ -33,9 +33,9 @@ describe("navigationFor", () => {
     ]);
   });
 
-  it("gives an employee only the timesheet, with no group label", () => {
+  it("gives an employee their timesheet and their month, with no group label", () => {
     expect(labelsOf(navigationFor(UserRole.EMPLOYEE))).toEqual([
-      { label: undefined, items: ["Timesheet"] },
+      { label: undefined, items: ["Timesheet", "My time"] },
     ]);
   });
 
@@ -57,6 +57,7 @@ describe("isActivePath", () => {
 describe("pageLabelFor", () => {
   it("names the page from the menu, a page under it included", () => {
     expect(pageLabelFor(UserRole.MANAGER, "/planning")).toBe("Planning");
+    expect(pageLabelFor(UserRole.EMPLOYEE, "/my-time")).toBe("My time");
     expect(pageLabelFor(UserRole.OWNER, "/admin/periods")).toBe("Periods");
     expect(pageLabelFor(UserRole.OWNER, "/admin/users/42")).toBe("Users");
   });

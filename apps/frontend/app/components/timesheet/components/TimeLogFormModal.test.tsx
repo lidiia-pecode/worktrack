@@ -100,7 +100,10 @@ const renderForm = () => {
   return { onUpdate, onClose };
 };
 
-const renderNewEntry = (pickerItems: PickerProjectActivity[]) => {
+const renderNewEntry = (
+  pickerItems: PickerProjectActivity[],
+  plannedProjectId?: string,
+) => {
   const onCreate = vi.fn().mockResolvedValue(undefined);
 
   const form = (items: PickerProjectActivity[]) => (
@@ -109,6 +112,7 @@ const renderNewEntry = (pickerItems: PickerProjectActivity[]) => {
       onClose={vi.fn()}
       date="2026-10-14"
       rememberKey={REMEMBER_KEY}
+      plannedProjectId={plannedProjectId}
       pickerItems={items}
       onCreate={onCreate}
       onUpdate={vi.fn()}
@@ -214,6 +218,38 @@ describe("TimeLogFormModal", () => {
       expect(JSON.parse(window.localStorage.getItem(REMEMBER_KEY)!)).toEqual({
         projectId: "project-intranet",
         activityId: "activity-support",
+      });
+    });
+
+    describe("opened from a plan", () => {
+      beforeEach(() =>
+        window.localStorage.setItem(
+          REMEMBER_KEY,
+          JSON.stringify({
+            projectId: "project-website",
+            activityId: "activity-meetings",
+          }),
+        ),
+      );
+
+      it("starts on the plan's project, with its only activity", async () => {
+        renderNewEntry(items, "project-intranet");
+
+        expect(await select("Project")).toHaveTextContent("Intranet");
+        expect(await select("Activity")).toHaveTextContent("Support");
+      });
+
+      it("keeps the activity last logged when it is on the plan's project", async () => {
+        renderNewEntry(items, "project-website");
+
+        expect(await select("Project")).toHaveTextContent("Website");
+        expect(await select("Activity")).toHaveTextContent("Meetings");
+      });
+
+      it("starts on no project when the person has left the planned one", async () => {
+        renderNewEntry(items, "project-left");
+
+        expect(await select("Project")).toHaveTextContent("Select project");
       });
     });
 

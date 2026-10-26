@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/badge";
 
 import { PersonLabel } from "../../shared/PersonLabel";
-import { ABSENCE_PATTERN, WEEKEND_FILL } from "../../timesheet/consts";
+import { ABSENCE_PATTERN, WEEKEND_PATTERN } from "../../timesheet/consts";
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -147,7 +147,7 @@ export const PlanningWeekRow = ({
               key={iso}
               className={cn(
                 "border-r border-border/60 p-3 text-center text-sm text-muted-foreground",
-                WEEKEND_FILL,
+                WEEKEND_PATTERN,
               )}
             >
               -

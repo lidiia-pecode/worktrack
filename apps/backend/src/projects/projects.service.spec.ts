@@ -459,7 +459,7 @@ describe('ProjectsService membership scope', () => {
   });
 
   describe('listUsers', () => {
-    const PAGE = { offset: 0, limit: 50 } as PaginationQuery;
+    const PAGE = Object.assign(new PaginationQuery(), { pageSize: 50 });
 
     it('gives an owner every member', async () => {
       const projectId = await createProject('list owner', [
@@ -515,10 +515,10 @@ describe('ProjectsService membership scope', () => {
       const projectId = await createProject('list namesakes', namesakes);
 
       const pages = await Promise.all(
-        [0, 2, 4].map((offset) =>
+        [1, 2, 3].map((page) =>
           service.listUsers(
             projectId,
-            { offset, limit: 2 } as PaginationQuery,
+            Object.assign(new PaginationQuery(), { page, pageSize: 2 }),
             owner,
           ),
         ),
@@ -530,7 +530,9 @@ describe('ProjectsService membership scope', () => {
   });
 
   describe('a manager as a project member', () => {
-    const PAGE = { offset: 0, limit: 50 } as AssignableActivitiesQuery;
+    const PAGE = Object.assign(new AssignableActivitiesQuery(), {
+      pageSize: 50,
+    });
 
     const loggableProjectIds = async (caller: AuthUser): Promise<string[]> => {
       const { results } = await service.listAssignableActivities(PAGE, caller);

@@ -1,5 +1,6 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { UserStatus } from "./enums";
+import { ExpectedDay } from "./Capacity";
 import { ProjectActivity } from "./ProjectActivities";
 
 /**
@@ -83,6 +84,8 @@ export interface TeamSummaryRow {
   nonBillableMinutes: number;
   expectedMinutes: number;
   expectedToDateMinutes: number;
+  /** Every date of the range, so a day over the person's hours can be marked. */
+  expectedByDate: ExpectedDay[];
   days: TeamSummaryDay[];
 }
 
