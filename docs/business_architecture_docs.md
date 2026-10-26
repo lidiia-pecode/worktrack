@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 24 October 2026.** Phases 0 to 34 in §7 are
+**Last verified against the code: 26 October 2026.** Phases 0 to 35 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -51,6 +51,15 @@ building them here would be scope creep:
   clock-out times.
 - **Not a task tracker.** Projects and activities are the unit of work. There
   are no tickets, tasks or subtasks.
+- **Not an HR system.** People belong to an HR product: the directory and org
+  chart, who reports to whom, leave requests, approvals and balances, a public
+  holiday calendar, attendance and onboarding. WorkTrack owns the work record:
+  hours by project and activity, billable time, contracted capacity, plans,
+  team actuals, reports, the export and locked periods. The two facts expected
+  hours need, days away (D6) and contracted hours, stay plain facts with no
+  balances, approvals or requests, and can come as a feed from the HR product
+  one day. So an employee gets the timesheet and their own month, and nothing
+  about other people (Phase 35).
 
 ### Multi-company
 
@@ -971,6 +980,7 @@ is in its pull request.
 | 32 | Planning a period: a person's cell opens a dialog that plans a month or any range on several projects in one all-or-nothing request, with a server-checked preview of the working days, the absences skipped, what is already planned and every conflict before saving; an absence removes the plans on its days and a plan on an absence day is refused, with old weekend and absence-day plans deleted once; absences opened and added from the Planning grid; a deactivated person's row read-only, the "+" always visible, cells readable to screen readers, the day dialog asking before discarding; one compact time picker and one calendar range field across forms; quiet buttons hovering in the accent tint |
 | 33 | Cross-cutting UI: no visible page headings on the work, Manage and Settings pages, with an `sr-only` h1 kept; the Manage pages' Create beside the search; the page named in the phone header; Periods' lock rule as a note above the list; Planning's plans as project-coloured chips; an absence striped and a weekend flat on every week view, and a deactivated person marked on Team time; `secondary` as the cool accent, with control hovers in it and one warm `muted` opacity per role; week controls of one height, with "Back to this week" beside the week's total |
 | 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual; an owner listed with a plan too; expected hours stopping on the day an account is deactivated, which Deactivate now records |
+| 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1050,11 +1060,12 @@ people, trends over months, a team view for the owner, sensible date presets —
 together with the figures that can mislead today. To be reviewed with the people
 who use the reports before it is scoped.
 
-**Area 7 — The employee's own view.** What an employee can see beyond one week:
-a report of their own hours, how their time and plan compare over longer
-periods, and what they may see of their own team and manager
-([`permission-model.md`](./permission-model.md) P5). Any change to who may see
-what is a permission decision and is settled as one.
+**Area 7 — The employee's own view.** Done by Phase 35, its first and only
+phase by design: an employee has the timesheet and My time, their own month
+from the same figures a manager sees in Reports. What they may see of their
+team and manager ([`permission-model.md`](./permission-model.md) P5) is
+answered no: it is the HR product's directory, outside WorkTrack's boundary
+(§1).
 
 **Area 8 — Whole-product review and finish.** A last pass over every page and
 flow in the product, role by role and on a phone, for consistency, wording and
@@ -1063,11 +1074,10 @@ ready, or not, for the final stage.
 
 **Order.** Area 1 came first, by decision, and Area 2 straight after, because
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
-started. After Phase 33, by decision (21 October 2026), Area 6 comes next,
-starting with its two counting bugs, then Area 7; the rest of Areas 3 and 4,
-the phone layout among it, follows. Area 6 and Area 7 need the most discussion
-before they are scoped. Area 8 closes the stage. A defect that distorts figures can be
-pulled into whichever scope comes first.
+started. After Phase 33, by decision (21 October 2026), Area 6 came next,
+starting with its two counting bugs, then Area 7, done by Phase 35; the rest of
+Areas 3 and 4, the phone layout among it, follows. Area 8 closes the stage. A
+defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
 
@@ -1099,8 +1109,15 @@ need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a dark
 theme, which Area 2's shared tokens have unblocked; per-person working patterns,
 a configurable working week, a versioned company default capacity, a
 configurable grace period and closing a month early; your own list of sessions
-and two-factor sign-in; and the permission questions in
-[`permission-model.md`](./permission-model.md) §6 other than P5.
+and two-factor sign-in; and the open permission questions in
+[`permission-model.md`](./permission-model.md) §6. From Phase 35, by the
+product boundary (§1): a team schedule for employees, their teammates' plans
+and absences (P5, revisited only with the HR product); employees comparing
+hours between people (no action for them, and against D3 and §3.4);
+configurable visibility as Float has it (a code path per choice in every list,
+for a choice nobody has made); and logging straight from the plan or copying a
+day or a week (Area 3, only on evidence; a plan already opens the time form on
+its project).
 
 ---
 

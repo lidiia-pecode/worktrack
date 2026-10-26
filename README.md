@@ -197,15 +197,15 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting with an Excel
-export of hours, and the Manage pages for users, teams, projects, activities and
-categories are implemented, and a new company is guided from sign-up to somebody
-logging time.
+export of hours, each person's own month on My time, and the Manage pages for
+users, teams, projects, activities and categories are implemented, and a new
+company is guided from sign-up to somebody logging time.
 
 The original feature plan is complete. The work ahead improves the product
 itself, area by area: first run and onboarding, the application shell and shared
 UI, administration and settings, everyday time entry, team oversight and
-planning, and reporting have each had a pass; the employee's own view and a
-whole-product review remain. A production launch comes last, once the product
+planning, reporting and the employee's own view have each had a pass; a
+whole-product review remains. A production launch comes last, once the product
 is ready. The roadmap, test coverage and engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
 and §7.
