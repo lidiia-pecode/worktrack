@@ -88,7 +88,6 @@ const startingChoice = (
   plannedProjectId?: string,
 ): EntryChoice => {
   const remembered = readLastEntryChoice(rememberKey);
-  // Only a pair the person can still log on.
   const rememberedChoice =
     remembered && findPickerItem(pickerItems, remembered) ? remembered : null;
 

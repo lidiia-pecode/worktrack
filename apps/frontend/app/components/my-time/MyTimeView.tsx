@@ -25,7 +25,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
-import { BackToNowButton } from "../shared/week/WeekNav";
+import { BackToNowButton } from "../shared/buttons/BackToNowButton";
 import { ReportBar } from "../reports/components/ReportBar";
 import { ReportMonthStepper } from "../reports/components/ReportMonthStepper";
 import { PersonDayGrid } from "../reports/components/PersonDayGrid";
@@ -36,7 +36,6 @@ import {
 
 const weekOnTimesheet = (date: string) => `/timesheet?week=${date}`;
 
-/** One card of the month, headed like the Reports cards. */
 const MonthCard = ({
   title,
   note,
@@ -76,7 +75,6 @@ const balanceOf = (
   return "Everything expected is logged";
 };
 
-/** The month's one figure: logged against expected, large, with its bar. */
 const MonthTotal = ({
   person,
   isOpen,
@@ -184,7 +182,6 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
         )}
         aria-busy={isUpdating}
       >
-        {/* The month and "expected" are already said, so no heading. */}
         <Card as="section" aria-label="Your month" className="p-6">
           <MonthTotal person={ownRow} isOpen={isOpen} />
           <div className="mt-5 border-t border-border pt-4">

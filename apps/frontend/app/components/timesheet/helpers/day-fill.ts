@@ -14,9 +14,9 @@ type DayFillInput = {
 };
 
 /**
- * How a whole day is filled where it is one cell or one block: a day off's
- * stripes, a weekend's (amber once it has time, all of it extra), or on a
- * working day solid amber when its time is past the person's figure.
+ * How a whole day is filled: a day off's stripes, a weekend's (amber once it
+ * has time, all of it extra), or on a working day solid amber when its time is
+ * past the person's figure.
  */
 export const dayFill = ({
   isAbsent,
@@ -32,6 +32,5 @@ export const dayFill = ({
   return undefined;
 };
 
-/** Whether a fill from `dayFill` marks time past what was expected. */
 export const isOverFill = (fill: string | undefined) =>
   fill === EXCESS_FILL || fill === WEEKEND_EXTRA_PATTERN;

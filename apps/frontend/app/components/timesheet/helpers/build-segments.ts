@@ -4,10 +4,7 @@ export const MIN_SEGMENT_HEIGHT = 6;
 export const SEGMENT_GAP_PX = 3;
 export const STACK_TOP_INSET_PX = 3;
 
-/**
- * Stacks a day's blocks from the top, each as tall as its minutes on the
- * grid's scale: logged entries, or the plans shown before anything is logged.
- */
+/** Stacks a day's entries or plans from the top, each as tall as its minutes. */
 export function stackSegments<T>(
   items: T[],
   minutesOf: (item: T) => number,

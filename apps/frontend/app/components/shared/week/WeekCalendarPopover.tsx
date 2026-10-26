@@ -19,7 +19,6 @@ export const WeekCalendarPopover = ({
 }: Props) => {
   const { timezone, weekStartDay } = useWorkSettings();
   const ref = useRef<HTMLDivElement>(null);
-  // The week under the pointer or focus is drawn as the one a click picks.
   const [hoveredDay, setHoveredDay] = useState<Date | null>(null);
   const shownWeekStart = hoveredDay
     ? getWeekStart(hoveredDay, weekStartDay)

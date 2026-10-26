@@ -5,7 +5,6 @@ import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 import { ManagerWelcome } from "@/app/components/team/components/ManagerWelcome";
 
 type TeamPageProps = {
-  /** `week`: any day of the week to open, as on the timesheet. */
   searchParams: Promise<{ week?: string }>;
 };
 

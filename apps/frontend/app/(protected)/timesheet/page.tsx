@@ -6,7 +6,6 @@ import { WeekTimesheet } from "@/app/components/timesheet/WeekTimesheet";
 import { UserRole } from "@/types/enums";
 
 type TimesheetPageProps = {
-  /** `week`: any day of the week to open, as My time links to it. */
   searchParams: Promise<{ week?: string }>;
 };
 

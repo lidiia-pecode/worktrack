@@ -18,7 +18,7 @@ describe("WeekSummary", () => {
         weekendMinutes={10 * HOUR}
       />,
     );
-    const summary = screen.getByRole("button", { name: /This week/ });
+    const summary = screen.getByRole("button", { name: /week's breakdown/ });
     expect(summary).toHaveTextContent("37h 30m / 32h");
     expect(summary).toHaveTextContent("+5h 30m");
 
@@ -43,8 +43,8 @@ describe("WeekSummary", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /This week/ })).toHaveTextContent(
-      "Complete",
-    );
+    expect(
+      screen.getByRole("button", { name: /week's breakdown/ }),
+    ).toHaveTextContent("Complete");
   });
 });

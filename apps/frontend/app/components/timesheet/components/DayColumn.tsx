@@ -13,15 +13,10 @@ import {
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import { stackSegments } from "../helpers/build-segments";
+import { dayFill } from "../helpers/day-fill";
 import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
-import {
-  ABSENCE_PATTERN,
-  DAY_COLUMN_CLASS,
-  EXCESS_FILL,
-  WEEKEND_EXTRA_PATTERN,
-  WEEKEND_PATTERN,
-} from "../consts";
+import { DAY_COLUMN_CLASS, EXCESS_FILL } from "../consts";
 import { Badge } from "@/components/ui/badge";
 
 type Props = {
@@ -66,9 +61,8 @@ export const DayColumn = ({
   } | null>(null);
 
   const weekend = isWeekend(date);
-  // A day that expects nothing, such as a weekend or an absence, has no line
-  // and no excess fill (a weekend's time shows in its stripes instead); nothing
-  // is over until the figure has loaded.
+  // A day that expects nothing (a weekend, an absence) has no line or excess
+  // fill; nothing is over until the figure has loaded.
   const hasTargetLine = expectedMinutes !== undefined && expectedMinutes > 0;
   const overTargetFrom = hasTargetLine ? expectedMinutes : Infinity;
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
@@ -109,8 +103,7 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // Time cannot be logged on a day an absence covers, so the day opens the
-  // absence instead; otherwise a new entry, where time can be logged.
+  // A day an absence covers opens the absence instead of a new entry.
   const opensDay = isEditable && (Boolean(absence) || canLogTime);
 
   const openDay = () => {
@@ -147,12 +140,13 @@ export const DayColumn = ({
         opensDay &&
           "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
         opensDay && !absence && !weekend && "hover:bg-muted/10",
-        absence && ABSENCE_PATTERN,
-        // Time on a weekend is all extra, so its stripes turn amber.
-        !absence &&
-          weekend &&
-          (totalMinutes > 0 ? WEEKEND_EXTRA_PATTERN : WEEKEND_PATTERN),
-        !absence && !weekend && (isLocked ? "bg-muted/20" : "bg-card"),
+        // A working day's excess is drawn on the grid's scale below, so the
+        // column itself takes no figure.
+        dayFill({
+          isAbsent: Boolean(absence),
+          isWeekend: weekend,
+          minutes: totalMinutes,
+        }) ?? (isLocked ? "bg-muted/20" : "bg-card"),
       )}
     >
       {absence && (
@@ -201,7 +195,6 @@ export const DayColumn = ({
         <>
           <div
             className={`pointer-events-none absolute left-0 right-0 ${EXCESS_FILL}`}
-            // To the column's foot, as a weekend's stripes run.
             style={{ top: targetLineOffset, bottom: 0 }}
           />
 

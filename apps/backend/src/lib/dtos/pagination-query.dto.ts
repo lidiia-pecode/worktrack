@@ -21,9 +21,8 @@ export class PaginationQuery {
 }
 
 /**
- * The rows before the requested page. A function rather than a getter on the
- * query, so the query holds data only and a query string naming `offset` or
- * `limit` is an unknown parameter the validation pipe refuses (400).
+ * The rows before the requested page. Not a getter, so `?offset=` stays an
+ * unknown parameter the validation pipe refuses with a 400.
  */
 export const pageOffset = ({ page, pageSize }: PaginationQuery) =>
   (page - 1) * pageSize;

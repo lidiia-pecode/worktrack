@@ -268,7 +268,7 @@ export const PersonWeekPanel = ({
                 isAbsenceLocked={isAbsenceLocked}
                 plannedEntries={plannedByDate[iso]}
                 expectedMinutes={projectId ? undefined : expectedByDate[iso]}
-                // Time is logged only for a day that has happened (Decision 13).
+                // Time is logged only for a day that has happened.
                 onAdd={
                   canWriteDay && !absence && iso <= todayIso
                     ? () => openCreate(date)

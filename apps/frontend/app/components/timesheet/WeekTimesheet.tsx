@@ -50,7 +50,6 @@ import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 type ModalState = {
   date: string;
   timelog?: TimeLog;
-  /** A new entry opened from a plan starts on its project. */
   plannedProjectId?: string;
 };
 
@@ -222,8 +221,6 @@ export const WeekTimesheet = ({
     };
   }, [weekDates, timelogsByDate]);
 
-  // What the breakdown explains: the days off that lower the week's figure,
-  // and how much of the time is on the weekend, where all of it is extra.
   const daysOff = weekDates
     .filter((date) => !isWeekend(date) && absencesByDate[toISODate(date)])
     .map(
@@ -415,7 +412,6 @@ export const WeekTimesheet = ({
 
       {welcome && <div className="mb-6 empty:hidden">{welcome}</div>}
 
-      {/* One row where there is room; below it the figures take their own. */}
       <div className="@container border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-5">
           <div className="flex items-center gap-2">
@@ -505,7 +501,7 @@ export const WeekTimesheet = ({
                       expectedMinutes={expectedByDate[iso]}
                       isLocked={isLocked(iso)}
                       isEditable={isEditable(iso) && !isAbsenceLocked}
-                      // Time is logged only for a day that has happened (Decision 13).
+                      // Time is logged only for a day that has happened.
                       canLogTime={iso <= todayIso}
                       onAddClick={openCreate}
                       onAbsenceClick={openAbsence}

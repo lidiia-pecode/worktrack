@@ -7,17 +7,12 @@ import { Segment } from "../types";
 
 type PlannedSegmentProps = {
   segment: Segment<PlanningEntry>;
-  /** E.g. "Monday, October 19", for the button's name. */
   dayLabel: string;
   /** Logs time on its project; without it the plan is only shown. */
   onClick?: (projectId: string) => void;
 };
 
-/**
- * A plan on the day, before anything is logged: a block on the grid's scale in
- * a faint wash of its project's colour with a dashed edge, so it reads as
- * time not yet worked. Opening it logs time on that project.
- */
+/** A plan on a day with nothing logged yet; opening it logs time on its project. */
 export const PlannedSegment = ({
   segment,
   dayLabel,
@@ -41,8 +36,7 @@ export const PlannedSegment = ({
     onClick &&
       "cursor-pointer transition-[filter] hover:brightness-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
   );
-  // The project colours are translucent tokens; a plan takes the same hue,
-  // fainter than an entry, with its edge stronger so it still reads.
+  // Fainter than an entry, so it reads as time not yet worked.
   const style = {
     top: offsetTop,
     height,

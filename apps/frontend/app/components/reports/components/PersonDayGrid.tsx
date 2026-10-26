@@ -54,7 +54,6 @@ type PersonDayGridProps = {
   person: PeopleReportRow;
   range: ReportRange;
   countedUntil: string | null;
-  /** Where a working day with no time leads, when it leads anywhere. */
   dayWithoutTimeHref?: (date: string) => string;
 };
 
@@ -107,10 +106,23 @@ export const PersonDayGrid = ({
     const absence = absenceOn(absences.items, date);
     return absence ? ABSENCE_TYPE_SHORT_LABELS[absence.type] : "Off";
   };
+  const dayValue = (day: ReportDay) => {
+    switch (day.kind) {
+      case "logged":
+        return formatDuration(day.minutes);
+      case "off":
+        return offLabel(day.date);
+      case "withoutTime":
+        return "No time";
+      case "nothingExpected":
+        return "—";
+      case "pending":
+        return day.when === "today" ? "Counts tomorrow" : null;
+    }
+  };
   const weekdays = days.filter((day) => !isWeekend(fromISODate(day.date)));
   const weekendDays = days.filter((day) => isWeekend(fromISODate(day.date)));
 
-  // Only what the grid shows is explained.
   const legend = [
     {
       label: "Logged",
@@ -168,17 +180,7 @@ export const PersonDayGrid = ({
                 )}
               >
                 {day.kind === "withoutTime" && <WarningDot />}
-                {day.kind === "logged"
-                  ? formatDuration(day.minutes)
-                  : day.kind === "off"
-                    ? offLabel(day.date)
-                    : day.kind === "withoutTime"
-                      ? "No time"
-                      : day.kind === "nothingExpected"
-                        ? "—"
-                        : isToday
-                          ? "Counts tomorrow"
-                          : null}
+                {dayValue(day)}
               </span>
             </>
           );

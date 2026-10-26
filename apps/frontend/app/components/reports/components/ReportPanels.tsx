@@ -131,7 +131,7 @@ type PersonFactsProps = {
   withDaysOff?: boolean;
 };
 
-/** Planned, billable and the kinds of time off: what the person's row doesn't say. */
+/** What the person's row doesn't say: planned, billable and the kinds of time off. */
 export const PersonFacts = ({
   person,
   range,
@@ -175,7 +175,6 @@ export const PersonFacts = ({
   );
 };
 
-/** A person's projects, logged against plan. */
 export const PersonProjects = ({
   person,
   range,

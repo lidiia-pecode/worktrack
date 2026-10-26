@@ -24,7 +24,6 @@ type WeekSummaryProps = {
   className?: string;
 };
 
-/** Logged as a share of the bar's scale, billable first, amber past what was expected. */
 const WeekBar = ({
   billableMinutes,
   nonBillableMinutes,
@@ -92,10 +91,7 @@ const Fact = ({
   </div>
 );
 
-/**
- * The week's figures in one control: logged against expected, a short bar and
- * how far past it. It opens the breakdown, so nothing is only on hover.
- */
+/** The week against expected; it opens the breakdown, so nothing is only on hover. */
 export const WeekSummary = ({
   billableMinutes,
   nonBillableMinutes,
@@ -111,7 +107,7 @@ export const WeekSummary = ({
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`This week: ${formatDuration(totalMinutes)} of ${formatDuration(expectedMinutes)} expected. Show the breakdown`}
+        aria-label={`${formatDuration(totalMinutes)} of ${formatDuration(expectedMinutes)} expected. Show the week's breakdown`}
         className={cn(
           "flex h-8 min-w-0 items-center gap-3 rounded-md border border-transparent px-2 text-sm transition-colors hover:border-border hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:border-border data-popup-open:bg-card max-sm:h-10",
           className,
