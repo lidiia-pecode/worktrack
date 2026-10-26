@@ -22,7 +22,13 @@ export const BackToNowButton = ({
   label: string;
   onClick: () => void;
 }) => (
-  <Button variant="secondary" size="sm" className="w-auto" onClick={onClick}>
+  // A brand outline, so the way back stands out from the quiet week controls.
+  <Button
+    variant="outline"
+    size="sm"
+    className="w-auto border-brand text-brand hover:bg-brand-subtle hover:text-brand"
+    onClick={onClick}
+  >
     <Undo2 className="size-3.5" aria-hidden />
     {label}
   </Button>

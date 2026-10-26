@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useMemo, useRef, useState } from "react";
+import { ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -97,7 +97,6 @@ export const WeekTimesheet = ({
     null,
   );
   const [nonWorkDayDate, setNonWorkDayDate] = useState<Date | null>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
 
@@ -501,11 +500,7 @@ export const WeekTimesheet = ({
             ))}
           </div>
 
-          <div
-            ref={scrollRef}
-            className="flex-1"
-            aria-busy={isShowingPreviousWeek}
-          >
+          <div className="flex-1" aria-busy={isShowingPreviousWeek}>
             <div
               className={[
                 "relative transition-opacity",

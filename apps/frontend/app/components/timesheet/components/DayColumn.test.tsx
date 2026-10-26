@@ -17,15 +17,18 @@ const entry: TimeLog = {
   updatedAt: "2026-10-14T09:00:00Z",
 };
 
-const renderDay = (timelogs: TimeLog[]) => (
+const renderDay = (
+  timelogs: TimeLog[],
+  { date = "2026-10-14", expectedMinutes = 480 } = {},
+) => (
   <DayColumn
-    date={new Date("2026-10-14T00:00:00")}
+    date={new Date(`${date}T00:00:00`)}
     timelogs={timelogs}
     plannedEntries={[]}
     isAbsenceLocked={false}
     totalMinutes={timelogs.reduce((sum, log) => sum + log.minutes, 0)}
     pixelsPerMinute={1}
-    expectedMinutes={480}
+    expectedMinutes={expectedMinutes}
     isLocked={false}
     isEditable
     onAddClick={vi.fn()}
@@ -45,5 +48,17 @@ describe("DayColumn", () => {
     rerender(renderDay([]));
 
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("marks time over the day's figure on a working day", () => {
+    render(renderDay([{ ...entry, minutes: 540 }]));
+
+    expect(screen.getByText("+1h")).toBeInTheDocument();
+  });
+
+  it("draws a weekend entry like any other: a day that expects nothing is never over", () => {
+    render(renderDay([entry], { date: "2026-10-17", expectedMinutes: 0 }));
+
+    expect(screen.queryByText(/^\+/)).not.toBeInTheDocument();
   });
 });

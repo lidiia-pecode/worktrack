@@ -336,6 +336,7 @@ export const TimeLogFormModal = ({
               minutes={Number(minutes)}
               onHoursChange={(value) => setDuration("hours", value)}
               onMinutesChange={(value) => setDuration("minutes", value)}
+              formId={FORM_ID}
               error={!!errors.hours}
             />
             {errors.hours && (

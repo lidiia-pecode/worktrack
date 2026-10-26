@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { addDays, companyToday } from "@/lib/utils/date";
+import { useEffect, useRef, useState } from "react";
+import { addDays, companyToday, getWeekStart } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import { MonthCalendar } from "../MonthCalendar";
@@ -17,8 +17,13 @@ export const WeekCalendarPopover = ({
   onSelectWeek,
   onClose,
 }: Props) => {
-  const { timezone } = useWorkSettings();
+  const { timezone, weekStartDay } = useWorkSettings();
   const ref = useRef<HTMLDivElement>(null);
+  // The week under the pointer or focus is drawn as the one a click picks.
+  const [hoveredDay, setHoveredDay] = useState<Date | null>(null);
+  const shownWeekStart = hoveredDay
+    ? getWeekStart(hoveredDay, weekStartDay)
+    : weekStart;
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -49,10 +54,11 @@ export const WeekCalendarPopover = ({
     >
       <MonthCalendar
         initialMonth={weekStart}
-        selection={{ start: weekStart, end: addDays(weekStart, 6) }}
+        selection={{ start: shownWeekStart, end: addDays(shownWeekStart, 6) }}
         selectionLabel="selected week"
         autoFocusDate={weekStart}
         onSelectDay={selectWeek}
+        onHoverDay={setHoveredDay}
       />
 
       <button
@@ -60,7 +66,7 @@ export const WeekCalendarPopover = ({
         onClick={() => selectWeek(companyToday(timezone))}
         className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:underline"
       >
-        Jump to this week
+        Back to this week
       </button>
     </div>
   );

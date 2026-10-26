@@ -869,13 +869,13 @@ an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has fifty-seven Vitest files and 317 tests: its date, month,
+The frontend has fifty-eight Vitest files and 323 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
+person's week panel on Team time, the week a grid shows, the week calendar, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 

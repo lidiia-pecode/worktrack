@@ -61,12 +61,12 @@ export const DayColumn = ({
   } | null>(null);
 
   const weekend = isWeekend(date);
-  // Nothing counts as over the day's figure until it has loaded. A day that
-  // expects nothing, such as a weekend or an absence, has no line.
-  const overTargetFrom = expectedMinutes ?? Infinity;
+  // A day that expects nothing, such as a weekend or an absence, has no line
+  // and nothing on it is over; nor is anything until the figure has loaded.
+  const hasTargetLine = expectedMinutes !== undefined && expectedMinutes > 0;
+  const overTargetFrom = hasTargetLine ? expectedMinutes : Infinity;
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
-  const hasTargetLine = (expectedMinutes ?? 0) > 0;
 
   const targetLineOffset = overTargetFrom * pixelsPerMinute;
 

@@ -24,8 +24,11 @@ export const WeekHeaderDay = ({
   isLocked = false,
 }: WeekHeaderDayProps) => {
   const weekend = isWeekend(date);
+  // A day that expects nothing, such as a weekend, is never over.
   const isOverTarget =
-    targetMinutes !== undefined && totalMinutes > targetMinutes;
+    targetMinutes !== undefined &&
+    targetMinutes > 0 &&
+    totalMinutes > targetMinutes;
 
   return (
     <div
