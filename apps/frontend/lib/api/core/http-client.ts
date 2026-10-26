@@ -4,7 +4,10 @@ import { handleSessionExpired } from "./handle-session-expired";
 import { parseJsonSafe } from "./parse-json-safe";
 import { refreshSession } from "./refresh-session";
 
-let refreshPromise: Promise<boolean> | null = null;
+const UNAUTHORIZED = 401;
+const SERVICE_UNAVAILABLE = 503;
+
+let refreshPromise: Promise<number | null> | null = null;
 
 const readError = (res: Response) => res.json().catch(() => ({}));
 
@@ -24,7 +27,7 @@ export async function authorizedFetch(
 
   if (res.ok) return res;
 
-  if (res.status !== 401) {
+  if (res.status !== UNAUTHORIZED) {
     throw await readError(res);
   }
 
@@ -34,18 +37,27 @@ export async function authorizedFetch(
     });
   }
 
-  const refreshed = await refreshPromise;
+  const refreshStatus = await refreshPromise;
 
-  if (!refreshed) {
+  if (refreshStatus === UNAUTHORIZED) {
     handleSessionExpired();
     throw new Error("SESSION_EXPIRED");
+  }
+
+  // A throttled refresh or an unreachable backend is a failed request, not
+  // an ended session: the person stays signed in and can try again.
+  if (refreshStatus === null || refreshStatus >= 400) {
+    throw {
+      statusCode: refreshStatus ?? SERVICE_UNAVAILABLE,
+      message: "WorkTrack could not be reached. Please try again.",
+    };
   }
 
   const retry = await request();
 
   if (retry.ok) return retry;
 
-  if (retry.status === 401) {
+  if (retry.status === UNAUTHORIZED) {
     handleSessionExpired();
     throw new Error("SESSION_EXPIRED");
   }

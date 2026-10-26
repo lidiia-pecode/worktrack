@@ -26,7 +26,7 @@ export class RefreshStrategy extends PassportStrategy(Strategy, 'jwt-refresh') {
   }
 
   async validate(payload: JwtRefreshPayload): Promise<AuthContext> {
-    if (!payload.sessionId) {
+    if (!payload.sessionId || !payload.id) {
       throw new UnauthorizedException('Invalid token payload');
     }
 

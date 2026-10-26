@@ -14,6 +14,12 @@ export function databaseConnectionOptions(env: ReadEnv) {
     logging: env('NODE_ENV') !== 'production',
     namingStrategy: new SnakeNamingStrategy(),
     ssl: env('DATABASE_SSL') === 'true' ? { rejectUnauthorized: true } : false,
+    // A missing value in a lookup would otherwise drop the condition and match
+    // any row.
+    invalidWhereValuesBehavior: {
+      null: 'throw' as const,
+      undefined: 'throw' as const,
+    },
   };
 
   const url = env('DATABASE_URL');

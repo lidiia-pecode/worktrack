@@ -1,11 +1,12 @@
-export async function refreshSession(): Promise<boolean> {
+/** The refresh route's status, or null when it could not be reached. */
+export async function refreshSession(): Promise<number | null> {
   try {
     const res = await fetch("/api/auth/refresh", {
       method: "POST",
       credentials: "include",
     });
-    return res.ok;
+    return res.status;
   } catch {
-    return false;
+    return null;
   }
 }

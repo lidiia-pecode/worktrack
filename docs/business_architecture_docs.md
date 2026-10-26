@@ -1097,10 +1097,10 @@ decision, and the free development stand is enough.
   sign-in URLs registered. Nothing is copied from the stand.
 - **Migrations as a real release step**, replacing the hand-run step from a
   laptop, which the free tier forces today.
-- **Session handling at the edge** — the `/login` lockout after a deleted
-  session, a throttled refresh signing people out, and the per-client sign-in
-  limit that counts Cloudflare rather than the person are all fixed or settled
-  against the production host.
+- **Session handling at the edge** — the per-client sign-in limit that counts
+  Cloudflare rather than the person, and the client IP and user agent a
+  refresh through the proxy records, are settled against the production host.
+  The sign-outs and the `/login` lockout were fixed in Phase 36.
 - **A release checklist**: environment variables, rollback, and the first
   deployment verified the way the stand's were.
 
