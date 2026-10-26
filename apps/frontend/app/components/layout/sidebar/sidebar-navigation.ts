@@ -1,5 +1,6 @@
 import {
   Activity,
+  CalendarCheck,
   CalendarClock,
   CalendarRange,
   Clock3,
@@ -30,6 +31,7 @@ export type NavigationGroup = {
 
 const teamTime = { label: "Team time", href: "/team", icon: CalendarRange };
 const timesheet = { label: "Timesheet", href: "/timesheet", icon: Clock3 };
+const myTime = { label: "My time", href: "/my-time", icon: CalendarCheck };
 const planning = { label: "Planning", href: "/planning", icon: CalendarClock };
 const reports = { label: "Reports", href: "/reports", icon: FileBarChart };
 
@@ -61,7 +63,7 @@ export const gettingStarted = {
 
 export const navigationFor = (role: UserRole): NavigationGroup[] => {
   if (role === UserRole.EMPLOYEE) {
-    return [{ items: [timesheet] }];
+    return [{ items: [timesheet, myTime] }];
   }
 
   const manageItems = [users, teams, projects, activities, categories];
@@ -71,7 +73,7 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
   }
 
   return [
-    { label: "Work", items: [teamTime, timesheet, planning, reports] },
+    { label: "Work", items: [teamTime, timesheet, myTime, planning, reports] },
     { label: "Manage", items: manageItems },
   ];
 };

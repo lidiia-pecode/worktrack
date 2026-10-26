@@ -1,7 +1,37 @@
-import { PeopleReportRow } from "@/types";
+import { PeopleReportRow, ReportCoverage } from "@/types";
 
-import { addDays, fromISODate, isWeekend, toISODate } from "./date";
+import {
+  addDays,
+  formatDayMonthLabel,
+  formatReportHours,
+  fromISODate,
+  isWeekend,
+  toISODate,
+} from "./date";
 import { countLabel } from "./text";
+
+/**
+ * One line saying how far the month is counted, whether it can still change,
+ * and whose figures they are: "Up to Oct 23 · open for edits · your teams".
+ */
+export const reportScope = (
+  { countedUntil, isProvisional }: ReportCoverage,
+  isManager: boolean,
+) => {
+  const state = isProvisional ? "open for edits" : "locked";
+  const parts = countedUntil
+    ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
+    : [isProvisional ? "Open for edits" : "Locked"];
+  if (isManager) parts.push("your teams");
+
+  return parts.join(" · ");
+};
+
+/** "96h of 120h", or the hours alone when nothing was expected. */
+export const againstExpected = (logged: number, expected: number) =>
+  expected > 0
+    ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
+    : formatReportHours(logged);
 
 export const daysOffLabel = (days: number) =>
   `${countLabel(days, "day", "days")} off`;

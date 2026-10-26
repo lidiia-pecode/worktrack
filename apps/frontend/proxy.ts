@@ -81,6 +81,7 @@ function handleRouteGuards(
     pathname.startsWith("/planning") ||
     pathname.startsWith("/reports") ||
     pathname.startsWith("/timesheet") ||
+    pathname.startsWith("/my-time") ||
     pathname.startsWith("/settings") ||
     pathname.startsWith("/onboarding") ||
     pathname.startsWith("/getting-started");

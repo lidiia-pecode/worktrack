@@ -4,8 +4,8 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
-import { formatReportHours } from "@/lib/utils/date";
 import {
+  againstExpected,
   daysOffLabel,
   groupPeopleByTeam,
   PEOPLE_SHOWN_OPEN,
@@ -18,12 +18,6 @@ import { Card } from "@/components/ui/card";
 
 import { ReportBar } from "./ReportBar";
 import { AttentionDot, AttentionLegend, ReportRow } from "./ReportRow";
-
-/** "96h of 120h", or the hours alone when nothing was expected. */
-const againstExpected = (logged: number, expected: number) =>
-  expected > 0
-    ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
-    : formatReportHours(logged);
 
 const PersonRow = ({
   person,

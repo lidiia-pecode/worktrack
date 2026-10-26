@@ -1,8 +1,10 @@
 "use client";
 
 import { ReactNode, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 
 import {
+  ArrowRight,
   CalendarOff,
   Check,
   Clock,
@@ -43,7 +45,7 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { AbsenceFormModal } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
@@ -71,10 +73,16 @@ const noActivitiesMessage = (projects: { name: string }[]) =>
 
 type WeekTimesheetProps = {
   userId: string;
+  /** A day whose week to open first, from a link. */
+  startingDay?: string;
   welcome?: ReactNode;
 };
 
-export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
+export const WeekTimesheet = ({
+  userId,
+  startingDay,
+  welcome,
+}: WeekTimesheetProps) => {
   const {
     dailyTargetMinutes,
     timezone,
@@ -83,7 +91,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { weekStart, showWeekOf } = useShownWeek();
+  const { weekStart, showWeekOf } = useShownWeek(startingDay);
   const [modalState, setModalState] = useState<ModalState | null>(null);
   const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(
     null,
@@ -434,6 +442,14 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           {!hasError && (
             <div className="flex flex-wrap items-center gap-3">
               {addAbsenceButton}
+
+              <Link
+                href="/my-time"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+              >
+                Your month
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
 
               {graceMonth?.editableUntil && (
                 <p className="flex items-center gap-1.5 text-xs text-muted-foreground">

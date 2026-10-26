@@ -42,4 +42,16 @@ describe("useShownWeek", () => {
 
     expect(toISODate(result.current.weekStart)).toBe("2026-09-07");
   });
+
+  it("starts on the week of a day from a link, and ignores one that isn't a date", () => {
+    vi.useFakeTimers({ now: SUNDAY_EVENING });
+
+    const linked = renderHook(() => useShownWeek("2026-09-09"));
+    expect(toISODate(linked.result.current.weekStart)).toBe("2026-09-07");
+
+    for (const day of ["next-week", "2026-13-40"]) {
+      const { result } = renderHook(() => useShownWeek(day));
+      expect(toISODate(result.current.weekStart)).toBe("2026-10-12");
+    }
+  });
 });

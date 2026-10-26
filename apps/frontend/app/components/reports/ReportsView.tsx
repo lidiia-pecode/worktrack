@@ -3,19 +3,15 @@
 import { useEffect, useState } from "react";
 import { FileBarChart } from "lucide-react";
 
-import { ReportCoverage, ReportRange } from "@/types";
+import { ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import {
-  formatDayMonthLabel,
-  getMonthRange,
-  todayISODate,
-  toMonthKey,
-} from "@/lib/utils/date";
+import { reportScope } from "@/lib/utils/report-overview";
+import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
@@ -34,23 +30,6 @@ import { PeopleCard } from "./components/PeopleCard";
 
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
-
-/**
- * One line saying how far the month is counted, whether it can still change,
- * and whose figures they are: "Up to Oct 23 · open for edits · your teams".
- */
-const reportScope = (
-  { countedUntil, isProvisional }: ReportCoverage,
-  isManager: boolean,
-) => {
-  const state = isProvisional ? "open for edits" : "locked";
-  const parts = countedUntil
-    ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
-    : [isProvisional ? "Open for edits" : "Locked"];
-  if (isManager) parts.push("your teams");
-
-  return parts.join(" · ");
-};
 
 export const ReportsView = () => {
   const { company } = useCompany();

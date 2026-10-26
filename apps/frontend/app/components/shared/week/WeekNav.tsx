@@ -14,6 +14,20 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { Button } from "@/components/ui/button";
 
+/** The way back to the current week or month from another one. */
+export const BackToNowButton = ({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) => (
+  <Button variant="secondary" size="sm" className="w-auto" onClick={onClick}>
+    <Undo2 className="size-3.5" aria-hidden />
+    {label}
+  </Button>
+);
+
 type BackToThisWeekProps = {
   weekStart: Date;
   onWeekChange: (date: Date) => void;
@@ -33,15 +47,10 @@ export const BackToThisWeekButton = ({
   if (isCurrentWeek) return null;
 
   return (
-    <Button
-      variant="secondary"
-      size="sm"
-      className="w-auto"
+    <BackToNowButton
+      label="Back to this week"
       onClick={() => onWeekChange(companyToday(timezone))}
-    >
-      <Undo2 className="size-3.5" aria-hidden />
-      Back to this week
-    </Button>
+    />
   );
 };
 

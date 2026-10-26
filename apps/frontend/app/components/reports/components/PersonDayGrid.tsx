@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 
 import { Absence, PeopleReportRow, ReportRange } from "@/types";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
@@ -42,9 +43,10 @@ const dayLabel = (date: string) =>
 
 type PersonDayGridProps = {
   person: PeopleReportRow;
-  absences: ReturnType<typeof useAllAbsencesQuery>;
   range: ReportRange;
   countedUntil: string | null;
+  /** Where a working day with no time leads, when it leads anywhere. */
+  dayWithoutTimeHref?: (date: string) => string;
 };
 
 /**
@@ -53,12 +55,13 @@ type PersonDayGridProps = {
  */
 export const PersonDayGrid = ({
   person,
-  absences,
   range,
   countedUntil,
+  dayWithoutTimeHref,
 }: PersonDayGridProps) => {
   // Only this person's days, not the whole team's.
   const summary = useTeamTimeSummary({ ...range, userId: person.userId });
+  const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
 
   const days = useMemo(() => {
     const row = summary.rows.find((entry) => entry.user.id === person.userId);
@@ -101,37 +104,62 @@ export const PersonDayGrid = ({
   return (
     <>
       <ul aria-label="Days" className="grid grid-cols-5 gap-1.5">
-        {weekdays.map((day) => (
-          <li
-            key={day.date}
-            // Monday is column 1, so a new week starts a new row.
-            style={{ gridColumnStart: fromISODate(day.date).getDay() }}
-            className={cn(
-              "flex flex-col gap-0.5 rounded-lg border px-2 py-1.5",
-              DAY_STYLES[day.kind],
-            )}
-          >
-            <span className="text-2xs text-muted-foreground">
-              {dayLabel(day.date)}
-            </span>
-            <span
-              className={cn(
-                "text-xs font-medium tabular-nums",
-                day.kind !== "logged" && "text-muted-foreground",
-              )}
+        {weekdays.map((day) => {
+          const href =
+            day.kind === "withoutTime" && dayWithoutTimeHref?.(day.date);
+          const content = (
+            <>
+              <span className="text-2xs text-muted-foreground">
+                {dayLabel(day.date)}
+              </span>
+              <span
+                className={cn(
+                  "text-xs font-medium tabular-nums",
+                  href
+                    ? "text-brand underline underline-offset-2"
+                    : day.kind !== "logged" && "text-muted-foreground",
+                )}
+              >
+                {day.kind === "logged"
+                  ? formatDuration(day.minutes)
+                  : day.kind === "off"
+                    ? offLabel(day.date)
+                    : day.kind === "withoutTime"
+                      ? "No time"
+                      : day.kind === "today"
+                        ? "Today"
+                        : "—"}
+              </span>
+            </>
+          );
+          const dayStyle = cn(
+            "flex h-full flex-col gap-0.5 rounded-lg border px-2 py-1.5",
+            DAY_STYLES[day.kind],
+          );
+
+          return (
+            <li
+              key={day.date}
+              // Monday is column 1, so a new week starts a new row.
+              style={{ gridColumnStart: fromISODate(day.date).getDay() }}
             >
-              {day.kind === "logged"
-                ? formatDuration(day.minutes)
-                : day.kind === "off"
-                  ? offLabel(day.date)
-                  : day.kind === "withoutTime"
-                    ? "No time"
-                    : day.kind === "today"
-                      ? "Today"
-                      : "—"}
-            </span>
-          </li>
-        ))}
+              {href ? (
+                <Link
+                  href={href}
+                  aria-label={`${dayLabel(day.date)}: no time logged, open its week`}
+                  className={cn(
+                    dayStyle,
+                    "border-brand/50 transition-colors hover:border-brand hover:bg-brand-subtle focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                  )}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div className={dayStyle}>{content}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {weekendDays.length > 0 && (
         <p className="mt-2 text-xs text-muted-foreground">

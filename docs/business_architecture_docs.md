@@ -802,6 +802,14 @@ see, and how a new company gets started. §7 plans that work.
   counted and whether it is open for edits or locked. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead, and are told that projects show their teams' time only.
+- **My time** — every role has `/my-time`, their own month, one at a time,
+  back to the company's first: logged against expected with their days off,
+  planned, billable and its share, each day of the month (a working day with no
+  time opens that week on the timesheet while the month is open), and their
+  projects against plan. The figures are the ones a manager sees in their
+  panel on Reports, through the
+  same routes pinned to the person (§5), and count finished days only, with the
+  same line under the month. Nothing about anybody else is shown.
 - **Hours export** — from Reports, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person (with
   their email after the name), day, project, activity and billing (Billable or
@@ -861,13 +869,13 @@ an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has fifty-six Vitest files and 310 tests: its date, month,
+The frontend has fifty-seven Vitest files and 317 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging. GitHub Actions runs the
+person's week panel on Team time, the week a grid shows, the order of a day's entries, the Periods list and its paging, and My time. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -1164,17 +1172,6 @@ Google sign-in URLs registered for it.
 judged ready (§7, final stage). Nothing in the improvement roadmap depends on
 it.
 
-**Q11 — Should employees get a report of their own hours?**
-Belongs to Area 7. An employee sees one week at a time. The API already returns
-their own week summaries and expected hours; the hours report
-and the people report would each need their route opened to employees, pinned to
-themselves by the visibility filter they already use.
-*Recommendation:* yes — hours by project and activity, logged against expected
-by week and month, and absences taken, for the employee alone. Opening the two
-routes is a change to the §5 matrix and would be recorded as one.
-*Alternative:* build it only from the routes already open to employees, with no
-permission change and no billable split by project.
-
 **Q16 — Can someone delete their own account, or an owner their company?**
 Raised on 1 October 2026; no area yet. Nobody can delete an account today:
 people are deactivated, never deleted (§8 rule 6). A user row also cannot be
@@ -1204,6 +1201,9 @@ their time logs, such as anonymising the person and keeping the hours.
   where the time went by project and kind of work, with a person or a project
   opened in a side panel; the export holds every number (Phase 34). Comparison
   with earlier periods stays in Area 6.
+- **Q11** — Employees get their own month on My time, from the hours and
+  people reports opened to them and pinned to themselves; the export and the
+  timeline stay closed (Phase 35).
 - **Q7** — A fifteen-minute access token with a thirty-day rolling refresh, and
   no "remember me" (Phase 6).
 - **Q8** — No email verification while only a company's first owner signs up

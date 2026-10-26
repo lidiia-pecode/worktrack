@@ -122,6 +122,91 @@ const PanelList = ({
   return <ul className="@container">{children(report.report.rows)}</ul>;
 };
 
+type PersonFactsProps = {
+  person: PeopleReportRow;
+  range: ReportRange;
+  /** The last finished day; time off after it isn't counted yet. */
+  countedUntil: string | null;
+  /** Adds how many days off to their kinds, where no row above says it. */
+  withDaysOff?: boolean;
+};
+
+/** Planned, billable and the kinds of time off: what the person's row doesn't say. */
+export const PersonFacts = ({
+  person,
+  range,
+  countedUntil,
+  withDaysOff = false,
+}: PersonFactsProps) => {
+  const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
+  const lastCountedDay = countedUntil ?? range.dateTo;
+  // Only the kinds behind the counted days, so a vacation still to come isn't
+  // named beside days off that don't include it.
+  const absenceTypes = [
+    ...new Set(
+      absences.items
+        .filter((absence) => absence.startDate <= lastCountedDay)
+        .map((absence) => ABSENCE_TYPE_LABELS[absence.type]),
+    ),
+  ].join(", ");
+  const timeOff = withDaysOff
+    ? `${countLabel(person.timeOffDays, "day", "days")} · ${absenceTypes}`
+    : absenceTypes;
+
+  return (
+    <Facts
+      facts={[
+        {
+          label: "Planned",
+          value:
+            person.plannedMinutes > 0
+              ? formatReportHours(person.plannedMinutes)
+              : "Not planned",
+        },
+        {
+          label: "Billable",
+          value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
+        },
+        ...(person.timeOffDays > 0 && absenceTypes
+          ? [{ label: "Time off", value: timeOff }]
+          : []),
+      ]}
+    />
+  );
+};
+
+/** A person's projects, logged against plan. */
+export const PersonProjects = ({
+  person,
+  range,
+}: {
+  person: PeopleReportRow;
+  range: ReportRange;
+}) => {
+  const projects = useHoursReport({
+    ...range,
+    groupBy: HoursReportGroupBy.PROJECT,
+    userId: person.userId,
+  });
+
+  return (
+    <PanelList
+      report={projects}
+      empty="No time or plans on any project this month."
+    >
+      {(rows) =>
+        rows.map((row) => (
+          <AgainstPlanRow
+            key={row.id}
+            row={row}
+            detail={row.detail ?? "Internal work"}
+          />
+        ))
+      }
+    </PanelList>
+  );
+};
+
 type PersonPanelProps = {
   person: PeopleReportRow;
   range: ReportRange;
@@ -138,17 +223,6 @@ export const PersonPanel = ({
   isUpdating,
   onClose,
 }: PersonPanelProps) => {
-  const projects = useHoursReport({
-    ...range,
-    groupBy: HoursReportGroupBy.PROJECT,
-    userId: person.userId,
-  });
-  const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
-  const absenceTypes = [
-    ...new Set(
-      absences.items.map((absence) => ABSENCE_TYPE_LABELS[absence.type]),
-    ),
-  ];
   const withoutTime = person.daysWithoutTime.length;
 
   return (
@@ -159,24 +233,7 @@ export const PersonPanel = ({
       isUpdating={isUpdating}
       onClose={onClose}
     >
-      <Facts
-        facts={[
-          {
-            label: "Planned",
-            value:
-              person.plannedMinutes > 0
-                ? formatReportHours(person.plannedMinutes)
-                : "Not planned",
-          },
-          {
-            label: "Billable",
-            value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
-          },
-          ...(person.timeOffDays > 0 && absenceTypes.length > 0
-            ? [{ label: "Time off", value: absenceTypes.join(", ") }]
-            : []),
-        ]}
-      />
+      <PersonFacts person={person} range={range} countedUntil={countedUntil} />
 
       <PanelSection
         title="Day by day"
@@ -188,27 +245,13 @@ export const PersonPanel = ({
       >
         <PersonDayGrid
           person={person}
-          absences={absences}
           range={range}
           countedUntil={countedUntil}
         />
       </PanelSection>
 
       <PanelSection title="Projects" note="Logged against planned">
-        <PanelList
-          report={projects}
-          empty="No time or plans on any project this month."
-        >
-          {(rows) =>
-            rows.map((row) => (
-              <AgainstPlanRow
-                key={row.id}
-                row={row}
-                detail={row.detail ?? "Internal work"}
-              />
-            ))
-          }
-        </PanelList>
+        <PersonProjects person={person} range={range} />
       </PanelSection>
 
       <div className="mt-auto border-t border-border pt-4">
