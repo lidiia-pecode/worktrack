@@ -28,6 +28,7 @@ import { findCompanyToday } from 'src/companies/company-today.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 @Injectable()
 export class TeamsService {
@@ -141,8 +142,8 @@ export class TeamsService {
     const [teams, count] = await this.teamRepo.findAndCount({
       where,
       relations: ['memberships', 'memberships.user'],
-      skip: query.offset,
-      take: query.limit,
+      skip: pageOffset(query),
+      take: query.pageSize,
       order: { name: 'ASC' },
     });
 

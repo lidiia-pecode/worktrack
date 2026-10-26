@@ -40,9 +40,15 @@ import { useOpenedPerson } from "./useOpenedPerson";
 type TeamTimeViewProps = {
   role: UserRole;
   viewerId: string;
+  /** A day whose week to open first, from a link. */
+  startingDay?: string;
 };
 
-export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
+export const TeamTimeView = ({
+  role,
+  viewerId,
+  startingDay,
+}: TeamTimeViewProps) => {
   const {
     timezone,
     isLoading: isLoadingSettings,
@@ -50,7 +56,7 @@ export const TeamTimeView = ({ role, viewerId }: TeamTimeViewProps) => {
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { weekStart, showWeekOf } = useShownWeek();
+  const { weekStart, showWeekOf } = useShownWeek(startingDay);
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
   const { personId, open: openPerson, close: closePerson } = useOpenedPerson();

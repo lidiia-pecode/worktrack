@@ -36,6 +36,7 @@ import {
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import type { Project } from 'src/projects/entities/project.entity';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type ActivityProject = Pick<Project, 'id' | 'name' | 'status'>;
 
@@ -215,8 +216,8 @@ export class ActivitiesService {
       relations: {
         category: true,
       },
-      skip: query.offset,
-      take: query.limit,
+      skip: pageOffset(query),
+      take: query.pageSize,
       order: {
         name: 'ASC',
       },

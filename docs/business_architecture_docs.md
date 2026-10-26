@@ -737,8 +737,8 @@ see, and how a new company gets started. §7 plans that work.
   frontend conventions. Log, edit and delete time against assigned projects,
   driven by company work settings, with loading, error, empty and over-target
   states. A new entry starts from the last project and activity logged for
-  that person, or the only one there is. A week says when it is complete: its
-  logged time has reached what was expected. One row of controls carries the
+  that person, or the only one there is. A week says "Complete" when its logged
+  time is exactly what was expected, and how far past it when it is over. One row of controls carries the
   week's figures, which open a breakdown (expected and the days off that lower
   it, billable, non-billable, how much is past expected and how much of that at
   the weekend), and a lock during a month's grace week. A day that expects
@@ -886,7 +886,7 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-five
-suites and 806 tests, covering the role-visibility filters, team and invitation
+suites and 809 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name

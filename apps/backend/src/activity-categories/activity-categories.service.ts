@@ -27,6 +27,7 @@ import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { ArchiveCategoryPayload } from './dtos/archive-category-payload.dto';
 import { ActiveActivitiesAction } from './enums/active-activities-action.enum';
 import { UserRole } from 'src/users/enums/user-role.enum';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type CategoryImpactActivity = {
   id: string;
@@ -195,8 +196,8 @@ export class ActCategoriesService {
     const [categories, count] = await qb
       .orderBy('category.name', 'ASC')
       .addOrderBy('category.id', 'ASC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results: await this.withActivitySummary(categories, user), count };

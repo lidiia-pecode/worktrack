@@ -50,6 +50,7 @@ import { assertDateRange } from 'src/reporting/date-range.util';
 import { monthsBetween } from 'src/reporting/reporting-months.util';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type PlanningCompany = Pick<
   Company,
@@ -210,8 +211,8 @@ export class PlanningService {
       .orderBy('p.date', 'DESC')
       .addOrderBy('p.createdAt', 'DESC')
       .addOrderBy('p.id', 'DESC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };

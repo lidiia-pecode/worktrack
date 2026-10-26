@@ -23,6 +23,7 @@ import { CapacityService } from 'src/capacity/capacity.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Team } from 'src/teams/entities/team.entity';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type UserTeam = Pick<Team, 'id' | 'name'>;
 
@@ -171,8 +172,8 @@ export class UsersService {
     const [users, count] = await qb
       .orderBy('u.created_at', 'DESC')
       .addOrderBy('u.id', 'DESC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     const userIds = users.map((listed) => listed.id);
@@ -276,8 +277,8 @@ export class UsersService {
       .orderBy('u.first_name', 'ASC')
       .addOrderBy('u.last_name', 'ASC')
       .addOrderBy('u.id', 'ASC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };

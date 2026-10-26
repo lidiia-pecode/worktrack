@@ -36,6 +36,7 @@ import {
 } from 'src/capacity/expected-hours.service';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 interface DailyMinutesRaw {
   userId: string;
@@ -153,8 +154,8 @@ export class TimeLogsService {
       .orderBy('t.date', 'DESC')
       .addOrderBy('t.createdAt', 'DESC')
       .addOrderBy('t.id', 'DESC')
-      .skip(query.offset)
-      .take(query.limit)
+      .skip(pageOffset(query))
+      .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };

@@ -39,7 +39,7 @@ import { UsersService } from './users.service';
 
 const RUN = Date.now();
 const SLUG = `users-scope-test-${RUN}`;
-const PAGE = { offset: 0, limit: 50 } as never;
+const PAGE = Object.assign(new PaginationQuery(), { pageSize: 50 });
 const searchFor = (search: string) =>
   Object.assign(new UsersQuery(), { pageSize: 50, search });
 const TIME_ZONE = timeZoneOnAnotherDay();
@@ -568,13 +568,12 @@ describe('UsersService scope', () => {
       const ids: string[] = [];
       let count = Infinity;
 
-      for (let offset = 0; offset < count; offset += PAGE_SIZE) {
-        const page = await fetchPage({
-          offset,
-          limit: PAGE_SIZE,
-        } as PaginationQuery);
-        count = page.count;
-        ids.push(...page.results.map((user) => user.id));
+      for (let page = 1; (page - 1) * PAGE_SIZE < count; page += 1) {
+        const result = await fetchPage(
+          Object.assign(new PaginationQuery(), { page, pageSize: PAGE_SIZE }),
+        );
+        count = result.count;
+        ids.push(...result.results.map((user) => user.id));
       }
 
       return { ids, count };
