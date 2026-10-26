@@ -51,12 +51,24 @@ export function offsetAtMinutes<T>(
   return stackEnd + (minutes - before) * pixelsPerMinute;
 }
 
-/** How tall a day's stack is, gaps and minimum heights included. */
-export function stackHeight<T>(
+/**
+ * How far down a day's drawing reaches: the end of its stack, gaps and minimum
+ * heights included, or its target line when that falls lower.
+ */
+export function dayDrawingHeight<T>(
   items: T[],
   minutesOf: (item: T) => number,
+  targetMinutes: number,
   pixelsPerMinute: number,
 ): number {
-  const last = stackSegments(items, minutesOf, pixelsPerMinute).at(-1);
-  return last ? last.offsetTop + last.height : 0;
+  const segments = stackSegments(items, minutesOf, pixelsPerMinute);
+  const last = segments.at(-1);
+  const stackEnd = last ? last.offsetTop + last.height : 0;
+
+  return targetMinutes > 0
+    ? Math.max(
+        stackEnd,
+        offsetAtMinutes(segments, minutesOf, targetMinutes, pixelsPerMinute),
+      )
+    : stackEnd;
 }

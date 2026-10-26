@@ -49,7 +49,7 @@ export async function authorizedFetch(
   if (refreshStatus === null || refreshStatus >= 400) {
     throw {
       statusCode: refreshStatus ?? SERVICE_UNAVAILABLE,
-      message: "WorkTrack could not be reached. Please try again.",
+      message: "Your session could not be renewed just now. Please try again.",
     };
   }
 

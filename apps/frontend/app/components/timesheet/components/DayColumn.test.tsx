@@ -88,6 +88,25 @@ describe("DayColumn", () => {
     expect(card.style.cssText).not.toBe(placedAt);
   });
 
+  it("moves the card from a focused entry to the one the pointer reaches", async () => {
+    const user = userEvent.setup();
+    const second = { ...entry, id: "log-2", minutes: 60, note: "Planning" };
+    render(renderDay([entry, second]));
+    const [first, next] = screen.getAllByRole("button", { name: /^1h/ });
+    first.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 190, left: 100, width: 120 }) as DOMRect;
+    next.getBoundingClientRect = () =>
+      ({ top: 400, bottom: 460, left: 100, width: 120 }) as DOMRect;
+
+    // Focused, so the card stays mounted when the pointer moves on.
+    act(() => first.focus());
+    const placedAt = screen.getByRole("tooltip").style.cssText;
+    await user.hover(next);
+
+    expect(screen.getByRole("tooltip")).toHaveTextContent("Planning");
+    expect(screen.getByRole("tooltip").style.cssText).not.toBe(placedAt);
+  });
+
   it("puts time over the day's figure on solid amber, with how much", () => {
     const { container } = render(renderDay([{ ...entry, minutes: 540 }]));
 

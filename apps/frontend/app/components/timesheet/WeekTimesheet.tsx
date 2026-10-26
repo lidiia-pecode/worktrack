@@ -45,7 +45,7 @@ import {
   LockedAbsenceModal,
 } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
-import { stackHeight } from "./helpers/build-segments";
+import { dayDrawingHeight } from "./helpers/build-segments";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
@@ -241,9 +241,15 @@ export const WeekTimesheet = ({
 
   const tallestDayPx = Math.max(
     dailyTargetMinutes * PX_PER_MINUTE,
-    ...Object.values(timelogsByDate).map((logs) =>
-      stackHeight(logs, (log) => log.minutes, PX_PER_MINUTE),
-    ),
+    ...weekDates.map((date) => {
+      const iso = toISODate(date);
+      return dayDrawingHeight(
+        timelogsByDate[iso] ?? [],
+        (log) => log.minutes,
+        expectedByDate[iso] ?? 0,
+        PX_PER_MINUTE,
+      );
+    }),
   );
 
   const minGridHeightPx = tallestDayPx + GRID_FOOT_PX;

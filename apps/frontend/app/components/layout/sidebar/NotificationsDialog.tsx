@@ -109,7 +109,7 @@ export const NotificationsDialog = ({
   });
   const {
     mutate: markRead,
-    isSuccess: markedSome,
+    isIdle: markedNone,
     reset,
   } = useMarkNotificationsRead();
 
@@ -127,7 +127,7 @@ export const NotificationsDialog = ({
   // The next opening starts from the server: what is still unread comes first.
   const close = () => {
     onClose();
-    if (markedSome) {
+    if (!markedNone) {
       reset();
       void refetch();
     }

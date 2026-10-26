@@ -43,7 +43,7 @@ const showDialog = (items: AppNotification[], { markedSome = false } = {}) => {
   } as unknown as ReturnType<typeof useNotifications>);
   vi.mocked(useMarkNotificationsRead).mockReturnValue({
     mutate: markRead,
-    isSuccess: markedSome,
+    isIdle: !markedSome,
     reset: vi.fn(),
   } as unknown as ReturnType<typeof useMarkNotificationsRead>);
 

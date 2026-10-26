@@ -19,7 +19,7 @@ const POPOVER_WIDTH = 240;
 const VIEWPORT_MARGIN = 8;
 const ANCHOR_GAP = 8;
 
-/** What the entry names in `aria-describedby`, while its card is shown. */
+/** What every entry names in `aria-describedby`; the card exists only while shown. */
 export const timelogDetailsId = (timelog: TimeLog) =>
   `timelog-details-${timelog.id}`;
 
@@ -34,6 +34,8 @@ const useAnchorRect = (anchor: HTMLElement) => {
 
   useEffect(() => {
     const measure = () => setRect(anchor.getBoundingClientRect());
+    // The card stays mounted while the pointer moves to another entry.
+    measure();
 
     // Capture, so a scroll inside the page's own container counts too.
     window.addEventListener("scroll", measure, true);

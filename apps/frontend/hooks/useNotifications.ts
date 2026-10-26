@@ -32,7 +32,8 @@ export const useMarkNotificationsRead = () => {
     onMutate: () =>
       queryClient.cancelQueries({ queryKey: queryKeys.notifications.all }),
 
-    // The list keeps its dots while the menu is open; only the count moves.
+    // Only the count moves, so what was new keeps its dot until the list is
+    // next fetched.
     onSuccess: ({ unreadCount }) =>
       queryClient.setQueryData<NotificationList>(
         queryKeys.notifications.all,
