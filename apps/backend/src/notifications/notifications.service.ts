@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { EntityManager, IsNull, LessThan, Repository } from 'typeorm';
+import { EntityManager, In, IsNull, LessThan, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { Invitation } from 'src/invitations/entities/invitation.entity';
@@ -9,10 +9,8 @@ import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 
 import { Notification } from './entities/notification.entity';
+import { LATEST_NOTIFICATIONS } from './notification.constants';
 import { NotificationType } from './enums/notification-type.enum';
-
-/** A short list is all the menu shows; older ones are not paged. */
-const LATEST_NOTIFICATIONS = 20;
 
 const READ_RETENTION_DAYS = 60;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
@@ -57,30 +55,59 @@ export class NotificationsService {
     });
   }
 
-  /** The caller's own notifications only, newest first. */
+  /**
+   * The caller's own notifications, unread first so none is hidden behind
+   * read ones, each group newest first.
+   */
   async listForUser(user: AuthUser) {
-    const where = { recipientId: user.id, companyId: user.companyId };
-
     const [items, unreadCount] = await Promise.all([
-      this.notificationRepository.find({
-        where,
-        relations: { subjectUser: true },
-        order: { createdAt: 'DESC' },
-        take: LATEST_NOTIFICATIONS,
-      }),
-      this.notificationRepository.count({
-        where: { ...where, readAt: IsNull() },
-      }),
+      this.notificationRepository
+        .createQueryBuilder('notification')
+        .leftJoinAndSelect('notification.subjectUser', 'subjectUser')
+        .addSelect('notification.read_at IS NULL', 'is_unread')
+        .where('notification.recipient_id = :recipientId', {
+          recipientId: user.id,
+        })
+        .andWhere('notification.company_id = :companyId', {
+          companyId: user.companyId,
+        })
+        .orderBy('is_unread', 'DESC')
+        .addOrderBy('notification.created_at', 'DESC')
+        .addOrderBy('notification.id')
+        .limit(LATEST_NOTIFICATIONS)
+        .getMany(),
+      this.unreadCountFor(user),
     ]);
 
     return { items, unreadCount };
   }
 
-  async markAllRead(user: AuthUser): Promise<void> {
+  /**
+   * Only the ones the menu showed, so one that arrived since stays unread.
+   * Returns how many are still unread, for the badge.
+   */
+  async markRead(user: AuthUser, ids: string[]): Promise<number> {
     await this.notificationRepository.update(
-      { recipientId: user.id, companyId: user.companyId, readAt: IsNull() },
+      {
+        id: In(ids),
+        recipientId: user.id,
+        companyId: user.companyId,
+        readAt: IsNull(),
+      },
       { readAt: new Date() },
     );
+
+    return this.unreadCountFor(user);
+  }
+
+  private unreadCountFor(user: AuthUser): Promise<number> {
+    return this.notificationRepository.count({
+      where: {
+        recipientId: user.id,
+        companyId: user.companyId,
+        readAt: IsNull(),
+      },
+    });
   }
 
   @Cron('0 0 3 * * *')

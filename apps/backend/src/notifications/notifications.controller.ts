@@ -1,10 +1,11 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
 
 import { AccessGuard } from 'src/auth/guards';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { CurrentUser } from 'src/lib/decorators';
 import { Serialize } from 'src/lib/interceptors';
 
+import { MarkReadPayload } from './dtos/mark-read-payload.dto';
 import { NotificationListResponse } from './dtos/notification-response.dto';
 import { NotificationsService } from './notifications.service';
 
@@ -20,9 +21,12 @@ export class NotificationsController {
   }
 
   @Post('read')
-  async markAllRead(@CurrentUser() user: AuthUser) {
-    await this.notificationsService.markAllRead(user);
+  async markRead(@CurrentUser() user: AuthUser, @Body() body: MarkReadPayload) {
+    const unreadCount = await this.notificationsService.markRead(
+      user,
+      body.ids,
+    );
 
-    return { success: true };
+    return { unreadCount };
   }
 }

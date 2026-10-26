@@ -26,16 +26,17 @@ export const useMarkNotificationsRead = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: NotificationsClientApi.markAllRead,
+    mutationFn: NotificationsClientApi.markRead,
 
     // A refresh already on its way would bring the old unread count back.
     onMutate: () =>
       queryClient.cancelQueries({ queryKey: queryKeys.notifications.all }),
 
-    onSuccess: () =>
+    // The list keeps its dots while the menu is open; only the count moves.
+    onSuccess: ({ unreadCount }) =>
       queryClient.setQueryData<NotificationList>(
         queryKeys.notifications.all,
-        (list) => list && { ...list, unreadCount: 0 },
+        (list) => list && { ...list, unreadCount },
       ),
   });
 };

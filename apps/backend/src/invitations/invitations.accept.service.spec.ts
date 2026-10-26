@@ -453,12 +453,15 @@ describe('InvitationsService acceptance', () => {
         unreadCount: 0,
       });
 
-      await notifications.markAllRead(bystander);
+      const shownIds = before.items.map((item) => item.id);
+
+      // Someone else's ids change nothing.
+      await notifications.markRead(bystander, shownIds);
       await expect(notifications.listForUser(manager)).resolves.toMatchObject({
         unreadCount: before.unreadCount,
       });
 
-      await notifications.markAllRead(manager);
+      await notifications.markRead(manager, shownIds);
       await expect(notifications.listForUser(manager)).resolves.toMatchObject({
         unreadCount: 0,
       });

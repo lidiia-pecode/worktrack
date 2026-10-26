@@ -44,21 +44,29 @@ const NotificationRow = ({
   notification,
   onNavigate,
 }: NotificationRowProps) => {
-  const { subjectUser, readAt, createdAt } = notification;
+  const { type, subjectUser, readAt, createdAt } = notification;
+  const isJoin = type === NotificationType.INVITATION_ACCEPTED;
   const name = subjectUser
     ? `${subjectUser.firstName} ${subjectUser.lastName}`
     : "Someone you invited";
+  const Icon = isJoin ? UserCheck : Bell;
 
   return (
     <li className="flex gap-3 py-3">
       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-brand">
-        <UserCheck className="size-4" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
       </span>
 
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">
-          <span className="font-medium">{name}</span> accepted your invitation
-          and joined.
+          {isJoin ? (
+            <>
+              <span className="font-medium">{name}</span> accepted your
+              invitation and joined.
+            </>
+          ) : (
+            "You have a new notification."
+          )}
           {!readAt && <span className="sr-only"> (new)</span>}
         </p>
 
@@ -66,13 +74,15 @@ const NotificationRow = ({
           {SENT_AT_LABEL.format(new Date(createdAt))}
         </p>
 
-        <Link
-          href={personLink(subjectUser)}
-          onClick={onNavigate}
-          className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
-        >
-          Put them on a project
-        </Link>
+        {isJoin && (
+          <Link
+            href={personLink(subjectUser)}
+            onClick={onNavigate}
+            className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+          >
+            Put them on a project
+          </Link>
+        )}
       </div>
 
       {!readAt && (
@@ -97,23 +107,36 @@ export const NotificationsDialog = ({
   const { data, isError, isPending, refetch } = useNotifications({
     enabled: true,
   });
-  const markRead = useMarkNotificationsRead();
-  const { mutate: markAllRead } = markRead;
-  const hasUnread = (data?.unreadCount ?? 0) > 0;
+  const {
+    mutate: markRead,
+    isSuccess: markedSome,
+    reset,
+  } = useMarkNotificationsRead();
+
+  const notifications = data?.items ?? [];
+  // A string, so a refetch with the same unread ones doesn't mark them again.
+  const shownUnreadIds = notifications
+    .filter((notification) => !notification.readAt)
+    .map((notification) => notification.id)
+    .join();
 
   useEffect(() => {
-    if (open && hasUnread) markAllRead();
-  }, [open, hasUnread, markAllRead]);
+    if (open && shownUnreadIds) markRead(shownUnreadIds.split(","));
+  }, [open, shownUnreadIds, markRead]);
 
-  const notifications =
-    data?.items.filter(
-      (item) => item.type === NotificationType.INVITATION_ACCEPTED,
-    ) ?? [];
+  // The next opening starts from the server: what is still unread comes first.
+  const close = () => {
+    onClose();
+    if (markedSome) {
+      reset();
+      void refetch();
+    }
+  };
 
   return (
     <ResourceFormModal
       open={open}
-      onClose={onClose}
+      onClose={close}
       title="Notifications"
       icon={<Bell className="size-5" />}
     >
@@ -136,7 +159,7 @@ export const NotificationsDialog = ({
             <NotificationRow
               key={notification.id}
               notification={notification}
-              onNavigate={onClose}
+              onNavigate={close}
             />
           ))}
         </ul>
