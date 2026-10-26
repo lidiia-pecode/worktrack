@@ -2,13 +2,18 @@ import { Global, Module } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { User } from './entities/user.entity';
+import { UserInactivePeriod } from './entities/user-inactive-period.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TeamsModule } from 'src/teams/teams.module';
 import { CapacityModule } from 'src/capacity/capacity.module';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), TeamsModule, CapacityModule],
+  imports: [
+    TypeOrmModule.forFeature([User, UserInactivePeriod]),
+    TeamsModule,
+    CapacityModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],

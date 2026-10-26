@@ -9,8 +9,9 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
   catch(exception: QueryFailedError, host: ArgumentsHost) {
     const response = host.switchToHttp().getResponse<Response>();
 
-    // The driver's `detail` repeats the values sent, personal data included,
-    // so neither the log nor the answer carries it.
+    // The driver's `detail` and some messages (an invalid uuid, a bad date)
+    // repeat the values sent, personal data included, so neither the log nor
+    // the answer carries them.
     const { code, constraint, table } = exception.driverError as {
       code?: string;
       constraint?: string;
@@ -37,11 +38,6 @@ export class DatabaseExceptionFilter implements ExceptionFilter {
           'Cannot delete or update resource because it is referenced by another entity',
       });
     }
-
-    this.logger.error(
-      `Database Exception: ${exception.message}`,
-      exception.stack,
-    );
 
     return response.status(500).json({
       statusCode: 500,

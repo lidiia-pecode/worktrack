@@ -592,6 +592,11 @@ export class UsersService {
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
+      // So two reactivations at once can't both record the spell.
+      await repo.findOne({
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.ACTIVE) {

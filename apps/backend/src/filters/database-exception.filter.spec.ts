@@ -50,4 +50,20 @@ describe('DatabaseExceptionFilter', () => {
     expect(lines).toContain('UQ_users_email');
     expect(lines).not.toContain('sophie.turner@example.com');
   });
+
+  it('keeps a value quoted in any other database error out of the log', () => {
+    const invalidUuid = new QueryFailedError(
+      'SELECT ...',
+      [],
+      Object.assign(
+        new Error('invalid input syntax for type uuid: "sophie.turner"'),
+        { code: '22P02' },
+      ),
+    );
+
+    const { status } = respond(invalidUuid);
+
+    expect(status).toHaveBeenCalledWith(500);
+    expect(logged.mock.calls.flat().join('\n')).not.toContain('sophie');
+  });
 });
