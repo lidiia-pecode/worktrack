@@ -30,6 +30,7 @@ import {
 } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
+import { cn } from "@/lib/utils/cn";
 
 import { EmptyState } from "../shared/EmptyState";
 import { PageHeader } from "../shared/PageHeader";
@@ -239,7 +240,7 @@ export const WeekTimesheet = ({
     ...Object.values(dailyTotals),
   );
 
-  const gridHeightPx = maxDailyMinutes * PX_PER_MINUTE + GRID_FOOT_PX;
+  const minGridHeightPx = maxDailyMinutes * PX_PER_MINUTE + GRID_FOOT_PX;
 
   // Plans never fall on a weekend, so the confirmation needs no project.
   const openCreate = (date: Date, plannedProjectId?: string) => {
@@ -470,47 +471,42 @@ export const WeekTimesheet = ({
             ))}
           </div>
 
-          <div className="flex-1" aria-busy={isShowingPreviousWeek}>
-            <div
-              className={[
-                "relative transition-opacity",
-                isShowingPreviousWeek && "opacity-60",
-              ]
-                .filter(Boolean)
-                .join(" ")}
-              style={{ height: gridHeightPx }}
-            >
-              <div className="grid h-full grid-cols-7">
-                {weekDates.map((date) => {
-                  const iso = toISODate(date);
-                  const absence = absencesByDate[iso];
-                  const isAbsenceLocked =
-                    !!absence &&
-                    isRangeLocked(isLocked, absence.startDate, absence.endDate);
+          <div
+            aria-busy={isShowingPreviousWeek}
+            className={cn(
+              "grid flex-1 grid-cols-7 transition-opacity",
+              isShowingPreviousWeek && "opacity-60",
+            )}
+            style={{ minHeight: minGridHeightPx }}
+          >
+            {weekDates.map((date) => {
+              const iso = toISODate(date);
+              const absence = absencesByDate[iso];
+              const isAbsenceLocked =
+                !!absence &&
+                isRangeLocked(isLocked, absence.startDate, absence.endDate);
 
-                  return (
-                    <DayColumn
-                      key={iso}
-                      date={date}
-                      timelogs={timelogsByDate[iso] ?? []}
-                      plannedEntries={plannedByDate[iso] ?? []}
-                      absence={absence}
-                      isAbsenceLocked={isAbsenceLocked}
-                      totalMinutes={dailyTotals[iso] ?? 0}
-                      pixelsPerMinute={PX_PER_MINUTE}
-                      expectedMinutes={expectedByDate[iso]}
-                      isLocked={isLocked(iso)}
-                      isEditable={isEditable(iso) && !isAbsenceLocked}
-                      // Time is logged only for a day that has happened.
-                      canLogTime={iso <= todayIso}
-                      onAddClick={openCreate}
-                      onAbsenceClick={openAbsence}
-                      onEntryClick={openEdit}
-                    />
-                  );
-                })}
-              </div>
-            </div>
+              return (
+                <DayColumn
+                  key={iso}
+                  date={date}
+                  timelogs={timelogsByDate[iso] ?? []}
+                  plannedEntries={plannedByDate[iso] ?? []}
+                  absence={absence}
+                  isAbsenceLocked={isAbsenceLocked}
+                  totalMinutes={dailyTotals[iso] ?? 0}
+                  pixelsPerMinute={PX_PER_MINUTE}
+                  expectedMinutes={expectedByDate[iso]}
+                  isLocked={isLocked(iso)}
+                  isEditable={isEditable(iso) && !isAbsenceLocked}
+                  // Time is logged only for a day that has happened.
+                  canLogTime={iso <= todayIso}
+                  onAddClick={openCreate}
+                  onAbsenceClick={openAbsence}
+                  onEntryClick={openEdit}
+                />
+              );
+            })}
           </div>
         </>
       )}
