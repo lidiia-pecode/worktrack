@@ -9,6 +9,7 @@ import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 
 import { UserCapacity } from './entities/user-capacity.entity';
@@ -24,10 +25,16 @@ export interface CompanyCalendar {
   defaultMinutesPerWeek: number;
 }
 
-/** The first day somebody is expected to work and, once deactivated, the first day they are not. */
+/** Deactivated from `from` up to the day before `until`; `until` is null while they still are. */
+export interface InactiveSpell {
+  from: string;
+  until: string | null;
+}
+
+/** The first day somebody is expected to work, and the spells they were not. */
 export interface ActiveDates {
   startDate: string;
-  deactivatedOn: string | null;
+  inactiveSpells: InactiveSpell[];
 }
 
 export interface CurrentCapacity {
@@ -46,6 +53,8 @@ export class CapacityService {
     private readonly companyRepo: Repository<Company>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    @InjectRepository(UserInactivePeriod)
+    private readonly inactivePeriodRepo: Repository<UserInactivePeriod>,
     private readonly reportingService: ReportingService,
   ) {}
 
@@ -130,7 +139,7 @@ export class CapacityService {
   /**
    * The days each person can be expected to work, where the company is: from
    * the day their account was created, so someone who joins on a Wednesday is
-   * not behind for Monday and Tuesday, to the day before it was deactivated.
+   * not behind for Monday and Tuesday, except while they were deactivated.
    */
   async activeDatesFor(
     companyId: string,
@@ -141,17 +150,34 @@ export class CapacityService {
 
     if (userIds.length === 0) return activeDates;
 
-    const users = await this.userRepo.find({
-      where: { companyId, id: In(userIds) },
-      select: ['id', 'createdAt', 'deactivatedAt'],
-    });
+    const [users, inactivePeriods] = await Promise.all([
+      this.userRepo.find({
+        where: { companyId, id: In(userIds) },
+        select: ['id', 'createdAt', 'deactivatedAt'],
+      }),
+      this.inactivePeriodRepo.find({
+        where: { companyId, userId: In(userIds) },
+        select: ['userId', 'deactivatedAt', 'reactivatedAt'],
+      }),
+    ]);
 
     for (const user of users) {
+      const inactiveSpells: InactiveSpell[] = inactivePeriods
+        .filter((period) => period.userId === user.id)
+        .map((period) => ({
+          from: isoDateIn(period.deactivatedAt, timezone),
+          until: isoDateIn(period.reactivatedAt, timezone),
+        }));
+      if (user.deactivatedAt) {
+        inactiveSpells.push({
+          from: isoDateIn(user.deactivatedAt, timezone),
+          until: null,
+        });
+      }
+
       activeDates.set(user.id, {
         startDate: isoDateIn(user.createdAt, timezone),
-        deactivatedOn: user.deactivatedAt
-          ? isoDateIn(user.deactivatedAt, timezone)
-          : null,
+        inactiveSpells,
       });
     }
 

@@ -5,6 +5,7 @@ import { DataSource } from 'typeorm';
 import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -97,6 +98,7 @@ describe('PeopleReportService', () => {
       dataSource.getRepository(UserCapacity),
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
+      dataSource.getRepository(UserInactivePeriod),
       reporting,
     );
     expectedHours = new ExpectedHoursService(
@@ -372,6 +374,35 @@ describe('PeopleReportService', () => {
     ).toBe(totals.plannedMinutes);
   });
 
+  it('expects nothing, and finds no missing days, while somebody was deactivated and has since come back', async () => {
+    const returner = await createUser('Returner', UserRole.EMPLOYEE);
+    // Away from Tuesday 10 March and back on Monday 16 March: four working days.
+    await dataSource.getRepository(UserInactivePeriod).save({
+      companyId,
+      userId: returner.id,
+      deactivatedAt: new Date('2026-03-10T09:00:00Z'),
+      reactivatedAt: new Date('2026-03-16T09:00:00Z'),
+    });
+    await dataSource.getRepository(TimeLog).save({
+      companyId,
+      userId: returner.id,
+      projectActivityId,
+      date: '2026-03-03',
+      minutes: 60,
+      isBillable: false,
+    });
+
+    const row = await rowFor(owner, returner.id);
+    await dataSource.getRepository(User).delete(returner.id);
+
+    expect(row?.expectedMinutes).toBe((WORKING_DAYS_IN_MARCH - 4) * FULL_DAY);
+    expect(row?.daysWithoutTime).toHaveLength(WORKING_DAYS_IN_MARCH - 5);
+    expect(row?.daysWithoutTime).toContain('2026-03-09');
+    expect(row?.daysWithoutTime).not.toContain('2026-03-10');
+    expect(row?.daysWithoutTime).not.toContain('2026-03-13');
+    expect(row?.daysWithoutTime).toContain('2026-03-16');
+  });
+
   describe('teams', () => {
     it("names each person's active teams, leaving out an archived one", async () => {
       const [design, archived] = await dataSource.getRepository(Team).save([
@@ -404,7 +435,7 @@ describe('PeopleReportService', () => {
   });
 
   describe('the owner', () => {
-    it('is listed only with logged time, and never with days without time', async () => {
+    it('is listed only with logged time, with its own days without time', async () => {
       const before = await rowFor(owner, owner.id);
       const log = await dataSource.getRepository(TimeLog).save({
         companyId,
@@ -421,7 +452,12 @@ describe('PeopleReportService', () => {
       await dataSource.getRepository(TimeLog).remove(log);
 
       expect(before).toBeUndefined();
-      expect(after).toMatchObject({ loggedMinutes: 60, daysWithoutTime: [] });
+      expect(after).toMatchObject({
+        loggedMinutes: 60,
+        role: UserRole.OWNER,
+      });
+      expect(after?.daysWithoutTime).toHaveLength(WORKING_DAYS_IN_MARCH - 1);
+      expect(after?.daysWithoutTime).not.toContain('2026-03-05');
       expect(
         buckets.reduce((sum, bucket) => sum + bucket.expectedMinutes, 0),
       ).toBe(totals.expectedMinutes);
@@ -444,11 +480,8 @@ describe('PeopleReportService', () => {
       });
       await dataSource.getRepository(PlanningEntry).remove(plan);
 
-      expect(row).toMatchObject({
-        loggedMinutes: 0,
-        plannedMinutes: 300,
-        daysWithoutTime: [],
-      });
+      expect(row).toMatchObject({ loggedMinutes: 0, plannedMinutes: 300 });
+      expect(row?.daysWithoutTime).toHaveLength(WORKING_DAYS_IN_MARCH);
       expect(totals.plannedMinutes).toBe(projects.totals.plannedMinutes);
     });
   });

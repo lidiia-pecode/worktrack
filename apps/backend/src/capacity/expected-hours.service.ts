@@ -5,7 +5,7 @@ import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { assertDateRange } from 'src/reporting/date-range.util';
 
-import { CapacityService } from './capacity.service';
+import { CapacityService, InactiveSpell } from './capacity.service';
 import {
   WORKING_DAYS_PER_WEEK,
   eachDate,
@@ -23,7 +23,7 @@ export interface ExpectedMinutes {
   total: number;
   /** Only the days that have finished, which is what "behind" is measured against. */
   toDate: number;
-  /** Every date in the range, 0 on weekends, absences, before the start date and from the deactivation day. Adds up to `total`. */
+  /** Every date in the range, 0 on weekends, absences, before the start date and while deactivated. Adds up to `total`. */
   byDate: ExpectedDay[];
 }
 
@@ -47,6 +47,9 @@ interface ShareSums {
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
+
+const isWithin = ({ from, until }: InactiveSpell, date: string) =>
+  date >= from && (until === null || date < until);
 
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0, byDate: [] };
 
@@ -168,9 +171,10 @@ export class ExpectedHoursService {
   }
 
   /**
-   * Walks every working day in the range from the person's start date to the
-   * day before they were deactivated: each contributes a fifth of the capacity
-   * in force that day, and counts as available unless an absence covers it.
+   * Walks every working day in the range from the person's start date,
+   * skipping the spells they were deactivated: each contributes a fifth of the
+   * capacity in force that day, and counts as available unless an absence
+   * covers it.
    */
   private async sumSharesFor(
     companyId: string,
@@ -212,7 +216,9 @@ export class ExpectedHoursService {
 
         if (!isWorkingDay(date)) continue;
         if (active && date < active.startDate) continue;
-        if (active?.deactivatedOn && date >= active.deactivatedOn) continue;
+        if (active?.inactiveSpells.some((spell) => isWithin(spell, date))) {
+          continue;
+        }
 
         const share =
           (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;

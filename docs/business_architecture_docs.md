@@ -275,6 +275,7 @@ Company  (tenant root — everything below carries companyId)
 ├── User            role: OWNER | MANAGER | EMPLOYEE
 │                   status: ACTIVE | DEACTIVATED
 │                   deactivatedAt: set by Deactivate, cleared by Reactivate
+│                   (each spell kept in user_inactive_periods once they return)
 │
 ├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
 │                   contracted hours, effective from a date
@@ -511,7 +512,9 @@ account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
 for the days before they joined, and nothing is expected from the day they were
 deactivated (`deactivatedAt`, Phase 34; a person deactivated before that stamp
-existed has none and is expected as before); there is no separate start date
+existed has none and is expected as before), nor, once they are reactivated,
+for the spell they were away (kept in `user_inactive_periods`, Phase 36); there
+is no separate start date
 (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
@@ -653,7 +656,8 @@ revokes its pending invitations and closes the team (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
-Reactivate clears it; nothing is expected of a person from that day (§4,
+Reactivate clears it, keeping the spell they were away; nothing is expected of a
+person from the day they were deactivated until the day they come back (§4,
 capacity). A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, only an OWNER may modify another OWNER or grant the
 OWNER role, and nobody changes their own role, so a company always keeps its
@@ -800,8 +804,9 @@ see, and how a new company gets started. §7 plans that work.
   plan (in a month still running, only over plan, since late logging only
   lowers logged time). None is about somebody logging less than expected; a
   plan beyond someone's hours is Planning's to warn about. A locked month is
-  for reference and marks nothing. A deactivated person and an owner have no
-  missing days; a deactivated person is listed only if they logged time in the
+  for reference and marks nothing. A deactivated person has no missing days,
+  and Needs attention never names an owner, though an owner's own days without
+  time show on My time and in their panel (Phase 36); a deactivated person is listed only if they logged time in the
   period, with expected hours up to the day they left, and an owner only if
   they logged or planned time: owners often don't track their own, but a plan
   made for them is part of the month's plan. Below, People lists everyone by team (somebody in

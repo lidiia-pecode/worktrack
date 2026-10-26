@@ -53,6 +53,7 @@ export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
+  role: UserRole;
   /** Their active teams, by name; for a manager, only the teams they lead. */
   teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
@@ -83,12 +84,9 @@ export interface Timeline extends ReportCoverage {
   buckets: TimelineBucket[];
 }
 
-/**
- * Days without time apply only to people expected to log it: not a
- * deactivated person, who can no longer, nor an owner (Decision 27).
- */
-const isExpectedToLog = (person: VisibleUser) =>
-  person.status === UserStatus.ACTIVE && person.role !== UserRole.OWNER;
+/** An owner's days count too; Needs attention leaves owners out by `role`. */
+const canStillLog = (person: VisibleUser) =>
+  person.status === UserStatus.ACTIVE;
 
 const NO_FIGURES: PeopleReportFigures = {
   loggedMinutes: 0,
@@ -175,6 +173,7 @@ export class PeopleReportService {
         userId: person.id,
         name: `${person.firstName} ${person.lastName}`,
         position: person.position ?? null,
+        role: person.role,
         teams: teams.get(person.id) ?? [],
         loggedMinutes: personHours?.totalMinutes ?? 0,
         billableMinutes: personHours?.billableMinutes ?? 0,
@@ -182,7 +181,7 @@ export class PeopleReportService {
         plannedMinutes: personHours?.plannedMinutes ?? 0,
         expectedMinutes: personAvailability?.availableMinutes ?? 0,
         timeOffDays: personAvailability?.absenceDays ?? 0,
-        daysWithoutTime: isExpectedToLog(person)
+        daysWithoutTime: canStillLog(person)
           ? (personAvailability?.expectedDates ?? []).filter(
               (date) => !personLoggedDates?.has(date),
             )

@@ -10,6 +10,7 @@ import { AppDataSource } from 'src/data-source';
 import { Company } from 'src/companies/entities/company.entity';
 import { WeekDay } from 'src/companies/enums/week-day.enum';
 import { User } from 'src/users/entities/user.entity';
+import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { Team } from 'src/teams/entities/team.entity';
@@ -200,6 +201,7 @@ describe('PlanningService', () => {
         dataSource.getRepository(UserCapacity),
         dataSource.getRepository(Company),
         dataSource.getRepository(User),
+        dataSource.getRepository(UserInactivePeriod),
         reporting,
       ),
     );
