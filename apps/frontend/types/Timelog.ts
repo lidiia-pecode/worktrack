@@ -57,6 +57,8 @@ export type TeamSummaryQuery = {
   teamId?: string;
   projectId?: string;
   userId?: string;
+  /** Each day also lists its entries. */
+  includeEntries?: boolean;
 };
 
 // Mirrors the backend `TeamSummaryResponse` DTO.
@@ -75,6 +77,8 @@ export interface TeamSummaryDay {
   minutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;
+  /** Only when asked for with `includeEntries`, in the order they were logged. */
+  entries?: TimeLog[];
 }
 
 export interface TeamSummaryRow {

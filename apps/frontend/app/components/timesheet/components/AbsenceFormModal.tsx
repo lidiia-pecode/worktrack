@@ -48,6 +48,8 @@ type Props = {
   onClose: () => void;
   /** Whose absence it is, to name the plans it will remove. */
   userId: string;
+  /** Named under the title when the form is for someone else. */
+  subjectName?: string;
   date: string;
   absence?: Absence;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
@@ -61,6 +63,7 @@ export const AbsenceFormModal = ({
   open,
   onClose,
   userId,
+  subjectName,
   date,
   absence,
   onCreate,
@@ -175,6 +178,7 @@ export const AbsenceFormModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
+        description={subjectName}
         icon={<CalendarOff className="size-5" />}
         footer={
           <>
@@ -291,18 +295,21 @@ export const AbsenceFormModal = ({
 
 type LockedAbsenceModalProps = {
   absence: Absence;
+  subjectName?: string;
   onClose: () => void;
 };
 
 /** An absence in a locked month, to read in full: nothing about it can change. */
 export const LockedAbsenceModal = ({
   absence,
+  subjectName,
   onClose,
 }: LockedAbsenceModalProps) => (
   <ResourceFormModal
     open
     onClose={onClose}
     title="Absence"
+    description={subjectName}
     icon={<CalendarOff className="size-5" />}
     footer={
       <Button type="button" variant="outline" size="sm" onClick={onClose}>

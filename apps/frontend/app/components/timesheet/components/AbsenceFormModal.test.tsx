@@ -26,12 +26,13 @@ const plan = (id: string, projectName: string, minutes: number) =>
     date: "2026-11-13",
   }) as PlanningEntry;
 
-const renderForm = () =>
+const renderForm = (subjectName?: string) =>
   render(
     <AbsenceFormModal
       open
       onClose={vi.fn()}
       userId="user-1"
+      subjectName={subjectName}
       date="2026-11-13"
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
@@ -59,6 +60,12 @@ describe("AbsenceFormModal", () => {
         "Removes 2 plans on these days: Northwind 4h, Internal 2h",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("names whose absence it is, when given", () => {
+    renderForm("Alice Cooper");
+
+    expect(screen.getByRole("dialog")).toHaveTextContent("Alice Cooper");
   });
 
   it("says nothing when there is no plan on those days", () => {

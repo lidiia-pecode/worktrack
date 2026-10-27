@@ -5,15 +5,8 @@ import { EmployeeWelcome } from "@/app/components/timesheet/components/EmployeeW
 import { WeekTimesheet } from "@/app/components/timesheet/WeekTimesheet";
 import { UserRole } from "@/types/enums";
 
-type TimesheetPageProps = {
-  searchParams: Promise<{ week?: string }>;
-};
-
-export default async function TimesheetPage({
-  searchParams,
-}: TimesheetPageProps) {
+export default async function TimesheetPage() {
   const user = await getCurrentUser();
-  const { week } = await searchParams;
 
   if (!user) {
     redirect("/");
@@ -21,10 +14,7 @@ export default async function TimesheetPage({
 
   return (
     <WeekTimesheet
-      // A new link starts from its own week, even while on the timesheet.
-      key={week}
       userId={user.id}
-      startingDay={week}
       welcome={
         user.role === UserRole.EMPLOYEE && (
           <EmployeeWelcome userId={user.id} firstName={user.firstName} />

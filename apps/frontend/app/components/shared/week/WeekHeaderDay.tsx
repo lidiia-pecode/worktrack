@@ -5,7 +5,8 @@ import { formatDuration, formatWeekdayLabel } from "@/lib/utils/date";
 type WeekHeaderDayProps = {
   date: Date;
   isToday: boolean;
-  totalMinutes: number;
+  /** One person's day only: the team grids leave it out. */
+  totalMinutes?: number;
   targetMinutes?: number;
   isLocked?: boolean;
 };
@@ -19,7 +20,9 @@ export const WeekHeaderDay = ({
 }: WeekHeaderDayProps) => {
   // A weekend expects nothing, so any time on it is over.
   const isOverTarget =
-    targetMinutes !== undefined && totalMinutes > targetMinutes;
+    targetMinutes !== undefined &&
+    totalMinutes !== undefined &&
+    totalMinutes > targetMinutes;
 
   return (
     <div
@@ -50,14 +53,16 @@ export const WeekHeaderDay = ({
         )}
       </div>
 
-      <p
-        className={`
-          text-xs font-medium
-          ${isOverTarget ? "text-warning-text" : "text-muted-foreground"}
-        `}
-      >
-        {totalMinutes > 0 ? formatDuration(totalMinutes) : "-"}
-      </p>
+      {totalMinutes !== undefined && (
+        <p
+          className={`
+            text-xs font-medium
+            ${isOverTarget ? "text-warning-text" : "text-muted-foreground"}
+          `}
+        >
+          {totalMinutes > 0 ? formatDuration(totalMinutes) : "-"}
+        </p>
+      )}
     </div>
   );
 };

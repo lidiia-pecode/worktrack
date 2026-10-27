@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils/cn";
 const MAX_SEARCH_LENGTH = 100;
 
 interface SearchInputProps {
+  id?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -18,6 +19,7 @@ interface SearchInputProps {
 }
 
 export const SearchInput = ({
+  id,
   value,
   onChange,
   placeholder = "Search...",
@@ -47,6 +49,7 @@ export const SearchInput = ({
 
       <Input
         ref={ref}
+        id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         maxLength={MAX_SEARCH_LENGTH}

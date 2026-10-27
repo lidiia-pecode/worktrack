@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { ComponentProps } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { Absence, TeamSummaryRow } from "@/types";
@@ -9,113 +10,177 @@ import { TeamWeekRow } from "./TeamWeekRow";
 
 const WEEK_DATES = getWeekDates(new Date("2026-11-02T00:00:00"));
 
-const SICK_TUESDAY = {
-  id: "absence-1",
-  userId: "user-alice",
-  type: AbsenceType.SICK_LEAVE,
-  startDate: "2026-11-03",
-  endDate: "2026-11-03",
-} as Absence;
-
-const row = (status = UserStatus.ACTIVE): TeamSummaryRow => ({
+const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
   user: {
     id: "user-alice",
     firstName: "Alice",
     lastName: "Cooper",
     email: "alice@example.com",
     position: "Designer",
-    status,
+    status: UserStatus.ACTIVE,
   },
-  minutes: 480,
-  billableMinutes: 480,
+  minutes: 1920,
+  billableMinutes: 1920,
   nonBillableMinutes: 0,
   expectedMinutes: 2400,
   expectedToDateMinutes: 2400,
   expectedByDate: [],
-  days: [
-    {
-      date: "2026-11-02",
-      minutes: 480,
-      billableMinutes: 480,
-      nonBillableMinutes: 0,
-    },
-  ],
+  days: [],
+  ...overrides,
 });
 
-const renderRow = (status?: UserStatus, rowValue = row(status)) =>
-  render(
+const renderRow = (
+  rowValue: TeamSummaryRow,
+  props: Partial<ComponentProps<typeof TeamWeekRow>> = {},
+) => {
+  const { container } = render(
     <table>
       <tbody>
         <TeamWeekRow
           row={rowValue}
           weekDates={WEEK_DATES}
-          absencesByDate={{ "2026-11-03": SICK_TUESDAY }}
-          showsExpected
-          onOpen={vi.fn()}
+          todayIso="2026-11-09"
+          absencesByDate={{}}
+          plansByDate={{}}
+          isLocked={() => false}
+          isEditable={() => true}
+          canWrite
+          isHighlighted={false}
+          onEditEntry={vi.fn()}
+          onAdd={vi.fn()}
+          onAbsenceClick={vi.fn()}
+          onAddAbsence={vi.fn()}
+          {...props}
         />
       </tbody>
     </table>,
   );
 
+  return {
+    personCell: screen.getByRole("rowheader"),
+    bar: container.querySelector(".bg-report-track"),
+  };
+};
+
 describe("TeamWeekRow", () => {
-  it("marks a deactivated person", () => {
-    renderRow(UserStatus.DEACTIVATED);
+  it("shows the person, their week against expected and the bar", () => {
+    const { personCell, bar } = renderRow(row());
 
-    expect(screen.getByText("Deactivated")).toBeInTheDocument();
-  });
-
-  it("names an empty day for a screen reader, and opens the person from the keyboard", () => {
-    renderRow();
-
-    // Monday has time and Tuesday an absence: five days are empty.
-    expect(screen.getAllByText("No time")).toHaveLength(5);
-    expect(
-      screen.getByRole("button", { name: "Open Alice Cooper's entries" }),
-    ).toBeInTheDocument();
-  });
-
-  it("marks nobody who is active", () => {
-    renderRow();
-
+    expect(within(personCell).getByText("Alice Cooper")).toBeInTheDocument();
+    expect(within(personCell).getByText("Designer")).toBeInTheDocument();
+    expect(within(personCell).getByText("32h")).toHaveClass("text-foreground");
+    expect(within(personCell).getByText("of 40h")).toBeInTheDocument();
+    expect(bar).toBeInTheDocument();
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
-  it("stripes a day off and a weekend, each in its own colour", () => {
-    renderRow();
-
-    expect(screen.getByText("Sick").closest("td")).toHaveClass(
-      "bg-stripes-day-off",
+  it("turns the figure amber past what was expected", () => {
+    const { personCell } = renderRow(
+      row({ minutes: 2700, billableMinutes: 2700 }),
     );
 
-    const [, , , , , saturday, sunday] = screen.getAllByRole("cell");
-    expect(saturday).toHaveClass("bg-stripes-weekend");
-    expect(sunday).toHaveClass("bg-stripes-weekend");
+    expect(within(personCell).getByText("45h")).toHaveClass(
+      "text-warning-text",
+    );
   });
 
-  it("marks a day over the person's hours, and a weekend with time, as extra", () => {
-    const day = (date: string, minutes: number) => ({
-      date,
-      minutes,
-      billableMinutes: 0,
-      nonBillableMinutes: minutes,
-    });
-    renderRow(UserStatus.ACTIVE, {
-      ...row(),
-      expectedByDate: [
-        { date: "2026-11-02", minutes: 480 },
-        { date: "2026-11-04", minutes: 480 },
-      ],
-      days: [
-        day("2026-11-02", 600),
-        day("2026-11-04", 480),
-        day("2026-11-07", 120),
-      ],
+  it("names the project under a project filter, with no bar", () => {
+    const { personCell, bar } = renderRow(row(), { projectName: "CRM System" });
+
+    expect(within(personCell).getByText("on CRM System")).toBeInTheDocument();
+    expect(within(personCell).queryByText("of 40h")).not.toBeInTheDocument();
+    expect(bar).not.toBeInTheDocument();
+  });
+
+  it("marks a deactivated person, who is expected nothing", () => {
+    const { personCell, bar } = renderRow(
+      row({
+        user: { ...row().user, status: UserStatus.DEACTIVATED },
+        minutes: 0,
+        billableMinutes: 0,
+      }),
+    );
+
+    expect(within(personCell).getByText("Deactivated")).toBeInTheDocument();
+    expect(
+      within(personCell).getByText("nothing expected"),
+    ).toBeInTheDocument();
+    expect(bar).not.toBeInTheDocument();
+  });
+
+  it("gives every day of the week a cell", () => {
+    renderRow(row());
+
+    expect(screen.getAllByRole("cell")).toHaveLength(7);
+  });
+
+  it("records an absence from the Person cell", () => {
+    const onAddAbsence = vi.fn();
+    renderRow(row(), { onAddAbsence });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
+    );
+    expect(onAddAbsence).toHaveBeenCalled();
+  });
+
+  it("offers nothing to write for a deactivated person", () => {
+    renderRow(row({ user: { ...row().user, status: UserStatus.DEACTIVATED } }));
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("offers nothing to write without access", () => {
+    renderRow(row(), { canWrite: false });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("logs time only on a day that has happened and is not locked", () => {
+    const onAdd = vi.fn();
+    renderRow(row(), {
+      todayIso: "2026-11-04",
+      // Monday is in a locked month.
+      isEditable: (date) => date !== "2026-11-02",
+      onAdd,
     });
 
-    const [monday, , wednesday, , , saturday] = screen.getAllByRole("cell");
-    expect(monday).toHaveClass("bg-excess");
-    expect(screen.getByText("10h")).toHaveClass("text-warning-text");
-    expect(wednesday).not.toHaveClass("bg-excess");
-    expect(saturday).toHaveClass("bg-stripes-extra");
+    const addButtons = screen.getAllByRole("button", { name: /^Log time/ });
+    // Tuesday and Wednesday: Monday is locked, Thursday on is still to come.
+    expect(addButtons).toHaveLength(2);
+
+    fireEvent.click(addButtons[0]);
+    expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[1]);
+  });
+
+  it("opens an absence in a locked month, to be read", () => {
+    const vacation = {
+      id: "absence-1",
+      userId: "user-alice",
+      type: AbsenceType.VACATION,
+      startDate: "2026-11-02",
+      endDate: "2026-11-02",
+    } as Absence;
+    const onAbsenceClick = vi.fn();
+
+    renderRow(row(), {
+      absencesByDate: { "2026-11-02": vacation },
+      // November is locked, so nothing in the week can be written.
+      isLocked: (date) => date.startsWith("2026-11"),
+      isEditable: () => false,
+      onAbsenceClick,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Vacation, open the absence" }),
+    );
+    expect(onAbsenceClick).toHaveBeenCalledWith(vacation);
+  });
+
+  it("marks the highlighted row and scrolls to it", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    renderRow(row(), { isHighlighted: true });
+
+    expect(screen.getByRole("row")).toHaveClass("bg-brand-subtle");
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 });

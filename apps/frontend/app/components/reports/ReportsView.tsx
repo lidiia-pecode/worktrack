@@ -17,7 +17,7 @@ import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
-import { PERSON_PARAM } from "../team/useOpenedPerson";
+import { PERSON_PARAM } from "../team/team-links";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";

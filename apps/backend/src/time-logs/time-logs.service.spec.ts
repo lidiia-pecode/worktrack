@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -36,7 +37,9 @@ import {
 
 import { TimeLog } from './entities/time-log.entity';
 import { TimeLogsQuery } from './dtos/time-logs-query.dto';
-import { TimeLogsService } from './time-logs.service';
+import { TimeLogResponse } from './dtos/time-log-response.dto';
+import { TeamSummaryResponse } from './dtos/team-summary-response.dto';
+import { TeamSummaryRow, TimeLogsService } from './time-logs.service';
 
 /**
  * Runs against the development database, so it needs the Docker stack. The
@@ -596,7 +599,11 @@ describe('TimeLogsService write scope', () => {
 
     const weekOf = (
       by: AuthUser,
-      filter: { teamId?: string; userId?: string } = {},
+      filter: {
+        teamId?: string;
+        userId?: string;
+        includeEntries?: boolean;
+      } = {},
     ) =>
       service.getTeamSummary({ dateFrom: DATE, dateTo: DATE, ...filter }, by);
 
@@ -689,7 +696,7 @@ describe('TimeLogsService write scope', () => {
       });
 
       const summary = await service.getTeamSummary(
-        { dateFrom: DATE, dateTo: DATE, projectId },
+        { dateFrom: DATE, dateTo: DATE, projectId, includeEntries: true },
         owner,
       );
       const memberRow = summary.rows.find((row) => row.user.id === member.id);
@@ -698,7 +705,80 @@ describe('TimeLogsService write scope', () => {
       expect(memberRow?.days).toEqual([
         expect.objectContaining({ date: DATE, minutes: 60 }),
       ]);
+      expect(memberRow?.days[0].entries).toEqual([
+        expect.objectContaining({ projectActivityId, minutes: 60 }),
+      ]);
       expect(summary.minutes).toBe(60);
+    });
+
+    describe('with entries', () => {
+      const entriesOf = (summary: { rows: TeamSummaryRow[] }) =>
+        summary.rows.flatMap((row) =>
+          row.days.flatMap((day) => day.entries ?? []),
+        );
+
+      it('leaves them out unless asked', async () => {
+        await existingLogFor(member.id);
+
+        const { rows } = await weekOf(owner);
+        const memberRow = rows.find((row) => row.user.id === member.id);
+
+        expect(memberRow?.days[0]).not.toHaveProperty('entries');
+      });
+
+      it("lists each day's entries in creation order, adding up to its minutes", async () => {
+        const first = await existingLogFor(member.id);
+        const second = await existingLogFor(member.id);
+
+        const { rows } = await weekOf(owner, { includeEntries: true });
+        const [day] = rows.find((row) => row.user.id === member.id)!.days;
+
+        expect(day.entries?.map((entry) => entry.id)).toEqual([first, second]);
+        expect(
+          day.entries?.reduce((sum, entry) => sum + entry.minutes, 0),
+        ).toBe(day.minutes);
+      });
+
+      it('gives a manager the entries of the people they see only', async () => {
+        const visible = await existingLogFor(member.id);
+        await existingLogFor(outsider.id);
+        await existingLogFor(loneManager.id);
+
+        const summary = await weekOf(manager, { includeEntries: true });
+
+        expect(entriesOf(summary).map((entry) => entry.id)).toEqual([visible]);
+      });
+
+      it('narrows them to the filtered team', async () => {
+        const inTeam = await existingLogFor(member.id);
+        await existingLogFor(outsider.id);
+
+        const summary = await weekOf(owner, { teamId, includeEntries: true });
+
+        expect(entriesOf(summary).map((entry) => entry.id)).toEqual([inTeam]);
+      });
+
+      it('answers each entry in the shape of GET /time-logs', async () => {
+        await existingLogFor(member.id);
+
+        const summary = await weekOf(owner, {
+          userId: member.id,
+          includeEntries: true,
+        });
+        const { results } = await service.list(
+          Object.assign(new TimeLogsQuery(), { userId: member.id }),
+          owner,
+        );
+
+        const served = plainToInstance(TeamSummaryResponse, summary, {
+          excludeExtraneousValues: true,
+        });
+        const listed = plainToInstance(TimeLogResponse, results, {
+          excludeExtraneousValues: true,
+        });
+
+        expect(served.rows[0].days[0].entries).toEqual(listed);
+      });
     });
   });
 

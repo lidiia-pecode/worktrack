@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
@@ -10,18 +12,39 @@ import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
+import { usePlanningEntries } from "@/hooks/usePlanning";
+import { useAllProjectsQuery } from "@/hooks/useProjects";
+import { useAbsencesMutations } from "@/hooks/useAbsences";
+import { useTimeLogsMutations } from "@/hooks/useTimelogs";
+import {
+  assignableActivitiesQuery,
+  useAssignableActivities,
+} from "@/hooks/useAssignableActivities";
+import { getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   formatDuration,
-  formatWeekRangeLabel,
   getWeekDates,
   getWeekEnd,
+  isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
-import { canWriteTimeLogsFor } from "@/lib/utils/user";
-import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
-import { lockLookupRange } from "@/lib/utils/reporting-period";
+import {
+  mapAbsencesByUserAndDate,
+  newAbsenceStartDate,
+} from "@/lib/utils/absence";
+import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
+import {
+  DEFAULT_TEAM_SORT,
+  nextTeamSort,
+  searchTeamRows,
+  sortTeamRows,
+  TeamSortKey,
+} from "@/lib/utils/team-rows";
+import { cn } from "@/lib/utils/cn";
+import { Absence, PlanningEntry, TeamSummaryUser, TimeLog } from "@/types";
 import { UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -31,23 +54,44 @@ import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
+import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
+import {
+  AbsenceFormModal,
+  LockedAbsenceModal,
+} from "../timesheet/components/AbsenceFormModal";
+import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
+import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
+import { PersonSortHeader } from "./components/PersonSortHeader";
 import { TeamFilters } from "./components/TeamFilters";
-import { PersonWeekPanel } from "./components/PersonWeekPanel";
 import { TeamWeekRow } from "./components/TeamWeekRow";
-import { useOpenedPerson } from "./useOpenedPerson";
+import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
+import { useTeamTimeFilters } from "./useTeamTimeFilters";
+
+type EntryForm = {
+  user: TeamSummaryUser;
+  date: string;
+  timelog?: TimeLog;
+  plannedProjectId?: string;
+};
+
+type AbsenceForm = {
+  user: TeamSummaryUser;
+  date: string;
+  absence?: Absence;
+};
 
 type TeamTimeViewProps = {
   role: UserRole;
   viewerId: string;
-  /** A day whose week to open first, from a link. */
-  startingDay?: string;
+  /** A person whose row to mark and scroll to, from a link. */
+  highlightedPersonId?: string;
 };
 
 export const TeamTimeView = ({
   role,
   viewerId,
-  startingDay,
+  highlightedPersonId,
 }: TeamTimeViewProps) => {
   const {
     timezone,
@@ -56,10 +100,25 @@ export const TeamTimeView = ({
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { weekStart, showWeekOf } = useShownWeek(startingDay);
-  const [teamId, setTeamId] = useState<string | undefined>();
-  const [projectId, setProjectId] = useState<string | undefined>();
-  const { personId, open: openPerson, close: closePerson } = useOpenedPerson();
+  const { weekStart, showWeekOf } = useShownWeek();
+  const { teamId, projectId, setFilters } = useTeamTimeFilters();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState(DEFAULT_TEAM_SORT);
+  const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
+  const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
+    null,
+  );
+  const [nonWorkDay, setNonWorkDay] = useState<EntryForm | null>(null);
+  const [absenceForm, setAbsenceForm] = useState<AbsenceForm | null>(null);
+
+  const queryClient = useQueryClient();
+  const timelogActions = useTimeLogsMutations();
+  const absenceActions = useAbsencesMutations();
+  // Already in the cache by the time the form opens (`openEntryForm`).
+  const { items: pickerItems } = useAssignableActivities(
+    entryForm?.user.id,
+    Boolean(entryForm),
+  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -77,7 +136,34 @@ export const TeamTimeView = ({
     dateTo,
     teamId,
     projectId,
+    includeEntries: true,
   });
+
+  // Context for an empty day, narrowed like the entries; a failed load leaves
+  // the days without it.
+  const { items: plannedEntries } = usePlanningEntries({
+    dateFrom,
+    dateTo,
+    projectId,
+  });
+
+  const plansByUser = useMemo(() => {
+    const byUser: Record<string, Record<string, PlanningEntry[]>> = {};
+
+    plannedEntries.forEach((entry) => {
+      ((byUser[entry.userId] ??= {})[entry.date] ??= []).push(entry);
+    });
+
+    return byUser;
+  }, [plannedEntries]);
+
+  // The same list the project filter shows, so it comes from the cache.
+  const { items: projects } = useAllProjectsQuery();
+  // Set whenever a project filters the grid, even before its name has loaded.
+  const projectName = projectId
+    ? (projects.find((project) => project.id === projectId)?.name ??
+      "this project")
+    : undefined;
 
   const {
     items: absences,
@@ -114,40 +200,21 @@ export const TeamTimeView = ({
     managerWelcomeKey(viewerId),
   );
 
-  const dailyTotals = useMemo(() => {
-    const totalsByDate: Record<string, number> = {};
-
-    rows.forEach((row) => {
-      row.days.forEach((day) => {
-        totalsByDate[day.date] = (totalsByDate[day.date] ?? 0) + day.minutes;
-      });
-    });
-
-    return totalsByDate;
-  }, [rows]);
-
-  // The panel follows the grid: when the week or a filter drops the person, it
-  // closes, URL included, rather than reopening by itself when they return.
-  const openedRow = personId
-    ? rows.find((row) => row.user.id === personId)
-    : undefined;
-  const isPersonGone =
-    !!personId &&
-    !openedRow &&
-    !isLoadingSummary &&
-    !isShowingPreviousWeek &&
-    !isSummaryError;
-
-  useEffect(() => {
-    if (isPersonGone) closePerson();
-  }, [isPersonGone, closePerson]);
-
   const hasError =
     isSettingsError || isSummaryError || isAbsencesError || isLocksError;
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
 
-  const matchesNobody = hasActiveFilters && rows.length === 0;
+  const shownRows = useMemo(
+    () =>
+      sortTeamRows(searchTeamRows(rows, search), sort, {
+        byProject: Boolean(projectId),
+      }),
+    [rows, search, sort, projectId],
+  );
+
+  const matchesNobody =
+    (hasActiveFilters || Boolean(search.trim())) && shownRows.length === 0;
 
   const onlyViewer = onlyViewerReason({
     role,
@@ -163,10 +230,72 @@ export const TeamTimeView = ({
       ? null
       : onlyViewer;
 
-  const clearFilters = () => {
-    setTeamId(undefined);
-    setProjectId(undefined);
+  // The form reads its defaults once, so it mounts only after the person's
+  // activities have loaded; the day shows as busy meanwhile.
+  const openEntryForm = async (form: EntryForm) => {
+    // A second click while one loads would swap the form under its defaults.
+    if (pendingEntryForm) return;
+
+    setPendingEntryForm(form);
+    try {
+      await queryClient.ensureQueryData(
+        assignableActivitiesQuery(form.user.id),
+      );
+      setEntryForm(form);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setPendingEntryForm(null);
+    }
   };
+
+  // Plans never fall on a weekend, so the confirmation needs no project.
+  const openCreate = (
+    user: TeamSummaryUser,
+    date: Date,
+    plannedProjectId?: string,
+  ) => {
+    const form = { user, date: toISODate(date), plannedProjectId };
+
+    if (isWeekend(date)) {
+      setNonWorkDay(form);
+      return;
+    }
+
+    void openEntryForm(form);
+  };
+
+  const confirmNonWorkDay = () => {
+    if (!nonWorkDay) return;
+
+    void openEntryForm(nonWorkDay);
+    setNonWorkDay(null);
+  };
+
+  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
+  const openNewAbsence = (user: TeamSummaryUser) =>
+    setAbsenceForm({
+      user,
+      date: newAbsenceStartDate({
+        today: new Date(`${todayIso}T00:00:00`),
+        weekStart,
+        isCurrentWeek,
+        isEditable,
+      }),
+    });
+
+  const openedAbsence = absenceForm?.absence;
+  // Locked as a whole once any of its days is, as on the timesheet.
+  const isOpenedAbsenceLocked =
+    !!openedAbsence &&
+    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+
+  const clearFilters = () => {
+    setFilters({ teamId: undefined, projectId: undefined });
+    setSearch("");
+  };
+
+  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
 
   const retry = () => {
     void refetchSummary();
@@ -213,8 +342,12 @@ export const TeamTimeView = ({
         <TeamFilters
           teamId={teamId}
           projectId={projectId}
-          onTeamChange={setTeamId}
-          onProjectChange={setProjectId}
+          onTeamChange={(nextTeamId) => setFilters({ teamId: nextTeamId })}
+          onProjectChange={(nextProjectId) =>
+            setFilters({ projectId: nextProjectId })
+          }
+          search={search}
+          onSearchChange={setSearch}
         />
       )}
 
@@ -230,8 +363,8 @@ export const TeamTimeView = ({
         <div className="p-6">
           <EmptyState
             icon={<SearchX />}
-            title="Nobody matches these filters"
-            description="Nobody you can see is in the team or on the project you picked."
+            title="Nobody matches"
+            description="Nobody you can see matches the search, team or project you picked."
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
@@ -259,22 +392,24 @@ export const TeamTimeView = ({
         >
           <table className="w-full min-w-5xl table-fixed border-collapse">
             <colgroup>
-              <col className="w-56" />
+              <col className="w-52" />
 
               {weekDates.map((date) => (
-                <col key={toISODate(date)} className="w-24" />
+                <col key={toISODate(date)} />
               ))}
-
-              <col className="w-36" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className="border-r border-border/60 p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground"
+                  aria-sort={
+                    sort.direction === "asc" ? "ascending" : "descending"
+                  }
+                  aria-label={`Person, sorted by ${sort.key === "name" ? "name" : "logged time"}`}
+                  className={cn(STICKY_PERSON_CELL, "p-1.5 text-left")}
                 >
-                  Person
+                  <PersonSortHeader sort={sort} onSort={sortBy} />
                 </th>
 
                 {weekDates.map((date) => (
@@ -286,30 +421,50 @@ export const TeamTimeView = ({
                     <WeekHeaderDay
                       date={date}
                       isToday={toISODate(date) === todayIso}
-                      totalMinutes={dailyTotals[toISODate(date)] ?? 0}
                       isLocked={isLocked(toISODate(date))}
                     />
                   </th>
                 ))}
-
-                <th
-                  scope="col"
-                  className="p-2 text-right text-2xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  {projectId ? "On project" : "Week / expected"}
-                </th>
               </tr>
             </thead>
 
             <tbody>
-              {rows.map((row) => (
+              {shownRows.map((row) => (
                 <TeamWeekRow
                   key={row.user.id}
                   row={row}
                   weekDates={weekDates}
+                  todayIso={todayIso}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  showsExpected={!projectId}
-                  onOpen={(opened) => openPerson(opened.user.id)}
+                  plansByDate={plansByUser[row.user.id] ?? {}}
+                  isLocked={isLocked}
+                  isEditable={isEditable}
+                  projectName={projectName}
+                  canWrite={canWriteTimeLogsFor(role, viewerId, row.user.id)}
+                  isHighlighted={row.user.id === highlightedPersonId}
+                  busyDate={
+                    pendingEntryForm?.user.id === row.user.id
+                      ? pendingEntryForm.date
+                      : undefined
+                  }
+                  onEditEntry={(timelog) =>
+                    void openEntryForm({
+                      user: row.user,
+                      date: timelog.date,
+                      timelog,
+                    })
+                  }
+                  onAdd={(date, plannedProjectId) =>
+                    openCreate(row.user, date, plannedProjectId)
+                  }
+                  onAbsenceClick={(absence) =>
+                    setAbsenceForm({
+                      user: row.user,
+                      date: absence.startDate,
+                      absence,
+                    })
+                  }
+                  onAddAbsence={() => openNewAbsence(row.user)}
                 />
               ))}
             </tbody>
@@ -317,20 +472,68 @@ export const TeamTimeView = ({
         </div>
       )}
 
-      {openedRow && (
-        <PersonWeekPanel
-          key={openedRow.user.id}
-          row={openedRow}
-          viewerId={viewerId}
-          weekDates={weekDates}
-          weekLabel={formatWeekRangeLabel(weekStart)}
-          todayIso={todayIso}
-          canWrite={canWriteTimeLogsFor(role, viewerId, openedRow.user.id)}
-          isLocked={isLocked}
-          isEditable={isEditable}
-          projectId={projectId}
-          absencesByDate={absencesByUser[openedRow.user.id] ?? {}}
-          onClose={closePerson}
+      <NonWorkDayConfirm
+        date={nonWorkDay ? new Date(`${nonWorkDay.date}T00:00:00`) : null}
+        onClose={() => setNonWorkDay(null)}
+        onConfirm={confirmNonWorkDay}
+      />
+
+      {absenceForm &&
+        (openedAbsence && isOpenedAbsenceLocked ? (
+          <LockedAbsenceModal
+            absence={openedAbsence}
+            subjectName={fullName(absenceForm.user)}
+            onClose={() => setAbsenceForm(null)}
+          />
+        ) : (
+          <AbsenceFormModal
+            open
+            onClose={() => setAbsenceForm(null)}
+            userId={absenceForm.user.id}
+            subjectName={fullName(absenceForm.user)}
+            date={absenceForm.date}
+            absence={openedAbsence}
+            onCreate={(payload) =>
+              absenceActions.create.mutateAsync({
+                ...payload,
+                userId: absenceForm.user.id,
+              })
+            }
+            onUpdate={(id, data) =>
+              absenceActions.update.mutateAsync({ id, data })
+            }
+            onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+            isSaving={
+              absenceActions.create.isPending || absenceActions.update.isPending
+            }
+            isDeleting={absenceActions.delete.isPending}
+          />
+        ))}
+
+      {entryForm && (
+        <TimeLogFormModal
+          open
+          onClose={() => setEntryForm(null)}
+          date={entryForm.date}
+          subjectName={fullName(entryForm.user)}
+          rememberKey={lastEntryChoiceKey(viewerId, entryForm.user.id)}
+          plannedProjectId={entryForm.plannedProjectId}
+          timelog={entryForm.timelog}
+          pickerItems={pickerItems}
+          onCreate={(payload) =>
+            timelogActions.create.mutateAsync({
+              ...payload,
+              userId: entryForm.user.id,
+            })
+          }
+          onUpdate={(id, data) =>
+            timelogActions.update.mutateAsync({ id, data })
+          }
+          onDelete={(id) => timelogActions.delete.mutateAsync(id)}
+          isSaving={
+            timelogActions.create.isPending || timelogActions.update.isPending
+          }
+          isDeleting={timelogActions.delete.isPending}
         />
       )}
     </div>

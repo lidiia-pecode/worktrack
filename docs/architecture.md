@@ -84,7 +84,8 @@ The employee timesheet is complete: logging, editing and deleting time against
 assigned projects, driven by company work settings, with full loading, error and
 empty states. The Manage pages show users, teams, projects, activities and
 categories as searchable lists that open a shared side panel. Owners and managers have a team time view at `/team` — a week grid
-filtered by team and project, with a per-person panel they can edit through.
+whose cells list each day's entries, edited in place, searchable, sortable and
+filtered by team and project.
 
 Absences are built: a person records days away as a date range with a type, an
 owner or manager can record them for somebody from the team view, and the
