@@ -24,7 +24,7 @@ type WeekSummaryProps = {
   className?: string;
 };
 
-const WeekBar = ({
+export const WeekBar = ({
   billableMinutes,
   nonBillableMinutes,
   expectedMinutes,

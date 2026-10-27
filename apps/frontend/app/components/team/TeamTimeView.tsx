@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
@@ -10,19 +10,21 @@ import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
+import { usePlanningEntries } from "@/hooks/usePlanning";
+import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { Button } from "@/components/ui/button";
 import {
   formatDuration,
-  formatWeekRangeLabel,
   getWeekDates,
   getWeekEnd,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
-import { canWriteTimeLogsFor } from "@/lib/utils/user";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { lockLookupRange } from "@/lib/utils/reporting-period";
-import { UserRole } from "@/types/enums";
+import { cn } from "@/lib/utils/cn";
+import { PlanningEntry } from "@/types";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
@@ -33,9 +35,8 @@ import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
 import { TeamFilters } from "./components/TeamFilters";
-import { PersonWeekPanel } from "./components/PersonWeekPanel";
 import { TeamWeekRow } from "./components/TeamWeekRow";
-import { useOpenedPerson } from "./useOpenedPerson";
+import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
 
 type TeamTimeViewProps = {
   role: UserRole;
@@ -59,7 +60,6 @@ export const TeamTimeView = ({
   const { weekStart, showWeekOf } = useShownWeek(startingDay);
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
-  const { personId, open: openPerson, close: closePerson } = useOpenedPerson();
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -77,7 +77,36 @@ export const TeamTimeView = ({
     dateTo,
     teamId,
     projectId,
+    includeEntries: true,
   });
+
+  // Context for an empty day, narrowed like the entries; a failed load leaves
+  // the days without it.
+  const { items: plannedEntries } = usePlanningEntries({
+    dateFrom,
+    dateTo,
+    projectId,
+  });
+
+  const plansByUser = useMemo(() => {
+    const byUser: Record<string, Record<string, PlanningEntry[]>> = {};
+
+    plannedEntries.forEach((entry) => {
+      ((byUser[entry.userId] ??= {})[entry.date] ??= []).push(entry);
+    });
+
+    return byUser;
+  }, [plannedEntries]);
+
+  // The same list the project filter shows, so it comes from the cache.
+  const { items: projects } = useAllProjectsQuery({
+    status: ProjectStatus.ACTIVE,
+  });
+  // Set whenever a project filters the grid, even before its name has loaded.
+  const projectName = projectId
+    ? (projects.find((project) => project.id === projectId)?.name ??
+      "this project")
+    : undefined;
 
   const {
     items: absences,
@@ -100,7 +129,6 @@ export const TeamTimeView = ({
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
   const {
     isLocked,
-    isEditable,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -125,22 +153,6 @@ export const TeamTimeView = ({
 
     return totalsByDate;
   }, [rows]);
-
-  // The panel follows the grid: when the week or a filter drops the person, it
-  // closes, URL included, rather than reopening by itself when they return.
-  const openedRow = personId
-    ? rows.find((row) => row.user.id === personId)
-    : undefined;
-  const isPersonGone =
-    !!personId &&
-    !openedRow &&
-    !isLoadingSummary &&
-    !isShowingPreviousWeek &&
-    !isSummaryError;
-
-  useEffect(() => {
-    if (isPersonGone) closePerson();
-  }, [isPersonGone, closePerson]);
 
   const hasError =
     isSettingsError || isSummaryError || isAbsencesError || isLocksError;
@@ -259,20 +271,21 @@ export const TeamTimeView = ({
         >
           <table className="w-full min-w-5xl table-fixed border-collapse">
             <colgroup>
-              <col className="w-56" />
+              <col className="w-52" />
 
               {weekDates.map((date) => (
-                <col key={toISODate(date)} className="w-24" />
+                <col key={toISODate(date)} />
               ))}
-
-              <col className="w-36" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className="border-r border-border/60 p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground"
+                  className={cn(
+                    STICKY_PERSON_CELL,
+                    "p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground",
+                  )}
                 >
                   Person
                 </th>
@@ -291,13 +304,6 @@ export const TeamTimeView = ({
                     />
                   </th>
                 ))}
-
-                <th
-                  scope="col"
-                  className="p-2 text-right text-2xs font-medium uppercase tracking-wider text-muted-foreground"
-                >
-                  {projectId ? "On project" : "Week / expected"}
-                </th>
               </tr>
             </thead>
 
@@ -307,31 +313,16 @@ export const TeamTimeView = ({
                   key={row.user.id}
                   row={row}
                   weekDates={weekDates}
+                  todayIso={todayIso}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  showsExpected={!projectId}
-                  onOpen={(opened) => openPerson(opened.user.id)}
+                  plansByDate={plansByUser[row.user.id] ?? {}}
+                  isLocked={isLocked}
+                  projectName={projectName}
                 />
               ))}
             </tbody>
           </table>
         </div>
-      )}
-
-      {openedRow && (
-        <PersonWeekPanel
-          key={openedRow.user.id}
-          row={openedRow}
-          viewerId={viewerId}
-          weekDates={weekDates}
-          weekLabel={formatWeekRangeLabel(weekStart)}
-          todayIso={todayIso}
-          canWrite={canWriteTimeLogsFor(role, viewerId, openedRow.user.id)}
-          isLocked={isLocked}
-          isEditable={isEditable}
-          projectId={projectId}
-          absencesByDate={absencesByUser[openedRow.user.id] ?? {}}
-          onClose={closePerson}
-        />
       )}
     </div>
   );

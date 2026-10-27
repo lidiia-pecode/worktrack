@@ -2,18 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { CalendarDays, Clock, StickyNote, Tag } from "lucide-react";
+import { Clock, StickyNote, Tag } from "lucide-react";
 
 import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
-
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-});
 
 const POPOVER_WIDTH = 240;
 const VIEWPORT_MARGIN = 8;
@@ -102,15 +96,10 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
           <Clock className="size-3.5 shrink-0" />
           <span>{formatDuration(timelog.minutes)}</span>
           {!timelog.isBillable && (
-            <span className="ml-1 rounded bg-muted/40 px-1.5 py-0.5 text-2xs font-medium text-muted-foreground">
+            <span className="ml-1 rounded bg-muted/40 px-1 text-2xs text-muted-foreground">
               Non-billable
             </span>
           )}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <CalendarDays className="size-3.5 shrink-0" />
-          <span>{DAY_LABEL.format(new Date(`${timelog.date}T00:00:00`))}</span>
         </div>
 
         {timelog.note && (

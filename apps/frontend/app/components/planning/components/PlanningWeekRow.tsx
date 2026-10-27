@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { PersonLabel } from "../../shared/PersonLabel";
 import { ABSENCE_PATTERN, WEEKEND_PATTERN } from "../../timesheet/consts";
+import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -102,7 +103,7 @@ export const PlanningWeekRow = ({
     <tr className="border-b border-border last:border-b-0">
       <th
         scope="row"
-        className="border-r border-border/60 p-0 text-left font-normal"
+        className={cn(STICKY_PERSON_CELL, "p-0 text-left font-normal")}
       >
         {isActive ? (
           <button

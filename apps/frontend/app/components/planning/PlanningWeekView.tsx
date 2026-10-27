@@ -16,6 +16,7 @@ import {
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
+import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
@@ -35,6 +36,7 @@ import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanningDayModal } from "./components/PlanningDayModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
+import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
 
 type OpenedDay = {
   userId: string;
@@ -274,7 +276,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className="border-r border-border/60 p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground"
+                  className={cn(
+                    STICKY_PERSON_CELL,
+                    "p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground",
+                  )}
                 >
                   Person
                   <span className="block font-normal normal-case tracking-normal">
