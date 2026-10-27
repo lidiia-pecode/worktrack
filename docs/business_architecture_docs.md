@@ -913,7 +913,9 @@ both applications on every pull request.
 The backend has a production image (`apps/backend/Dockerfile`); the frontend is
 built by its host. A shared development stand runs on Vercel, Render and Neon on
 free plans, with migrations applied by hand; there is no production environment,
-by decision, until the product is ready (§7).
+by decision, until the product is ready (§7). The stand is for development and
+testing only: no public production domain, test data, no real end users, and no
+real-user rollout planned in the near future.
 
 Access tokens live fifteen minutes and refresh tokens thirty days. A page holds
 at most 100 rows and a larger request is refused; views that need a whole list

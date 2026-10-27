@@ -2,6 +2,7 @@ import { Exclude, Expose, Type } from 'class-transformer';
 
 import { ExpectedDayResponse } from 'src/capacity/dtos/expected-hours-response.dto';
 import { UserStatus } from 'src/users/enums/user-role.enum';
+import { TimeLogResponse } from './time-log-response.dto';
 
 @Exclude()
 export class TeamSummaryUserResponse {
@@ -40,6 +41,11 @@ export class TeamSummaryDayResponse {
 
   @Expose()
   nonBillableMinutes!: number;
+
+  /** Only with `includeEntries`. */
+  @Expose()
+  @Type(() => TimeLogResponse)
+  entries?: TimeLogResponse[];
 }
 
 @Exclude()

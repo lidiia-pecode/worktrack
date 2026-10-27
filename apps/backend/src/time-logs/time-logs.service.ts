@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   EntityManager,
+  ObjectLiteral,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
@@ -50,6 +51,8 @@ export interface TeamSummaryDay {
   minutes: number;
   billableMinutes: number;
   nonBillableMinutes: number;
+  /** Only with `includeEntries`. */
+  entries?: TimeLog[];
 }
 
 export interface TeamSummaryRow {
@@ -72,6 +75,8 @@ export interface TeamSummary {
   nonBillableMinutes: number;
   rows: TeamSummaryRow[];
 }
+
+const dayKey = (userId: string, date: string) => `${userId}:${date}`;
 
 @Injectable()
 export class TimeLogsService {
@@ -180,7 +185,10 @@ export class TimeLogsService {
   ): Promise<TeamSummary> {
     assertDateRange(query.dateFrom, query.dateTo);
 
-    const dailyTotals = await this.aggregateDailyMinutes(query, user);
+    const [dailyTotals, entriesByDay] = await Promise.all([
+      this.aggregateDailyMinutes(query, user),
+      query.includeEntries ? this.findEntriesByDay(query, user) : undefined,
+    ]);
 
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
     const users = await this.teamVisibility.findVisibleUsers(
@@ -225,12 +233,16 @@ export class TimeLogsService {
       const billableMinutes = Number(raw.billableMinutes) || 0;
       const nonBillableMinutes = minutes - billableMinutes;
 
-      row.days.push({
+      const day: TeamSummaryDay = {
         date: raw.date,
         minutes,
         billableMinutes,
         nonBillableMinutes,
-      });
+      };
+      if (entriesByDay) {
+        day.entries = entriesByDay.get(dayKey(raw.userId, raw.date)) ?? [];
+      }
+      row.days.push(day);
 
       row.minutes += minutes;
       row.billableMinutes += billableMinutes;
@@ -393,6 +405,37 @@ export class TimeLogsService {
   // ==========================================
 
   /**
+   * The filters the summary's totals and its entries share, so the minutes of
+   * a day always equal the sum of its entries.
+   */
+  private applyTeamSummaryFilters<T extends ObjectLiteral>(
+    qb: SelectQueryBuilder<T>,
+    query: TeamSummaryQuery,
+    user: AuthUser,
+  ): void {
+    qb.andWhere('t.company_id = :companyId', {
+      companyId: user.companyId,
+    }).andWhere('t.date BETWEEN :dateFrom AND :dateTo', {
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+    });
+
+    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
+      includeSelf: true,
+    });
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      't.user_id',
+      query.teamId,
+      user,
+    );
+
+    if (query.userId) {
+      qb.andWhere('t.user_id = :userId', { userId: query.userId });
+    }
+  }
+
+  /**
    * Minutes per user per day for the range, split by billability.
    */
   private async aggregateDailyMinutes(
@@ -408,26 +451,9 @@ export class TimeLogsService {
         'SUM(CASE WHEN t.is_billable = true THEN t.minutes ELSE 0 END)',
         'billableMinutes',
       )
-      .from('time_logs', 't')
-      .where('t.company_id = :companyId', { companyId: user.companyId })
-      .andWhere('t.date BETWEEN :dateFrom AND :dateTo', {
-        dateFrom: query.dateFrom,
-        dateTo: query.dateTo,
-      });
+      .from('time_logs', 't');
 
-    this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
-      includeSelf: true,
-    });
-    this.teamVisibility.applyTeamMembershipFilter(
-      qb,
-      't.user_id',
-      query.teamId,
-      user,
-    );
-
-    if (query.userId) {
-      qb.andWhere('t.user_id = :userId', { userId: query.userId });
-    }
+    this.applyTeamSummaryFilters(qb, query, user);
 
     if (query.projectId) {
       qb.innerJoin(
@@ -442,6 +468,33 @@ export class TimeLogsService {
       .addGroupBy('t.date')
       .orderBy('t.date', 'ASC')
       .getRawMany<DailyMinutesRaw>();
+  }
+
+  /** The range's entries in creation order, grouped by person and day. */
+  private async findEntriesByDay(
+    query: TeamSummaryQuery,
+    user: AuthUser,
+  ): Promise<Map<string, TimeLog[]>> {
+    const qb = this.buildBaseQuery();
+    this.applyTeamSummaryFilters(qb, query, user);
+
+    if (query.projectId) {
+      qb.andWhere('project.id = :projectId', { projectId: query.projectId });
+    }
+
+    const entries = await qb
+      .orderBy('t.createdAt', 'ASC')
+      .addOrderBy('t.id', 'ASC')
+      .getMany();
+
+    const entriesByDay = new Map<string, TimeLog[]>();
+    for (const entry of entries) {
+      const key = dayKey(entry.userId, entry.date);
+      const dayEntries = entriesByDay.get(key);
+      if (dayEntries) dayEntries.push(entry);
+      else entriesByDay.set(key, [entry]);
+    }
+    return entriesByDay;
   }
 
   /**
