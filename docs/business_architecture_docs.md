@@ -15,7 +15,7 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 26 October 2026.** Phases 0 to 36 in §7 are
+**Last verified against the code: 27 October 2026.** Phases 0 to 37 in §7 are
 delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
@@ -701,8 +701,8 @@ plan and hours. Scope is computed from active `TeamMembership` rows with
 membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
-writes, so the two cannot drift apart, and the team view's per-person panel is
-where an owner or manager acts on it. Writing time or an absence for somebody
+writes, so the two cannot drift apart, and the Team time grid is where an
+owner or manager acts on it. Writing time or an absence for somebody
 else is refused once they are deactivated; their records stay as they were,
 and reading them is unchanged (`permission-model.md` §3.7).
 
@@ -758,15 +758,18 @@ see, and how a new company gets started. §7 plans that work.
   comes before anything risky. A project is client work, with a client suggested
   from those already used, or internal; an activity has a billable default and
   can stay a draft without a category until a project uses it.
-- **Team time view** — owners and managers land on `/team`, read their people's
-  week filtered by team and project, and open any row to see that person's
-  week in a side panel beside the grid: their entries day by day, their
-  absences and, where nothing is logged, their plan. From there they correct
-  the person's time and record their absences; the open person is in the URL,
-  so a reload keeps the panel. A deactivated person is shown read-only, and
-  the API refuses writes for them. Filtered to a project, the rows, the team
-  total and the panel show only that project's hours, with no Expected, since
-  that is about the whole week. Days follow the timesheet's look: a day over
+- **Team time view** — owners and managers land on `/team` and read their
+  people's week, a row each: the person, their hours against what was
+  expected, and each day's entries as project-coloured blocks, with the plan
+  shown on a day nothing is logged yet. They correct the week in the grid: a
+  block opens that entry, the empty part of a day logs time for the person,
+  and an icon by the name records an absence. A search by name or position,
+  a sort by name or by how much of the expected time is logged, and filters by
+  team and project (archived and completed projects included) narrow it; the
+  week and the filters are in the URL, so a reload keeps them. A deactivated
+  person is shown read-only, and the API refuses writes for them. Filtered to
+  a project, the rows and the team total show only that project's hours, with
+  no Expected, since that is about the whole week. Days follow the timesheet's look: a day over
   the person's hours on solid amber, a weekend with time in amber stripes.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet, and an owner or manager records them for somebody
@@ -858,10 +861,11 @@ see, and how a new company gets started. §7 plans that work.
 
 ### Decided while building, and still in force
 
-- **`/team` stays a summary grid**, not a team timesheet. The grid is for
-  scanning who logged and how much, the timesheet for what one person's week
-  consisted of. "Where did the time go" is answered by the project filter, the
-  per-person panel and the hours report.
+- **A team's week is read and corrected in the Team time grid** (26 October
+  2026, Phase 37), reversing "`/team` stays a summary grid". Each day lists its
+  entries, so an owner or manager sees what a week consisted of and fixes it in
+  the cell, with no side panel beside the grid; the timesheet stays the
+  person's own screen.
 - **Reports are for owners and managers.** No report route is open to
   employees; the planned-vs-actual route they could read was removed in Phase
   34, since the People report covers it and no screen used it.
@@ -893,20 +897,20 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-seven
-suites and 828 tests, covering the role-visibility filters, team and invitation
+suites and 834 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has sixty-six Vitest files and 371 tests: its date, month,
+The frontend has seventy-one Vitest files and 410 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column, the
-person's week panel on Team time, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, My time, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
+Team time view, its day cells, rows, filters and sort order, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, My time, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -991,6 +995,7 @@ is in its pull request.
 | 34 | Reports on one overview page, one month at a time: one cut-off at yesterday for every figure and the export, with an Email column in the export; week by week first with the month's logged, planned and billable time; "Needs attention" while the month is open, in at most two cards (missing time over finished weeks, projects off plan or with unplanned client time), each name opening its panel; people by team against their expected hours; where the time went, by project against plan or by kind of work; one bar and one whole-hour figure per row, a lighter bar for time with no plan, and one dot for what needs attention; one line saying how far the month is counted and whether it is open for edits or locked; a person or a project in a side panel kept in the URL; the People and timeline reports replacing utilisation and planned vs actual; an owner listed with a plan too; expected hours stopping on the day an account is deactivated, which Deactivate now records |
 | 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
 | 36 | Fixes across areas: nothing expected of a person for a spell they were deactivated and came back from, and an owner's own days without time on My time and in their panel; planning edits that can't deadlock with a period plan, and a period preview walking expected hours once; notifications read only once shown, unread first; sessions kept through a sign-in page, a throttled refresh or a backend asleep, and a deleted session no longer locking anyone out of sign-in, with lookups refusing a missing value and database conflicts repeating nothing sent; the timesheet's excess in line with its entries, locked absences opened to read, typed minutes carried into hours and the week link tidied; a team's manager removable by an owner only, focus back after Back, Team time's empty days named for a screen reader, and lighter placeholders |
+| 37 | Team time with rich cells: each day's entries as project-coloured blocks that open the entry form, the empty part of a day logging time for the person and an absence icon by each name, replacing the side panel; the plan on a day with nothing logged; the team summary returning each day's entries on request; search by name or position, a sort by name or by the share of expected time logged, and archived and completed projects in the project filter; the week in the URL on the timesheet, Team time and Planning, and Team time's filters too; Reports' days without time linking to their week on Team time with the person highlighted; a person column that stays put while the days scroll; no day totals in the Team time and Planning headers |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1048,9 +1053,8 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning** *(started, Phases 31–32)*. The manager's
-and owner's week views: the team grid, the per-person panel and the planning
-grid. Finding who is behind and why, correcting somebody's week including their
+**Area 4 — Team oversight and planning** *(started, Phases 31–32 and 37)*. The
+manager's and owner's week views: the team grid and the planning grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,
 absences and locks the same way. Planning and Team time stay separate screens by
 decision: they share the chrome, not the job (actuals and corrections on one,
@@ -1086,8 +1090,9 @@ ready, or not, for the final stage.
 every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
 started. After Phase 33, by decision (21 October 2026), Area 6 came next,
 starting with its two counting bugs, then Area 7, done by Phase 35. Phase 36
-then fixed the defects open across areas; the rest of Areas 3 and 4, the phone
-layout among it, follows. Area 8 closes the stage. A
+then fixed the defects open across areas, and Phase 37 rebuilt Team time
+around its cells; the rest of Areas 3 and 4, the phone layout among it,
+follows. Area 8 closes the stage. A
 defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
