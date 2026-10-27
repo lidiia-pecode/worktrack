@@ -195,18 +195,6 @@ export const TeamTimeView = ({
     managerWelcomeKey(viewerId),
   );
 
-  const dailyTotals = useMemo(() => {
-    const totalsByDate: Record<string, number> = {};
-
-    rows.forEach((row) => {
-      row.days.forEach((day) => {
-        totalsByDate[day.date] = (totalsByDate[day.date] ?? 0) + day.minutes;
-      });
-    });
-
-    return totalsByDate;
-  }, [rows]);
-
   const hasError =
     isSettingsError || isSummaryError || isAbsencesError || isLocksError;
 
@@ -409,7 +397,6 @@ export const TeamTimeView = ({
                     <WeekHeaderDay
                       date={date}
                       isToday={toISODate(date) === todayIso}
-                      totalMinutes={dailyTotals[toISODate(date)] ?? 0}
                       isLocked={isLocked(toISODate(date))}
                     />
                   </th>

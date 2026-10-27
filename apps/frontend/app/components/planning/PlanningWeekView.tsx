@@ -112,19 +112,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   const absenceActions = useAbsencesMutations();
 
-  const dailyTotals = useMemo(() => {
-    const totalsByDate: Record<string, number> = {};
-
-    rows.forEach((row) => {
-      row.entries.forEach((entry) => {
-        totalsByDate[entry.date] =
-          (totalsByDate[entry.date] ?? 0) + entry.plannedMinutes;
-      });
-    });
-
-    return totalsByDate;
-  }, [rows]);
-
   const totalPlanned = rows.reduce((sum, row) => sum + row.plannedMinutes, 0);
   const totalAvailable = rows.reduce(
     (sum, row) => sum + row.availableMinutes,
@@ -296,7 +283,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                     <WeekHeaderDay
                       date={date}
                       isToday={toISODate(date) === todayIso}
-                      totalMinutes={dailyTotals[toISODate(date)] ?? 0}
                       isLocked={isLocked(toISODate(date))}
                     />
                   </th>
