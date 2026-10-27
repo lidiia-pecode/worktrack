@@ -3,14 +3,15 @@ import { UserRole } from "@/types/enums";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 import { ManagerWelcome } from "@/app/components/team/components/ManagerWelcome";
+import { PERSON_PARAM } from "@/app/components/team/team-links";
 
 type TeamPageProps = {
-  searchParams: Promise<{ week?: string }>;
+  searchParams: Promise<{ week?: string; [PERSON_PARAM]?: string }>;
 };
 
 export default async function TeamPage({ searchParams }: TeamPageProps) {
   const user = await requireManagerAccess();
-  const { week } = await searchParams;
+  const { week, [PERSON_PARAM]: highlightedPersonId } = await searchParams;
 
   return (
     <>
@@ -26,6 +27,7 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
         role={user.role}
         viewerId={user.id}
         startingDay={week}
+        highlightedPersonId={highlightedPersonId}
       />
     </>
   );

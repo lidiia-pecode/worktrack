@@ -180,6 +180,47 @@ describe("TeamDayCell", () => {
     expect(screen.getAllByText("8h planned · Data Warehouse")).toHaveLength(1);
   });
 
+  it("edits the entry a block names, and creates from the +", () => {
+    const onEditEntry = vi.fn();
+    const onAdd = vi.fn();
+    renderCell({ entries: [CRM, PORTAL], minutes: 480, onEditEntry, onAdd });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "3h Customer Portal, edit this entry",
+      }),
+    );
+    expect(onEditEntry).toHaveBeenCalledWith(PORTAL);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Log time for/ }));
+    expect(onAdd).toHaveBeenCalled();
+  });
+
+  it("logs time on the planned project from the plan", () => {
+    const onPlanClick = vi.fn();
+    renderCell({ plans: [PLAN], onPlanClick });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /for Data Warehouse \(planned 8h\)/ }),
+    );
+    expect(onPlanClick).toHaveBeenCalledWith("project-dwh");
+  });
+
+  it("opens the absence from its badge", () => {
+    const onAbsenceClick = vi.fn();
+    renderCell({ absence: VACATION, expectedMinutes: 0, onAbsenceClick });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Vacation, open the absence" }),
+    );
+    expect(onAbsenceClick).toHaveBeenCalled();
+  });
+
+  it("shows the day as busy while its form waits", () => {
+    renderCell({ isBusy: true });
+    expect(screen.getByRole("cell")).toHaveAttribute("aria-busy", "true");
+  });
+
   it("shows an entry's details while its block is hovered", () => {
     renderCell({ entries: [CRM], minutes: 300 });
 

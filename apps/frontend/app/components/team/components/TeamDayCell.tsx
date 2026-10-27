@@ -34,6 +34,8 @@ type TeamDayCellProps = {
   isLocked: boolean;
   /** The day has ended, so a working day without time is flagged. */
   isPast: boolean;
+  /** A form for this day waits for the person's activities to load. */
+  isBusy?: boolean;
   // Each action is offered only where it is allowed.
   onEditEntry?: (timelog: TimeLog) => void;
   onAdd?: () => void;
@@ -51,6 +53,7 @@ export const TeamDayCell = ({
   expectedMinutes,
   isLocked,
   isPast,
+  isBusy = false,
   onEditEntry,
   onAdd,
   onAbsenceClick,
@@ -86,9 +89,11 @@ export const TeamDayCell = ({
 
   return (
     <td
+      aria-busy={isBusy}
       className={cn(
         "group h-px border-r border-border/60 p-0 align-top",
         fill ?? (isLocked && "bg-muted/20"),
+        isBusy && "cursor-progress opacity-60",
       )}
     >
       <div className="flex h-full min-h-21 flex-col gap-0.75 px-1.25 pt-1 pb-1.25">

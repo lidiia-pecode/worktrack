@@ -1,8 +1,9 @@
-import { render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { ComponentProps } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
-import { TeamSummaryRow } from "@/types";
-import { UserStatus } from "@/types/enums";
+import { Absence, TeamSummaryRow } from "@/types";
+import { AbsenceType, UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 
 import { TeamWeekRow } from "./TeamWeekRow";
@@ -28,7 +29,10 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
   ...overrides,
 });
 
-const renderRow = (rowValue: TeamSummaryRow, projectName?: string) => {
+const renderRow = (
+  rowValue: TeamSummaryRow,
+  props: Partial<ComponentProps<typeof TeamWeekRow>> = {},
+) => {
   const { container } = render(
     <table>
       <tbody>
@@ -39,7 +43,14 @@ const renderRow = (rowValue: TeamSummaryRow, projectName?: string) => {
           absencesByDate={{}}
           plansByDate={{}}
           isLocked={() => false}
-          projectName={projectName}
+          isEditable={() => true}
+          canWrite
+          isHighlighted={false}
+          onEditEntry={vi.fn()}
+          onAdd={vi.fn()}
+          onAbsenceClick={vi.fn()}
+          onAddAbsence={vi.fn()}
+          {...props}
         />
       </tbody>
     </table>,
@@ -74,7 +85,7 @@ describe("TeamWeekRow", () => {
   });
 
   it("names the project under a project filter, with no bar", () => {
-    const { personCell, bar } = renderRow(row(), "CRM System");
+    const { personCell, bar } = renderRow(row(), { projectName: "CRM System" });
 
     expect(within(personCell).getByText("on CRM System")).toBeInTheDocument();
     expect(within(personCell).queryByText("of 40h")).not.toBeInTheDocument();
@@ -101,5 +112,75 @@ describe("TeamWeekRow", () => {
     renderRow(row());
 
     expect(screen.getAllByRole("cell")).toHaveLength(7);
+  });
+
+  it("records an absence from the Person cell", () => {
+    const onAddAbsence = vi.fn();
+    renderRow(row(), { onAddAbsence });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
+    );
+    expect(onAddAbsence).toHaveBeenCalled();
+  });
+
+  it("offers nothing to write for a deactivated person", () => {
+    renderRow(row({ user: { ...row().user, status: UserStatus.DEACTIVATED } }));
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("offers nothing to write without access", () => {
+    renderRow(row(), { canWrite: false });
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("logs time only on a day that has happened and is not locked", () => {
+    const onAdd = vi.fn();
+    renderRow(row(), {
+      todayIso: "2026-11-04",
+      // Monday is in a locked month.
+      isEditable: (date) => date !== "2026-11-02",
+      onAdd,
+    });
+
+    const addButtons = screen.getAllByRole("button", { name: /^Log time/ });
+    // Tuesday and Wednesday: Monday is locked, Thursday on is still to come.
+    expect(addButtons).toHaveLength(2);
+
+    fireEvent.click(addButtons[0]);
+    expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[1]);
+  });
+
+  it("opens an absence in a locked month, to be read", () => {
+    const vacation = {
+      id: "absence-1",
+      userId: "user-alice",
+      type: AbsenceType.VACATION,
+      startDate: "2026-11-02",
+      endDate: "2026-11-02",
+    } as Absence;
+    const onAbsenceClick = vi.fn();
+
+    renderRow(row(), {
+      absencesByDate: { "2026-11-02": vacation },
+      // November is locked, so nothing in the week can be written.
+      isLocked: (date) => date.startsWith("2026-11"),
+      isEditable: () => false,
+      onAbsenceClick,
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Vacation, open the absence" }),
+    );
+    expect(onAbsenceClick).toHaveBeenCalledWith(vacation);
+  });
+
+  it("marks the highlighted row and scrolls to it", () => {
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+
+    renderRow(row(), { isHighlighted: true });
+
+    expect(screen.getByRole("row")).toHaveClass("bg-brand-subtle");
+    expect(scrollIntoView).toHaveBeenCalled();
   });
 });

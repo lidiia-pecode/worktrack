@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
@@ -12,18 +14,30 @@ import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { useAllProjectsQuery } from "@/hooks/useProjects";
+import { useAbsencesMutations } from "@/hooks/useAbsences";
+import { useTimeLogsMutations } from "@/hooks/useTimelogs";
+import {
+  assignableActivitiesQuery,
+  useAssignableActivities,
+} from "@/hooks/useAssignableActivities";
+import { getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
   formatDuration,
   getWeekDates,
   getWeekEnd,
+  isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
-import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
-import { lockLookupRange } from "@/lib/utils/reporting-period";
+import {
+  mapAbsencesByUserAndDate,
+  newAbsenceStartDate,
+} from "@/lib/utils/absence";
+import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
-import { PlanningEntry } from "@/types";
+import { Absence, PlanningEntry, TeamSummaryUser, TimeLog } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -33,22 +47,45 @@ import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
+import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
+import {
+  AbsenceFormModal,
+  LockedAbsenceModal,
+} from "../timesheet/components/AbsenceFormModal";
+import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
+import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
+
+type EntryForm = {
+  user: TeamSummaryUser;
+  date: string;
+  timelog?: TimeLog;
+  plannedProjectId?: string;
+};
+
+type AbsenceForm = {
+  user: TeamSummaryUser;
+  date: string;
+  absence?: Absence;
+};
 
 type TeamTimeViewProps = {
   role: UserRole;
   viewerId: string;
   /** A day whose week to open first, from a link. */
   startingDay?: string;
+  /** A person whose row to mark and scroll to, from a link. */
+  highlightedPersonId?: string;
 };
 
 export const TeamTimeView = ({
   role,
   viewerId,
   startingDay,
+  highlightedPersonId,
 }: TeamTimeViewProps) => {
   const {
     timezone,
@@ -60,6 +97,21 @@ export const TeamTimeView = ({
   const { weekStart, showWeekOf } = useShownWeek(startingDay);
   const [teamId, setTeamId] = useState<string | undefined>();
   const [projectId, setProjectId] = useState<string | undefined>();
+  const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
+  const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
+    null,
+  );
+  const [nonWorkDay, setNonWorkDay] = useState<EntryForm | null>(null);
+  const [absenceForm, setAbsenceForm] = useState<AbsenceForm | null>(null);
+
+  const queryClient = useQueryClient();
+  const timelogActions = useTimeLogsMutations();
+  const absenceActions = useAbsencesMutations();
+  // Already in the cache by the time the form opens (`openEntryForm`).
+  const { items: pickerItems } = useAssignableActivities(
+    entryForm?.user.id,
+    Boolean(entryForm),
+  );
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   const dateFrom = toISODate(weekStart);
@@ -129,6 +181,7 @@ export const TeamTimeView = ({
   const lockRange = lockLookupRange(dateFrom, dateTo, absences, todayIso);
   const {
     isLocked,
+    isEditable,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -174,6 +227,63 @@ export const TeamTimeView = ({
     (role === UserRole.MANAGER && !isManagerWelcomeDismissed)
       ? null
       : onlyViewer;
+
+  // The form reads its defaults once, so it mounts only after the person's
+  // activities have loaded; the day shows as busy meanwhile.
+  const openEntryForm = async (form: EntryForm) => {
+    setPendingEntryForm(form);
+    try {
+      await queryClient.ensureQueryData(
+        assignableActivitiesQuery(form.user.id),
+      );
+      setEntryForm(form);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setPendingEntryForm(null);
+    }
+  };
+
+  // Plans never fall on a weekend, so the confirmation needs no project.
+  const openCreate = (
+    user: TeamSummaryUser,
+    date: Date,
+    plannedProjectId?: string,
+  ) => {
+    const form = { user, date: toISODate(date), plannedProjectId };
+
+    if (isWeekend(date)) {
+      setNonWorkDay(form);
+      return;
+    }
+
+    void openEntryForm(form);
+  };
+
+  const confirmNonWorkDay = () => {
+    if (!nonWorkDay) return;
+
+    void openEntryForm(nonWorkDay);
+    setNonWorkDay(null);
+  };
+
+  const isCurrentWeek = dateFrom <= todayIso && todayIso <= dateTo;
+  const openNewAbsence = (user: TeamSummaryUser) =>
+    setAbsenceForm({
+      user,
+      date: newAbsenceStartDate({
+        today: new Date(`${todayIso}T00:00:00`),
+        weekStart,
+        isCurrentWeek,
+        isEditable,
+      }),
+    });
+
+  const openedAbsence = absenceForm?.absence;
+  // Locked as a whole once any of its days is, as on the timesheet.
+  const isOpenedAbsenceLocked =
+    !!openedAbsence &&
+    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
 
   const clearFilters = () => {
     setTeamId(undefined);
@@ -317,12 +427,103 @@ export const TeamTimeView = ({
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   plansByDate={plansByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
+                  isEditable={isEditable}
                   projectName={projectName}
+                  canWrite={canWriteTimeLogsFor(role, viewerId, row.user.id)}
+                  isHighlighted={row.user.id === highlightedPersonId}
+                  busyDate={
+                    pendingEntryForm?.user.id === row.user.id
+                      ? pendingEntryForm.date
+                      : undefined
+                  }
+                  onEditEntry={(timelog) =>
+                    void openEntryForm({
+                      user: row.user,
+                      date: timelog.date,
+                      timelog,
+                    })
+                  }
+                  onAdd={(date, plannedProjectId) =>
+                    openCreate(row.user, date, plannedProjectId)
+                  }
+                  onAbsenceClick={(absence) =>
+                    setAbsenceForm({
+                      user: row.user,
+                      date: absence.startDate,
+                      absence,
+                    })
+                  }
+                  onAddAbsence={() => openNewAbsence(row.user)}
                 />
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      <NonWorkDayConfirm
+        date={nonWorkDay ? new Date(`${nonWorkDay.date}T00:00:00`) : null}
+        onClose={() => setNonWorkDay(null)}
+        onConfirm={confirmNonWorkDay}
+      />
+
+      {absenceForm &&
+        (openedAbsence && isOpenedAbsenceLocked ? (
+          <LockedAbsenceModal
+            absence={openedAbsence}
+            subjectName={fullName(absenceForm.user)}
+            onClose={() => setAbsenceForm(null)}
+          />
+        ) : (
+          <AbsenceFormModal
+            open
+            onClose={() => setAbsenceForm(null)}
+            userId={absenceForm.user.id}
+            subjectName={fullName(absenceForm.user)}
+            date={absenceForm.date}
+            absence={openedAbsence}
+            onCreate={(payload) =>
+              absenceActions.create.mutateAsync({
+                ...payload,
+                userId: absenceForm.user.id,
+              })
+            }
+            onUpdate={(id, data) =>
+              absenceActions.update.mutateAsync({ id, data })
+            }
+            onDelete={(id) => absenceActions.delete.mutateAsync(id)}
+            isSaving={
+              absenceActions.create.isPending || absenceActions.update.isPending
+            }
+            isDeleting={absenceActions.delete.isPending}
+          />
+        ))}
+
+      {entryForm && (
+        <TimeLogFormModal
+          open
+          onClose={() => setEntryForm(null)}
+          date={entryForm.date}
+          subjectName={fullName(entryForm.user)}
+          rememberKey={lastEntryChoiceKey(viewerId, entryForm.user.id)}
+          plannedProjectId={entryForm.plannedProjectId}
+          timelog={entryForm.timelog}
+          pickerItems={pickerItems}
+          onCreate={(payload) =>
+            timelogActions.create.mutateAsync({
+              ...payload,
+              userId: entryForm.user.id,
+            })
+          }
+          onUpdate={(id, data) =>
+            timelogActions.update.mutateAsync({ id, data })
+          }
+          onDelete={(id) => timelogActions.delete.mutateAsync(id)}
+          isSaving={
+            timelogActions.create.isPending || timelogActions.update.isPending
+          }
+          isDeleting={timelogActions.delete.isPending}
+        />
       )}
     </div>
   );

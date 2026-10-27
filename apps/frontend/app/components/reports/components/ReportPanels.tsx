@@ -20,7 +20,7 @@ import { CloseButton } from "../../shared/buttons/CloseButton";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
-import { PERSON_PARAM } from "../../team/useOpenedPerson";
+import { teamTimeHref } from "../../team/team-links";
 import { AgainstPlanRow } from "./AgainstPlanRow";
 import { PersonDayGrid } from "./PersonDayGrid";
 
@@ -238,7 +238,7 @@ export const PersonPanel = ({
         title="Day by day"
         note={
           withoutTime > 0
-            ? `${countLabel(withoutTime, "day", "days")} with no time logged`
+            ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
             : undefined
         }
       >
@@ -246,6 +246,7 @@ export const PersonPanel = ({
           person={person}
           range={range}
           countedUntil={countedUntil}
+          dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
         />
       </PanelSection>
 
@@ -255,7 +256,7 @@ export const PersonPanel = ({
 
       <div className="mt-auto border-t border-border pt-4">
         <Link
-          href={`/team?${PERSON_PARAM}=${person.userId}`}
+          href={teamTimeHref(person.userId)}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Open in Team time

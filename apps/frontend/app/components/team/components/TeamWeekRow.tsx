@@ -1,11 +1,18 @@
-import { Absence, PlanningEntry, TeamSummaryRow } from "@/types";
+"use client";
+
+import { useEffect, useRef } from "react";
+import { CalendarOff } from "lucide-react";
+
+import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/utils/date";
+import { isRangeLocked } from "@/lib/utils/reporting-period";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Avatar } from "../../shared/Avatar";
 import { WeekBar } from "../../timesheet/components/WeekSummary";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { TeamDayCell } from "./TeamDayCell";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 
@@ -16,8 +23,19 @@ type TeamWeekRowProps = {
   absencesByDate: Record<string, Absence>;
   plansByDate: Record<string, PlanningEntry[]>;
   isLocked: (date: string) => boolean;
+  isEditable: (date: string) => boolean;
   /** The project the grid is filtered by: its hours say nothing about the week. */
   projectName?: string;
+  /** The viewer may write this person's time; a deactivated person is still read-only. */
+  canWrite: boolean;
+  /** Named by a link, so the row is marked and scrolled to. */
+  isHighlighted: boolean;
+  /** The day whose form waits for the person's activities to load. */
+  busyDate?: string;
+  onEditEntry: (timelog: TimeLog) => void;
+  onAdd: (date: Date, plannedProjectId?: string) => void;
+  onAbsenceClick: (absence: Absence) => void;
+  onAddAbsence: () => void;
 };
 
 export const TeamWeekRow = ({
@@ -27,33 +45,86 @@ export const TeamWeekRow = ({
   absencesByDate,
   plansByDate,
   isLocked,
+  isEditable,
   projectName,
+  canWrite,
+  isHighlighted,
+  busyDate,
+  onEditEntry,
+  onAdd,
+  onAbsenceClick,
+  onAddAbsence,
 }: TeamWeekRowProps) => {
+  const rowRef = useRef<HTMLTableRowElement>(null);
   const daysByDate = new Map(row.days.map((day) => [day.date, day]));
   const expectedByDate = new Map(
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
   const name = fullName(row.user);
+  const canEdit = canWrite && !isDeactivatedUser(row.user);
+
+  useEffect(() => {
+    if (isHighlighted) rowRef.current?.scrollIntoView({ block: "center" });
+  }, [isHighlighted]);
 
   return (
-    <tr className="border-b border-border last:border-b-0">
+    <tr
+      ref={rowRef}
+      className={cn(
+        "border-b border-border last:border-b-0",
+        isHighlighted && "bg-brand-subtle",
+      )}
+    >
       <th
         scope="row"
         className={cn(
           STICKY_PERSON_CELL,
           "p-0 text-left align-top font-normal",
         )}
+        // The sticky cell needs its opaque ground, so the tint is laid over it.
+        style={
+          isHighlighted
+            ? {
+                backgroundImage:
+                  "linear-gradient(var(--brand-subtle), var(--brand-subtle))",
+              }
+            : undefined
+        }
       >
         <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
           <Avatar user={row.user} size="md" />
 
           <PersonSummary row={row} projectName={projectName} />
+
+          {canEdit && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="iconSm"
+              onClick={onAddAbsence}
+              aria-label={`Add an absence for ${name}`}
+              className="shrink-0 text-muted-foreground"
+            >
+              <CalendarOff aria-hidden />
+            </Button>
+          )}
         </div>
       </th>
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
         const day = daysByDate.get(iso);
+        const absence = absencesByDate[iso];
+        const canWriteDay = canEdit && isEditable(iso);
+        // Time is logged only for a day that has happened.
+        const canLogTime = canWriteDay && iso <= todayIso;
+        // An absence is frozen whole once any of its days locks; it then
+        // opens to be read, as on the timesheet.
+        const opensAbsence =
+          !!absence &&
+          canEdit &&
+          (canWriteDay ||
+            isRangeLocked(isLocked, absence.startDate, absence.endDate));
 
         return (
           <TeamDayCell
@@ -62,11 +133,20 @@ export const TeamWeekRow = ({
             personName={name}
             entries={day?.entries ?? []}
             minutes={day?.minutes ?? 0}
-            absence={absencesByDate[iso]}
+            absence={absence}
             plans={plansByDate[iso]}
             expectedMinutes={projectName ? undefined : expectedByDate.get(iso)}
             isLocked={isLocked(iso)}
             isPast={iso < todayIso}
+            isBusy={busyDate === iso}
+            onEditEntry={canWriteDay ? onEditEntry : undefined}
+            onAdd={canLogTime ? () => onAdd(date) : undefined}
+            onPlanClick={
+              canLogTime ? (projectId) => onAdd(date, projectId) : undefined
+            }
+            onAbsenceClick={
+              opensAbsence ? () => onAbsenceClick(absence) : undefined
+            }
           />
         );
       })}
