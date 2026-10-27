@@ -87,6 +87,16 @@ describe('reviewMigrationSource', () => {
     expect(review.reasons).toEqual(['changes existing rows', 'deletes rows']);
   });
 
+  it('calls a foreign key additive, though its ON UPDATE action names UPDATE', () => {
+    const review = reviewMigrationSource(
+      migration(
+        'await queryRunner.query(`ALTER TABLE "user_inactive_periods" ADD CONSTRAINT "FK_a" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);',
+      ),
+    );
+
+    expect(review).toMatchObject({ risk: 'additive', reasons: [] });
+  });
+
   it('is destructive as soon as one statement is, whatever the others do', () => {
     const review = reviewMigrationSource(
       migration(

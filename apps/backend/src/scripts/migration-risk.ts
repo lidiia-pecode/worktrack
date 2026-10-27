@@ -42,7 +42,8 @@ const DESTRUCTIVE_RULES: RiskRule[] = [
 
 /** Leaves the schema alone, so the old code keeps working, but cannot be undone. */
 const DATA_RULES: RiskRule[] = [
-  { pattern: /\bUPDATE\b/i, reason: 'changes existing rows' },
+  // A foreign key's `ON UPDATE` action is part of the constraint, not a write.
+  { pattern: /(?<!\bON\s+)\bUPDATE\b/i, reason: 'changes existing rows' },
   { pattern: /\bDELETE\s+FROM\b/i, reason: 'deletes rows' },
   { pattern: /\bINSERT\s+INTO\b/i, reason: 'inserts rows' },
 ];

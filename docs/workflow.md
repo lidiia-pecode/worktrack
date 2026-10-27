@@ -238,6 +238,13 @@ what catches things that only break in a production build.
 Every preview talks to the same backend, so a PR that changes the backend needs
 its branch deployed to Render before its preview means anything.
 
+**A PR that adds a migration is not ready to merge until you have read the
+dry run.** Run `make migrate-neon` and check that it lists exactly this PR's
+migrations as pending, and nothing left over from an earlier merge, with the
+risk you expect. The dry run applies nothing. Applying is a separate step that
+follows *On merge to `main`* below: an additive migration before the merge, a
+destructive one after Render serves the new code.
+
 Google sign-in from a preview finishes on the main frontend domain rather than
 the preview, because the callback URLs are a single fixed value. Everything else
 on a preview behaves normally.
@@ -292,9 +299,10 @@ a background operator). It runs from the TypeScript source like the local
    is immutable and what runs has to be what the branch holds.
 3. **Lists what is pending**, reads each pending migration's `up()` and prints
    its statements with a class: *additive* (a new table, nullable column,
-   index or enum label), *data* (`UPDATE`, `DELETE`, `INSERT` — the schema is
-   unchanged, the rows are not), or *destructive* (`DROP`, `RENAME`,
-   `ALTER COLUMN … TYPE`, `SET NOT NULL`, `TRUNCATE`). SQL it cannot read as a
+   index or enum label; a foreign key's `ON UPDATE` action is part of the
+   constraint and doesn't count as an update), *data* (`UPDATE`, `DELETE`,
+   `INSERT` — the schema is unchanged, the rows are not), or *destructive*
+   (`DROP`, `RENAME`, `ALTER COLUMN … TYPE`, `SET NOT NULL`, `TRUNCATE`). SQL it cannot read as a
    plain string counts as destructive. The rules are `migration-risk.ts`, with
    their tests.
 4. **Refuses a destructive migration without `ALLOW_DESTRUCTIVE=1`**, and with
@@ -305,8 +313,9 @@ a background operator). It runs from the TypeScript source like the local
    in one transaction. It then lists what was applied and points to the checks
    below.
 
-A dry run is read-only and safe at any time; running it before every merge
-that carries a migration is the habit to keep.
+A dry run is read-only and safe at any time. Reading it before every merge that
+carries a migration is required (*On a pull request*); it is also how to check,
+before any merge, that nothing from an earlier one is still pending.
 
 #### Verifying a production migration
 
@@ -356,12 +365,13 @@ There is one environment and one person deploying to it, so "who" mostly means
 | Prove it runs on an empty database | CI, on every pull request |
 | Prove it runs over existing data | Author, locally, before opening the PR |
 | Decide additive-before / destructive-after | Author and reviewer, from the table above |
+| Read the dry run before merging a PR that adds a migration | You, with `make migrate-neon` (applies nothing) |
 | Run the dry run and apply against Neon | You, with `make migrate-neon`; nothing automates the timing |
 | Confirm Render is serving new code before a destructive run | You, with the route probe |
 | Verify schema and application after applying | You |
 | Deploy the code itself | Vercel and Render, automatically on merge |
 
-#### Two runs worth learning from
+#### Runs worth learning from
 
 **Scope D — `AddInvitationTeamAndInviter1789830866330`**, September 2026, the
 first migration this project ever deployed. Additive and uneventful: two
@@ -393,6 +403,12 @@ What was done instead:
 5. `RemoveActivityIsAbsence` applied **after** that, then verified: column gone,
    the twelve activity rows intact, and absences created, edited and deleted
    through the deployed UI with no `5xx` anywhere.
+
+**Phase 36 — `AddUserInactivePeriods`, never applied.** It merged (PR #53) without
+the migration being run on Neon, so every request that computes expected hours
+answered `500` until it was found after the next merge, on 27 October 2026. A
+dry run read before that merge would have listed it. That is why reading the
+dry run is now required for any PR that adds a migration.
 
 ### Environment variables
 
