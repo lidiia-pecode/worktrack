@@ -61,7 +61,12 @@ export const TimelogChip = ({
   if (!onClick) {
     // Not a button, but still reachable, so its details show by keyboard too.
     return (
-      <span tabIndex={0} aria-label={`${duration} ${projectName}`} {...props}>
+      <span
+        role="group"
+        tabIndex={0}
+        aria-label={`${duration} ${projectName}`}
+        {...props}
+      >
         {content}
       </span>
     );

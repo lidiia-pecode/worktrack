@@ -37,7 +37,8 @@ const subscribeToReturns = (onReturn: () => void) => {
  * tab left open past the old one. A day that isn't a real date is ignored.
  *
  * The URL is the only record of a chosen week, so a reload, a link and the
- * sidebar's plain link all show the week the address names.
+ * sidebar's plain link all show the week the address names. A move back to
+ * the current week removes it, so the page follows today again.
  */
 export function useShownWeek() {
   const { weekStartDay, timezone } = useWorkSettings();
@@ -45,22 +46,25 @@ export function useShownWeek() {
   const linkedDay = searchParams.get(WEEK_PARAM);
   const chosenDay = linkedDay && isRealDay(linkedDay) ? linkedDay : null;
 
+  const readToday = () => todayISODate(timezone);
+  const today = useSyncExternalStore(subscribeToReturns, readToday, readToday);
+
   // Through the history API, as the side panels do, so the page isn't
   // rendered again from the server.
   const showWeekOf = useCallback(
     (date: Date) => {
-      const url = new URL(window.location.href);
-      url.searchParams.set(
-        WEEK_PARAM,
-        toISODate(getWeekStart(date, weekStartDay)),
+      const firstDay = toISODate(getWeekStart(date, weekStartDay));
+      const thisWeekFirstDay = toISODate(
+        getWeekStart(fromISODate(today), weekStartDay),
       );
+
+      const url = new URL(window.location.href);
+      if (firstDay === thisWeekFirstDay) url.searchParams.delete(WEEK_PARAM);
+      else url.searchParams.set(WEEK_PARAM, firstDay);
       window.history.replaceState(null, "", url);
     },
-    [weekStartDay],
+    [today, weekStartDay],
   );
-
-  const readToday = () => todayISODate(timezone);
-  const today = useSyncExternalStore(subscribeToReturns, readToday, readToday);
 
   const weekStart = useMemo(
     () =>

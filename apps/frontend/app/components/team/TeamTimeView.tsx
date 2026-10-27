@@ -233,6 +233,9 @@ export const TeamTimeView = ({
   // The form reads its defaults once, so it mounts only after the person's
   // activities have loaded; the day shows as busy meanwhile.
   const openEntryForm = async (form: EntryForm) => {
+    // A second click while one loads would swap the form under its defaults.
+    if (pendingEntryForm) return;
+
     setPendingEntryForm(form);
     try {
       await queryClient.ensureQueryData(

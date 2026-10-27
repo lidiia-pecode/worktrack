@@ -243,6 +243,24 @@ describe("TeamTimeView", () => {
     expect(tuesday.closest("td")).toHaveAttribute("aria-busy", "false");
   });
 
+  it("ignores a second day while a form is still loading", async () => {
+    getAssignable.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    showTeamTime();
+
+    await user.click(
+      within(aliceRow()).getByRole("button", {
+        name: /^Log time for Alice Cooper on Tuesday/,
+      }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: /^Log time for Ben Ward on Tuesday/ }),
+    );
+
+    expect(getAssignable).toHaveBeenCalledTimes(1);
+    expect(getAssignable).toHaveBeenCalledWith("user-alice");
+  });
+
   it("opens a block's entry to edit", async () => {
     getAssignable.mockResolvedValue({ count: 0, results: [] });
     const user = userEvent.setup();
@@ -278,12 +296,33 @@ describe("TeamTimeView", () => {
     expect(getAssignable).toHaveBeenCalledWith("user-alice");
   });
 
-  it("reads the team and project from the URL", () => {
-    window.history.replaceState(null, "", "/team?team=team-1&project=p-1");
+  it("reads the team and project from the URL, ignoring one that isn't an id", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/team?team=3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c&project=not-an-id",
+    );
     showTeamTime();
 
-    expect(useTeamTimeSummary).toHaveBeenCalledWith(
-      expect.objectContaining({ teamId: "team-1", projectId: "p-1" }),
+    expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        teamId: "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c",
+        projectId: undefined,
+      }),
+    );
+
+    vi.mocked(useTeamTimeSummary).mockClear();
+    window.history.replaceState(
+      null,
+      "",
+      "/team?project=7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b",
+    );
+    showTeamTime();
+
+    expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        projectId: "7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b",
+      }),
     );
   });
 

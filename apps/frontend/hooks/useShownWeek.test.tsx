@@ -97,6 +97,17 @@ describe("useShownWeek", () => {
     expect(toISODate(result.current.weekStart)).toBe("2026-09-14");
   });
 
+  it("drops the week from the URL on a move back to this week", () => {
+    vi.useFakeTimers({ now: SUNDAY_EVENING, toFake: ["Date"] });
+    replaceState(null, "", "/team?week=2026-09-09&person=p1");
+    const { result } = renderHook(() => useShownWeek());
+
+    act(() => result.current.showWeekOf(new Date(2026, 9, 14)));
+
+    expect(window.location.search).toBe("?person=p1");
+    expect(toISODate(result.current.weekStart)).toBe("2026-10-12");
+  });
+
   it("follows the URL back to today when the week leaves it", () => {
     vi.useFakeTimers({ now: SUNDAY_EVENING, toFake: ["Date"] });
     replaceState(null, "", "/team?week=2026-09-09");
