@@ -7,3 +7,7 @@ export const teamTimeHref = (personId: string, week?: string) => {
   if (week) params.set("week", week);
   return `/team?${params}`;
 };
+
+/** Team time's filters, kept in the URL so a reload returns to them. */
+export const TEAM_PARAM = "team";
+export const PROJECT_PARAM = "project";

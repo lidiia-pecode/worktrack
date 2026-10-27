@@ -17,6 +17,10 @@ const mutation = () => ({ mutateAsync: vi.fn(), isPending: false });
 
 const getAssignable = vi.fn();
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => window.location.pathname,
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}));
 vi.mock("@/hooks/useWorkSettings", () => ({
   useWorkSettings: () => ({
     weekStartDay: 1,
@@ -119,9 +123,18 @@ const ALICE: TeamSummaryRow = {
   ],
 };
 
+// Ben has logged nothing, so he is the least complete.
 const BEN: TeamSummaryRow = {
   ...ALICE,
-  user: { ...ALICE.user, id: "user-ben", firstName: "Ben", lastName: "Ward" },
+  user: {
+    ...ALICE.user,
+    id: "user-ben",
+    firstName: "Ben",
+    lastName: "Ward",
+    position: "Developer",
+  },
+  minutes: 0,
+  billableMinutes: 0,
   days: [],
 };
 
@@ -152,8 +165,14 @@ const showTeamTime = (highlightedPersonId?: string) =>
 const aliceRow = () =>
   screen.getByRole("rowheader", { name: /Alice Cooper/ }).closest("tr")!;
 
+const shownNames = () =>
+  screen
+    .getAllByRole("rowheader")
+    .map((cell) => (cell.textContent?.includes("Alice") ? "Alice" : "Ben"));
+
 describe("TeamTimeView", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", "/team");
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     Element.prototype.scrollIntoView = vi.fn();
     summary({});
@@ -257,5 +276,65 @@ describe("TeamTimeView", () => {
     await user.click(screen.getByRole("button", { name: "Log time" }));
 
     expect(getAssignable).toHaveBeenCalledWith("user-alice");
+  });
+
+  it("reads the team and project from the URL", () => {
+    window.history.replaceState(null, "", "/team?team=team-1&project=p-1");
+    showTeamTime();
+
+    expect(useTeamTimeSummary).toHaveBeenCalledWith(
+      expect.objectContaining({ teamId: "team-1", projectId: "p-1" }),
+    );
+  });
+
+  it("searches people by name or position", async () => {
+    const user = userEvent.setup();
+    showTeamTime();
+
+    await user.type(
+      screen.getByRole("textbox", { name: "Search by name or position" }),
+      "develop",
+    );
+
+    expect(shownNames()).toEqual(["Ben"]);
+
+    await user.clear(
+      screen.getByRole("textbox", { name: "Search by name or position" }),
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "Search by name or position" }),
+      "nobody",
+    );
+    expect(screen.getByText("Nobody matches")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(shownNames()).toEqual(["Alice", "Ben"]);
+  });
+
+  it("sorts by name, and by logged time from the header", async () => {
+    const user = userEvent.setup();
+    showTeamTime();
+
+    const header = screen.getByRole("columnheader", { name: /^Person/ });
+    expect(header).toHaveAttribute("aria-sort", "ascending");
+    expect(shownNames()).toEqual(["Alice", "Ben"]);
+
+    await user.click(
+      screen.getByRole("button", { name: "Sort by name, Z to A" }),
+    );
+    expect(header).toHaveAttribute("aria-sort", "descending");
+    expect(shownNames()).toEqual(["Ben", "Alice"]);
+
+    const logged = screen.getByRole("button", {
+      name: "Sort by logged time, least first",
+    });
+    await user.click(logged);
+    expect(logged).toHaveAttribute("aria-pressed", "true");
+    expect(shownNames()).toEqual(["Ben", "Alice"]);
+
+    await user.click(
+      screen.getByRole("button", { name: "Sort by logged time, most first" }),
+    );
+    expect(shownNames()).toEqual(["Alice", "Ben"]);
   });
 });

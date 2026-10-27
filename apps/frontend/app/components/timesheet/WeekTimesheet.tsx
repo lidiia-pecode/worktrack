@@ -75,16 +75,10 @@ const noActivitiesMessage = (projects: { name: string }[]) =>
 
 type WeekTimesheetProps = {
   userId: string;
-  /** A day whose week to open first, from a link. */
-  startingDay?: string;
   welcome?: ReactNode;
 };
 
-export const WeekTimesheet = ({
-  userId,
-  startingDay,
-  welcome,
-}: WeekTimesheetProps) => {
+export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
     dailyTargetMinutes,
     timezone,
@@ -93,7 +87,7 @@ export const WeekTimesheet = ({
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { weekStart, showWeekOf } = useShownWeek(startingDay);
+  const { weekStart, showWeekOf } = useShownWeek();
   const [modalState, setModalState] = useState<ModalState | null>(null);
   const [absenceModal, setAbsenceModal] = useState<AbsenceModalState | null>(
     null,

@@ -1,5 +1,6 @@
+import { useSyncExternalStore } from "react";
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { toISODate } from "@/lib/utils/date";
 import { WeekDay } from "@/types/enums";
@@ -8,6 +9,21 @@ import { useShownWeek } from "./useShownWeek";
 
 vi.mock("./useWorkSettings", () => ({
   useWorkSettings: () => ({ weekStartDay: WeekDay.MONDAY, timezone: "UTC" }),
+}));
+
+// Next's router re-renders on a `history.replaceState`; this does the same.
+const urlListeners = new Set<() => void>();
+vi.mock("next/navigation", () => ({
+  useSearchParams: () =>
+    new URLSearchParams(
+      useSyncExternalStore(
+        (onChange) => {
+          urlListeners.add(onChange);
+          return () => urlListeners.delete(onChange);
+        },
+        () => window.location.search,
+      ),
+    ),
 }));
 
 const SUNDAY_EVENING = new Date("2026-10-18T20:00:00Z");
@@ -19,7 +35,20 @@ const comeBackToTab = () =>
   });
 
 describe("useShownWeek", () => {
-  afterEach(() => vi.useRealTimers());
+  const replaceState = window.history.replaceState.bind(window.history);
+
+  beforeEach(() => {
+    replaceState(null, "", "/team");
+    vi.spyOn(window.history, "replaceState").mockImplementation((...args) => {
+      replaceState(...args);
+      urlListeners.forEach((onChange) => onChange());
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it("moves on to the new week when a tab left open is shown again", () => {
     vi.useFakeTimers({ now: SUNDAY_EVENING });
@@ -43,26 +72,38 @@ describe("useShownWeek", () => {
     expect(toISODate(result.current.weekStart)).toBe("2026-09-07");
   });
 
-  it("starts on the week of a day from a link, and ignores one that isn't a date", () => {
+  it("shows the week of a day in the URL, and ignores one that isn't a date", () => {
     vi.useFakeTimers({ now: SUNDAY_EVENING });
 
-    const linked = renderHook(() => useShownWeek("2026-09-09"));
+    replaceState(null, "", "/team?week=2026-09-09");
+    const linked = renderHook(() => useShownWeek());
     expect(toISODate(linked.result.current.weekStart)).toBe("2026-09-07");
 
     for (const day of ["next-week", "2026-13-40", "2026-02-31"]) {
-      const { result } = renderHook(() => useShownWeek(day));
+      replaceState(null, "", `/team?week=${day}`);
+      const { result } = renderHook(() => useShownWeek());
       expect(toISODate(result.current.weekStart)).toBe("2026-10-12");
     }
   });
 
-  it("drops the link's week from the URL once somebody moves", () => {
+  it("writes the week's first day to the URL, keeping the rest", () => {
     vi.useFakeTimers({ now: SUNDAY_EVENING, toFake: ["Date"] });
-    window.history.replaceState(null, "", "/team?week=2026-09-09&person=p1");
-    const { result } = renderHook(() => useShownWeek("2026-09-09"));
+    replaceState(null, "", "/team?week=2026-09-09&person=p1");
+    const { result } = renderHook(() => useShownWeek());
 
     act(() => result.current.showWeekOf(new Date(2026, 8, 16)));
 
-    expect(window.location.search).toBe("?person=p1");
+    expect(window.location.search).toBe("?week=2026-09-14&person=p1");
     expect(toISODate(result.current.weekStart)).toBe("2026-09-14");
+  });
+
+  it("follows the URL back to today when the week leaves it", () => {
+    vi.useFakeTimers({ now: SUNDAY_EVENING, toFake: ["Date"] });
+    replaceState(null, "", "/team?week=2026-09-09");
+    const { result } = renderHook(() => useShownWeek());
+
+    act(() => window.history.replaceState(null, "", "/team"));
+
+    expect(toISODate(result.current.weekStart)).toBe("2026-10-12");
   });
 });

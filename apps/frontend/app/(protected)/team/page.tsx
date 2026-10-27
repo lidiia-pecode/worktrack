@@ -6,12 +6,12 @@ import { ManagerWelcome } from "@/app/components/team/components/ManagerWelcome"
 import { PERSON_PARAM } from "@/app/components/team/team-links";
 
 type TeamPageProps = {
-  searchParams: Promise<{ week?: string; [PERSON_PARAM]?: string }>;
+  searchParams: Promise<{ [PERSON_PARAM]?: string }>;
 };
 
 export default async function TeamPage({ searchParams }: TeamPageProps) {
   const user = await requireManagerAccess();
-  const { week, [PERSON_PARAM]: highlightedPersonId } = await searchParams;
+  const { [PERSON_PARAM]: highlightedPersonId } = await searchParams;
 
   return (
     <>
@@ -22,11 +22,8 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
       )}
 
       <TeamTimeView
-        // A new link starts from its own week, even while on Team time.
-        key={week}
         role={user.role}
         viewerId={user.id}
-        startingDay={week}
         highlightedPersonId={highlightedPersonId}
       />
     </>

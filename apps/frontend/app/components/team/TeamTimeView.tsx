@@ -36,9 +36,16 @@ import {
 } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
+import {
+  DEFAULT_TEAM_SORT,
+  nextTeamSort,
+  searchTeamRows,
+  sortTeamRows,
+  TeamSortKey,
+} from "@/lib/utils/team-rows";
 import { cn } from "@/lib/utils/cn";
 import { Absence, PlanningEntry, TeamSummaryUser, TimeLog } from "@/types";
-import { ProjectStatus, UserRole } from "@/types/enums";
+import { UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
@@ -55,9 +62,11 @@ import {
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
+import { PersonSortHeader } from "./components/PersonSortHeader";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
+import { useTeamTimeFilters } from "./useTeamTimeFilters";
 
 type EntryForm = {
   user: TeamSummaryUser;
@@ -75,8 +84,6 @@ type AbsenceForm = {
 type TeamTimeViewProps = {
   role: UserRole;
   viewerId: string;
-  /** A day whose week to open first, from a link. */
-  startingDay?: string;
   /** A person whose row to mark and scroll to, from a link. */
   highlightedPersonId?: string;
 };
@@ -84,7 +91,6 @@ type TeamTimeViewProps = {
 export const TeamTimeView = ({
   role,
   viewerId,
-  startingDay,
   highlightedPersonId,
 }: TeamTimeViewProps) => {
   const {
@@ -94,9 +100,10 @@ export const TeamTimeView = ({
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { weekStart, showWeekOf } = useShownWeek(startingDay);
-  const [teamId, setTeamId] = useState<string | undefined>();
-  const [projectId, setProjectId] = useState<string | undefined>();
+  const { weekStart, showWeekOf } = useShownWeek();
+  const { teamId, projectId, setFilters } = useTeamTimeFilters();
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState(DEFAULT_TEAM_SORT);
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -151,9 +158,7 @@ export const TeamTimeView = ({
   }, [plannedEntries]);
 
   // The same list the project filter shows, so it comes from the cache.
-  const { items: projects } = useAllProjectsQuery({
-    status: ProjectStatus.ACTIVE,
-  });
+  const { items: projects } = useAllProjectsQuery();
   // Set whenever a project filters the grid, even before its name has loaded.
   const projectName = projectId
     ? (projects.find((project) => project.id === projectId)?.name ??
@@ -200,7 +205,16 @@ export const TeamTimeView = ({
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
 
-  const matchesNobody = hasActiveFilters && rows.length === 0;
+  const shownRows = useMemo(
+    () =>
+      sortTeamRows(searchTeamRows(rows, search), sort, {
+        byProject: Boolean(projectId),
+      }),
+    [rows, search, sort, projectId],
+  );
+
+  const matchesNobody =
+    (hasActiveFilters || Boolean(search.trim())) && shownRows.length === 0;
 
   const onlyViewer = onlyViewerReason({
     role,
@@ -274,9 +288,11 @@ export const TeamTimeView = ({
     isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
 
   const clearFilters = () => {
-    setTeamId(undefined);
-    setProjectId(undefined);
+    setFilters({ teamId: undefined, projectId: undefined });
+    setSearch("");
   };
+
+  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
 
   const retry = () => {
     void refetchSummary();
@@ -323,8 +339,12 @@ export const TeamTimeView = ({
         <TeamFilters
           teamId={teamId}
           projectId={projectId}
-          onTeamChange={setTeamId}
-          onProjectChange={setProjectId}
+          onTeamChange={(nextTeamId) => setFilters({ teamId: nextTeamId })}
+          onProjectChange={(nextProjectId) =>
+            setFilters({ projectId: nextProjectId })
+          }
+          search={search}
+          onSearchChange={setSearch}
         />
       )}
 
@@ -340,8 +360,8 @@ export const TeamTimeView = ({
         <div className="p-6">
           <EmptyState
             icon={<SearchX />}
-            title="Nobody matches these filters"
-            description="Nobody you can see is in the team or on the project you picked."
+            title="Nobody matches"
+            description="Nobody you can see matches the search, team or project you picked."
             action={
               <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
@@ -380,12 +400,13 @@ export const TeamTimeView = ({
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className={cn(
-                    STICKY_PERSON_CELL,
-                    "p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground",
-                  )}
+                  aria-sort={
+                    sort.direction === "asc" ? "ascending" : "descending"
+                  }
+                  aria-label={`Person, sorted by ${sort.key === "name" ? "name" : "logged time"}`}
+                  className={cn(STICKY_PERSON_CELL, "p-1.5 text-left")}
                 >
-                  Person
+                  <PersonSortHeader sort={sort} onSort={sortBy} />
                 </th>
 
                 {weekDates.map((date) => (
@@ -405,7 +426,7 @@ export const TeamTimeView = ({
             </thead>
 
             <tbody>
-              {rows.map((row) => (
+              {shownRows.map((row) => (
                 <TeamWeekRow
                   key={row.user.id}
                   row={row}
