@@ -8,7 +8,7 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { getErrorMessage } from "@/lib/api";
 import { todayISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
-import { UserDetails } from "@/types";
+import { UserTeam } from "@/types";
 import { TeamRole } from "@/types/enums";
 
 import { FormSelect } from "../shared/FormSelect";
@@ -16,7 +16,9 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 
 interface UserChangeTeamDialogProps {
   /** The dialog is open while this is set. */
-  user: UserDetails | null;
+  user: { id: string; firstName: string; lastName: string } | null;
+  /** The team they are a member of, which a move leaves. */
+  currentTeam: UserTeam | null;
   onClose: () => void;
 }
 
@@ -27,26 +29,26 @@ interface UserChangeTeamDialogProps {
  */
 export const UserChangeTeamDialog = ({
   user,
+  currentTeam,
   onClose,
 }: UserChangeTeamDialogProps) => {
   const { timezone } = useWorkSettings();
-  const { options, isLoading, isError } = useTeamOptions();
-  const [chosenTeamId, setChosenTeamId] = useState<string | null>(null);
+  const { options: teamOptions, isLoading, isError } = useTeamOptions();
+  const [selectedTeamId, setSelectedTeamId] = useState("");
 
-  const currentTeam =
-    user?.teams.find((team) => team.roleInTeam === TeamRole.MEMBER) ?? null;
-  const selectedTeamId = chosenTeamId ?? currentTeam?.id ?? "";
+  const options = teamOptions.filter(
+    (option) => option.value !== currentTeam?.id,
+  );
   const selectedTeam = options.find(
     (option) => option.value === selectedTeamId,
   );
-  const changesTeam =
-    Boolean(selectedTeam) && selectedTeamId !== currentTeam?.id;
+  const changesTeam = Boolean(selectedTeam);
 
   const { addMember } = useTeamMembers(selectedTeamId);
   const name = user ? fullName(user) : "";
 
   const close = () => {
-    setChosenTeamId(null);
+    setSelectedTeamId("");
     onClose();
   };
 
@@ -90,7 +92,7 @@ export const UserChangeTeamDialog = ({
           value={selectedTeamId}
           options={options}
           placeholder="Choose a team"
-          onValueChange={setChosenTeamId}
+          onValueChange={setSelectedTeamId}
           disabled={isLoading || addMember.isPending}
         />
       }

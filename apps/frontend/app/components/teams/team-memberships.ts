@@ -13,8 +13,9 @@ const withUser = (team: Team) =>
 export const currentMemberships = (team: Team) =>
   withUser(team).filter((membership) => !membership.leftAt);
 
-/** Everyone who was on an archived team, whose memberships are all closed. */
-export const formerMemberships = withUser;
+/** Who was on the team, with the dates; only the owner reads them. */
+export const formerMemberships = (team: Team) =>
+  withUser(team).filter((membership) => membership.leftAt);
 
 export const NO_ACTIVE_MANAGER = "No active manager";
 

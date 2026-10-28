@@ -42,11 +42,39 @@ const describeInvitation = (invitation: PendingInvitation): string => {
     .join(" · ");
 };
 
+/** Revokes an invitation once confirmed; open while `invitation` is set. */
+export const RevokeInvitationModal = ({
+  invitation,
+  onClose,
+}: {
+  invitation: PendingInvitation | null;
+  onClose: () => void;
+}) => {
+  const {
+    actions: { revoke },
+  } = useInvitations();
+
+  return (
+    <ConfirmModal
+      isOpen={Boolean(invitation)}
+      title="Revoke invitation?"
+      message={`The link sent to ${invitation?.email} will stop working.`}
+      confirmText="Revoke"
+      variant="danger"
+      loading={revoke.isPending}
+      onConfirm={() =>
+        invitation && revoke.mutate(invitation.id, { onSuccess: onClose })
+      }
+      onClose={onClose}
+    />
+  );
+};
+
 export const PendingInvitations = () => {
   const { data: invitations = [], isError, refetch } = usePendingInvitations();
 
   const {
-    actions: { resend, revoke },
+    actions: { resend },
   } = useInvitations();
 
   const [invitationToRevoke, setInvitationToRevoke] =
@@ -66,16 +94,6 @@ export const PendingInvitations = () => {
   if (invitations.length === 0) {
     return null;
   }
-
-  const handleRevoke = () => {
-    if (!invitationToRevoke) {
-      return;
-    }
-
-    revoke.mutate(invitationToRevoke.id, {
-      onSuccess: () => setInvitationToRevoke(null),
-    });
-  };
 
   return (
     <Card
@@ -141,14 +159,8 @@ export const PendingInvitations = () => {
         ))}
       </ul>
 
-      <ConfirmModal
-        isOpen={Boolean(invitationToRevoke)}
-        title="Revoke invitation?"
-        message={`The link sent to ${invitationToRevoke?.email} will stop working.`}
-        confirmText="Revoke"
-        variant="danger"
-        loading={revoke.isPending}
-        onConfirm={handleRevoke}
+      <RevokeInvitationModal
+        invitation={invitationToRevoke}
         onClose={() => setInvitationToRevoke(null)}
       />
     </Card>

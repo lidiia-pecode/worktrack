@@ -165,7 +165,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const canChangeTeam =
     isOwner && canChangeProjects && user.role !== UserRole.OWNER;
   const [isChangingTeam, setIsChangingTeam] = useState(false);
-  const isMemberOfATeam = user.teams.some(
+  const memberTeam = user.teams.find(
     (team) => team.roleInTeam === TeamRole.MEMBER,
   );
 
@@ -225,8 +225,8 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           add={
             canChangeTeam
               ? {
-                  label: isMemberOfATeam ? "Change team" : "Add to a team",
-                  icon: isMemberOfATeam ? ArrowRightLeft : Plus,
+                  label: memberTeam ? "Change team" : "Add to a team",
+                  icon: memberTeam ? ArrowRightLeft : Plus,
                   onClick: () => setIsChangingTeam(true),
                 }
               : undefined
@@ -277,6 +277,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
       {projectChanges.dialogs}
       <UserChangeTeamDialog
         user={isChangingTeam ? user : null}
+        currentTeam={memberTeam ?? null}
         onClose={() => setIsChangingTeam(false)}
       />
     </>

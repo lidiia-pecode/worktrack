@@ -72,11 +72,15 @@ export class TeamsService {
     });
   }
 
-  /** An active team shows who is on it; an archived one, who was. */
-  private shownMemberships(team: Team): TeamMembership[] {
+  /**
+   * The owner reads a team's whole history; anyone else who is current on it.
+   * Former members may now belong to someone else's team, and a manager reads
+   * nobody outside their reach (permission-model §3.4).
+   */
+  private shownMemberships(team: Team, user: AuthUser): TeamMembership[] {
     const memberships = team.memberships ?? [];
 
-    return team.status === TeamStatus.ARCHIVED
+    return user.role === UserRole.OWNER
       ? memberships
       : memberships.filter((membership) => membership.leftAt === null);
   }
@@ -196,7 +200,7 @@ export class TeamsService {
 
     const results = teams.map((team) => ({
       ...team,
-      memberships: this.shownMemberships(team),
+      memberships: this.shownMemberships(team, user),
     }));
 
     return { results, count };
@@ -219,14 +223,11 @@ export class TeamsService {
       );
     }
 
-    return this.getTeamById(id, companyId);
+    const team = await this.getTeamById(id, companyId);
+    return { ...team, memberships: this.shownMemberships(team, user) };
   }
 
-  async getTeamById(
-    id: string,
-    companyId: string,
-    includeHistory = false,
-  ): Promise<Team> {
+  async getTeamById(id: string, companyId: string): Promise<Team> {
     const team = await this.teamRepo.findOne({
       where: { id, companyId },
       relations: ['memberships', 'memberships.user'],
@@ -236,10 +237,6 @@ export class TeamsService {
       throw new NotFoundException(
         `Team with id ${id} not found in this company`,
       );
-    }
-
-    if (!includeHistory) {
-      return { ...team, memberships: this.shownMemberships(team) };
     }
 
     return team;
@@ -269,7 +266,7 @@ export class TeamsService {
     companyId: string,
     dto: UpdateTeamDto,
   ): Promise<Team> {
-    const team = await this.getTeamById(id, companyId, true);
+    const team = await this.getTeamById(id, companyId);
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('An archived team cannot be changed');
@@ -301,7 +298,7 @@ export class TeamsService {
     id: string,
     companyId: string,
   ): Promise<Team & { revokedInvitationCount: number }> {
-    const team = await this.getTeamById(id, companyId, true);
+    const team = await this.getTeamById(id, companyId);
 
     if (team.status === TeamStatus.ARCHIVED) {
       throw new BadRequestException('Team is already archived');
@@ -390,7 +387,7 @@ export class TeamsService {
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {
-    const team = await this.getTeamById(id, companyId, true);
+    const team = await this.getTeamById(id, companyId);
 
     if (team.status === TeamStatus.ACTIVE) {
       throw new BadRequestException('Team is already active');

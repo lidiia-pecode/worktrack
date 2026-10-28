@@ -412,6 +412,21 @@ describe('TeamsService', () => {
     });
   });
 
+  describe("a team's former members", () => {
+    it('are read by the owner on an active team, not by its manager', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+      await service.removeMember(membershipId, companyId, alpha, owner);
+
+      const userIdsAs = async (caller: AuthUser) =>
+        (
+          await service.getTeamForRead(alpha, companyId, caller)
+        ).memberships?.map((membership) => membership.userId);
+
+      await expect(userIdsAs(owner)).resolves.toContain(employee.id);
+      await expect(userIdsAs(alphaManager)).resolves.not.toContain(employee.id);
+    });
+  });
+
   describe('the owner', () => {
     it('is never added to a team, as a member or its manager', async () => {
       for (const roleInTeam of [TeamRole.MEMBER, TeamRole.MANAGER]) {
@@ -842,7 +857,7 @@ describe('TeamsService', () => {
       const team = await teamWithPeople('history');
       await service.archiveTeam(team.teamId, companyId);
 
-      const read = await service.getTeamById(team.teamId, companyId);
+      const read = await service.getTeamForRead(team.teamId, companyId, owner);
 
       expect(read.memberships?.map((m) => m.leftAt)).toEqual([TODAY, TODAY]);
     });
