@@ -13,6 +13,8 @@ export interface User {
   email: string;
   googleLinked: boolean;
   hasPassword: boolean;
+  /** When they were deactivated; null while active. */
+  deactivatedAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

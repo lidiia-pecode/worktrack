@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
+import { isDeactivatedUser } from "@/lib/utils/user";
 import {
   againstExpected,
   daysOffLabel,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -40,6 +42,11 @@ const PersonRow = ({
         person.timeOffDays > 0 ? daysOffLabel(person.timeOffDays) : undefined
       }
       flag={flag}
+      status={
+        isDeactivatedUser(person) && (
+          <Badge variant="neutral">Deactivated</Badge>
+        )
+      }
       bar={
         <ReportBar
           value={person.loggedMinutes}

@@ -1,6 +1,8 @@
 import { AvatarUser, User } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
+import { formatDayMonthYearLabel, isoDateInTimeZone } from "./date";
+
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
   return `${u.firstName[0]}${u.lastName[0]}`.toUpperCase();
@@ -14,6 +16,17 @@ export const hasManagerAccess = (role?: string) =>
 
 export const isDeactivatedUser = (user: { status?: UserStatus }) =>
   user.status === UserStatus.DEACTIVATED;
+
+/** The day they were deactivated in the company's time zone, such as "12 Oct 2026". */
+export const deactivatedOnLabel = (
+  user: Pick<User, "deactivatedAt">,
+  timeZone?: string,
+) =>
+  user.deactivatedAt
+    ? formatDayMonthYearLabel(
+        isoDateInTimeZone(new Date(user.deactivatedAt), timeZone),
+      )
+    : null;
 
 /**
  * Whether the viewer may create, edit and delete someone's time entries.

@@ -20,6 +20,7 @@ const emma: User = {
   email: "emma@example.test",
   googleLinked: false,
   hasPassword: true,
+  deactivatedAt: null,
   createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
 };

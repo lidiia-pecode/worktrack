@@ -14,7 +14,11 @@ import {
   formatDuration,
   todayISODate,
 } from "@/lib/utils/date";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
+import {
+  deactivatedOnLabel,
+  fullName,
+  isDeactivatedUser,
+} from "@/lib/utils/user";
 import { Capacity, UserDetails } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
@@ -153,11 +157,13 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
     user.id,
     isOwner,
   );
+  const { timezone } = useWorkSettings();
   const panel = useEntityPanel();
   const userActions = useUserActions();
   const projectChanges = useProjectLinkChanges();
 
   const isDeactivated = isDeactivatedUser(user);
+  const deactivatedOn = deactivatedOnLabel(user, timezone);
   // Deactivating them from their row ends an open edit.
   const isEditing = panel.isEditing && userActions.canEdit(user);
   const canChangeProjects = !isDeactivated && !isEditing;
@@ -180,7 +186,15 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         name={fullName(user)}
         subtitle={user.position}
         leading={<Avatar user={user} size="lg" />}
-        status={isDeactivated && <PanelStatus label="Deactivated" />}
+        status={
+          isDeactivated && (
+            <PanelStatus
+              label={
+                deactivatedOn ? `Deactivated ${deactivatedOn}` : "Deactivated"
+              }
+            />
+          )
+        }
         onEdit={
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }

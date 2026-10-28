@@ -669,7 +669,10 @@ capacity). A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, only an OWNER may modify another OWNER or grant the
 OWNER role, and nobody changes their own role, so a company always keeps its
 owner. A deactivated person keeps their teams and projects but cannot be
-added to a team or a project.
+added to a team or a project. Reactivate asks first and names the teams and
+active projects they come back to. The Deactivated tab and the person's panel
+show the day they were deactivated, and Reports' People card marks them
+"Deactivated" like every other screen.
 
 ---
 

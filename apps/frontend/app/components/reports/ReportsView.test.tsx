@@ -8,7 +8,7 @@ import {
   PeopleReport,
   PeopleReportRow,
 } from "@/types";
-import { HoursReportGroupBy, UserRole } from "@/types/enums";
+import { HoursReportGroupBy, UserRole, UserStatus } from "@/types/enums";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
@@ -101,6 +101,7 @@ const person = (
   name,
   position: "Developer",
   role: UserRole.EMPLOYEE,
+  status: UserStatus.ACTIVE,
   teams: [],
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: (loggedHours / 2) * HOUR,
