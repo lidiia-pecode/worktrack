@@ -63,7 +63,7 @@ const GUIDE_TOPICS: SetupStepItem[] = [
       "Invite people by email; an employee always joins a team. Put them on projects so they can log time.",
     icon: UserCheck,
     completed: false,
-    link: { label: "Open users", href: "/admin/users" },
+    link: { label: "Open people", href: "/admin/users" },
   },
   {
     id: "managers",

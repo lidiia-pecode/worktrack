@@ -16,20 +16,30 @@ const labelsOf = (groups: NavigationGroup[]) =>
   }));
 
 const WORK = ["Team time", "Timesheet", "My time", "Planning", "Reports"];
-const MANAGE = ["Users", "Teams", "Projects", "Activities", "Categories"];
+const OWNER_MANAGE = [
+  "People",
+  "Teams",
+  "Projects",
+  "Activities",
+  "Categories",
+  "Periods",
+];
 
 describe("navigationFor", () => {
   it("gives an owner Work and Manage, with Periods", () => {
     expect(labelsOf(navigationFor(UserRole.OWNER))).toEqual([
       { label: "Work", items: WORK },
-      { label: "Manage", items: [...MANAGE, "Periods"] },
+      { label: "Manage", items: OWNER_MANAGE },
     ]);
   });
 
-  it("gives a manager the same groups without Periods", () => {
+  it("gives a manager the same groups without Teams and Periods", () => {
     expect(labelsOf(navigationFor(UserRole.MANAGER))).toEqual([
       { label: "Work", items: WORK },
-      { label: "Manage", items: MANAGE },
+      {
+        label: "Manage",
+        items: ["People", "Projects", "Activities", "Categories"],
+      },
     ]);
   });
 
@@ -59,7 +69,7 @@ describe("pageLabelFor", () => {
     expect(pageLabelFor(UserRole.MANAGER, "/planning")).toBe("Planning");
     expect(pageLabelFor(UserRole.EMPLOYEE, "/my-time")).toBe("My time");
     expect(pageLabelFor(UserRole.OWNER, "/admin/periods")).toBe("Periods");
-    expect(pageLabelFor(UserRole.OWNER, "/admin/users/42")).toBe("Users");
+    expect(pageLabelFor(UserRole.OWNER, "/admin/users/42")).toBe("People");
   });
 
   it("names Getting started and Settings, which sit outside the menu", () => {

@@ -121,18 +121,18 @@ export const UsersContent = () => {
   return (
     <>
       <ResourcePage
-        title="Users"
+        title="People"
         listState={listState}
         itemCount={users.length}
         isLoading={isLoading}
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search users..."
-        emptyTitle="No users yet"
-        emptyDescription="Invite your first user to start building your workspace."
+        searchPlaceholder="Search people..."
+        emptyTitle="No people yet"
+        emptyDescription="Invite your first person to start building your workspace."
         emptyIcon={<UsersRound className="size-6" />}
-        createLabel="Invite user"
+        createLabel="Invite person"
         onCreate={() => setInviteOpen(true)}
         canCreate={canManage && isActiveTab}
         hasNextPage={pagination.hasNextPage}
@@ -143,7 +143,7 @@ export const UsersContent = () => {
         topContent={canManage && isActiveTab && <PendingInvitations />}
       >
         <ManageList
-          label="Users"
+          label="People"
           items={users}
           row={{
             getKey: (listed) => listed.id,

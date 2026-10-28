@@ -117,7 +117,8 @@ manager.
 ### 3.3 Team membership
 
 A manager gains people by inviting them into a team they lead, and may remove
-a member (`roleInTeam` MEMBER) from such a team; the Owner adds and moves
+a member (`roleInTeam` MEMBER) from such a team, on the person's panel (the
+Teams page is the Owner's); the Owner adds and moves
 everyone else, and alone removes a team's manager, the caller included
 (Phase 36). See
 [`business_architecture_docs.md`](./business_architecture_docs.md) §5.

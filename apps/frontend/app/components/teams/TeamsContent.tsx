@@ -3,14 +3,12 @@
 import { useState } from "react";
 import { UsersRound } from "lucide-react";
 
-import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useTeamsInfiniteQuery } from "@/hooks/useTeams";
-import { MANAGER_WITHOUT_TEAM_MESSAGE } from "@/lib/constants";
-import { fullName, hasManagerAccess } from "@/lib/utils/user";
+import { fullName } from "@/lib/utils/user";
 import { Team, TeamUser } from "@/types/Team";
-import { TeamStatus, UserRole } from "@/types/enums";
+import { TeamStatus } from "@/types/enums";
 import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink, EntityLinks } from "../entity-panel/EntityLink";
@@ -122,6 +120,7 @@ const COLUMNS: ManageColumn<Team>[] = [
   },
 ];
 
+/** The owner's page: team structure is theirs alone. */
 export const TeamsContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
   const [createOpen, setCreateOpen] = useState(opensCreateForm);
@@ -130,8 +129,6 @@ export const TeamsContent = () => {
   const teamActions = useTeamActions();
   const status =
     listState.tab === "archived" ? TeamStatus.ARCHIVED : TeamStatus.ACTIVE;
-
-  const { user } = useAuth();
 
   const {
     items: teams,
@@ -142,9 +139,6 @@ export const TeamsContent = () => {
     pagination,
   } = useTeamsInfiniteQuery({ status, search: listState.searchQuery });
 
-  const canRead = hasManagerAccess(user?.role);
-  const isOwner = user?.role === UserRole.OWNER;
-
   return (
     <>
       <ResourcePage
@@ -153,24 +147,14 @@ export const TeamsContent = () => {
         itemCount={teams.length}
         isLoading={isLoading}
         isRefreshing={isPlaceholderData}
-        isError={isError || !canRead}
+        isError={isError}
         onRetry={refetch}
         searchPlaceholder="Search teams..."
         emptyTitle="No teams yet"
-        emptyDescription={
-          isOwner
-            ? "Create your first team to organize your workspace."
-            : MANAGER_WITHOUT_TEAM_MESSAGE
-        }
+        emptyDescription="Create your first team to organize your workspace."
         emptyIcon={<UsersRound className="size-6" />}
-        archivedEmptyDescription={
-          isOwner
-            ? undefined
-            : "Only an owner archives a team, and an archived team is no longer listed for its managers."
-        }
         createLabel="Create team"
         onCreate={() => setCreateOpen(true)}
-        canCreate={isOwner}
         hasNextPage={pagination.hasNextPage}
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}

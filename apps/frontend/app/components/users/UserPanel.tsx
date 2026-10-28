@@ -19,7 +19,7 @@ import {
   fullName,
   isDeactivatedUser,
 } from "@/lib/utils/user";
-import { Capacity, UserDetails } from "@/types";
+import { Capacity, UserDetails, UserTeamMembership } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
 import { linkedEntities } from "../entity-panel/EntityLink";
@@ -40,6 +40,10 @@ import { UserChangeTeamDialog } from "./UserChangeTeamDialog";
 import { UserForm, UserFormData } from "./UserForm";
 import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
 import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
+import {
+  TeamMemberRemoveDialog,
+  TeamRemoval,
+} from "../teams/TeamMemberRemoveDialog";
 import { UserProjectsPicker } from "./UserProjectsPicker";
 
 const EDIT_FORM_ID = "user-edit-form";
@@ -171,6 +175,10 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const canChangeTeam =
     isOwner && canChangeProjects && user.role !== UserRole.OWNER;
   const [isChangingTeam, setIsChangingTeam] = useState(false);
+  const [removal, setRemoval] = useState<TeamRemoval | null>(null);
+  // As on the team's panel: a manager removes members; managers are the owner's to remove.
+  const canRemoveFromTeam = (team: UserTeamMembership) =>
+    !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
   const memberTeam = user.teams.find(
     (team) => team.roleInTeam === TeamRole.MEMBER,
   );
@@ -229,6 +237,13 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
             entity: { type: "team", id: team.id },
             name: team.name,
             detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
+            remove: canRemoveFromTeam(team)
+              ? {
+                  label: `Remove ${fullName(user)} from ${team.name}`,
+                  onClick: () =>
+                    setRemoval({ teamId: team.id, userId: user.id }),
+                }
+              : undefined,
           })}
           emptyText={
             <>
@@ -293,6 +308,10 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         user={isChangingTeam ? user : null}
         currentTeam={memberTeam ?? null}
         onClose={() => setIsChangingTeam(false)}
+      />
+      <TeamMemberRemoveDialog
+        removal={removal}
+        onClose={() => setRemoval(null)}
       />
     </>
   );

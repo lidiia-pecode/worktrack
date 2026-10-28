@@ -687,7 +687,7 @@ show the day they were deactivated, and Reports' People card marks them
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD | read, within their teams; remove a member (not a team manager) | — |
+| Teams | full CRUD; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
@@ -764,8 +764,9 @@ see, and how a new company gets started. §7 plans that work.
   weekend hours are always extra; a day off in the brand colour. Time past a
   working day's figure sits on solid amber with a "+Xh" badge. A day that
   hasn't happened yet can't be logged on.
-- **Manage pages** — users, teams, projects, activities and categories as
-  searchable lists. A row opens a shared side panel where every related name is
+- **Manage pages** — People, Teams, Projects, Activities and Categories as
+  searchable lists; Teams and Periods are the owner's, so a manager's Manage
+  menu is People, Projects, Activities and Categories. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
   comes before anything risky. A project is client work, with a client suggested
   from those already used, or internal; an activity has a billable default and
