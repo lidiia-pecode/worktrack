@@ -1,16 +1,8 @@
 "use client";
 
-import { ChevronDown, UserPlus } from "lucide-react";
+import { UserCog, UserPlus, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
@@ -45,8 +37,6 @@ import { useTeamMemberChanges } from "./useTeamMemberChanges";
 
 const EDIT_FORM_ID = "team-edit-form";
 
-const TEAM_ROLES = [TeamRole.MEMBER, TeamRole.MANAGER];
-
 const membershipPeriod = (membership: TeamMembership) => {
   const joined = formatDayMonthYearLabel(membership.joinedAt);
 
@@ -54,48 +44,6 @@ const membershipPeriod = (membership: TeamMembership) => {
     ? `${joined} – ${formatDayMonthYearLabel(membership.leftAt)}`
     : `Since ${joined}`;
 };
-
-interface TeamRoleMenuProps {
-  membership: MembershipWithUser;
-  teamName: string;
-  onChange: (roleInTeam: TeamRole) => void;
-}
-
-const TeamRoleMenu = ({
-  membership,
-  teamName,
-  onChange,
-}: TeamRoleMenuProps) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger
-      render={
-        <Button
-          type="button"
-          variant="ghost"
-          size="xs"
-          aria-label={`Role of ${fullName(membership.user)} in ${teamName}: ${TEAM_ROLE_LABELS[membership.roleInTeam]}`}
-          className="gap-1 text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
-        >
-          {TEAM_ROLE_LABELS[membership.roleInTeam]}
-          <ChevronDown className="size-3.5" />
-        </Button>
-      }
-    />
-
-    <DropdownMenuContent align="end" className="w-44">
-      <DropdownMenuRadioGroup
-        value={membership.roleInTeam}
-        onValueChange={(value) => onChange(value as TeamRole)}
-      >
-        {TEAM_ROLES.map((role) => (
-          <DropdownMenuRadioItem key={role} value={role} closeOnClick>
-            {TEAM_ROLE_LABELS[role]}
-          </DropdownMenuRadioItem>
-        ))}
-      </DropdownMenuRadioGroup>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
 
 const TeamEditForm = ({ team }: { team: Team }) => {
   const panel = useEntityPanel();
@@ -191,22 +139,27 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
             entity: { type: "user", id: membership.user.id },
             name: fullName(membership.user),
             leading: <Avatar user={membership.user} />,
-            // The role menu shows the role.
-            detail: canChangeRole(membership)
-              ? membershipPeriod(membership)
-              : `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
+            detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
             status: isDeactivatedUser(membership.user) && (
               <Badge variant="neutral">Deactivated</Badge>
             ),
-            control: canChangeRole(membership) && (
-              <TeamRoleMenu
-                membership={membership}
-                teamName={team.name}
-                onChange={(roleInTeam) =>
-                  changes.changeRole(membership, roleInTeam)
-                }
-              />
-            ),
+            actions: canChangeRole(membership)
+              ? [
+                  membership.roleInTeam === TeamRole.MANAGER
+                    ? {
+                        label: "Make member",
+                        icon: UserRound,
+                        onSelect: () =>
+                          changes.changeRole(membership, TeamRole.MEMBER),
+                      }
+                    : {
+                        label: "Make manager",
+                        icon: UserCog,
+                        onSelect: () =>
+                          changes.changeRole(membership, TeamRole.MANAGER),
+                      },
+                ]
+              : undefined,
             remove: canRemove(membership)
               ? {
                   label: `Remove ${fullName(membership.user)} from ${team.name}`,

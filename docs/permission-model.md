@@ -148,6 +148,11 @@ managers, who see each other as they see its members. Confirmed 28 October
 members): those would add rules and role-change handling for no gain, and
 company-level switches for them are not wanted (decision 5).
 
+**The Owner is in no team**, as a member or a manager; the API refuses it.
+Membership would give the Owner nothing (their own time, planning and reports
+work without one) and would give that team's managers reach over the Owner's
+records. Decided 28 October 2026.
+
 ### 3.4 People visibility
 
 **One level, and one rule.** A manager sees the people in the teams they

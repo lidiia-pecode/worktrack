@@ -412,6 +412,40 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('the owner', () => {
+    it('is never added to a team, as a member or its manager', async () => {
+      for (const roleInTeam of [TeamRole.MEMBER, TeamRole.MANAGER]) {
+        await expect(
+          service.addMember(alpha, companyId, {
+            userId: owner.id,
+            roleInTeam,
+            joinedAt: TODAY,
+          }),
+        ).rejects.toThrow(BadRequestException);
+      }
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(owner.id);
+    });
+
+    it('never has a closed membership reopened', async () => {
+      const closed = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alpha,
+        userId: owner.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+        leftAt: '2026-02-01',
+      });
+
+      try {
+        await expect(
+          service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
+        ).rejects.toThrow('The owner is not a member of any team');
+      } finally {
+        await dataSource.getRepository(TeamMembership).delete(closed.id);
+      }
+    });
+  });
+
   describe('one member team per person', () => {
     const addAsMember = (teamId: string, user: AuthUser, extra = {}) =>
       service.addMember(teamId, companyId, {

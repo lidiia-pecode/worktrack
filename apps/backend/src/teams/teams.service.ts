@@ -144,12 +144,18 @@ export class TeamsService {
     await membershipRepo.save(locked);
   }
 
-  /** Active status gates joining a team, not staying in one. */
+  /** Joining a team takes an active person who is not the owner; staying in one only the first. */
   private assertCanJoinTeam(user: User): void {
     if (user.status !== UserStatus.ACTIVE) {
       throw new BadRequestException(
         'A deactivated person cannot be added to a team',
       );
+    }
+
+    // Membership would give the owner nothing, and the team's managers reach
+    // over the owner's records.
+    if (user.role === UserRole.OWNER) {
+      throw new BadRequestException('The owner is not a member of any team');
     }
   }
 
