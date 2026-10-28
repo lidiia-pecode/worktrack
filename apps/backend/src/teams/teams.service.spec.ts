@@ -482,6 +482,33 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(beta)).resolves.not.toContain(employee.id);
     });
 
+    it('makes an addition wait for one under way elsewhere, then refuses it', async () => {
+      // Another team's addition, holding the person as addMember does.
+      const other = dataSource.createQueryRunner();
+      await other.startTransaction();
+      await other.manager.findOne(User, {
+        where: { id: employee.id },
+        lock: { mode: 'pessimistic_write' },
+      });
+      await other.manager.save(TeamMembership, {
+        companyId,
+        teamId: alpha,
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: TODAY,
+      });
+
+      const addition = addAsMember(beta, employee);
+      // Long enough for the addition to reach the person while the other is open.
+      await new Promise((resolve) =>
+        setTimeout(resolve, ADDITION_HEAD_START_MS),
+      );
+      await other.commitTransaction();
+      await other.release();
+
+      await expect(addition).rejects.toThrow(ConflictException);
+    });
+
     it('moves them: the old membership ends the day the new one starts', async () => {
       const oldId = await addToTeam(alpha, employee);
 

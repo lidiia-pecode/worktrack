@@ -917,14 +917,14 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-seven
-suites and 834 tests, covering the role-visibility filters, team and invitation
+suites and 840 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-one Vitest files and 410 tests: its date, month,
+The frontend has seventy-one Vitest files and 417 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -1016,6 +1016,7 @@ is in its pull request.
 | 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
 | 36 | Fixes across areas: nothing expected of a person for a spell they were deactivated and came back from, and an owner's own days without time on My time and in their panel; planning edits that can't deadlock with a period plan, and a period preview walking expected hours once; notifications read only once shown, unread first; sessions kept through a sign-in page, a throttled refresh or a backend asleep, and a deleted session no longer locking anyone out of sign-in, with lookups refusing a missing value and database conflicts repeating nothing sent; the timesheet's excess in line with its entries, locked absences opened to read, typed minutes carried into hours and the week link tidied; a team's manager removable by an owner only, focus back after Back, Team time's empty days named for a screen reader, and lighter placeholders |
 | 37 | Team time with rich cells: each day's entries as project-coloured blocks that open the entry form, the empty part of a day logging time for the person and an absence icon by each name, replacing the side panel; the plan on a day with nothing logged; the team summary returning each day's entries on request; search by name or position, a sort by name or by the share of expected time logged, and archived and completed projects in the project filter; the week in the URL on the timesheet, Team time and Planning, and Team time's filters too; Reports' days without time linking to their week on Team time with the person highlighted; a person column that stays put while the days scroll; no day totals in the Team time and Planning headers |
+| 38 (part 1) | Teams and leavers: a leaver's time and absences corrected by owners and managers on the days before they left; one member team per person, adding someone to another team a confirmed move; the owner in no team; a team's former members, pending invitations and "Move to…" on its panel; a team archived only once empty, with restore an exact undo; Reactivate confirmed, the day someone was deactivated shown, and a leaver marked on the People card; the Teams page the owner's, a manager removing a member from the person's panel, and Users renamed People |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1080,7 +1081,7 @@ absences and locks the same way. Planning and Team time stay separate screens by
 decision: they share the chrome, not the job (actuals and corrections on one,
 intent and limits on the other).
 
-**Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
+**Area 5 — Administration and settings** *(done, Phases 20–26 and 30; teams and leavers revisited in Phase 38 part 1)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
 categories, periods and company settings. Lists that scale past a few dozen
 items with search that covers everything, confirmations before anything is

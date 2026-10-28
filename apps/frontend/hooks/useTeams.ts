@@ -98,11 +98,13 @@ export const useTeamsMutations = createEntityMutations<
 export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();
 
-  // A person's row and panel name their team.
+  // A person's row, panel and picker entry name their team.
   const invalidate = () =>
-    [queryKeys.teams.all, queryKeys.users.all].forEach((queryKey) =>
-      queryClient.invalidateQueries({ queryKey }),
-    );
+    [
+      queryKeys.teams.all,
+      queryKeys.users.all,
+      queryKeys.users.assignable.all,
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
 
   const addMember = useMutation({
     mutationFn: (data: AddTeamMemberPayload) =>

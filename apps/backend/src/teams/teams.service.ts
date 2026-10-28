@@ -114,6 +114,21 @@ export class TeamsService {
     }
   }
 
+  /**
+   * Locks the person's row, so two changes that would each make them a member
+   * of a team run one after the other and the second sees the first.
+   */
+  private async lockPerson(
+    manager: EntityManager,
+    companyId: string,
+    userId: string,
+  ): Promise<void> {
+    await manager.getRepository(User).findOne({
+      where: { id: userId, companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
   /** The open member-role membership the person holds in another active team, if any. */
   private findCurrentMemberTeam(
     membershipRepo: Repository<TeamMembership>,
@@ -429,8 +444,10 @@ export class TeamsService {
       const roleInTeam = dto.roleInTeam ?? TeamRole.MEMBER;
 
       // A person is a member of one team at a time: joining another as a
-      // member is a move, which the caller has to ask for (P1).
-      if (roleInTeam === TeamRole.MEMBER) {
+      // member is a move, which the caller has to ask for (P1). A past
+      // membership, already closed, is history and moves nobody.
+      if (roleInTeam === TeamRole.MEMBER && newLeftAt === null) {
+        await this.lockPerson(manager, companyId, dto.userId);
         const currentTeam = await this.findCurrentMemberTeam(
           trxMembershipRepo,
           companyId,
@@ -486,9 +503,15 @@ export class TeamsService {
     dto: UpdateTeamMemberDto,
     teamId: string,
   ): Promise<TeamMembership> {
-    await this.assertTeamIsActive(teamId, companyId);
-
     return this.dataSource.transaction(async (manager) => {
+      // Locked, so an archive under way finishes first and this is refused.
+      await findActiveTeam(
+        manager.getRepository(Team),
+        teamId,
+        companyId,
+        'An archived team cannot be changed',
+        { lock: true },
+      );
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
       const membership = await trxMembershipRepo.findOne({
@@ -528,6 +551,9 @@ export class TeamsService {
         newLeftAt === null &&
         (dto.roleInTeam ?? membership.roleInTeam) === TeamRole.MEMBER &&
         (reopens || membership.roleInTeam !== TeamRole.MEMBER);
+      if (becomesMember) {
+        await this.lockPerson(manager, companyId, membership.userId);
+      }
       const currentTeam = becomesMember
         ? await this.findCurrentMemberTeam(
             trxMembershipRepo,

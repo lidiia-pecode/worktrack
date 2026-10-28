@@ -75,6 +75,16 @@ describe("TeamWeekRow", () => {
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
+  it("marks nobody deactivated for a week with nothing expected", () => {
+    const { personCell, bar } = renderRow(
+      row({ expectedMinutes: 0, expectedToDateMinutes: 0 }),
+    );
+
+    expect(within(personCell).getByText("32h")).toBeInTheDocument();
+    expect(bar).not.toBeInTheDocument();
+    expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
+  });
+
   it("turns the figure amber past what was expected", () => {
     const { personCell } = renderRow(
       row({ minutes: 2700, billableMinutes: 2700 }),

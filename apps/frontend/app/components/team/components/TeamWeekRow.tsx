@@ -202,9 +202,10 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
           {formatDuration(row.minutes)}
         </span>
 
-        {expectation && !isDeactivated ? (
+        {expectation && (
           <span className="truncate text-muted-foreground">{expectation}</span>
-        ) : (
+        )}
+        {isDeactivated && (
           <Badge variant="neutral" className="mt-0.5 self-start">
             Deactivated
           </Badge>

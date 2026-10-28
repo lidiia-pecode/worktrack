@@ -104,6 +104,8 @@ export const queryKeys = {
     detail: (id: string) => ["users", "detail", id] as const,
 
     assignable: {
+      all: ["users-assignable"] as const,
+
       list: (page: number, params?: QueryParams) =>
         createListKey("users-assignable", page, params),
 

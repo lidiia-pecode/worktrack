@@ -176,6 +176,8 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
                 ? `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}, leaving ${choice.fromTeam.name}`
                 : `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}`;
             }
+            // Managers show in the Member view too; unchoosing one removes them.
+            if (managerIds.includes(person.id)) return "Manages this team";
             const fromTeam = leavesFor(person);
             return fromTeam ? `In ${fromTeam.name}` : person.email;
           }}

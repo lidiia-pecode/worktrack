@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { useTeamMembers, useTeamOptions } from "@/hooks/useTeams";
+import { useUserDetails } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
-import { getErrorMessage } from "@/lib/api";
 import { todayISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 import { UserTeam } from "@/types";
@@ -34,10 +33,16 @@ export const UserChangeTeamDialog = ({
 }: UserChangeTeamDialogProps) => {
   const { timezone } = useWorkSettings();
   const { options: teamOptions, isLoading, isError } = useTeamOptions();
+  const details = useUserDetails(user?.id ?? "");
   const [selectedTeamId, setSelectedTeamId] = useState("");
 
+  // Not a team they are already on, such as one a Manager leads.
+  const teamsTheyAreOn = new Set(
+    (details.data?.teams ?? []).map((team) => team.id),
+  );
   const options = teamOptions.filter(
-    (option) => option.value !== currentTeam?.id,
+    (option) =>
+      option.value !== currentTeam?.id && !teamsTheyAreOn.has(option.value),
   );
   const selectedTeam = options.find(
     (option) => option.value === selectedTeamId,
@@ -62,15 +67,14 @@ export const UserChangeTeamDialog = ({
         joinedAt: todayISODate(timezone),
         leaveCurrentTeam: Boolean(currentTeam),
       },
-      {
-        onSuccess: close,
-        onError: (error) => toast.error(getErrorMessage(error)),
-      },
+      { onSuccess: close },
     );
   };
 
   const description = (() => {
-    if (isError) return "Could not load the teams. Close this and try again.";
+    if (isError || details.isError) {
+      return "Could not load the teams. Close this and try again.";
+    }
     if (!changesTeam) {
       return currentTeam
         ? `${name} is a member of ${currentTeam.name}. Choose the team they move to.`
@@ -93,7 +97,7 @@ export const UserChangeTeamDialog = ({
           options={options}
           placeholder="Choose a team"
           onValueChange={setSelectedTeamId}
-          disabled={isLoading || addMember.isPending}
+          disabled={isLoading || !details.data || addMember.isPending}
         />
       }
       confirmText={currentTeam ? "Move" : "Add"}

@@ -134,7 +134,7 @@ the company, there is no prior history for them to acquire retroactively. That
 removes the need to bound visibility by membership dates, which would otherwise
 have to be threaded through every query. See P4.
 
-**A person is a member of exactly one team.** A Manager may lead any number
+**A person is a member of at most one team.** A Manager may lead any number
 of teams, and may be a member of one team led by somebody else. Adding a
 member of another team to a team is a **move**: the Owner confirms it, and the
 old membership ends the day the new one starts, in one transaction

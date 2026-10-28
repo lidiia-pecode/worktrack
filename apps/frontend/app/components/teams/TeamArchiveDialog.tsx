@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +8,6 @@ import {
   useTeamMembers,
   useTeamsMutations,
 } from "@/hooks/useTeams";
-import { getErrorMessage } from "@/lib/api";
 import { byCount, countLabel } from "@/lib/utils/text";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team, TeamArchiveImpact } from "@/types/Team";
@@ -63,8 +61,8 @@ export const TeamArchiveDialog = ({
       for (const membership of deactivated) {
         await removeMember.mutateAsync(membership.id);
       }
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+    } catch {
+      // The failure has its toast already; the refetch shows who is left.
     }
     await impact.refetch();
     setIsRemovingDeactivated(false);
@@ -116,7 +114,8 @@ export const TeamArchiveDialog = ({
         onConfirm={() => archive.mutate(team.id, { onSuccess: onClose })}
         onClose={onClose}
         loading={archive.isPending}
-        confirmDisabled={!impact.data}
+        // A cached "empty" may be out of date until the check on opening returns.
+        confirmDisabled={!impact.data || impact.isFetching}
       />
     );
   }
