@@ -6,7 +6,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, IsNull, Not, Raw, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Raw,
+  Repository,
+} from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -29,6 +37,12 @@ import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
+
+/** What still has to leave a team before it can be archived. */
+export interface TeamArchiveImpact {
+  openMemberships: TeamMembership[];
+  pendingInvitationCount: number;
+}
 
 @Injectable()
 export class TeamsService {
@@ -63,13 +77,6 @@ export class TeamsService {
         joinedAt,
       }),
     };
-  }
-
-  /** A membership still in effect on `today`, or one that has not started. */
-  private stillInEffect(today: string) {
-    return Raw((alias) => `(${alias} IS NULL OR ${alias} > :today)`, {
-      today,
-    });
   }
 
   /**
@@ -289,101 +296,71 @@ export class TeamsService {
   }
 
   /**
-   * Archiving ends the team's responsibility: its pending invitations are
-   * revoked and every membership still in effect ends today, so the team
-   * grants nothing afterwards. A membership that has not started yet ends on
-   * its start date.
+   * What is still on the team: its open memberships, whatever the role or the
+   * person's status, and its pending invitations. A team is archived only once
+   * both are gone, so archiving changes nothing but its status.
    */
-  async archiveTeam(
-    id: string,
+  private async findWhatIsOnTeam(
+    manager: EntityManager,
+    teamId: string,
     companyId: string,
-  ): Promise<Team & { revokedInvitationCount: number }> {
-    const team = await this.getTeamById(id, companyId);
+  ): Promise<TeamArchiveImpact> {
+    const [openMemberships, pendingInvitationCount] = await Promise.all([
+      manager.getRepository(TeamMembership).find({
+        where: { teamId, companyId, leftAt: IsNull() },
+        relations: ['user'],
+        order: { user: { firstName: 'ASC', lastName: 'ASC' } },
+      }),
+      manager.getRepository(Invitation).count({
+        where: { teamId, companyId, status: InvitationStatus.PENDING },
+      }),
+    ]);
 
-    if (team.status === TeamStatus.ARCHIVED) {
-      throw new BadRequestException('Team is already archived');
-    }
+    return { openMemberships, pendingInvitationCount };
+  }
 
+  /**
+   * Archiving takes a team out of use and keeps it whole: it is refused until
+   * the owner has emptied the team, and restoring is its exact undo.
+   */
+  async archiveTeam(id: string, companyId: string): Promise<Team> {
     return this.dataSource.transaction(async (manager) => {
-      await manager
-        .getRepository(Team)
-        .update(team.id, { status: TeamStatus.ARCHIVED });
-
-      const today = await findCompanyToday(manager, companyId);
-      await manager
-        .createQueryBuilder()
-        .update(TeamMembership)
-        .set({ leftAt: () => 'GREATEST(joined_at, :today)' })
-        .where({ teamId: id, companyId, leftAt: this.stillInEffect(today) })
-        .setParameters({ today })
-        .execute();
-
-      const { affected } = await manager
-        .getRepository(Invitation)
-        .update(
-          { teamId: id, companyId, status: InvitationStatus.PENDING },
-          { status: InvitationStatus.REVOKED, revokedAt: new Date() },
-        );
-
-      const archived = await manager.getRepository(Team).findOneOrFail({
-        where: { id },
-        relations: ['memberships', 'memberships.user'],
+      // Locked so that nobody joins or is invited while it is checked.
+      const team = await manager.getRepository(Team).findOne({
+        where: { id, companyId },
+        lock: { mode: 'pessimistic_write' },
       });
 
-      return { ...archived, revokedInvitationCount: affected ?? 0 };
+      if (!team) {
+        throw new NotFoundException(
+          `Team with id ${id} not found in this company`,
+        );
+      }
+      if (team.status === TeamStatus.ARCHIVED) {
+        throw new BadRequestException('Team is already archived');
+      }
+
+      const { openMemberships, pendingInvitationCount } =
+        await this.findWhatIsOnTeam(manager, id, companyId);
+      if (openMemberships.length > 0 || pendingInvitationCount > 0) {
+        throw new ConflictException(
+          'Remove everyone from the team and settle its invitations first',
+        );
+      }
+
+      team.status = TeamStatus.ARCHIVED;
+      return manager.getRepository(Team).save(team);
     });
   }
 
-  /** Who archiving the team would affect, shown to the owner beforehand. */
+  /** What still has to leave the team before it can be archived. */
   async getArchiveImpact(
     id: string,
     companyId: string,
-  ): Promise<{ managers: User[]; peopleLeftWithoutTeam: User[] }> {
+  ): Promise<TeamArchiveImpact> {
     await this.assertTeamIsActive(id, companyId, 'Team is already archived');
 
-    const today = await findCompanyToday(this.dataSource.manager, companyId);
-
-    const memberships = await this.membershipRepo.find({
-      where: {
-        teamId: id,
-        companyId,
-        leftAt: this.stillInEffect(today),
-        user: { status: UserStatus.ACTIVE },
-      },
-      relations: ['user'],
-      order: { user: { firstName: 'ASC', lastName: 'ASC' } },
-    });
-
-    const managers = memberships
-      .filter((membership) => membership.roleInTeam === TeamRole.MANAGER)
-      .map((membership) => membership.user);
-    const members = memberships
-      .filter((membership) => membership.roleInTeam === TeamRole.MEMBER)
-      .map((membership) => membership.user);
-
-    const placedElsewhere =
-      members.length === 0
-        ? []
-        : await this.membershipRepo.find({
-            select: ['userId'],
-            where: {
-              companyId,
-              teamId: Not(id),
-              userId: In(members.map((member) => member.id)),
-              leftAt: this.stillInEffect(today),
-              team: { status: TeamStatus.ACTIVE },
-            },
-          });
-    const placedUserIds = new Set(
-      placedElsewhere.map((membership) => membership.userId),
-    );
-
-    return {
-      managers,
-      peopleLeftWithoutTeam: members.filter(
-        (member) => !placedUserIds.has(member.id),
-      ),
-    };
+    return this.findWhatIsOnTeam(this.dataSource.manager, id, companyId);
   }
 
   async unarchiveTeam(id: string, companyId: string): Promise<Team> {

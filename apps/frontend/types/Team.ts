@@ -37,14 +37,10 @@ export interface Team {
   company: Company;
 }
 
-export interface ArchivedTeam extends Team {
-  revokedInvitationCount: number;
-}
-
-// TeamArchiveImpactResponse
+// TeamArchiveImpactResponse: what still has to leave before it can be archived
 export interface TeamArchiveImpact {
-  managers: TeamUser[];
-  peopleLeftWithoutTeam: TeamUser[];
+  openMemberships: (TeamMembership & { user: TeamUser })[];
+  pendingInvitationCount: number;
 }
 
 // Payloads

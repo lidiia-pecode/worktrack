@@ -102,15 +102,16 @@ manager, as two separate changes. The Owner may also invite a new Manager to
 lead a team; accepting makes them its manager. That is still the
 Owner appointing a team's manager, since nobody else can invite a Manager.
 
-**Archiving a team closes it** — confirmed and enforced in September 2026.
-A team holds no data of its own, so archiving it ends a unit of responsibility
-rather than any work. Archiving ends every open membership, manager and member
-alike, on the company's today, so the team grants nothing afterwards and its
-history stays in the membership dates. The Owner sees who is affected before
-confirming, and people left without a team are the Owner's to place. An
-archived team is read-only. Restoring it brings it back with no members; the
-Owner adds people again under the current rules, so a restore never hands reach
-back by itself. An archived team therefore never blocks demoting its former
+**Only an empty team is archived** — decided 27–28 October 2026, replacing
+September's "archiving closes the team". A team can be archived only when it
+has no open membership (members, its manager and deactivated people alike) and
+no pending invitation; the API refuses anything else with 409. Archiving then
+changes the status and nothing else, and restoring is its exact undo, so a
+restore never hands reach back by itself. The Owner empties the team on its
+panel: moves or removes members, removes the manager, removes deactivated
+people and revokes invitations, each with its own confirmation, so every
+change of reach is a separate, visible decision. An archived team is
+read-only, and since it is empty it never blocks demoting its former
 manager.
 
 ### 3.3 Team membership
@@ -362,8 +363,10 @@ Visible and deliberately unanswered; each waits for a real need.
   note the distinction §3.4 now rests on: the **project** is visible to every
   owner and manager, its **roster** is not.
 - **P9 — What does an archived team mean for access?** *Answered in September
-  2026:* archiving closes the team and restoring brings it back empty — §3.2.
-  Suspending the team and merely hiding it were considered and set aside.
+  2026, reversed 27 October 2026:* only an empty team is archived, so archiving
+  grants and removes nothing, and restoring is an exact undo — §3.2. Archiving
+  that closed every membership itself was dropped: it changed many people's
+  reach in one click that nothing undid.
 
 Open questions about absences, planning, export and notifications stay in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §10.

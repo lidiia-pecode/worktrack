@@ -2,7 +2,6 @@
 
 import {
   AddTeamMemberPayload,
-  ArchivedTeam,
   CreateTeamPayload,
   Team,
   TeamArchiveImpact,
@@ -47,7 +46,7 @@ export const TeamsClientApi = {
   getArchiveImpact: (id: string) =>
     client.get<TeamArchiveImpact>(`/${id}/archive-impact`),
 
-  archive: (id: string) => client.archive<ArchivedTeam>(`/${id}/archive`),
+  archive: (id: string) => client.archive<Team>(`/${id}/archive`),
 
   unarchive: (id: string) => client.patch<Team>(`/${id}/unarchive`),
 };

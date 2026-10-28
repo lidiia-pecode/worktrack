@@ -8,7 +8,6 @@ import { TeamStatus } from "@/types/enums";
 
 import {
   AddTeamMemberPayload,
-  ArchivedTeam,
   CreateTeamPayload,
   Team,
   TeamsQuery,
@@ -72,7 +71,7 @@ export const useTeamsMutations = createEntityMutations<
   Team,
   CreateTeamPayload,
   UpdateTeamPayload,
-  ArchivedTeam,
+  Team,
   Team
 >({
   queryKey: queryKeys.teams.all,
@@ -90,10 +89,7 @@ export const useTeamsMutations = createEntityMutations<
   messages: {
     create: "Team created successfully!",
     update: "Team updated successfully!",
-    archive: ({ revokedInvitationCount }) =>
-      revokedInvitationCount === 0
-        ? "Team archived successfully!"
-        : `Team archived. Pending invitations revoked: ${revokedInvitationCount}.`,
+    archive: "Team archived",
     unarchive: "Team restored successfully!",
   },
   conflictShownInForm: true,

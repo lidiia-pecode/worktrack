@@ -20,6 +20,8 @@ const MAX_LINKED = 6;
 interface ImpactGroup {
   label: string;
   entities: LinkedEntity[];
+  /** Settles the group from the dialog, such as removing the people in it. */
+  action?: ReactNode;
 }
 
 interface ImpactDialogProps {
@@ -54,6 +56,7 @@ const AffectedEntities = ({
         <EntityLinks entities={named} onNavigate={onNavigate} />
         {othersCount > 0 && ` and ${othersCount} more`}
       </p>
+      {group.action && <div className="mt-2">{group.action}</div>}
     </div>
   );
 };

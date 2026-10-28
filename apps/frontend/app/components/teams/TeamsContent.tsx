@@ -61,13 +61,13 @@ const ManagerList = ({ people }: { people: TeamUser[] }) => (
   </div>
 );
 
-// Archiving closes every membership, so an archived team has no manager to flag.
+// Only an empty team is archived, so an archived one has no manager to flag.
 const COLUMNS: ManageColumn<Team>[] = [
   {
     header: "Manager",
     width: "w-64",
     cell: (team) => {
-      if (!isActiveTeam(team)) return "—";
+      if (!isActiveTeam(team)) return null;
 
       const managers = activeManagers(team);
       return managers.length > 0 ? (

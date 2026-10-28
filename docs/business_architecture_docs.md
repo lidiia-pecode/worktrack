@@ -658,8 +658,8 @@ has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
 invitation email, and only the sign-up page starts a company. A failed Google
 sign-in returns to the page it started from with a message, never an error on the
-backend's host. Archiving a team
-revokes its pending invitations and closes the team (§5).
+backend's host. A team with pending invitations can't be archived; the owner
+revokes them on its panel first (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
@@ -724,10 +724,10 @@ that would narrow someone else's reach or leave the team without its lead.
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
 a Manager. A Manager who leads a team cannot be changed to another role until
-they no longer lead it, and the refusal names the teams. Archiving a team ends every open
-membership on the company's today, so its former manager loses reach from that
-day; an archived team is read-only, and restoring it brings it back with no
-members.
+they no longer lead it, and the refusal names the teams. A team is archived only once
+it is empty (no open membership, no pending invitation), which the owner does on
+its panel; archiving then changes only its status, an archived team is
+read-only, and restoring it brings it back as it was.
 
 Note that MANAGER still has full CRUD over projects, activities and categories
 company-wide — not restricted to their own teams. See §10 Q3.
@@ -871,6 +871,11 @@ see, and how a new company gets started. §7 plans that work.
   time.
 
 ### Decided while building, and still in force
+
+- **Archive means out of use, kept whole, for teams too** (27–28 October 2026,
+  Phase 38), reversing "archiving closes the team". Only an empty team is
+  archived, emptied on its own panel, and restoring is an exact undo; nobody's
+  time, absences or plans change at any point.
 
 - **A team's week is read and corrected in the Team time grid** (26 October
   2026, Phase 37), reversing "`/team` stays a summary grid". Each day lists its

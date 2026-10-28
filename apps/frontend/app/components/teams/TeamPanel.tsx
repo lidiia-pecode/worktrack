@@ -292,7 +292,7 @@ const ArchivedTeamView = ({ team }: { team: Team }) => {
     >
       <FormerMembersList
         team={team}
-        note="Restoring the team starts it with no members."
+        note="Restoring brings the team back as it is: empty, with its history."
       />
     </EntityPanelLayout>
   );
