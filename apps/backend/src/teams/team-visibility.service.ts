@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -28,6 +27,7 @@ export type VisibleUser = Pick<
   | 'position'
   | 'avatarUrl'
   | 'status'
+  | 'deactivatedAt'
   | 'role'
 >;
 
@@ -37,6 +37,11 @@ export interface VisibleUsersFilter {
   userId?: string;
   /** Deactivated people who still belong in the view, e.g. they have data in it. */
   includeUserIds?: string[];
+  /**
+   * Also the deactivated people who still had days to work in the view: they
+   * left after its first day, where the company is.
+   */
+  leftAfter?: { date: string; timezone: string };
 }
 
 interface VisibilityOptions {
@@ -181,33 +186,6 @@ export class TeamVisibilityService {
   }
 
   /**
-   * The write counterpart of `assertCanActForUser`: the same scope, and the
-   * target must still be active. A leaver's time and absences stay as they
-   * are; nobody adds to, edits or deletes them. Planning refuses new and changed
-   * plans for them the same way, but still lets their plans be deleted.
-   */
-  async assertCanWriteForUser(
-    userId: string,
-    user: AuthUser,
-    wording: UserScopeWording,
-  ): Promise<void> {
-    await this.assertCanActForUser(userId, user, wording);
-
-    const isActive = await this.userRepo.exists({
-      where: {
-        id: userId,
-        companyId: user.companyId,
-        status: UserStatus.ACTIVE,
-      },
-    });
-    if (!isActive) {
-      throw new BadRequestException(
-        `You can only ${wording.action} ${wording.subject} of active users`,
-      );
-    }
-  }
-
-  /**
    * The people a week view lists: everyone the caller may see who is active,
    * plus the deactivated ones named in `includeUserIds`.
    */
@@ -226,6 +204,7 @@ export class TeamVisibilityService {
         'u.position',
         'u.avatarUrl',
         'u.status',
+        'u.deactivatedAt',
         'u.role',
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
@@ -249,19 +228,28 @@ export class TeamVisibilityService {
       );
     }
 
+    // Deactivated people are listed only with a reason: they are named, or
+    // they were still employed on the view's first day.
+    const alsoListed: string[] = [];
     if (filter.includeUserIds?.length) {
-      qb.andWhere(
-        '(u.status = :activeStatus OR u.id IN (:...includeUserIds))',
-        {
-          activeStatus: UserStatus.ACTIVE,
-          includeUserIds: filter.includeUserIds,
-        },
+      alsoListed.push('u.id IN (:...includeUserIds)');
+      qb.setParameter('includeUserIds', filter.includeUserIds);
+    }
+    if (filter.leftAfter) {
+      alsoListed.push(
+        '(u.deactivated_at AT TIME ZONE :leftAfterTimezone)::date > :leftAfter',
       );
-    } else {
-      qb.andWhere('u.status = :activeStatus', {
-        activeStatus: UserStatus.ACTIVE,
+      qb.setParameters({
+        leftAfter: filter.leftAfter.date,
+        leftAfterTimezone: filter.leftAfter.timezone,
       });
     }
+    qb.andWhere(
+      alsoListed.length
+        ? `(u.status = :activeStatus OR ${alsoListed.join(' OR ')})`
+        : 'u.status = :activeStatus',
+      { activeStatus: UserStatus.ACTIVE },
+    );
 
     return qb
       .orderBy('u.firstName', 'ASC')

@@ -1,9 +1,5 @@
 import 'reflect-metadata';
-import {
-  BadRequestException,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource, In } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
@@ -15,7 +11,10 @@ import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
-import { TeamVisibilityService } from './team-visibility.service';
+import {
+  TeamVisibilityService,
+  VisibleUsersFilter,
+} from './team-visibility.service';
 
 /**
  * These run against the development database, so they need the Docker stack:
@@ -329,28 +328,9 @@ describe('TeamVisibilityService', () => {
         ForbiddenException,
       );
     });
-  });
 
-  describe('assertCanWriteForUser', () => {
-    const wording = { action: 'change', subject: 'time logs' };
-
-    const assertFor = (userId: string, caller: AuthUser): Promise<void> =>
-      service.assertCanWriteForUser(userId, caller, wording);
-
-    it('lets an owner write for an active person', async () => {
-      await expect(assertFor(outsider.id, owner)).resolves.toBeUndefined();
-    });
-
-    it('refuses writing for a deactivated person', async () => {
-      await expect(assertFor(deactivated.id, owner)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(assertFor(deactivated.id, owner)).rejects.toThrow(
-        'You can only change time logs of active users',
-      );
-    });
-
-    it('checks scope before status', async () => {
+    it('treats a deactivated person like anyone else in scope', async () => {
+      await expect(assertFor(deactivated.id, owner)).resolves.toBeUndefined();
       await expect(assertFor(deactivated.id, manager)).rejects.toThrow(
         ForbiddenException,
       );
@@ -366,16 +346,23 @@ describe('TeamVisibilityService', () => {
       expect(statusOf(member.id)).toBe(UserStatus.ACTIVE);
     });
 
-    it('lists a deactivated person only when they are named', async () => {
-      const byDefault = await service.findVisibleUsers(owner);
-      const named = await service.findVisibleUsers(owner, {
-        includeUserIds: [deactivated.id],
+    it('lists a deactivated person only when named or still employed on the first day', async () => {
+      await dataSource.getRepository(User).update(deactivated.id, {
+        deactivatedAt: new Date('2026-02-20T12:00:00Z'),
       });
+      const idsOf = async (filter: VisibleUsersFilter = {}) =>
+        (await service.findVisibleUsers(owner, filter)).map((user) => user.id);
 
-      expect(byDefault.map((user) => user.id)).not.toContain(deactivated.id);
-      expect(named.find((user) => user.id === deactivated.id)?.status).toBe(
-        UserStatus.DEACTIVATED,
+      expect(await idsOf()).not.toContain(deactivated.id);
+      expect(await idsOf({ includeUserIds: [deactivated.id] })).toContain(
+        deactivated.id,
       );
+      expect(
+        await idsOf({ leftAfter: { date: '2026-02-16', timezone: 'UTC' } }),
+      ).toContain(deactivated.id);
+      expect(
+        await idsOf({ leftAfter: { date: '2026-02-20', timezone: 'UTC' } }),
+      ).not.toContain(deactivated.id);
     });
   });
 

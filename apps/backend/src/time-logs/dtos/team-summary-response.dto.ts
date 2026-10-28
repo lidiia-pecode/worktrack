@@ -26,6 +26,10 @@ export class TeamSummaryUserResponse {
 
   @Expose()
   status!: UserStatus;
+
+  /** When they were deactivated, so the grid knows which days came before. */
+  @Expose()
+  deactivatedAt!: Date | null;
 }
 
 @Exclude()

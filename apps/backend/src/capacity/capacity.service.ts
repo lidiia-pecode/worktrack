@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -182,6 +183,40 @@ export class CapacityService {
     }
 
     return activeDates;
+  }
+
+  /**
+   * Refuses time or an absence dated when the person was not employed: from
+   * the day they were deactivated on, or inside a spell they were deactivated
+   * for and came back from. Nothing is expected of those days, so a record
+   * there is always a mistake. Days before they left stay open to correction.
+   */
+  async assertEmployedOn(
+    companyId: string,
+    userId: string,
+    from: string,
+    to = from,
+  ): Promise<void> {
+    const { timezone } = await this.calendarFor(companyId);
+    const activeDates = await this.activeDatesFor(
+      companyId,
+      [userId],
+      timezone,
+    );
+    const overlapping = activeDates
+      .get(userId)
+      ?.inactiveSpells.find(
+        (spell) =>
+          spell.from <= to && (spell.until === null || spell.until > from),
+      );
+
+    if (!overlapping) return;
+
+    throw new BadRequestException(
+      overlapping.until === null
+        ? `This person had left by then; nothing can be recorded from ${overlapping.from} on`
+        : `This person was deactivated from ${overlapping.from} and back on ${overlapping.until}; nothing can be recorded in between`,
+    );
   }
 
   /** Today where the company is, so every view agrees on which day it is. */

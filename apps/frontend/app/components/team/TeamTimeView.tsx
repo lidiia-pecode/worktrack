@@ -435,6 +435,7 @@ export const TeamTimeView = ({
                   row={row}
                   weekDates={weekDates}
                   todayIso={todayIso}
+                  timezone={timezone}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   plansByDate={plansByUser[row.user.id] ?? {}}
                   isLocked={isLocked}

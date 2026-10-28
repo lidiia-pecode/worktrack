@@ -681,7 +681,7 @@ added to a team or a project.
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
-| Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
+| Time logs — write | whole company, a deactivated person's days before they left included | own, plus users in teams they manage, the same way | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
@@ -702,9 +702,11 @@ membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the Team time grid is where an
-owner or manager acts on it. Writing time or an absence for somebody
-else is refused once they are deactivated; their records stay as they were,
-and reading them is unchanged (`permission-model.md` §3.7).
+owner or manager acts on it. A deactivated person's time and absences can
+still be corrected in open months by the same people, so their last month
+can be finished without reactivating them; nothing can be dated on or after
+the day they left, or inside a spell they were deactivated for
+(`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member or changes a `roleInTeam`. A manager may remove a member
@@ -767,7 +769,9 @@ see, and how a new company gets started. §7 plans that work.
   a sort by name or by how much of the expected time is logged, and filters by
   team and project (archived and completed projects included) narrow it; the
   week and the filters are in the URL, so a reload keeps them. A deactivated
-  person is shown read-only, and the API refuses writes for them. Filtered to
+  person is marked and listed on every week before they left, logged time or
+  not; their days before they left stay editable in an open month, and from
+  their leave day on the row is read-only. Filtered to
   a project, the rows and the team total show only that project's hours, with
   no Expected, since that is about the whole week. Days follow the timesheet's look: a day over
   the person's hours on solid amber, a weekend with time in amber stripes.

@@ -35,6 +35,7 @@ import {
   ExpectedDay,
   ExpectedHoursService,
 } from 'src/capacity/expected-hours.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
@@ -88,6 +89,7 @@ export class TimeLogsService {
     private readonly reportingService: ReportingService,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly expectedHours: ExpectedHoursService,
+    private readonly capacity: CapacityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -191,6 +193,9 @@ export class TimeLogsService {
     ]);
 
     const loggedUserIds = [...new Set(dailyTotals.map((row) => row.userId))];
+    // A leaver stays on the grid for every range they still had days in, so
+    // their last weeks can be corrected whether or not they logged anything.
+    const { timezone } = await this.capacity.calendarFor(user.companyId);
     const users = await this.teamVisibility.findVisibleUsers(
       user,
       {
@@ -198,6 +203,7 @@ export class TimeLogsService {
         projectId: query.projectId,
         userId: query.userId,
         includeUserIds: loggedUserIds,
+        leftAfter: { date: query.dateFrom, timezone },
       },
       { includeSelf: true },
     );
@@ -279,6 +285,11 @@ export class TimeLogsService {
       await this.lockUser(manager, ownerId, user.companyId);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
       await this.assertNotFuture(manager, user.companyId, payload.date);
+      await this.capacity.assertEmployedOn(
+        user.companyId,
+        ownerId,
+        payload.date,
+      );
 
       const projectActivity = await this.resolveProjectActivity(
         payload.projectActivityId,
@@ -344,6 +355,11 @@ export class TimeLogsService {
       );
       if (payload.date && payload.date !== log.date) {
         await this.assertDateNotLocked(manager, user.companyId, payload.date);
+        await this.capacity.assertEmployedOn(
+          user.companyId,
+          ownerId,
+          payload.date,
+        );
         await this.assertNotAbsent(
           manager,
           ownerId,
@@ -720,12 +736,13 @@ export class TimeLogsService {
 
   /**
    * Verifies the caller may write an entry belonging to someone else. Write
-   * scope mirrors read scope, plus the owner must still be active.
+   * scope mirrors read scope, deactivated people included: their last open
+   * month can still be corrected, on the days before they left.
    */
   private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
     if (ownerId === user.id) return Promise.resolve();
 
-    return this.teamVisibility.assertCanWriteForUser(ownerId, user, {
+    return this.teamVisibility.assertCanActForUser(ownerId, user, {
       action: 'change',
       subject: 'time logs',
     });

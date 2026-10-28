@@ -17,6 +17,7 @@ import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import {
   AbsencePayload,
   UpdateAbsencePayload,
@@ -32,6 +33,7 @@ export class AbsencesService {
     private readonly repo: Repository<Absence>,
     private readonly reportingService: ReportingService,
     private readonly teamVisibility: TeamVisibilityService,
+    private readonly capacity: CapacityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -102,6 +104,12 @@ export class AbsencesService {
         payload.startDate,
         payload.endDate,
       );
+      await this.capacity.assertEmployedOn(
+        user.companyId,
+        ownerId,
+        payload.startDate,
+        payload.endDate,
+      );
 
       await this.assertRangeIsFree(
         manager,
@@ -162,6 +170,12 @@ export class AbsencesService {
         await this.assertRangeNotLocked(
           manager,
           user.companyId,
+          startDate,
+          endDate,
+        );
+        await this.capacity.assertEmployedOn(
+          user.companyId,
+          ownerId,
           startDate,
           endDate,
         );
@@ -394,7 +408,7 @@ export class AbsencesService {
   private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
     if (ownerId === user.id) return Promise.resolve();
 
-    return this.teamVisibility.assertCanWriteForUser(ownerId, user, {
+    return this.teamVisibility.assertCanActForUser(ownerId, user, {
       action: 'change',
       subject: 'absences',
     });

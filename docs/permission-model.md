@@ -234,12 +234,17 @@ This model does not change the rule; it changes what it takes to *become* the
 manager of a person, which is what makes the rule trustworthy. Everyone reads
 their own time logs, absences and hours, including a manager who leads no team.
 
-**Writing for somebody else needs them to be active.** Once a person is
-deactivated, their time logs and absences stay as they are: nobody adds to,
-edits or deletes them, and the API answers 400, the way planning already
-refuses an inactive person. Reading them is unchanged, so a leaver's weeks
-still show on Team time and in the reports. Decided on 19 October 2026 for
-Phase 31; D9 says nothing about status, so this is a rule added on top of it.
+**A leaver's last month can still be corrected.** A deactivated person's time
+logs and absences are written by the same people as an active person's, in
+open months and within their normal reach: the owner, and the managers of the
+teams they are still on. Two guards hold for every writer: nothing can be
+dated on or after the day they were deactivated, or inside a spell they were
+deactivated for and came back from (the API answers 400 and says why), and
+locked months stay locked. Planning is different: no new or changed plan for a
+deactivated person, deletion allowed. Decided on 27 October 2026 (entity
+lifecycle, decision 3); it reverses the Phase 31 rule that refused every
+write for a deactivated person, which made a leaver's last month
+uncorrectable without reactivating them.
 
 **Planning follows the same people.** An Owner plans for any active user, a
 manager for themselves and people in teams they lead, and an employee for
@@ -290,7 +295,7 @@ project staffed from both teams.
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
-| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in, and neither Mary nor Olivia can add, edit or delete his time or absences (§3.7). Reactivating him changes nothing back, because nothing was removed |
+| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Mary and Olivia can still correct his time and absences for the open month, on the days before he left; nothing can be recorded from his leave day on (§3.7). Reactivating him changes nothing back, because nothing was removed |
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |

@@ -18,6 +18,7 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
+    deactivatedAt: null,
   },
   minutes: 1920,
   billableMinutes: 1920,
@@ -92,22 +93,6 @@ describe("TeamWeekRow", () => {
     expect(bar).not.toBeInTheDocument();
   });
 
-  it("marks a deactivated person, who is expected nothing", () => {
-    const { personCell, bar } = renderRow(
-      row({
-        user: { ...row().user, status: UserStatus.DEACTIVATED },
-        minutes: 0,
-        billableMinutes: 0,
-      }),
-    );
-
-    expect(within(personCell).getByText("Deactivated")).toBeInTheDocument();
-    expect(
-      within(personCell).getByText("nothing expected"),
-    ).toBeInTheDocument();
-    expect(bar).not.toBeInTheDocument();
-  });
-
   it("gives every day of the week a cell", () => {
     renderRow(row());
 
@@ -124,9 +109,28 @@ describe("TeamWeekRow", () => {
     expect(onAddAbsence).toHaveBeenCalled();
   });
 
-  it("offers nothing to write for a deactivated person", () => {
-    renderRow(row({ user: { ...row().user, status: UserStatus.DEACTIVATED } }));
-    expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  it("writes for a deactivated person only on the days before they left", () => {
+    const onAdd = vi.fn();
+    renderRow(
+      row({
+        user: {
+          ...row().user,
+          status: UserStatus.DEACTIVATED,
+          // Left on Thursday, where the company is.
+          deactivatedAt: "2026-11-05T10:00:00Z",
+        },
+      }),
+      { timezone: "Europe/Kyiv", onAdd },
+    );
+
+    const addButtons = screen.getAllByRole("button", { name: /^Log time/ });
+    // Monday to Wednesday; from Thursday on they were gone.
+    expect(addButtons).toHaveLength(3);
+    fireEvent.click(addButtons[2]);
+    expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[2]);
+    expect(
+      screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
+    ).toBeInTheDocument();
   });
 
   it("offers nothing to write without access", () => {
