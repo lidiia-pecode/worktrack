@@ -60,6 +60,8 @@ export interface AssignableUser {
   status: UserStatus;
   position?: string | null;
   avatarUrl?: string | null;
+  /** The team they are a member of, so a picker can say where a move takes them from. */
+  memberTeam: UserTeam | null;
 }
 
 export type AssignableUserListResponse = PaginatedResponse<AssignableUser>;
@@ -69,7 +71,7 @@ export interface UsersQuery extends SearchablePaginationParams {
 }
 
 export interface AssignableUsersQuery extends UsersQuery {
-  role?: UserRole;
+  roles?: UserRole[];
 }
 
 export interface UserTeamMembership extends UserTeam {

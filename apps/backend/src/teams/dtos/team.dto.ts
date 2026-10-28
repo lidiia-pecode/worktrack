@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsDateString,
   IsEnum,
   IsNotEmpty,
@@ -54,6 +55,15 @@ export class AddTeamMemberDto {
   @IsOptional()
   @IsDateString()
   leftAt?: string;
+
+  /**
+   * A person is a member of one team at a time. Adding a member of another
+   * team is refused unless the caller says they leave it, in which case the
+   * old membership ends the day this one starts.
+   */
+  @IsOptional()
+  @IsBoolean()
+  leaveCurrentTeam?: boolean;
 }
 
 export class UpdateTeamMemberDto {
@@ -69,4 +79,12 @@ export class UpdateTeamMemberDto {
   @ValidateIf((_, value) => value !== null)
   @IsDateString()
   leftAt?: string | null;
+
+  /**
+   * Switching a membership to Member, or reopening one, while the person is a
+   * member of another team: they leave it today, as on an add.
+   */
+  @OptionalNotNull()
+  @IsBoolean()
+  leaveCurrentTeam?: boolean;
 }

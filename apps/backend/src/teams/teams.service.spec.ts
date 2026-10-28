@@ -412,6 +412,112 @@ describe('TeamsService', () => {
     });
   });
 
+  describe('one member team per person', () => {
+    const addAsMember = (teamId: string, user: AuthUser, extra = {}) =>
+      service.addMember(teamId, companyId, {
+        userId: user.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: TODAY,
+        ...extra,
+      });
+
+    it('refuses adding a member of another team unless they leave it', async () => {
+      await addToTeam(alpha, employee);
+
+      await expect(addAsMember(beta, employee)).rejects.toThrow(
+        ConflictException,
+      );
+      await expect(addAsMember(beta, employee)).rejects.toThrow(
+        `already a member of "Alpha ${RUN}"`,
+      );
+      await expect(activeMemberIds(beta)).resolves.not.toContain(employee.id);
+    });
+
+    it('moves them: the old membership ends the day the new one starts', async () => {
+      const oldId = await addToTeam(alpha, employee);
+
+      const moved = await addAsMember(beta, employee, {
+        leaveCurrentTeam: true,
+      });
+      const old = await dataSource
+        .getRepository(TeamMembership)
+        .findOneByOrFail({ id: oldId });
+
+      expect(moved.leftAt).toBeNull();
+      expect(old.leftAt).toBe(TODAY);
+      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+      await expect(activeMemberIds(beta)).resolves.toContain(employee.id);
+    });
+
+    describe('for a Manager', () => {
+      afterEach(async () => {
+        await dataSource
+          .getRepository(TeamMembership)
+          .delete({ userId: loneManager.id });
+      });
+
+      it('lets them lead several teams and be a member of one', async () => {
+        await addToTeam(alpha, loneManager);
+
+        const leads = await service.addMember(beta, companyId, {
+          userId: loneManager.id,
+          roleInTeam: TeamRole.MANAGER,
+          joinedAt: TODAY,
+        });
+
+        expect(leads.leftAt).toBeNull();
+        await expect(activeMemberIds(alpha)).resolves.toContain(loneManager.id);
+      });
+
+      it('refuses switching a team they lead to Member while they are a member elsewhere', async () => {
+        await addToTeam(alpha, loneManager);
+        const leads = await addToTeam(beta, loneManager, TeamRole.MANAGER);
+
+        await expect(
+          service.updateMember(
+            leads,
+            companyId,
+            { roleInTeam: TeamRole.MEMBER },
+            beta,
+          ),
+        ).rejects.toThrow(`already a member of "Alpha ${RUN}"`);
+      });
+
+      it('moves them when the switch says they leave their member team', async () => {
+        await addToTeam(alpha, loneManager);
+        const leads = await addToTeam(beta, loneManager, TeamRole.MANAGER);
+
+        const switched = await service.updateMember(
+          leads,
+          companyId,
+          { roleInTeam: TeamRole.MEMBER, leaveCurrentTeam: true },
+          beta,
+        );
+
+        expect(switched.roleInTeam).toBe(TeamRole.MEMBER);
+        await expect(activeMemberIds(alpha)).resolves.not.toContain(
+          loneManager.id,
+        );
+      });
+    });
+
+    it('refuses reopening a membership while they are a member elsewhere', async () => {
+      await addToTeam(alpha, employee);
+      const closed = await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: beta,
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+        leftAt: '2026-02-01',
+      });
+
+      await expect(
+        service.updateMember(closed.id, companyId, { leftAt: null }, beta),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
+
   describe('team search', () => {
     const foundNames = async (search: string, caller: AuthUser = owner) => {
       const { results } = await service.list(

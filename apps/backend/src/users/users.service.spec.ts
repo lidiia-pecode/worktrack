@@ -307,20 +307,41 @@ describe('UsersService scope', () => {
       expect(await assignableIds(leadNothing)).toEqual([leadNothing.id]);
     });
 
-    it('lists one role at a time, for leading a team or joining one', async () => {
+    it('says which team each person is a member of', async () => {
+      const solo = await createUser('solo', UserRole.EMPLOYEE);
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: alphaId,
+        userId: solo.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+
+      const { results } = await service.listAssignable(companyId, PAGE, owner);
+      const memberTeamOf = (id: string) =>
+        results.find((user) => user.id === id)?.memberTeam;
+
+      expect(memberTeamOf(solo.id)?.id).toBe(alphaId);
+      // Leading a team is not being a member of it.
+      expect(memberTeamOf(manager.id)).toBeNull();
+    });
+
+    const rolesListed = async (roles: UserRole[]) => {
       const { results } = await service.listAssignable(
         companyId,
-        Object.assign(new AssignableUsersQuery(), {
-          pageSize: 50,
-          role: UserRole.MANAGER,
-        }),
+        Object.assign(new AssignableUsersQuery(), { pageSize: 50, roles }),
         owner,
       );
+      return new Set(results.map((user) => user.role));
+    };
 
-      expect(results.map((user) => user.role)).not.toContain(UserRole.EMPLOYEE);
-      expect(results.map((user) => user.id)).toEqual(
-        expect.arrayContaining([manager.id, leadNothing.id]),
+    it('lists the roles asked for: Managers to lead a team, anyone but the owner to join one', async () => {
+      await expect(rolesListed([UserRole.MANAGER])).resolves.toEqual(
+        new Set([UserRole.MANAGER]),
       );
+      await expect(
+        rolesListed([UserRole.EMPLOYEE, UserRole.MANAGER]),
+      ).resolves.toEqual(new Set([UserRole.EMPLOYEE, UserRole.MANAGER]));
     });
 
     it('searches, and keeps owners, who can be put on a project', async () => {

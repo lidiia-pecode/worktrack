@@ -21,10 +21,19 @@ export const useTeamMemberChanges = (team: Team) => {
   const [change, setChange] = useState<MemberChange | null>(null);
   const [membershipToPromote, setMembershipToPromote] =
     useState<MembershipWithUser | null>(null);
-  // Whether a removal leaves them in no team the viewer can see.
+  // Whether a removal leaves them in no team the viewer can see, or a switch
+  // to Member moves them out of the team they are a member of.
+  const needsPersonDetails =
+    change?.kind === "remove" ||
+    (change?.kind === "role" && change.roleInTeam === TeamRole.MEMBER);
   const changedPerson = useUserDetails(
-    change?.kind === "remove" ? change.membership.userId : "",
+    needsPersonDetails ? change.membership.userId : "",
   );
+  const otherMemberTeam =
+    changedPerson.data?.teams.find(
+      (personTeam) =>
+        personTeam.roleInTeam === TeamRole.MEMBER && personTeam.id !== team.id,
+    ) ?? null;
 
   // A second click while one change saves would act on stale details.
   const isBusy = updateMember.isPending || removeMember.isPending;
@@ -52,6 +61,7 @@ export const useTeamMemberChanges = (team: Team) => {
       otherTeamsCount: (changedPerson.data?.teams ?? []).filter(
         (personTeam) => personTeam.id !== team.id,
       ).length,
+      otherMemberTeam,
     });
 
   const confirmChange = () => {
@@ -66,7 +76,10 @@ export const useTeamMemberChanges = (team: Team) => {
     updateMember.mutate(
       {
         membershipId: change.membership.id,
-        data: { roleInTeam: change.roleInTeam },
+        data: {
+          roleInTeam: change.roleInTeam,
+          leaveCurrentTeam: Boolean(otherMemberTeam),
+        },
       },
       done,
     );
@@ -96,7 +109,7 @@ export const useTeamMemberChanges = (team: Team) => {
         isOpen={Boolean(change)}
         title={changeCopy?.title ?? ""}
         description={
-          change?.kind === "remove" && changedPerson.isError
+          needsPersonDetails && changedPerson.isError
             ? "Could not check their other teams. Close this and try again."
             : (changeCopy?.description ?? "")
         }
@@ -105,7 +118,7 @@ export const useTeamMemberChanges = (team: Team) => {
         onConfirm={confirmChange}
         onClose={() => setChange(null)}
         loading={isBusy}
-        confirmDisabled={change?.kind === "remove" && !changedPerson.data}
+        confirmDisabled={needsPersonDetails && !changedPerson.data}
       />
 
       <ImpactDialog

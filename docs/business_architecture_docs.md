@@ -331,6 +331,13 @@ unique. The same person working at two companies would need two accounts with
 different email addresses. There is no shared identity spanning companies —
 consistent with §1's position on multi-company.
 
+**A person is a member of one team at a time; a Manager may lead any number.**
+Adding a member of another team is a move: the old membership ends the day
+the new one starts, in one transaction, after the owner confirms it. A Manager
+may also be a member of one team, and a team may have several managers.
+Leading a team is what grants reach; being a member only decides who oversees
+your own time.
+
 **Team membership is historical, not current-state.** Rows are closed with
 `leftAt` rather than deleted, so "who was on this team in March" remains
 answerable. `leftAt` is the day a membership ended, not its last day, so somebody
@@ -709,7 +716,7 @@ the day they left, or inside a spell they were deactivated for
 (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
-team, adds a member or changes a `roleInTeam`. A manager may remove a member
+team, adds a member, moves one between teams or changes a `roleInTeam`. A manager may remove a member
 from a team they lead, because removal only narrows their own reach; taking a
 team's manager off it, themselves included, is the owner's (Phase 36), since
 that would narrow someone else's reach or leave the team without its lead.

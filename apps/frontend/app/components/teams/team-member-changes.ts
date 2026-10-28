@@ -1,5 +1,7 @@
+import { nameOrCount } from "@/lib/utils/text";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
+import { UserTeam } from "@/types/User";
 import { TeamRole } from "@/types/enums";
 
 import {
@@ -16,6 +18,8 @@ interface ChangeContext {
   isOwner: boolean;
   /** The person's other teams the viewer can see. */
   otherTeamsCount: number;
+  /** The other team they are a member of, which making them a member here leaves. */
+  otherMemberTeam?: UserTeam | null;
 }
 
 // A deactivated manager already leaves the team without an active one.
@@ -28,7 +32,7 @@ const isOnlyActiveManager = (team: Team, membership: MembershipWithUser) =>
 export const memberChangeCopy = (
   change: MemberChange,
   team: Team,
-  { isOwner, otherTeamsCount }: ChangeContext,
+  { isOwner, otherTeamsCount, otherMemberTeam }: ChangeContext,
 ) => {
   const name = fullName(change.membership.user);
   const leavesNoManager = isOnlyActiveManager(team, change.membership)
@@ -44,11 +48,25 @@ export const memberChangeCopy = (
     };
   }
 
+  // A person is a member of one team, so this is a move.
+  if (change.kind === "role" && otherMemberTeam) {
+    return {
+      title: `Move ${name} to ${team.name} as a member?`,
+      description: [
+        `They leave ${otherMemberTeam.name} today and no longer see ${team.name}'s members.`,
+        leavesNoManager,
+      ]
+        .filter(Boolean)
+        .join(" "),
+      confirmText: "Move",
+    };
+  }
+
   if (change.kind === "role") {
     return {
       title: `Make ${name} a member of ${team.name}?`,
       description: [
-        "They stop seeing the team's other members, unless they manage them in another team.",
+        `They no longer see ${team.name}'s members.`,
         leavesNoManager,
       ]
         .filter(Boolean)
@@ -69,5 +87,74 @@ export const memberChangeCopy = (
       .filter(Boolean)
       .join(" "),
     confirmText: "Remove",
+  };
+};
+
+/** Someone the picker adds who is a member of another team, which they leave. */
+export interface PickerMove {
+  name: string;
+  fromTeam: UserTeam;
+}
+
+interface PickerChanges {
+  moves: PickerMove[];
+  /** The names of the people taken off the team. */
+  removals: string[];
+  leavesNoManager: boolean;
+}
+
+/**
+ * The one confirmation a picker's Done asks for: moves from other teams,
+ * removals, or both at once.
+ */
+export const pickerChangesCopy = (
+  team: Team,
+  { moves, removals, leavesNoManager }: PickerChanges,
+) => {
+  const moved = nameOrCount(
+    moves.map((move) => move.name),
+    "people",
+  );
+  const removed = nameOrCount(removals, "people");
+  const noManager = leavesNoManager ? leftWithoutManagerText(team) : null;
+
+  const movesText =
+    moves.length === 1
+      ? `${moves[0].name} leaves ${moves[0].fromTeam.name} today.`
+      : `They leave their current team today: ${moves
+          .map((move) => `${move.name} (${move.fromTeam.name})`)
+          .join(", ")}.`;
+
+  if (moves.length === 0) {
+    return {
+      title: `Remove ${removed} from ${team.name}?`,
+      description: ["They leave the team today.", noManager]
+        .filter(Boolean)
+        .join(" "),
+      confirmText: "Remove",
+      confirmVariant: "destructive" as const,
+    };
+  }
+
+  if (removals.length === 0) {
+    return {
+      title: `Move ${moved} to ${team.name}?`,
+      description: [movesText, noManager].filter(Boolean).join(" "),
+      confirmText: "Move",
+      confirmVariant: "warning" as const,
+    };
+  }
+
+  return {
+    title: `Move ${moved} to ${team.name} and remove ${removed}?`,
+    description: [
+      movesText,
+      `Removed from ${team.name} today: ${removals.join(", ")}.`,
+      noManager,
+    ]
+      .filter(Boolean)
+      .join(" "),
+    confirmText: "Apply",
+    confirmVariant: "destructive" as const,
   };
 };

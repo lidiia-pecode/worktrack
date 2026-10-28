@@ -1,5 +1,6 @@
-import { Exclude, Expose } from 'class-transformer';
+import { Exclude, Expose, Type } from 'class-transformer';
 import { UserRole, UserStatus } from '../enums/user-role.enum';
+import { UserTeamResponse } from './user-response.dto';
 
 /**
  * Deliberately narrower than `UserResponse`: this list exists so someone can
@@ -31,4 +32,9 @@ export class AssignableUserResponse {
 
   @Expose()
   avatarUrl?: string;
+
+  /** The team they are a member of, among those the caller can see. */
+  @Expose()
+  @Type(() => UserTeamResponse)
+  memberTeam!: UserTeamResponse | null;
 }

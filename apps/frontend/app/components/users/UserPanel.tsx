@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ArrowRightLeft, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -32,6 +32,7 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
+import { UserChangeTeamDialog } from "./UserChangeTeamDialog";
 import { UserForm, UserFormData } from "./UserForm";
 import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
 import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
@@ -160,6 +161,13 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   // Deactivating them from their row ends an open edit.
   const isEditing = panel.isEditing && userActions.canEdit(user);
   const canChangeProjects = !isDeactivated && !isEditing;
+  // Team structure is the owner's; the owner is never a team's member.
+  const canChangeTeam =
+    isOwner && canChangeProjects && user.role !== UserRole.OWNER;
+  const [isChangingTeam, setIsChangingTeam] = useState(false);
+  const isMemberOfATeam = user.teams.some(
+    (team) => team.roleInTeam === TeamRole.MEMBER,
+  );
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
     return <UserProjectsPicker user={user} />;
@@ -214,6 +222,15 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
               sees them.
             </>
           }
+          add={
+            canChangeTeam
+              ? {
+                  label: isMemberOfATeam ? "Change team" : "Add to a team",
+                  icon: isMemberOfATeam ? ArrowRightLeft : Plus,
+                  onClick: () => setIsChangingTeam(true),
+                }
+              : undefined
+          }
         />
 
         <PanelList
@@ -258,6 +275,10 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
 
       {userActions.dialogs}
       {projectChanges.dialogs}
+      <UserChangeTeamDialog
+        user={isChangingTeam ? user : null}
+        onClose={() => setIsChangingTeam(false)}
+      />
     </>
   );
 };

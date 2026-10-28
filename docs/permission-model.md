@@ -132,7 +132,21 @@ the company, there is no prior history for them to acquire retroactively. That
 removes the need to bound visibility by membership dates, which would otherwise
 have to be threaded through every query. See P4.
 
-For now **a person belongs to exactly one team.** Multi-team membership is P1.
+**A person is a member of exactly one team.** A Manager may lead any number
+of teams, and may be a member of one team led by somebody else. Adding a
+member of another team to a team is a **move**: the Owner confirms it, and the
+old membership ends the day the new one starts, in one transaction
+(`addMember` with `leaveCurrentTeam`; without it the API answers 409 naming
+the current team). Answered 27 October 2026 (P1); the code enforced only "not
+twice in the same team" before. Reopening a membership or switching one to
+Member follows the same rule.
+
+Reach comes only from leading a team: being a member of one grants nothing,
+and only decides who oversees the member's own time. A team may have several
+managers, who see each other as they see its members. Confirmed 28 October
+2026 over the stricter alternatives (one manager per team, Managers never
+members): those would add rules and role-change handling for no gain, and
+company-level switches for them are not wanted (decision 5).
 
 ### 3.4 People visibility
 
@@ -320,9 +334,11 @@ company-wide for managers, which is intended rather than a defect.
 
 Visible and deliberately unanswered; each waits for a real need.
 
-- **P1 — Multi-team membership.** For now one person belongs to one team.
-  Allowing several raises: do both managers see them, and who may edit their
-  time? *Deferred by decision.*
+- **P1 — Multi-team membership.** *Answered 27 October 2026: no.* A person
+  is a member of one team; a Manager may lead several (§3.3). Adding a member
+  of another team is a move, confirmed by the Owner. If one person often works
+  under two managers at once, that is a visibility question (P8), not a reason
+  for multi-team membership.
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*

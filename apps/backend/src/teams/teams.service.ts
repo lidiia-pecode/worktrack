@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, In, Not, Raw, Repository } from 'typeorm';
+import { DataSource, In, IsNull, Not, Raw, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -101,6 +101,47 @@ export class TeamsService {
         'You can only change the membership of teams you lead',
       );
     }
+  }
+
+  /** The open member-role membership the person holds in another active team, if any. */
+  private findCurrentMemberTeam(
+    membershipRepo: Repository<TeamMembership>,
+    companyId: string,
+    userId: string,
+    exceptTeamId: string,
+  ): Promise<TeamMembership | null> {
+    return membershipRepo.findOne({
+      where: {
+        companyId,
+        userId,
+        roleInTeam: TeamRole.MEMBER,
+        leftAt: IsNull(),
+        teamId: Not(exceptTeamId),
+        team: { status: TeamStatus.ACTIVE },
+      },
+      relations: ['team'],
+    });
+  }
+
+  /**
+   * Ends the membership being left on `endsOn` (the day the new one starts,
+   * or today when a role switch makes them a member), under a row lock so a
+   * concurrent change to it waits. Nothing to do if it was closed meanwhile.
+   */
+  private async closeMembershipForMove(
+    membershipRepo: Repository<TeamMembership>,
+    current: TeamMembership,
+    endsOn: string,
+  ): Promise<void> {
+    const locked = await membershipRepo.findOne({
+      where: { id: current.id, leftAt: IsNull() },
+      lock: { mode: 'pessimistic_write' },
+    });
+    if (!locked) return;
+
+    // A membership that has not started yet ends on its start date.
+    locked.leftAt = locked.joinedAt > endsOn ? locked.joinedAt : endsOn;
+    await membershipRepo.save(locked);
   }
 
   /** Active status gates joining a team, not staying in one. */
@@ -405,11 +446,38 @@ export class TeamsService {
         );
       }
 
+      const roleInTeam = dto.roleInTeam ?? TeamRole.MEMBER;
+
+      // A person is a member of one team at a time: joining another as a
+      // member is a move, which the caller has to ask for (P1).
+      if (roleInTeam === TeamRole.MEMBER) {
+        const currentTeam = await this.findCurrentMemberTeam(
+          trxMembershipRepo,
+          companyId,
+          dto.userId,
+          teamId,
+        );
+
+        if (currentTeam && !dto.leaveCurrentTeam) {
+          throw new ConflictException(
+            `User is already a member of "${currentTeam.team.name}"; set leaveCurrentTeam to move them`,
+          );
+        }
+
+        if (currentTeam) {
+          await this.closeMembershipForMove(
+            trxMembershipRepo,
+            currentTeam,
+            dto.joinedAt,
+          );
+        }
+      }
+
       const membership = trxMembershipRepo.create({
         companyId,
         teamId,
         userId: dto.userId,
-        roleInTeam: dto.roleInTeam,
+        roleInTeam,
         joinedAt: dto.joinedAt,
         leftAt: newLeftAt,
       });
@@ -473,6 +541,34 @@ export class TeamsService {
 
       const reopens = membership.leftAt !== null && newLeftAt === null;
       if (reopens) this.assertCanJoinTeam(membership.user);
+
+      // Reopening a membership, or switching an open one to Member, makes it
+      // their member team, of which they have one at a time (P1).
+      const becomesMember =
+        newLeftAt === null &&
+        (dto.roleInTeam ?? membership.roleInTeam) === TeamRole.MEMBER &&
+        (reopens || membership.roleInTeam !== TeamRole.MEMBER);
+      const currentTeam = becomesMember
+        ? await this.findCurrentMemberTeam(
+            trxMembershipRepo,
+            companyId,
+            membership.userId,
+            membership.teamId,
+          )
+        : null;
+      if (currentTeam && !dto.leaveCurrentTeam) {
+        throw new ConflictException(
+          `User is already a member of "${currentTeam.team.name}"; set leaveCurrentTeam to move them`,
+        );
+      }
+
+      if (currentTeam) {
+        await this.closeMembershipForMove(
+          trxMembershipRepo,
+          currentTeam,
+          await findCompanyToday(manager, companyId),
+        );
+      }
 
       if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
         throw new BadRequestException('leftAt cannot be earlier than joinedAt');
