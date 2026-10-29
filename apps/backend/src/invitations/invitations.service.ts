@@ -45,6 +45,8 @@ import { User } from 'src/users/entities/user.entity';
 
 export type PendingInvitation = Invitation & { expired: boolean };
 
+const ARCHIVED_TEAM_MESSAGE = 'Cannot invite into an archived team';
+
 const fullName = (user: User | null): string | null =>
   user ? `${user.firstName} ${user.lastName}` : null;
 
@@ -334,6 +336,18 @@ export class InvitationsService {
     await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Invitation);
 
+      // Checked again under a lock, so a team archive at the same moment either
+      // waits and then finds this invitation pending, or finishes first and this is refused.
+      if (invitation.teamId) {
+        await findActiveTeam(
+          manager.getRepository(Team),
+          invitation.teamId,
+          invitation.companyId,
+          ARCHIVED_TEAM_MESSAGE,
+          { lock: true },
+        );
+      }
+
       if (replaces) {
         replaces.status = InvitationStatus.REVOKED;
         replaces.revokedAt = new Date();
@@ -504,7 +518,7 @@ export class InvitationsService {
       this.teamRepository,
       teamId,
       companyId,
-      'Cannot invite into an archived team',
+      ARCHIVED_TEAM_MESSAGE,
     );
 
     return teamId;

@@ -30,6 +30,7 @@ const row = (
   nonBillableMinutes: 0,
   expectedMinutes: expectedToDateMinutes,
   expectedToDateMinutes,
+  inactiveSpells: [],
   expectedByDate: [],
   days: [],
 });
