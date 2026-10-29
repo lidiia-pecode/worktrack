@@ -39,15 +39,15 @@ const dayLabel = (date: string) =>
   `${formatWeekdayLabel(fromISODate(date))} ${formatDayMonthLabel(date)}`;
 
 describe("describeDays", () => {
-  it("names every working day, or every one of a weekday", () => {
-    expect(
-      describeDays(lineOf(WORKING_DAYS.map((d) => plan(d, 120))), WORKING_DAYS),
-    ).toBe("Every working day · 20 days");
+  it("names every working day only once the working days are known", () => {
+    const everyDay = lineOf(WORKING_DAYS.map((d) => plan(d, 120)));
 
-    const mondays = ["2026-11-02", "2026-11-09", "2026-11-16", "2026-11-23"];
-    expect(
-      describeDays(lineOf(mondays.map((d) => plan(d, 120))), WORKING_DAYS),
-    ).toBe("Mondays · 4 days");
+    expect(describeDays(everyDay, WORKING_DAYS)).toBe(
+      "Every working day · 20 days",
+    );
+    expect(describeDays(everyDay, [])).toBe(
+      `20 days, ${formatDayMonthLabel(WORKING_DAYS[0])} – ${formatDayMonthLabel(WORKING_DAYS[19])}`,
+    );
   });
 
   it("names a few days, and sums up more", () => {

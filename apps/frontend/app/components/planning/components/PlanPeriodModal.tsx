@@ -158,10 +158,14 @@ export const PlanPeriodModal = ({
   const periodError = errors.startDate?.message ?? errors.endDate?.message;
   const hasPeriod = isISODateRange(startDate, endDate);
 
-  const { items: existingPlans } = usePlanningEntries(
-    { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
-    { enabled: hasPeriod },
-  );
+  const { items: loadedPlans, isPlaceholderData: arePlansFromBefore } =
+    usePlanningEntries(
+      { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
+      { enabled: hasPeriod },
+    );
+  // Until the new period's plans arrive, the old ones would be shown as its
+  // rows, and their delete would apply to the new dates.
+  const existingPlans = arePlansFromBefore ? [] : loadedPlans;
   const lines = hasPeriod ? listedLines(existingPlans) : [];
   const listedIds = lines.map((line) => line.projectId);
   // An edit outlives its row only until the row is deleted.

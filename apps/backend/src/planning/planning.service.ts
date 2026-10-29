@@ -684,6 +684,7 @@ export class PlanningService {
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, userId, user.companyId);
+      await this.lockProject(manager, projectId, user.companyId);
 
       // A deactivated person's leftover plans can still be cleared.
       const targetUser = await manager.findOne(User, {
@@ -730,9 +731,9 @@ export class PlanningService {
     if (userIds?.length === 0) return;
 
     const company = await this.getCompany(companyId, manager);
-    // One statement with the filter itself, not ids read beforehand, so
-    // Postgres re-checks each plan as it deletes it: a plan moved to yesterday
-    // a moment earlier stays. A delete has no alias, so the filter names the table.
+    // One statement with the filter itself rather than ids read beforehand, so
+    // each plan is checked as it is deleted. A delete has no alias, so the
+    // filter names the table.
     const qb = manager.createQueryBuilder().delete().from(PlanningEntry);
     this.applyRemovableFilter(
       qb,

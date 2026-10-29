@@ -10,8 +10,6 @@ import {
 /** Beyond this many days, a row sums its days up instead of naming each. */
 const MAX_NAMED_DAYS = 4;
 
-const WEEKDAY_NAME = new Intl.DateTimeFormat(undefined, { weekday: "long" });
-
 export interface PlannedDay {
   date: string;
   minutes: number;
@@ -81,8 +79,8 @@ const hoursRange = (days: PlannedDay[]) => {
 const isNamed = (line: ListedLine) => line.days.length <= MAX_NAMED_DAYS;
 
 /**
- * Which days a row is on: "Every working day · 19 days", "Mondays · 5 days",
- * the days themselves when there are a few, or how many and between which.
+ * Which days a row is on: "Every working day · 19 days", the days themselves
+ * when there are a few, or how many and between which.
  * Hours that differ by day are named with each day, or given as a range.
  */
 export const describeDays = (
@@ -107,16 +105,6 @@ export const describeDays = (
     workingDays.every((day) => dates.includes(day))
   ) {
     return `Every working day · ${count}`;
-  }
-
-  const weekday = fromISODate(dates[0]).getDay();
-  const sameWeekday = (date: string) => fromISODate(date).getDay() === weekday;
-  if (
-    dates.length > 1 &&
-    dates.every(sameWeekday) &&
-    workingDays.filter(sameWeekday).every((day) => dates.includes(day))
-  ) {
-    return `${WEEKDAY_NAME.format(fromISODate(dates[0]))}s · ${count}`;
   }
 
   return isNamed(line)

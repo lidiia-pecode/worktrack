@@ -61,7 +61,7 @@ export const TeamWeekRow = ({
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
   const name = fullName(row.user);
-  // A leaver's last month can still be corrected, up to the day they left.
+  // The API refuses any day the person was deactivated for.
   const isActiveOn = (iso: string) => !isInactiveOn(row.inactiveSpells, iso);
 
   useEffect(() => {

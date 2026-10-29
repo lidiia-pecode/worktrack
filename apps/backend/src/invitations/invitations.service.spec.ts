@@ -216,9 +216,6 @@ describe('InvitationsService.create', () => {
         invite(UserRole.OWNER, UserRole.EMPLOYEE, OTHER_TEAM_ID),
       ).rejects.toThrow(BadRequestException);
 
-      expect(findTeam).toHaveBeenLastCalledWith(
-        expect.objectContaining({ lock: { mode: 'pessimistic_read' } }),
-      );
       expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
 

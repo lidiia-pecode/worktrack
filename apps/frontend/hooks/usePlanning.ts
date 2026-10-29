@@ -60,6 +60,8 @@ export function usePlanningEntries(
     items: query.data?.results ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
+    /** The items are still the previous query's, kept while these load. */
+    isPlaceholderData: query.isPlaceholderData,
   };
 }
 

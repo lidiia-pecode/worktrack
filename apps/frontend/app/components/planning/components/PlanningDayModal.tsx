@@ -417,7 +417,7 @@ export const PlanningDayModal = ({
                   />
                 )}
               />
-              <Field id="plan-hours" error={errors.hours?.message}>
+              <Field id="plan-hours" group error={errors.hours?.message}>
                 <TimePicker
                   aria-label="Hours"
                   hours={Number(hours)}
