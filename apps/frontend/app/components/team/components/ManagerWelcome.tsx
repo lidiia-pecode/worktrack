@@ -37,7 +37,7 @@ const TEAM_ITEMS: WelcomeItem[] = [
   {
     icon: UserPlus,
     title: "Invite employees",
-    description: "Invite people straight into a team you lead, from Users.",
+    description: "Invite people straight into a team you lead, from People.",
   },
 ];
 

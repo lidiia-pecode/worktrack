@@ -4,8 +4,6 @@ import { useState } from "react";
 
 import { useTeamMembers, useTeamOptions } from "@/hooks/useTeams";
 import { useUserDetails } from "@/hooks/useUsers";
-import { useWorkSettings } from "@/hooks/useWorkSettings";
-import { todayISODate } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 import { UserTeam } from "@/types";
 import { TeamRole } from "@/types/enums";
@@ -31,7 +29,6 @@ export const UserChangeTeamDialog = ({
   currentTeam,
   onClose,
 }: UserChangeTeamDialogProps) => {
-  const { timezone } = useWorkSettings();
   const { options: teamOptions, isLoading, isError } = useTeamOptions();
   const details = useUserDetails(user?.id ?? "");
   const [selectedTeamId, setSelectedTeamId] = useState("");
@@ -64,7 +61,6 @@ export const UserChangeTeamDialog = ({
       {
         userId: user.id,
         roleInTeam: TeamRole.MEMBER,
-        joinedAt: todayISODate(timezone),
         leaveCurrentTeam: Boolean(currentTeam),
       },
       { onSuccess: close },

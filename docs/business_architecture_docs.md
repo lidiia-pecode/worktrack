@@ -1118,6 +1118,28 @@ defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
 
+**Later — Configurable permissions — an approximate vision, not a specification**
+
+Not scheduled. Revisited once the planned work and the fixes are done and the
+app has been polished (agreed 29 October 2026); its own scope settles the
+details then.
+
+- The owner may grant additional permissions to managers and employees, and a
+  manager may grant selected ones to employees in the teams they lead.
+- A permission extends what someone may **do**, never **whose data** they may
+  reach: reach stays defined by teams (D9, D10). A grant that would widen reach
+  over people, such as managing teams, waits for membership-dated history (A2,
+  [`permission-model.md`](./permission-model.md) P4).
+- Creating activities may be granted apart from renaming or archiving the
+  shared activities and categories.
+- Managing permissions stays simple and visually polished: a few
+  plain-language switches on the person's panel rather than a permission grid
+  or custom roles.
+- Groundwork from Phase 38: each owner-only area is enforced on its routes, so
+  it can later become one grantable permission without a redesign.
+
+---
+
 **Final stage — Production launch — deferred until the product is ready**
 
 Not scheduled. It starts only when the product has been reviewed and is judged
@@ -1202,8 +1224,14 @@ belong to. The ones below are about the rest of the product.
 Genuinely undecided. Each includes a recommendation, but none should be treated
 as settled until confirmed. Answered questions are summarised at the end.
 
-**Q3 — Should managers administer company-wide resources? — answered for teams,
-still open for the rest.**
+**Q3 — Should managers administer company-wide resources? — answered for teams;
+answered for the rest on 29 October 2026, to ship in Phase 38 part 2.** The
+owner owns company-wide structure: archiving and restoring a project (which
+will remove its plans from today on for everyone on it), and creating, editing,
+archiving and restoring activities and categories, become owner-only; managers
+keep creating, editing and staffing projects and reading the catalogue. More
+flexible grants are a later piece of work (§7). The text below is the state
+before that decision.
 The team half is settled and built: the Owner creates teams and appoints their
 managers, and a manager operates the team they lead. Projects are settled the
 other way — they stay company-wide, because a project spans teams and narrowing

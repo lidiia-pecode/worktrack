@@ -7,9 +7,7 @@ import { fieldLabelClassName } from "@/components/ui/field";
 import { useServerSearch } from "@/hooks/useManageListState";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
-import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { TEAM_ROLE_LABELS } from "@/lib/constants";
-import { todayISODate } from "@/lib/utils/date";
 import { fullName, initials } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
 import { UserTeam } from "@/types/User";
@@ -45,7 +43,6 @@ interface MemberChoice extends Choice {
 }
 
 export const TeamMembersPicker = ({ team }: { team: Team }) => {
-  const { timezone } = useWorkSettings();
   const { addMember, removeMember } = useTeamMembers(team.id);
   const [isConfirming, setIsConfirming] = useState(false);
   // A team without a manager most likely needs one first.
@@ -89,15 +86,12 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     ) &&
     !staged.toAdd.some((choice) => choice.roleInTeam === TeamRole.MANAGER);
 
-  const applyAll = () => {
-    const joinedAt = todayISODate(timezone);
-
-    return staged.apply([
+  const applyAll = () =>
+    staged.apply([
       ...staged.toAdd.map((choice) =>
         addMember.mutateAsync({
           userId: choice.id,
           roleInTeam: choice.roleInTeam ?? TeamRole.MEMBER,
-          joinedAt,
           leaveCurrentTeam: Boolean(choice.fromTeam),
         }),
       ),
@@ -105,7 +99,6 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
         removeMember.mutateAsync(choice.membershipId!),
       ),
     ]);
-  };
 
   // Taking someone off a team, or out of another one, is confirmed first.
   const done = () => {

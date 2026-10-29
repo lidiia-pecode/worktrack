@@ -7,7 +7,7 @@ import {
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
-import { addDays, todayISODate } from 'src/capacity/working-days.util';
+import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -38,8 +38,6 @@ const ADDITION_HEAD_START_MS = 300;
 
 const TIME_ZONE = timeZoneOnAnotherDay();
 const TODAY = todayISODate(TIME_ZONE);
-const TOMORROW = addDays(TODAY, 1);
-const YESTERDAY = addDays(TODAY, -1);
 
 describe('TeamsService', () => {
   let dataSource: DataSource;
@@ -241,32 +239,30 @@ describe('TeamsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('lets an owner add the person back the same day', async () => {
+    it('lets an owner add the person back the same day, as a new membership from today', async () => {
       const membershipId = await addToTeam(alpha, employee);
       await service.removeMember(membershipId, companyId, alpha, alphaManager);
 
       const readded = await service.addMember(alpha, companyId, {
         userId: employee.id,
         roleInTeam: TeamRole.MEMBER,
-        joinedAt: TODAY,
       });
 
+      expect(readded.id).not.toBe(membershipId);
+      expect(readded.joinedAt).toBe(TODAY);
       expect(readded.leftAt).toBeNull();
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
     });
 
-    it('lets an owner add the person back afterwards', async () => {
-      const membershipId = await addToTeam(alpha, employee);
-      await service.removeMember(membershipId, companyId, alpha, alphaManager);
+    it('refuses adding someone already on the team', async () => {
+      await addToTeam(alpha, employee);
 
-      const readded = await service.addMember(alpha, companyId, {
-        userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: TOMORROW,
-      });
-
-      expect(readded.leftAt).toBeNull();
-      await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
+      await expect(
+        service.addMember(alpha, companyId, {
+          userId: employee.id,
+          roleInTeam: TeamRole.MEMBER,
+        }),
+      ).rejects.toThrow(ConflictException);
     });
   });
 
@@ -281,7 +277,6 @@ describe('TeamsService', () => {
       service.addMember(alpha, companyId, {
         userId: user.id,
         roleInTeam,
-        joinedAt: TODAY,
       });
 
     it('lets a Manager be added as the team manager', async () => {
@@ -322,34 +317,24 @@ describe('TeamsService', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('refuses reopening a manager membership for someone who is no longer a Manager', async () => {
+    it('refuses changing a closed membership: someone coming back is added anew', async () => {
       const closed = await dataSource.getRepository(TeamMembership).save({
         companyId,
         teamId: alpha,
-        userId: employee.id,
-        roleInTeam: TeamRole.MANAGER,
+        userId: loneManager.id,
+        roleInTeam: TeamRole.MEMBER,
         joinedAt: '2026-01-01',
         leftAt: '2026-02-01',
       });
 
       await expect(
-        service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
-      ).rejects.toThrow(BadRequestException);
-
-      await dataSource.getRepository(TeamMembership).delete({ id: closed.id });
-    });
-
-    it('refuses making an employee the team manager with an end date', async () => {
-      const membershipId = await addToTeam(alpha, employee);
-
-      await expect(
         service.updateMember(
-          membershipId,
+          closed.id,
           companyId,
-          { roleInTeam: TeamRole.MANAGER, leftAt: '2099-12-31' },
+          { roleInTeam: TeamRole.MANAGER },
           alpha,
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow('This membership is already closed');
     });
 
     it('lets a Manager member be made the team manager', async () => {
@@ -381,25 +366,9 @@ describe('TeamsService', () => {
         service.addMember(alpha, companyId, {
           userId: gone.id,
           roleInTeam: TeamRole.MEMBER,
-          joinedAt: TODAY,
         }),
       ).rejects.toThrow(BadRequestException);
       await expect(activeMemberIds(alpha)).resolves.not.toContain(gone.id);
-    });
-
-    it('cannot have a closed membership reopened', async () => {
-      const closed = await dataSource.getRepository(TeamMembership).save({
-        companyId,
-        teamId: alpha,
-        userId: gone.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: '2026-01-01',
-        leftAt: '2026-02-01',
-      });
-
-      await expect(
-        service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
-      ).rejects.toThrow(BadRequestException);
     });
 
     it('stays on a team they were on, and can still be removed', async () => {
@@ -434,30 +403,10 @@ describe('TeamsService', () => {
           service.addMember(alpha, companyId, {
             userId: owner.id,
             roleInTeam,
-            joinedAt: TODAY,
           }),
         ).rejects.toThrow(BadRequestException);
       }
       await expect(activeMemberIds(alpha)).resolves.not.toContain(owner.id);
-    });
-
-    it('never has a closed membership reopened', async () => {
-      const closed = await dataSource.getRepository(TeamMembership).save({
-        companyId,
-        teamId: alpha,
-        userId: owner.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: '2026-01-01',
-        leftAt: '2026-02-01',
-      });
-
-      try {
-        await expect(
-          service.updateMember(closed.id, companyId, { leftAt: null }, alpha),
-        ).rejects.toThrow('The owner is not a member of any team');
-      } finally {
-        await dataSource.getRepository(TeamMembership).delete(closed.id);
-      }
     });
   });
 
@@ -466,7 +415,6 @@ describe('TeamsService', () => {
       service.addMember(teamId, companyId, {
         userId: user.id,
         roleInTeam: TeamRole.MEMBER,
-        joinedAt: TODAY,
         ...extra,
       });
 
@@ -538,7 +486,6 @@ describe('TeamsService', () => {
         const leads = await service.addMember(beta, companyId, {
           userId: loneManager.id,
           roleInTeam: TeamRole.MANAGER,
-          joinedAt: TODAY,
         });
 
         expect(leads.leftAt).toBeNull();
@@ -576,22 +523,6 @@ describe('TeamsService', () => {
         );
       });
     });
-
-    it('refuses reopening a membership while they are a member elsewhere', async () => {
-      await addToTeam(alpha, employee);
-      const closed = await dataSource.getRepository(TeamMembership).save({
-        companyId,
-        teamId: beta,
-        userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: '2026-01-01',
-        leftAt: '2026-02-01',
-      });
-
-      await expect(
-        service.updateMember(closed.id, companyId, { leftAt: null }, beta),
-      ).rejects.toThrow(ConflictException);
-    });
   });
 
   describe('team search', () => {
@@ -610,53 +541,6 @@ describe('TeamsService', () => {
 
     it('stays within the teams a manager leads', async () => {
       expect(await foundNames(`Beta ${RUN}`, alphaManager)).toEqual([]);
-    });
-  });
-
-  describe('overlapping memberships', () => {
-    const closedMembership = (joinedAt: string, leftAt: string) =>
-      dataSource.getRepository(TeamMembership).save({
-        companyId,
-        teamId: alpha,
-        userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt,
-        leftAt,
-      });
-
-    it('still refuses a membership that starts before another ended', async () => {
-      await closedMembership(JOINED_AT, TODAY);
-
-      await expect(
-        service.addMember(alpha, companyId, {
-          userId: employee.id,
-          roleInTeam: TeamRole.MEMBER,
-          joinedAt: YESTERDAY,
-        }),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('refuses moving a closed membership over another', async () => {
-      const earlier = await closedMembership(JOINED_AT, YESTERDAY);
-      await closedMembership(YESTERDAY, TODAY);
-
-      await expect(
-        service.updateMember(earlier.id, companyId, { leftAt: TODAY }, alpha),
-      ).rejects.toThrow(ConflictException);
-    });
-
-    it('lets a closed membership end the day the next one starts', async () => {
-      const earlier = await closedMembership(JOINED_AT, YESTERDAY);
-      await closedMembership(TODAY, TOMORROW);
-
-      const updated = await service.updateMember(
-        earlier.id,
-        companyId,
-        { leftAt: TODAY },
-        alpha,
-      );
-
-      expect(updated.leftAt).toBe(TODAY);
     });
   });
 
@@ -740,7 +624,6 @@ describe('TeamsService', () => {
         service.addMember(teamId, companyId, {
           userId: employee.id,
           roleInTeam: TeamRole.MEMBER,
-          joinedAt: TODAY,
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -758,7 +641,6 @@ describe('TeamsService', () => {
       const addition = service.addMember(teamId, companyId, {
         userId: employee.id,
         roleInTeam: TeamRole.MEMBER,
-        joinedAt: TODAY,
       });
       // Long enough for the addition to reach the team while the archive is open.
       await new Promise((resolve) =>
