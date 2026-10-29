@@ -4,12 +4,14 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import { useAuth } from "@/hooks/auth/useAuth";
 import {
   activityCategoryDetailsQuery,
   useActivityCategoriesMutations,
 } from "@/hooks/useActivityCategories";
 import { ActivityCategoryDetails, ActivityCategorySummary } from "@/types";
 import { getErrorMessage } from "@/lib/api";
+import { canManageCatalogue } from "@/lib/utils/user";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -22,6 +24,8 @@ export const isActiveCategory = (category: ActivityCategorySummary) =>
 
 /** What the viewer can do with a category, from a list row or the panel. */
 export const useCategoryActions = () => {
+  const { user: viewer } = useAuth();
+  const canManage = canManageCatalogue(viewer?.role);
   const panel = useEntityPanel();
   const { unarchive } = useActivityCategoriesMutations();
   const [archivingCategory, setArchivingCategory] =
@@ -55,10 +59,12 @@ export const useCategoryActions = () => {
   };
 
   const actionsFor = (category: ActivityCategorySummary) =>
-    archiveOrRestore(isActiveCategory(category), {
-      archive: () => setArchivingCategory(category),
-      restore: () => void restore(category),
-    });
+    canManage
+      ? archiveOrRestore(isActiveCategory(category), {
+          archive: () => setArchivingCategory(category),
+          restore: () => void restore(category),
+        })
+      : [];
 
   const dialogs = (
     <>
@@ -75,7 +81,10 @@ export const useCategoryActions = () => {
   );
 
   return {
-    canEdit: isActiveCategory,
+    /** Whether the viewer may change categories and what is in them. */
+    canManage,
+    canEdit: (category: ActivityCategorySummary) =>
+      canManage && isActiveCategory(category),
     edit: (category: ActivityCategorySummary) =>
       panel.edit({ type: "category", id: category.id }),
     actionsFor,

@@ -92,9 +92,11 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   // Sorted by category, then name, for the grouped list.
   const activities = offeredActivities(project).sort(
     (first, second) =>
-      (first.category?.name ?? "").localeCompare(second.category?.name ?? "") ||
+      first.category.name.localeCompare(second.category.name) ||
       first.name.localeCompare(second.name),
   );
+
+  const archivedActivities = project.archivedActivities ?? [];
 
   if (isActive && panel.view === PEOPLE_PICKER) {
     return <ProjectPeoplePicker project={project} />;
@@ -182,8 +184,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
           items={activities}
           getKey={(activity) => activity.id}
           groupBy={(activity) => ({
-            key: activity.category?.id ?? "",
-            heading: activity.category && (
+            key: activity.category.id,
+            heading: (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
                 tone="plain"
@@ -216,6 +218,22 @@ const ProjectDetails = ({ project }: { project: Project }) => {
               : undefined
           }
         />
+
+        {archivedActivities.length > 0 && (
+          <PanelList
+            title="Archived activities"
+            note="Restoring an activity brings it back here."
+            items={archivedActivities}
+            getKey={(activity) => activity.id}
+            renderRow={(activity) => ({
+              entity: { type: "activity", id: activity.id },
+              name: activity.name,
+              isInactive: true,
+              status: <Badge variant="neutral">Archived</Badge>,
+            })}
+            emptyText="No archived activities."
+          />
+        )}
       </EntityPanelLayout>
 
       {projectActions.dialogs}

@@ -7,7 +7,6 @@ import {
   archiveActivitiesLabel,
   archivePayload,
   distinctProjects,
-  DRAFTS_OPTION,
   noMoveTargetMessage,
 } from "./category-archive";
 
@@ -29,16 +28,13 @@ describe("archivePayload", () => {
     expect(archivePayload(0, "target")).toEqual({});
   });
 
-  it("moves them, archives them, or leaves them as drafts", () => {
+  it("moves them or archives them", () => {
     expect(archivePayload(2, "target")).toEqual({
       activities: ActiveActivitiesAction.MOVE,
       moveToCategoryId: "target",
     });
     expect(archivePayload(2, ARCHIVE_ACTIVITIES_OPTION)).toEqual({
       activities: ActiveActivitiesAction.ARCHIVE,
-    });
-    expect(archivePayload(2, DRAFTS_OPTION)).toEqual({
-      activities: ActiveActivitiesAction.UNCATEGORIZE,
     });
   });
 });

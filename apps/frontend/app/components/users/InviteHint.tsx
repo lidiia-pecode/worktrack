@@ -9,7 +9,7 @@ export const InviteHint = () => (
       href="/admin/users?create=true"
       className="font-medium text-brand underline-offset-4 hover:underline"
     >
-      Invite them from Users
+      Invite them from People
     </Link>
     .
   </>

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useProjectsMutations } from "@/hooks/useProjects";
+import { canArchiveProjects } from "@/lib/utils/user";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
@@ -15,6 +17,7 @@ export const isActiveProject = (project: Project) =>
 
 /** What the viewer can do with a project, from a list row or the panel. */
 export const useProjectActions = () => {
+  const { user: viewer } = useAuth();
   const panel = useEntityPanel();
   const { unarchive } = useProjectsMutations();
   const [archivingProject, setArchivingProject] = useState<Project | null>(
@@ -22,10 +25,12 @@ export const useProjectActions = () => {
   );
 
   const actionsFor = (project: Project) =>
-    archiveOrRestore(isActiveProject(project), {
-      archive: () => setArchivingProject(project),
-      restore: () => unarchive.mutate(project.id),
-    });
+    canArchiveProjects(viewer?.role)
+      ? archiveOrRestore(isActiveProject(project), {
+          archive: () => setArchivingProject(project),
+          restore: () => unarchive.mutate(project.id),
+        })
+      : [];
 
   const dialogs = (
     <ProjectArchiveDialog

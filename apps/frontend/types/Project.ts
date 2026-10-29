@@ -3,6 +3,7 @@ import {
   ProjectActivity,
   SearchablePaginationParams,
 } from ".";
+import { Activity } from "./Activities";
 import { Company } from "./Company";
 import { ProjectStatus } from "./enums";
 import { AssignableUser } from "./User";
@@ -32,6 +33,14 @@ export interface Project {
   users?: AssignableUser[];
   /** The project's true size, which `users` can be shorter than. */
   membersCount?: number;
+  /** Linked but archived, so not offered; only a single project carries them. */
+  archivedActivities?: Activity[];
+}
+
+/** What archiving a project removes: everyone's plans on it from today on. */
+export interface ProjectArchiveImpact {
+  people: AssignableUser[];
+  planCount: number;
 }
 
 // ProjectPayload = back

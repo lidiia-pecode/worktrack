@@ -60,10 +60,6 @@ export class CategoryActivityResponse {
   @Expose()
   status!: ActivityStatus;
 
-  /** Linked to a project, archived ones too, so it can't become a draft. */
-  @Expose()
-  isInUse!: boolean;
-
   /** Active projects that offer it now; not sent to an employee. */
   @Expose()
   projectsCount?: number;
@@ -87,9 +83,6 @@ class ArchiveImpactActivityResponse {
   @Expose()
   @Type(() => ArchiveImpactProjectResponse)
   projects!: ArchiveImpactProjectResponse[];
-
-  @Expose()
-  isInUse!: boolean;
 }
 
 export class ActivityCategoryArchiveImpactResponse {

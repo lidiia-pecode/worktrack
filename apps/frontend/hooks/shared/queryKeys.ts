@@ -52,6 +52,8 @@ export const queryKeys = {
     detail: (id: string) => ["projects", "detail", id] as const,
 
     mine: () => ["projects", "mine"] as const,
+
+    archiveImpact: (id: string) => ["projects", "archive-impact", id] as const,
   },
 
   activities: {

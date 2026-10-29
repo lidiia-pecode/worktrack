@@ -2,32 +2,24 @@
 
 import { useState } from "react";
 
-import { Activity, ActivityCategoryResponse } from "@/types";
+import { Activity } from "@/types";
 import { ActCategoryStatus } from "@/types/enums";
 
-import {
-  useActivityDetails,
-  useRestoreActivityWithCategory,
-} from "@/hooks/useActivities";
+import { useRestoreActivityWithCategory } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 
 import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
 
 const RESTORE_CATEGORY_OPTION = "restore-category";
-const DRAFT_OPTION = "draft";
-
-export type ActivityWithCategory = Activity & {
-  category: ActivityCategoryResponse;
-};
 
 interface ActivityRestoreDialogProps {
-  /** The dialog is open while this is set. */
-  activity: ActivityWithCategory | null;
+  /** An activity whose category is archived; the dialog is open while this is set. */
+  activity: Activity | null;
   onClose: () => void;
 }
 
-/** Its category is archived, so restoring asks where it goes: back with the category, to another one, or, if no project links it, as a draft. */
+/** Its category is archived, so restoring asks where it goes: back with the category, or to another one. */
 export const ActivityRestoreDialog = ({
   activity,
   onClose,
@@ -37,11 +29,6 @@ export const ActivityRestoreDialog = ({
     { enabled: Boolean(activity) },
   );
   const restore = useRestoreActivityWithCategory();
-  // Only its details include links on archived projects, which count too.
-  const details = useActivityDetails(activity?.id ?? "");
-  const canBeDraft = details.data
-    ? (details.data.projects ?? []).length === 0
-    : false;
 
   const [selectedOption, setSelectedOption] = useState(RESTORE_CATEGORY_OPTION);
   const restoresCategory = selectedOption === RESTORE_CATEGORY_OPTION;
@@ -55,14 +42,6 @@ export const ActivityRestoreDialog = ({
       value: category.id,
       label: `Move to ${category.name}`,
     })),
-    ...(canBeDraft
-      ? [
-          {
-            value: DRAFT_OPTION,
-            label: "Restore it as a draft, with no category",
-          },
-        ]
-      : []),
   ];
 
   const close = () => {
@@ -76,9 +55,7 @@ export const ActivityRestoreDialog = ({
     restore.mutate(
       restoresCategory
         ? { id: activity.id, restoreCategoryId: activity.category.id }
-        : selectedOption === DRAFT_OPTION
-          ? { id: activity.id, withoutCategory: true }
-          : { id: activity.id, moveToCategoryId: selectedOption },
+        : { id: activity.id, moveToCategoryId: selectedOption },
       {
         onSuccess: close,
       },
@@ -89,15 +66,7 @@ export const ActivityRestoreDialog = ({
     <ImpactDialog
       isOpen={Boolean(activity)}
       title={activity ? `Restore ${activity.name}?` : ""}
-      description={
-        details.isError
-          ? "Could not check which projects use it. Close this and try again."
-          : !details.data
-            ? "Checking which projects use it..."
-            : canBeDraft
-              ? "Its category is archived. Restore the category too, move it to an active one, or bring it back as a draft until it has a category."
-              : "Its category is archived. Restore the category too, or move it to an active one: it is on a project, so it needs a category."
-      }
+      description="Its category is archived. Restore the category too, or move it to an active one."
       affected={
         activity
           ? [
@@ -122,7 +91,6 @@ export const ActivityRestoreDialog = ({
           disabled={restore.isPending || activeCategories.isLoading}
         />
       }
-      confirmDisabled={!details.data}
       confirmText="Restore"
       confirmVariant="success"
       onConfirm={confirm}

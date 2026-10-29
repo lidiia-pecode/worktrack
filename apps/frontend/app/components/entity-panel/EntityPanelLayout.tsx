@@ -24,7 +24,7 @@ interface EntityPanelLayoutProps {
   /** Before the name, such as a person's avatar; decorative, since the name says it. */
   leading?: ReactNode;
   subtitle?: ReactNode;
-  /** Only what the tab doesn't already say, such as Archived or Draft. */
+  /** Only what the tab doesn't already say, such as Archived or Deactivated. */
   status?: ReactNode;
   /** Opens the entity's form; left out when the viewer cannot edit it. */
   onEdit?: () => void;

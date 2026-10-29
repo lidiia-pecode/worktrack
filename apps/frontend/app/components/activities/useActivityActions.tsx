@@ -2,37 +2,37 @@
 
 import { useState } from "react";
 
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivitiesMutations } from "@/hooks/useActivities";
+import { canManageCatalogue } from "@/lib/utils/user";
 import { Activity } from "@/types";
 import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { archiveOrRestore } from "../shared/resource/ManageList";
 import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
-import {
-  ActivityRestoreDialog,
-  ActivityWithCategory,
-} from "./ActivityRestoreDialog";
+import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
 
 export const isActiveActivity = (activity: Activity) =>
   activity.status === ActivityStatus.ACTIVE;
 
 /** What the viewer can do with an activity, from a list row or the panel. */
 export const useActivityActions = () => {
+  const { user: viewer } = useAuth();
+  const canManage = canManageCatalogue(viewer?.role);
   const panel = useEntityPanel();
   const { unarchive } = useActivitiesMutations();
   const [archivingActivity, setArchivingActivity] = useState<Activity | null>(
     null,
   );
-  const [restoringActivity, setRestoringActivity] =
-    useState<ActivityWithCategory | null>(null);
+  const [restoringActivity, setRestoringActivity] = useState<Activity | null>(
+    null,
+  );
 
-  // A draft, or an activity in an active category, restores at once; otherwise the dialog asks where it goes.
+  // An activity in an active category restores at once; otherwise the dialog asks where it goes.
   const restore = (activity: Activity) => {
-    const { category } = activity;
-
-    if (category?.status === ActCategoryStatus.ARCHIVED) {
-      setRestoringActivity({ ...activity, category });
+    if (activity.category.status === ActCategoryStatus.ARCHIVED) {
+      setRestoringActivity(activity);
       return;
     }
 
@@ -40,10 +40,12 @@ export const useActivityActions = () => {
   };
 
   const actionsFor = (activity: Activity) =>
-    archiveOrRestore(isActiveActivity(activity), {
-      archive: () => setArchivingActivity(activity),
-      restore: () => restore(activity),
-    });
+    canManage
+      ? archiveOrRestore(isActiveActivity(activity), {
+          archive: () => setArchivingActivity(activity),
+          restore: () => restore(activity),
+        })
+      : [];
 
   const dialogs = (
     <>
@@ -60,7 +62,7 @@ export const useActivityActions = () => {
   );
 
   return {
-    canEdit: isActiveActivity,
+    canEdit: (activity: Activity) => canManage && isActiveActivity(activity),
     edit: (activity: Activity) =>
       panel.edit({ type: "activity", id: activity.id }),
     actionsFor,

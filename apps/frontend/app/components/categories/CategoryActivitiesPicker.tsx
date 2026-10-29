@@ -43,14 +43,7 @@ export const CategoryActivitiesPicker = ({
       .map(({ id, name }) => ({ id, name, fromCategory: category.name })),
   );
 
-  const isInUse = (activityId: string) =>
-    category.activities.some(
-      (activity) => activity.id === activityId && activity.isInUse,
-    );
-  const movesOut = staged.toRemove.filter((activity) => isInUse(activity.id));
-  const toDrafts = staged.toRemove.filter((activity) => !isInUse(activity.id));
-
-  const applyAll = (destinationId: string | null) =>
+  const applyAll = (destination: string) =>
     staged.apply([
       ...staged.toAdd.map((activity) =>
         setActivityCategory.mutateAsync({
@@ -58,14 +51,11 @@ export const CategoryActivitiesPicker = ({
           categoryId: category.id,
         }),
       ),
-      ...movesOut.map((activity) =>
+      ...staged.toRemove.map((activity) =>
         setActivityCategory.mutateAsync({
           id: activity.id,
-          categoryId: destinationId,
+          categoryId: destination,
         }),
-      ),
-      ...toDrafts.map((activity) =>
-        setActivityCategory.mutateAsync({ id: activity.id, categoryId: null }),
       ),
     ]);
 
@@ -78,7 +68,7 @@ export const CategoryActivitiesPicker = ({
     <>
       <PanelView
         title={`Add activities to ${category.name}`}
-        description="Choose them, then Done; choose one again to take it off. An activity is in one category at most, so Done confirms what moves."
+        description="Choose them, then Done; choose one again to take it off. An activity is in one category, so Done confirms where each one taken off goes."
         create={{ label: "New activity", onClick: () => setIsCreating(true) }}
         pendingCount={staged.pendingCount}
         isApplying={staged.isApplying}
@@ -92,14 +82,12 @@ export const CategoryActivitiesPicker = ({
             staged.toggle({
               id: activity.id,
               name: activity.name,
-              fromCategory: activity.category?.name ?? null,
+              fromCategory: activity.category.name,
             })
           }
           getId={(activity) => activity.id}
           getLabel={(activity) => activity.name}
-          getSubtitle={(activity) =>
-            activity.category?.name ?? "No category (draft)"
-          }
+          getSubtitle={(activity) => activity.category.name}
           onSearchChange={setSearch}
           isLoading={isLoading}
           hasNextPage={pagination.hasNextPage}
@@ -121,12 +109,11 @@ export const CategoryActivitiesPicker = ({
         category={category}
         isOpen={isConfirming}
         movesIn={staged.toAdd}
-        movesOut={movesOut}
-        toDrafts={toDrafts}
+        movesOut={staged.toRemove}
         loading={staged.isApplying}
-        onConfirm={(destinationId) => {
+        onConfirm={(destination) => {
           setIsConfirming(false);
-          void applyAll(destinationId);
+          void applyAll(destination);
         }}
         onClose={() => setIsConfirming(false)}
       />

@@ -12,7 +12,6 @@ import {
   In,
   IsNull,
   Not,
-  Raw,
   Repository,
 } from 'typeorm';
 import { Team } from './entities/team.entity';
@@ -56,28 +55,6 @@ export class TeamsService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}
-
-  // ==========================================
-  // HELPER: safe dates compare
-  // ==========================================
-  private isInvalidDateRange(joinedAt: string, leftAt: string): boolean {
-    return new Date(leftAt).getTime() < new Date(joinedAt).getTime();
-  }
-
-  /**
-   * `leftAt` is the day a membership ended, not its last day, so a membership
-   * that ends on a day and one that starts on that day do not overlap.
-   */
-  private overlapsPeriod(joinedAt: string, leftAt: string | null) {
-    return {
-      joinedAt: Raw((alias) => `(${alias} < :leftAt OR :leftAt IS NULL)`, {
-        leftAt,
-      }),
-      leftAt: Raw((alias) => `(${alias} IS NULL OR ${alias} > :joinedAt)`, {
-        joinedAt,
-      }),
-    };
-  }
 
   /**
    * The owner reads a team's whole history; anyone else who is current on it.
@@ -150,14 +127,14 @@ export class TeamsService {
   }
 
   /**
-   * Ends the membership being left on `endsOn` (the day the new one starts,
-   * or today when a role switch makes them a member), under a row lock so a
-   * concurrent change to it waits. Nothing to do if it was closed meanwhile.
+   * Ends the membership being left today, the day the new one starts, under a
+   * row lock so a concurrent change to it waits. Nothing to do if it was
+   * closed meanwhile.
    */
   private async closeMembershipForMove(
     membershipRepo: Repository<TeamMembership>,
     current: TeamMembership,
-    endsOn: string,
+    today: string,
   ): Promise<void> {
     const locked = await membershipRepo.findOne({
       where: { id: current.id, leftAt: IsNull() },
@@ -165,9 +142,39 @@ export class TeamsService {
     });
     if (!locked) return;
 
-    // A membership that has not started yet ends on its start date.
-    locked.leftAt = locked.joinedAt > endsOn ? locked.joinedAt : endsOn;
+    locked.leftAt = today;
     await membershipRepo.save(locked);
+  }
+
+  /**
+   * A person is a member of one team at a time (P1): becoming a member of
+   * another is a move, which the caller has to ask for.
+   */
+  private async leaveCurrentTeamIfAsked(
+    manager: EntityManager,
+    companyId: string,
+    userId: string,
+    teamId: string,
+    leaveCurrentTeam: boolean | undefined,
+    today: string,
+  ): Promise<void> {
+    await this.lockPerson(manager, companyId, userId);
+    const membershipRepo = manager.getRepository(TeamMembership);
+    const currentTeam = await this.findCurrentMemberTeam(
+      membershipRepo,
+      companyId,
+      userId,
+      teamId,
+    );
+    if (!currentTeam) return;
+
+    if (!leaveCurrentTeam) {
+      throw new ConflictException(
+        `User is already a member of "${currentTeam.team.name}"; set leaveCurrentTeam to move them`,
+      );
+    }
+
+    await this.closeMembershipForMove(membershipRepo, currentTeam, today);
   }
 
   /** Joining a team takes an active person who is not the owner; staying in one only the first. */
@@ -411,11 +418,7 @@ export class TeamsService {
     this.assertCanJoinTeam(user);
     this.assertCanLeadTeam(user, dto.roleInTeam);
 
-    const newLeftAt = dto.leftAt ?? null;
-    if (newLeftAt && this.isInvalidDateRange(dto.joinedAt, newLeftAt)) {
-      throw new BadRequestException('leftAt cannot be earlier than joinedAt');
-    }
-
+    // A membership starts the day someone is added; nothing is scheduled.
     return this.dataSource.transaction(async (manager) => {
       await findActiveTeam(
         manager.getRepository(Team),
@@ -426,48 +429,25 @@ export class TeamsService {
       );
 
       const trxMembershipRepo = manager.getRepository(TeamMembership);
+      const today = await findCompanyToday(manager, companyId);
 
-      const overlappingMembership = await trxMembershipRepo.findOne({
-        where: {
-          teamId,
-          userId: dto.userId,
-          ...this.overlapsPeriod(dto.joinedAt, newLeftAt),
-        },
+      const isOnTeam = await trxMembershipRepo.exists({
+        where: { teamId, userId: dto.userId, leftAt: IsNull() },
       });
-
-      if (overlappingMembership) {
-        throw new ConflictException(
-          'User already has an active or overlapping membership in this team',
-        );
+      if (isOnTeam) {
+        throw new ConflictException('User is already on this team');
       }
 
       const roleInTeam = dto.roleInTeam ?? TeamRole.MEMBER;
-
-      // A person is a member of one team at a time: joining another as a
-      // member is a move, which the caller has to ask for (P1). A past
-      // membership, already closed, is history and moves nobody.
-      if (roleInTeam === TeamRole.MEMBER && newLeftAt === null) {
-        await this.lockPerson(manager, companyId, dto.userId);
-        const currentTeam = await this.findCurrentMemberTeam(
-          trxMembershipRepo,
+      if (roleInTeam === TeamRole.MEMBER) {
+        await this.leaveCurrentTeamIfAsked(
+          manager,
           companyId,
           dto.userId,
           teamId,
+          dto.leaveCurrentTeam,
+          today,
         );
-
-        if (currentTeam && !dto.leaveCurrentTeam) {
-          throw new ConflictException(
-            `User is already a member of "${currentTeam.team.name}"; set leaveCurrentTeam to move them`,
-          );
-        }
-
-        if (currentTeam) {
-          await this.closeMembershipForMove(
-            trxMembershipRepo,
-            currentTeam,
-            dto.joinedAt,
-          );
-        }
       }
 
       const membership = trxMembershipRepo.create({
@@ -475,8 +455,8 @@ export class TeamsService {
         teamId,
         userId: dto.userId,
         roleInTeam,
-        joinedAt: dto.joinedAt,
-        leftAt: newLeftAt,
+        joinedAt: today,
+        leftAt: null,
       });
 
       try {
@@ -488,9 +468,7 @@ export class TeamsService {
         });
       } catch (error: unknown) {
         if (isDatabaseConflictError(error)) {
-          throw new ConflictException(
-            'User already has an active or overlapping membership in this team',
-          );
+          throw new ConflictException('User is already on this team');
         }
         throw error;
       }
@@ -529,93 +507,35 @@ export class TeamsService {
         );
       }
 
-      const newJoinedAt = dto.joinedAt ?? membership.joinedAt;
-      const newLeftAt =
-        dto.leftAt !== undefined ? dto.leftAt : membership.leftAt;
-
-      // Setting a role, or reopening a membership, must respect who may lead;
-      // editing the dates of one that stays closed need not.
-      if (newLeftAt === null || dto.roleInTeam !== undefined) {
-        this.assertCanLeadTeam(
-          membership.user,
-          dto.roleInTeam ?? membership.roleInTeam,
-        );
+      // A closed membership is history; someone coming back is added anew.
+      if (membership.leftAt) {
+        throw new BadRequestException('This membership is already closed');
       }
 
-      const reopens = membership.leftAt !== null && newLeftAt === null;
-      if (reopens) this.assertCanJoinTeam(membership.user);
+      const roleInTeam = dto.roleInTeam ?? membership.roleInTeam;
+      this.assertCanLeadTeam(membership.user, roleInTeam);
 
-      // Reopening a membership, or switching an open one to Member, makes it
-      // their member team, of which they have one at a time (P1).
-      const becomesMember =
-        newLeftAt === null &&
-        (dto.roleInTeam ?? membership.roleInTeam) === TeamRole.MEMBER &&
-        (reopens || membership.roleInTeam !== TeamRole.MEMBER);
-      if (becomesMember) {
-        await this.lockPerson(manager, companyId, membership.userId);
-      }
-      const currentTeam = becomesMember
-        ? await this.findCurrentMemberTeam(
-            trxMembershipRepo,
-            companyId,
-            membership.userId,
-            membership.teamId,
-          )
-        : null;
-      if (currentTeam && !dto.leaveCurrentTeam) {
-        throw new ConflictException(
-          `User is already a member of "${currentTeam.team.name}"; set leaveCurrentTeam to move them`,
-        );
-      }
-
-      if (currentTeam) {
-        await this.closeMembershipForMove(
-          trxMembershipRepo,
-          currentTeam,
+      if (
+        roleInTeam === TeamRole.MEMBER &&
+        membership.roleInTeam !== TeamRole.MEMBER
+      ) {
+        await this.leaveCurrentTeamIfAsked(
+          manager,
+          companyId,
+          membership.userId,
+          membership.teamId,
+          dto.leaveCurrentTeam,
           await findCompanyToday(manager, companyId),
         );
       }
 
-      if (newLeftAt && this.isInvalidDateRange(newJoinedAt, newLeftAt)) {
-        throw new BadRequestException('leftAt cannot be earlier than joinedAt');
-      }
+      membership.roleInTeam = roleInTeam;
+      await trxMembershipRepo.save(membership);
 
-      if (dto.joinedAt !== undefined || dto.leftAt !== undefined) {
-        const overlapping = await trxMembershipRepo.findOne({
-          where: {
-            teamId: membership.teamId,
-            userId: membership.userId,
-            id: Not(membershipId),
-            ...this.overlapsPeriod(newJoinedAt, newLeftAt),
-          },
-        });
-
-        if (overlapping) {
-          throw new ConflictException(
-            'Updated dates overlap with another existing membership interval',
-          );
-        }
-      }
-
-      if (dto.roleInTeam !== undefined) membership.roleInTeam = dto.roleInTeam;
-      if (dto.joinedAt !== undefined) membership.joinedAt = dto.joinedAt;
-      if (dto.leftAt !== undefined) membership.leftAt = dto.leftAt;
-
-      try {
-        await trxMembershipRepo.save(membership);
-
-        return await trxMembershipRepo.findOneOrFail({
-          where: { id: membershipId },
-          relations: ['user'],
-        });
-      } catch (error: unknown) {
-        if (isDatabaseConflictError(error)) {
-          throw new ConflictException(
-            'Updated dates overlap with another existing membership interval',
-          );
-        }
-        throw error;
-      }
+      return trxMembershipRepo.findOneOrFail({
+        where: { id: membershipId },
+        relations: ['user'],
+      });
     });
   }
 
@@ -655,12 +575,10 @@ export class TeamsService {
       throw new ForbiddenException('Only an owner can remove a team manager');
     }
 
-    const today = await findCompanyToday(this.dataSource.manager, companyId);
-
-    // A membership that has not started yet closes on its start date, so the
-    // stored range stays valid.
-    membership.leftAt =
-      today < membership.joinedAt ? membership.joinedAt : today;
+    membership.leftAt = await findCompanyToday(
+      this.dataSource.manager,
+      companyId,
+    );
 
     await this.membershipRepo.save(membership);
   }

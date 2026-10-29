@@ -1,6 +1,5 @@
 import {
   IsBoolean,
-  IsDateString,
   IsEnum,
   IsNotEmpty,
   IsOptional,
@@ -8,7 +7,6 @@ import {
   IsUUID,
   MaxLength,
   MinLength,
-  ValidateIf,
 } from 'class-validator';
 import { OptionalNotNull, TrimString } from 'src/lib/decorators';
 import { SearchablePaginationQuery } from 'src/lib/dtos/searchable-pagination-query.dto';
@@ -48,41 +46,25 @@ export class AddTeamMemberDto {
   @IsEnum(TeamRole)
   roleInTeam?: TeamRole = TeamRole.MEMBER;
 
-  @IsNotEmpty()
-  @IsDateString()
-  joinedAt!: string;
-
-  @IsOptional()
-  @IsDateString()
-  leftAt?: string;
-
   /**
    * A person is a member of one team at a time. Adding a member of another
    * team is refused unless the caller says they leave it, in which case the
-   * old membership ends the day this one starts.
+   * old membership ends today, the day this one starts.
    */
   @IsOptional()
   @IsBoolean()
   leaveCurrentTeam?: boolean;
 }
 
+/** A membership's dates are the server's, so only its role changes. */
 export class UpdateTeamMemberDto {
   @OptionalNotNull()
   @IsEnum(TeamRole)
   roleInTeam?: TeamRole;
 
-  @OptionalNotNull()
-  @IsDateString()
-  joinedAt?: string;
-
-  @IsOptional()
-  @ValidateIf((_, value) => value !== null)
-  @IsDateString()
-  leftAt?: string | null;
-
   /**
-   * Switching a membership to Member, or reopening one, while the person is a
-   * member of another team: they leave it today, as on an add.
+   * Switching a membership to Member while the person is a member of another
+   * team: they leave it today, as on an add.
    */
   @OptionalNotNull()
   @IsBoolean()

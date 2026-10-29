@@ -13,6 +13,7 @@ import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { Activity } from 'src/activities/entities/activity.entity';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
@@ -168,9 +169,12 @@ describe('PeopleReportService', () => {
       },
     ]);
 
+    const category = await dataSource
+      .getRepository(ActCategory)
+      .save({ companyId, name: `Development ${RUN}` });
     const activity = await dataSource
       .getRepository(Activity)
-      .save({ companyId, name: `Backend ${RUN}` });
+      .save({ companyId, name: `Backend ${RUN}`, categoryId: category.id });
     const project = await dataSource
       .getRepository(Project)
       .save({ companyId, name: `CRM ${RUN}`, clientName: 'Acme' });

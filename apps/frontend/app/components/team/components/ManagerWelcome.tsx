@@ -37,16 +37,16 @@ const TEAM_ITEMS: WelcomeItem[] = [
   {
     icon: UserPlus,
     title: "Invite employees",
-    description: "Invite people straight into a team you lead, from Users.",
+    description: "Invite people straight into a team you lead, from People.",
   },
 ];
 
 const OWN_ITEMS: WelcomeItem[] = [
   {
     icon: FolderKanban,
-    title: "Projects and activities",
+    title: "Projects",
     description:
-      "Create projects and activities in Projects, and put your people and yourself on them.",
+      "Create projects, choose their activities, and put your people and yourself on them.",
   },
   {
     icon: Clock,

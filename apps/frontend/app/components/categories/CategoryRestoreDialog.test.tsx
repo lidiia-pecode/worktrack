@@ -33,19 +33,16 @@ const design: ActivityCategoryDetails = {
       id: "a-1",
       name: "Wireframes",
       status: ActivityStatus.ARCHIVED,
-      isInUse: false,
     },
     {
       id: "a-2",
       name: "Research",
       status: ActivityStatus.ARCHIVED,
-      isInUse: false,
     },
     {
       id: "a-3",
       name: "Reviews",
       status: ActivityStatus.ACTIVE,
-      isInUse: true,
     },
   ],
 };

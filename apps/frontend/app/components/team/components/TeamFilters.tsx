@@ -16,7 +16,6 @@ export const ALL_OPTION = "all";
 const STATUS_SUFFIX: Record<ProjectStatus, string> = {
   [ProjectStatus.ACTIVE]: "",
   [ProjectStatus.ARCHIVED]: " (archived)",
-  [ProjectStatus.COMPLETED]: " (completed)",
 };
 
 type TeamFiltersProps = {

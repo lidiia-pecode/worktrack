@@ -20,7 +20,6 @@ import {
   ManageColumn,
   ManageCount,
   ManageList,
-  ManageWarning,
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { ActivityCreateDialog } from "./ActivityCreateDialog";
@@ -29,17 +28,14 @@ import { useActivityActions } from "./useActivityActions";
 const projectsCount = (activity: ActivityListItem) =>
   activity.projectsCount ?? 0;
 
-const categoryCell = (activity: ActivityListItem, inline = false) =>
-  activity.category ? (
-    <EntityLink
-      entity={{ type: "category", id: activity.category.id }}
-      tone="plain"
-    >
-      {activity.category.name}
-    </EntityLink>
-  ) : (
-    <ManageWarning inline={inline}>No category</ManageWarning>
-  );
+const categoryCell = (activity: ActivityListItem) => (
+  <EntityLink
+    entity={{ type: "category", id: activity.category.id }}
+    tone="plain"
+  >
+    {activity.category.name}
+  </EntityLink>
+);
 
 // Both values carry an icon, so they line up in the column.
 const BillableValue = ({ isBillable }: { isBillable: boolean }) => {
@@ -64,8 +60,8 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
     header: "Category",
     width: "w-48",
-    cell: (activity) => categoryCell(activity),
-    summary: (activity) => categoryCell(activity, true),
+    cell: categoryCell,
+    summary: categoryCell,
   },
   {
     header: "Billable by default",

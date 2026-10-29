@@ -235,7 +235,7 @@ export class ProjectsService {
     }
 
     if (idsToRemove.length > 0) {
-      await this.planning.deleteForRemovedMembers(
+      await this.planning.deletePlansFromToday(
         manager,
         project.companyId,
         project.id,
@@ -430,8 +430,19 @@ export class ProjectsService {
 
   async getById(id: string, user: AuthUser): Promise<Project> {
     const project = await this.findOrFail(id, user.companyId);
+    // Still linked, so restoring the activity brings it back here; listed
+    // apart, so nothing offers it meanwhile.
+    const archivedActivities = project.projectActivities
+      .filter(
+        (link) =>
+          link.isActive && link.activity?.status === ActivityStatus.ARCHIVED,
+      )
+      .map((link) => link.activity);
 
-    return this.withScopedMembers(project, user);
+    return {
+      ...(await this.withScopedMembers(project, user)),
+      archivedActivities,
+    };
   }
 
   async create(payload: ProjectPayload, user: AuthUser): Promise<Project> {
@@ -541,16 +552,38 @@ export class ProjectsService {
     });
   }
 
-  async archive(id: string, user: AuthUser): Promise<Project> {
-    const project = await this.findOrFail(id, user.companyId);
+  /** What archiving removes: everyone's plans on it from today on. */
+  async getArchiveImpact(id: string, companyId: string) {
+    const project = await this.findOrFail(id, companyId);
     if (project.status === ProjectStatus.ARCHIVED) {
       throw new BadRequestException('Project is already archived');
     }
 
-    project.status = ProjectStatus.ARCHIVED;
-    await this.repo.save(project);
+    return this.planning.plansFromToday(companyId, id);
+  }
 
-    return this.withScopedMembers(project, user);
+  /**
+   * Nobody can log or plan on an archived project, so its plans from today on
+   * go with it; its people, activities and past plans stay for restoring.
+   */
+  async archive(id: string, user: AuthUser): Promise<Project> {
+    return this.dataSource.transaction(async (manager) => {
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
+      if (project.status === ProjectStatus.ARCHIVED) {
+        throw new BadRequestException('Project is already archived');
+      }
+
+      await manager
+        .getRepository(Project)
+        .update(project.id, { status: ProjectStatus.ARCHIVED });
+      await this.planning.deletePlansFromToday(manager, user.companyId, id);
+
+      return this.withScopedMembers(
+        await this.findOrFail(id, user.companyId, manager),
+        user,
+        manager,
+      );
+    });
   }
 
   async unarchive(id: string, user: AuthUser): Promise<Project> {
@@ -609,7 +642,7 @@ export class ProjectsService {
       );
       if (!(await this.isMember(project.id, userId, manager))) return;
 
-      await this.planning.deleteForRemovedMembers(
+      await this.planning.deletePlansFromToday(
         manager,
         project.companyId,
         project.id,

@@ -139,7 +139,6 @@ export const UsersContent = () => {
         isFetchingNextPage={pagination.isFetchingNextPage}
         onFetchNextPage={pagination.fetchNextPage}
         archivedLabel="Deactivated"
-        archiveVerb="deactivate"
         topContent={canManage && isActiveTab && <PendingInvitations />}
       >
         <ManageList

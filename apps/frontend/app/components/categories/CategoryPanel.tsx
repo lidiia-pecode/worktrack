@@ -8,7 +8,7 @@ import {
   useActivityCategoriesMutations,
   useActivityCategoryDetails,
 } from "@/hooks/useActivityCategories";
-import { useActivitiesMutations } from "@/hooks/useActivities";
+import { useSetActivityCategory } from "@/hooks/useActivities";
 import { ActivityCategoryDetails, CategoryActivity } from "@/types";
 import { ActivityStatus } from "@/types/enums";
 import { countLabel } from "@/lib/utils/text";
@@ -78,7 +78,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   } = useActivityCategoryDetails(id);
   const categoryActions = useCategoryActions();
   const panel = useEntityPanel();
-  const { update } = useActivitiesMutations();
+  const setActivityCategory = useSetActivityCategory();
   const [removing, setRemoving] = useState<CategoryActivity | null>(null);
 
   if (!category) {
@@ -89,9 +89,10 @@ export const CategoryPanel = ({ id }: { id: string }) => {
 
   const isActive = isActiveCategory(category);
   // Archiving it from its row ends an open edit.
-  const isEditing = panel.isEditing && isActive;
+  const isEditing = panel.isEditing && categoryActions.canEdit(category);
+  const canChangeActivities = isActive && categoryActions.canManage;
 
-  if (isActive && panel.view === ACTIVITIES_PICKER) {
+  if (canChangeActivities && panel.view === ACTIVITIES_PICKER) {
     return <CategoryActivitiesPicker category={category} />;
   }
 
@@ -125,13 +126,13 @@ export const CategoryPanel = ({ id }: { id: string }) => {
               isInactive: isArchived,
               status: isArchived && <Badge variant="neutral">Archived</Badge>,
               remove:
-                isActive && !isArchived
+                canChangeActivities && !isArchived
                   ? {
-                      label: activity.isInUse
-                        ? `Move ${activity.name} out of ${category.name} (it's on a project)`
-                        : `Remove ${activity.name} from ${category.name}`,
+                      label: `Move or archive ${activity.name}`,
                       onClick: () => {
-                        if (!update.isPending) setRemoving(activity);
+                        if (!setActivityCategory.isPending) {
+                          setRemoving(activity);
+                        }
                       },
                     }
                   : undefined,
@@ -139,7 +140,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
           }}
           emptyText="No activities in it yet."
           add={
-            isActive
+            canChangeActivities
               ? {
                   label: "Add activities",
                   icon: Plus,
@@ -154,16 +155,12 @@ export const CategoryPanel = ({ id }: { id: string }) => {
       <CategoryActivityMovesDialog
         category={category}
         isOpen={Boolean(removing)}
-        movesOut={removing?.isInUse ? [removing] : []}
-        toDrafts={removing && !removing.isInUse ? [removing] : []}
-        loading={update.isPending}
-        onConfirm={(destinationId) =>
+        movesOut={removing ? [removing] : []}
+        loading={setActivityCategory.isPending}
+        onConfirm={(destination) =>
           removing &&
-          update.mutate(
-            {
-              id: removing.id,
-              data: { categoryId: removing.isInUse ? destinationId : null },
-            },
+          setActivityCategory.mutate(
+            { id: removing.id, categoryId: destination },
             { onSettled: () => setRemoving(null) },
           )
         }

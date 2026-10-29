@@ -14,6 +14,12 @@ export const fullName = (u: User | AvatarUser) =>
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;
 
+/** Activities and categories classify everyone's time, so only the owner changes them. */
+export const canManageCatalogue = (role?: string) => role === UserRole.OWNER;
+
+/** Archiving a project reaches everyone on it, so only the owner archives or restores one. */
+export const canArchiveProjects = (role?: string) => role === UserRole.OWNER;
+
 export const isDeactivatedUser = (user: { status?: UserStatus }) =>
   user.status === UserStatus.DEACTIVATED;
 
@@ -32,8 +38,8 @@ export const deactivatedOnLabel = (
  * Whether the viewer may create, edit and delete someone's time entries.
  * Write access follows what the viewer can already see, so anyone whose row
  * reaches the team grid is also someone they may correct; everyone else only
- * ever edits their own. The backend enforces the same rule and also refuses
- * writes for a deactivated person, which the caller checks from their status.
+ * ever edits their own. The backend enforces the same rule; for a deactivated
+ * person it allows only the days before they left, which the caller checks.
  */
 export const canWriteTimeLogsFor = (
   role: string | undefined,

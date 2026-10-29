@@ -45,7 +45,6 @@ interface ResourcePageProps {
 
   topContent?: ReactNode;
   archivedLabel?: string;
-  archiveVerb?: string;
   children: ReactNode;
 }
 
@@ -77,7 +76,6 @@ export const ResourcePage = ({
   topContent,
 
   archivedLabel = "Archived",
-  archiveVerb = "archive",
   children,
 }: ResourcePageProps) => {
   const panelId = useId();
@@ -95,7 +93,7 @@ export const ResourcePage = ({
   const emptyStateDescription = searchQuery
     ? `No ${lowerTitle} match "${searchQuery}".`
     : isArchived
-      ? `${archivedLabel} ${lowerTitle} will appear here when you ${archiveVerb} them.`
+      ? `${archivedLabel} ${lowerTitle} will appear here.`
       : emptyDescription;
 
   const createAction = createActionPlacement({

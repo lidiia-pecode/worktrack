@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 
-import { activityDetailsQuery } from "@/hooks/useActivities";
+import { activityDetailsQuery, ARCHIVE_ACTIVITY } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { ActCategoryStatus } from "@/types/enums";
 import { byCount, listNames, nameOrCount } from "@/lib/utils/text";
@@ -14,30 +14,29 @@ import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { distinctProjects } from "./category-archive";
 
-/** An activity coming in from another category, or a draft with none. */
+/** An activity coming in from another category. */
 export interface MoveIn extends Choice {
-  fromCategory: string | null;
+  fromCategory: string;
 }
 
 interface CategoryActivityMovesDialogProps {
   category: Choice;
   isOpen: boolean;
   movesIn?: MoveIn[];
-  /** Taken off while on a project, so each moves to another category. */
+  /** Taken out of the category, so each moves to another one or is archived. */
   movesOut?: Choice[];
-  /** Taken off while on no project, so each is left a draft. */
-  toDrafts?: Choice[];
   loading?: boolean;
-  onConfirm: (destinationId: string | null) => void;
+  /** Where the activities taken out go: a category's id, or `ARCHIVE_ACTIVITY`. */
+  onConfirm: (destination: string) => void;
   onClose: () => void;
 }
 
 const names = (choices: Choice[]) =>
   listNames(choices.map((choice) => choice.name));
 
-// "Backend and QA leave Development; Standup gets a category."
+// "Backend and QA leave Development; Standup leaves Meetings."
 const describeMovesIn = (moves: MoveIn[]) => {
-  const byCategory = new Map<string | null, MoveIn[]>();
+  const byCategory = new Map<string, MoveIn[]>();
   moves.forEach((move) =>
     byCategory.set(move.fromCategory, [
       ...(byCategory.get(move.fromCategory) ?? []),
@@ -46,10 +45,9 @@ const describeMovesIn = (moves: MoveIn[]) => {
   );
 
   return [...byCategory]
-    .map(([from, group]) =>
-      from
-        ? `${names(group)} ${byCount(group.length, "leaves", "leave")} ${from}`
-        : `${names(group)} ${byCount(group.length, "gets a", "get a")} category`,
+    .map(
+      ([from, group]) =>
+        `${names(group)} ${byCount(group.length, "leaves", "leave")} ${from}`,
     )
     .join("; ");
 };
@@ -60,38 +58,23 @@ const countOf = (choices: Choice[]) =>
     "activities",
   );
 
-const titleFor = (
-  category: string,
-  movesIn: MoveIn[],
-  movesOut: Choice[],
-  toDrafts: Choice[],
-) => {
-  const kinds = [movesIn, movesOut, toDrafts].filter((list) => list.length);
-  if (kinds.length > 1) return `Change the activities in ${category}?`;
-
-  if (movesIn.length) return `Move ${countOf(movesIn)} to ${category}?`;
-  if (movesOut.length) return `Move ${countOf(movesOut)} out of ${category}?`;
-  return `Remove ${countOf(toDrafts)} from ${category}?`;
-};
-
-/** An activity is in at most one category, and must keep one while a project links it. */
+/** An activity is in one category; one taken out of it moves to another or is archived. */
 export const CategoryActivityMovesDialog = ({
   category,
   isOpen,
   movesIn = [],
   movesOut = [],
-  toDrafts = [],
   loading = false,
   onConfirm,
   onClose,
 }: CategoryActivityMovesDialogProps) => {
-  const needsDestination = movesOut.length > 0;
+  const takesOut = movesOut.length > 0;
   const activeCategories = useActivityCategoriesAllPagesQuery(
     { status: ActCategoryStatus.ACTIVE },
-    { enabled: isOpen && needsDestination },
+    { enabled: isOpen && takesOut },
   );
-  const [chosenId, setChosenId] = useState<string>();
-  // Its projects, as links, so the user can take it off them first.
+  const [chosen, setChosen] = useState<string>();
+  // Their projects, as links, which archiving takes them off.
   const linkedProjects = useQueries({
     queries: isOpen
       ? movesOut.map((move) => activityDetailsQuery(move.id))
@@ -104,68 +87,80 @@ export const CategoryActivityMovesDialog = ({
   const targets = activeCategories.items.filter(
     (target) => target.id !== category.id,
   );
-  const destinationId = chosenId ?? targets[0]?.id ?? null;
-  const destinationName =
-    targets.find((target) => target.id === destinationId)?.name ??
-    "another category";
+  const destination = chosen ?? targets[0]?.id ?? ARCHIVE_ACTIVITY;
+  const archives = takesOut && destination === ARCHIVE_ACTIVITY;
+  const destinationName = targets.find(
+    (target) => target.id === destination,
+  )?.name;
+  const forOut = (one: string, many: string) =>
+    byCount(movesOut.length, one, many);
+
+  const title =
+    movesIn.length > 0 && takesOut
+      ? `Change the activities in ${category.name}?`
+      : movesIn.length > 0
+        ? `Move ${countOf(movesIn)} to ${category.name}?`
+        : archives
+          ? `Archive ${countOf(movesOut)}?`
+          : `Move ${countOf(movesOut)} out of ${category.name}?`;
 
   const description = [
     movesIn.length > 0 && `${describeMovesIn(movesIn)}.`,
-    needsDestination &&
-      `${names(movesOut)} ${byCount(movesOut.length, "is", "are")} on ${byCount(projectsHoldingThem.length, "a project", "projects")}, and a project only offers activities that have a category. So ${byCount(movesOut.length, "it moves", "they move")} to ${destinationName}; to leave ${byCount(movesOut.length, "it", "them")} without one, take ${byCount(movesOut.length, "it", "them")} off ${byCount(movesOut.length, "its", "their")} projects first.`,
-    toDrafts.length > 0 &&
-      `${names(toDrafts)} ${byCount(toDrafts.length, "becomes a draft", "become drafts")}: still active, but not on projects until ${byCount(toDrafts.length, "it has", "they have")} a category again.`,
-    "Projects and logged time stay as they are.",
+    takesOut &&
+      (archives
+        ? `${names(movesOut)} ${forOut("is", "are")} archived: nobody can log new time on ${forOut("it", "them")}.`
+        : `${names(movesOut)} ${forOut("moves", "move")} to ${destinationName}.`),
+    "Time already logged stays as it is.",
   ]
     .filter(Boolean)
     .join(" ");
 
-  const onlyDrafts =
-    toDrafts.length > 0 && !movesIn.length && !needsDestination;
-
   const close = () => {
-    setChosenId(undefined);
+    setChosen(undefined);
     onClose();
   };
 
   return (
     <ImpactDialog
       isOpen={isOpen}
-      title={isOpen ? titleFor(category.name, movesIn, movesOut, toDrafts) : ""}
+      title={isOpen ? title : ""}
       description={description}
       affected={[
         {
-          label: "On projects",
-          entities: linkedEntities("project", projectsHoldingThem),
+          label: "Projects that lose them",
+          entities: archives
+            ? linkedEntities("project", projectsHoldingThem)
+            : [],
         },
       ]}
       choice={
-        needsDestination &&
-        !activeCategories.isLoading &&
-        (targets.length > 0 ? (
+        takesOut &&
+        !activeCategories.isLoading && (
           <FormSelect
-            label="Move to"
-            value={destinationId ?? undefined}
-            options={targets.map((target) => ({
-              value: target.id,
-              label: target.name,
-            }))}
-            onValueChange={setChosenId}
+            label={forOut("Where it goes", "Where they go")}
+            value={destination}
+            options={[
+              ...targets.map((target) => ({
+                value: target.id,
+                label: `Move to ${target.name}`,
+              })),
+              {
+                value: ARCHIVE_ACTIVITY,
+                label: forOut("Archive it", "Archive them"),
+              },
+            ]}
+            onValueChange={setChosen}
             disabled={loading}
           />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            There is no other active category to move to. Create one first.
-          </p>
-        ))
+        )
       }
-      confirmText={onlyDrafts ? "Remove" : "Move"}
-      confirmVariant={onlyDrafts ? "destructive" : "primary"}
+      confirmText={archives ? "Archive" : "Move"}
+      confirmVariant={archives ? "destructive" : "primary"}
       loading={loading}
-      confirmDisabled={needsDestination && !destinationId}
+      confirmDisabled={takesOut && activeCategories.isLoading}
       onConfirm={() => {
-        onConfirm(destinationId);
-        setChosenId(undefined);
+        onConfirm(destination);
+        setChosen(undefined);
       }}
       onClose={close}
     />

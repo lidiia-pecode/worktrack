@@ -20,8 +20,6 @@ import {
   archiveActivitiesLabel,
   archivePayload,
   distinctProjects,
-  DRAFTS_OPTION,
-  draftsLabel,
   noMoveTargetMessage,
 } from "./category-archive";
 
@@ -48,23 +46,15 @@ export const CategoryArchiveDialog = ({
   const activities = impact.data?.activities ?? [];
   const hasActiveActivities = activities.length > 0;
 
-  // A draft can't be on a project, so drafts are offered only while no project links any.
-  const canLeaveDrafts =
-    hasActiveActivities && activities.every((activity) => !activity.isInUse);
   const moveTargets = activeCategories.items.filter(
     (target) => target.id !== category?.id,
   );
-  const defaultOption = canLeaveDrafts
-    ? DRAFTS_OPTION
-    : (moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION);
+  const defaultOption = moveTargets[0]?.id ?? ARCHIVE_ACTIVITIES_OPTION;
   const selectedOption = chosenOption ?? defaultOption;
   const archivesActivities =
     hasActiveActivities && selectedOption === ARCHIVE_ACTIVITIES_OPTION;
 
   const options = [
-    ...(canLeaveDrafts
-      ? [{ value: DRAFTS_OPTION, label: draftsLabel(activities.length) }]
-      : []),
     ...moveTargets.map((target) => ({
       value: target.id,
       label: `Move to ${target.name}`,
@@ -102,11 +92,9 @@ export const CategoryArchiveDialog = ({
     ? "Could not check its activities. Close this and try again."
     : !isReady
       ? "Checking its activities..."
-      : canLeaveDrafts
-        ? "No project uses its active activities, so they can stay as drafts without a category, move to another one, or be archived with it."
-        : hasActiveActivities
-          ? "Its active activities are on projects, so they need a category: they move to another one or are archived with it."
-          : "Nobody will be able to put new activities in it. You can restore it later.";
+      : hasActiveActivities
+        ? "Every activity is in a category, so its active activities move to another one or are archived with it."
+        : "Nobody will be able to put new activities in it. You can restore it later.";
 
   return (
     <ImpactDialog

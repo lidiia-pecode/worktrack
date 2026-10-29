@@ -46,7 +46,7 @@ export class ActCategoriesController {
     return this.service.getDetails(id, user);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Post()
   @Serialize(ActivityCategoryResponse)
   create(
@@ -56,7 +56,7 @@ export class ActCategoriesController {
     return this.service.create(payload, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id')
   @Serialize(ActivityCategoryResponse)
   update(
@@ -67,7 +67,7 @@ export class ActCategoriesController {
     return this.service.update(id, payload, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Get(':id/archive-impact')
   @Serialize(ActivityCategoryArchiveImpactResponse)
   getArchiveImpact(
@@ -77,7 +77,7 @@ export class ActCategoriesController {
     return this.service.getArchiveImpact(id, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   @Serialize(ActivityCategoryResponse)
   archive(
@@ -88,7 +88,7 @@ export class ActCategoriesController {
     return this.service.archive(id, user.companyId, payload);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
   @Serialize(ActivityCategoryResponse)
   unarchive(

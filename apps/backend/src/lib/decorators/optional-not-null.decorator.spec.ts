@@ -59,8 +59,8 @@ const UPDATE_PAYLOADS: {
   },
   {
     dto: UpdateActivityPayload,
-    required: ['name', 'defaultBillable'],
-    nullable: ['categoryId'],
+    required: ['name', 'categoryId', 'defaultBillable'],
+    nullable: [],
   },
   {
     dto: UpdateTeamDto,
@@ -69,8 +69,8 @@ const UPDATE_PAYLOADS: {
   },
   {
     dto: UpdateTeamMemberDto,
-    required: ['roleInTeam', 'joinedAt', 'leaveCurrentTeam'],
-    nullable: ['leftAt'],
+    required: ['roleInTeam', 'leaveCurrentTeam'],
+    nullable: [],
   },
   {
     dto: UpdateCompanyDto,

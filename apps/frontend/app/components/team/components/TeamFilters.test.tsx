@@ -18,7 +18,6 @@ vi.mock("@/hooks/useProjects", () => ({
     items: [
       project("p-legacy", "Legacy CRM", ProjectStatus.ARCHIVED),
       project("p-northwind", "Northwind", ProjectStatus.ACTIVE),
-      project("p-launch", "Launch site", ProjectStatus.COMPLETED),
     ],
   }),
 }));
@@ -38,7 +37,6 @@ describe("TeamFilters", () => {
       "All projects",
       "Northwind",
       "Legacy CRM (archived)",
-      "Launch site (completed)",
     ]);
 
     await user.click(

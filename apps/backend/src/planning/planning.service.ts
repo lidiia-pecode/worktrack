@@ -145,29 +145,33 @@ export class PlanningService {
     });
   }
 
+  /**
+   * Plans from today on that can no longer happen: a member's, when they leave
+   * the project, or everyone's (no `userIds`), when it is archived.
+   */
   private applyRemovableFilter(
     qb: SelectQueryBuilder<PlanningEntry>,
     companyId: string,
     projectIds: string[],
-    userIds: string[],
+    userIds: string[] | undefined,
     today: string,
   ): void {
     qb.andWhere('p.company_id = :removableCompanyId', {
       removableCompanyId: companyId,
-    })
-      .andWhere('p.project_id IN (:...removableProjectIds)', {
-        removableProjectIds: projectIds,
-      })
-      .andWhere('p.user_id IN (:...removableUserIds)', {
+    }).andWhere('p.project_id IN (:...removableProjectIds)', {
+      removableProjectIds: projectIds,
+    });
+    if (userIds) {
+      qb.andWhere('p.user_id IN (:...removableUserIds)', {
         removableUserIds: userIds,
-      })
-      .andWhere('p.date >= :removableFrom', { removableFrom: today })
-      .andWhere(
-        `EXISTS (
+      });
+    }
+    qb.andWhere('p.date >= :removableFrom', { removableFrom: today }).andWhere(
+      `EXISTS (
           SELECT 1 FROM project_users pu
           WHERE pu.project_id = p.project_id AND pu.user_id = p.user_id
         )`,
-      );
+    );
   }
 
   // ==========================================
@@ -289,6 +293,36 @@ export class PlanningService {
     );
 
     return { count: await qb.getCount() };
+  }
+
+  /** Who has plans on a project from today on, and how many: what archiving it removes. */
+  async plansFromToday(
+    companyId: string,
+    projectId: string,
+  ): Promise<{ people: User[]; planCount: number }> {
+    const company = await this.getCompany(companyId);
+    const qb = this.repo
+      .createQueryBuilder('p')
+      .innerJoinAndSelect('p.user', 'u');
+    this.applyRemovableFilter(
+      qb,
+      companyId,
+      [projectId],
+      undefined,
+      todayISODate(company.timezone),
+    );
+
+    const entries = await qb
+      .orderBy('u.firstName', 'ASC')
+      .addOrderBy('u.lastName', 'ASC')
+      .getMany();
+
+    return {
+      people: [
+        ...new Map(entries.map((entry) => [entry.userId, entry.user])).values(),
+      ],
+      planCount: entries.length,
+    };
   }
 
   async getById(id: string, user: AuthUser): Promise<PlanningEntry> {
@@ -617,14 +651,18 @@ export class PlanningService {
     return { success: true };
   }
 
-  /** Runs inside the membership transaction, before the `project_users` rows go. */
-  async deleteForRemovedMembers(
+  /**
+   * Deletes a project's plans from today on: the given members', inside the
+   * membership transaction before their `project_users` rows go, or everyone's
+   * when no `userIds` are given, inside the archive transaction.
+   */
+  async deletePlansFromToday(
     manager: EntityManager,
     companyId: string,
     projectId: string,
-    userIds: string[],
+    userIds?: string[],
   ): Promise<void> {
-    if (userIds.length === 0) return;
+    if (userIds?.length === 0) return;
 
     const company = await this.getCompany(companyId, manager);
     const qb = manager

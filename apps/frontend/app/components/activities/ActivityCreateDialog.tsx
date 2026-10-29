@@ -14,8 +14,6 @@ interface ActivityCreateDialogProps {
   onCreated?: (activity: Activity) => void;
   /** Chosen to start with, such as the category it is added from. */
   categoryId?: string;
-  /** Made for a project, so it cannot be a draft. */
-  requiresCategory?: boolean;
   isOnboarding?: boolean;
 }
 
@@ -26,7 +24,6 @@ export const ActivityCreateDialog = ({
   onClose,
   onCreated,
   categoryId,
-  requiresCategory = false,
   isOnboarding = false,
 }: ActivityCreateDialogProps) => {
   const { create } = useActivitiesMutations();
@@ -49,16 +46,13 @@ export const ActivityCreateDialog = ({
       formId={FORM_ID}
       submitLabel="Create activity"
       isSubmitting={create.isPending}
-      submitDisabled={
-        requiresCategory && !categoriesLoading && categories.length === 0
-      }
+      submitDisabled={!categoriesLoading && categories.length === 0}
     >
       {!categoriesLoading && (
         <ActivityForm
           formId={FORM_ID}
           categories={categories}
           defaultValues={{ categoryId }}
-          requiresCategory={requiresCategory}
           onSubmit={handleSubmit}
           isSubmitting={create.isPending}
           isOnboarding={isOnboarding}

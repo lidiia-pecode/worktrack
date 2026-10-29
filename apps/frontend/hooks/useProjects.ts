@@ -63,8 +63,9 @@ export const useProjectsMutations = createEntityMutations<
 >({
   queryKey: queryKeys.projects.all,
 
-  // Removing somebody from a project deletes their future plans for it, and a
-  // person's, an activity's and a category's details count the projects.
+  // Removing somebody from a project, or archiving it, deletes plans from
+  // today on, and a person's, an activity's and a category's details count
+  // the projects.
   alsoInvalidate: [
     queryKeys.planning.all,
     queryKeys.users.all,
@@ -93,6 +94,14 @@ export const useProjectDetails = (id?: string) =>
     queryKey: queryKeys.projects.detail(id ?? ""),
     queryFn: () => ProjectsClientApi.getById(id!),
     enabled: Boolean(id),
+  });
+
+export const useProjectArchiveImpact = (projectId: string, enabled: boolean) =>
+  useQuery({
+    queryKey: queryKeys.projects.archiveImpact(projectId),
+    queryFn: () => ProjectsClientApi.getArchiveImpact(projectId),
+    enabled,
+    staleTime: 0,
   });
 
 export const useOwnProjects = () =>

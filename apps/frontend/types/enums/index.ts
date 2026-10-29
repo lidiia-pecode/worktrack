@@ -1,19 +1,15 @@
 export enum ActivityStatus {
   ACTIVE = "ACTIVE",
-  INACTIVE = "INACTIVE",
   ARCHIVED = "ARCHIVED",
 }
 
 export enum ActiveActivitiesAction {
   MOVE = "MOVE",
   ARCHIVE = "ARCHIVE",
-  /** Leaves them as drafts; refused if a project links any. */
-  UNCATEGORIZE = "UNCATEGORIZE",
 }
 
 export enum ActCategoryStatus {
   ACTIVE = "ACTIVE",
-  INACTIVE = "INACTIVE",
   ARCHIVED = "ARCHIVED",
 }
 
@@ -37,7 +33,6 @@ export enum WeekDay {
 export enum ProjectStatus {
   ACTIVE = "ACTIVE",
   ARCHIVED = "ARCHIVED",
-  COMPLETED = "COMPLETED",
 }
 
 export enum TeamStatus {

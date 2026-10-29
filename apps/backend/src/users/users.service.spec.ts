@@ -21,7 +21,6 @@ import { ReportingService } from 'src/reporting/reporting.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
-import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -457,7 +456,6 @@ describe('UsersService scope', () => {
       await teams.addMember(alphaId, companyId, {
         userId: leaver.id,
         roleInTeam: TeamRole.MEMBER,
-        joinedAt: todayISODate(TIME_ZONE),
       });
 
       await expect(listedIds(manager)).resolves.toContain(leaver.id);

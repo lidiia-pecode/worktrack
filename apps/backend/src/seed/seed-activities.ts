@@ -15,11 +15,9 @@ export async function seedActivities(
     .findBy({ companyId });
 
   for (const item of ACTIVITIES) {
-    const category = item.category
-      ? categories.find((c) => c.name === item.category)
-      : null;
+    const category = categories.find((c) => c.name === item.category);
 
-    if (category === undefined) {
+    if (!category) {
       throw new Error(`Activity category "${item.category}" not found`);
     }
 
@@ -33,7 +31,7 @@ export async function seedActivities(
       await activityRepo.save(
         activityRepo.create({
           companyId,
-          categoryId: category?.id ?? null,
+          categoryId: category.id,
           name: item.name,
           defaultBillable: item.billable,
           status: item.status ?? ActivityStatus.ACTIVE,

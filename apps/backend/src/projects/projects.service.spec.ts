@@ -64,7 +64,7 @@ describe('ProjectsService membership scope', () => {
 
   let activityId: string;
 
-  const deleteForRemovedMembers = jest.fn(() => Promise.resolve());
+  const deletePlansFromToday = jest.fn(() => Promise.resolve());
 
   const createUser = async (
     name: string,
@@ -179,7 +179,7 @@ describe('ProjectsService membership scope', () => {
         stub<CapacityService>({}),
       ),
       teamVisibility,
-      stub<PlanningService>({ deleteForRemovedMembers }),
+      stub<PlanningService>({ deletePlansFromToday }),
       dataSource,
     );
 
@@ -751,48 +751,6 @@ describe('ProjectsService membership scope', () => {
       );
     });
 
-    it('refuses a draft activity, with no category, wherever it is linked', async () => {
-      const { id: draftId } = await dataSource
-        .getRepository(Activity)
-        .save({ companyId, name: `Draft ${RUN}`, categoryId: null });
-      const projectId = await createProject('Draft links', []);
-
-      await expect(
-        service.addActivity(projectId, draftId, owner),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.update(projectId, { activityIds: [draftId] }, owner),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.create(
-          { name: `With a draft ${RUN}`, activityIds: [draftId] },
-          owner,
-        ),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(offeredIds(projectId)).resolves.toEqual([]);
-    });
-
-    it('never ends with a draft on a project, when both happen at once', async () => {
-      const activityId = await createActivity('Contested');
-      const projectId = await createProject('Contested project', []);
-
-      await Promise.allSettled([
-        service.addActivity(projectId, activityId, owner),
-        activities.update(activityId, { categoryId: null }, companyId),
-      ]);
-
-      const activity = await activities.findRaw(activityId, companyId);
-      const offered = await offeredIds(projectId);
-      // Whichever went first, the other was refused.
-      expect(offered.includes(activityId) && activity.categoryId === null).toBe(
-        false,
-      );
-      expect(offered.includes(activityId) || activity.categoryId === null).toBe(
-        true,
-      );
-    });
-
     it('adds and removes one activity, keeping its link for logged time', async () => {
       const kept = await createActivity('Linked one');
       const toggled = await createActivity('Toggled one');
@@ -864,12 +822,12 @@ describe('ProjectsService membership scope', () => {
         alphaMember,
         betaMember,
       ]);
-      deleteForRemovedMembers.mockClear();
+      deletePlansFromToday.mockClear();
 
       await service.removeMember(projectId, alphaMember.id, alphaManager);
 
       await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
-      expect(deleteForRemovedMembers).toHaveBeenCalledWith(
+      expect(deletePlansFromToday).toHaveBeenCalledWith(
         expect.anything(),
         companyId,
         projectId,
@@ -888,13 +846,13 @@ describe('ProjectsService membership scope', () => {
 
     it('changes nothing for someone already on it, or not on it', async () => {
       const projectId = await createProject('no change', [alphaMember]);
-      deleteForRemovedMembers.mockClear();
+      deletePlansFromToday.mockClear();
 
       await service.addMember(projectId, alphaMember.id, alphaManager);
       await service.removeMember(projectId, leaver.id, alphaManager);
 
       await expect(memberIds(projectId)).resolves.toEqual(sorted(alphaMember));
-      expect(deleteForRemovedMembers).not.toHaveBeenCalled();
+      expect(deletePlansFromToday).not.toHaveBeenCalled();
     });
 
     it('refuses someone from another company, even for an owner', async () => {
