@@ -21,7 +21,6 @@ import {
   UpdateTeamMemberDto,
 } from './dtos/team.dto';
 import {
-  ArchivedTeamResponse,
   TeamArchiveImpactResponse,
   TeamMembershipResponse,
   TeamResponse,
@@ -89,7 +88,7 @@ export class TeamsController {
 
   @Role(UserRole.OWNER)
   @Patch(':id/archive')
-  @Serialize(ArchivedTeamResponse)
+  @Serialize(TeamResponse)
   async archiveTeam(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 
-import { memberChangeCopy } from "./team-member-changes";
+import { memberChangeCopy, pickerChangesCopy } from "./team-member-changes";
 import { MembershipWithUser } from "./team-memberships";
 
 const membership = (
@@ -74,6 +74,20 @@ describe("memberChangeCopy", () => {
     ).not.toContain("without an active manager");
   });
 
+  it("makes a step down a move when they are a member of another team", () => {
+    const copy = memberChangeCopy(
+      { kind: "role", membership: emma, roleInTeam: TeamRole.MEMBER },
+      teamOf([emma, john]),
+      { ...asOwner, otherMemberTeam: { id: "t-9", name: "Platform" } },
+    );
+
+    expect(copy.title).toBe("Move Emma Clarke to Design as a member?");
+    expect(copy.description).toBe(
+      "They leave Platform today and no longer see Design's members. Design is then left without an active manager.",
+    );
+    expect(copy.confirmText).toBe("Move");
+  });
+
   it("does not warn when the manager removed was already deactivated", () => {
     const deactivated = {
       ...emma,
@@ -123,5 +137,66 @@ describe("memberChangeCopy", () => {
     expect(copy.description).toBe(
       "They leave the team today. Design is then left without an active manager.",
     );
+  });
+});
+
+describe("pickerChangesCopy", () => {
+  const team = teamOf([emma, john]);
+  const design = { id: "t-9", name: "Design Studio" };
+
+  it("confirms a move by naming the team they leave", () => {
+    const copy = pickerChangesCopy(team, {
+      moves: [{ name: "Anna Smith", fromTeam: design }],
+      removals: [],
+      leavesNoManager: false,
+    });
+
+    expect(copy.title).toBe("Move Anna Smith to Design?");
+    expect(copy.description).toBe("Anna Smith leaves Design Studio today.");
+    expect(copy.confirmText).toBe("Move");
+  });
+
+  it("lists several moves with where each comes from", () => {
+    const copy = pickerChangesCopy(team, {
+      moves: [
+        { name: "Anna Smith", fromTeam: design },
+        { name: "Bob Jones", fromTeam: { id: "t-8", name: "Delivery" } },
+      ],
+      removals: [],
+      leavesNoManager: false,
+    });
+
+    expect(copy.title).toBe("Move 2 people to Design?");
+    expect(copy.description).toBe(
+      "They leave their current team today: Anna Smith (Design Studio), Bob Jones (Delivery).",
+    );
+  });
+
+  it("asks once for moves and removals together", () => {
+    const copy = pickerChangesCopy(team, {
+      moves: [{ name: "Anna Smith", fromTeam: design }],
+      removals: ["Emma Clarke"],
+      leavesNoManager: true,
+    });
+
+    expect(copy.title).toBe(
+      "Move Anna Smith to Design and remove Emma Clarke?",
+    );
+    expect(copy.description).toBe(
+      "Anna Smith leaves Design Studio today. Removed from Design today: Emma Clarke. Design is then left without an active manager.",
+    );
+    expect(copy.confirmVariant).toBe("destructive");
+  });
+
+  it("keeps the removal-only wording", () => {
+    const copy = pickerChangesCopy(team, {
+      moves: [],
+      removals: ["John Clarke", "Emma Clarke"],
+      leavesNoManager: false,
+    });
+
+    expect(copy.title).toBe("Remove 2 people from Design?");
+    expect(copy.description).toBe("They leave the team today.");
+    expect(copy.confirmText).toBe("Remove");
   });
 });

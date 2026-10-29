@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { ArrowRightLeft, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -14,8 +14,12 @@ import {
   formatDuration,
   todayISODate,
 } from "@/lib/utils/date";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
-import { Capacity, UserDetails } from "@/types";
+import {
+  deactivatedOnLabel,
+  fullName,
+  isDeactivatedUser,
+} from "@/lib/utils/user";
+import { Capacity, UserDetails, UserTeamMembership } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
 import { linkedEntities } from "../entity-panel/EntityLink";
@@ -32,9 +36,14 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
+import { UserChangeTeamDialog } from "./UserChangeTeamDialog";
 import { UserForm, UserFormData } from "./UserForm";
 import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
 import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
+import {
+  TeamMemberRemoveDialog,
+  TeamRemoval,
+} from "../teams/TeamMemberRemoveDialog";
 import { UserProjectsPicker } from "./UserProjectsPicker";
 
 const EDIT_FORM_ID = "user-edit-form";
@@ -152,14 +161,27 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
     user.id,
     isOwner,
   );
+  const { timezone } = useWorkSettings();
   const panel = useEntityPanel();
   const userActions = useUserActions();
   const projectChanges = useProjectLinkChanges();
 
   const isDeactivated = isDeactivatedUser(user);
+  const deactivatedOn = deactivatedOnLabel(user, timezone);
   // Deactivating them from their row ends an open edit.
   const isEditing = panel.isEditing && userActions.canEdit(user);
   const canChangeProjects = !isDeactivated && !isEditing;
+  // Team structure is the owner's; the owner is never a team's member.
+  const canChangeTeam =
+    isOwner && canChangeProjects && user.role !== UserRole.OWNER;
+  const [isChangingTeam, setIsChangingTeam] = useState(false);
+  const [removal, setRemoval] = useState<TeamRemoval | null>(null);
+  // As on the team's panel: a manager removes members; managers are the owner's to remove.
+  const canRemoveFromTeam = (team: UserTeamMembership) =>
+    !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
+  const memberTeam = user.teams.find(
+    (team) => team.roleInTeam === TeamRole.MEMBER,
+  );
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
     return <UserProjectsPicker user={user} />;
@@ -172,7 +194,15 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         name={fullName(user)}
         subtitle={user.position}
         leading={<Avatar user={user} size="lg" />}
-        status={isDeactivated && <PanelStatus label="Deactivated" />}
+        status={
+          isDeactivated && (
+            <PanelStatus
+              label={
+                deactivatedOn ? `Deactivated ${deactivatedOn}` : "Deactivated"
+              }
+            />
+          )
+        }
         onEdit={
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }
@@ -207,12 +237,28 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
             entity: { type: "team", id: team.id },
             name: team.name,
             detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
+            remove: canRemoveFromTeam(team)
+              ? {
+                  label: `Remove ${fullName(user)} from ${team.name}`,
+                  onClick: () =>
+                    setRemoval({ teamId: team.id, userId: user.id }),
+                }
+              : undefined,
           })}
           emptyText={
             <>
               <ManageWarning inline>No team</ManageWarning>, so only the owner
               sees them.
             </>
+          }
+          add={
+            canChangeTeam
+              ? {
+                  label: memberTeam ? "Change team" : "Add to a team",
+                  icon: memberTeam ? ArrowRightLeft : Plus,
+                  onClick: () => setIsChangingTeam(true),
+                }
+              : undefined
           }
         />
 
@@ -258,6 +304,15 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
 
       {userActions.dialogs}
       {projectChanges.dialogs}
+      <UserChangeTeamDialog
+        user={isChangingTeam ? user : null}
+        currentTeam={memberTeam ?? null}
+        onClose={() => setIsChangingTeam(false)}
+      />
+      <TeamMemberRemoveDialog
+        removal={removal}
+        onClose={() => setRemoval(null)}
+      />
     </>
   );
 };

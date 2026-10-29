@@ -53,6 +53,8 @@ const OTHER_SLUG = `timelog-write-other-${RUN}`;
 
 const DATE = '2026-02-10';
 const LOCKED_DATE = '2026-03-10';
+/** The day the deactivated person left; nothing can be recorded from it on. */
+const LEAVE_DAY = '2026-02-20';
 
 describe('TimeLogsService write scope', () => {
   let dataSource: DataSource;
@@ -127,21 +129,21 @@ describe('TimeLogsService write scope', () => {
       teamVisibility,
     );
 
+    const capacity = new CapacityService(
+      dataSource.getRepository(UserCapacity),
+      dataSource.getRepository(Company),
+      dataSource.getRepository(User),
+      dataSource.getRepository(UserInactivePeriod),
+      reporting,
+    );
+
     service = new TimeLogsService(
       dataSource.getRepository(TimeLog),
       dataSource.getRepository(ProjectActivity),
       reporting,
       teamVisibility,
-      new ExpectedHoursService(
-        dataSource.getRepository(Absence),
-        new CapacityService(
-          dataSource.getRepository(UserCapacity),
-          dataSource.getRepository(Company),
-          dataSource.getRepository(User),
-          dataSource.getRepository(UserInactivePeriod),
-          reporting,
-        ),
-      ),
+      new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
+      capacity,
       dataSource,
     );
 
@@ -162,6 +164,9 @@ describe('TimeLogsService write scope', () => {
       companyId,
       UserStatus.DEACTIVATED,
     );
+    await dataSource.getRepository(User).update(deactivated.id, {
+      deactivatedAt: new Date(`${LEAVE_DAY}T12:00:00Z`),
+    });
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -317,13 +322,38 @@ describe('TimeLogsService write scope', () => {
       );
     });
 
-    it('refuses everyone for a deactivated person', async () => {
+    it("logs a deactivated person's time before they left, for an owner and their manager", async () => {
+      const byOwner = await service.create(logFor(deactivated.id), owner);
+      const byManager = await service.create(logFor(deactivated.id), manager);
+
+      expect(byOwner.userId).toBe(deactivated.id);
+      expect(byManager.userId).toBe(deactivated.id);
+    });
+
+    it('refuses time from the day a deactivated person left', async () => {
       await expect(
-        service.create(logFor(deactivated.id), owner),
-      ).rejects.toThrow(BadRequestException);
+        service.create(logFor(deactivated.id, LEAVE_DAY), owner),
+      ).rejects.toThrow('had left by then');
       await expect(
-        service.create(logFor(deactivated.id), manager),
+        service.create(logFor(deactivated.id, '2026-02-25'), manager),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses time inside a spell somebody was deactivated for', async () => {
+      const spell = await dataSource.getRepository(UserInactivePeriod).save({
+        companyId,
+        userId: member.id,
+        deactivatedAt: new Date('2026-02-02T12:00:00Z'),
+        reactivatedAt: new Date('2026-02-05T12:00:00Z'),
+      });
+
+      try {
+        await expect(
+          service.create(logFor(member.id, '2026-02-03'), member),
+        ).rejects.toThrow('back on 2026-02-05');
+      } finally {
+        await dataSource.getRepository(UserInactivePeriod).delete(spell.id);
+      }
     });
 
     it('refuses any role inside a locked period', async () => {
@@ -425,15 +455,19 @@ describe('TimeLogsService write scope', () => {
       ).rejects.toThrow(ForbiddenException);
     });
 
-    it("leaves a deactivated person's entries as they are", async () => {
+    it("corrects a deactivated person's entry from before they left", async () => {
       const id = await existingLogFor(deactivated.id);
 
-      await expect(service.update(id, { minutes: 90 }, owner)).rejects.toThrow(
-        BadRequestException,
-      );
-      await expect(service.delete(id, owner)).rejects.toThrow(
-        BadRequestException,
-      );
+      await expect(
+        service.update(id, { minutes: 90 }, owner),
+      ).resolves.toMatchObject({ minutes: 90 });
+      // It can't be moved onto a day they were gone.
+      await expect(
+        service.update(id, { date: LEAVE_DAY }, manager),
+      ).rejects.toThrow(BadRequestException);
+      await expect(service.delete(id, manager)).resolves.toEqual({
+        success: true,
+      });
     });
 
     it("refuses an employee for someone else's entry", async () => {
@@ -656,7 +690,10 @@ describe('TimeLogsService write scope', () => {
       const ids = rows.map((row) => row.user.id);
 
       expect(ids.filter((id) => id === manager.id)).toHaveLength(1);
-      expect(ids.sort()).toEqual([manager.id, member.id, unassigned.id].sort());
+      // The deactivated person is on Alpha too and had not left yet.
+      expect(ids.sort()).toEqual(
+        [manager.id, member.id, unassigned.id, deactivated.id].sort(),
+      );
     });
 
     it('marks a deactivated person who logged in the range', async () => {
@@ -668,6 +705,22 @@ describe('TimeLogsService write scope', () => {
 
       expect(statusOf(deactivated.id)).toBe(UserStatus.DEACTIVATED);
       expect(statusOf(member.id)).toBe(UserStatus.ACTIVE);
+    });
+
+    it('lists a deactivated person on a week before they left, logged or not', async () => {
+      const idsOf = async (dateFrom: string, dateTo: string) => {
+        const { rows } = await service.getTeamSummary(
+          { dateFrom, dateTo },
+          owner,
+        );
+        return rows.map((row) => row.user.id);
+      };
+
+      // Nothing logged on either week; they left on Friday the 20th.
+      expect(await idsOf('2026-02-16', '2026-02-19')).toContain(deactivated.id);
+      expect(await idsOf('2026-02-23', '2026-02-27')).not.toContain(
+        deactivated.id,
+      );
     });
 
     it("counts only the filtered project's hours", async () => {

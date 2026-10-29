@@ -35,7 +35,7 @@ const myTime = { label: "My time", href: "/my-time", icon: CalendarCheck };
 const planning = { label: "Planning", href: "/planning", icon: CalendarClock };
 const reports = { label: "Reports", href: "/reports", icon: FileBarChart };
 
-const users = { label: "Users", href: "/admin/users", icon: Users };
+const people = { label: "People", href: "/admin/users", icon: Users };
 const teams = { label: "Teams", href: "/admin/teams", icon: Network };
 const projects = {
   label: "Projects",
@@ -66,11 +66,11 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
     return [{ items: [timesheet, myTime] }];
   }
 
-  const manageItems = [users, teams, projects, activities, categories];
-
-  if (role === UserRole.OWNER) {
-    manageItems.push(periods);
-  }
+  // Team structure is the owner's; managers act on people from People and Team time.
+  const manageItems =
+    role === UserRole.OWNER
+      ? [people, teams, projects, activities, categories, periods]
+      : [people, projects, activities, categories];
 
   return [
     { label: "Work", items: [teamTime, timesheet, myTime, planning, reports] },

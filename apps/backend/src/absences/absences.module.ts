@@ -5,9 +5,15 @@ import { AbsencesService } from './absences.service';
 import { AbsencesController } from './absences.controller';
 import { ReportingModule } from 'src/reporting/reporting.module';
 import { TeamsModule } from 'src/teams/teams.module';
+import { CapacityModule } from 'src/capacity/capacity.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Absence]), ReportingModule, TeamsModule],
+  imports: [
+    TypeOrmModule.forFeature([Absence]),
+    ReportingModule,
+    TeamsModule,
+    CapacityModule,
+  ],
   controllers: [AbsencesController],
   providers: [AbsencesService],
   exports: [AbsencesService],

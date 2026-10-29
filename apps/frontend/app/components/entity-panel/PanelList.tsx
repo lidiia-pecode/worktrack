@@ -1,26 +1,33 @@
 "use client";
 
-import { Fragment, MouseEvent, ReactNode, useState } from "react";
-import { ChevronRight, X, type LucideIcon } from "lucide-react";
+import { Fragment, MouseEvent, ReactNode, useRef, useState } from "react";
+import { MoreHorizontal, X, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { EntityRef } from "@/lib/utils/entity-ref";
 import { cn } from "@/lib/utils/cn";
 
+import type { ManageRowAction } from "../shared/resource/ManageList";
 import { EntityLink, useOpenEntity } from "./EntityLink";
 
 const VISIBLE_ITEMS = 8;
 
 interface PanelListRow {
-  /** What the row opens, from a click anywhere on it. */
-  entity: EntityRef;
+  /** What the row opens, from a click anywhere on it; a row without one, such as an invitation, opens nothing. */
+  entity?: EntityRef;
   name: string;
   leading?: ReactNode;
   detail?: ReactNode;
   /** Why the row reads differently, such as an Archived badge. */
   status?: ReactNode;
-  /** Changes the link itself, such as a member's role in a team. */
-  control?: ReactNode;
+  /** Changes the link itself, such as a member's role in a team, from a "⋯" menu. */
+  actions?: ManageRowAction[];
   /** Takes it off this list; left out when the row can't change. */
   remove?: { label: string; onClick: () => void };
   /** Archived or deactivated, so it reads quieter. */
@@ -65,15 +72,68 @@ const RemoveButton = ({
   </Button>
 );
 
+const RowMenu = ({
+  name,
+  actions,
+}: {
+  name: string;
+  actions: ManageRowAction[];
+}) => {
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  // What an item opens returns focus to the trigger, as in the Manage tables.
+  const select = (action: () => void) => {
+    triggerRef.current?.focus();
+    action();
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="iconSm"
+            ref={triggerRef}
+            aria-label={`Actions for ${name}`}
+            className="text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
+          >
+            <MoreHorizontal className="size-4" />
+          </Button>
+        }
+      />
+
+      <DropdownMenuContent align="end" className="w-44 p-0">
+        {actions.map((action) => (
+          <DropdownMenuItem
+            key={action.label}
+            variant={action.destructive ? "destructive" : "default"}
+            onClick={() => select(action.onSelect)}
+          >
+            <action.icon />
+            {action.label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 /** The whole row opens its entity, as a row does in the Manage tables. */
 const Row = ({ row }: { row: PanelListRow }) => {
   const openEntity = useOpenEntity();
-  const hasControls = row.status || row.control || row.remove;
+  const { entity } = row;
+  const hasActions = Boolean(row.actions?.length);
+  const hasControls = row.status || hasActions || row.remove;
 
   return (
     <li
-      onClick={() => openEntity(row.entity)}
-      className="group flex min-h-13 cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors hover:bg-muted/30"
+      onClick={entity && (() => openEntity(entity))}
+      className={cn(
+        "group flex min-h-13 items-center gap-3 px-3 py-2 text-sm",
+        entity && "cursor-pointer transition-colors hover:bg-muted/30",
+      )}
     >
       {row.leading && (
         <span aria-hidden="true" className="shrink-0">
@@ -82,13 +142,17 @@ const Row = ({ row }: { row: PanelListRow }) => {
       )}
 
       <div className={cn("min-w-0 flex-1", row.isInactive && "opacity-60")}>
-        <EntityLink
-          entity={row.entity}
-          tone="plain"
-          className="block max-w-full truncate font-medium"
-        >
-          {row.name}
-        </EntityLink>
+        {entity ? (
+          <EntityLink
+            entity={entity}
+            tone="plain"
+            className="block max-w-full truncate font-medium"
+          >
+            {row.name}
+          </EntityLink>
+        ) : (
+          <p className="truncate font-medium text-foreground">{row.name}</p>
+        )}
 
         {row.detail && (
           <div className="truncate text-xs text-muted-foreground">
@@ -103,16 +167,10 @@ const Row = ({ row }: { row: PanelListRow }) => {
           className="flex shrink-0 items-center gap-1.5"
         >
           {row.status}
-          {row.control}
+          {hasActions && <RowMenu name={row.name} actions={row.actions!} />}
           {row.remove && <RemoveButton {...row.remove} />}
         </div>
       )}
-
-      {/* A touch screen has no hover, so there it always shows. */}
-      <ChevronRight
-        aria-hidden="true"
-        className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
-      />
     </li>
   );
 };

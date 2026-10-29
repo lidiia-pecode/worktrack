@@ -364,6 +364,7 @@ describe('PeopleReportService', () => {
     await dataSource.getRepository(User).delete([leaver.id, plannedOnly.id]);
 
     expect(rows.find((row) => row.userId === leaver.id)).toMatchObject({
+      status: UserStatus.DEACTIVATED,
       loggedMinutes: 120,
       expectedMinutes: 6 * FULL_DAY,
       daysWithoutTime: [],

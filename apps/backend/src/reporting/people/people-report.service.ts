@@ -54,6 +54,8 @@ export interface PeopleReportRow extends PeopleReportFigures {
   name: string;
   position: string | null;
   role: UserRole;
+  /** A deactivated person is listed while their time counts in the range. */
+  status: UserStatus;
   /** Their active teams, by name; for a manager, only the teams they lead. */
   teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
@@ -174,6 +176,7 @@ export class PeopleReportService {
         name: `${person.firstName} ${person.lastName}`,
         position: person.position ?? null,
         role: person.role,
+        status: person.status,
         teams: teams.get(person.id) ?? [],
         loggedMinutes: personHours?.totalMinutes ?? 0,
         billableMinutes: personHours?.billableMinutes ?? 0,

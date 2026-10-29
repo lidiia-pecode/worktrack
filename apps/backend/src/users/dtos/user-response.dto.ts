@@ -38,6 +38,10 @@ export class UserResponse {
   @Expose()
   hasPassword!: boolean;
 
+  /** When they were deactivated; null while active. */
+  @Expose()
+  deactivatedAt!: Date | null;
+
   @Expose()
   updatedAt!: Date;
 

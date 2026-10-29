@@ -12,40 +12,42 @@ import { TEAM_ROLE_LABELS } from "@/lib/constants";
 import { todayISODate } from "@/lib/utils/date";
 import { fullName, initials } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
+import { UserTeam } from "@/types/User";
 import { TeamRole, UserRole, UserStatus } from "@/types/enums";
-import { nameOrCount } from "@/lib/utils/text";
 
 import { PanelView } from "../entity-panel/EntityPanelLayout";
 import { Choice, useStagedSelection } from "../entity-panel/useStagedSelection";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 import { InviteHint } from "../users/InviteHint";
-import {
-  activeManagers,
-  currentMemberships,
-  leftWithoutManagerText,
-} from "./team-memberships";
+import { pickerChangesCopy } from "./team-member-changes";
+import { activeManagers, currentMemberships } from "./team-memberships";
 
 export const MEMBERS_PICKER = "add-members";
 
 const TEAM_ROLES = [TeamRole.MANAGER, TeamRole.MEMBER];
 
-// Only someone with the Manager role can lead a team; employees join as members.
-const USER_ROLE_FOR: Record<TeamRole, UserRole> = {
-  [TeamRole.MANAGER]: UserRole.MANAGER,
-  [TeamRole.MEMBER]: UserRole.EMPLOYEE,
+// Only someone with the Manager role can lead a team; anyone but the owner
+// can be a member of one, a Manager included.
+const USER_ROLES_FOR: Record<TeamRole, UserRole[]> = {
+  [TeamRole.MANAGER]: [UserRole.MANAGER],
+  [TeamRole.MEMBER]: [UserRole.EMPLOYEE, UserRole.MANAGER],
 };
 
-/** A current member carries their membership; a new one, the role they join in. */
+/**
+ * A current member carries their membership; a new one, the role they join in
+ * and, for a member of another team, the team they leave for this one.
+ */
 interface MemberChoice extends Choice {
   membershipId?: string;
   roleInTeam?: TeamRole;
+  fromTeam?: UserTeam;
 }
 
 export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const { timezone } = useWorkSettings();
   const { addMember, removeMember } = useTeamMembers(team.id);
-  const [isConfirmingRemoval, setIsConfirmingRemoval] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
   // A team without a manager most likely needs one first.
   const [roleInTeam, setRoleInTeam] = useState(
     activeManagers(team).length === 0 ? TeamRole.MANAGER : TeamRole.MEMBER,
@@ -53,7 +55,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery({
     status: UserStatus.ACTIVE,
-    role: USER_ROLE_FOR[roleInTeam],
+    roles: USER_ROLES_FOR[roleInTeam],
     search: searchQuery,
   });
 
@@ -65,8 +67,19 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     })),
   );
 
-  const joiningAs = (userId: string) =>
-    staged.toAdd.find((choice) => choice.id === userId)?.roleInTeam;
+  const staging = (userId: string) =>
+    staged.toAdd.find((choice) => choice.id === userId);
+
+  // Only a member joins as a member; a manager leads this team on top of
+  // whatever else they do.
+  const leavesFor = (person: { memberTeam: UserTeam | null }) =>
+    roleInTeam === TeamRole.MEMBER && person.memberTeam?.id !== team.id
+      ? (person.memberTeam ?? undefined)
+      : undefined;
+
+  const moves = staged.toAdd.flatMap((choice) =>
+    choice.fromTeam ? [{ name: choice.name, fromTeam: choice.fromTeam }] : [],
+  );
 
   const managerIds = activeManagers(team).map((manager) => manager.id);
   const leavesNoManager =
@@ -85,6 +98,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           userId: choice.id,
           roleInTeam: choice.roleInTeam ?? TeamRole.MEMBER,
           joinedAt,
+          leaveCurrentTeam: Boolean(choice.fromTeam),
         }),
       ),
       ...staged.toRemove.map((choice) =>
@@ -93,10 +107,17 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     ]);
   };
 
+  // Taking someone off a team, or out of another one, is confirmed first.
   const done = () => {
-    if (staged.toRemove.length > 0) setIsConfirmingRemoval(true);
+    if (staged.toRemove.length > 0 || moves.length > 0) setIsConfirming(true);
     else void applyAll();
   };
+
+  const confirmation = pickerChangesCopy(team, {
+    moves,
+    removals: staged.toRemove.map((choice) => choice.name),
+    leavesNoManager,
+  });
 
   return (
     <>
@@ -139,13 +160,26 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>
-            staged.toggle({ id: person.id, name: fullName(person), roleInTeam })
+            staged.toggle({
+              id: person.id,
+              name: fullName(person),
+              roleInTeam,
+              fromTeam: leavesFor(person),
+            })
           }
           getId={(person) => person.id}
           getLabel={fullName}
           getSubtitle={(person) => {
-            const role = joiningAs(person.id);
-            return role ? `Joins as ${TEAM_ROLE_LABELS[role]}` : person.email;
+            const choice = staging(person.id);
+            if (choice?.roleInTeam) {
+              return choice.fromTeam
+                ? `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}, leaving ${choice.fromTeam.name}`
+                : `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}`;
+            }
+            // Managers show in the Member view too; unchoosing one removes them.
+            if (managerIds.includes(person.id)) return "Manages this team";
+            const fromTeam = leavesFor(person);
+            return fromTeam ? `In ${fromTeam.name}` : person.email;
           }}
           getAvatarText={initials}
           onSearchChange={setSearch}
@@ -156,32 +190,24 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           emptyMessage={
             roleInTeam === TeamRole.MANAGER
               ? "Nobody has the Manager role yet. Change someone's role in their panel first."
-              : "No employees to add yet."
+              : "Nobody to add yet."
           }
           searchPlaceholder="Search people..."
         />
       </PanelView>
 
       <ImpactDialog
-        isOpen={isConfirmingRemoval}
-        title={`Remove ${nameOrCount(
-          staged.toRemove.map((choice) => choice.name),
-          "people",
-        )} from ${team.name}?`}
-        description={[
-          "They leave the team today.",
-          leavesNoManager && leftWithoutManagerText(team),
-        ]
-          .filter(Boolean)
-          .join(" ")}
-        confirmText="Remove"
-        confirmVariant="destructive"
+        isOpen={isConfirming}
+        title={confirmation.title}
+        description={confirmation.description}
+        confirmText={confirmation.confirmText}
+        confirmVariant={confirmation.confirmVariant}
         loading={staged.isApplying}
         onConfirm={() => {
-          setIsConfirmingRemoval(false);
+          setIsConfirming(false);
           void applyAll();
         }}
-        onClose={() => setIsConfirmingRemoval(false)}
+        onClose={() => setIsConfirming(false)}
       />
     </>
   );

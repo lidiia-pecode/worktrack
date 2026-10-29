@@ -7,9 +7,14 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils/date";
-import { fullName, hasManagerAccess } from "@/lib/utils/user";
+import {
+  deactivatedOnLabel,
+  fullName,
+  hasManagerAccess,
+} from "@/lib/utils/user";
 import { UserListItem } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 import { countLabel } from "@/lib/utils/text";
@@ -36,44 +41,56 @@ const NO_TEAM = "No team";
 const weeklyHours = (user: UserListItem) =>
   formatDuration(user.weeklyMinutes ?? 0);
 
-const COLUMNS: ManageColumn<UserListItem>[] = [
-  { header: "Role", width: "w-28", cell: (user) => ROLE_LABELS[user.role] },
-  {
-    header: "Team",
-    width: "w-48",
-    cell: (user) =>
-      user.teams.length > 0 ? (
-        <UserTeams user={user} />
-      ) : (
-        <ManageWarning>{NO_TEAM}</ManageWarning>
-      ),
-    summary: (user) =>
-      user.teams.length > 0 ? (
-        <UserTeams user={user} />
-      ) : (
-        <ManageWarning inline>{NO_TEAM}</ManageWarning>
-      ),
-  },
-  {
-    header: "Projects",
-    width: "w-24",
-    numeric: true,
-    cell: (user) => <ManageCount count={user.projectsCount} />,
-    summary: (user) => countLabel(user.projectsCount, "project", "projects"),
-  },
-];
+const ROLE_COLUMN: ManageColumn<UserListItem> = {
+  header: "Role",
+  width: "w-28",
+  cell: (user) => ROLE_LABELS[user.role],
+};
+
+const TEAM_COLUMN: ManageColumn<UserListItem> = {
+  header: "Team",
+  width: "w-48",
+  cell: (user) =>
+    user.teams.length > 0 ? (
+      <UserTeams user={user} />
+    ) : (
+      <ManageWarning>{NO_TEAM}</ManageWarning>
+    ),
+  summary: (user) =>
+    user.teams.length > 0 ? (
+      <UserTeams user={user} />
+    ) : (
+      <ManageWarning inline>{NO_TEAM}</ManageWarning>
+    ),
+};
+
+const PROJECTS_COLUMN: ManageColumn<UserListItem> = {
+  header: "Projects",
+  width: "w-24",
+  numeric: true,
+  cell: (user) => <ManageCount count={user.projectsCount} />,
+  summary: (user) => countLabel(user.projectsCount, "project", "projects"),
+};
 
 // Only an owner reads capacity, so only an owner gets this column.
-const OWNER_COLUMNS: ManageColumn<UserListItem>[] = [
-  ...COLUMNS,
-  {
-    header: "Weekly hours",
-    width: "w-32",
-    numeric: true,
-    cell: weeklyHours,
-    summary: (user) => `${weeklyHours(user)} a week`,
+const WEEKLY_HOURS_COLUMN: ManageColumn<UserListItem> = {
+  header: "Weekly hours",
+  width: "w-32",
+  numeric: true,
+  cell: weeklyHours,
+  summary: (user) => `${weeklyHours(user)} a week`,
+};
+
+// On the Deactivated tab the day they left takes the place of their projects.
+const deactivatedColumn = (timeZone?: string): ManageColumn<UserListItem> => ({
+  header: "Deactivated",
+  width: "w-32",
+  cell: (user) => deactivatedOnLabel(user, timeZone),
+  summary: (user) => {
+    const deactivatedOn = deactivatedOnLabel(user, timeZone);
+    return deactivatedOn && `Deactivated ${deactivatedOn}`;
   },
-];
+});
 
 export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
@@ -81,9 +98,16 @@ export const UsersContent = () => {
   const listState = useManageListState();
   const userActions = useUserActions();
   const { user } = useAuth();
+  const { timezone } = useWorkSettings();
   const canManage = hasManagerAccess(user?.role);
   const isActiveTab = listState.tab === "active";
   const status = isActiveTab ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;
+  const columns = [
+    ROLE_COLUMN,
+    TEAM_COLUMN,
+    isActiveTab ? PROJECTS_COLUMN : deactivatedColumn(timezone),
+    ...(user?.role === UserRole.OWNER ? [WEEKLY_HOURS_COLUMN] : []),
+  ];
 
   const {
     items: users,
@@ -97,18 +121,18 @@ export const UsersContent = () => {
   return (
     <>
       <ResourcePage
-        title="Users"
+        title="People"
         listState={listState}
         itemCount={users.length}
         isLoading={isLoading}
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search users..."
-        emptyTitle="No users yet"
-        emptyDescription="Invite your first user to start building your workspace."
+        searchPlaceholder="Search people..."
+        emptyTitle="No people yet"
+        emptyDescription="Invite your first person to start building your workspace."
         emptyIcon={<UsersRound className="size-6" />}
-        createLabel="Invite user"
+        createLabel="Invite person"
         onCreate={() => setInviteOpen(true)}
         canCreate={canManage && isActiveTab}
         hasNextPage={pagination.hasNextPage}
@@ -119,7 +143,7 @@ export const UsersContent = () => {
         topContent={canManage && isActiveTab && <PendingInvitations />}
       >
         <ManageList
-          label="Users"
+          label="People"
           items={users}
           row={{
             getKey: (listed) => listed.id,
@@ -129,7 +153,7 @@ export const UsersContent = () => {
             getEntity: (listed) => ({ type: "user", id: listed.id }),
             onEdit: userActions.edit,
             canEdit: userActions.canEdit,
-            columns: user?.role === UserRole.OWNER ? OWNER_COLUMNS : COLUMNS,
+            columns,
             getActions: userActions.actionsFor,
           }}
         />

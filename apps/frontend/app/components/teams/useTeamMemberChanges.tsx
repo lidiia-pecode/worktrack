@@ -12,22 +12,32 @@ import { TeamRole, UserRole } from "@/types/enums";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { MemberChange, memberChangeCopy } from "./team-member-changes";
 import { MembershipWithUser } from "./team-memberships";
+import { TeamMemberRemoveDialog, TeamRemoval } from "./TeamMemberRemoveDialog";
+
+type RoleChange = Extract<MemberChange, { kind: "role" }>;
 
 /** Role changes and removals in a team, each confirmed with who sees whom afterwards. */
 export const useTeamMemberChanges = (team: Team) => {
   const { user: viewer } = useAuth();
-  const { updateMember, removeMember } = useTeamMembers(team.id);
+  const { updateMember } = useTeamMembers(team.id);
   const { update: updateUser } = useUsersMutations();
-  const [change, setChange] = useState<MemberChange | null>(null);
+  const [change, setChange] = useState<RoleChange | null>(null);
+  const [removal, setRemoval] = useState<TeamRemoval | null>(null);
   const [membershipToPromote, setMembershipToPromote] =
     useState<MembershipWithUser | null>(null);
-  // Whether a removal leaves them in no team the viewer can see.
+  // A switch to Member moves them out of the team they are a member of.
+  const needsPersonDetails = change?.roleInTeam === TeamRole.MEMBER;
   const changedPerson = useUserDetails(
-    change?.kind === "remove" ? change.membership.userId : "",
+    needsPersonDetails ? change.membership.userId : "",
   );
+  const otherMemberTeam =
+    changedPerson.data?.teams.find(
+      (personTeam) =>
+        personTeam.roleInTeam === TeamRole.MEMBER && personTeam.id !== team.id,
+    ) ?? null;
 
   // A second click while one change saves would act on stale details.
-  const isBusy = updateMember.isPending || removeMember.isPending;
+  const isBusy = updateMember.isPending;
 
   // Leading a team takes the Manager role, which an employee is given first.
   const changeRole = (membership: MembershipWithUser, roleInTeam: TeamRole) => {
@@ -42,7 +52,7 @@ export const useTeamMemberChanges = (team: Team) => {
   };
 
   const remove = (membership: MembershipWithUser) => {
-    if (!isBusy) setChange({ kind: "remove", membership });
+    if (!isBusy) setRemoval({ teamId: team.id, userId: membership.userId });
   };
 
   const changeCopy =
@@ -52,23 +62,20 @@ export const useTeamMemberChanges = (team: Team) => {
       otherTeamsCount: (changedPerson.data?.teams ?? []).filter(
         (personTeam) => personTeam.id !== team.id,
       ).length,
+      otherMemberTeam,
     });
 
   const confirmChange = () => {
     if (!change) return;
-    const done = { onSuccess: () => setChange(null) };
-
-    if (change.kind === "remove") {
-      removeMember.mutate(change.membership.id, done);
-      return;
-    }
-
     updateMember.mutate(
       {
         membershipId: change.membership.id,
-        data: { roleInTeam: change.roleInTeam },
+        data: {
+          roleInTeam: change.roleInTeam,
+          leaveCurrentTeam: Boolean(otherMemberTeam),
+        },
       },
-      done,
+      { onSuccess: () => setChange(null) },
     );
   };
 
@@ -96,16 +103,20 @@ export const useTeamMemberChanges = (team: Team) => {
         isOpen={Boolean(change)}
         title={changeCopy?.title ?? ""}
         description={
-          change?.kind === "remove" && changedPerson.isError
+          needsPersonDetails && changedPerson.isError
             ? "Could not check their other teams. Close this and try again."
             : (changeCopy?.description ?? "")
         }
         confirmText={changeCopy?.confirmText ?? ""}
-        confirmVariant={change?.kind === "remove" ? "destructive" : "primary"}
         onConfirm={confirmChange}
         onClose={() => setChange(null)}
         loading={isBusy}
-        confirmDisabled={change?.kind === "remove" && !changedPerson.data}
+        confirmDisabled={needsPersonDetails && !changedPerson.data}
+      />
+
+      <TeamMemberRemoveDialog
+        removal={removal}
+        onClose={() => setRemoval(null)}
       />
 
       <ImpactDialog

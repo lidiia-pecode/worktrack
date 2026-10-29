@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { HoursReportRow, PeopleReportRow } from "@/types";
-import { UserRole } from "@/types/enums";
+import { UserRole, UserStatus } from "@/types/enums";
 
 import { formatDayMonthLabel } from "./date";
 import { lastCheckedDay, reportAttention } from "./report-attention";
@@ -31,6 +31,7 @@ const person = (
   name,
   position: null,
   role: UserRole.EMPLOYEE,
+  status: UserStatus.ACTIVE,
   teams: [],
   loggedMinutes: 0,
   billableMinutes: 0,

@@ -17,6 +17,8 @@ type ReportRowProps = {
   subFigure?: ReactNode;
   /** Marks the row as named in Needs attention, saying why on hover. */
   flag?: string;
+  /** Beside the name, such as a "Deactivated" badge. */
+  status?: ReactNode;
   /** Makes the name a button that opens the row's panel. */
   onOpen?: () => void;
 };
@@ -51,6 +53,7 @@ export const ReportRow = ({
   figure,
   subFigure,
   flag,
+  status,
   onOpen,
 }: ReportRowProps) => (
   <li
@@ -75,6 +78,7 @@ export const ReportRow = ({
             {name}
           </p>
         )}
+        {status}
         {flag && <AttentionDot title={flag} />}
       </div>
       {(detail || note) && (

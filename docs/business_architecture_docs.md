@@ -331,6 +331,13 @@ unique. The same person working at two companies would need two accounts with
 different email addresses. There is no shared identity spanning companies —
 consistent with §1's position on multi-company.
 
+**A person is a member of one team at a time; a Manager may lead any number.**
+Adding a member of another team is a move: the old membership ends the day
+the new one starts, in one transaction, after the owner confirms it. A Manager
+may also be a member of one team, and a team may have several managers.
+Leading a team is what grants reach; being a member only decides who oversees
+your own time.
+
 **Team membership is historical, not current-state.** Rows are closed with
 `leftAt` rather than deleted, so "who was on this team in March" remains
 answerable. `leftAt` is the day a membership ended, not its last day, so somebody
@@ -651,8 +658,8 @@ has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
 invitation email, and only the sign-up page starts a company. A failed Google
 sign-in returns to the page it started from with a message, never an error on the
-backend's host. Archiving a team
-revokes its pending invitations and closes the team (§5).
+backend's host. A team with pending invitations can't be archived; the owner
+revokes them on its panel first (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
@@ -662,7 +669,10 @@ capacity). A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, only an OWNER may modify another OWNER or grant the
 OWNER role, and nobody changes their own role, so a company always keeps its
 owner. A deactivated person keeps their teams and projects but cannot be
-added to a team or a project.
+added to a team or a project. Reactivate asks first and names the teams and
+active projects they come back to. The Deactivated tab and the person's panel
+show the day they were deactivated, and Reports' People card marks them
+"Deactivated" like every other screen.
 
 ---
 
@@ -677,11 +687,11 @@ added to a team or a project.
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD | read, within their teams; remove a member (not a team manager) | — |
+| Teams | full CRUD; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel | — |
 | Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | full CRUD | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
-| Time logs — write | whole company, active people only | own, plus active users in teams they manage | **own only** |
+| Time logs — write | whole company, a deactivated person's days before they left included | own, plus users in teams they manage, the same way | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
 | Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
@@ -702,12 +712,14 @@ membership history.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the Team time grid is where an
-owner or manager acts on it. Writing time or an absence for somebody
-else is refused once they are deactivated; their records stay as they were,
-and reading them is unchanged (`permission-model.md` §3.7).
+owner or manager acts on it. A deactivated person's time and absences can
+still be corrected in open months by the same people, so their last month
+can be finished without reactivating them; nothing can be dated on or after
+the day they left, or inside a spell they were deactivated for
+(`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
-team, adds a member or changes a `roleInTeam`. A manager may remove a member
+team, adds a member, moves one between teams or changes a `roleInTeam`. A manager may remove a member
 from a team they lead, because removal only narrows their own reach; taking a
 team's manager off it, themselves included, is the owner's (Phase 36), since
 that would narrow someone else's reach or leave the team without its lead.
@@ -715,10 +727,10 @@ that would narrow someone else's reach or leave the team without its lead.
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
 a Manager. A Manager who leads a team cannot be changed to another role until
-they no longer lead it, and the refusal names the teams. Archiving a team ends every open
-membership on the company's today, so its former manager loses reach from that
-day; an archived team is read-only, and restoring it brings it back with no
-members.
+they no longer lead it, and the refusal names the teams. A team is archived only once
+it is empty (no open membership, no pending invitation), which the owner does on
+its panel; archiving then changes only its status, an archived team is
+read-only, and restoring it brings it back as it was.
 
 Note that MANAGER still has full CRUD over projects, activities and categories
 company-wide — not restricted to their own teams. See §10 Q3.
@@ -752,8 +764,9 @@ see, and how a new company gets started. §7 plans that work.
   weekend hours are always extra; a day off in the brand colour. Time past a
   working day's figure sits on solid amber with a "+Xh" badge. A day that
   hasn't happened yet can't be logged on.
-- **Manage pages** — users, teams, projects, activities and categories as
-  searchable lists. A row opens a shared side panel where every related name is
+- **Manage pages** — People, Teams, Projects, Activities and Categories as
+  searchable lists; Teams and Periods are the owner's, so a manager's Manage
+  menu is People, Projects, Activities and Categories. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
   comes before anything risky. A project is client work, with a client suggested
   from those already used, or internal; an activity has a billable default and
@@ -767,7 +780,9 @@ see, and how a new company gets started. §7 plans that work.
   a sort by name or by how much of the expected time is logged, and filters by
   team and project (archived and completed projects included) narrow it; the
   week and the filters are in the URL, so a reload keeps them. A deactivated
-  person is shown read-only, and the API refuses writes for them. Filtered to
+  person is marked and listed on every week before they left, logged time or
+  not; their days before they left stay editable in an open month, and from
+  their leave day on the row is read-only. Filtered to
   a project, the rows and the team total show only that project's hours, with
   no Expected, since that is about the whole week. Days follow the timesheet's look: a day over
   the person's hours on solid amber, a weekend with time in amber stripes.
@@ -861,6 +876,11 @@ see, and how a new company gets started. §7 plans that work.
 
 ### Decided while building, and still in force
 
+- **Archive means out of use, kept whole, for teams too** (27–28 October 2026,
+  Phase 38), reversing "archiving closes the team". Only an empty team is
+  archived, emptied on its own panel, and restoring is an exact undo; nobody's
+  time, absences or plans change at any point.
+
 - **A team's week is read and corrected in the Team time grid** (26 October
   2026, Phase 37), reversing "`/team` stays a summary grid". Each day lists its
   entries, so an owner or manager sees what a week consisted of and fixes it in
@@ -897,14 +917,14 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is forty-seven
-suites and 834 tests, covering the role-visibility filters, team and invitation
+suites and 840 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-one Vitest files and 410 tests: its date, month,
+The frontend has seventy-one Vitest files and 417 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -996,6 +1016,7 @@ is in its pull request.
 | 35 | My time: a person's own month for every role, from the Reports figures with the hours and people reports opened to employees and pinned to themselves; every working day of the month, today ringed and the days to come dashed, a past day with no time opening its week on the timesheet; the timesheet's week in one row with its figures behind a breakdown, weekends, days off and time over the day each with one look on every week grid, plans as faint blocks that open the time form on their project, no time logged for a day that hasn't happened, Enter and Escape in the duration fields, the whole week highlighted in the calendar and one soft "Back to this week"; the boundary with an HR product written down |
 | 36 | Fixes across areas: nothing expected of a person for a spell they were deactivated and came back from, and an owner's own days without time on My time and in their panel; planning edits that can't deadlock with a period plan, and a period preview walking expected hours once; notifications read only once shown, unread first; sessions kept through a sign-in page, a throttled refresh or a backend asleep, and a deleted session no longer locking anyone out of sign-in, with lookups refusing a missing value and database conflicts repeating nothing sent; the timesheet's excess in line with its entries, locked absences opened to read, typed minutes carried into hours and the week link tidied; a team's manager removable by an owner only, focus back after Back, Team time's empty days named for a screen reader, and lighter placeholders |
 | 37 | Team time with rich cells: each day's entries as project-coloured blocks that open the entry form, the empty part of a day logging time for the person and an absence icon by each name, replacing the side panel; the plan on a day with nothing logged; the team summary returning each day's entries on request; search by name or position, a sort by name or by the share of expected time logged, and archived and completed projects in the project filter; the week in the URL on the timesheet, Team time and Planning, and Team time's filters too; Reports' days without time linking to their week on Team time with the person highlighted; a person column that stays put while the days scroll; no day totals in the Team time and Planning headers |
+| 38 (part 1) | Teams and leavers: a leaver's time and absences corrected by owners and managers on the days before they left; one member team per person, adding someone to another team a confirmed move; the owner in no team; a team's former members, pending invitations and "Move to…" on its panel; a team archived only once empty, with restore an exact undo; Reactivate confirmed, the day someone was deactivated shown, and a leaver marked on the People card; the Teams page the owner's, a manager removing a member from the person's panel, and Users renamed People |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1060,7 +1081,7 @@ absences and locks the same way. Planning and Team time stay separate screens by
 decision: they share the chrome, not the job (actuals and corrections on one,
 intent and limits on the other).
 
-**Area 5 — Administration and settings** *(done, Phases 20–26 and 30)*. The
+**Area 5 — Administration and settings** *(done, Phases 20–26 and 30; teams and leavers revisited in Phase 38 part 1)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
 categories, periods and company settings. Lists that scale past a few dozen
 items with search that covers everything, confirmations before anything is

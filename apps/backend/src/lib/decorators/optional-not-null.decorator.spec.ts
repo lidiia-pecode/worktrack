@@ -69,7 +69,7 @@ const UPDATE_PAYLOADS: {
   },
   {
     dto: UpdateTeamMemberDto,
-    required: ['roleInTeam', 'joinedAt'],
+    required: ['roleInTeam', 'joinedAt', 'leaveCurrentTeam'],
     nullable: ['leftAt'],
   },
   {

@@ -30,6 +30,7 @@ const row = (
     email: "alice@example.com",
     position: "Designer",
     status,
+    deactivatedAt: null,
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,

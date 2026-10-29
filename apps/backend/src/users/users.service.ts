@@ -262,8 +262,8 @@ export class UsersService {
       qb.andWhere('u.status = :status', { status: query.status });
     }
 
-    if (query.role) {
-      qb.andWhere('u.role = :role', { role: query.role });
+    if (query.roles?.length) {
+      qb.andWhere('u.role IN (:...roles)', { roles: query.roles });
     }
 
     if (query.search) {
@@ -274,13 +274,31 @@ export class UsersService {
       includeSelf: true,
     });
 
-    const [results, count] = await qb
+    const [users, count] = await qb
       .orderBy('u.first_name', 'ASC')
       .addOrderBy('u.last_name', 'ASC')
       .addOrderBy('u.id', 'ASC')
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();
+
+    // The team each person is a member of, so a picker can say where a move
+    // takes them from.
+    const memberships = await this.openMembershipsFor(
+      companyId,
+      users.map((listed) => listed.id),
+      user,
+    );
+    const memberTeamByUser = new Map<string, UserTeam>(
+      memberships
+        .filter((membership) => membership.roleInTeam === TeamRole.MEMBER)
+        .map(({ userId, team }) => [userId, { id: team.id, name: team.name }]),
+    );
+
+    const results = users.map((listed) => ({
+      ...listed,
+      memberTeam: memberTeamByUser.get(listed.id) ?? null,
+    }));
 
     return { results, count };
   }

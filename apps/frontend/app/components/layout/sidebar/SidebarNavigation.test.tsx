@@ -10,7 +10,7 @@ describe("SidebarNavigation", () => {
   it("names each group and marks only the current page", () => {
     render(
       <SidebarNavigation
-        groups={navigationFor(UserRole.MANAGER)}
+        groups={navigationFor(UserRole.OWNER)}
         pathname="/admin/teams"
       />,
     );

@@ -511,9 +511,9 @@ export class InvitationsService {
   }
 
   /**
-   * The team may have been archived while the invitation was waiting. Nobody's
-   * signup should fail over that, so the person is created without a
-   * membership and the owner places them.
+   * A team with a pending invitation can't be archived, so an archived team
+   * here is a safeguard only. Nobody's signup should fail over it: the person
+   * is created without a membership and the owner places them.
    */
   private async createInvitationMembership(
     invitation: Invitation,

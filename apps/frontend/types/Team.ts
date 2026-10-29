@@ -37,14 +37,10 @@ export interface Team {
   company: Company;
 }
 
-export interface ArchivedTeam extends Team {
-  revokedInvitationCount: number;
-}
-
-// TeamArchiveImpactResponse
+// TeamArchiveImpactResponse: what still has to leave before it can be archived
 export interface TeamArchiveImpact {
-  managers: TeamUser[];
-  peopleLeftWithoutTeam: TeamUser[];
+  openMemberships: (TeamMembership & { user: TeamUser })[];
+  pendingInvitationCount: number;
 }
 
 // Payloads
@@ -63,12 +59,16 @@ export interface AddTeamMemberPayload {
   roleInTeam?: TeamRole;
   joinedAt: string;
   leftAt?: string | null;
+  /** A member of another team leaves it the day they join this one. */
+  leaveCurrentTeam?: boolean;
 }
 
 export interface UpdateTeamMemberPayload {
   roleInTeam?: TeamRole;
   joinedAt?: string;
   leftAt?: string | null;
+  /** Made a member here, they leave the team they are a member of today. */
+  leaveCurrentTeam?: boolean;
 }
 
 export type TeamListResponse = PaginatedResponse<Team>;

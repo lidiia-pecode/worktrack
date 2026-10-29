@@ -53,6 +53,8 @@ const OTHER_SLUG = `absence-other-${RUN}`;
 const START = '2026-02-10';
 const END = '2026-02-12';
 const LOCKED_DATE = '2026-03-10';
+/** The day the deactivated person left; nothing can be recorded from it on. */
+const LEAVE_DAY = '2026-02-20';
 
 describe('AbsencesService', () => {
   let dataSource: DataSource;
@@ -145,10 +147,19 @@ describe('AbsencesService', () => {
       teamVisibility,
     );
 
+    const capacity = new CapacityService(
+      dataSource.getRepository(UserCapacity),
+      dataSource.getRepository(Company),
+      dataSource.getRepository(User),
+      dataSource.getRepository(UserInactivePeriod),
+      reporting,
+    );
+
     service = new AbsencesService(
       dataSource.getRepository(Absence),
       reporting,
       teamVisibility,
+      capacity,
       dataSource,
     );
 
@@ -157,16 +168,8 @@ describe('AbsencesService', () => {
       dataSource.getRepository(ProjectActivity),
       reporting,
       teamVisibility,
-      new ExpectedHoursService(
-        dataSource.getRepository(Absence),
-        new CapacityService(
-          dataSource.getRepository(UserCapacity),
-          dataSource.getRepository(Company),
-          dataSource.getRepository(User),
-          dataSource.getRepository(UserInactivePeriod),
-          reporting,
-        ),
-      ),
+      new ExpectedHoursService(dataSource.getRepository(Absence), capacity),
+      capacity,
       dataSource,
     );
 
@@ -186,6 +189,9 @@ describe('AbsencesService', () => {
       companyId,
       UserStatus.DEACTIVATED,
     );
+    await dataSource.getRepository(User).update(deactivated.id, {
+      deactivatedAt: new Date(`${LEAVE_DAY}T12:00:00Z`),
+    });
 
     const otherCompany = await dataSource
       .getRepository(Company)
@@ -323,19 +329,35 @@ describe('AbsencesService', () => {
       );
     });
 
-    it("leaves a deactivated person's absences as they are", async () => {
+    it("records a deactivated person's absence from before they left", async () => {
+      const absence = await service.create(absenceFor(deactivated.id), owner);
+      expect(absence.userId).toBe(deactivated.id);
+
       await expect(
-        service.create(absenceFor(deactivated.id), owner),
-      ).rejects.toThrow(BadRequestException);
+        service.update(absence.id, { note: 'changed' }, owner),
+      ).resolves.toMatchObject({ note: 'changed' });
+      await expect(service.delete(absence.id, owner)).resolves.toEqual({
+        success: true,
+      });
+    });
+
+    it('refuses an absence reaching the day a deactivated person left', async () => {
+      await expect(
+        service.create(
+          absenceFor(deactivated.id, '2026-02-18', LEAVE_DAY),
+          owner,
+        ),
+      ).rejects.toThrow('had left by then');
 
       const id = await existingAbsence(deactivated.id);
 
-      await expect(
-        service.update(id, { note: 'changed' }, owner),
-      ).rejects.toThrow(BadRequestException);
-      await expect(service.delete(id, owner)).rejects.toThrow(
-        BadRequestException,
-      );
+      try {
+        await expect(
+          service.update(id, { endDate: LEAVE_DAY }, owner),
+        ).rejects.toThrow(BadRequestException);
+      } finally {
+        await dataSource.getRepository(Absence).delete(id);
+      }
     });
   });
 

@@ -102,21 +102,23 @@ manager, as two separate changes. The Owner may also invite a new Manager to
 lead a team; accepting makes them its manager. That is still the
 Owner appointing a team's manager, since nobody else can invite a Manager.
 
-**Archiving a team closes it** — confirmed and enforced in September 2026.
-A team holds no data of its own, so archiving it ends a unit of responsibility
-rather than any work. Archiving ends every open membership, manager and member
-alike, on the company's today, so the team grants nothing afterwards and its
-history stays in the membership dates. The Owner sees who is affected before
-confirming, and people left without a team are the Owner's to place. An
-archived team is read-only. Restoring it brings it back with no members; the
-Owner adds people again under the current rules, so a restore never hands reach
-back by itself. An archived team therefore never blocks demoting its former
+**Only an empty team is archived** — decided 27–28 October 2026, replacing
+September's "archiving closes the team". A team can be archived only when it
+has no open membership (members, its manager and deactivated people alike) and
+no pending invitation; the API refuses anything else with 409. Archiving then
+changes the status and nothing else, and restoring is its exact undo, so a
+restore never hands reach back by itself. The Owner empties the team on its
+panel: moves or removes members, removes the manager, removes deactivated
+people and revokes invitations, each with its own confirmation, so every
+change of reach is a separate, visible decision. An archived team is
+read-only, and since it is empty it never blocks demoting its former
 manager.
 
 ### 3.3 Team membership
 
 A manager gains people by inviting them into a team they lead, and may remove
-a member (`roleInTeam` MEMBER) from such a team; the Owner adds and moves
+a member (`roleInTeam` MEMBER) from such a team, on the person's panel (the
+Teams page is the Owner's); the Owner adds and moves
 everyone else, and alone removes a team's manager, the caller included
 (Phase 36). See
 [`business_architecture_docs.md`](./business_architecture_docs.md) §5.
@@ -132,7 +134,26 @@ the company, there is no prior history for them to acquire retroactively. That
 removes the need to bound visibility by membership dates, which would otherwise
 have to be threaded through every query. See P4.
 
-For now **a person belongs to exactly one team.** Multi-team membership is P1.
+**A person is a member of at most one team.** A Manager may lead any number
+of teams, and may be a member of one team led by somebody else. Adding a
+member of another team to a team is a **move**: the Owner confirms it, and the
+old membership ends the day the new one starts, in one transaction
+(`addMember` with `leaveCurrentTeam`; without it the API answers 409 naming
+the current team). Answered 27 October 2026 (P1); the code enforced only "not
+twice in the same team" before. Reopening a membership or switching one to
+Member follows the same rule.
+
+Reach comes only from leading a team: being a member of one grants nothing,
+and only decides who oversees the member's own time. A team may have several
+managers, who see each other as they see its members. Confirmed 28 October
+2026 over the stricter alternatives (one manager per team, Managers never
+members): those would add rules and role-change handling for no gain, and
+company-level switches for them are not wanted (decision 5).
+
+**The Owner is in no team**, as a member or a manager; the API refuses it.
+Membership would give the Owner nothing (their own time, planning and reports
+work without one) and would give that team's managers reach over the Owner's
+records. Decided 28 October 2026.
 
 ### 3.4 People visibility
 
@@ -234,12 +255,17 @@ This model does not change the rule; it changes what it takes to *become* the
 manager of a person, which is what makes the rule trustworthy. Everyone reads
 their own time logs, absences and hours, including a manager who leads no team.
 
-**Writing for somebody else needs them to be active.** Once a person is
-deactivated, their time logs and absences stay as they are: nobody adds to,
-edits or deletes them, and the API answers 400, the way planning already
-refuses an inactive person. Reading them is unchanged, so a leaver's weeks
-still show on Team time and in the reports. Decided on 19 October 2026 for
-Phase 31; D9 says nothing about status, so this is a rule added on top of it.
+**A leaver's last month can still be corrected.** A deactivated person's time
+logs and absences are written by the same people as an active person's, in
+open months and within their normal reach: the owner, and the managers of the
+teams they are still on. Two guards hold for every writer: nothing can be
+dated on or after the day they were deactivated, or inside a spell they were
+deactivated for and came back from (the API answers 400 and says why), and
+locked months stay locked. Planning is different: no new or changed plan for a
+deactivated person, deletion allowed. Decided on 27 October 2026 (entity
+lifecycle, decision 3); it reverses the Phase 31 rule that refused every
+write for a deactivated person, which made a leaver's last month
+uncorrectable without reactivating them.
 
 **Planning follows the same people.** An Owner plans for any active user, a
 manager for themselves and people in teams they lead, and an employee for
@@ -290,7 +316,7 @@ project staffed from both teams.
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
-| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in, and neither Mary nor Olivia can add, edit or delete his time or absences (§3.7). Reactivating him changes nothing back, because nothing was removed |
+| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Mary and Olivia can still correct his time and absences for the open month, on the days before he left; nothing can be recorded from his leave day on (§3.7). Reactivating him changes nothing back, because nothing was removed |
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |
@@ -315,9 +341,11 @@ company-wide for managers, which is intended rather than a defect.
 
 Visible and deliberately unanswered; each waits for a real need.
 
-- **P1 — Multi-team membership.** For now one person belongs to one team.
-  Allowing several raises: do both managers see them, and who may edit their
-  time? *Deferred by decision.*
+- **P1 — Multi-team membership.** *Answered 27 October 2026: no.* A person
+  is a member of one team; a Manager may lead several (§3.3). Adding a member
+  of another team is a move, confirmed by the Owner. If one person often works
+  under two managers at once, that is a visibility question (P8), not a reason
+  for multi-team membership.
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*
@@ -336,8 +364,10 @@ Visible and deliberately unanswered; each waits for a real need.
   note the distinction §3.4 now rests on: the **project** is visible to every
   owner and manager, its **roster** is not.
 - **P9 — What does an archived team mean for access?** *Answered in September
-  2026:* archiving closes the team and restoring brings it back empty — §3.2.
-  Suspending the team and merely hiding it were considered and set aside.
+  2026, reversed 27 October 2026:* only an empty team is archived, so archiving
+  grants and removes nothing, and restoring is an exact undo — §3.2. Archiving
+  that closed every membership itself was dropped: it changed many people's
+  reach in one click that nothing undid.
 
 Open questions about absences, planning, export and notifications stay in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §10.

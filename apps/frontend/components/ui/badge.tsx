@@ -13,7 +13,9 @@ const badgeVariants = cva(
         warning: "bg-warning/10 text-warning-text border border-warning/20",
         destructive:
           "bg-destructive/10 text-destructive-text border border-destructive/20",
-        neutral: "bg-muted text-muted-foreground border border-border",
+        // A state such as Archived or Deactivated, on a lighter `muted` ground
+        // so the cool text stays readable.
+        neutral: "bg-muted/60 text-muted-foreground border",
         // For a count that asks for attention, such as unread notifications.
         solid: "bg-brand text-brand-foreground border border-brand",
       },

@@ -147,6 +147,7 @@ describe('ExpectedHoursService', () => {
       reporting,
       teamVisibility,
       service,
+      capacity,
       dataSource,
     );
 
