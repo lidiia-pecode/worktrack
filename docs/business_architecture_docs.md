@@ -468,17 +468,20 @@ included, though they cannot write planning otherwise. An absence never touches
 a locked period, so only open days lose plans, and deleting or shortening an
 absence brings nothing back.
 
-**A period** can be planned in one go: a person, a date range and one or more
-projects, each with the hours to plan on every working day. The days are the
-range's weekdays the person has hours on — no absence, and not before their
-account was created. For each listed project every one of those days is set to
-its hours, creating or changing that day's plan; plans for other projects stay.
-The same rules apply to the result as a whole: a range touching a LOCKED month
-is refused, and if any day or week would go over its limit, nothing is saved and
+**A period** is planned and changed in one form: a person and a date range.
+The form lists each project already planned in the range with its days; new
+hours for one of them apply only to the days that already have it, and a
+project added fills every working day — the range's weekdays the person has
+hours on, with no absence and not before their account was created. Plans for
+projects left untouched stay. A listed project's plans in the range can also be
+deleted from its row, after a confirmation, at once and in one go; that delete
+follows a single plan's delete (the same people, nothing in a locked month).
+Saving applies to the result as a whole: a range touching a LOCKED month is
+refused, and if any day or week would go over its limit, nothing is saved and
 every day and week that does not fit is named. As with a single plan, only a
-total the write raises is refused. The same checks can be run without saving
-(a preview), so the dialog shows the working days, the absences skipped, what
-is already planned and every conflict before anything is written, and saves
+total the write raises is refused. The same checks run without saving (a
+preview), so the form shows the fullest day, what saving will add and change,
+the absences skipped and every conflict before anything is written, and saves
 only once everything fits.
 
 The planning grid shows managers one figure of its own: **no longer fits**
@@ -494,7 +497,9 @@ from `GET /planning/removal-count`, which uses the same condition as the delete.
 **Archiving a project deletes everyone's plans on it from today on** the same
 way, after its dialog names whose and how many; past plans, its people, its
 activities and logged time stay, and restoring it brings back the people and
-activities but not the removed plans.
+activities but not the removed plans. Both delete exactly the plans their
+rule matches when they run: a plan saved on the project at the same moment
+waits for them and is then refused, or is counted if it came first.
 
 Planning does **not** create time logs, does not restrict them, and never
 changes expected hours (D3).
@@ -576,7 +581,9 @@ The company holds `timezone`, `currency`, `weekStartDay` and
 hardcoding calendar assumptions. Currency is neither asked for nor shown (D7).
 The time zone is any valid IANA zone except Russia's; the old name `Europe/Kiev`
 is saved as `Europe/Kyiv`. The standard working day allows half hours. Slugs are
-unique and regenerated on rename.
+unique and regenerated on rename. Changing the time zone, the week start or the
+standard working day asks first and says what each one moves; several changed
+at once are confirmed together in one dialog.
 
 A new company's owner answers three questions in the setup wizard — time zone,
 week start and working day — then follows a checklist whose steps end with
@@ -655,7 +662,9 @@ is 8–100 characters with an upper-case letter, a lower-case letter and a digit
 an existing password is only checked for presence. Names are 1–100 characters and
 company names 2–100 characters of any kind, without line breaks or invisible
 characters. Sign-in says that an account is deactivated or a company suspended
-only after a correct password, and every Google path refuses an address Google
+only after a correct password; a password reset for such an account is
+refused with the same message, both when it is asked for and when its link is
+used, and every Google path refuses an address Google
 has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
 invitation email, and only the sign-up page starts a company. A failed Google
@@ -667,11 +676,13 @@ Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
 Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
 Reactivate clears it, keeping the spell they were away; nothing is expected of a
 person from the day they were deactivated until the day they come back (§4,
-capacity). A user cannot deactivate themselves, an OWNER account
-cannot be deactivated, only an OWNER may modify another OWNER or grant the
-OWNER role, and nobody changes their own role, so a company always keeps its
-owner. A deactivated person keeps their teams and projects but cannot be
-added to a team or a project. Reactivate asks first and names the teams and
+capacity). Deactivating someone also ends their sessions, so after Reactivate
+they sign in again. A user cannot deactivate themselves, an OWNER account
+cannot be deactivated, nobody changes their own role, and nobody can be made
+an OWNER, so a company has exactly one owner (handing ownership over is not
+built yet). A deactivated person keeps their teams and projects but cannot be
+added to a team or a project, and their details and working hours change only
+once they are reactivated. Reactivate asks first and names the teams and
 active projects they come back to. The Deactivated tab and the person's panel
 show the day they were deactivated, and Reports' People card marks them
 "Deactivated" like every other screen.
@@ -883,6 +894,14 @@ see, and how a new company gets started. §7 plans that work.
 
 ### Decided while building, and still in force
 
+- **Confirmations say what happens to the data** (29 October 2026, Phase 38).
+  Delete means a record is gone for good (a time entry, an absence, a plan);
+  Remove means a link ends and both sides stay (a person from a team or a
+  project, an activity from a project). The confirm button is red when
+  something is lost that Restore can't bring back, amber when it can be undone
+  but reaches further, the brand colour when it is routine, and green for
+  Restore and Reactivate.
+
 - **Archive means out of use, kept whole, for teams too** (27–28 October 2026,
   Phase 38), reversing "archiving closes the team". Only an empty team is
   archived, emptied on its own panel, and restoring is an exact undo; nobody's
@@ -1025,6 +1044,7 @@ is in its pull request.
 | 37 | Team time with rich cells: each day's entries as project-coloured blocks that open the entry form, the empty part of a day logging time for the person and an absence icon by each name, replacing the side panel; the plan on a day with nothing logged; the team summary returning each day's entries on request; search by name or position, a sort by name or by the share of expected time logged, and archived and completed projects in the project filter; the week in the URL on the timesheet, Team time and Planning, and Team time's filters too; Reports' days without time linking to their week on Team time with the person highlighted; a person column that stays put while the days scroll; no day totals in the Team time and Planning headers |
 | 38 (part 1) | Teams and leavers: a leaver's time and absences corrected by owners and managers on the days before they left; one member team per person, adding someone to another team a confirmed move; the owner in no team; a team's former members, pending invitations and "Move to…" on its panel; a team archived only once empty, with restore an exact undo; Reactivate confirmed, the day someone was deactivated shown, and a leaver marked on the People card; the Teams page the owner's, a manager removing a member from the person's panel, and Users renamed People |
 | 38 (part 2) | Projects, activities, categories and plans: every activity always in a category, drafts removed and the database requiring one; taking an activity out of its category a move or an archive; archiving a project removing everyone's plans from today on, named first, and its archived activities listed on its panel; the activity catalogue and archiving or restoring a project the owner's, with a manager's menu of People and Projects; membership dates set by the server; restore of an activity or category no longer failing; the unused `COMPLETED` and `INACTIVE` statuses removed |
+| 38 (part 3) | Cross-cutting: a deactivated account unable to reset its password or keep a session, and edited only once reactivated; one owner per company; archiving a project or removing a member deleting exactly the plans it names, with plan saves waiting for it; one confirmation dialog with Delete and Remove by what happens to the data and colours by what can be undone; changing the time zone or week start asking first, with one dialog for several changes; Team time closing the days of an earlier inactive spell, and an invitation unable to slip into a team being archived; a person's plans changed and deleted across a period from the period form |
 
 ### Improvement roadmap — high level, flexible
 
