@@ -9,9 +9,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   EntityManager,
-  In,
   Repository,
   SelectQueryBuilder,
+  WhereExpressionBuilder,
 } from 'typeorm';
 
 import { PlanningEntry } from './entities/planning-entry.entity';
@@ -150,26 +150,29 @@ export class PlanningService {
    * the project, or everyone's (no `userIds`), when it is archived.
    */
   private applyRemovableFilter(
-    qb: SelectQueryBuilder<PlanningEntry>,
+    qb: WhereExpressionBuilder,
+    alias: string,
     companyId: string,
     projectIds: string[],
     userIds: string[] | undefined,
     today: string,
   ): void {
-    qb.andWhere('p.company_id = :removableCompanyId', {
+    qb.andWhere(`${alias}.company_id = :removableCompanyId`, {
       removableCompanyId: companyId,
-    }).andWhere('p.project_id IN (:...removableProjectIds)', {
+    }).andWhere(`${alias}.project_id IN (:...removableProjectIds)`, {
       removableProjectIds: projectIds,
     });
     if (userIds) {
-      qb.andWhere('p.user_id IN (:...removableUserIds)', {
+      qb.andWhere(`${alias}.user_id IN (:...removableUserIds)`, {
         removableUserIds: userIds,
       });
     }
-    qb.andWhere('p.date >= :removableFrom', { removableFrom: today }).andWhere(
+    qb.andWhere(`${alias}.date >= :removableFrom`, {
+      removableFrom: today,
+    }).andWhere(
       `EXISTS (
           SELECT 1 FROM project_users pu
-          WHERE pu.project_id = p.project_id AND pu.user_id = p.user_id
+          WHERE pu.project_id = ${alias}.project_id AND pu.user_id = ${alias}.user_id
         )`,
     );
   }
@@ -286,6 +289,7 @@ export class PlanningService {
     const qb = this.repo.createQueryBuilder('p');
     this.applyRemovableFilter(
       qb,
+      'p',
       user.companyId,
       query.projectIds,
       [...removable],
@@ -306,6 +310,7 @@ export class PlanningService {
       .innerJoinAndSelect('p.user', 'u');
     this.applyRemovableFilter(
       qb,
+      'p',
       companyId,
       [projectId],
       undefined,
@@ -665,22 +670,20 @@ export class PlanningService {
     if (userIds?.length === 0) return;
 
     const company = await this.getCompany(companyId, manager);
-    const qb = manager
-      .getRepository(PlanningEntry)
-      .createQueryBuilder('p')
-      .select('p.id');
+    // One statement with the filter itself, not ids read beforehand, so
+    // Postgres re-checks each plan as it deletes it: a plan moved to yesterday
+    // a moment earlier stays. A delete has no alias, so the filter names the table.
+    const qb = manager.createQueryBuilder().delete().from(PlanningEntry);
     this.applyRemovableFilter(
       qb,
+      manager.getRepository(PlanningEntry).metadata.tableName,
       companyId,
       [projectId],
       userIds,
       todayISODate(company.timezone),
     );
 
-    const ids = (await qb.getMany()).map((entry) => entry.id);
-    if (ids.length > 0) {
-      await manager.delete(PlanningEntry, { id: In(ids) });
-    }
+    await qb.execute();
   }
 
   // ==========================================
@@ -749,7 +752,8 @@ export class PlanningService {
    * Locks the entry's person before the entry, the order the other writes for
    * a person use (a plan, a period, a time log, an absence), so two of them
    * never wait on each other in a circle. An entry never changes person, so
-   * reading its owner first is safe.
+   * reading its owner first is safe. Its project is locked between them, as an
+   * archive locks the project before deleting its plans.
    */
   private async lockEntryAndOwner(
     id: string,
@@ -763,6 +767,14 @@ export class PlanningService {
     if (!owner) throw new NotFoundException('Planning entry not found');
 
     await this.lockUser(manager, owner.userId, user.companyId);
+
+    // Read under the person's lock: only an edit, which takes it too, changes the project.
+    const current = await manager.findOne(PlanningEntry, {
+      where: { id, companyId: user.companyId },
+      select: ['id', 'projectId'],
+    });
+    if (!current) throw new NotFoundException('Planning entry not found');
+    await this.lockProject(manager, current.projectId, user.companyId);
 
     const entry = await manager.findOne(PlanningEntry, {
       where: { id, companyId: user.companyId },
@@ -815,16 +827,29 @@ export class PlanningService {
     return byUser;
   }
 
+  /**
+   * Share-locks a project for a plan write: an archive or member removal in
+   * progress, which locks it for update, finishes first, and a new one waits.
+   */
+  private lockProject(
+    manager: EntityManager,
+    projectId: string,
+    companyId: string,
+  ): Promise<Project | null> {
+    return manager.findOne(Project, {
+      where: { id: projectId, companyId },
+      lock: { mode: 'pessimistic_read' },
+    });
+  }
+
   private async resolveProject(
     projectId: string,
     companyId: string,
-    manager?: EntityManager,
+    manager: EntityManager,
   ): Promise<Project> {
-    const repo = manager ? manager.getRepository(Project) : this.projectRepo;
+    const project = await this.lockProject(manager, projectId, companyId);
 
-    const project = await repo.findOne({ where: { id: projectId } });
-
-    if (!project || project.companyId !== companyId) {
+    if (!project) {
       throw new NotFoundException('Project not found');
     }
 
