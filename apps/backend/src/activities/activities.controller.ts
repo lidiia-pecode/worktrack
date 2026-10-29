@@ -48,14 +48,14 @@ export class ActivitiesController {
     return this.service.getDetails(id, user);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Post()
   @Serialize(ActivityResponse)
   create(@Body() payload: ActivityPayload, @CurrentUser() user: AuthUser) {
     return this.service.create(payload, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id')
   @Serialize(ActivityResponse)
   update(
@@ -66,7 +66,7 @@ export class ActivitiesController {
     return this.service.update(id, payload, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Get(':id/archive-impact')
   @Serialize(ActivityArchiveImpactResponse)
   getArchiveImpact(
@@ -76,7 +76,7 @@ export class ActivitiesController {
     return this.service.getArchiveImpact(id, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   @Serialize(ActivityResponse)
   archive(
@@ -86,7 +86,7 @@ export class ActivitiesController {
     return this.service.archive(id, user.companyId);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
   @Serialize(ActivityResponse)
   unarchive(

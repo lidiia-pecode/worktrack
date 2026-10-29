@@ -44,9 +44,9 @@ const TEAM_ITEMS: WelcomeItem[] = [
 const OWN_ITEMS: WelcomeItem[] = [
   {
     icon: FolderKanban,
-    title: "Projects and activities",
+    title: "Projects",
     description:
-      "Create projects and activities in Projects, and put your people and yourself on them.",
+      "Create projects, choose their activities, and put your people and yourself on them.",
   },
   {
     icon: Clock,

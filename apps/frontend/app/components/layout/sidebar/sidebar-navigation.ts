@@ -66,11 +66,12 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
     return [{ items: [timesheet, myTime] }];
   }
 
-  // Team structure is the owner's; managers act on people from People and Team time.
+  // Company-wide structure (teams, the catalogue, periods) is the owner's;
+  // managers run their people and projects.
   const manageItems =
     role === UserRole.OWNER
       ? [people, teams, projects, activities, categories, periods]
-      : [people, projects, activities, categories];
+      : [people, projects];
 
   return [
     { label: "Work", items: [teamTime, timesheet, myTime, planning, reports] },

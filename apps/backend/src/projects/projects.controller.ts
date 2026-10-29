@@ -79,7 +79,7 @@ export class ProjectsController {
     return this.service.update(id, payload, user);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   @Serialize(ProjectResponse)
   archive(
@@ -89,7 +89,7 @@ export class ProjectsController {
     return this.service.archive(id, user);
   }
 
-  @Role(UserRole.OWNER, UserRole.MANAGER)
+  @Role(UserRole.OWNER)
   @Patch(':id/unarchive')
   @Serialize(ProjectResponse)
   unarchive(

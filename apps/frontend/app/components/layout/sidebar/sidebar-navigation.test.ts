@@ -33,13 +33,10 @@ describe("navigationFor", () => {
     ]);
   });
 
-  it("gives a manager the same groups without Teams and Periods", () => {
+  it("gives a manager the same Work, and only People and Projects to manage", () => {
     expect(labelsOf(navigationFor(UserRole.MANAGER))).toEqual([
       { label: "Work", items: WORK },
-      {
-        label: "Manage",
-        items: ["People", "Projects", "Activities", "Categories"],
-      },
+      { label: "Manage", items: ["People", "Projects"] },
     ]);
   });
 

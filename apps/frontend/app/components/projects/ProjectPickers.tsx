@@ -11,7 +11,7 @@ import { useProjectLinks } from "@/hooks/useProjects";
 import { useIsOnboarding } from "@/hooks/useSetupLink";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
-import { initials, fullName } from "@/lib/utils/user";
+import { canManageCatalogue, initials, fullName } from "@/lib/utils/user";
 import { Activity, Project } from "@/types";
 import { ActivityStatus, UserRole, UserStatus } from "@/types/enums";
 import { nameOrCount } from "@/lib/utils/text";
@@ -140,6 +140,9 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
 };
 
 export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
+  const { user } = useAuth();
+  // A manager picks from the catalogue; new activities are the owner's.
+  const canCreate = canManageCatalogue(user?.role);
   const setupDone = useSetupDone();
   const links = useProjectLinks();
   const [isCreating, setIsCreating] = useState(false);
@@ -188,8 +191,12 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
     <>
       <PanelView
         title={`Add activities to ${project.name}`}
-        description="People on the project log time against these. Choose them, then Done; choose one again to take it off."
-        create={{ label: "New activity", onClick: () => setIsCreating(true) }}
+        description={`People on the project log time against these. Choose them, then Done; choose one again to take it off.${canCreate ? "" : " The owner adds new activities."}`}
+        create={
+          canCreate
+            ? { label: "New activity", onClick: () => setIsCreating(true) }
+            : undefined
+        }
         pendingCount={staged.pendingCount}
         isApplying={staged.isApplying}
         onDone={done}
@@ -211,7 +218,11 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
           hasNextPage={pagination.hasNextPage}
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
-          emptyMessage="No activities yet. Make the first with New activity."
+          emptyMessage={
+            canCreate
+              ? "No activities yet. Make the first with New activity."
+              : "No activities yet. The owner adds them."
+          }
           searchPlaceholder="Search activities..."
         />
       </PanelView>

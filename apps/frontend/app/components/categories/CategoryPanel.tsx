@@ -89,9 +89,10 @@ export const CategoryPanel = ({ id }: { id: string }) => {
 
   const isActive = isActiveCategory(category);
   // Archiving it from its row ends an open edit.
-  const isEditing = panel.isEditing && isActive;
+  const isEditing = panel.isEditing && categoryActions.canEdit(category);
+  const canChangeActivities = isActive && categoryActions.canManage;
 
-  if (isActive && panel.view === ACTIVITIES_PICKER) {
+  if (canChangeActivities && panel.view === ACTIVITIES_PICKER) {
     return <CategoryActivitiesPicker category={category} />;
   }
 
@@ -125,7 +126,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
               isInactive: isArchived,
               status: isArchived && <Badge variant="neutral">Archived</Badge>,
               remove:
-                isActive && !isArchived
+                canChangeActivities && !isArchived
                   ? {
                       label: activity.isInUse
                         ? `Move ${activity.name} out of ${category.name} (it's on a project)`
@@ -139,7 +140,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
           }}
           emptyText="No activities in it yet."
           add={
-            isActive
+            canChangeActivities
               ? {
                   label: "Add activities",
                   icon: Plus,

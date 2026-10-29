@@ -77,7 +77,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   const isActive = isActiveActivity(activity);
   const isDraft = !activity.category;
   // Archiving it from its row ends an open edit.
-  const isEditing = panel.isEditing && isActive;
+  const isEditing = panel.isEditing && activityActions.canEdit(activity);
   // A draft can't go on a project.
   const canChangeProjects = isActive && !isEditing && !isDraft;
 
