@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { formatMonthLabel } from "@/lib/utils/date";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import {
@@ -37,7 +37,7 @@ const CONFIRMATION: Record<
     title: (monthLabel: string) => string;
     message: string;
     confirmText: string;
-    variant: "default" | "warning";
+    variant: "primary" | "warning";
   }
 > = {
   reopen: {
@@ -52,7 +52,7 @@ const CONFIRMATION: Record<
     message:
       "Time logs, absences, capacity changes and plans in this month become read-only again. You can reopen it later.",
     confirmText: "Close month",
-    variant: "default",
+    variant: "primary",
   },
 };
 
@@ -155,16 +155,16 @@ export const PeriodsContent = () => {
         </div>
       )}
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={isConfirming}
         title={
           confirmation && copy
             ? copy.title(formatMonthLabel(confirmation.month))
-            : undefined
+            : ""
         }
-        message={copy?.message}
+        description={copy?.message}
         confirmText={copy?.confirmText}
-        variant={copy?.variant}
+        confirmVariant={copy?.variant}
         onConfirm={confirm}
         onClose={dismiss}
         loading={reopen.isPending || close.isPending}

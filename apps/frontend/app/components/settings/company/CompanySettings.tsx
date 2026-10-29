@@ -13,7 +13,7 @@ import {
 } from "@/lib/forms/schemas/company.schema";
 
 import Input from "../../../../components/ui/input";
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 
@@ -209,12 +209,12 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
         </CardFooter>
       </form>
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={standardDayChange !== null}
         title={`Change the standard day to ${standardWorkHoursPerDay}h?`}
-        message="Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them."
+        description="Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them."
         confirmText="Save changes"
-        variant="warning"
+        confirmVariant="warning"
         onConfirm={confirmStandardDayChange}
         onClose={() => setStandardDayChange(null)}
         loading={actions.update.isPending}

@@ -57,7 +57,7 @@ describe("AbsenceFormModal", () => {
 
     expect(
       screen.getByText(
-        "Removes 2 plans on these days: Northwind 4h, Internal 2h",
+        "Deletes 2 plans on these days: Northwind 4h, Internal 2h",
       ),
     ).toBeInTheDocument();
   });
@@ -71,7 +71,7 @@ describe("AbsenceFormModal", () => {
   it("says nothing when there is no plan on those days", () => {
     renderForm();
 
-    expect(screen.queryByText(/^Removes/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Deletes/)).not.toBeInTheDocument();
   });
 });
 

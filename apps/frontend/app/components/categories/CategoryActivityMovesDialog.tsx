@@ -155,7 +155,7 @@ export const CategoryActivityMovesDialog = ({
         )
       }
       confirmText={archives ? "Archive" : "Move"}
-      confirmVariant={archives ? "destructive" : "primary"}
+      confirmVariant={archives ? "warning" : "primary"}
       loading={loading}
       confirmDisabled={takesOut && activeCategories.isLoading}
       onConfirm={() => {

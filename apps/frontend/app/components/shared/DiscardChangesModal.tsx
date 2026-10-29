@@ -1,6 +1,6 @@
 "use client";
 
-import { ConfirmModal } from "./ConfirmModal";
+import { ImpactDialog } from "./ImpactDialog";
 
 type DiscardChangesModalProps = {
   isOpen: boolean;
@@ -14,13 +14,13 @@ export const DiscardChangesModal = ({
   onDiscard,
   onKeepEditing,
 }: DiscardChangesModalProps) => (
-  <ConfirmModal
+  <ImpactDialog
     isOpen={isOpen}
     title="Discard your changes?"
-    message="What you changed here isn't saved yet."
+    description="What you changed here isn't saved yet."
     confirmText="Discard"
     cancelText="Keep editing"
-    variant="danger"
+    confirmVariant="destructive"
     onConfirm={onDiscard}
     onClose={onKeepEditing}
   />

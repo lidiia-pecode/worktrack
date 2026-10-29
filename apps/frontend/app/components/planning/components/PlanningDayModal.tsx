@@ -28,7 +28,7 @@ import {
   fieldMessageId,
 } from "@/components/ui/field";
 
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
@@ -375,7 +375,7 @@ export const PlanningDayModal = ({
                       type="button"
                       variant="ghostDestructive"
                       size="iconSm"
-                      aria-label={`Remove ${entry.project.name}`}
+                      aria-label={`Delete the ${entry.project.name} plan`}
                       onClick={() => setDeletingEntry(entry)}
                     >
                       <Trash2 className="size-4" />
@@ -472,18 +472,19 @@ export const PlanningDayModal = ({
         onKeepEditing={() => setPendingAction(null)}
       />
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={deletingEntry !== null}
         onClose={() => setDeletingEntry(null)}
         onConfirm={handleDelete}
-        title="Remove this plan?"
-        message={
-          deletingEntry
-            ? `${formatDuration(deletingEntry.plannedMinutes)} on ${deletingEntry.project.name} will be removed.`
-            : undefined
+        title={
+          deletingEntry ? `Delete the ${deletingEntry.project.name} plan?` : ""
         }
-        confirmText="Remove"
-        variant="danger"
+        description={
+          deletingEntry &&
+          `The plan for ${formatLongDayLabel(fromISODate(deletingEntry.date))} will be deleted. This can't be undone.`
+        }
+        confirmText="Delete"
+        confirmVariant="destructive"
         loading={remove.isPending}
       />
     </>

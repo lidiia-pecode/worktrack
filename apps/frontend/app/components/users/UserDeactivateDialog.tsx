@@ -66,7 +66,7 @@ export const UserDeactivateDialog = ({
         },
       ]}
       confirmText="Deactivate"
-      confirmVariant="destructive"
+      confirmVariant="warning"
       onConfirm={confirm}
       onClose={onClose}
       loading={archive.isPending}

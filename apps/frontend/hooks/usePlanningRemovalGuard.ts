@@ -80,7 +80,7 @@ export function usePlanningRemovalGuard() {
       isOpen: pending !== null,
       title: pending?.title ?? "",
       description: pending
-        ? `This will also delete ${countLabel(pending.count, "planned entry", "planned entries")} from today onwards. Past plans are kept.`
+        ? `Their ${countLabel(pending.count, "plan", "plans")} from today on will be deleted. Past plans stay.`
         : "",
       confirmText: "Remove",
       confirmVariant: "destructive" as const,

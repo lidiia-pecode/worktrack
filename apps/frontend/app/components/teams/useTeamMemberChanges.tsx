@@ -108,6 +108,7 @@ export const useTeamMemberChanges = (team: Team) => {
             : (changeCopy?.description ?? "")
         }
         confirmText={changeCopy?.confirmText ?? ""}
+        confirmVariant={changeCopy?.confirmVariant}
         onConfirm={confirmChange}
         onClose={() => setChange(null)}
         loading={isBusy}

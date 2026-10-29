@@ -25,7 +25,7 @@ import { PendingInvitation } from "@/types/Invitation";
 import { UserRole } from "@/types/enums";
 import { INVITATION_VALID_DAYS } from "@/lib/constants";
 
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { PageHeader } from "../../shared/PageHeader";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 import { TOPIC_TEXT } from "./setup-topics";
@@ -214,12 +214,12 @@ export const SetupChecklist = ({ state }: SetupChecklistProps) => {
         }
       />
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={isConfirmingSkip}
         title="Skip setup?"
-        message="This checklist won't start again. Getting started stays in the menu as a guide to how WorkTrack fits together."
+        description="This checklist won't start again. Getting started stays in the menu as a guide to how WorkTrack fits together."
         confirmText="Skip setup"
-        variant="warning"
+        confirmVariant="warning"
         onConfirm={() => skipSetup.mutate()}
         onClose={() => setIsConfirmingSkip(false)}
         loading={skipSetup.isPending}

@@ -77,6 +77,17 @@ describe("ImpactDialog", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("locks both choices while the action runs", async () => {
+    renderDialog({ loading: true });
+
+    expect(
+      await screen.findByRole("button", { name: "Cancel" }),
+    ).toBeDisabled();
+    const confirm = screen.getByRole("button", { name: "Archive" });
+    expect(confirm).toBeDisabled();
+    expect(confirm).toHaveAttribute("aria-busy", "true");
+  });
+
   it("holds the action until its impact has loaded", async () => {
     renderDialog({ confirmDisabled: true });
 

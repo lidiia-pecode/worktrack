@@ -42,7 +42,7 @@ export const RemoveProjectActivityDialog = ({
           : ""
       }
       confirmText="Remove"
-      confirmVariant="destructive"
+      confirmVariant="warning"
       loading={loading}
       onConfirm={onConfirm}
       onClose={onClose}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -33,6 +33,7 @@ interface ImpactDialogProps {
   blocker?: ReactNode;
   confirmText?: string;
   confirmVariant?: "primary" | "warning" | "destructive" | "success";
+  cancelText?: string;
   onConfirm: () => void;
   onClose: () => void;
   loading?: boolean;
@@ -61,25 +62,45 @@ const AffectedEntities = ({
   );
 };
 
+type ShownContent = Omit<
+  ImpactDialogProps,
+  "isOpen" | "onConfirm" | "onClose" | "loading" | "confirmDisabled"
+>;
+
+const isSameContent = (a: ShownContent, b: ShownContent) =>
+  (Object.keys({ ...a, ...b }) as (keyof ShownContent)[]).every(
+    (key) => a[key] === b[key],
+  );
+
 /**
- * The confirmation for a risky action in Manage: what happens, who it
- * touches as links, and any choice it needs. Following a link closes it and
- * opens that entity in the panel.
+ * Every confirmation: what happens, who it touches as links, and any choice
+ * it needs. Following a link closes it and opens that entity in the panel.
  */
 export const ImpactDialog = ({
   isOpen,
-  title,
-  description,
-  affected = [],
-  choice,
-  blocker,
-  confirmText = "Confirm",
-  confirmVariant = "primary",
   onConfirm,
   onClose,
   loading = false,
   confirmDisabled = false,
+  ...content
 }: ImpactDialogProps) => {
+  // Callers clear their text as soon as it closes, so the closing dialog
+  // keeps what it last showed open rather than an empty title or "Checking...".
+  const [lastOpenContent, setLastOpenContent] = useState(content);
+  if (isOpen && !isSameContent(content, lastOpenContent)) {
+    setLastOpenContent(content);
+  }
+  const {
+    title,
+    description,
+    affected = [],
+    choice,
+    blocker,
+    confirmText = "Confirm",
+    confirmVariant = "primary",
+    cancelText = "Cancel",
+  } = isOpen ? content : lastOpenContent;
+
   const shownGroups = affected.filter((group) => group.entities.length > 0);
 
   return (
@@ -116,7 +137,7 @@ export const ImpactDialog = ({
             onClick={onClose}
             disabled={loading}
           >
-            {blocker ? "Got it" : "Cancel"}
+            {blocker ? "Got it" : cancelText}
           </Button>
 
           {!blocker && (

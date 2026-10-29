@@ -60,6 +60,7 @@ export const UserReactivateDialog = ({
         },
       ]}
       confirmText="Reactivate"
+      confirmVariant="success"
       onConfirm={confirm}
       onClose={onClose}
       loading={unarchive.isPending}

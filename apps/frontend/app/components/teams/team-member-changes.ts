@@ -59,6 +59,7 @@ export const memberChangeCopy = (
         .filter(Boolean)
         .join(" "),
       confirmText: "Move",
+      confirmVariant: "warning" as const,
     };
   }
 
@@ -132,7 +133,7 @@ export const pickerChangesCopy = (
         .filter(Boolean)
         .join(" "),
       confirmText: "Remove",
-      confirmVariant: "destructive" as const,
+      confirmVariant: "warning" as const,
     };
   }
 
@@ -155,6 +156,6 @@ export const pickerChangesCopy = (
       .filter(Boolean)
       .join(" "),
     confirmText: "Apply",
-    confirmVariant: "destructive" as const,
+    confirmVariant: "warning" as const,
   };
 };
