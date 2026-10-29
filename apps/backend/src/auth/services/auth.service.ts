@@ -322,6 +322,9 @@ export class AuthService {
         );
       }
 
+      // Refusing rolls back the transaction, so the link stays unused.
+      this.authPolicyService.validateUserAccess(user);
+
       if (user.passwordHash) {
         const isSamePassword = await this.passwordService.verify(
           newPassword,

@@ -20,6 +20,7 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamRole } from 'src/teams/enums/team-role.enum';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { AuthSession } from 'src/auth/entities/auth-session.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
@@ -464,6 +465,12 @@ export class UsersService {
       const repo = this.getRepository(man);
       const user = await this.getUserById(id, companyId, man);
 
+      if (user.status === UserStatus.DEACTIVATED) {
+        throw new BadRequestException(
+          'Reactivate this person before changing their details.',
+        );
+      }
+
       // Otherwise the company could be left with no owner.
       if (
         user.id === caller.id &&
@@ -473,21 +480,14 @@ export class UsersService {
         throw new ForbiddenException('You cannot change your own role');
       }
 
-      if (user.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
-        throw new ForbiddenException(
-          'Only Company OWNER can modify another OWNER',
-        );
+      // One owner per company; handing ownership over isn't supported yet.
+      if (payload.role === UserRole.OWNER) {
+        throw new ForbiddenException('A company has only one owner.');
       }
 
       if (payload.firstName !== undefined) user.firstName = payload.firstName;
       if (payload.lastName !== undefined) user.lastName = payload.lastName;
       if (payload.role !== undefined) {
-        if (payload.role === UserRole.OWNER && caller.role !== UserRole.OWNER) {
-          throw new ForbiddenException(
-            'Only Company OWNER can assign the OWNER role',
-          );
-        }
-
         if (
           user.role === UserRole.MANAGER &&
           payload.role !== UserRole.MANAGER
@@ -597,7 +597,12 @@ export class UsersService {
 
       user.status = UserStatus.DEACTIVATED;
       user.deactivatedAt = new Date();
-      return repo.save(user);
+      const deactivated = await repo.save(user);
+
+      // So a reactivated person signs in again rather than resuming an old session.
+      await man.getRepository(AuthSession).delete({ userId: user.id });
+
+      return deactivated;
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);

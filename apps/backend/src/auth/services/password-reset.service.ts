@@ -13,6 +13,8 @@ import { randomBytes } from 'crypto';
 import { MailService } from 'src/mail/mail.service';
 import { UsersService } from 'src/users/users.service';
 
+import { AuthPolicyService } from './auth-policy.service';
+
 // Sign-up and Google sign-in already tell whether an address has an account,
 // under the same rate limits, so saying it here discloses nothing new.
 export const NO_ACCOUNT_FOR_EMAIL =
@@ -26,6 +28,7 @@ export class PasswordResetService {
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
     private readonly usersService: UsersService,
+    private readonly authPolicyService: AuthPolicyService,
   ) {}
 
   async createToken(userId: string): Promise<string> {
@@ -87,6 +90,8 @@ export class PasswordResetService {
     if (!user) {
       throw new NotFoundException(NO_ACCOUNT_FOR_EMAIL);
     }
+
+    this.authPolicyService.validateUserAccess(user);
 
     const token = await this.createToken(user.id);
 

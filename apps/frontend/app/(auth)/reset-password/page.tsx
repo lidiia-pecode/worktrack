@@ -56,8 +56,12 @@ export default function ResetPasswordPage() {
 
   const resetError = actions.resetPassword.error;
 
+  // An expired link is refused without a code. A deactivated or suspended
+  // account comes with one, and a new link would be refused too.
   const linkExpired =
-    isApiMessageError(resetError) && resetError.statusCode === 401;
+    isApiMessageError(resetError) &&
+    resetError.statusCode === 401 &&
+    !("code" in resetError);
 
   if (!token) {
     return (

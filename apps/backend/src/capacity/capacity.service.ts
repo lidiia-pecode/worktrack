@@ -10,6 +10,7 @@ import { In, LessThanOrEqual, Repository } from 'typeorm';
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { User } from 'src/users/entities/user.entity';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 
@@ -230,7 +231,7 @@ export class CapacityService {
     userId: string,
     onDate?: string,
   ): Promise<CurrentCapacity> {
-    await this.assertUserInCompany(companyId, userId);
+    await this.findUserInCompany(companyId, userId);
 
     const date = onDate ?? (await this.today(companyId));
 
@@ -267,7 +268,14 @@ export class CapacityService {
     validFrom: string,
     actorId: string,
   ): Promise<CurrentCapacity> {
-    await this.assertUserInCompany(companyId, userId);
+    const user = await this.findUserInCompany(companyId, userId);
+
+    // Their working hours are edited once they're reactivated.
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new BadRequestException(
+        'Reactivate this person before changing their working hours.',
+      );
+    }
 
     // The lock check runs inside the write's transaction, so a Close at the
     // same moment waits for it (see ReportingService.isRangeLocked).
@@ -309,16 +317,18 @@ export class CapacityService {
     return this.currentFor(companyId, userId, validFrom);
   }
 
-  private async assertUserInCompany(
+  private async findUserInCompany(
     companyId: string,
     userId: string,
-  ): Promise<void> {
-    const exists = await this.userRepo.findOne({
+  ): Promise<Pick<User, 'id' | 'status'>> {
+    const user = await this.userRepo.findOne({
       where: { id: userId, companyId },
-      select: ['id'],
+      select: ['id', 'status'],
     });
 
-    if (!exists) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('User not found');
+
+    return user;
   }
 }
 
