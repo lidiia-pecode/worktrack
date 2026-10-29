@@ -2,6 +2,7 @@
 
 import {
   CreatePlanningEntryPayload,
+  DeletePeriodPlansQuery,
   PaginatedResponse,
   PlanningEntry,
   PlanningQuery,
@@ -37,6 +38,9 @@ export const PlanningClientApi = {
 
   previewPeriod: (payload: PlanPeriodPayload) =>
     client.post<PeriodPreview>("/period/preview", payload),
+
+  deletePeriodPlans: (query: DeletePeriodPlansQuery) =>
+    client.delete<{ count: number }>(`/period${buildQueryString(query)}`),
 
   getWeek: (params: PlanningWeekQuery) =>
     client.get<PlanningWeek>(`/week${buildQueryString(params)}`),

@@ -22,12 +22,18 @@ import {
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
-import { PlanPeriodPayload } from './dtos/plan-period-payload.dto';
 import {
+  DeletePeriodPlansQuery,
+  PlanPeriodPayload,
+} from './dtos/plan-period-payload.dto';
+import {
+  PeriodLine,
   PeriodWeek,
+  PeriodWrites,
   formatDay,
   formatMinutes,
   periodProblems,
+  periodWrites,
 } from './planning-period.util';
 import { Company } from 'src/companies/entities/company.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -89,14 +95,15 @@ export interface PeriodPreview {
   plannedDays: string[];
   /** Every day and week the plan would take over its limit. */
   problems: string[];
+  /** How many plans saving would add and change, per listed project. */
+  changes: { projectId: string; added: number; changed: number }[];
 }
 
 interface ResolvedPeriod {
   plannedDays: Set<string>;
   problems: string[];
-  /** The person's plans across every week the period touches. */
-  existing: PlanningEntry[];
-  minutesByProject: Map<string, number>;
+  lines: PeriodLine[];
+  writes: PeriodWrites;
 }
 
 const dayLimitMinutes = (company: PlanningCompany): number =>
@@ -504,16 +511,27 @@ export class PlanningService {
     payload: PlanPeriodPayload,
     user: AuthUser,
   ): Promise<PeriodPreview> {
-    const { plannedDays, problems } = await this.dataSource.transaction(
-      (manager) => this.resolvePeriod(payload, user, manager),
-    );
+    const { plannedDays, problems, lines, writes } =
+      await this.dataSource.transaction((manager) =>
+        this.resolvePeriod(payload, user, manager),
+      );
 
-    return { plannedDays: [...plannedDays].sort(), problems };
+    return {
+      plannedDays: [...plannedDays].sort(),
+      problems,
+      changes: lines.map(({ projectId }) => ({
+        projectId,
+        added: writes.created.filter((c) => c.projectId === projectId).length,
+        changed: writes.changed.filter((c) => c.entry.projectId === projectId)
+          .length,
+      })),
+    };
   }
 
   /**
-   * Sets each listed project to the same hours on every day of the range the
-   * person has hours on, or writes nothing: the day and week limits are checked
+   * Sets each listed project to the same hours on the days of the range the
+   * person has hours on: every one, or only those that already have it. It
+   * writes nothing unless all of it fits: the day and week limits are checked
    * on the result as a whole, and every problem is returned at once.
    */
   async planPeriod(
@@ -525,8 +543,11 @@ export class PlanningService {
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, userId, user.companyId);
 
-      const { plannedDays, problems, existing, minutesByProject } =
-        await this.resolvePeriod(payload, user, manager);
+      const { plannedDays, problems, writes } = await this.resolvePeriod(
+        payload,
+        user,
+        manager,
+      );
 
       if (plannedDays.size === 0) {
         throw new BadRequestException(
@@ -535,40 +556,28 @@ export class PlanningService {
       }
       if (problems.length > 0) throw new BadRequestException(problems);
 
-      const existingByDayAndProject = new Map(
-        existing.map((entry) => [`${entry.date}|${entry.projectId}`, entry]),
-      );
-      const toSave: PlanningEntry[] = [];
-      let created = 0;
-      let updated = 0;
+      await manager.save(PlanningEntry, [
+        ...writes.created.map(({ date, projectId, minutes }) =>
+          manager.create(PlanningEntry, {
+            companyId: user.companyId,
+            userId,
+            projectId,
+            createdById: user.id,
+            plannedMinutes: minutes,
+            date,
+          }),
+        ),
+        ...writes.changed.map(({ entry, minutes }) => {
+          entry.plannedMinutes = minutes;
+          return entry;
+        }),
+      ]);
 
-      for (const date of plannedDays) {
-        for (const [projectId, minutes] of minutesByProject) {
-          const entry = existingByDayAndProject.get(`${date}|${projectId}`);
-
-          if (!entry) {
-            toSave.push(
-              manager.create(PlanningEntry, {
-                companyId: user.companyId,
-                userId,
-                projectId,
-                createdById: user.id,
-                plannedMinutes: minutes,
-                date,
-              }),
-            );
-            created++;
-          } else if (entry.plannedMinutes !== minutes) {
-            entry.plannedMinutes = minutes;
-            toSave.push(entry);
-            updated++;
-          }
-        }
-      }
-
-      await manager.save(PlanningEntry, toSave);
-
-      return { days: plannedDays.size, created, updated };
+      return {
+        days: plannedDays.size,
+        created: writes.created.length,
+        updated: writes.changed.length,
+      };
     });
   }
 
@@ -581,10 +590,13 @@ export class PlanningService {
     const { userId, startDate, endDate } = payload;
     assertDateRange(startDate, endDate);
 
-    const minutesByProject = new Map(
-      payload.projects.map((p) => [p.projectId, p.minutesPerDay]),
-    );
-    if (minutesByProject.size !== payload.projects.length) {
+    const lines: PeriodLine[] = payload.projects.map((project) => ({
+      projectId: project.projectId,
+      minutesPerDay: project.minutesPerDay,
+      existingDaysOnly: project.existingDaysOnly ?? false,
+    }));
+    const projectIds = new Set(lines.map((line) => line.projectId));
+    if (projectIds.size !== lines.length) {
       throw new BadRequestException('Each project can be listed only once');
     }
 
@@ -595,7 +607,7 @@ export class PlanningService {
     );
     await this.assertCanPlanForUser(targetUser, user);
 
-    for (const projectId of minutesByProject.keys()) {
+    for (const projectId of projectIds) {
       await this.resolveProject(projectId, user.companyId, manager);
       await this.assertProjectMember(manager, projectId, userId);
     }
@@ -626,15 +638,17 @@ export class PlanningService {
       })
       .getMany();
 
+    const writes = periodWrites({ plannedDays, lines, existing });
     const problems = periodProblems({
       weeks,
       plannedDays,
-      minutesByProject,
+      lines,
+      writes,
       existing,
       dayLimit: dayLimitMinutes(company),
     });
 
-    return { plannedDays, problems, existing, minutesByProject };
+    return { plannedDays, problems, lines, writes };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
@@ -654,6 +668,52 @@ export class PlanningService {
     });
 
     return { success: true };
+  }
+
+  /**
+   * Deletes one person's plans on one project between two days, as deleting
+   * each plan would: the same permission, nothing in a locked month, and all
+   * of them or none.
+   */
+  async deletePeriodPlans(
+    query: DeletePeriodPlansQuery,
+    user: AuthUser,
+  ): Promise<{ count: number }> {
+    const { userId, projectId, startDate, endDate } = query;
+    assertDateRange(startDate, endDate);
+
+    return this.dataSource.transaction(async (manager) => {
+      await this.lockUser(manager, userId, user.companyId);
+
+      // A deactivated person's leftover plans can still be cleared.
+      const targetUser = await manager.findOne(User, {
+        where: { id: userId, companyId: user.companyId },
+      });
+      if (!targetUser) throw new NotFoundException('User not found');
+
+      await this.assertCanPlanForUser(targetUser, user);
+      await this.assertPeriodNotLocked(
+        manager,
+        user.companyId,
+        startDate,
+        endDate,
+      );
+
+      const { affected } = await manager
+        .createQueryBuilder()
+        .delete()
+        .from(PlanningEntry)
+        .where('company_id = :companyId', { companyId: user.companyId })
+        .andWhere('user_id = :userId', { userId })
+        .andWhere('project_id = :projectId', { projectId })
+        .andWhere('date BETWEEN :startDate AND :endDate', {
+          startDate,
+          endDate,
+        })
+        .execute();
+
+      return { count: affected ?? 0 };
+    });
   }
 
   /**

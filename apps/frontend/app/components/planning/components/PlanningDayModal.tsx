@@ -31,6 +31,7 @@ import {
 import { ImpactDialog } from "../../shared/ImpactDialog";
 import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormSelect } from "../../shared/FormSelect";
+import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
@@ -340,6 +341,8 @@ export const PlanningDayModal = ({
                       entry.id === editingId && "bg-brand-subtle",
                     )}
                   >
+                    <ProjectColorDot projectId={entry.project.id} />
+
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                         <span className="truncate">{entry.project.name}</span>
@@ -365,6 +368,7 @@ export const PlanningDayModal = ({
                         variant="ghost"
                         size="iconSm"
                         aria-label={`Edit ${entry.project.name}`}
+                        title="Edit plan"
                         onClick={() => guardUnsaved(() => startEditing(entry))}
                       >
                         <Pencil className="size-4" />
@@ -376,6 +380,7 @@ export const PlanningDayModal = ({
                       variant="ghostDestructive"
                       size="iconSm"
                       aria-label={`Delete the ${entry.project.name} plan`}
+                      title="Delete plan"
                       onClick={() => setDeletingEntry(entry)}
                     >
                       <Trash2 className="size-4" />
@@ -397,8 +402,9 @@ export const PlanningDayModal = ({
                 name="projectId"
                 render={({ field }) => (
                   <FormSelect
-                    label="Project"
+                    aria-label="Project"
                     value={field.value}
+                    leading={<ProjectColorDot projectId={field.value} />}
                     onValueChange={handleProjectChange}
                     options={projectOptions}
                     placeholder={
@@ -411,13 +417,9 @@ export const PlanningDayModal = ({
                   />
                 )}
               />
-              <Field
-                id="plan-hours"
-                label="Hours"
-                group
-                error={errors.hours?.message}
-              >
+              <Field id="plan-hours" error={errors.hours?.message}>
                 <TimePicker
+                  aria-label="Hours"
                   hours={Number(hours)}
                   minutes={Number(minutes)}
                   minuteStep={MINUTE_STEP}

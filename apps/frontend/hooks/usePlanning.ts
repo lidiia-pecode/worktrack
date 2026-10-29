@@ -126,6 +126,20 @@ export function usePlanPeriod() {
   });
 }
 
+/** Deletes one project's plans in a range at once; a failure is toasted. */
+export function useDeletePeriodPlans() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: PlanningClientApi.deletePeriodPlans,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
+      toast.success("Plan deleted");
+    },
+  });
+}
+
 export const usePlanningMutations = createEntityMutations<
   PlanningEntry,
   CreatePlanningEntryPayload,

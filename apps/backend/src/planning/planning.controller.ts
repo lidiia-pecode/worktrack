@@ -24,6 +24,7 @@ import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
 import {
+  DeletePeriodPlansQuery,
   PlanPeriodPayload,
   PreviewPeriodPayload,
 } from './dtos/plan-period-payload.dto';
@@ -102,6 +103,17 @@ export class PlanningController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.previewPeriod(payload, user);
+  }
+
+  // Before `:id`, which would otherwise take "period" as an id.
+  @UseGuards(RolesGuard)
+  @Role(UserRole.MANAGER, UserRole.OWNER)
+  @Delete('period')
+  deletePeriodPlans(
+    @Query() query: DeletePeriodPlansQuery,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.deletePeriodPlans(query, user);
   }
 
   @UseGuards(RolesGuard)
