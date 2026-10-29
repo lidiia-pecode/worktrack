@@ -144,11 +144,19 @@ export const PlanningDayModal = ({
     else action();
   };
 
+  // One plan per project per day: a project planned today is changed from its
+  // own row, so only the plan being edited keeps its project here.
   const projectOptions = useMemo(() => {
-    const options = row.projects.map((project) => ({
-      value: project.id,
-      label: project.name,
-    }));
+    const options = row.projects
+      .filter(
+        (project) =>
+          project.id === editing?.project.id ||
+          !dayEntries.some((entry) => entry.project.id === project.id),
+      )
+      .map((project) => ({
+        value: project.id,
+        label: project.name,
+      }));
 
     if (editing && !options.some((o) => o.value === editing.project.id)) {
       options.unshift({
@@ -158,9 +166,10 @@ export const PlanningDayModal = ({
     }
 
     return options;
-  }, [row.projects, editing]);
+  }, [row.projects, dayEntries, editing]);
 
-  const hasNoProjects = projectOptions.length === 0;
+  const hasNoProjects = row.projects.length === 0;
+  const hasNoOptions = projectOptions.length === 0;
 
   const startNew = () => {
     setEditingId(null);
@@ -170,22 +179,6 @@ export const PlanningDayModal = ({
   const startEditing = (entry: PlanningEntry) => {
     setEditingId(entry.id);
     reset(toFormData(entry));
-  };
-
-  // One entry per project per day: picking a project that is already planned
-  // edits that entry instead of adding a second one.
-  const handleProjectChange = (projectId: string) => {
-    const planned = dayEntries.find((entry) => entry.project.id === projectId);
-
-    if (planned && planned.id !== editingId && !isArchivedEntry(planned)) {
-      guardUnsaved(() => startEditing(planned));
-      return;
-    }
-
-    setValue("projectId", projectId, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
   };
 
   const onSubmit = async (data: PlanFormData) => {
@@ -320,7 +313,7 @@ export const PlanningDayModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={create.isPending || update.isPending}
-              disabled={hasNoProjects}
+              disabled={hasNoOptions}
             >
               {editing ? "Save changes" : "Add plan"}
             </Button>
@@ -405,15 +398,22 @@ export const PlanningDayModal = ({
                     aria-label="Project"
                     value={field.value}
                     leading={<ProjectColorDot projectId={field.value} />}
-                    onValueChange={handleProjectChange}
+                    onValueChange={(projectId) =>
+                      setValue("projectId", projectId, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      })
+                    }
                     options={projectOptions}
                     placeholder={
                       hasNoProjects
                         ? "Not on any active project"
-                        : "Select project"
+                        : hasNoOptions
+                          ? "Every project is planned this day"
+                          : "Select project"
                     }
                     error={errors.projectId?.message}
-                    disabled={hasNoProjects}
+                    disabled={hasNoOptions}
                   />
                 )}
               />

@@ -91,7 +91,9 @@ export class PasswordResetService {
       throw new NotFoundException(NO_ACCOUNT_FOR_EMAIL);
     }
 
-    this.authPolicyService.validateUserAccess(user);
+    // A deactivated account or a suspended company gets the same answer as any
+    // other account, only without the email, so the answer says nothing of it.
+    if (!this.authPolicyService.hasAccess(user)) return;
 
     const token = await this.createToken(user.id);
 

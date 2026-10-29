@@ -181,16 +181,25 @@ export const PlanPeriodModal = ({
   // Each blank line holds a place for one of the projects still free.
   const canAddLine =
     freeProjectCount > added.filter((line) => !line.projectId).length;
+  // A line keeps its project when the dates change, though the new period may
+  // already list it above; such a line says so and isn't saved.
+  const isListedAbove = (projectId: string) => listedIds.includes(projectId);
   const addedLines = added
     .map((line) => ({ projectId: line.projectId, minutes: minutesOf(line) }))
-    .filter((line) => line.projectId && line.minutes > 0);
+    .filter(
+      (line) =>
+        line.projectId && line.minutes > 0 && !isListedAbove(line.projectId),
+    );
 
   const payloadProjects = [
-    ...[...editedMinutes].map(([projectId, minutes]) => ({
-      projectId,
-      minutesPerDay: minutes,
-      existingDaysOnly: true,
-    })),
+    // A row at 0h is not sent: it shows its own message and blocks Save.
+    ...[...editedMinutes]
+      .filter(([, minutes]) => minutes > 0)
+      .map(([projectId, minutes]) => ({
+        projectId,
+        minutesPerDay: minutes,
+        existingDaysOnly: true,
+      })),
     ...addedLines.map((line) => ({
       projectId: line.projectId,
       minutesPerDay: line.minutes,
@@ -218,7 +227,7 @@ export const PlanPeriodModal = ({
   const changes = [
     ...lines.flatMap((line) => {
       const minutes = editedMinutes.get(line.projectId);
-      return minutes === undefined
+      return minutes === undefined || minutes === 0
         ? []
         : [
             listedChangeText(
@@ -245,6 +254,8 @@ export const PlanPeriodModal = ({
   // Nothing saves until there is a change and the server has said it fits.
   const cannotSave =
     payloadProjects.length === 0 ||
+    [...editedMinutes.values()].includes(0) ||
+    added.some((line) => isListedAbove(line.projectId)) ||
     !preview ||
     preview.plannedDays.length === 0 ||
     preview.problems.length > 0 ||
@@ -393,6 +404,9 @@ export const PlanPeriodModal = ({
                     line={line}
                     workingDays={workingDays}
                     editedMinutes={editedMinutes.get(line.projectId)}
+                    isOnProject={personProjects.some(
+                      (project) => project.id === line.projectId,
+                    )}
                     minuteStep={MINUTE_STEP}
                     formId={FORM_ID}
                     onEdit={editLine(line.projectId)}
@@ -445,7 +459,11 @@ export const PlanPeriodModal = ({
                           options={options}
                           placeholder="Select project"
                           leading={<ProjectColorDot projectId={select.value} />}
-                          error={lineErrors?.projectId?.message}
+                          error={
+                            isListedAbove(select.value)
+                              ? "Already planned in this period. Change it above."
+                              : lineErrors?.projectId?.message
+                          }
                         />
                       )}
                     />

@@ -372,6 +372,78 @@ describe("PlanPeriodModal", () => {
     );
   });
 
+  it("asks for hours or the bin when a planned project is set to 0h", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-internal", name: "Internal" },
+        plannedMinutes: 120,
+        date: "2026-10-06",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    const hours = within(
+      screen.getByRole("group", { name: "Hours a day for Internal" }),
+    ).getByRole("spinbutton", { name: "Hours" });
+    await user.click(hours);
+    await user.clear(hours);
+    await user.type(hours, "0");
+    await user.tab();
+
+    expect(
+      screen.getByText(
+        "Enter hours greater than 0, or delete it with the bin.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
+  });
+
+  it("offers only the bin for a project the person is no longer on", () => {
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-old", name: "Old client" },
+        plannedMinutes: 120,
+        date: "2026-10-06",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    expect(screen.getByText("Not on this project")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Hours a day for Old client" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete the Old client plan" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a new line out of the save once its project is planned above", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderModal();
+
+    await fillRow(user, 0, "Northwind", "2");
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-northwind", name: "Northwind" },
+        plannedMinutes: 120,
+        date: "2026-11-03",
+      } as PlanningEntry,
+    ];
+    await user.click(screen.getByRole("button", { name: "Next month" }));
+
+    expect(
+      screen.getByText("Already planned in this period. Change it above."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
+  });
+
   it("deletes a planned project in the period once confirmed", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     server.plans = [

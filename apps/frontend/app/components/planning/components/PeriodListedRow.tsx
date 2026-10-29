@@ -17,6 +17,8 @@ type PeriodListedRowProps = {
   workingDays: string[];
   /** The new hours, unsaved; none while the row is as planned. */
   editedMinutes?: number;
+  /** Whether the person is still on the project, so its hours can change. */
+  isOnProject: boolean;
   minuteStep: number;
   formId: string;
   /** Applies a change to the row's unsaved hours; none keeps it as planned. */
@@ -32,12 +34,16 @@ export const PeriodListedRow = ({
   line,
   workingDays,
   editedMinutes,
+  isOnProject,
   minuteStep,
   formId,
   onEdit,
   onDelete,
 }: PeriodListedRowProps) => {
   const isEdited = editedMinutes !== undefined;
+  // Deleting the project's plans is the bin's job, so no hours is a mistake.
+  const hasNoHours = editedMinutes === 0;
+  const canChangeHours = !line.isArchived && isOnProject;
   const shownMinutes = editedMinutes ?? line.sameMinutes ?? 0;
   // The picker reports the hours, then the minutes, so each part applies to
   // the latest total. Back at the planned hours, the row is as it was.
@@ -58,7 +64,11 @@ export const PeriodListedRow = ({
       <div className="min-w-0 flex-1">
         <p className="flex items-center gap-2 text-sm font-medium text-foreground">
           <span className="truncate">{line.name}</span>
-          {line.isArchived && <Badge variant="neutral">Archived</Badge>}
+          {line.isArchived ? (
+            <Badge variant="neutral">Archived</Badge>
+          ) : (
+            !isOnProject && <Badge variant="neutral">Not on this project</Badge>
+          )}
         </p>
 
         <p className="text-xs text-muted-foreground">
@@ -85,9 +95,15 @@ export const PeriodListedRow = ({
             </>
           )}
         </p>
+
+        {hasNoHours && (
+          <p className="text-xs text-destructive-text">
+            Enter hours greater than 0, or delete it with the bin.
+          </p>
+        )}
       </div>
 
-      {!line.isArchived &&
+      {canChangeHours &&
         (line.sameMinutes === null && !isEdited ? (
           <Button
             type="button"
@@ -109,9 +125,13 @@ export const PeriodListedRow = ({
             formId={formId}
             onHoursChange={setPart("hours")}
             onMinutesChange={setPart("minutes")}
+            error={hasNoHours}
             className={cn(
-              "h-10 border-border bg-transparent",
-              isEdited && "border-brand/40 bg-brand-subtle",
+              "h-10 bg-transparent",
+              !hasNoHours &&
+                (isEdited
+                  ? "border-brand/40 bg-brand-subtle"
+                  : "border-border"),
             )}
           />
         ))}

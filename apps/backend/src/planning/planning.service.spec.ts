@@ -986,6 +986,36 @@ describe('PlanningService', () => {
       throw new Error('The write never waited on the held lock');
     };
 
+    // An archive holds the project row while it deletes the plans from today
+    // on; a plan saved meanwhile waits for it, then finds the project archived.
+    it('a plan saved while its project is archived waits, then is refused', async () => {
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+
+      try {
+        await holder.query('SELECT id FROM projects WHERE id = $1 FOR UPDATE', [
+          archivedProjectId,
+        ]);
+        await holder.query('UPDATE projects SET status = $1 WHERE id = $2', [
+          ProjectStatus.ARCHIVED,
+          archivedProjectId,
+        ]);
+        const pending = service.create(
+          plan(member.id, MONDAY, HOUR, archivedProjectId),
+          manager,
+        );
+        await waitUntilBlockedBy(holder);
+
+        await holder.commitTransaction();
+        await expect(pending).rejects.toThrow(/not available for planning/);
+        expect(await entriesFor(member.id)).toHaveLength(0);
+      } finally {
+        if (holder.isTransactionActive) await holder.rollbackTransaction();
+        await holder.release();
+      }
+    });
+
     // Waits on the person's row before touching the entry, as a period plan
     // does, so the two never hold one lock each and wait for the other.
     it.each([

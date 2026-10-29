@@ -662,9 +662,10 @@ is 8–100 characters with an upper-case letter, a lower-case letter and a digit
 an existing password is only checked for presence. Names are 1–100 characters and
 company names 2–100 characters of any kind, without line breaks or invisible
 characters. Sign-in says that an account is deactivated or a company suspended
-only after a correct password; a password reset for such an account is
-refused with the same message, both when it is asked for and when its link is
-used, and every Google path refuses an address Google
+only after a correct password. Asking for a password reset answers such an
+account as any other ("If this account can sign in to WorkTrack, a password
+reset link is on its way") but sends nothing, and a link sent before is
+refused with the sign-in message when it is used, and every Google path refuses an address Google
 has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
 invitation email, and only the sign-up page starts a company. A failed Google

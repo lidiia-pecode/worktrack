@@ -122,6 +122,23 @@ describe("PlanningDayModal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it("adds only projects not planned that day, and edits keep their own", async () => {
+    const user = userEvent.setup();
+    renderModal({ entries: [NORTHWIND] });
+
+    await user.click(screen.getByRole("combobox", { name: "Project" }));
+    expect(
+      (await screen.findAllByRole("option")).map((o) => o.textContent),
+    ).toEqual(["Internal"]);
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Edit Northwind" }));
+    await user.click(screen.getByRole("combobox", { name: "Project" }));
+    expect(
+      (await screen.findAllByRole("option")).map((o) => o.textContent),
+    ).toEqual(["Northwind", "Internal"]);
+  });
+
   it("asks before switching to another plan drops unsaved changes", async () => {
     const user = userEvent.setup();
     renderModal({ entries: [NORTHWIND] });

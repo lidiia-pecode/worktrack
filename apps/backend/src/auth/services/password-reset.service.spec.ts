@@ -7,7 +7,6 @@ import { MailService } from 'src/mail/mail.service';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 
-import { AuthErrorCode } from '../auth-error';
 import { PasswordResetToken } from '../entities/password-reset-token.entity';
 import { AuthPolicyService } from './auth-policy.service';
 import {
@@ -63,7 +62,7 @@ describe('PasswordResetService.requestPasswordReset', () => {
     );
   });
 
-  it('refuses a deactivated account as sign-in does, and sends nothing', async () => {
+  it('answers a deactivated account as any other, and sends nothing', async () => {
     findByEmailWithCompany.mockResolvedValue({
       id: 'user-1',
       email: 'emma.clarke@example.com',
@@ -72,9 +71,7 @@ describe('PasswordResetService.requestPasswordReset', () => {
 
     await expect(
       service.requestPasswordReset('emma.clarke@example.com'),
-    ).rejects.toMatchObject({
-      response: { code: AuthErrorCode.ACCOUNT_INACTIVE },
-    });
+    ).resolves.toBeUndefined();
     expect(sendPasswordResetEmail).not.toHaveBeenCalled();
   });
 });
