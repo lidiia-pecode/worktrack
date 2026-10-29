@@ -76,7 +76,7 @@ with users, projects, activities, teams, planning, time logs and absences.
 `make seed` creates the **WorkTrack Demo** company: the accounts for checking
 each role (an owner, two managers and employees) and about thirty-five demo
 people in several teams, with projects, activities and categories, including
-archived, deactivated and draft ones and long names. For Reports it adds time,
+archived and deactivated ones and long names. For Reports it adds time,
 plans and absences from 1 July 2026 up to yesterday, the same on every reset
 for July to September; the company starts in June, which stays empty. Running
 it again adds only what is missing, and the history only into a database that

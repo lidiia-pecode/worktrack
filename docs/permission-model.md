@@ -95,8 +95,9 @@ company role to MANAGER, then makes them the team's manager. The API refuses
 `roleInTeam = MANAGER` for anyone else, on adding and on changing a membership.
 A Manager who manages no team may be changed to Employee or Owner; one who
 manages a team may not, and the refusal names the teams — memberships never
-change as a side effect. A closed manager membership cannot be reopened for
-someone who is no longer a Manager either. In the member list, choosing Manager
+change as a side effect. A closed membership is never reopened: someone coming
+back is added anew, from that day (Phase 38 part 2, which also has the server
+set every membership date). In the member list, choosing Manager
 for an employee asks once, then makes them a Manager and then the team's
 manager, as two separate changes. The Owner may also invite a new Manager to
 lead a team; accepting makes them its manager. That is still the
@@ -220,14 +221,20 @@ Three further rules follow from §3.4 and are settled:
   team and therefore sees nobody. Otherwise they would still have no project to
   log time against, which is the whole reason managers become members at all.
 - **Active status gates joining, not staying.** Only an ACTIVE user may be newly
-  assigned, to a project or to a team, and a closed team membership is not
-  reopened for someone deactivated. Archiving someone leaves their existing
+  assigned, to a project or to a team. Archiving someone leaves their existing
   project memberships — and
   their team memberships — exactly as they are, un-archiving restores nothing
   because nothing was taken, and only a deliberate removal ever changes them.
   This is "archive, never delete" (business §8) applied to `project_users`.
 - **The member count stays whole.** A scoped list is still reported against the
   project's true size, per §3.4.
+
+**Archiving or restoring a project is the Owner's** (Phase 38 part 2).
+Archiving removes everyone's plans on it from today on, people outside any one
+manager's reach included, so it is an action on the whole company's structure,
+like a team's. Managers create and edit projects and choose their activities
+from the catalogue; the catalogue itself (activities and categories) is the
+Owner's to change.
 
 **Employees** see the projects they are assigned to, and no others. They read
 each one's name, status and client name — the client name also on their own
@@ -294,9 +301,10 @@ reference.
 
 ### 3.8 Delegation summary
 
-The Owner keeps: structure, role grants, moving people, and everything a manager
-can do. The manager gets: hiring into their team, running their team, staffing
-their projects with their people. Neither can quietly become the other.
+The Owner keeps: structure (teams, the activity catalogue, archiving
+projects), role grants, moving people, and everything a manager can do. The
+manager gets: hiring into their team, running their team, creating projects
+and staffing them with their people. Neither can quietly become the other.
 
 ---
 
@@ -327,7 +335,7 @@ project staffed from both teams.
 ## 5. How today differs
 
 **Nothing differs.** Every rule in §3 is enforced in the services — team
-structure by Owner-only routes, people visibility and staffing by
+structure, the catalogue and project archiving by Owner-only routes, people visibility and staffing by
 `TeamVisibilityService`, time logs and planning by their own scope checks that
 call it.
 

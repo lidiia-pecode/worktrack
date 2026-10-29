@@ -239,7 +239,7 @@ filter, which made the boundary look arbitrary and exposed the full roster.
 
 *Consequence.* The user and team list endpoints are narrowed for managers.
 Together with D9 this makes one rule cover both halves: a manager reads and
-writes within their own teams. It settles the read half of §10 Q3.
+writes within their own teams. It settles the read half of §10 Q3 (answered).
 
 *Staffing was not covered by this decision.* `GET /users` used to answer two
 questions at once — who a manager's people are, and who they may add to a team
@@ -342,7 +342,9 @@ your own time.
 `leftAt` rather than deleted, so "who was on this team in March" remains
 answerable. `leftAt` is the day a membership ended, not its last day, so somebody
 can leave a team and rejoin it on the same day, and membership dates are the
-company's dates, from its time zone. Managership is derived from membership: a manager sees people who
+company's dates, from its time zone. The server sets them: a membership starts
+the day someone is added and ends the day they are removed or moved; nothing is
+scheduled, and someone coming back gets a new membership. Managership is derived from membership: a manager sees people who
 share an active team with an active `roleInTeam = MANAGER` membership of theirs.
 
 ---
@@ -489,7 +491,10 @@ the grid, read-only.
 onwards**, in the company's time zone, never on a locked date; past plans stay
 for Reports. Both membership screens confirm first, naming the count
 from `GET /planning/removal-count`, which uses the same condition as the delete.
-Archiving a project deletes nothing.
+**Archiving a project deletes everyone's plans on it from today on** the same
+way, after its dialog names whose and how many; past plans, its people, its
+activities and logged time stay, and restoring it brings back the people and
+activities but not the removed plans.
 
 Planning does **not** create time logs, does not restrict them, and never
 changes expected hours (D3).
@@ -591,19 +596,16 @@ anybody has logged or been planned; when the viewer is the only one there, a
 line says why — nobody else has joined, or the manager leads no team or an
 empty one.
 
-An activity is in at most one category, and never in an archived one while it
-is active. Without a category it is a **draft**: it can be edited and archived,
-but no project may offer it, so nobody logs time against it. A category is
-therefore required before an activity goes on a project, and it cannot be taken
-away while any project links the activity, archived projects included, since
-restoring a project brings its links back; a link removed from a project, kept
-for the time logged on it, does not count. Changing an activity's category is
+Every activity is in exactly one category (the database requires it), and never
+in an archived one while it is active. Taking an activity out of its category
+means moving it to another or archiving it; there is no state without one, so
+past time always reports under a category. Changing an activity's category is
 always allowed, and its time is reported under the new one. Archiving a category
-moves its active activities to another active category, archives them with it,
-or, when no project links any of them, leaves them as drafts. An activity whose
-category is archived is restored by restoring the category too or moving it to
-another, or, when no project links it, as a draft. Restoring a category can
-restore all of its archived activities with it, or the category alone.
+moves its active activities to another active category or archives them with
+it. An activity whose category is archived is restored by restoring the
+category too or moving it to another. Restoring a category can restore all of
+its archived activities with it, those archived on their own earlier included,
+or the category alone.
 Archived projects, activities and categories, like archived teams, are
 read-only until they are restored.
 
@@ -688,8 +690,8 @@ show the day they were deactivated, and Reports' People card marks them
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
 | Teams | full CRUD; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel | — |
-| Projects | full CRUD | full CRUD | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
-| Activities, Categories | full CRUD | full CRUD | read |
+| Projects | full CRUD; archive and restore are theirs alone | create, edit, staff their own people, choose activities from the catalogue | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
+| Activities, Categories | full CRUD | read | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
 | Time logs — write | whole company, a deactivated person's days before they left included | own, plus users in teams they manage, the same way | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
@@ -732,8 +734,11 @@ it is empty (no open membership, no pending invitation), which the owner does on
 its panel; archiving then changes only its status, an archived team is
 read-only, and restoring it brings it back as it was.
 
-Note that MANAGER still has full CRUD over projects, activities and categories
-company-wide — not restricted to their own teams. See §10 Q3.
+Company-wide structure is the owner's: teams, the activity and category
+catalogue, archiving and restoring a project (which removes everyone's plans on
+it), periods and settings. Managers create and edit projects company-wide,
+staff them with their own people and choose their activities from the catalogue
+(§10 Q3).
 
 ---
 
@@ -765,12 +770,14 @@ see, and how a new company gets started. §7 plans that work.
   working day's figure sits on solid amber with a "+Xh" badge. A day that
   hasn't happened yet can't be logged on.
 - **Manage pages** — People, Teams, Projects, Activities and Categories as
-  searchable lists; Teams and Periods are the owner's, so a manager's Manage
-  menu is People, Projects, Activities and Categories. A row opens a shared side panel where every related name is
+  searchable lists; Teams, Activities, Categories and Periods are the owner's,
+  so a manager's Manage menu is People and Projects, and an activity or
+  category a manager opens from a project reads only. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
   comes before anything risky. A project is client work, with a client suggested
   from those already used, or internal; an activity has a billable default and
-  can stay a draft without a category until a project uses it.
+  always a category. A project's panel lists its archived activities apart, and
+  its archive dialog names whose plans from today on it removes.
 - **Team time view** — owners and managers land on `/team` and read their
   people's week, a row each: the person, their hours against what was
   expected, and each day's entries as project-coloured blocks, with the plan
@@ -778,7 +785,7 @@ see, and how a new company gets started. §7 plans that work.
   block opens that entry, the empty part of a day logs time for the person,
   and an icon by the name records an absence. A search by name or position,
   a sort by name or by how much of the expected time is logged, and filters by
-  team and project (archived and completed projects included) narrow it; the
+  team and project (archived projects included) narrow it; the
   week and the filters are in the URL, so a reload keeps them. A deactivated
   person is marked and listed on every week before they left, logged time or
   not; their days before they left stay editable in an open month, and from
@@ -1017,6 +1024,7 @@ is in its pull request.
 | 36 | Fixes across areas: nothing expected of a person for a spell they were deactivated and came back from, and an owner's own days without time on My time and in their panel; planning edits that can't deadlock with a period plan, and a period preview walking expected hours once; notifications read only once shown, unread first; sessions kept through a sign-in page, a throttled refresh or a backend asleep, and a deleted session no longer locking anyone out of sign-in, with lookups refusing a missing value and database conflicts repeating nothing sent; the timesheet's excess in line with its entries, locked absences opened to read, typed minutes carried into hours and the week link tidied; a team's manager removable by an owner only, focus back after Back, Team time's empty days named for a screen reader, and lighter placeholders |
 | 37 | Team time with rich cells: each day's entries as project-coloured blocks that open the entry form, the empty part of a day logging time for the person and an absence icon by each name, replacing the side panel; the plan on a day with nothing logged; the team summary returning each day's entries on request; search by name or position, a sort by name or by the share of expected time logged, and archived and completed projects in the project filter; the week in the URL on the timesheet, Team time and Planning, and Team time's filters too; Reports' days without time linking to their week on Team time with the person highlighted; a person column that stays put while the days scroll; no day totals in the Team time and Planning headers |
 | 38 (part 1) | Teams and leavers: a leaver's time and absences corrected by owners and managers on the days before they left; one member team per person, adding someone to another team a confirmed move; the owner in no team; a team's former members, pending invitations and "Move to…" on its panel; a team archived only once empty, with restore an exact undo; Reactivate confirmed, the day someone was deactivated shown, and a leaver marked on the People card; the Teams page the owner's, a manager removing a member from the person's panel, and Users renamed People |
+| 38 (part 2) | Projects, activities, categories and plans: every activity always in a category, drafts removed and the database requiring one; taking an activity out of its category a move or an archive; archiving a project removing everyone's plans from today on, named first, and its archived activities listed on its panel; the activity catalogue and archiving or restoring a project the owner's, with a manager's menu of People and Projects; membership dates set by the server; restore of an activity or category no longer failing; the unused `COMPLETED` and `INACTIVE` statuses removed |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1081,7 +1089,7 @@ absences and locks the same way. Planning and Team time stay separate screens by
 decision: they share the chrome, not the job (actuals and corrections on one,
 intent and limits on the other).
 
-**Area 5 — Administration and settings** *(done, Phases 20–26 and 30; teams and leavers revisited in Phase 38 part 1)*. The
+**Area 5 — Administration and settings** *(done, Phases 20–26 and 30; teams and leavers revisited in Phase 38 part 1, the catalogue and project archiving in part 2)*. The
 owner's and manager's admin screens — people, teams, projects, activities,
 categories, periods and company settings. Lists that scale past a few dozen
 items with search that covers everything, confirmations before anything is
@@ -1224,24 +1232,6 @@ belong to. The ones below are about the rest of the product.
 Genuinely undecided. Each includes a recommendation, but none should be treated
 as settled until confirmed. Answered questions are summarised at the end.
 
-**Q3 — Should managers administer company-wide resources? — answered for teams;
-answered for the rest on 29 October 2026, to ship in Phase 38 part 2.** The
-owner owns company-wide structure: archiving and restoring a project (which
-will remove its plans from today on for everyone on it), and creating, editing,
-archiving and restoring activities and categories, become owner-only; managers
-keep creating, editing and staffing projects and reading the catalogue. More
-flexible grants are a later piece of work (§7). The text below is the state
-before that decision.
-The team half is settled and built: the Owner creates teams and appoints their
-managers, and a manager operates the team they lead. Projects are settled the
-other way — they stay company-wide, because a project spans teams and narrowing
-it by team would be wrong by construction. User management stays OWNER-only.
-
-What remains genuinely open is **activities and categories**, which are company
-lookup tables any manager can still edit or archive across the whole company.
-*Recommendation: leave them company-wide for now* and revisit if two managers
-ever disagree about the catalogue.
-
 **Q5 — Should the app chase people who have not logged time?**
 The team view shows each person's logged time against what was expected, but
 somebody still has to look, and since Phase 31 nothing marks anyone short.
@@ -1325,3 +1315,8 @@ their time logs, such as anonymising the person and keeping the hours.
   billable by the flag on every project. Existing entries on internal projects
   were reset to non-billable by a data migration, so no past billable figure
   changed (Phase 28).
+- **Q3** — Company-wide structure is the owner's: teams (Area 1), and since
+  Phase 38 part 2 the activity and category catalogue and archiving or
+  restoring a project. Managers create, edit and staff projects, which stay
+  company-wide because a project spans teams. Configurable grants are a later
+  piece of work (§7).
