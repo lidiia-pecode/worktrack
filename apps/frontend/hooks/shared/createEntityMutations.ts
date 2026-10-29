@@ -107,13 +107,15 @@ export function createEntityMutations<
         queryClient.invalidateQueries({ queryKey }),
       );
     };
+    // Each call passes only the mutation's own argument: TanStack Query hands
+    // `mutationFn` a context object second, which an API function taking an
+    // optional payload would otherwise send as the request body.
     const create = useMutation({
       meta: { conflictShownInForm: config.conflictShownInForm },
-      mutationFn:
-        config.api.create ??
-        (() => {
-          throw new Error("Create is not supported.");
-        }),
+      mutationFn: (data: TCreate) => {
+        if (!config.api.create) throw new Error("Create is not supported.");
+        return config.api.create(data);
+      },
 
       onSuccess: () => {
         invalidate();
@@ -138,11 +140,10 @@ export function createEntityMutations<
       },
     });
     const deleteMutation = useMutation({
-      mutationFn:
-        config.api.delete ??
-        (() => {
-          throw new Error("Delete is not supported.");
-        }),
+      mutationFn: (id: string) => {
+        if (!config.api.delete) throw new Error("Delete is not supported.");
+        return config.api.delete(id);
+      },
       onSuccess: () => {
         invalidate();
         if (config.messages?.delete) {
@@ -151,11 +152,10 @@ export function createEntityMutations<
       },
     });
     const archive = useMutation({
-      mutationFn:
-        config.api.archive ??
-        (() => {
-          throw new Error("Archive is not supported.");
-        }),
+      mutationFn: (id: string) => {
+        if (!config.api.archive) throw new Error("Archive is not supported.");
+        return config.api.archive(id);
+      },
       onSuccess: (result) => {
         invalidate();
 
@@ -170,11 +170,10 @@ export function createEntityMutations<
     });
 
     const unarchive = useMutation({
-      mutationFn:
-        config.api.unarchive ??
-        (() => {
-          throw new Error("Restore is not supported.");
-        }),
+      mutationFn: (id: string) => {
+        if (!config.api.unarchive) throw new Error("Restore is not supported.");
+        return config.api.unarchive(id);
+      },
 
       onSuccess: () => {
         invalidate();

@@ -96,6 +96,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
       first.name.localeCompare(second.name),
   );
 
+  const archivedActivities = project.archivedActivities ?? [];
+
   if (isActive && panel.view === PEOPLE_PICKER) {
     return <ProjectPeoplePicker project={project} />;
   }
@@ -216,6 +218,22 @@ const ProjectDetails = ({ project }: { project: Project }) => {
               : undefined
           }
         />
+
+        {archivedActivities.length > 0 && (
+          <PanelList
+            title="Archived activities"
+            note="Restoring an activity brings it back here."
+            items={archivedActivities}
+            getKey={(activity) => activity.id}
+            renderRow={(activity) => ({
+              entity: { type: "activity", id: activity.id },
+              name: activity.name,
+              isInactive: true,
+              status: <Badge variant="neutral">Archived</Badge>,
+            })}
+            emptyText="No archived activities."
+          />
+        )}
       </EntityPanelLayout>
 
       {projectActions.dialogs}

@@ -27,7 +27,7 @@ interface RouteRoles {
 const ROUTES: RouteRoles[] = [
   {
     controller: ProjectsController,
-    ownerOnly: ['archive', 'unarchive'],
+    ownerOnly: ['getArchiveImpact', 'archive', 'unarchive'],
     openToManager: [
       'getAll',
       'getById',

@@ -5,6 +5,7 @@ import {
   Project,
   ProjectListResponse,
   ProjectPayload,
+  ProjectArchiveImpact,
   ProjectsQuery,
   UpdateProjectPayload,
 } from "@/types";
@@ -28,6 +29,9 @@ const client = createClient({
 
 export const ProjectsClientApi = {
   ...crud,
+
+  getArchiveImpact: (id: string) =>
+    client.get<ProjectArchiveImpact>(`/${id}/archive-impact`),
 
   archive: (id: string) => client.archive<Project>(`/${id}/archive`),
 

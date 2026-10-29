@@ -64,7 +64,7 @@ describe('ProjectsService membership scope', () => {
 
   let activityId: string;
 
-  const deleteForRemovedMembers = jest.fn(() => Promise.resolve());
+  const deletePlansFromToday = jest.fn(() => Promise.resolve());
 
   const createUser = async (
     name: string,
@@ -179,7 +179,7 @@ describe('ProjectsService membership scope', () => {
         stub<CapacityService>({}),
       ),
       teamVisibility,
-      stub<PlanningService>({ deleteForRemovedMembers }),
+      stub<PlanningService>({ deletePlansFromToday }),
       dataSource,
     );
 
@@ -864,12 +864,12 @@ describe('ProjectsService membership scope', () => {
         alphaMember,
         betaMember,
       ]);
-      deleteForRemovedMembers.mockClear();
+      deletePlansFromToday.mockClear();
 
       await service.removeMember(projectId, alphaMember.id, alphaManager);
 
       await expect(memberIds(projectId)).resolves.toEqual(sorted(betaMember));
-      expect(deleteForRemovedMembers).toHaveBeenCalledWith(
+      expect(deletePlansFromToday).toHaveBeenCalledWith(
         expect.anything(),
         companyId,
         projectId,
@@ -888,13 +888,13 @@ describe('ProjectsService membership scope', () => {
 
     it('changes nothing for someone already on it, or not on it', async () => {
       const projectId = await createProject('no change', [alphaMember]);
-      deleteForRemovedMembers.mockClear();
+      deletePlansFromToday.mockClear();
 
       await service.addMember(projectId, alphaMember.id, alphaManager);
       await service.removeMember(projectId, leaver.id, alphaManager);
 
       await expect(memberIds(projectId)).resolves.toEqual(sorted(alphaMember));
-      expect(deleteForRemovedMembers).not.toHaveBeenCalled();
+      expect(deletePlansFromToday).not.toHaveBeenCalled();
     });
 
     it('refuses someone from another company, even for an owner', async () => {

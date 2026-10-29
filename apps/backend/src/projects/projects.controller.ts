@@ -16,6 +16,7 @@ import {
   UpdateProjectPayload,
 } from './dtos/project-payload.dto';
 import {
+  ProjectArchiveImpactResponse,
   ProjectListItemResponse,
   ProjectResponse,
 } from './dtos/project-response.dto';
@@ -77,6 +78,16 @@ export class ProjectsController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.update(id, payload, user);
+  }
+
+  @Role(UserRole.OWNER)
+  @Get(':id/archive-impact')
+  @Serialize(ProjectArchiveImpactResponse)
+  getArchiveImpact(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.service.getArchiveImpact(id, user.companyId);
   }
 
   @Role(UserRole.OWNER)

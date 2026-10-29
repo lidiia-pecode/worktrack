@@ -37,7 +37,6 @@ export enum WeekDay {
 export enum ProjectStatus {
   ACTIVE = "ACTIVE",
   ARCHIVED = "ARCHIVED",
-  COMPLETED = "COMPLETED",
 }
 
 export enum TeamStatus {

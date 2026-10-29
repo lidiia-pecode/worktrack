@@ -1121,6 +1121,36 @@ describe('PlanningService', () => {
     });
   });
 
+  describe('archiving a project', () => {
+    it("removes everyone's plans on it from today on, named first, and restoring doesn't bring them back", async () => {
+      const archivedId = await createProject('archive plans');
+      await addMembers(archivedId, [member, colleague]);
+      await existingEntry(member.id, PAST_MONDAY, 8 * HOUR, archivedId);
+      await existingEntry(member.id, TODAY, HOUR, archivedId);
+      await existingEntry(member.id, MONDAY, 8 * HOUR, archivedId);
+      await existingEntry(colleague.id, MONDAY, 4 * HOUR, archivedId);
+      await existingEntry(member.id, TUESDAY, 4 * HOUR, otherProjectId);
+
+      const impact = await projects.getArchiveImpact(archivedId, companyId);
+      expect(impact.planCount).toBe(3);
+      expect(impact.people.map((person) => person.id).sort()).toEqual(
+        [member.id, colleague.id].sort(),
+      );
+
+      await projects.archive(archivedId, owner);
+      await projects.unarchive(archivedId, owner);
+
+      const left = await dataSource.getRepository(PlanningEntry).find({
+        where: { companyId },
+        order: { date: 'ASC' },
+      });
+      expect(left.map((entry) => [entry.date, entry.projectId])).toEqual([
+        [PAST_MONDAY, archivedId],
+        [TUESDAY, otherProjectId],
+      ]);
+    });
+  });
+
   describe("locking on the company's clock", () => {
     const TIME_ZONE = timeZoneOnAnotherDay();
     const MONTH = '2026-01-01';

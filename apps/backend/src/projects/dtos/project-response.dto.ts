@@ -2,6 +2,7 @@ import { OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
 import { ProjectActivityResponse } from './project-activity-response.dto';
 import { AssignableUserResponse } from 'src/users/dtos/assignable-user-response.dto';
+import { ActivityResponse } from 'src/activities/dtos/activity-response.dto';
 import { ProjectStatus } from '../enums/project-status.enum';
 
 @Exclude()
@@ -28,6 +29,11 @@ export class ProjectResponse {
   @Type(() => ProjectActivityResponse)
   projectActivities!: ProjectActivityResponse[];
 
+  /** Linked but archived, so not offered; only a project's details carry them. */
+  @Expose()
+  @Type(() => ActivityResponse)
+  archivedActivities?: ActivityResponse[];
+
   /**
    * Scoped to the caller, so it can be shorter than the project — read its
    * size from `membersCount`, never from this array's length.
@@ -50,4 +56,16 @@ export class ProjectResponse {
 // Project lists must not carry the member roster, only its size.
 export class ProjectListItemResponse extends OmitType(ProjectResponse, [
   'users',
+  'archivedActivities',
 ] as const) {}
+
+/** Who has plans on the project from today on, which archiving removes. */
+@Exclude()
+export class ProjectArchiveImpactResponse {
+  @Expose()
+  @Type(() => AssignableUserResponse)
+  people!: AssignableUserResponse[];
+
+  @Expose()
+  planCount!: number;
+}

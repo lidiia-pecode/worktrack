@@ -16,6 +16,7 @@ import { Company } from 'src/companies/entities/company.entity';
 import { ProjectActivity } from './project-activity.entity';
 import { ProjectStatus } from '../enums/project-status.enum';
 import { User } from 'src/users/entities/user.entity';
+import type { Activity } from 'src/activities/entities/activity.entity';
 
 @Entity('projects')
 @Index('IDX_projects_company_id', ['companyId'])
@@ -83,4 +84,7 @@ export class Project {
   // Not a column — filled in by `list()` so the project list can show how many
   // members a project has without returning them.
   membersCount?: number;
+
+  // Not a column — a project's details list its archived activities apart.
+  archivedActivities?: Activity[];
 }
