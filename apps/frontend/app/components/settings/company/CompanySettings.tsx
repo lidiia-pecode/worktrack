@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
@@ -17,9 +17,10 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 
+import { Company } from "@/types/Company";
 import { WeekDay } from "@/types/enums";
-import { WEEK_START_OPTIONS } from "@/lib/constants";
-import { toListedTimeZone } from "@/lib/utils/time-zones";
+import { WEEK_DAY_LABELS, WEEK_START_OPTIONS } from "@/lib/constants";
+import { findTimeZoneOption, toListedTimeZone } from "@/lib/utils/time-zones";
 import { settingsNumberInputClassName } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
@@ -29,13 +30,70 @@ interface CompanySettingsProps {
   onDirtyChange?: (isDirty: boolean) => void;
 }
 
+// The stored zone may be an old alias, so the form shows the listed one; a save
+// is compared with these values, so an untouched alias never counts as a change.
+const toFormValues = (company: Company): CompanyFormValues => ({
+  companyName: company.companyName ?? "",
+  timezone: toListedTimeZone(company.timezone) ?? company.timezone ?? "",
+  weekStartDay: company.weekStartDay ?? WeekDay.MONDAY,
+  standardWorkHoursPerDay: company.standardWorkHoursPerDay ?? 0,
+});
+
+interface SettingChange {
+  title: string;
+  /** Names the change when several are confirmed together. */
+  label: string;
+  consequence: string;
+}
+
+/** The changes that alter how everyone's days, weeks or hours count, so saving asks first. */
+const changesToConfirm = (
+  next: CompanyFormValues,
+  saved: CompanyFormValues,
+): SettingChange[] => {
+  const changes: SettingChange[] = [];
+
+  if (next.timezone !== saved.timezone) {
+    const zone = findTimeZoneOption(next.timezone)?.label ?? next.timezone;
+    changes.push({
+      title: `Change the time zone to ${zone}?`,
+      label: `Time zone to ${zone}`,
+      consequence:
+        "Time, absences and plans keep their dates. Days start and end on the new zone's clock, so the day someone joined, left or came back can move by one, and their expected hours with it, past and locked months included.",
+    });
+  }
+
+  if (next.weekStartDay !== saved.weekStartDay) {
+    const day = WEEK_DAY_LABELS[next.weekStartDay];
+    changes.push({
+      title: `Start weeks on ${day}?`,
+      label: `Week starts on ${day}`,
+      consequence:
+        "Weeks regroup on Timesheet, Team time, Planning and the People report's weekly breakdown, and the weekly planning limit counts the new weeks. Nothing saved changes.",
+    });
+  }
+
+  if (next.standardWorkHoursPerDay !== saved.standardWorkHoursPerDay) {
+    changes.push({
+      title: `Change the standard day to ${next.standardWorkHoursPerDay}h?`,
+      label: `Standard day to ${next.standardWorkHoursPerDay}h`,
+      consequence:
+        "Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them.",
+    });
+  }
+
+  return changes;
+};
+
 export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
   const { company, actions } = useCompany();
 
-  // A changed standard day is held here until the owner confirms it, since it
-  // rewrites Expected for everybody on the default, locked months included.
-  const [standardDayChange, setStandardDayChange] =
-    useState<CompanyFormValues | null>(null);
+  // A save that changes how days, weeks or hours count is held here until the
+  // owner confirms it, since it reaches everybody, locked months included.
+  const [pendingSave, setPendingSave] = useState<{
+    values: CompanyFormValues;
+    changes: SettingChange[];
+  } | null>(null);
 
   const {
     register,
@@ -57,20 +115,10 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
 
   useReportDirty(isDirty, onDirtyChange);
 
-  const standardWorkHoursPerDay = useWatch({
-    control,
-    name: "standardWorkHoursPerDay",
-  });
-
   useEffect(() => {
     if (!company) return;
 
-    reset({
-      companyName: company.companyName ?? "",
-      timezone: toListedTimeZone(company.timezone) ?? company.timezone ?? "",
-      weekStartDay: company.weekStartDay ?? WeekDay.MONDAY,
-      standardWorkHoursPerDay: company.standardWorkHoursPerDay ?? 0,
-    });
+    reset(toFormValues(company));
   }, [company, reset]);
 
   const updateWorkHours = (delta: number) => {
@@ -85,8 +133,11 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
   };
 
   const onSubmit = async (data: CompanyFormValues) => {
-    if (data.standardWorkHoursPerDay !== company?.standardWorkHoursPerDay) {
-      setStandardDayChange(data);
+    const changes = company
+      ? changesToConfirm(data, toFormValues(company))
+      : [];
+    if (changes.length > 0) {
+      setPendingSave({ values: data, changes });
       return;
     }
 
@@ -94,13 +145,15 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
   };
 
   // A failed save keeps the dialog open; the global handler shows the error.
-  const confirmStandardDayChange = () => {
-    if (!standardDayChange) return;
+  const confirmPendingSave = () => {
+    if (!pendingSave) return;
 
-    actions.update.mutate(standardDayChange, {
-      onSuccess: () => setStandardDayChange(null),
+    actions.update.mutate(pendingSave.values, {
+      onSuccess: () => setPendingSave(null),
     });
   };
+
+  const changes = pendingSave?.changes ?? [];
 
   return (
     <Card>
@@ -210,13 +263,28 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
       </form>
 
       <ImpactDialog
-        isOpen={standardDayChange !== null}
-        title={`Change the standard day to ${standardWorkHoursPerDay}h?`}
-        description="Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them."
+        isOpen={pendingSave !== null}
+        title={
+          changes.length === 1
+            ? changes[0].title
+            : `Change ${changes.length} company settings?`
+        }
+        description={
+          changes.length === 1
+            ? changes[0].consequence
+            : changes.map((change) => (
+                <span key={change.label} className="mt-2 block first:mt-0">
+                  <span className="font-medium text-foreground">
+                    {change.label}:
+                  </span>{" "}
+                  {change.consequence}
+                </span>
+              ))
+        }
         confirmText="Save changes"
         confirmVariant="warning"
-        onConfirm={confirmStandardDayChange}
-        onClose={() => setStandardDayChange(null)}
+        onConfirm={confirmPendingSave}
+        onClose={() => setPendingSave(null)}
         loading={actions.update.isPending}
       />
     </Card>
