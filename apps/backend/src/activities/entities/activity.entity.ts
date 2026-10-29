@@ -55,13 +55,12 @@ export class Activity {
   })
   status!: ActivityStatus;
 
-  /** None while it is a draft; it needs one before it can go on a project. */
+  /** Every activity is in a category; it is moved or archived, never left without one. */
   @Column({
     type: 'uuid',
     name: 'category_id',
-    nullable: true,
   })
-  categoryId!: string | null;
+  categoryId!: string;
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
@@ -81,11 +80,11 @@ export class Activity {
   company!: Company;
 
   @ManyToOne(() => ActCategory, (category) => category.activities, {
-    nullable: true,
+    nullable: false,
     onDelete: 'RESTRICT',
   })
   @JoinColumn({ name: 'category_id' })
-  category!: ActCategory | null;
+  category!: ActCategory;
 
   @OneToMany(
     () => ProjectActivity,

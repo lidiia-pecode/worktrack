@@ -209,10 +209,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
           onToggle={staged.toggle}
           getId={(activity) => activity.id}
           getLabel={(activity) => activity.name}
-          getSubtitle={(activity) =>
-            activity.category?.name ?? "No category, so it can't be added yet"
-          }
-          isDisabled={(activity) => !activity.category}
+          getSubtitle={(activity) => activity.category.name}
           onSearchChange={setSearch}
           isLoading={isLoading}
           hasNextPage={pagination.hasNextPage}
@@ -230,7 +227,6 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
       <ActivityCreateDialog
         open={isCreating}
         onClose={() => setIsCreating(false)}
-        requiresCategory
         onCreated={staged.select}
       />
 

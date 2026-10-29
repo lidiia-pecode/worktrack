@@ -59,8 +59,8 @@ const UPDATE_PAYLOADS: {
   },
   {
     dto: UpdateActivityPayload,
-    required: ['name', 'defaultBillable'],
-    nullable: ['categoryId'],
+    required: ['name', 'categoryId', 'defaultBillable'],
+    nullable: [],
   },
   {
     dto: UpdateTeamDto,

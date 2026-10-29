@@ -11,10 +11,7 @@ import { ActCategoryStatus, ActivityStatus } from "@/types/enums";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { archiveOrRestore } from "../shared/resource/ManageList";
 import { ActivityArchiveDialog } from "./ActivityArchiveDialog";
-import {
-  ActivityRestoreDialog,
-  ActivityWithCategory,
-} from "./ActivityRestoreDialog";
+import { ActivityRestoreDialog } from "./ActivityRestoreDialog";
 
 export const isActiveActivity = (activity: Activity) =>
   activity.status === ActivityStatus.ACTIVE;
@@ -28,15 +25,14 @@ export const useActivityActions = () => {
   const [archivingActivity, setArchivingActivity] = useState<Activity | null>(
     null,
   );
-  const [restoringActivity, setRestoringActivity] =
-    useState<ActivityWithCategory | null>(null);
+  const [restoringActivity, setRestoringActivity] = useState<Activity | null>(
+    null,
+  );
 
-  // A draft, or an activity in an active category, restores at once; otherwise the dialog asks where it goes.
+  // An activity in an active category restores at once; otherwise the dialog asks where it goes.
   const restore = (activity: Activity) => {
-    const { category } = activity;
-
-    if (category?.status === ActCategoryStatus.ARCHIVED) {
-      setRestoringActivity({ ...activity, category });
+    if (activity.category.status === ActCategoryStatus.ARCHIVED) {
+      setRestoringActivity(activity);
       return;
     }
 

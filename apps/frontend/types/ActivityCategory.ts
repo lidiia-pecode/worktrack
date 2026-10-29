@@ -45,7 +45,7 @@ export interface RestoreActivityCategoryPayload {
 }
 
 export interface ActivityCategoryArchiveImpact {
-  activities: (Pick<CategoryActivity, "id" | "name" | "isInUse"> & {
+  activities: (Pick<CategoryActivity, "id" | "name"> & {
     projects: { id: string; name: string }[];
   })[];
 }
@@ -61,8 +61,6 @@ export interface CategoryActivity {
   id: string;
   name: string;
   status: ActivityStatus;
-  /** On a project, archived ones too, so it cannot be left without a category. */
-  isInUse: boolean;
   /** Active projects that offer it now; not sent to an employee. */
   projectsCount?: number;
 }

@@ -13,8 +13,8 @@ import { TeamStatus } from 'src/teams/enums/team-status.enum';
  *
  * One company only. Every other seed hangs off it. Beyond the accounts used
  * to check the roles, it holds enough demo people, teams, projects and
- * categories to judge the Manage lists: archived and deactivated ones, drafts,
- * an empty category and long names, and enough history since July 2026 to
+ * categories to judge the Manage lists: archived and deactivated ones, an
+ * empty category and long names, and enough history since July 2026 to
  * judge Reports (see REPORT_HISTORY). The seed writes straight to the tables,
  * so this data keeps the app's rules itself.
  */
@@ -586,8 +586,7 @@ export const CATEGORIES: SeedCategory[] = [
 
 export interface SeedActivity {
   name: string;
-  /** None makes it a draft, which no project may offer. */
-  category: string | null;
+  category: string;
   billable: boolean;
   status?: ActivityStatus;
 }
@@ -679,8 +678,12 @@ export const ACTIVITIES: SeedActivity[] = [
     billable: false,
   },
   { name: 'Training', category: 'Training and Learning', billable: false },
-  { name: 'Hackathon', category: null, billable: false },
-  { name: 'Conference Talk Preparation', category: null, billable: false },
+  { name: 'Hackathon', category: 'Training and Learning', billable: false },
+  {
+    name: 'Conference Talk Preparation',
+    category: 'Training and Learning',
+    billable: false,
+  },
 ];
 
 export interface SeedProject {

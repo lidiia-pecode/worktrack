@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { createFirstLink } from "@/hooks/useSetupLink";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { ActivityCategory } from "@/types";
@@ -24,19 +24,12 @@ const activitySchema = z.object({
     .min(2, "Activity name must be at least 2 characters")
     .max(100, "Activity name must be at most 100 characters"),
 
-  categoryId: z.string(),
+  categoryId: z.string().min(1, "Choose a category"),
 
   defaultBillable: z.boolean(),
 });
 
-type ActivityFormValues = z.infer<typeof activitySchema>;
-
-/** A draft has no category: it is kept, but cannot go on a project yet. */
-export type ActivityFormData = Omit<ActivityFormValues, "categoryId"> & {
-  categoryId: string | null;
-};
-
-const DRAFT_OPTION = "none";
+export type ActivityFormData = z.infer<typeof activitySchema>;
 
 interface ActivityFormProps {
   formId: string;
@@ -46,8 +39,6 @@ interface ActivityFormProps {
   isSubmitting?: boolean;
   isOnboarding?: boolean;
   onDirtyChange?: (isDirty: boolean) => void;
-  /** Hides the draft option, for an activity that is or will be on a project. */
-  requiresCategory?: boolean;
 }
 
 export const ActivityForm = ({
@@ -58,12 +49,8 @@ export const ActivityForm = ({
   isSubmitting = false,
   isOnboarding = false,
   onDirtyChange,
-  requiresCategory = false,
 }: ActivityFormProps) => {
   const hasNoCategories = categories.length === 0;
-  // A new activity starts as a draft, unless it is for a project.
-  const initialCategory =
-    defaultValues?.categoryId ?? (requiresCategory ? "" : DRAFT_OPTION);
 
   const {
     register,
@@ -71,29 +58,19 @@ export const ActivityForm = ({
     handleSubmit,
     setError,
     formState: { errors, isDirty },
-  } = useForm<ActivityFormValues>({
+  } = useForm<ActivityFormData>({
     resolver: zodResolver(activitySchema),
     defaultValues: {
       name: defaultValues?.name ?? "",
-      categoryId: initialCategory,
+      categoryId: defaultValues?.categoryId ?? "",
       defaultBillable: defaultValues?.defaultBillable ?? true,
     },
   });
 
-  const selectedCategory = useWatch({ control, name: "categoryId" });
-
-  const submit = async ({ categoryId, ...values }: ActivityFormValues) => {
-    if (!categoryId || (requiresCategory && categoryId === DRAFT_OPTION)) {
-      setError("categoryId", { message: "Choose a category" });
-      return;
-    }
-
+  const submit = async (values: ActivityFormData) => {
     // The API refuses a taken name; show it under the field.
     try {
-      await onSubmit({
-        ...values,
-        categoryId: categoryId === DRAFT_OPTION ? null : categoryId,
-      });
+      await onSubmit(values);
     } catch (error) {
       if (isConflictError(error)) {
         setError("name", {
@@ -105,40 +82,23 @@ export const ActivityForm = ({
 
   useReportDirty(isDirty, onDirtyChange);
 
-  const categoryOptions = [
-    ...(requiresCategory
-      ? []
-      : [{ value: DRAFT_OPTION, label: "No category (draft)" }]),
-    ...categories.map((category) => ({
-      value: category.id,
-      label: category.name,
-    })),
-  ];
+  const categoryOptions = categories.map((category) => ({
+    value: category.id,
+    label: category.name,
+  }));
 
-  const categoriesLink = (label: string) => (
-    <Link
-      href={createFirstLink("/admin/categories", isOnboarding)}
-      className="font-medium text-brand hover:underline"
-    >
-      {label}
-    </Link>
-  );
-
-  const categoryHint = requiresCategory ? (
-    hasNoCategories && (
-      <>
-        A project needs categorised activities.{" "}
-        {categoriesLink("Create a category first")}.
-      </>
-    )
-  ) : hasNoCategories ? (
+  // Every activity is in a category, so one has to exist first.
+  const categoryHint = hasNoCategories && (
     <>
-      There is no active category yet, so it starts as a draft.{" "}
-      {categoriesLink("Create a category")} to put it on projects.
+      There is no active category yet.{" "}
+      <Link
+        href={createFirstLink("/admin/categories", isOnboarding)}
+        className="font-medium text-brand hover:underline"
+      >
+        Create a category first
+      </Link>
+      .
     </>
-  ) : (
-    selectedCategory === DRAFT_OPTION &&
-    "A draft can't go on a project until it has a category."
   );
 
   return (
@@ -165,7 +125,7 @@ export const ActivityForm = ({
             placeholder="Select category"
             description={categoryHint}
             error={errors.categoryId?.message}
-            disabled={isSubmitting || (requiresCategory && hasNoCategories)}
+            disabled={isSubmitting || hasNoCategories}
           />
         )}
       />

@@ -87,7 +87,13 @@ export const useActivityArchiveImpact = (
     staleTime: 0,
   });
 
-/** Moves one activity to a category, or makes it a draft, without a toast: like the other pickers, the category's picker applies its moves quietly. */
+/** Taking an activity out of its category archives it rather than moving it. */
+export const ARCHIVE_ACTIVITY = "archive";
+
+/**
+ * Moves one activity to a category, or archives it, without a toast: like the
+ * other pickers, the category's picker applies its changes quietly.
+ */
 export const useSetActivityCategory = () => {
   const queryClient = useQueryClient();
 
@@ -97,8 +103,12 @@ export const useSetActivityCategory = () => {
       categoryId,
     }: {
       id: string;
-      categoryId: string | null;
-    }) => ActivitiesClientApi.update(id, { categoryId }),
+      /** A category's id, or `ARCHIVE_ACTIVITY`. */
+      categoryId: string;
+    }) =>
+      categoryId === ARCHIVE_ACTIVITY
+        ? ActivitiesClientApi.archive(id)
+        : ActivitiesClientApi.update(id, { categoryId }),
 
     onSettled: () => {
       CATALOG_QUERY_KEYS.forEach((queryKey) =>
@@ -110,12 +120,11 @@ export const useSetActivityCategory = () => {
 
 type RestoreActivityVariables =
   | { id: string; restoreCategoryId: string }
-  | { id: string; moveToCategoryId: string }
-  | { id: string; withoutCategory: true };
+  | { id: string; moveToCategoryId: string };
 
 /**
  * Restores an activity whose category is archived: by restoring the category,
- * by moving it, or as a draft when no project links it.
+ * or by moving it to an active one.
  */
 export const useRestoreActivityWithCategory = () => {
   const queryClient = useQueryClient();
@@ -127,12 +136,6 @@ export const useRestoreActivityWithCategory = () => {
           variables.restoreCategoryId,
         );
         return ActivitiesClientApi.unarchive(variables.id);
-      }
-
-      if ("withoutCategory" in variables) {
-        return ActivitiesClientApi.unarchive(variables.id, {
-          withoutCategory: true,
-        });
       }
 
       return ActivitiesClientApi.unarchive(variables.id, {

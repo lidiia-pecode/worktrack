@@ -18,10 +18,10 @@ export class ActivityPayload {
   @MaxLength(100)
   name!: string;
 
-  /** Omit it, or send null, for a draft. */
-  @IsOptional()
+  /** Every activity is in a category; it is moved or archived, never left without one. */
+  @IsNotEmpty()
   @IsUUID()
-  categoryId?: string | null;
+  categoryId!: string;
 
   @OptionalNotNull()
   @IsBoolean()
@@ -37,9 +37,4 @@ export class RestoreActivityPayload {
   @IsOptional()
   @IsUUID()
   categoryId?: string;
-
-  /** Restore it as a draft; refused while a project links it. */
-  @IsOptional()
-  @IsBoolean()
-  withoutCategory?: boolean;
 }

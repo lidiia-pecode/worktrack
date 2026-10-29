@@ -56,7 +56,7 @@ export const CategoryRestoreDialog = ({
     <ImpactDialog
       isOpen={Boolean(category)}
       title={category ? `Restore ${category.name}?` : ""}
-      description={`It has ${isOne ? "an archived activity" : `${archivedActivities.length} archived activities`}. Restore ${isOne ? "it" : "them"} with the category, or the category alone.`}
+      description={`It has ${isOne ? "an archived activity" : `${archivedActivities.length} archived activities`}, counting any archived on ${isOne ? "its" : "their"} own before it. Restore ${isOne ? "it" : "them"} with the category, or the category alone.`}
       affected={[
         {
           label: "Archived activities",

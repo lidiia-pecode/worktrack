@@ -19,7 +19,6 @@ import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import {
-  findActivitiesInUse,
   findOfferingProjects,
   OfferingProject,
 } from 'src/activities/offering-projects';
@@ -33,10 +32,9 @@ type CategoryImpactActivity = {
   id: string;
   name: string;
   projects: OfferingProject[];
-  isInUse: boolean;
 };
 
-type CategoryActivity = Activity & { isInUse: boolean; projectsCount?: number };
+type CategoryActivity = Activity & { projectsCount?: number };
 
 type CategoryListItem = ActCategory & {
   firstActivities: Pick<Activity, 'id' | 'name'>[];
@@ -148,10 +146,6 @@ export class ActCategoriesService {
     }
 
     const activityIds = category.activities.map((activity) => activity.id);
-    const inUse = await findActivitiesInUse(
-      this.dataSource.getRepository(ProjectActivity),
-      activityIds,
-    );
     const offeringProjects = await this.findOfferingProjectsFor(
       user,
       activityIds,
@@ -161,7 +155,6 @@ export class ActCategoriesService {
       ...category,
       activities: category.activities.map((activity) => ({
         ...activity,
-        isInUse: inUse.has(activity.id),
         ...(offeringProjects && {
           projectsCount: offeringProjects.get(activity.id)?.length ?? 0,
         }),
@@ -329,20 +322,17 @@ export class ActCategoriesService {
     });
 
     const activityIds = activities.map((activity) => activity.id);
-    const projectActivityRepo = this.dataSource.getRepository(ProjectActivity);
     const projectsByActivity = await findOfferingProjects(
-      projectActivityRepo,
+      this.dataSource.getRepository(ProjectActivity),
       companyId,
       activityIds,
     );
-    const inUse = await findActivitiesInUse(projectActivityRepo, activityIds);
 
     return {
       activities: activities.map((activity) => ({
         id: activity.id,
         name: activity.name,
         projects: projectsByActivity.get(activity.id) ?? [],
-        isInUse: inUse.has(activity.id),
       })),
     };
   }
@@ -378,7 +368,7 @@ export class ActCategoriesService {
         throw new BadRequestException('Category is already archived');
       }
 
-      // Locked so none goes on a project before it may become a draft.
+      // Locked so none changes while they are moved or archived.
       const activeActivities = await manager.find(Activity, {
         where: { companyId, categoryId: id, status: ActivityStatus.ACTIVE },
         order: { id: 'ASC' },
@@ -431,24 +421,6 @@ export class ActCategoriesService {
         { id: In(ids) },
         { status: ActivityStatus.ARCHIVED },
       );
-      return;
-    }
-
-    if (payload.activities === ActiveActivitiesAction.UNCATEGORIZE) {
-      const inUse = await findActivitiesInUse(
-        manager.getRepository(ProjectActivity),
-        ids,
-      );
-      const linked = activities.filter((activity) => inUse.has(activity.id));
-
-      if (linked.length) {
-        const names = sortedNames(linked);
-        throw new BadRequestException(
-          `These activities are on projects, so they need a category: ${names}. Move them to another category or archive them instead.`,
-        );
-      }
-
-      await manager.update(Activity, { id: In(ids) }, { categoryId: null });
       return;
     }
 

@@ -10,11 +10,6 @@ export const archiveActivitiesLabel = (activeActivityCount: number) =>
 export const noMoveTargetMessage = (activeActivityCount: number) =>
   `There is no other active category, so ${byCount(activeActivityCount, "it", "they")} will be archived too.`;
 
-export const DRAFTS_OPTION = "leave-as-drafts";
-
-export const draftsLabel = (activeActivityCount: number) =>
-  `Leave ${byCount(activeActivityCount, "it", "them")} without a category, as drafts`;
-
 export const archivePayload = (
   activeActivityCount: number,
   selectedOption: string,
@@ -23,9 +18,6 @@ export const archivePayload = (
 
   if (selectedOption === ARCHIVE_ACTIVITIES_OPTION) {
     return { activities: ActiveActivitiesAction.ARCHIVE };
-  }
-  if (selectedOption === DRAFTS_OPTION) {
-    return { activities: ActiveActivitiesAction.UNCATEGORIZE };
   }
 
   return {

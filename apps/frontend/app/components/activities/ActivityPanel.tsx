@@ -21,7 +21,6 @@ import {
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { LoadingState } from "../shared/LoadingState";
-import { ManageWarning } from "../shared/resource/ManageList";
 import { ActivityForm, ActivityFormData } from "./ActivityForm";
 import { PROJECTS_PICKER } from "../projects/ProjectChoicesPicker";
 import { useProjectLinkChanges } from "../projects/useProjectLinkChanges";
@@ -56,11 +55,9 @@ const ActivityEditForm = ({ activity }: { activity: ActivityDetails }) => {
         categories={categories}
         defaultValues={{
           name: activity.name,
-          categoryId: activity.category?.id ?? null,
+          categoryId: activity.category.id,
           defaultBillable: activity.defaultBillable,
         }}
-        // On a project it must keep a category.
-        requiresCategory={(activity.projects?.length ?? 0) > 0}
         onSubmit={save}
         isSubmitting={update.isPending}
         onDirtyChange={panel.setHasUnsavedChanges}
@@ -75,11 +72,9 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   const projectChanges = useProjectLinkChanges();
 
   const isActive = isActiveActivity(activity);
-  const isDraft = !activity.category;
   // Archiving it from its row ends an open edit.
   const isEditing = panel.isEditing && activityActions.canEdit(activity);
-  // A draft can't go on a project.
-  const canChangeProjects = isActive && !isEditing && !isDraft;
+  const canChangeProjects = isActive && !isEditing;
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
     return <ActivityProjectsPicker activity={activity} />;
@@ -90,17 +85,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
       <EntityPanelLayout
         type="Activity"
         name={activity.name}
-        status={
-          isActive ? (
-            isDraft && (
-              <Badge variant="warning" dot>
-                Draft
-              </Badge>
-            )
-          ) : (
-            <PanelStatus />
-          )
-        }
+        status={!isActive && <PanelStatus />}
         onEdit={
           activityActions.canEdit(activity)
             ? () => activityActions.edit(activity)
@@ -110,7 +95,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
         details={[
           {
             label: "Category",
-            value: activity.category ? (
+            value: (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
                 tone="chip"
@@ -121,8 +106,6 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                 />
                 {activity.category.name}
               </EntityLink>
-            ) : (
-              <ManageWarning>No category</ManageWarning>
             ),
           },
           {
@@ -164,11 +147,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
                   : undefined,
             };
           }}
-          emptyText={
-            isDraft
-              ? "None yet. A project can offer it once it has a category."
-              : "No project offers it yet."
-          }
+          emptyText="No project offers it yet."
           add={
             canChangeProjects
               ? {

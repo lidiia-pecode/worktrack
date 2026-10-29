@@ -28,11 +28,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { containsText } from 'src/lib/utils/contains-text.util';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
-import {
-  findActivitiesInUse,
-  findOfferingProjects,
-  OfferingProject,
-} from './offering-projects';
+import { findOfferingProjects, OfferingProject } from './offering-projects';
 import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
 import { ActCategoryStatus } from 'src/activity-categories/enums/category-status.enum';
 import type { Project } from 'src/projects/entities/project.entity';
@@ -130,15 +126,6 @@ export class ActivitiesService {
       );
     }
 
-    const drafts = activities.filter((activity) => !activity.categoryId);
-
-    if (drafts.length) {
-      const draftNames = drafts.map((activity) => activity.name).join(', ');
-      throw new BadRequestException(
-        `Give these activities a category before adding them to a project: ${draftNames}`,
-      );
-    }
-
     return activities;
   }
 
@@ -162,9 +149,7 @@ export class ActivitiesService {
     companyId: string,
     payload: RestoreActivityPayload,
     manager: EntityManager,
-  ): Promise<ActCategory | null> {
-    if (payload.withoutCategory) return null;
-
+  ): Promise<ActCategory> {
     if (payload.categoryId) {
       return this.actCategoriesService.findActiveOnly(
         payload.categoryId,
@@ -179,29 +164,7 @@ export class ActivitiesService {
       manager.getRepository(Activity),
     );
 
-    return categoryId
-      ? this.actCategoriesService.findLocked(categoryId, companyId, manager)
-      : null;
-  }
-
-  /** Takes the category away, which only an activity on no project may lose. */
-  private async makeDraft(
-    activity: Activity,
-    manager: EntityManager,
-  ): Promise<void> {
-    const inUse = await findActivitiesInUse(
-      manager.getRepository(ProjectActivity),
-      [activity.id],
-    );
-
-    if (inUse.has(activity.id)) {
-      throw new BadRequestException(
-        `"${activity.name}" is on a project, so it needs a category. Move it to another category instead.`,
-      );
-    }
-
-    activity.category = null;
-    activity.categoryId = null;
+    return this.actCategoriesService.findLocked(categoryId, companyId, manager);
   }
 
   async list(user: AuthUser, query: ActivitiesQuery) {
@@ -270,13 +233,11 @@ export class ActivitiesService {
 
     return this.dataSource.transaction(async (manager) => {
       const repo = manager.getRepository(Activity);
-      const category = payload.categoryId
-        ? await this.actCategoriesService.findActiveOnly(
-            payload.categoryId,
-            companyId,
-            manager,
-          )
-        : null;
+      const category = await this.actCategoriesService.findActiveOnly(
+        payload.categoryId,
+        companyId,
+        manager,
+      );
 
       const activity = repo.create({
         companyId,
@@ -325,11 +286,7 @@ export class ActivitiesService {
         activity.name = payload.name;
       }
 
-      if (payload.categoryId === null && activity.categoryId) {
-        await this.makeDraft(activity, manager);
-      } else if (category) {
-        activity.category = category;
-      }
+      if (category) activity.category = category;
 
       if (payload.defaultBillable !== undefined) {
         activity.defaultBillable = payload.defaultBillable;
@@ -400,13 +357,11 @@ export class ActivitiesService {
         throw new BadRequestException('Activity is already active');
       }
 
-      if (payload.withoutCategory) {
-        await this.makeDraft(activity, manager);
-      } else if (payload.categoryId) {
+      if (payload.categoryId) {
         activity.category = category;
-      } else if (activity.categoryId) {
+      } else {
         // Its category was read before the activity was locked.
-        if (activity.categoryId !== category?.id) {
+        if (activity.categoryId !== category.id) {
           throw new ConflictException(
             'The activity changed while it was being restored. Try again.',
           );

@@ -751,48 +751,6 @@ describe('ProjectsService membership scope', () => {
       );
     });
 
-    it('refuses a draft activity, with no category, wherever it is linked', async () => {
-      const { id: draftId } = await dataSource
-        .getRepository(Activity)
-        .save({ companyId, name: `Draft ${RUN}`, categoryId: null });
-      const projectId = await createProject('Draft links', []);
-
-      await expect(
-        service.addActivity(projectId, draftId, owner),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.update(projectId, { activityIds: [draftId] }, owner),
-      ).rejects.toThrow(BadRequestException);
-      await expect(
-        service.create(
-          { name: `With a draft ${RUN}`, activityIds: [draftId] },
-          owner,
-        ),
-      ).rejects.toThrow(BadRequestException);
-
-      await expect(offeredIds(projectId)).resolves.toEqual([]);
-    });
-
-    it('never ends with a draft on a project, when both happen at once', async () => {
-      const activityId = await createActivity('Contested');
-      const projectId = await createProject('Contested project', []);
-
-      await Promise.allSettled([
-        service.addActivity(projectId, activityId, owner),
-        activities.update(activityId, { categoryId: null }, companyId),
-      ]);
-
-      const activity = await activities.findRaw(activityId, companyId);
-      const offered = await offeredIds(projectId);
-      // Whichever went first, the other was refused.
-      expect(offered.includes(activityId) && activity.categoryId === null).toBe(
-        false,
-      );
-      expect(offered.includes(activityId) || activity.categoryId === null).toBe(
-        true,
-      );
-    });
-
     it('adds and removes one activity, keeping its link for logged time', async () => {
       const kept = await createActivity('Linked one');
       const toggled = await createActivity('Toggled one');
