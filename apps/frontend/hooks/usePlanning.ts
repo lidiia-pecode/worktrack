@@ -144,6 +144,6 @@ export const usePlanningMutations = createEntityMutations<
   messages: {
     create: "Plan added",
     update: "Plan updated",
-    delete: "Plan removed",
+    delete: "Plan deleted",
   },
 });

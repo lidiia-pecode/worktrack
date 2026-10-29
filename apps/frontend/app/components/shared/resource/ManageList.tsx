@@ -48,7 +48,8 @@ export interface ManageRowAction {
   label: string;
   icon: LucideIcon;
   onSelect: () => void;
-  destructive?: boolean;
+  /** Archive and Deactivate: undone by Restore or Reactivate, so amber like their confirmation. */
+  warning?: boolean;
 }
 
 /** Archive for an active entity, Restore for an archived one. */
@@ -61,7 +62,7 @@ export const archiveOrRestore = (
         {
           label: "Archive",
           icon: Archive,
-          destructive: true,
+          warning: true,
           onSelect: archive,
         },
       ]
@@ -202,7 +203,7 @@ const RowMenu = <T,>({ item, row }: RowPartProps<T>) => {
           {actions.map((action) => (
             <DropdownMenuItem
               key={action.label}
-              variant={action.destructive ? "destructive" : "default"}
+              variant={action.warning ? "warning" : "default"}
               onClick={() => select(action.onSelect)}
             >
               <action.icon />
