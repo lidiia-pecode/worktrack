@@ -19,6 +19,7 @@ import {
   stackSegments,
 } from "../helpers/build-segments";
 import { dayFill } from "../helpers/day-fill";
+import { dayActions } from "../helpers/day-state";
 import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
 import { DAY_COLUMN_CLASS, EXCESS_FILL } from "../consts";
@@ -78,9 +79,14 @@ export const DayColumn = ({
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
 
-  // Once any time is logged, the record replaces the plan.
-  const showsPlan =
-    !absence && timelogs.length === 0 && plannedEntries.length > 0;
+  const { opensAbsence, canAddEntry, showsPlan } = dayActions({
+    absence,
+    isAbsenceLocked,
+    isEditable,
+    canLogTime,
+    timelogs,
+    plannedEntries,
+  });
 
   const segments = useMemo(
     () => stackSegments(timelogs, minutesOfLog, pixelsPerMinute),
@@ -113,10 +119,6 @@ export const DayColumn = ({
   const hidePopover = () => setHovered(null);
 
   const dayLabel = formatLongDayLabel(date);
-  // A day an absence covers opens the absence instead of a new entry, to read
-  // once it is locked.
-  const opensAbsence = !!absence && (isEditable || isAbsenceLocked);
-  const canAddEntry = !absence && isEditable && canLogTime;
   const isEmpty = timelogs.length === 0 && !showsPlan;
 
   // The part of the day below its entries, or its plans, logs a new entry.
