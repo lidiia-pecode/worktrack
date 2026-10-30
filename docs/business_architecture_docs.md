@@ -780,7 +780,12 @@ see, and how a new company gets started. §7 plans that work.
   nothing is striped: a weekend in grey, turning amber once it has time, since
   weekend hours are always extra; a day off in the brand colour. Time past a
   working day's figure sits on solid amber with a "+Xh" badge. A day that
-  hasn't happened yet can't be logged on.
+  hasn't happened yet can't be logged on. Each entry is drawn at least one
+  readable line tall, opens on its own, and the empty part of a day logs a new
+  entry. Where the screen is too narrow for seven columns, such as a phone, the
+  week is a list of days instead: each day's total against expected and its
+  "+", and every entry, plan and absence as a row with its details, opening at
+  today.
 - **Manage pages** — People, Teams, Projects, Activities and Categories as
   searchable lists; Teams, Activities, Categories and Periods are the owner's,
   so a manager's Manage menu is People and Projects, and an activity or
@@ -956,7 +961,8 @@ absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
-the time entry form, the duration stepper, the timesheet day column, the
+the time entry form, the duration stepper, the timesheet day column and its
+list of days on a phone, the
 Team time view, its day cells, rows, filters and sort order, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, My time, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
@@ -1046,6 +1052,7 @@ is in its pull request.
 | 38 (part 1) | Teams and leavers: a leaver's time and absences corrected by owners and managers on the days before they left; one member team per person, adding someone to another team a confirmed move; the owner in no team; a team's former members, pending invitations and "Move to…" on its panel; a team archived only once empty, with restore an exact undo; Reactivate confirmed, the day someone was deactivated shown, and a leaver marked on the People card; the Teams page the owner's, a manager removing a member from the person's panel, and Users renamed People |
 | 38 (part 2) | Projects, activities, categories and plans: every activity always in a category, drafts removed and the database requiring one; taking an activity out of its category a move or an archive; archiving a project removing everyone's plans from today on, named first, and its archived activities listed on its panel; the activity catalogue and archiving or restoring a project the owner's, with a manager's menu of People and Projects; membership dates set by the server; restore of an activity or category no longer failing; the unused `COMPLETED` and `INACTIVE` statuses removed |
 | 38 (part 3) | Cross-cutting: a deactivated account unable to reset its password or keep a session, and edited only once reactivated; one owner per company; archiving a project or removing a member deleting exactly the plans it names, with plan saves waiting for it; one confirmation dialog with Delete and Remove by what happens to the data and colours by what can be undone; changing the time zone or week start asking first, with one dialog for several changes; Team time closing the days of an earlier inactive spell, and an invitation unable to slip into a team being archived; a person's plans changed and deleted across a period from the period form |
+| 39 | Time entry on a phone: the timesheet's week as a list of days where seven columns don't fit, each entry, plan and absence a row with its details and the list opening at today; short entries at least one readable line tall on the grid; a day no longer one button around its entries, the empty part of a day logging time and an absence opening from its own button |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1096,7 +1103,7 @@ the other areas apply to their pages, so it may run alongside Area 1 or straight
 after it, and it includes what the frontend needs to test components rather than
 only helpers.
 
-**Area 3 — Everyday time entry** *(started, Phases 28–29)*. The employee's timesheet
+**Area 3 — Everyday time entry** *(started, Phases 28–29 and 39)*. The employee's timesheet
 and absences, the screen people use most. Logging should be fast, with the plan,
 recent work and common durations doing much of the typing; a week should say
 clearly when it is complete; the figures it shows — billable, internal, expected
@@ -1141,8 +1148,9 @@ every later area reuses what it settles; Area 5 followed, and Areas 3 and 4 have
 started. After Phase 33, by decision (21 October 2026), Area 6 came next,
 starting with its two counting bugs, then Area 7, done by Phase 35. Phase 36
 then fixed the defects open across areas, and Phase 37 rebuilt Team time
-around its cells; the rest of Areas 3 and 4, the phone layout among it,
-follows. Area 8 closes the stage. A
+around its cells. Phase 38 then made the entity lifecycle coherent, and
+Phase 39 put the timesheet on a phone; the rest of Areas 3 and 4, Team time
+and Planning on a phone among it, follows. Area 8 closes the stage. A
 defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
