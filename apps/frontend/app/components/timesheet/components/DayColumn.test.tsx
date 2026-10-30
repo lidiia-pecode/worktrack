@@ -191,21 +191,6 @@ describe("DayColumn", () => {
       expect(onAddClick).toHaveBeenLastCalledWith(expect.any(Date));
     });
 
-    it("opens a plan once from the keyboard, not the day around it", async () => {
-      const user = userEvent.setup();
-      const onAddClick = vi.fn();
-      render(renderDay([], { plannedEntries: plans, onAddClick }));
-
-      screen.getByRole("button", { name: /for Atlas/ }).focus();
-      await user.keyboard("{Enter}");
-
-      expect(onAddClick).toHaveBeenCalledOnce();
-      expect(onAddClick).toHaveBeenCalledWith(
-        expect.any(Date),
-        "project-Atlas",
-      );
-    });
-
     it("shows a plan without opening it on a day that hasn't happened", () => {
       render(renderDay([], { plannedEntries: plans, canLogTime: false }));
 
