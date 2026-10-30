@@ -196,9 +196,10 @@ describe("MyTimeView", () => {
     expect(
       screen.getByText("Nothing logged in October 2026"),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Open the timesheet" }),
-    ).toHaveAttribute("href", "/timesheet");
+    expect(screen.getByRole("link", { name: "Log my time" })).toHaveAttribute(
+      "href",
+      "/timesheet",
+    );
   });
 
   it("says nothing is counted yet when no day of the month has finished", () => {

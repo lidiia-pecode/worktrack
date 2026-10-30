@@ -157,14 +157,14 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
       return (
         <EmptyState
           title={`Nothing logged in ${formatMonthLabel(month)}`}
-          description="Time you log on the timesheet shows up here once the day is over."
+          description="Time logged during the week appears here once the day is over."
           icon={<CalendarCheck />}
           action={
             <Link
               href="/timesheet"
               className={buttonVariants({ variant: "secondary" })}
             >
-              Open the timesheet
+              Log my time
             </Link>
           }
         />
