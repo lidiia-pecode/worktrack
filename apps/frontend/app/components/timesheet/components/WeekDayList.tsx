@@ -148,7 +148,8 @@ const DayRow = ({
   if (absence) {
     const absenceContent = (
       <>
-        {title}
+        {/* The button's name already says which day. */}
+        <span aria-hidden>{title}</span>
         <span className="flex min-w-0 flex-col items-end gap-0.5 text-right">
           <span className="rounded-full border border-border bg-card px-2 py-0.5 text-xs font-semibold text-foreground">
             {ABSENCE_TYPE_LABELS[absence.type]}
@@ -170,7 +171,7 @@ const DayRow = ({
       "flex min-h-11 w-full items-center justify-between gap-3 text-left";
 
     return (
-      <section ref={ref} aria-label={longLabel} className={sectionClass}>
+      <section ref={ref} className={sectionClass}>
         {opensAbsence ? (
           <button
             type="button"
@@ -194,7 +195,7 @@ const DayRow = ({
   }
 
   return (
-    <section ref={ref} aria-label={longLabel} className={sectionClass}>
+    <section ref={ref} className={sectionClass}>
       <div className="flex min-h-11 items-center gap-2">
         <h2 className="shrink-0">{title}</h2>
         <DayFigure day={day} showsPlan={showsPlan} />
