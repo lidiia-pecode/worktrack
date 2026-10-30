@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
+import { Team } from 'src/teams/entities/team.entity';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -57,6 +58,7 @@ describe('InvitationsService.create', () => {
     );
 
   let findByEmailWithCompany: jest.Mock;
+  let findTeam: jest.Mock;
 
   beforeEach(() => {
     sendInvitationEmail = jest.fn().mockResolvedValue(undefined);
@@ -76,6 +78,12 @@ describe('InvitationsService.create', () => {
       }),
     };
 
+    findTeam = jest.fn(
+      ({ where }: { where: { id: string } }): Promise<unknown> =>
+        Promise.resolve(TEAMS[where.id] ?? null),
+    );
+    const teamRepository = { findOne: findTeam };
+
     service = new InvitationsService(
       stub(invitationRepository),
       stub({ findByEmailWithCompany }),
@@ -85,19 +93,17 @@ describe('InvitationsService.create', () => {
       stub({ getOrThrow: () => 'http://app.test' }),
       stub({
         transaction: (work: (manager: unknown) => Promise<unknown>) =>
-          work({ getRepository: () => invitationRepository }),
+          work({
+            getRepository: (entity: unknown) =>
+              entity === Team ? teamRepository : invitationRepository,
+          }),
       }),
       stub({
         getVisibleTeamIds: jest.fn((user: AuthUser) =>
           Promise.resolve(user.role === UserRole.OWNER ? null : [LED_TEAM_ID]),
         ),
       }),
-      stub({
-        findOne: jest.fn(
-          ({ where }: { where: { id: string } }): Promise<unknown> =>
-            Promise.resolve(TEAMS[where.id] ?? null),
-        ),
-      }),
+      stub(teamRepository),
       stub({ notifyInvitationAccepted: jest.fn() }),
     );
   });
@@ -192,6 +198,22 @@ describe('InvitationsService.create', () => {
     it('refuses an archived team', async () => {
       await expect(
         invite(UserRole.OWNER, UserRole.EMPLOYEE, ARCHIVED_TEAM_ID),
+      ).rejects.toThrow(BadRequestException);
+
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
+    });
+
+    it('refuses a team archived before the invitation is saved', async () => {
+      // Active at the first check, archived by the locked one before the save.
+      findTeam
+        .mockResolvedValueOnce(TEAMS[OTHER_TEAM_ID])
+        .mockResolvedValueOnce({
+          ...TEAMS[OTHER_TEAM_ID],
+          status: TeamStatus.ARCHIVED,
+        });
+
+      await expect(
+        invite(UserRole.OWNER, UserRole.EMPLOYEE, OTHER_TEAM_ID),
       ).rejects.toThrow(BadRequestException);
 
       expect(sendInvitationEmail).not.toHaveBeenCalled();

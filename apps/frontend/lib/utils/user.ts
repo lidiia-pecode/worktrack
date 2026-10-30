@@ -1,4 +1,4 @@
-import { AvatarUser, User } from "@/types";
+import { AvatarUser, InactiveSpell, User } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
 import { formatDayMonthYearLabel, isoDateInTimeZone } from "./date";
@@ -34,12 +34,19 @@ export const deactivatedOnLabel = (
       )
     : null;
 
+/** Whether a day falls in one of the spells someone was deactivated for, as the API checks. */
+export const isInactiveOn = (spells: InactiveSpell[], date: string) =>
+  spells.some(
+    (spell) =>
+      spell.from <= date && (spell.until === null || date < spell.until),
+  );
+
 /**
  * Whether the viewer may create, edit and delete someone's time entries.
  * Write access follows what the viewer can already see, so anyone whose row
  * reaches the team grid is also someone they may correct; everyone else only
- * ever edits their own. The backend enforces the same rule; for a deactivated
- * person it allows only the days before they left, which the caller checks.
+ * ever edits their own. The backend enforces the same rule; it refuses the days
+ * someone was deactivated for (`isInactiveOn`), which the caller checks.
  */
 export const canWriteTimeLogsFor = (
   role: string | undefined,

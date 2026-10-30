@@ -43,7 +43,7 @@ export const useUserActions = () => {
           {
             label: "Deactivate",
             icon: UserX,
-            destructive: true,
+            warning: true,
             onSelect: () => setDeactivatingUser(user),
           },
         ];

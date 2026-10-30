@@ -41,7 +41,7 @@ export const ProjectArchiveDialog = ({
       ? "Checking its plans..."
       : planCount === 0
         ? `${LOCKS_IT} Its people and activities are kept, and restoring it brings them back.`
-        : `${LOCKS_IT} Its ${countLabel(planCount, "planned entry", "planned entries")} from today on are removed; past plans stay. Its people and activities are kept, and restoring it brings them back, but not the removed plans.`;
+        : `${LOCKS_IT} Its ${countLabel(planCount, "plan", "plans")} from today on will be deleted; past plans stay. Its people and activities are kept, and restoring it brings them back, but not the deleted plans.`;
 
   return (
     <ImpactDialog
@@ -50,7 +50,7 @@ export const ProjectArchiveDialog = ({
       description={description}
       affected={[
         {
-          label: "Plans removed for",
+          label: "Plans deleted for",
           entities: (impact.data?.people ?? []).map((person) => ({
             entity: { type: "user" as const, id: person.id },
             name: fullName(person),
@@ -58,7 +58,7 @@ export const ProjectArchiveDialog = ({
         },
       ]}
       confirmText="Archive"
-      confirmVariant="destructive"
+      confirmVariant={planCount > 0 ? "destructive" : "warning"}
       onConfirm={confirm}
       onClose={onClose}
       loading={archive.isPending}

@@ -23,44 +23,104 @@ export const formatDay = (date: string, withWeekday = true): string =>
     timeZone: 'UTC',
   });
 
+/** One project of a period plan and the hours it gets each day. */
+export interface PeriodLine {
+  projectId: string;
+  minutesPerDay: number;
+  /** Only the days that already have the project; otherwise every working day. */
+  existingDaysOnly: boolean;
+}
+
+export interface PeriodWrites {
+  created: { date: string; projectId: string; minutes: number }[];
+  changed: { entry: PlanningEntry; minutes: number }[];
+}
+
+/** The plans a period plan creates and the ones whose hours it changes. */
+export const periodWrites = ({
+  plannedDays,
+  lines,
+  existing,
+}: {
+  plannedDays: Set<string>;
+  lines: PeriodLine[];
+  existing: PlanningEntry[];
+}): PeriodWrites => {
+  const existingByDayAndProject = new Map(
+    existing.map((entry) => [`${entry.date}|${entry.projectId}`, entry]),
+  );
+  const writes: PeriodWrites = { created: [], changed: [] };
+
+  for (const date of plannedDays) {
+    for (const line of lines) {
+      const entry = existingByDayAndProject.get(`${date}|${line.projectId}`);
+
+      if (!entry) {
+        if (!line.existingDaysOnly) {
+          writes.created.push({
+            date,
+            projectId: line.projectId,
+            minutes: line.minutesPerDay,
+          });
+        }
+      } else if (entry.plannedMinutes !== line.minutesPerDay) {
+        writes.changed.push({ entry, minutes: line.minutesPerDay });
+      }
+    }
+  }
+
+  return writes;
+};
+
 /**
- * Every day and week a period plan would take over its limit. As with a
- * single plan, only a total the write raises counts.
+ * Every day and week a period plan would take over its limit, on the plans as
+ * they would be after it. As with a single plan, only a total the write
+ * raises counts.
  */
 export const periodProblems = ({
   weeks,
   plannedDays,
-  minutesByProject,
+  lines,
+  writes,
   existing,
   dayLimit,
 }: {
   weeks: PeriodWeek[];
   plannedDays: Set<string>;
-  /** The listed projects and the minutes each gets per day. */
-  minutesByProject: Map<string, number>;
+  lines: PeriodLine[];
+  writes: PeriodWrites;
   /** The person's plans across every week the period touches. */
   existing: PlanningEntry[];
   dayLimit: number;
 }): string[] => {
-  const listedPerDay = [...minutesByProject.values()].reduce(
-    (sum, minutes) => sum + minutes,
-    0,
+  const listed = new Set(lines.map((line) => line.projectId));
+  const newMinutes = new Map(
+    writes.changed.map(({ entry, minutes }) => [entry.id, minutes]),
   );
-  const sum = (entries: PlanningEntry[]) =>
-    entries.reduce((total, e) => total + e.plannedMinutes, 0);
+  const sum = (minutes: number[]) =>
+    minutes.reduce((total, value) => total + value, 0);
 
   const totalsBetween = (from: string, to: string) => {
-    const inRange = existing.filter((e) => e.date >= from && e.date <= to);
-    const kept = inRange.filter(
-      (e) => !(plannedDays.has(e.date) && minutesByProject.has(e.projectId)),
-    );
-    const newDays = [...plannedDays].filter((d) => d >= from && d <= to);
+    const isInRange = (date: string) => date >= from && date <= to;
+    const inRange = existing.filter((entry) => isInRange(entry.date));
 
     return {
-      before: sum(inRange),
-      after: sum(kept) + newDays.length * listedPerDay,
+      before: sum(inRange.map((entry) => entry.plannedMinutes)),
+      after:
+        sum(
+          inRange.map(
+            (entry) => newMinutes.get(entry.id) ?? entry.plannedMinutes,
+          ),
+        ) +
+        sum(
+          writes.created
+            .filter((created) => isInRange(created.date))
+            .map((created) => created.minutes),
+        ),
       otherProjects: sum(
-        kept.filter((e) => !minutesByProject.has(e.projectId)),
+        inRange
+          .filter((entry) => !listed.has(entry.projectId))
+          .map((entry) => entry.plannedMinutes),
       ),
     };
   };

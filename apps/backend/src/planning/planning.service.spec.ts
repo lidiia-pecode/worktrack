@@ -49,6 +49,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
+import { PeriodProjectPayload } from './dtos/plan-period-payload.dto';
 
 /**
  * Runs against the development database, so it needs the Docker stack:
@@ -619,7 +620,7 @@ describe('PlanningService', () => {
     const period = (
       startDate: string,
       endDate: string,
-      projects: { projectId: string; minutesPerDay: number }[],
+      projects: PeriodProjectPayload[],
       userId = member.id,
     ) => ({ userId, startDate, endDate, projects });
 
@@ -670,6 +671,58 @@ describe('PlanningService', () => {
         [projectId]: 5 * HOUR,
         [otherProjectId]: HOUR,
       });
+    });
+
+    it('changes a listed project only on the days that already have it', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 2 * HOUR);
+      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
+      const listed = period(MONDAY, FRIDAY, [
+        { projectId, minutesPerDay: 3 * HOUR, existingDaysOnly: true },
+      ]);
+
+      const preview = await service.previewPeriod(listed, manager);
+      expect(preview.changes).toEqual([{ projectId, added: 0, changed: 2 }]);
+
+      const result = await service.planPeriod(listed, manager);
+
+      expect(result).toEqual({ days: 5, created: 0, updated: 2 });
+      expect(
+        (await entriesFor(member.id)).map((e) => [
+          e.date,
+          e.projectId,
+          e.plannedMinutes,
+        ]),
+      ).toEqual([
+        [MONDAY, projectId, 3 * HOUR],
+        [TUESDAY, otherProjectId, HOUR],
+        [WEDNESDAY, projectId, 3 * HOUR],
+      ]);
+    });
+
+    it('checks the limits on the days a listed project changes', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, MONDAY, 4 * HOUR, otherProjectId);
+      await existingEntry(member.id, TUESDAY, 7 * HOUR, otherProjectId);
+
+      const problems = await problemsOf(
+        service.planPeriod(
+          period(MONDAY, FRIDAY, [
+            { projectId, minutesPerDay: 6 * HOUR, existingDaysOnly: true },
+          ]),
+          manager,
+        ),
+      );
+
+      expect(problems).toEqual([
+        expect.stringMatching(
+          /: 10h planned, over the 8h working day \(4h already planned on other projects\)$/,
+        ),
+      ]);
+      expect(
+        (await entriesFor(member.id)).find((e) => e.projectId === projectId)
+          ?.plannedMinutes,
+      ).toBe(2 * HOUR);
     });
 
     it('lists every day and week that does not fit, and saves nothing', async () => {
@@ -767,7 +820,7 @@ describe('PlanningService', () => {
           ]),
           manager,
         ),
-      ).resolves.toEqual({ plannedDays: [], problems: [] });
+      ).resolves.toMatchObject({ plannedDays: [], problems: [] });
 
       const preview = await service.previewPeriod(
         period(MONDAY, FRIDAY, []),
@@ -867,6 +920,54 @@ describe('PlanningService', () => {
     });
   });
 
+  describe("deleting a project's plans in a period", () => {
+    const range = (startDate: string, endDate: string, userId = member.id) => ({
+      userId,
+      projectId,
+      startDate,
+      endDate,
+    });
+
+    it('deletes that project in the range and nothing else', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, WEDNESDAY, 2 * HOUR);
+      await existingEntry(member.id, NEXT_MONDAY, 2 * HOUR);
+      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
+
+      await expect(
+        service.deletePeriodPlans(range(MONDAY, FRIDAY), manager),
+      ).resolves.toEqual({ count: 2 });
+
+      expect(
+        (await entriesFor(member.id)).map((e) => [e.date, e.projectId]),
+      ).toEqual([
+        [TUESDAY, otherProjectId],
+        [NEXT_MONDAY, projectId],
+      ]);
+    });
+
+    it('refuses a range touching a locked month, and deletes nothing', async () => {
+      await existingEntry(member.id, LOCKED_MONDAY, 2 * HOUR);
+
+      await expect(
+        service.deletePeriodPlans(
+          range(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4)),
+          manager,
+        ),
+      ).rejects.toThrow(/LOCKED reporting period/);
+      expect(await entriesFor(member.id)).toHaveLength(1);
+    });
+
+    it('refuses somebody outside the team, and an employee', async () => {
+      await expect(
+        service.deletePeriodPlans(range(MONDAY, FRIDAY, outsider.id), manager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.deletePeriodPlans(range(MONDAY, FRIDAY), member),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
   describe('lock order', () => {
     /** Resolves once another connection is waiting on a lock this one holds. */
     const waitUntilBlockedBy = async (holder: QueryRunner) => {
@@ -884,6 +985,36 @@ describe('PlanningService', () => {
       }
       throw new Error('The write never waited on the held lock');
     };
+
+    // An archive holds the project row while it deletes the plans from today
+    // on; a plan saved meanwhile waits for it, then finds the project archived.
+    it('a plan saved while its project is archived waits, then is refused', async () => {
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+
+      try {
+        await holder.query('SELECT id FROM projects WHERE id = $1 FOR UPDATE', [
+          archivedProjectId,
+        ]);
+        await holder.query('UPDATE projects SET status = $1 WHERE id = $2', [
+          ProjectStatus.ARCHIVED,
+          archivedProjectId,
+        ]);
+        const pending = service.create(
+          plan(member.id, MONDAY, HOUR, archivedProjectId),
+          manager,
+        );
+        await waitUntilBlockedBy(holder);
+
+        await holder.commitTransaction();
+        await expect(pending).rejects.toThrow(/not available for planning/);
+        expect(await entriesFor(member.id)).toHaveLength(0);
+      } finally {
+        if (holder.isTransactionActive) await holder.rollbackTransaction();
+        await holder.release();
+      }
+    });
 
     // Waits on the person's row before touching the entry, as a period plan
     // does, so the two never hold one lock each and wait for the other.

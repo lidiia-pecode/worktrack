@@ -26,6 +26,7 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
   expectedMinutes: 2400,
   expectedToDateMinutes: 2400,
   expectedByDate: [],
+  inactiveSpells: [],
   days: [],
   ...overrides,
 });
@@ -126,11 +127,11 @@ describe("TeamWeekRow", () => {
         user: {
           ...row().user,
           status: UserStatus.DEACTIVATED,
-          // Left on Thursday, where the company is.
           deactivatedAt: "2026-11-05T10:00:00Z",
         },
+        inactiveSpells: [{ from: "2026-11-05", until: null }],
       }),
-      { timezone: "Europe/Kyiv", onAdd },
+      { onAdd },
     );
 
     const addButtons = screen.getAllByRole("button", { name: /^Log time/ });
@@ -141,6 +142,28 @@ describe("TeamWeekRow", () => {
     expect(
       screen.getByRole("button", { name: "Add an absence for Alice Cooper" }),
     ).toBeInTheDocument();
+  });
+
+  it("writes nothing in an earlier spell they were deactivated for", () => {
+    const onAdd = vi.fn();
+    renderRow(
+      row({ inactiveSpells: [{ from: "2026-10-26", until: "2026-11-04" }] }),
+      { onAdd },
+    );
+
+    // Back on Wednesday: Monday and Tuesday stay closed, Wednesday to Sunday open.
+    const addButtons = screen.getAllByRole("button", { name: /^Log time/ });
+    expect(addButtons).toHaveLength(5);
+    fireEvent.click(addButtons[0]);
+    expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[2]);
+  });
+
+  it("offers no absence for a week they were away throughout", () => {
+    renderRow(
+      row({ inactiveSpells: [{ from: "2026-10-26", until: "2026-11-09" }] }),
+    );
+
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("offers nothing to write without access", () => {

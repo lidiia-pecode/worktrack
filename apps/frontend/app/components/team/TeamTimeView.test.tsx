@@ -113,6 +113,7 @@ const ALICE: TeamSummaryRow = {
   expectedMinutes: 2400,
   expectedToDateMinutes: 2400,
   expectedByDate: [],
+  inactiveSpells: [],
   days: [
     {
       date: "2026-11-02",

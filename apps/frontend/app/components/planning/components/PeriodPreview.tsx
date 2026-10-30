@@ -1,7 +1,6 @@
-import { Absence, PeriodPreview as Preview, PlanningEntry } from "@/types";
+import { Absence, PeriodPreview as Preview } from "@/types";
 import {
   addDays,
-  formatDayMonthLabel,
   formatDuration,
   fromISODate,
   isWeekend,
@@ -10,6 +9,8 @@ import {
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
+
+import { DayShare } from "./period-lines";
 
 const countWeekdays = (startDate: string, endDate: string): number => {
   let count = 0;
@@ -34,33 +35,15 @@ const awayWeekdays = (
     absence.endDate < endDate ? absence.endDate : endDate,
   );
 
-/** "WorkTrack: 7 days, 35h" for each project already planned in the period. */
-const summarisePlans = (plans: PlanningEntry[]): string[] => {
-  const byProject = new Map<string, { days: Set<string>; minutes: number }>();
-
-  plans.forEach((plan) => {
-    const summary = byProject.get(plan.project.name) ?? {
-      days: new Set<string>(),
-      minutes: 0,
-    };
-    summary.days.add(plan.date);
-    summary.minutes += plan.plannedMinutes;
-    byProject.set(plan.project.name, summary);
-  });
-
-  return [...byProject].map(
-    ([name, { days, minutes }]) =>
-      `${name}: ${days.size} ${days.size === 1 ? "day" : "days"}, ${formatDuration(minutes)}`,
-  );
-};
-
 type PeriodPreviewProps = {
   firstName: string;
   startDate: string;
   endDate: string;
   dayLimitMinutes: number;
-  /** The rows as filled in so far, for the day's total and the bar. */
-  rows: { projectId: string; minutes: number }[];
+  /** The fullest working day saving would leave, for the total and the bar. */
+  busiestDay: { minutes: number; shares: DayShare[]; isSameEveryDay: boolean };
+  /** What saving changes, one line per project: "add Support, 1h on 19 working days". */
+  changes: string[];
   /** The server's answer; none while the first one loads. */
   preview?: Preview;
   isOutdated: boolean;
@@ -69,27 +52,25 @@ type PeriodPreviewProps = {
   /** The preview could not be fetched at all. */
   failed: boolean;
   absences: Absence[];
-  existingPlans: PlanningEntry[];
 };
 
 /**
- * What saving would do, before it is saved: the day's total, the working days,
- * the absences skipped, what is already planned and anything that does not fit.
+ * What saving would do, before it is saved: the fullest day, each change, the
+ * absences skipped and anything that does not fit.
  */
 export const PeriodPreview = ({
   firstName,
   startDate,
   endDate,
   dayLimitMinutes,
-  rows,
+  busiestDay,
+  changes,
   preview,
   isOutdated,
   refusal,
   failed,
   absences,
-  existingPlans,
 }: PeriodPreviewProps) => {
-  const dailyMinutes = rows.reduce((total, row) => total + row.minutes, 0);
   const plannedDays = preview?.plannedDays ?? [];
   const conflicts = preview?.problems ?? [];
   const weekdays = countWeekdays(startDate, endDate);
@@ -109,7 +90,8 @@ export const PeriodPreview = ({
       <div className="space-y-2">
         <div className="flex items-baseline justify-between gap-3">
           <span className="font-medium text-foreground tabular-nums">
-            {formatDuration(dailyMinutes)} a day
+            {busiestDay.isSameEveryDay ? "" : "Up to "}
+            {formatDuration(busiestDay.minutes)} a day
           </span>
           <span className="text-muted-foreground tabular-nums">
             {formatDuration(dayLimitMinutes)} working day
@@ -120,25 +102,17 @@ export const PeriodPreview = ({
           className="flex h-2 overflow-hidden rounded-full bg-brand-muted"
           aria-hidden
         >
-          {rows.map((row, index) => (
+          {busiestDay.shares.map((share) => (
             <div
-              key={index}
+              key={share.projectId}
               style={{
-                width: `${Math.min(100, (row.minutes / dayLimitMinutes) * 100)}%`,
-                backgroundColor: row.projectId
-                  ? getProjectColor(row.projectId)
-                  : "var(--muted-foreground)",
+                width: `${Math.min(100, (share.minutes / dayLimitMinutes) * 100)}%`,
+                backgroundColor: getProjectColor(share.projectId),
               }}
             />
           ))}
         </div>
       </div>
-
-      {dailyMinutes > dayLimitMinutes && (
-        <p className="text-destructive-text">
-          That is more than a working day. Lower the hours to save.
-        </p>
-      )}
 
       {!preview && refusal.length === 0 && !failed && (
         <p className="text-muted-foreground">Checking the period…</p>
@@ -150,18 +124,23 @@ export const PeriodPreview = ({
         </p>
       )}
 
-      {preview && plannedDays.length > 0 && (
-        <p className="text-foreground">
-          <span className="font-medium">
-            {plannedDays.length} working{" "}
-            {plannedDays.length === 1 ? "day" : "days"}
-          </span>{" "}
-          to plan, {formatDayMonthLabel(plannedDays[0])} –{" "}
-          {formatDayMonthLabel(plannedDays[plannedDays.length - 1])}
-          {isOutdated && (
-            <span className="text-muted-foreground"> (updating…)</span>
-          )}
-        </p>
+      {preview && changes.length > 0 && (
+        <div className="space-y-1 text-foreground">
+          <p className="font-medium">
+            Saving will
+            {isOutdated && (
+              <span className="font-normal text-muted-foreground">
+                {" "}
+                (updating…)
+              </span>
+            )}
+          </p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {changes.map((change) => (
+              <li key={change}>{change}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {preview && plannedDays.length === 0 && (
@@ -189,13 +168,6 @@ export const PeriodPreview = ({
                 `${ABSENCE_TYPE_LABELS[absence.type]} ${formatAbsenceRange(absence)}`,
             )
             .join(", ")}
-        </p>
-      )}
-
-      {existingPlans.length > 0 && (
-        <p className="text-muted-foreground">
-          Already planned: {summarisePlans(existingPlans).join(" · ")}. Listed
-          projects get the new hours; other projects stay.
         </p>
       )}
 

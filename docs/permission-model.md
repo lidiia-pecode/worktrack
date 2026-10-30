@@ -77,6 +77,11 @@ in [`business_architecture_docs.md`](./business_architecture_docs.md) §4
 The principle it rested on still governs the rest of this document: appointing a
 manager is the Owner's act of delegation and cannot be self-propagating.
 
+A company has exactly one Owner: nobody can be made an Owner, the Owner cannot
+change their own role or be deactivated, and handing ownership over is not built
+yet. A deactivated account can't sign in, reset its password or keep a session,
+and the Owner changes its details and working hours only after reactivating it.
+
 When an invitation is accepted, its sender is notified. A notification belongs
 to its recipient alone: everyone reads and marks only their own, whatever their
 role, and it names only the person who joined — someone the sender invited.
@@ -269,7 +274,8 @@ teams they are still on. Two guards hold for every writer: nothing can be
 dated on or after the day they were deactivated, or inside a spell they were
 deactivated for and came back from (the API answers 400 and says why), and
 locked months stay locked. Planning is different: no new or changed plan for a
-deactivated person, deletion allowed. Decided on 27 October 2026 (entity
+deactivated person, deletion allowed (one plan, or a project's plans across a
+period). Decided on 27 October 2026 (entity
 lifecycle, decision 3); it reverses the Phase 31 rule that refused every
 write for a deactivated person, which made a leaver's last month
 uncorrectable without reactivating them.
@@ -302,7 +308,8 @@ reference.
 ### 3.8 Delegation summary
 
 The Owner keeps: structure (teams, the activity catalogue, archiving
-projects), role grants, moving people, and everything a manager can do. The
+projects), role grants (Manager or Employee; the Owner role is never granted),
+moving people, and everything a manager can do. The
 manager gets: hiring into their team, running their team, creating projects
 and staffing them with their people. Neither can quietly become the other.
 

@@ -23,6 +23,7 @@ import { Project } from 'src/projects/entities/project.entity';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import { AuthSession } from 'src/auth/entities/auth-session.entity';
 
 import { User } from './entities/user.entity';
 import { UserInactivePeriod } from './entities/user-inactive-period.entity';
@@ -550,18 +551,20 @@ describe('UsersService scope', () => {
       ).resolves.toMatchObject({ role: UserRole.OWNER });
     });
 
-    it('is refused for making a team manager an Owner too', async () => {
-      const leader = await createUser('ownerbound', UserRole.MANAGER);
-      await leadTeam(leader, 'Theta');
+    it('refuses making anyone a second owner', async () => {
+      const employee = await createUser('ownerbound', UserRole.EMPLOYEE);
 
       await expect(
         service.updateUser(
-          leader.id,
+          employee.id,
           companyId,
           { role: UserRole.OWNER },
           owner,
         ),
-      ).rejects.toThrow(BadRequestException);
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        dataSource.getRepository(User).findOneByOrFail({ id: employee.id }),
+      ).resolves.toMatchObject({ role: UserRole.EMPLOYEE });
     });
 
     it('is not blocked by an archived team', async () => {
@@ -670,6 +673,45 @@ describe('UsersService scope', () => {
       expect(spells[0].reactivatedAt.getTime()).toBeGreaterThanOrEqual(
         spells[0].deactivatedAt.getTime(),
       );
+    });
+
+    it('ends their sessions', async () => {
+      const leaver = await createUser('signedin', UserRole.EMPLOYEE);
+      await dataSource.getRepository(AuthSession).save({
+        userId: leaver.id,
+        companyId,
+        refreshHash: 'hash',
+        expiresAt: new Date(Date.now() + 3_600_000),
+      });
+
+      await service.archive(leaver.id, owner.id, companyId);
+
+      await expect(
+        dataSource.getRepository(AuthSession).countBy({ userId: leaver.id }),
+      ).resolves.toBe(0);
+    });
+
+    it('refuses changing their details or working hours until they are back', async () => {
+      const leaver = await createUser('readonly', UserRole.EMPLOYEE);
+      await service.archive(leaver.id, owner.id, companyId);
+
+      await expect(
+        service.updateUser(
+          leaver.id,
+          companyId,
+          { position: 'Designer' },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        capacity.setCapacity(
+          companyId,
+          leaver.id,
+          1200,
+          '2099-01-05',
+          owner.id,
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
 
     it('keeps no spell for somebody deactivated before the day was recorded', async () => {

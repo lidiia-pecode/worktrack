@@ -36,7 +36,20 @@ export interface PlanPeriodPayload {
   userId: string;
   startDate: string;
   endDate: string;
-  projects: { projectId: string; minutesPerDay: number }[];
+  projects: {
+    projectId: string;
+    minutesPerDay: number;
+    /** Only the days that already have the project; otherwise every working day. */
+    existingDaysOnly?: boolean;
+  }[];
+}
+
+// Query (back DeletePeriodPlansQuery)
+export interface DeletePeriodPlansQuery {
+  userId: string;
+  projectId: string;
+  startDate: string;
+  endDate: string;
 }
 
 export interface PlannedPeriod {
@@ -51,6 +64,8 @@ export interface PeriodPreview {
   plannedDays: string[];
   /** Every day and week the plan would take over its limit. */
   problems: string[];
+  /** How many plans saving would add and change, per listed project. */
+  changes: { projectId: string; added: number; changed: number }[];
 }
 
 // Query (back PlanningQueryDto)

@@ -12,6 +12,14 @@ export class AuthPolicyService {
     return email.trim().toLowerCase();
   }
 
+  /** Whether the account may sign in: active, in a company that isn't suspended. */
+  hasAccess(user: User): boolean {
+    return (
+      user.status === UserStatus.ACTIVE &&
+      user.company?.status !== CompanyStatus.SUSPENDED
+    );
+  }
+
   validateUserAccess(user: User): void {
     if (user.status !== UserStatus.ACTIVE) {
       throw authError(AuthErrorCode.ACCOUNT_INACTIVE);

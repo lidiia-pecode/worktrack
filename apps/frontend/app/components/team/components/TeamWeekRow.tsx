@@ -4,9 +4,9 @@ import { useEffect, useRef } from "react";
 import { CalendarOff } from "lucide-react";
 
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
-import { formatDuration, isoDateInTimeZone, toISODate } from "@/lib/utils/date";
+import { formatDuration, toISODate } from "@/lib/utils/date";
 import { isRangeLocked } from "@/lib/utils/reporting-period";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
+import { fullName, isDeactivatedUser, isInactiveOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
@@ -20,15 +20,13 @@ type TeamWeekRowProps = {
   row: TeamSummaryRow;
   weekDates: Date[];
   todayIso: string;
-  /** The company's time zone: it says which day a deactivation fell on. */
-  timezone?: string;
   absencesByDate: Record<string, Absence>;
   plansByDate: Record<string, PlanningEntry[]>;
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
   /** The project the grid is filtered by: its hours say nothing about the week. */
   projectName?: string;
-  /** The viewer may write this person's time; for a deactivated person, only the days before they left. */
+  /** The viewer may write this person's time, on the days they were active. */
   canWrite: boolean;
   /** Named by a link, so the row is marked and scrolled to. */
   isHighlighted: boolean;
@@ -44,7 +42,6 @@ export const TeamWeekRow = ({
   row,
   weekDates,
   todayIso,
-  timezone,
   absencesByDate,
   plansByDate,
   isLocked,
@@ -64,11 +61,8 @@ export const TeamWeekRow = ({
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
   const name = fullName(row.user);
-  // A leaver's last month can still be corrected, up to the day they left.
-  const leaveDay = row.user.deactivatedAt
-    ? isoDateInTimeZone(new Date(row.user.deactivatedAt), timezone)
-    : undefined;
-  const isBeforeLeaving = (iso: string) => !leaveDay || iso < leaveDay;
+  // The API refuses any day the person was deactivated for.
+  const isActiveOn = (iso: string) => !isInactiveOn(row.inactiveSpells, iso);
 
   useEffect(() => {
     if (isHighlighted) rowRef.current?.scrollIntoView({ block: "center" });
@@ -103,18 +97,19 @@ export const TeamWeekRow = ({
 
           <PersonSummary row={row} projectName={projectName} />
 
-          {canWrite && isBeforeLeaving(toISODate(weekDates[0])) && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="iconSm"
-              onClick={onAddAbsence}
-              aria-label={`Add an absence for ${name}`}
-              className="shrink-0 text-muted-foreground"
-            >
-              <CalendarOff aria-hidden />
-            </Button>
-          )}
+          {canWrite &&
+            weekDates.some((date) => isActiveOn(toISODate(date))) && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="iconSm"
+                onClick={onAddAbsence}
+                aria-label={`Add an absence for ${name}`}
+                className="shrink-0 text-muted-foreground"
+              >
+                <CalendarOff aria-hidden />
+              </Button>
+            )}
         </div>
       </th>
 
@@ -122,7 +117,7 @@ export const TeamWeekRow = ({
         const iso = toISODate(date);
         const day = daysByDate.get(iso);
         const absence = absencesByDate[iso];
-        const canWriteDay = canWrite && isEditable(iso) && isBeforeLeaving(iso);
+        const canWriteDay = canWrite && isEditable(iso) && isActiveOn(iso);
         // Time is logged only for a day that has happened.
         const canLogTime = canWriteDay && iso <= todayIso;
         // An absence is frozen whole once any of its days locks; it then

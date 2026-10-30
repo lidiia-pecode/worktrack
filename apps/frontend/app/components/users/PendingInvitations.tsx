@@ -13,7 +13,7 @@ import {
   usePendingInvitations,
 } from "@/hooks/auth/useInvitation";
 
-import { ConfirmModal } from "../shared/ConfirmModal";
+import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
 import { UserRole } from "@/types/enums";
 
@@ -55,12 +55,12 @@ export const RevokeInvitationModal = ({
   } = useInvitations();
 
   return (
-    <ConfirmModal
+    <ImpactDialog
       isOpen={Boolean(invitation)}
       title="Revoke invitation?"
-      message={`The link sent to ${invitation?.email} will stop working.`}
+      description={`The link sent to ${invitation?.email} will stop working.`}
       confirmText="Revoke"
-      variant="danger"
+      confirmVariant="destructive"
       loading={revoke.isPending}
       onConfirm={() =>
         invitation && revoke.mutate(invitation.id, { onSuccess: onClose })

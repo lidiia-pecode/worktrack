@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -20,6 +20,7 @@ import { PlanPeriodModal } from "./PlanPeriodModal";
 
 const server = vi.hoisted(() => ({
   planPeriod: vi.fn(),
+  deletePeriodPlans: vi.fn(),
   preview: null as PeriodPreview | null,
   previewError: null as unknown,
   absences: [] as Absence[],
@@ -28,6 +29,10 @@ const server = vi.hoisted(() => ({
 
 vi.mock("@/hooks/usePlanning", () => ({
   usePlanPeriod: () => ({ mutateAsync: server.planPeriod, isPending: false }),
+  useDeletePeriodPlans: () => ({
+    mutate: server.deletePeriodPlans,
+    isPending: false,
+  }),
   usePeriodPreview: () => ({
     preview: server.preview ?? undefined,
     isOutdated: false,
@@ -131,7 +136,8 @@ describe("PlanPeriodModal", () => {
       toFake: ["Date"],
     });
     server.planPeriod.mockReset();
-    server.preview = { plannedDays: OCTOBER_DAYS, problems: [] };
+    server.deletePeriodPlans.mockReset();
+    server.preview = { plannedDays: OCTOBER_DAYS, problems: [], changes: [] };
     server.previewError = null;
     server.absences = [];
     server.plans = [];
@@ -175,8 +181,12 @@ describe("PlanPeriodModal", () => {
     );
   });
 
-  it("previews the days, the absences skipped and what is already planned", () => {
-    server.preview = { plannedDays: OCTOBER_DAYS.slice(0, 16), problems: [] };
+  it("lists what is already planned and the absences skipped, and saves nothing untouched", () => {
+    server.preview = {
+      plannedDays: OCTOBER_DAYS.slice(0, 16),
+      problems: [],
+      changes: [],
+    };
     server.absences = [
       {
         id: "a1",
@@ -199,18 +209,16 @@ describe("PlanPeriodModal", () => {
     ];
     renderModal();
 
-    expect(screen.getByText("16 working days")).toBeInTheDocument();
+    expect(screen.getByText("Planned in this period")).toBeInTheDocument();
+    expect(screen.getByText(/· 1 day$/)).toBeInTheDocument();
     expect(
       screen.getByText(/Away 5 days, skipped: Vacation/),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Already planned: Internal: 1 day, 4h/),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save plan" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 
   it("explains a period with no working days", () => {
-    server.preview = { plannedDays: [], problems: [] };
+    server.preview = { plannedDays: [], problems: [], changes: [] };
     server.absences = [
       {
         id: "a1",
@@ -237,6 +245,7 @@ describe("PlanPeriodModal", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS,
       problems: ["Mon 12 Oct: 12h planned, over the 8h working day"],
+      changes: [],
     };
     renderModal();
 
@@ -261,25 +270,25 @@ describe("PlanPeriodModal", () => {
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 
-  it("adds a row per project, totals the day and says when nothing is left to add", async () => {
+  it("adds a line per project, totals the day and says when nothing is left to add", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
     await fillRow(user, 0, "Northwind", "4");
-    await user.click(
-      screen.getByRole("button", { name: "Add another project" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Add a project" }));
     await fillRow(user, 1, "Internal", "2");
 
     expect(screen.getByText("6h a day")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Add another project" }),
+      screen.queryByRole("button", { name: "Add a project" }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByText("Alice is on no other active project."),
     ).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Remove Internal" }));
+    await user.click(
+      screen.getByRole("button", { name: "Drop the Internal line" }),
+    );
 
     expect(screen.getAllByRole("combobox", { name: /^Project/ })).toHaveLength(
       1,
@@ -311,6 +320,160 @@ describe("PlanPeriodModal", () => {
       endDate: "2026-10-31",
       projects: [{ projectId: "project-northwind", minutesPerDay: 240 }],
     });
+  });
+
+  it("changes a planned project only on its own days", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = ["2026-10-06", "2026-10-07"].map(
+      (date, index) =>
+        ({
+          id: `p${index}`,
+          userId: "user-alice",
+          project: { id: "project-internal", name: "Internal" },
+          plannedMinutes: 120,
+          date,
+        }) as PlanningEntry,
+    );
+    server.preview = {
+      plannedDays: OCTOBER_DAYS,
+      problems: [],
+      changes: [{ projectId: "project-internal", added: 0, changed: 2 }],
+    };
+    server.planPeriod.mockResolvedValue({ days: 22, created: 0, updated: 2 });
+    const { onClose } = renderModal();
+
+    const hours = within(
+      screen.getByRole("group", { name: "Hours a day for Internal" }),
+    ).getByRole("spinbutton", { name: "Hours" });
+    // Clicked first, so the dialog's opening focus has settled before typing.
+    await user.click(hours);
+    await user.clear(hours);
+    await user.type(hours, "3");
+    await user.tab();
+
+    expect(screen.getByText(/was 2h/)).toBeInTheDocument();
+    expect(
+      screen.getByText("change Internal from 2h to 3h on 2 days"),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Save plan" }));
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+    expect(server.planPeriod).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projects: [
+          {
+            projectId: "project-internal",
+            minutesPerDay: 180,
+            existingDaysOnly: true,
+          },
+        ],
+      }),
+    );
+  });
+
+  it("asks for hours or the bin when a planned project is set to 0h", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-internal", name: "Internal" },
+        plannedMinutes: 120,
+        date: "2026-10-06",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    const hours = within(
+      screen.getByRole("group", { name: "Hours a day for Internal" }),
+    ).getByRole("spinbutton", { name: "Hours" });
+    await user.click(hours);
+    await user.clear(hours);
+    await user.type(hours, "0");
+    await user.tab();
+
+    expect(
+      screen.getByText(
+        "Enter hours greater than 0, or delete it with the bin.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
+  });
+
+  it("offers only the bin for a project the person is no longer on", () => {
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-old", name: "Old client" },
+        plannedMinutes: 120,
+        date: "2026-10-06",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    expect(screen.getByText("Not on this project")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("group", { name: "Hours a day for Old client" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Delete the Old client plan" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a new line out of the save once its project is planned above", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderModal();
+
+    await fillRow(user, 0, "Northwind", "2");
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-northwind", name: "Northwind" },
+        plannedMinutes: 120,
+        date: "2026-11-03",
+      } as PlanningEntry,
+    ];
+    await user.click(screen.getByRole("button", { name: "Next month" }));
+
+    expect(
+      screen.getByText("Already planned in this period. Change it above."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
+  });
+
+  it("deletes a planned project in the period once confirmed", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = [
+      {
+        id: "p1",
+        userId: "user-alice",
+        project: { id: "project-internal", name: "Internal" },
+        plannedMinutes: 120,
+        date: "2026-10-06",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    await user.click(
+      screen.getByRole("button", { name: "Delete the Internal plan" }),
+    );
+    expect(
+      await screen.findByRole("heading", { name: "Delete the Internal plan?" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(server.deletePeriodPlans).toHaveBeenCalledWith(
+      {
+        userId: "user-alice",
+        projectId: "project-internal",
+        startDate: "2026-10-01",
+        endDate: "2026-10-31",
+      },
+      expect.anything(),
+    );
   });
 
   it("lists a refusal the save still gives, and stays open", async () => {

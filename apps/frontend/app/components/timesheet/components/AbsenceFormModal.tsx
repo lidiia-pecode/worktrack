@@ -17,7 +17,7 @@ import { Field, fieldControlClassName } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
@@ -43,10 +43,19 @@ const TYPE_OPTIONS = Object.values(AbsenceType).map((type) => ({
   label: ABSENCE_TYPE_LABELS[type],
 }));
 
+const deletedAbsenceText = (absence: Absence) => {
+  const daysBecome =
+    absence.startDate === absence.endDate
+      ? "that day becomes a working day"
+      : "those days become working days";
+
+  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again.`;
+};
+
 type Props = {
   open: boolean;
   onClose: () => void;
-  /** Whose absence it is, to name the plans it will remove. */
+  /** Whose absence it is, to name the plans it will delete. */
   userId: string;
   /** Named under the title when the form is for someone else. */
   subjectName?: string;
@@ -256,7 +265,7 @@ export const AbsenceFormModal = ({
             <p className="flex gap-2 text-sm text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
-                Removes {removedPlans.count}{" "}
+                Deletes {removedPlans.count}{" "}
                 {removedPlans.count === 1 ? "plan" : "plans"} on these days:{" "}
                 {removedPlans.projects}
               </span>
@@ -279,14 +288,14 @@ export const AbsenceFormModal = ({
         </form>
       </ResourceFormModal>
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
-        title="Remove this absence?"
-        message="The days go back to being ordinary working days."
-        confirmText="Remove"
-        variant="danger"
+        title="Delete this absence?"
+        description={absence && deletedAbsenceText(absence)}
+        confirmText="Delete"
+        confirmVariant="destructive"
         loading={isDeleting}
       />
     </>

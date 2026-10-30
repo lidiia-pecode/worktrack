@@ -35,7 +35,7 @@ import {
   ExpectedDay,
   ExpectedHoursService,
 } from 'src/capacity/expected-hours.service';
-import { CapacityService } from 'src/capacity/capacity.service';
+import { CapacityService, InactiveSpell } from 'src/capacity/capacity.service';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
@@ -65,6 +65,8 @@ export interface TeamSummaryRow {
   expectedToDateMinutes: number;
   /** Every date in the range, so a grid can tell a day over the person's hours. */
   expectedByDate: ExpectedDay[];
+  /** The days nothing can be recorded on, as the API refuses them. */
+  inactiveSpells: InactiveSpell[];
   days: TeamSummaryDay[];
 }
 
@@ -208,12 +210,16 @@ export class TimeLogsService {
       { includeSelf: true },
     );
 
-    const expected = await this.expectedHours.expectedFor(
-      user.companyId,
-      users.map((summaryUser) => summaryUser.id),
-      query.dateFrom,
-      query.dateTo,
-    );
+    const userIds = users.map((summaryUser) => summaryUser.id);
+    const [expected, activeDates] = await Promise.all([
+      this.expectedHours.expectedFor(
+        user.companyId,
+        userIds,
+        query.dateFrom,
+        query.dateTo,
+      ),
+      this.capacity.activeDatesFor(user.companyId, userIds, timezone),
+    ]);
 
     const rows = new Map<string, TeamSummaryRow>(
       users.map((summaryUser) => [
@@ -226,6 +232,7 @@ export class TimeLogsService {
           expectedMinutes: expected.get(summaryUser.id)?.total ?? 0,
           expectedToDateMinutes: expected.get(summaryUser.id)?.toDate ?? 0,
           expectedByDate: expected.get(summaryUser.id)?.byDate ?? [],
+          inactiveSpells: activeDates.get(summaryUser.id)?.inactiveSpells ?? [],
           days: [],
         },
       ]),

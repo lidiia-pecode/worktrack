@@ -54,7 +54,7 @@ export const ActivityArchiveDialog = ({
         },
       ]}
       confirmText="Archive"
-      confirmVariant="destructive"
+      confirmVariant="warning"
       onConfirm={confirmArchive}
       onClose={onClose}
       loading={archive.isPending}

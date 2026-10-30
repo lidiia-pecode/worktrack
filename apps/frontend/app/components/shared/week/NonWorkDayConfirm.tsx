@@ -2,7 +2,7 @@
 
 import { formatLongDayLabel } from "@/lib/utils/date";
 
-import { ConfirmModal } from "../ConfirmModal";
+import { ImpactDialog } from "../ImpactDialog";
 
 type NonWorkDayConfirmProps = {
   date: Date | null;
@@ -15,12 +15,12 @@ export const NonWorkDayConfirm = ({
   onConfirm,
   onClose,
 }: NonWorkDayConfirmProps) => (
-  <ConfirmModal
+  <ImpactDialog
     isOpen={!!date}
     onClose={onClose}
     onConfirm={onConfirm}
     title="Log time on a non-work day?"
-    message={
+    description={
       date
         ? `${formatLongDayLabel(date)} is outside the standard work week.`
         : undefined

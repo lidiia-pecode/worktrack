@@ -73,6 +73,12 @@ export interface TeamSummaryUser {
   deactivatedAt: string | null;
 }
 
+/** Deactivated from `from` up to the day before `until`; `until` is null while they still are. */
+export interface InactiveSpell {
+  from: string;
+  until: string | null;
+}
+
 export interface TeamSummaryDay {
   date: string;
   minutes: number;
@@ -91,6 +97,8 @@ export interface TeamSummaryRow {
   expectedToDateMinutes: number;
   /** Every date of the range, so a day over the person's hours can be marked. */
   expectedByDate: ExpectedDay[];
+  /** The days nothing can be recorded on, in the company's time zone. */
+  inactiveSpells: InactiveSpell[];
   days: TeamSummaryDay[];
 }
 

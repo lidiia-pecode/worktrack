@@ -185,7 +185,7 @@ describe("pickerChangesCopy", () => {
     expect(copy.description).toBe(
       "Anna Smith leaves Design Studio today. Removed from Design today: Emma Clarke. Design is then left without an active manager.",
     );
-    expect(copy.confirmVariant).toBe("destructive");
+    expect(copy.confirmVariant).toBe("warning");
   });
 
   it("keeps the removal-only wording", () => {

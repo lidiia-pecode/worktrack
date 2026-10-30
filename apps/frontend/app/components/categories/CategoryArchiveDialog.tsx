@@ -136,7 +136,7 @@ export const CategoryArchiveDialog = ({
         ))
       }
       confirmText="Archive"
-      confirmVariant={archivesActivities ? "destructive" : "warning"}
+      confirmVariant="warning"
       onConfirm={confirm}
       onClose={close}
       loading={archive.isPending}

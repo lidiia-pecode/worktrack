@@ -4,9 +4,11 @@ import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
 
 import { MailService } from 'src/mail/mail.service';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 
 import { PasswordResetToken } from '../entities/password-reset-token.entity';
+import { AuthPolicyService } from './auth-policy.service';
 import {
   NO_ACCOUNT_FOR_EMAIL,
   PasswordResetService,
@@ -30,6 +32,7 @@ describe('PasswordResetService.requestPasswordReset', () => {
     }),
     stub<MailService>({ sendPasswordResetEmail }),
     stub<UsersService>({ findByEmailWithCompany }),
+    new AuthPolicyService(),
   );
 
   beforeEach(() => jest.clearAllMocks());
@@ -48,6 +51,7 @@ describe('PasswordResetService.requestPasswordReset', () => {
     findByEmailWithCompany.mockResolvedValue({
       id: 'user-1',
       email: 'emma.clarke@example.com',
+      status: UserStatus.ACTIVE,
     });
 
     await service.requestPasswordReset('emma.clarke@example.com');
@@ -56,5 +60,18 @@ describe('PasswordResetService.requestPasswordReset', () => {
       'emma.clarke@example.com',
       expect.stringContaining('http://localhost:3000/reset-password?token='),
     );
+  });
+
+  it('answers a deactivated account as any other, and sends nothing', async () => {
+    findByEmailWithCompany.mockResolvedValue({
+      id: 'user-1',
+      email: 'emma.clarke@example.com',
+      status: UserStatus.DEACTIVATED,
+    });
+
+    await expect(
+      service.requestPasswordReset('emma.clarke@example.com'),
+    ).resolves.toBeUndefined();
+    expect(sendPasswordResetEmail).not.toHaveBeenCalled();
   });
 });

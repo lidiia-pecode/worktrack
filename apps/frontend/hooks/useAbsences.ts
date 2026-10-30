@@ -54,7 +54,7 @@ export const useAbsencesMutations = createEntityMutations<
   messages: {
     create: "Absence recorded",
     update: "Absence updated",
-    delete: "Absence removed",
+    delete: "Absence deleted",
   },
 });
 

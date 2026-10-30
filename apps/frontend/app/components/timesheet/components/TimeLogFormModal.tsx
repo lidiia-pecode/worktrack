@@ -9,7 +9,7 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { PickerProjectActivity } from "@/hooks/useAssignableActivities";
 
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
@@ -527,14 +527,14 @@ export const TimeLogFormModal = ({
         </form>
       </ResourceFormModal>
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
         title="Delete this time entry?"
-        message="This action cannot be undone."
+        description="This action cannot be undone."
         confirmText="Delete"
-        variant="danger"
+        confirmVariant="destructive"
         loading={isDeleting}
       />
     </>

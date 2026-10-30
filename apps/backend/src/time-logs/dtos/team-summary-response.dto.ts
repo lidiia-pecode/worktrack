@@ -33,6 +33,16 @@ export class TeamSummaryUserResponse {
 }
 
 @Exclude()
+export class InactiveSpellResponse {
+  @Expose()
+  from!: string;
+
+  /** The day they came back; null while they are still deactivated. */
+  @Expose()
+  until!: string | null;
+}
+
+@Exclude()
 export class TeamSummaryDayResponse {
   @Expose()
   date!: string;
@@ -76,6 +86,11 @@ export class TeamSummaryRowResponse {
   @Expose()
   @Type(() => ExpectedDayResponse)
   expectedByDate!: ExpectedDayResponse[];
+
+  /** The days nothing can be recorded on, in the company's time zone. */
+  @Expose()
+  @Type(() => InactiveSpellResponse)
+  inactiveSpells!: InactiveSpellResponse[];
 
   @Expose()
   @Type(() => TeamSummaryDayResponse)

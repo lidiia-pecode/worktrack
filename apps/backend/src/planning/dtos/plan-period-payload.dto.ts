@@ -2,7 +2,9 @@ import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsInt,
+  IsOptional,
   IsUUID,
   Max,
   Min,
@@ -18,6 +20,11 @@ export class PeriodProjectPayload {
   @Min(1)
   @Max(1440)
   minutesPerDay!: number;
+
+  /** Only the days in the range that already have this project; otherwise every working day. */
+  @IsOptional()
+  @IsBoolean()
+  existingDaysOnly?: boolean;
 }
 
 /** A plan checked but not saved; the projects may still be empty. */
@@ -41,4 +48,19 @@ export class PreviewPeriodPayload {
 export class PlanPeriodPayload extends PreviewPeriodPayload {
   @ArrayMinSize(1)
   projects: PeriodProjectPayload[] = [];
+}
+
+/** One person's plans on one project between two days, deleted together. */
+export class DeletePeriodPlansQuery {
+  @IsUUID()
+  userId!: string;
+
+  @IsUUID()
+  projectId!: string;
+
+  @IsDateWithoutTimeString()
+  startDate!: string;
+
+  @IsDateWithoutTimeString()
+  endDate!: string;
 }

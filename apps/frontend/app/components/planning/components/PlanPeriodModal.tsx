@@ -4,11 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarRange, Plus, Trash2 } from "lucide-react";
+import { CalendarRange, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PlanningWeekRow } from "@/types";
 import {
+  useDeletePeriodPlans,
   usePeriodPreview,
   usePlanPeriod,
   usePlanningEntries,
@@ -19,6 +20,7 @@ import { getErrorMessages, isClientError } from "@/lib/api";
 import {
   companyToday,
   formatDayMonthLabel,
+  formatDayMonthYearLabel,
   getMonthRange,
   isISODateRange,
   lastDayOfReportRange,
@@ -26,43 +28,60 @@ import {
   toMonthKey,
 } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
-import { cn } from "@/lib/utils/cn";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 
+import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormAlert } from "../../shared/FormAlert";
 import { FormSelect } from "../../shared/FormSelect";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { PeriodListedRow } from "./PeriodListedRow";
 import { PeriodPicker } from "./PeriodPicker";
 import { PeriodPreview } from "./PeriodPreview";
+import {
+  ListedLine,
+  addedText,
+  busiestDay,
+  listedChangeText,
+  listedLines,
+} from "./period-lines";
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
 const MINUTE_STEP = 15;
 
-const projectSchema = z
+const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
+  Number(hours) * 60 + Number(minutes);
+
+// A line left blank is ignored; one with a project needs hours, and hours a project.
+const addedLineSchema = z
   .object({
-    projectId: z.string().min(1, "Select a project"),
+    projectId: z.string(),
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
-  })
-  .refine((data) => data.hours * 60 + data.minutes > 0, {
-    message: "Enter hours greater than 0",
-    path: ["hours"],
   })
   .refine((data) => data.minutes % MINUTE_STEP === 0, {
     message: "Plan in 15-minute steps",
     path: ["hours"],
+  })
+  .refine((data) => !data.projectId || minutesOf(data) > 0, {
+    message: "Enter hours greater than 0",
+    path: ["hours"],
+  })
+  .refine((data) => data.projectId || minutesOf(data) === 0, {
+    message: "Select a project",
+    path: ["projectId"],
   });
 
 const periodSchema = z
   .object({
     startDate: z.string().min(1, "Pick a first day"),
     endDate: z.string().min(1, "Pick a last day"),
-    projects: z.array(projectSchema).min(1, "Add at least one project"),
+    added: z.array(addedLineSchema),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: "The last day can't be before the first",
@@ -75,10 +94,7 @@ const periodSchema = z
 
 type PeriodFormData = z.infer<typeof periodSchema>;
 
-const EMPTY_PROJECT = { projectId: "", hours: 0, minutes: 0 };
-
-const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
-  Number(hours) * 60 + Number(minutes);
+const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
@@ -87,6 +103,11 @@ type PlanPeriodModalProps = {
   onClose: () => void;
 };
 
+/**
+ * Plans and changes a person's period in one save: the projects already
+ * planned in it change only on their own days, and a project added fills
+ * every working day. A planned project is deleted from its row at once.
+ */
 export const PlanPeriodModal = ({
   row,
   dayLimitMinutes,
@@ -94,8 +115,16 @@ export const PlanPeriodModal = ({
 }: PlanPeriodModalProps) => {
   const { timezone } = useWorkSettings();
   const planPeriod = usePlanPeriod();
+  const deletePeriodPlans = useDeletePeriodPlans();
   const [problems, setProblems] = useState<string[] | null>(null);
   const problemsRef = useRef<HTMLDivElement>(null);
+  // Unsaved hours for the projects already planned, by project.
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [pendingPeriod, setPendingPeriod] = useState<{
+    first: string;
+    last: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState<ListedLine | null>(null);
 
   const thisMonth = getMonthRange(
     toMonthKey(toISODate(companyToday(timezone))),
@@ -112,99 +141,182 @@ export const PlanPeriodModal = ({
     defaultValues: {
       startDate: thisMonth.dateFrom,
       endDate: thisMonth.dateTo,
-      projects: [EMPTY_PROJECT],
+      added: [EMPTY_LINE],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "projects",
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: "added" });
 
-  const [startDate, endDate, chosen] = useWatch({
+  const [startDate, endDate, added] = useWatch({
     control,
-    name: ["startDate", "endDate", "projects"],
+    name: ["startDate", "endDate", "added"],
   });
 
   const personProjects = row.projects;
   const projectName = (projectId: string) =>
     personProjects.find((project) => project.id === projectId)?.name;
-  const chosenIds = chosen.map((project) => project.projectId);
-  const rows = chosen.map((project) => ({
-    projectId: project.projectId,
-    minutes: minutesOf(project),
-  }));
-  const dailyMinutes = rows.reduce(
-    (total, project) => total + project.minutes,
-    0,
-  );
   const periodError = errors.startDate?.message ?? errors.endDate?.message;
   const hasPeriod = isISODateRange(startDate, endDate);
 
-  // What the server would do with the rows filled in so far.
-  const previewPayload = hasPeriod
-    ? {
-        userId: row.user.id,
-        startDate,
-        endDate,
-        projects: rows
-          .filter((project) => project.projectId && project.minutes > 0)
-          .map((project) => ({
-            projectId: project.projectId,
-            minutesPerDay: project.minutes,
-          })),
-      }
-    : null;
+  const { items: loadedPlans, isPlaceholderData: arePlansFromBefore } =
+    usePlanningEntries(
+      { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
+      { enabled: hasPeriod },
+    );
+  // Until the new period's plans arrive, the old ones would be shown as its
+  // rows, and their delete would apply to the new dates.
+  const existingPlans = arePlansFromBefore ? [] : loadedPlans;
+  const lines = hasPeriod ? listedLines(existingPlans) : [];
+  const listedIds = lines.map((line) => line.projectId);
+  // An edit outlives its row only until the row is deleted.
+  const editedMinutes = new Map(
+    Object.entries(edits).filter(([projectId]) =>
+      listedIds.includes(projectId),
+    ),
+  );
+  const takenIds = [...listedIds, ...added.map((line) => line.projectId)];
+  const freeProjectCount = personProjects.filter(
+    (project) => !takenIds.includes(project.id),
+  ).length;
+  // Each blank line holds a place for one of the projects still free.
+  const canAddLine =
+    freeProjectCount > added.filter((line) => !line.projectId).length;
+  // A line keeps its project when the dates change, though the new period may
+  // already list it above; such a line says so and isn't saved.
+  const isListedAbove = (projectId: string) => listedIds.includes(projectId);
+  const addedLines = added
+    .map((line) => ({ projectId: line.projectId, minutes: minutesOf(line) }))
+    .filter(
+      (line) =>
+        line.projectId && line.minutes > 0 && !isListedAbove(line.projectId),
+    );
+
+  const payloadProjects = [
+    // A row at 0h is not sent: it shows its own message and blocks Save.
+    ...[...editedMinutes]
+      .filter(([, minutes]) => minutes > 0)
+      .map(([projectId, minutes]) => ({
+        projectId,
+        minutesPerDay: minutes,
+        existingDaysOnly: true,
+      })),
+    ...addedLines.map((line) => ({
+      projectId: line.projectId,
+      minutesPerDay: line.minutes,
+    })),
+  ];
+
+  // What the server would do with the changes so far.
   const {
     preview,
     isOutdated,
     error: previewError,
-  } = usePeriodPreview(previewPayload);
+  } = usePeriodPreview(
+    hasPeriod
+      ? { userId: row.user.id, startDate, endDate, projects: payloadProjects }
+      : null,
+  );
   const { items: absences } = useAllAbsencesQuery(
     { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
     { enabled: hasPeriod },
   );
-  const { items: existingPlans } = usePlanningEntries(
-    { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
-    { enabled: hasPeriod },
-  );
+
+  const workingDays = preview?.plannedDays ?? [];
+  const changeOf = (projectId: string) =>
+    preview?.changes.find((change) => change.projectId === projectId);
+  const changes = [
+    ...lines.flatMap((line) => {
+      const minutes = editedMinutes.get(line.projectId);
+      return minutes === undefined || minutes === 0
+        ? []
+        : [
+            listedChangeText(
+              line,
+              minutes,
+              changeOf(line.projectId)?.changed ?? line.days.length,
+            ),
+          ];
+    }),
+    ...addedLines.map((line) =>
+      addedText(
+        projectName(line.projectId) ?? "",
+        line.minutes,
+        changeOf(line.projectId)?.added ?? workingDays.length,
+      ),
+    ),
+  ];
 
   const previewRefusal =
     previewError && isClientError(previewError)
       ? getErrorMessages(previewError)
       : [];
   const previewFailed = !!previewError && !isClientError(previewError);
-  // Nothing saves until the server has said the plan fits.
+  // Nothing saves until there is a change and the server has said it fits.
   const cannotSave =
-    personProjects.length === 0 ||
-    dailyMinutes > dayLimitMinutes ||
+    payloadProjects.length === 0 ||
+    [...editedMinutes.values()].includes(0) ||
+    added.some((line) => isListedAbove(line.projectId)) ||
     !preview ||
     preview.plannedDays.length === 0 ||
     preview.problems.length > 0 ||
     previewRefusal.length > 0 ||
     previewFailed;
 
-  const setPeriod = (first: string, last: string) => {
+  // The picker reports hours and minutes one after the other, so each update
+  // applies to the latest edit.
+  const editLine =
+    (projectId: string) =>
+    (update: (minutes: number | undefined) => number | undefined) =>
+      setEdits((current) => {
+        const { [projectId]: previous, ...others } = current;
+        const next = update(previous);
+        return next === undefined ? others : { ...others, [projectId]: next };
+      });
+
+  const applyPeriod = (first: string, last: string) => {
+    setEdits({});
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
     setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
+  };
+
+  // The rows belong to the period, so their changed hours would be lost.
+  const setPeriod = (first: string, last: string) => {
+    if (editedMinutes.size > 0) setPendingPeriod({ first, last });
+    else applyPeriod(first, last);
+  };
+
+  const confirmDelete = () => {
+    if (!deleting) return;
+
+    deletePeriodPlans.mutate(
+      {
+        userId: row.user.id,
+        projectId: deleting.projectId,
+        startDate,
+        endDate,
+      },
+      {
+        onSuccess: () => {
+          editLine(deleting.projectId)(() => undefined);
+          setDeleting(null);
+        },
+      },
+    );
   };
 
   const onSubmit = async (data: PeriodFormData) => {
     setProblems(null);
 
     try {
-      const result = await planPeriod.mutateAsync({
+      await planPeriod.mutateAsync({
         userId: row.user.id,
         startDate: data.startDate,
         endDate: data.endDate,
-        projects: data.projects.map((project) => ({
-          projectId: project.projectId,
-          minutesPerDay: minutesOf(project),
-        })),
+        projects: payloadProjects,
       });
 
       toast.success(
-        `${fullName(row.user)} planned for ${result.days} ${result.days === 1 ? "day" : "days"}, ${formatDayMonthLabel(data.startDate)}–${formatDayMonthLabel(data.endDate)}`,
+        `Plan saved for ${fullName(row.user)}, ${formatDayMonthLabel(data.startDate)}–${formatDayMonthLabel(data.endDate)}`,
       );
       onClose();
     } catch (error) {
@@ -221,185 +333,244 @@ export const PlanPeriodModal = ({
   }, [problems]);
 
   return (
-    <ResourceFormModal
-      open
-      onClose={onClose}
-      hasUnsavedChanges={isDirty}
-      size="lg"
-      title={`Plan a period for ${fullName(row.user)}`}
-      icon={<CalendarRange className="size-5" />}
-      footer={
-        <>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onClose}
-            disabled={planPeriod.isPending}
-          >
-            Cancel
-          </Button>
+    <>
+      <ResourceFormModal
+        open
+        onClose={onClose}
+        hasUnsavedChanges={isDirty || editedMinutes.size > 0}
+        size="lg"
+        title={`Plan a period for ${fullName(row.user)}`}
+        icon={<CalendarRange className="size-5" />}
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={planPeriod.isPending}
+            >
+              Cancel
+            </Button>
 
-          <Button
-            type="submit"
-            form={FORM_ID}
-            size="sm"
-            isLoading={planPeriod.isPending}
-            disabled={cannotSave}
-          >
-            Save plan
-          </Button>
-        </>
-      }
-    >
-      <form
-        id={FORM_ID}
-        onSubmit={handleSubmit(onSubmit)}
-        className="space-y-6"
+            <Button
+              type="submit"
+              form={FORM_ID}
+              size="sm"
+              isLoading={planPeriod.isPending}
+              disabled={cannotSave}
+            >
+              Save plan
+            </Button>
+          </>
+        }
       >
-        {problems && (
-          <div ref={problemsRef}>
-            <FormAlert className="space-y-2">
-              <p className="font-medium">Nothing was saved.</p>
-              <ul className="list-disc space-y-1 pl-4">
-                {problems.map((problem) => (
-                  <li key={problem}>{problem}</li>
+        <form
+          id={FORM_ID}
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
+          {problems && (
+            <div ref={problemsRef}>
+              <FormAlert className="space-y-2">
+                <p className="font-medium">Nothing was saved.</p>
+                <ul className="list-disc space-y-1 pl-4">
+                  {problems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              </FormAlert>
+            </div>
+          )}
+
+          <Field id={PERIOD_FIELD_ID} label="Period" group error={periodError}>
+            <PeriodPicker
+              startDate={startDate}
+              endDate={endDate}
+              invalid={!!periodError}
+              onChange={setPeriod}
+            />
+          </Field>
+
+          {lines.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-medium text-foreground">
+                Planned in this period
+              </h3>
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                {lines.map((line) => (
+                  <PeriodListedRow
+                    key={line.projectId}
+                    line={line}
+                    workingDays={workingDays}
+                    editedMinutes={editedMinutes.get(line.projectId)}
+                    isOnProject={personProjects.some(
+                      (project) => project.id === line.projectId,
+                    )}
+                    minuteStep={MINUTE_STEP}
+                    formId={FORM_ID}
+                    onEdit={editLine(line.projectId)}
+                    onDelete={() => setDeleting(line)}
+                  />
                 ))}
               </ul>
-            </FormAlert>
-          </div>
-        )}
+            </section>
+          )}
 
-        <Field id={PERIOD_FIELD_ID} label="Period" group error={periodError}>
-          <PeriodPicker
-            startDate={startDate}
-            endDate={endDate}
-            invalid={!!periodError}
-            onChange={setPeriod}
-          />
-        </Field>
+          {personProjects.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {row.user.firstName} is not on any active project. Add them to a
+              project before planning.
+            </p>
+          ) : (
+            <fieldset className="space-y-2">
+              <legend className="mb-2 text-sm font-medium text-foreground">
+                Add to every working day
+              </legend>
 
-        {personProjects.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {row.user.firstName} is not on any active project. Add them to a
-            project before planning.
-          </p>
-        ) : (
-          <fieldset className="space-y-3">
-            <legend className="mb-2 text-sm font-medium text-foreground">
-              Hours per working day
-            </legend>
+              {fields.map((field, index) => {
+                const chosenId = added[index]?.projectId ?? "";
+                // A blank line with nothing left to choose would only be in the way.
+                if (!chosenId && freeProjectCount === 0) return null;
+                const options = personProjects
+                  .filter(
+                    (project) =>
+                      project.id === chosenId || !takenIds.includes(project.id),
+                  )
+                  .map((project) => ({
+                    value: project.id,
+                    label: project.name,
+                  }));
+                const lineErrors = errors.added?.[index];
 
-            {fields.map((field, index) => {
-              const chosenId = chosen[index]?.projectId ?? "";
-              const options = personProjects
-                .filter(
-                  (project) =>
-                    project.id === chosenId || !chosenIds.includes(project.id),
-                )
-                .map((project) => ({ value: project.id, label: project.name }));
-              const rowErrors = errors.projects?.[index];
-
-              return (
-                <div
-                  key={field.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-start gap-2"
-                >
-                  <ProjectColorDot
-                    projectId={chosenId}
-                    className={cn("mt-4", !chosenId && "invisible")}
-                  />
-
-                  <Controller
-                    control={control}
-                    name={`projects.${index}.projectId`}
-                    render={({ field: select }) => (
-                      <FormSelect
-                        aria-label={`Project ${index + 1}`}
-                        value={select.value}
-                        onValueChange={select.onChange}
-                        options={options}
-                        placeholder="Select project"
-                        error={rowErrors?.projectId?.message}
-                      />
-                    )}
-                  />
-
-                  <Field
-                    id={`period-hours-${field.id}`}
-                    error={rowErrors?.hours?.message}
+                return (
+                  <div
+                    key={field.id}
+                    className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2"
                   >
-                    <TimePicker
-                      aria-label={`Hours a day for project ${index + 1}`}
-                      hours={Number(chosen[index]?.hours ?? 0)}
-                      minutes={Number(chosen[index]?.minutes ?? 0)}
-                      minuteStep={MINUTE_STEP}
-                      formId={FORM_ID}
-                      onHoursChange={(value) =>
-                        setValue(`projects.${index}.hours`, value, {
-                          shouldDirty: true,
-                        })
-                      }
-                      onMinutesChange={(value) =>
-                        setValue(`projects.${index}.minutes`, value, {
-                          shouldDirty: true,
-                        })
-                      }
-                      error={!!rowErrors?.hours}
+                    <Controller
+                      control={control}
+                      name={`added.${index}.projectId`}
+                      render={({ field: select }) => (
+                        <FormSelect
+                          aria-label={`Project ${index + 1}`}
+                          value={select.value}
+                          onValueChange={select.onChange}
+                          options={options}
+                          placeholder="Select project"
+                          leading={<ProjectColorDot projectId={select.value} />}
+                          error={
+                            isListedAbove(select.value)
+                              ? "Already planned in this period. Change it above."
+                              : lineErrors?.projectId?.message
+                          }
+                        />
+                      )}
                     />
-                  </Field>
 
-                  {/* The only row can be changed, not removed. */}
-                  <Button
-                    type="button"
-                    variant="ghostDestructive"
-                    size="iconSm"
-                    aria-label={`Remove ${projectName(chosenId) ?? `project ${index + 1}`}`}
-                    title="Remove from this plan"
-                    onClick={() => remove(index)}
-                    className={cn("mt-1.5", fields.length === 1 && "invisible")}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              );
-            })}
+                    <Field
+                      id={`period-hours-${field.id}`}
+                      error={lineErrors?.hours?.message}
+                    >
+                      <TimePicker
+                        aria-label={`Hours a day for project ${index + 1}`}
+                        hours={Number(added[index]?.hours ?? 0)}
+                        minutes={Number(added[index]?.minutes ?? 0)}
+                        minuteStep={MINUTE_STEP}
+                        formId={FORM_ID}
+                        onHoursChange={(value) =>
+                          setValue(`added.${index}.hours`, value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        onMinutesChange={(value) =>
+                          setValue(`added.${index}.minutes`, value, {
+                            shouldDirty: true,
+                          })
+                        }
+                        error={!!lineErrors?.hours}
+                      />
+                    </Field>
 
-            {fields.length < personProjects.length ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => append(EMPTY_PROJECT)}
-                className="text-brand"
-              >
-                <Plus className="size-4" />
-                Add another project
-              </Button>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                {row.user.firstName} is on no other active project.
-              </p>
-            )}
-          </fieldset>
-        )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="iconSm"
+                      aria-label={`Drop the ${projectName(chosenId) ?? `project ${index + 1}`} line`}
+                      title="Drop this line"
+                      onClick={() => remove(index)}
+                      className="mt-1.5 text-muted-foreground"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                );
+              })}
 
-        {personProjects.length > 0 && hasPeriod && (
-          <PeriodPreview
-            firstName={row.user.firstName}
-            startDate={startDate}
-            endDate={endDate}
-            dayLimitMinutes={dayLimitMinutes}
-            rows={rows}
-            preview={preview}
-            isOutdated={isOutdated}
-            refusal={previewRefusal}
-            failed={previewFailed}
-            absences={absences}
-            existingPlans={existingPlans}
-          />
-        )}
-      </form>
-    </ResourceFormModal>
+              {canAddLine ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => append(EMPTY_LINE)}
+                  className="text-brand"
+                >
+                  <Plus className="size-4" />
+                  Add a project
+                </Button>
+              ) : (
+                freeProjectCount === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    {row.user.firstName} is on no other active project.
+                  </p>
+                )
+              )}
+            </fieldset>
+          )}
+
+          {hasPeriod && (
+            <PeriodPreview
+              firstName={row.user.firstName}
+              startDate={startDate}
+              endDate={endDate}
+              dayLimitMinutes={dayLimitMinutes}
+              busiestDay={busiestDay({
+                plannedDays: workingDays,
+                plans: existingPlans,
+                editedMinutes,
+                added: addedLines,
+              })}
+              changes={changes}
+              preview={preview}
+              isOutdated={isOutdated}
+              refusal={previewRefusal}
+              failed={previewFailed}
+              absences={absences}
+            />
+          )}
+        </form>
+      </ResourceFormModal>
+
+      <DiscardChangesModal
+        isOpen={pendingPeriod !== null}
+        onDiscard={() => {
+          if (pendingPeriod)
+            applyPeriod(pendingPeriod.first, pendingPeriod.last);
+          setPendingPeriod(null);
+        }}
+        onKeepEditing={() => setPendingPeriod(null)}
+      />
+
+      <ImpactDialog
+        isOpen={deleting !== null}
+        title={deleting ? `Delete the ${deleting.name} plan?` : ""}
+        description={`The plan for ${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)} will be deleted. This can't be undone.`}
+        confirmText="Delete"
+        confirmVariant="destructive"
+        onConfirm={confirmDelete}
+        onClose={() => setDeleting(null)}
+        loading={deletePeriodPlans.isPending}
+      />
+    </>
   );
 };

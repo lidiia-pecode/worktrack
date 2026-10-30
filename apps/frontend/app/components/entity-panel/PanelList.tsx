@@ -66,7 +66,7 @@ const RemoveButton = ({
     aria-label={label}
     title={label}
     onClick={onClick}
-    className="text-muted-foreground group-hover:text-foreground hover:bg-destructive/10 hover:text-destructive-text"
+    className="text-muted-foreground group-hover:text-foreground hover:bg-warning/10 hover:text-warning-text"
   >
     <X className="size-4" />
   </Button>
@@ -108,7 +108,7 @@ const RowMenu = ({
         {actions.map((action) => (
           <DropdownMenuItem
             key={action.label}
-            variant={action.destructive ? "destructive" : "default"}
+            variant={action.warning ? "warning" : "default"}
             onClick={() => select(action.onSelect)}
           >
             <action.icon />

@@ -67,7 +67,7 @@ export default function ForgotPasswordPage() {
         title={submitted ? "Check your email" : "Forgot your password?"}
         description={
           submitted
-            ? "We've sent a password reset link to your email address."
+            ? `If this account can sign in to WorkTrack, a password reset link is on its way to ${email}.`
             : "Enter your email address and we'll send you a link to reset your password."
         }
       />
@@ -121,7 +121,8 @@ export default function ForgotPasswordPage() {
             </Button>
 
             <p role="status" className="text-center text-sm text-success-text">
-              {resent && `We sent another link to ${email}`}
+              {resent &&
+                `If this account can sign in, another link is on its way to ${email}.`}
             </p>
           </div>
         </div>

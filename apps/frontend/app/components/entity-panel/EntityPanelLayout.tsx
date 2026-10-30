@@ -96,8 +96,8 @@ export const EntityPanelLayout = ({
                   onClick={action.onSelect}
                   className={cn(
                     TOOLBAR_BUTTON,
-                    action.destructive
-                      ? "text-muted-foreground hover:bg-destructive/10 hover:text-destructive-text"
+                    action.warning
+                      ? "text-muted-foreground hover:bg-warning/10 hover:text-warning-text"
                       : "text-brand",
                   )}
                 >

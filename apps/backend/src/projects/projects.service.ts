@@ -587,15 +587,22 @@ export class ProjectsService {
   }
 
   async unarchive(id: string, user: AuthUser): Promise<Project> {
-    const project = await this.findOrFail(id, user.companyId);
-    if (project.status === ProjectStatus.ACTIVE) {
-      throw new BadRequestException('Project is already active');
-    }
+    return this.dataSource.transaction(async (manager) => {
+      const project = await this.findLockedOrFail(id, user.companyId, manager);
+      if (project.status === ProjectStatus.ACTIVE) {
+        throw new BadRequestException('Project is already active');
+      }
 
-    project.status = ProjectStatus.ACTIVE;
-    await this.repo.save(project);
+      await manager
+        .getRepository(Project)
+        .update(project.id, { status: ProjectStatus.ACTIVE });
 
-    return this.withScopedMembers(project, user);
+      return this.withScopedMembers(
+        await this.findOrFail(id, user.companyId, manager),
+        user,
+        manager,
+      );
+    });
   }
 
   /** Adds one person, under the same rules as `syncProjectUsers`. */

@@ -28,9 +28,10 @@ import {
   fieldMessageId,
 } from "@/components/ui/field";
 
-import { ConfirmModal } from "../../shared/ConfirmModal";
+import { ImpactDialog } from "../../shared/ImpactDialog";
 import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormSelect } from "../../shared/FormSelect";
+import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 
@@ -143,11 +144,19 @@ export const PlanningDayModal = ({
     else action();
   };
 
+  // One plan per project per day: a project planned today is changed from its
+  // own row, so only the plan being edited keeps its project here.
   const projectOptions = useMemo(() => {
-    const options = row.projects.map((project) => ({
-      value: project.id,
-      label: project.name,
-    }));
+    const options = row.projects
+      .filter(
+        (project) =>
+          project.id === editing?.project.id ||
+          !dayEntries.some((entry) => entry.project.id === project.id),
+      )
+      .map((project) => ({
+        value: project.id,
+        label: project.name,
+      }));
 
     if (editing && !options.some((o) => o.value === editing.project.id)) {
       options.unshift({
@@ -157,9 +166,10 @@ export const PlanningDayModal = ({
     }
 
     return options;
-  }, [row.projects, editing]);
+  }, [row.projects, dayEntries, editing]);
 
-  const hasNoProjects = projectOptions.length === 0;
+  const hasNoProjects = row.projects.length === 0;
+  const hasNoOptions = projectOptions.length === 0;
 
   const startNew = () => {
     setEditingId(null);
@@ -169,22 +179,6 @@ export const PlanningDayModal = ({
   const startEditing = (entry: PlanningEntry) => {
     setEditingId(entry.id);
     reset(toFormData(entry));
-  };
-
-  // One entry per project per day: picking a project that is already planned
-  // edits that entry instead of adding a second one.
-  const handleProjectChange = (projectId: string) => {
-    const planned = dayEntries.find((entry) => entry.project.id === projectId);
-
-    if (planned && planned.id !== editingId && !isArchivedEntry(planned)) {
-      guardUnsaved(() => startEditing(planned));
-      return;
-    }
-
-    setValue("projectId", projectId, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
   };
 
   const onSubmit = async (data: PlanFormData) => {
@@ -319,7 +313,7 @@ export const PlanningDayModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={create.isPending || update.isPending}
-              disabled={hasNoProjects}
+              disabled={hasNoOptions}
             >
               {editing ? "Save changes" : "Add plan"}
             </Button>
@@ -340,6 +334,8 @@ export const PlanningDayModal = ({
                       entry.id === editingId && "bg-brand-subtle",
                     )}
                   >
+                    <ProjectColorDot projectId={entry.project.id} />
+
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
                         <span className="truncate">{entry.project.name}</span>
@@ -365,6 +361,7 @@ export const PlanningDayModal = ({
                         variant="ghost"
                         size="iconSm"
                         aria-label={`Edit ${entry.project.name}`}
+                        title="Edit plan"
                         onClick={() => guardUnsaved(() => startEditing(entry))}
                       >
                         <Pencil className="size-4" />
@@ -375,7 +372,8 @@ export const PlanningDayModal = ({
                       type="button"
                       variant="ghostDestructive"
                       size="iconSm"
-                      aria-label={`Remove ${entry.project.name}`}
+                      aria-label={`Delete the ${entry.project.name} plan`}
+                      title="Delete plan"
                       onClick={() => setDeletingEntry(entry)}
                     >
                       <Trash2 className="size-4" />
@@ -397,27 +395,31 @@ export const PlanningDayModal = ({
                 name="projectId"
                 render={({ field }) => (
                   <FormSelect
-                    label="Project"
+                    aria-label="Project"
                     value={field.value}
-                    onValueChange={handleProjectChange}
+                    leading={<ProjectColorDot projectId={field.value} />}
+                    onValueChange={(projectId) =>
+                      setValue("projectId", projectId, {
+                        shouldValidate: true,
+                        shouldDirty: true,
+                      })
+                    }
                     options={projectOptions}
                     placeholder={
                       hasNoProjects
                         ? "Not on any active project"
-                        : "Select project"
+                        : hasNoOptions
+                          ? "Every project is planned this day"
+                          : "Select project"
                     }
                     error={errors.projectId?.message}
-                    disabled={hasNoProjects}
+                    disabled={hasNoOptions}
                   />
                 )}
               />
-              <Field
-                id="plan-hours"
-                label="Hours"
-                group
-                error={errors.hours?.message}
-              >
+              <Field id="plan-hours" group error={errors.hours?.message}>
                 <TimePicker
+                  aria-label="Hours"
                   hours={Number(hours)}
                   minutes={Number(minutes)}
                   minuteStep={MINUTE_STEP}
@@ -472,18 +474,19 @@ export const PlanningDayModal = ({
         onKeepEditing={() => setPendingAction(null)}
       />
 
-      <ConfirmModal
+      <ImpactDialog
         isOpen={deletingEntry !== null}
         onClose={() => setDeletingEntry(null)}
         onConfirm={handleDelete}
-        title="Remove this plan?"
-        message={
-          deletingEntry
-            ? `${formatDuration(deletingEntry.plannedMinutes)} on ${deletingEntry.project.name} will be removed.`
-            : undefined
+        title={
+          deletingEntry ? `Delete the ${deletingEntry.project.name} plan?` : ""
         }
-        confirmText="Remove"
-        variant="danger"
+        description={
+          deletingEntry &&
+          `The plan for ${formatLongDayLabel(fromISODate(deletingEntry.date))} will be deleted. This can't be undone.`
+        }
+        confirmText="Delete"
+        confirmVariant="destructive"
         loading={remove.isPending}
       />
     </>

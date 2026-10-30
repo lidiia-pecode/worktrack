@@ -33,6 +33,8 @@ type FormSelectProps = {
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
+  /** Shown before the chosen value, such as a project's colour dot. */
+  leading?: ReactNode;
   onValueChange: (value: string) => void;
 };
 
@@ -48,6 +50,7 @@ export const FormSelect = ({
   disabled,
   className,
   triggerClassName,
+  leading,
   onValueChange,
 }: FormSelectProps) => {
   const generatedId = useId();
@@ -86,13 +89,16 @@ export const FormSelect = ({
         >
           <SelectValue placeholder={placeholder}>
             {() => (
-              <span
-                className={cn(
-                  "truncate",
-                  !selectedLabel && "text-input-placeholder",
-                )}
-              >
-                {selectedLabel ?? placeholder}
+              <span className="flex min-w-0 items-center gap-2">
+                {selectedLabel && leading}
+                <span
+                  className={cn(
+                    "truncate",
+                    !selectedLabel && "text-input-placeholder",
+                  )}
+                >
+                  {selectedLabel ?? placeholder}
+                </span>
               </span>
             )}
           </SelectValue>
