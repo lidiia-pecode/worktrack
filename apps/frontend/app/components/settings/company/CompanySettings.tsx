@@ -69,7 +69,7 @@ const changesToConfirm = (
       title: `Start weeks on ${day}?`,
       label: `Week starts on ${day}`,
       consequence:
-        "Weeks regroup on Timesheet, Team time, Planning and the People report's weekly breakdown, and the weekly planning limit counts the new weeks. Nothing saved changes.",
+        "Weeks regroup on the Log my time, Team time and Planning pages and in the People report's weekly breakdown, and the weekly planning limit counts the new weeks. Nothing saved changes.",
     });
   }
 

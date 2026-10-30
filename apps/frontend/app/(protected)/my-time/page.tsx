@@ -13,7 +13,7 @@ export default async function MyTimePage() {
 
   return (
     <>
-      <PageHeader title="My time" hideTitle />
+      <PageHeader title="Review my time" hideTitle />
 
       <MyTimeView userId={user.id} />
     </>

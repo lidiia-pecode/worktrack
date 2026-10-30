@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Lock } from "lucide-react";
+import { Lock, Plus } from "lucide-react";
 
 import { Absence, PlanningEntry, TimeLog } from "@/types";
 import { cn } from "@/lib/utils/cn";
@@ -12,8 +12,14 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
-import { offsetAtMinutes, stackSegments } from "../helpers/build-segments";
+import {
+  SEGMENT_GAP_PX,
+  STACK_TOP_INSET_PX,
+  offsetAtMinutes,
+  stackSegments,
+} from "../helpers/build-segments";
 import { dayFill } from "../helpers/day-fill";
+import { dayActions } from "../helpers/day-state";
 import { PlannedSegment } from "./PlannedSegment";
 import { TimelogSegment } from "./TimelogSegment";
 import { DAY_COLUMN_CLASS, EXCESS_FILL } from "../consts";
@@ -40,6 +46,9 @@ type Props = {
 };
 
 const minutesOfLog = (log: TimeLog) => log.minutes;
+
+const ABSENCE_CONTENT_CLASS =
+  "absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center";
 
 export const DayColumn = ({
   date,
@@ -70,9 +79,14 @@ export const DayColumn = ({
   const overTargetMinutes = Math.max(0, totalMinutes - overTargetFrom);
   const isOverTarget = overTargetMinutes > 0;
 
-  // Once any time is logged, the record replaces the plan.
-  const showsPlan =
-    !absence && timelogs.length === 0 && plannedEntries.length > 0;
+  const { opensAbsence, canAddEntry, showsPlan } = dayActions({
+    absence,
+    isAbsenceLocked,
+    isEditable,
+    canLogTime,
+    timelogs,
+    plannedEntries,
+  });
 
   const segments = useMemo(
     () => stackSegments(timelogs, minutesOfLog, pixelsPerMinute),
@@ -104,46 +118,40 @@ export const DayColumn = ({
 
   const hidePopover = () => setHovered(null);
 
-  // A day an absence covers opens the absence instead of a new entry, to read
-  // once it is locked.
-  const opensDay = absence
-    ? isEditable || isAbsenceLocked
-    : isEditable && canLogTime;
+  const dayLabel = formatLongDayLabel(date);
+  const isEmpty = timelogs.length === 0 && !showsPlan;
 
-  const openDay = () => {
-    if (absence) {
-      onAbsenceClick(date);
-      return;
-    }
+  // The part of the day below its entries, or its plans, logs a new entry.
+  const lastBlock = (showsPlan ? plannedSegments : segments).at(-1);
+  const freeFromPx = lastBlock
+    ? lastBlock.offsetTop + lastBlock.height + SEGMENT_GAP_PX
+    : STACK_TOP_INSET_PX;
 
-    onAddClick(date);
-  };
+  const absenceContent = absence && (
+    <>
+      <Badge variant="default" dot className="text-2xs">
+        {ABSENCE_TYPE_LABELS[absence.type]}
+      </Badge>
+
+      {absence.note && (
+        <span className="line-clamp-2 text-2xs text-muted-foreground">
+          {absence.note}
+        </span>
+      )}
+
+      {isAbsenceLocked && !isLocked && (
+        <span className="flex items-center gap-1 text-2xs text-muted-foreground">
+          <Lock className="size-3" aria-hidden />
+          Part of it is in a locked month
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div
-      role={opensDay ? "button" : undefined}
-      tabIndex={opensDay ? 0 : undefined}
-      aria-label={
-        opensDay
-          ? absence
-            ? `${isEditable ? "Edit" : "View"} the absence on ${formatLongDayLabel(date)}`
-            : `Log time on ${formatLongDayLabel(date)}`
-          : undefined
-      }
-      onClick={opensDay ? openDay : undefined}
-      onKeyDown={(e) => {
-        // Keys on a block inside the day belong to that block.
-        if (e.target !== e.currentTarget) return;
-        if (opensDay && (e.key === "Enter" || e.key === " ")) {
-          e.preventDefault();
-          openDay();
-        }
-      }}
       className={cn(
         DAY_COLUMN_CLASS,
-        opensDay &&
-          "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
-        opensDay && !absence && !weekend && "hover:bg-muted/10",
         // A working day's excess is drawn on the grid's scale below, so the
         // column itself takes no figure.
         dayFill({
@@ -153,36 +161,29 @@ export const DayColumn = ({
         }) ?? (isLocked ? "bg-muted/20" : "bg-card"),
       )}
     >
-      {absence && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 px-2 text-center">
-          <Badge variant="default" dot className="text-2xs">
-            {ABSENCE_TYPE_LABELS[absence.type]}
-          </Badge>
-
-          {absence.note && (
-            <span className="line-clamp-2 text-2xs text-muted-foreground">
-              {absence.note}
+      {absence &&
+        (opensAbsence ? (
+          <button
+            type="button"
+            onClick={() => onAbsenceClick(date)}
+            className={cn(
+              ABSENCE_CONTENT_CLASS,
+              "cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+            )}
+          >
+            <span className="sr-only">
+              {isEditable ? "Edit" : "View"} the absence on {dayLabel}:
             </span>
-          )}
+            {absenceContent}
+          </button>
+        ) : (
+          <div className={ABSENCE_CONTENT_CLASS}>{absenceContent}</div>
+        ))}
 
-          {isAbsenceLocked && !isLocked && (
-            <span className="flex items-center gap-1 text-2xs text-muted-foreground">
-              <Lock className="size-3" aria-hidden />
-              Part of it is in a locked month
-            </span>
-          )}
-        </div>
-      )}
-
-      {!absence && timelogs.length === 0 && !showsPlan && (
+      {!absence && isEmpty && isLocked && (
         <div className="absolute inset-0 flex items-center justify-center gap-1 px-2 text-center text-2xs text-muted-foreground">
-          {isLocked && (
-            <>
-              <Lock className="size-3" aria-hidden />
-              Locked
-            </>
-          )}
-          {opensDay && "Click to log time"}
+          <Lock className="size-3" aria-hidden />
+          Locked
         </div>
       )}
 
@@ -204,7 +205,7 @@ export const DayColumn = ({
 
           <Badge
             variant="warning"
-            className="absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-2xs font-semibold shadow-sm"
+            className="pointer-events-none absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-2xs font-semibold shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}
@@ -212,14 +213,17 @@ export const DayColumn = ({
         </>
       )}
 
-      <div className="absolute inset-0">
+      {/* Only the blocks take the pointer, so the absence below stays reachable. */}
+      <div className="pointer-events-none absolute inset-0 *:pointer-events-auto">
         {plannedSegments.map((segment) => (
           <PlannedSegment
             key={segment.item.id}
             segment={segment}
-            dayLabel={formatLongDayLabel(date)}
+            dayLabel={dayLabel}
             onClick={
-              opensDay ? (projectId) => onAddClick(date, projectId) : undefined
+              canAddEntry
+                ? (projectId) => onAddClick(date, projectId)
+                : undefined
             }
           />
         ))}
@@ -233,6 +237,25 @@ export const DayColumn = ({
           />
         ))}
       </div>
+
+      {canAddEntry && (
+        <button
+          type="button"
+          aria-label={`Log time on ${dayLabel}`}
+          onClick={() => onAddClick(date)}
+          style={{ top: freeFromPx }}
+          className="group absolute right-[3px] bottom-[3px] left-[3px] flex cursor-pointer items-center justify-center rounded-md text-2xs text-muted-foreground transition-colors hover:bg-brand/8 hover:text-brand focus-visible:bg-brand/8 focus-visible:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+        >
+          {isEmpty ? (
+            "Click to log time"
+          ) : (
+            <span className="flex items-center gap-1 text-xs font-medium opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+              <Plus className="size-3.5" aria-hidden />
+              Log time
+            </span>
+          )}
+        </button>
+      )}
 
       {hovered && hoveredTimelog && (
         <TimelogPopover timelog={hoveredTimelog} anchor={hovered.anchor} />

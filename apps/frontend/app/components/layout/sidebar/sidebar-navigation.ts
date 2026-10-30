@@ -30,8 +30,12 @@ export type NavigationGroup = {
 };
 
 const teamTime = { label: "Team time", href: "/team", icon: CalendarRange };
-const timesheet = { label: "Timesheet", href: "/timesheet", icon: Clock3 };
-const myTime = { label: "My time", href: "/my-time", icon: CalendarCheck };
+const timesheet = { label: "Log my time", href: "/timesheet", icon: Clock3 };
+const myTime = {
+  label: "Review my time",
+  href: "/my-time",
+  icon: CalendarCheck,
+};
 const planning = { label: "Planning", href: "/planning", icon: CalendarClock };
 const reports = { label: "Reports", href: "/reports", icon: FileBarChart };
 

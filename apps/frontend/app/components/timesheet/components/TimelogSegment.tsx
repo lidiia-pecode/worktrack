@@ -4,6 +4,7 @@ import { TimeLog } from "@/types";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
+import { TWO_LINE_MIN_HEIGHT } from "../helpers/build-segments";
 import { timelogDetailsId } from "./TimelogPopover";
 
 type TimelogSegmentProps = {
@@ -62,13 +63,24 @@ export const TimelogSegment = ({
       )}
     >
       <div className="relative z-10 pointer-events-none flex h-full flex-col justify-center overflow-hidden px-2 py-1">
-        <span className="truncate text-2xs font-semibold leading-tight text-foreground/80">
-          {formatDuration(timelog.minutes)}
-        </span>
+        {height < TWO_LINE_MIN_HEIGHT ? (
+          <span className="truncate text-2xs text-foreground/80">
+            <span className="font-semibold">
+              {formatDuration(timelog.minutes)}
+            </span>{" "}
+            · {projectName}
+          </span>
+        ) : (
+          <>
+            <span className="truncate text-2xs font-semibold leading-tight text-foreground/80">
+              {formatDuration(timelog.minutes)}
+            </span>
 
-        <span className="truncate text-2xs leading-tight text-foreground/80">
-          {projectName} · {activityName}
-        </span>
+            <span className="truncate text-2xs leading-tight text-foreground/80">
+              {projectName} · {activityName}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

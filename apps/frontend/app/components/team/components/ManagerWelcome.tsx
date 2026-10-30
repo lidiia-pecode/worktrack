@@ -51,7 +51,7 @@ const OWN_ITEMS: WelcomeItem[] = [
   {
     icon: Clock,
     title: "Your own time",
-    description: "Log your own hours and absences in Timesheet.",
+    description: "Record your own hours and absences on the Log my time page.",
   },
 ];
 

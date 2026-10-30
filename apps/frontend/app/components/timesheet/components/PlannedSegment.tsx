@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
 
+import { TWO_LINE_MIN_HEIGHT } from "../helpers/build-segments";
 import { Segment } from "../types";
 
 type PlannedSegmentProps = {
@@ -23,12 +24,23 @@ export const PlannedSegment = ({
   const duration = formatDuration(plan.plannedMinutes);
   const content = (
     <span className="flex h-full flex-col justify-center overflow-hidden px-2 py-1 text-left">
-      <span className="truncate text-2xs font-semibold leading-tight text-foreground/70">
-        {duration} planned
-      </span>
-      <span className="truncate text-2xs leading-tight text-muted-foreground">
-        {plan.project.name}
-      </span>
+      {height < TWO_LINE_MIN_HEIGHT ? (
+        <span className="truncate text-2xs text-muted-foreground">
+          <span className="font-semibold text-foreground/70">
+            {duration} planned
+          </span>{" "}
+          · {plan.project.name}
+        </span>
+      ) : (
+        <>
+          <span className="truncate text-2xs font-semibold leading-tight text-foreground/70">
+            {duration} planned
+          </span>
+          <span className="truncate text-2xs leading-tight text-muted-foreground">
+            {plan.project.name}
+          </span>
+        </>
+      )}
     </span>
   );
   const className = cn(

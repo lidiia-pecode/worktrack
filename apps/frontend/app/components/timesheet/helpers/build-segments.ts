@@ -1,6 +1,9 @@
 import { Segment } from "../types";
 
-export const MIN_SEGMENT_HEIGHT = 6;
+// One line of `text-2xs` with the block's padding, so the shortest entry still reads.
+export const MIN_SEGMENT_HEIGHT = 22;
+/** From this height a block has room for its second line. */
+export const TWO_LINE_MIN_HEIGHT = 36;
 export const SEGMENT_GAP_PX = 3;
 export const STACK_TOP_INSET_PX = 3;
 

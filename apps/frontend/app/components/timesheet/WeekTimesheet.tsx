@@ -45,7 +45,9 @@ import {
   LockedAbsenceModal,
 } from "./components/AbsenceFormModal";
 import { DayColumn } from "./components/DayColumn";
+import { WeekDayList } from "./components/WeekDayList";
 import { dayDrawingHeight } from "./helpers/build-segments";
+import { TimesheetDay } from "./helpers/day-state";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
@@ -248,6 +250,27 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   const minGridHeightPx = tallestDayPx + GRID_FOOT_PX;
 
+  const days: TimesheetDay[] = weekDates.map((date) => {
+    const iso = toISODate(date);
+    const absence = absencesByDate[iso];
+    const isAbsenceLocked =
+      !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
+
+    return {
+      date,
+      timelogs: timelogsByDate[iso] ?? [],
+      plannedEntries: plannedByDate[iso] ?? [],
+      absence,
+      isAbsenceLocked,
+      totalMinutes: dailyTotals[iso] ?? 0,
+      expectedMinutes: expectedByDate[iso],
+      isLocked: isLocked(iso),
+      isEditable: isEditable(iso) && !isAbsenceLocked,
+      // Time is logged only for a day that has happened.
+      canLogTime: iso <= todayIso,
+    };
+  });
+
   // Plans never fall on a weekend, so the confirmation needs no project.
   const openCreate = (date: Date, plannedProjectId?: string) => {
     if (isWeekend(date)) {
@@ -324,7 +347,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       timeLogs: timelogs.length,
     });
 
-  const header = <PageHeader title="Timesheet" hideTitle />;
+  const header = <PageHeader title="Log my time" hideTitle />;
 
   const addAbsenceButton = (
     <Button
@@ -474,16 +497,17 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       )}
 
       {!hasError && (
-        <>
-          <div className="grid grid-cols-7 border-b border-border">
-            {weekDates.map((date) => (
+        // Too narrow for seven columns, the week is a list of days instead.
+        <div className="@container flex flex-1 flex-col">
+          <div className="grid grid-cols-7 border-b border-border @max-2xl:hidden">
+            {days.map((day) => (
               <WeekHeaderDay
-                key={toISODate(date)}
-                date={date}
-                isToday={toISODate(date) === todayIso}
-                totalMinutes={dailyTotals[toISODate(date)] ?? 0}
-                targetMinutes={expectedByDate[toISODate(date)]}
-                isLocked={isLocked(toISODate(date))}
+                key={toISODate(day.date)}
+                date={day.date}
+                isToday={toISODate(day.date) === todayIso}
+                totalMinutes={day.totalMinutes}
+                targetMinutes={day.expectedMinutes}
+                isLocked={day.isLocked}
               />
             ))}
           </div>
@@ -491,41 +515,36 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           <div
             aria-busy={isShowingPreviousWeek}
             className={cn(
-              "grid flex-1 grid-cols-7 transition-opacity",
+              "grid flex-1 grid-cols-7 transition-opacity @max-2xl:hidden",
               isShowingPreviousWeek && "opacity-60",
             )}
             style={{ minHeight: minGridHeightPx }}
           >
-            {weekDates.map((date) => {
-              const iso = toISODate(date);
-              const absence = absencesByDate[iso];
-              const isAbsenceLocked =
-                !!absence &&
-                isRangeLocked(isLocked, absence.startDate, absence.endDate);
-
-              return (
-                <DayColumn
-                  key={iso}
-                  date={date}
-                  timelogs={timelogsByDate[iso] ?? []}
-                  plannedEntries={plannedByDate[iso] ?? []}
-                  absence={absence}
-                  isAbsenceLocked={isAbsenceLocked}
-                  totalMinutes={dailyTotals[iso] ?? 0}
-                  pixelsPerMinute={PX_PER_MINUTE}
-                  expectedMinutes={expectedByDate[iso]}
-                  isLocked={isLocked(iso)}
-                  isEditable={isEditable(iso) && !isAbsenceLocked}
-                  // Time is logged only for a day that has happened.
-                  canLogTime={iso <= todayIso}
-                  onAddClick={openCreate}
-                  onAbsenceClick={openAbsence}
-                  onEntryClick={openEdit}
-                />
-              );
-            })}
+            {days.map((day) => (
+              <DayColumn
+                key={toISODate(day.date)}
+                {...day}
+                pixelsPerMinute={PX_PER_MINUTE}
+                onAddClick={openCreate}
+                onAbsenceClick={openAbsence}
+                onEntryClick={openEdit}
+              />
+            ))}
           </div>
-        </>
+
+          <WeekDayList
+            days={days}
+            todayIso={todayIso}
+            isBusy={isShowingPreviousWeek}
+            className={cn(
+              "transition-opacity @2xl:hidden",
+              isShowingPreviousWeek && "opacity-60",
+            )}
+            onAddClick={openCreate}
+            onAbsenceClick={openAbsence}
+            onEntryClick={openEdit}
+          />
+        </div>
       )}
 
       <NonWorkDayConfirm

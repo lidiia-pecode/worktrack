@@ -38,7 +38,7 @@ const ITEMS: WelcomeItem[] = [
     icon: CalendarCheck,
     title: "Your month",
     description:
-      "My time shows your month: hours against expected, days still to fill and your projects.",
+      "Review your time to see hours against expected, days still to fill and your projects.",
   },
   {
     icon: UserRound,
