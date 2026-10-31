@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WorkTrack",
+  title: { default: "WorkTrack", template: "%s · WorkTrack" },
   description: "Track time across projects, teams, and activities.",
 };
 

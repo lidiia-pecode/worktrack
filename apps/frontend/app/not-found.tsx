@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
+
 import { StandaloneNotice } from "@/app/components/shared/StandaloneNotice";
+
+export const metadata: Metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (

@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { LockKeyhole } from "lucide-react";
 
 import { requireOwnerAccess } from "@/lib/api/server/auth";
 import { GRACE_DAYS } from "@/lib/utils/reporting-period";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { PeriodsContent } from "@/app/components/periods/PeriodsContent";
+import { periods } from "@/app/components/layout/sidebar/sidebar-navigation";
+
+export const metadata: Metadata = { title: periods.label };
 
 export default async function PeriodsPage() {
   await requireOwnerAccess();
