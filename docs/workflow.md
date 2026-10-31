@@ -49,9 +49,11 @@ is no separate test database. That is safe because every spec that touches the
 database creates its own throwaway company, works only inside it, and deletes it
 at the end.
 
-The one spec that reaches outside its company is the auth clean-up spec. It
-runs the real nightly job, which deletes expired sessions and used or expired
-one-time tokens across the whole database — what the job does at 03:00 anyway.
+Two specs reach outside their company, each running a real nightly job across
+the whole database, which is what the jobs do at 03:00 anyway: the auth
+clean-up spec, which deletes expired sessions and used or expired one-time
+tokens, and the notifications spec, which deletes notifications read more than
+60 days ago.
 
 A run that is interrupted can leave a test company behind. It is invisible to
 the seeded users and harmless; `make down-hard && make setup` clears it along
