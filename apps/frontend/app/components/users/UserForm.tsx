@@ -9,9 +9,11 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
 import { useReportDirty } from "@/hooks/useReportDirty";
+import { useReportingPeriods } from "@/hooks/useReportingPeriods";
+import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
 
 import { FormSelect } from "../shared/FormSelect";
-import { DateInput } from "../shared/inputs";
+import { DatePicker } from "../shared/inputs";
 
 const userSchema = z.object({
   position: z
@@ -59,6 +61,9 @@ export const UserForm = ({
   const role = useWatch({ control, name: "role" });
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
+  // The API refuses a change that would reach back into a locked month.
+  const { months } = useReportingPeriods();
+  const firstChangeableDay = firstDayAfterLockedMonths(months);
 
   useReportDirty(isDirty, onDirtyChange);
 
@@ -102,11 +107,19 @@ export const UserForm = ({
             error={errors.capacityHoursPerWeek?.message}
           />
 
-          <DateInput
-            {...register("capacityValidFrom")}
-            label="Applies from"
-            description="Earlier weeks keep their hours."
-            error={errors.capacityValidFrom?.message}
+          <Controller
+            control={control}
+            name="capacityValidFrom"
+            render={({ field, fieldState }) => (
+              <DatePicker
+                value={field.value}
+                onChange={field.onChange}
+                minDate={firstChangeableDay}
+                label="Applies from"
+                description="Earlier weeks keep their hours."
+                error={fieldState.error?.message}
+              />
+            )}
           />
         </div>
       </Field>

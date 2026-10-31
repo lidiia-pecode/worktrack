@@ -160,7 +160,7 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
       <CardHeader
         icon={Building2}
         title="Company settings"
-        description="Manage your company and workspace preferences."
+        description="Manage your company's preferences."
       />
 
       <form onSubmit={handleSubmit(onSubmit)}>

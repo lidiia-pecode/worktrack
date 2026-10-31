@@ -12,7 +12,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <AuthFormWrapper
-      badge="Welcome back"
+      badge="Sign in"
       title="Pick up right where you left off."
       description="Your timesheet, projects and team's time are where you left them."
     >

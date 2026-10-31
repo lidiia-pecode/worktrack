@@ -174,7 +174,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
       <div className="flex flex-col">
         <LoadingState
           title="Loading the week's plan"
-          description="Fetching planned work and workspace settings."
+          description="Fetching planned work and company settings."
         />
       </div>
     );

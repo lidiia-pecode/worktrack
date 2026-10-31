@@ -66,6 +66,27 @@ export function lockedDateLookup(months: ReportingMonth[]) {
   return (date: string) => lockedMonthKeys.has(toMonthKey(date));
 }
 
+/**
+ * The first day a change may take effect from: the day after the newest locked
+ * month, as the API requires of a capacity change; a reopened month older than
+ * that stays out of reach. Null when none of `months` is locked.
+ */
+export function firstDayAfterLockedMonths(
+  months: ReportingMonth[],
+): string | null {
+  const newestLockedMonth = months
+    .filter((period) => period.state === ReportingMonthState.LOCKED)
+    .map((period) => period.month)
+    .reduce<string | null>(
+      (newest, month) => (newest === null || month > newest ? month : newest),
+      null,
+    );
+
+  return newestLockedMonth
+    ? getMonthRange(addMonthsToKey(newestLockedMonth, 1)).dateFrom
+    : null;
+}
+
 /** Whether any day from `startDate` to `endDate` falls in a locked month. */
 export function isRangeLocked(
   isLocked: (date: string) => boolean,

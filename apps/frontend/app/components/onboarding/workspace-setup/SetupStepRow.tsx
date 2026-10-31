@@ -12,7 +12,6 @@ export interface SetupStepItem {
   icon: LucideIcon;
   completed: boolean;
   locked?: boolean;
-  keepsActionWhenDone?: boolean;
   link?: { label: string; href: string };
   extraAction?: ReactNode;
 }
@@ -27,9 +26,7 @@ export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
   // A step done earlier stays done even if what it waited on changed since.
   const isLocked = Boolean(step.locked) && !step.completed;
   const hasActions =
-    !isLocked &&
-    (!step.completed || step.keepsActionWhenDone) &&
-    Boolean(step.link || step.extraAction);
+    !isLocked && !step.completed && Boolean(step.link || step.extraAction);
 
   return (
     <li

@@ -37,7 +37,7 @@ describe("todayISODate", () => {
     vi.useRealTimers();
   });
 
-  it("gives today where the workspace is, not in UTC", () => {
+  it("gives today where the company is, not in UTC", () => {
     vi.useFakeTimers({ now: Date.parse("2026-02-07T20:00:00Z") });
 
     expect(todayISODate("UTC")).toBe("2026-02-07");
@@ -77,7 +77,7 @@ describe("weeks", () => {
     expect(toISODate(getWeekStart(TUESDAY))).toBe("2026-01-12");
   });
 
-  it("starts a week on Sunday when the workspace says so", () => {
+  it("starts a week on Sunday when the company says so", () => {
     expect(toISODate(getWeekStart(TUESDAY, WeekDay.SUNDAY))).toBe("2026-01-11");
   });
 
@@ -159,7 +159,7 @@ describe("months", () => {
     expect(grid.at(-1)).toBe("2026-02-08");
   });
 
-  it("starts the grid on Sunday when the workspace says so", () => {
+  it("starts the grid on Sunday when the company says so", () => {
     const [first] = getMonthGridDates(new Date(2026, 0, 13), WeekDay.SUNDAY);
 
     expect(toISODate(first)).toBe("2025-12-28");
