@@ -43,7 +43,7 @@ const HEADINGS: Record<AuthFormMode, { title: string; description: string }> = {
     description: "Enter your credentials to access your workspace.",
   },
   signup: {
-    title: "Create your workspace",
+    title: "Create your company",
     description: "Set up your account and get started with WorkTrack.",
   },
   invitation: {

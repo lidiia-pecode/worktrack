@@ -213,8 +213,15 @@ export const TeamTimeView = ({
     [rows, search, sort, projectId],
   );
 
+  const isSearching = Boolean(search.trim());
   const matchesNobody =
-    (hasActiveFilters || Boolean(search.trim())) && shownRows.length === 0;
+    (hasActiveFilters || isSearching) && shownRows.length === 0;
+
+  // The response's total already follows the team and project; the search is
+  // applied here, so while it is on the total is the shown rows'.
+  const loggedMinutes = isSearching
+    ? shownRows.reduce((sum, row) => sum + row.minutes, 0)
+    : totals.minutes;
 
   const onlyViewer = onlyViewerReason({
     role,
@@ -309,7 +316,7 @@ export const TeamTimeView = ({
       <div className="flex flex-col">
         <LoadingState
           title="Loading the team's week"
-          description="Fetching logged time and workspace settings."
+          description="Fetching logged time and company settings."
         />
       </div>
     );
@@ -331,7 +338,7 @@ export const TeamTimeView = ({
               <span>Team logged:</span>
 
               <span className="font-medium text-foreground tabular-nums">
-                {formatDuration(totals.minutes)}
+                {formatDuration(loggedMinutes)}
               </span>
             </div>
           )}

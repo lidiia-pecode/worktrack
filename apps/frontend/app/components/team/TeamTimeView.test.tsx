@@ -328,7 +328,7 @@ describe("TeamTimeView", () => {
     );
   });
 
-  it("searches people by name or position", async () => {
+  it("searches people by name or position, and totals only them", async () => {
     const user = userEvent.setup();
     showTeamTime();
 
@@ -338,6 +338,9 @@ describe("TeamTimeView", () => {
     );
 
     expect(shownNames()).toEqual(["Ben"]);
+    expect(screen.getByText("Team logged:").parentElement).toHaveTextContent(
+      /Team logged:\s*0h/,
+    );
 
     await user.clear(
       screen.getByRole("textbox", { name: "Search by name or position" }),

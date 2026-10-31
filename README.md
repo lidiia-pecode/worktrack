@@ -187,8 +187,8 @@ CI runs, and the rules for changes that touch the database.
 A local checkout also carries working documents that are deliberately kept out
 of version control and so are not listed above: the active scope, the defects
 and debt no scope owns, a product assessment against comparable tools, context
-notes for the backend and the frontend, and the repository's coding
-conventions.
+notes for the backend and the frontend, notes on authentication and on the
+deployment, and the repository's coding conventions.
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 It is off in production unless `ENABLE_SWAGGER=true` is set.
@@ -197,15 +197,18 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 Under active development. The employee timesheet, the owner/manager team time
 view, absences, capacity and expected hours, planning, reporting with an Excel
-export of hours, each person's own month on My time, and the Manage pages for
-users, teams, projects, activities and categories are implemented, and a new
-company is guided from sign-up to somebody logging time.
+export of hours, each person's own month on Review my time, and the Manage pages
+for people, teams, projects, activities and categories are implemented, and a
+new company is guided from sign-up to somebody logging time.
 
 The original feature plan is complete. The work ahead improves the product
 itself, area by area: first run and onboarding, the application shell and shared
 UI, administration and settings, everyday time entry, team oversight and
 planning, reporting and the employee's own view have each had a pass, followed
-by a round of fixes across them; a whole-product review remains. A production launch comes last, once the product
+by fixes across them, the lifecycle of every entity, time entry on a phone and,
+through Phase 40, consistent screens (WorkTrack's own error and missing-page
+screens, a title per page, choices kept in the address); a whole-product review
+remains. A production launch comes last, once the product
 is ready. The roadmap, test coverage and engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
 and §7.

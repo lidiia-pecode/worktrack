@@ -35,7 +35,7 @@ const items: SettingsNavItem[] = [
   {
     id: "company",
     label: "Company",
-    description: "Workspace preferences",
+    description: "Company preferences",
     icon: Building2,
   },
 ];

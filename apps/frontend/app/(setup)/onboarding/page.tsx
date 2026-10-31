@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import { requireOwnerAccess } from "@/lib/api/server/auth";
 import { CompanySetupWizard } from "@/app/components/onboarding/company-setup/CompanySetupWizard";
+
+export const metadata: Metadata = { title: "Company setup" };
 
 export default async function OnboardingPage() {
   await requireOwnerAccess();

@@ -1,4 +1,7 @@
+import type { Metadata } from "next";
 import { AuthForm, AuthFormWrapper } from "@/app/components/auth";
+
+export const metadata: Metadata = { title: "Start a company" };
 
 interface RegisterPageProps {
   searchParams: Promise<{ error?: string }>;

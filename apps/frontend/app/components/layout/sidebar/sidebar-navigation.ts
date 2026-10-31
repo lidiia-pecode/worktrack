@@ -29,34 +29,54 @@ export type NavigationGroup = {
   items: NavigationItem[];
 };
 
-const teamTime = { label: "Team time", href: "/team", icon: CalendarRange };
-const timesheet = { label: "Log my time", href: "/timesheet", icon: Clock3 };
-const myTime = {
+export const teamTime = {
+  label: "Team time",
+  href: "/team",
+  icon: CalendarRange,
+};
+export const timesheet = {
+  label: "Log my time",
+  href: "/timesheet",
+  icon: Clock3,
+};
+export const myTime = {
   label: "Review my time",
   href: "/my-time",
   icon: CalendarCheck,
 };
-const planning = { label: "Planning", href: "/planning", icon: CalendarClock };
-const reports = { label: "Reports", href: "/reports", icon: FileBarChart };
+export const planning = {
+  label: "Planning",
+  href: "/planning",
+  icon: CalendarClock,
+};
+export const reports = {
+  label: "Reports",
+  href: "/reports",
+  icon: FileBarChart,
+};
 
-const people = { label: "People", href: "/admin/users", icon: Users };
-const teams = { label: "Teams", href: "/admin/teams", icon: Network };
-const projects = {
+export const people = { label: "People", href: "/admin/users", icon: Users };
+export const teams = { label: "Teams", href: "/admin/teams", icon: Network };
+export const projects = {
   label: "Projects",
   href: "/admin/projects",
   icon: FolderKanban,
 };
-const activities = {
+export const activities = {
   label: "Activities",
   href: "/admin/activities",
   icon: Activity,
 };
-const categories = {
+export const categories = {
   label: "Categories",
   href: "/admin/categories",
   icon: FolderTree,
 };
-const periods = { label: "Periods", href: "/admin/periods", icon: LockKeyhole };
+export const periods = {
+  label: "Periods",
+  href: "/admin/periods",
+  icon: LockKeyhole,
+};
 
 /** The owner's help area, kept apart from the menu groups. */
 export const gettingStarted = {
@@ -86,7 +106,7 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
 export const isActivePath = (pathname: string, href: string) =>
   pathname === href || pathname.startsWith(`${href}/`);
 
-const settings = { label: "Settings", href: "/settings" };
+export const settings = { label: "Settings", href: "/settings" };
 
 /** The current page's name, for the phone header, where the sidebar is hidden. */
 export const pageLabelFor = (role: UserRole, pathname: string) =>

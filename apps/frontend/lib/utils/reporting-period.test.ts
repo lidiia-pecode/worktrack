@@ -5,6 +5,7 @@ import { ReportingMonthState } from "@/types/enums";
 import { Absence } from "@/types";
 
 import {
+  firstDayAfterLockedMonths,
   firstPeriodsPage,
   isRangeLocked,
   lockLookupRange,
@@ -68,6 +69,25 @@ describe("lockedDateLookup", () => {
 
   it("locks nothing before the months load", () => {
     expect(lockedDateLookup([])("2026-01-10")).toBe(false);
+  });
+});
+
+describe("firstDayAfterLockedMonths", () => {
+  it("starts the day after the newest locked month, as the API does", () => {
+    expect(
+      firstDayAfterLockedMonths([
+        month("2026-03", ReportingMonthState.REOPENED),
+        month("2026-02", ReportingMonthState.LOCKED),
+        month("2026-01", ReportingMonthState.REOPENED),
+        month("2025-12", ReportingMonthState.LOCKED),
+      ]),
+    ).toBe("2026-03-01");
+  });
+
+  it("allows any day when no month is locked", () => {
+    expect(
+      firstDayAfterLockedMonths([month("2026-03", ReportingMonthState.OPEN)]),
+    ).toBeNull();
   });
 });
 

@@ -403,7 +403,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         {header}
         <LoadingState
           title="Loading your timesheet"
-          description="Fetching your week and workspace settings."
+          description="Fetching your week and company settings."
         />
       </>
     );

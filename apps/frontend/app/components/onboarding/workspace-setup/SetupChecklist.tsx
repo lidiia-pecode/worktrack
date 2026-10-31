@@ -35,6 +35,18 @@ const EXPIRY_LABEL = new Intl.DateTimeFormat(undefined, {
   month: "long",
 });
 
+// Nothing records whether the company details were saved or skipped, and the
+// API's required steps leave them out, so this step points to Settings and is
+// neither ticked nor counted.
+const companyStep: SetupStepItem = {
+  id: "company",
+  title: "Company details",
+  description: TOPIC_TEXT.company,
+  icon: Building2,
+  completed: false,
+  link: { label: "Open Settings", href: "/settings" },
+};
+
 const requiredSteps = ({
   steps,
   setupProjectId,
@@ -47,15 +59,6 @@ const requiredSteps = ({
   });
 
   return [
-    {
-      id: "company",
-      title: "Company details",
-      description: TOPIC_TEXT.company,
-      icon: Building2,
-      completed: true,
-      keepsActionWhenDone: true,
-      link: { label: "Open Settings", href: "/settings" },
-    },
     {
       id: "team",
       title: "Create a team",
@@ -248,6 +251,8 @@ export const SetupChecklist = ({ state }: SetupChecklistProps) => {
         />
 
         <ol className="divide-y divide-border">
+          <SetupStepRow step={companyStep} isCurrent={false} />
+
           {required.map((step) => (
             <SetupStepRow
               key={step.id}

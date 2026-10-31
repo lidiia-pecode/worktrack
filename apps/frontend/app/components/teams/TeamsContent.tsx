@@ -151,7 +151,7 @@ export const TeamsContent = () => {
         onRetry={refetch}
         searchPlaceholder="Search teams..."
         emptyTitle="No teams yet"
-        emptyDescription="Create your first team to organize your workspace."
+        emptyDescription="Create your first team to organize your company."
         emptyIcon={<UsersRound className="size-6" />}
         createLabel="Create team"
         onCreate={() => setCreateOpen(true)}

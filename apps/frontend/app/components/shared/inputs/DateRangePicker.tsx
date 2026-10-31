@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useRef, useState } from "react";
+import { ComponentProps, ReactNode, useRef, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 
 import {
@@ -24,6 +24,39 @@ const formatDateRange = (startDate: string, endDate: string) =>
   startDate === endDate
     ? formatDayMonthYearLabel(startDate)
     : `${formatDayMonthLabel(startDate)} – ${formatDayMonthYearLabel(endDate)}`;
+
+type DateFieldTriggerProps = ComponentProps<typeof PopoverTrigger> & {
+  label: string;
+  invalid?: boolean;
+};
+
+/** The field a date picker opens from: the chosen date with a calendar icon. */
+export const DateFieldTrigger = ({
+  label,
+  invalid = false,
+  className,
+  ...props
+}: DateFieldTriggerProps) => (
+  <PopoverTrigger
+    {...props}
+    aria-invalid={invalid}
+    className={cn(
+      "flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
+      invalid && "border-destructive",
+      className,
+    )}
+  >
+    <CalendarDays
+      className="size-4 shrink-0 text-muted-foreground"
+      aria-hidden
+    />
+    <span className="min-w-0 flex-1 truncate text-left">{label}</span>
+    <ChevronDown
+      className="size-4 shrink-0 text-muted-foreground"
+      aria-hidden
+    />
+  </PopoverTrigger>
+);
 
 type DateRangePickerProps = {
   startDate: string;
@@ -85,26 +118,11 @@ export const DateRangePicker = ({
         setPreviewEnd(null);
       }}
     >
-      <PopoverTrigger
-        aria-invalid={invalid}
-        className={cn(
-          "flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
-          invalid && "border-destructive",
-          className,
-        )}
-      >
-        <CalendarDays
-          className="size-4 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-        <span className="min-w-0 flex-1 truncate text-left">
-          {label ?? formatDateRange(startDate, endDate)}
-        </span>
-        <ChevronDown
-          className="size-4 shrink-0 text-muted-foreground"
-          aria-hidden
-        />
-      </PopoverTrigger>
+      <DateFieldTrigger
+        label={label ?? formatDateRange(startDate, endDate)}
+        invalid={invalid}
+        className={className}
+      />
 
       <PopoverContent
         className="w-76"

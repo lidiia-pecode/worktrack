@@ -1,13 +1,13 @@
 import { WeekDay } from "@/types/enums";
 
 /**
- * Which weekday a week starts on is a workspace setting (Company.weekStartDay),
+ * Which weekday a week starts on is a company setting (Company.weekStartDay),
  * so the helpers here take it as an argument and default to Monday (ISO-8601),
  * which is what the grid used before the setting existed.
  *
  * Everything works in local time — never UTC — because we don't want the week
  * to roll over at the wrong moment for users west of UTC. The exception is the
- * "today" comparison, which can be pinned to the workspace timezone.
+ * "today" comparison, which can be pinned to the company's time zone.
  */
 const WEEK_START_INDEX: Record<WeekDay, number> = {
   [WeekDay.SUNDAY]: 0,
@@ -22,7 +22,7 @@ export function toISODate(d: Date): string {
 }
 
 /**
- * The calendar date of an instant in the workspace timezone. Falls back to the
+ * The calendar date of an instant in the company's time zone. Falls back to the
  * viewer's local date when no timezone is configured, or when the stored value
  * is not a valid IANA name.
  */
@@ -44,7 +44,7 @@ export function isoDateInTimeZone(instant: Date, timeZone?: string): string {
   }
 }
 
-/** Today in the workspace timezone. */
+/** Today in the company's time zone. */
 export function todayISODate(timeZone?: string): string {
   return isoDateInTimeZone(new Date(), timeZone);
 }
@@ -109,7 +109,7 @@ export function getWeekDates(weekStart: Date): Date[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 }
 
-/** Today in the workspace timezone, as a local-midnight Date for the week grids. */
+/** Today in the company's time zone, as a local-midnight Date for the week grids. */
 export function companyToday(timeZone?: string): Date {
   return new Date(`${todayISODate(timeZone)}T00:00:00`);
 }
@@ -126,7 +126,7 @@ export function isToday(date: Date, timeZone?: string): boolean {
  * Saturday and Sunday. This is a calendar fact and stays fixed regardless of
  * which day the grid starts on.
  *
- * TODO: Company has no "working days" setting, so a workspace with a different
+ * TODO: Company has no "working days" setting, so a company with a different
  * working week cannot be represented yet.
  */
 export function isWeekend(date: Date): boolean {

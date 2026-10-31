@@ -1,9 +1,13 @@
+import type { Metadata } from "next";
 import { requireManagerAccess } from "@/lib/api/server/auth";
 import { UserRole } from "@/types/enums";
 import { PageHeader } from "@/app/components/shared/PageHeader";
 import { TeamTimeView } from "@/app/components/team/TeamTimeView";
 import { ManagerWelcome } from "@/app/components/team/components/ManagerWelcome";
 import { PERSON_PARAM } from "@/app/components/team/team-links";
+import { teamTime } from "@/app/components/layout/sidebar/sidebar-navigation";
+
+export const metadata: Metadata = { title: teamTime.label };
 
 type TeamPageProps = {
   searchParams: Promise<{ [PERSON_PARAM]?: string }>;

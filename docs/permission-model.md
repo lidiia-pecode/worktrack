@@ -1,9 +1,11 @@
 # WorkTrack — Permission model
 
 **Status: delivered.** This document describes how responsibility and access
-work, and every rule in it is enforced today. The last two, in §3.2 — the
-team-manager role rule and archived teams — were confirmed and enforced in
-September 2026 with the company-setup work of the improvement roadmap.
+work, and every rule in it is enforced today. The team-manager role rule in
+§3.2 was confirmed and enforced in September 2026 with the company-setup work of
+the improvement roadmap. The archived-team rule enforced then, "archiving closes
+the team", was reversed in October 2026 (Phase 38 part 1): only an empty team is
+archived now (§3.2).
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 remain
 the record of current behaviour; §6 below lists the questions still open.
 
@@ -399,18 +401,19 @@ staffing and rosters to the caller and let managers and owners be project
 members. A fourth, Scope F, would have named one responsible person per project;
 it was cancelled before any code was written, for the reason in §3.6.
 
-Two questions settled along the way. An invitation whose team is archived is
-revoked with it, and if the team is archived while someone is accepting, the
-person is still created and the Owner places them (formerly P6). There is no
+Two questions settled along the way. A team with a pending invitation can't be
+archived until the invitation is revoked (formerly P6, settled anew in Phase 38
+part 1, when archiving came to need an empty team). There is no
 responsible person on a project, so whether they must be a member is moot
 (formerly P3).
 
 Everything built afterwards — absences, capacity, planning, reporting and the
 hours export — reuses D9's people through the same helpers, so a manager's
 figures cover the teams they lead and an owner's the whole company. Reopening a
-locked month is the Owner's alone. One rule was added on top in October 2026
-(Phase 31): time and absences can be written for somebody else only while that
-person is active (§3.7).
+locked month is the Owner's alone. Phase 31 (October 2026) added a rule that
+time and absences could be written for somebody else only while that person was
+active; Phase 38 part 1 reversed it, so a leaver's last month is corrected
+within the usual reach, never on or after the day they left (§3.7).
 
 ---
 

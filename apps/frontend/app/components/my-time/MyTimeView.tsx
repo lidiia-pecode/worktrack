@@ -1,22 +1,19 @@
 "use client";
 
-import { ReactNode, useId, useState } from "react";
+import { ReactNode, useId } from "react";
 import Link from "next/link";
 import { CalendarCheck } from "lucide-react";
 
 import { PeopleReportRow, ReportRange } from "@/types";
-import { useCompany } from "@/hooks/auth/useCompany";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useShownMonth } from "@/hooks/useShownMonth";
 import { cn } from "@/lib/utils/cn";
 import {
   formatMonthLabel,
   formatReportHours,
   getMonthRange,
-  todayISODate,
-  toMonthKey,
 } from "@/lib/utils/date";
 import { againstExpected, reportScope } from "@/lib/utils/report-overview";
-import { companyFirstMonth } from "@/lib/utils/reporting-period";
 import { countLabel } from "@/lib/utils/text";
 
 import { buttonVariants } from "@/components/ui/button";
@@ -108,11 +105,7 @@ const MonthTotal = ({
 );
 
 export const MyTimeView = ({ userId }: { userId: string }) => {
-  const { company } = useCompany();
-  const [chosenMonth, setChosenMonth] = useState<string | null>(null);
-
-  const currentMonth = toMonthKey(todayISODate(company?.timezone));
-  const month = chosenMonth ?? currentMonth;
+  const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
   const range: ReportRange = getMonthRange(month);
 
   const people = usePeopleReport(range);
@@ -226,8 +219,8 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
           <ReportMonthStepper
             month={month}
             currentMonth={currentMonth}
-            companyFirstMonth={company ? companyFirstMonth(company) : undefined}
-            onChange={setChosenMonth}
+            companyFirstMonth={firstMonth}
+            onChange={showMonth}
           />
           <p className="min-h-5 text-sm text-muted-foreground">
             {report && !isNothingCounted && reportScope(report, false)}
@@ -237,7 +230,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
         {month !== currentMonth && (
           <BackToNowButton
             label="Back to this month"
-            onClick={() => setChosenMonth(null)}
+            onClick={() => showMonth(currentMonth)}
           />
         )}
       </div>

@@ -37,6 +37,8 @@ type MonthCalendarProps = {
   selectionLabel: string;
   /** Where Tab lands in the grid, and focused as a popover opens. */
   autoFocusDate?: Date;
+  /** The earliest day that can be chosen; earlier ones stay focusable but inert. */
+  minDate?: Date;
   onSelectDay: (day: Date) => void;
   /** The day under the pointer or keyboard focus, null once it leaves. */
   onHoverDay?: (day: Date | null) => void;
@@ -51,6 +53,7 @@ export const MonthCalendar = ({
   selection,
   selectionLabel,
   autoFocusDate,
+  minDate,
   onSelectDay,
   onHoverDay,
 }: MonthCalendarProps) => {
@@ -148,6 +151,7 @@ export const MonthCalendar = ({
             !!selection &&
             (isSameDay(day, selection.start) || isSameDay(day, selection.end));
           const today = isToday(day, timezone);
+          const isBeforeMin = !!minDate && day < minDate;
 
           return (
             <button
@@ -161,8 +165,9 @@ export const MonthCalendar = ({
                   : formatLongDayLabel(day)
               }
               aria-current={today ? "date" : undefined}
+              aria-disabled={isBeforeMin || undefined}
               autoFocus={!!autoFocusDate && isSameDay(day, autoFocusDate)}
-              onClick={() => onSelectDay(day)}
+              onClick={() => !isBeforeMin && onSelectDay(day)}
               onFocus={() => {
                 setFocusDate(day);
                 onHoverDay?.(day);
@@ -170,8 +175,8 @@ export const MonthCalendar = ({
               onMouseEnter={() => onHoverDay?.(day)}
               className={`
                 relative mx-auto h-8 w-8 rounded-md text-xs transition
-                ${inCurrentMonth ? "text-foreground" : "text-muted-foreground"}
-                ${isChosen ? "bg-brand-muted" : "hover:bg-accent"}
+                ${inCurrentMonth && !isBeforeMin ? "text-foreground" : "text-muted-foreground"}
+                ${isBeforeMin ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-accent"}
                 ${isEnd ? "font-semibold text-brand" : ""}
               `}
             >

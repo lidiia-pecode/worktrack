@@ -1,18 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
 import { ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useCompany } from "@/hooks/auth/useCompany";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useShownMonth } from "@/hooks/useShownMonth";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { reportScope } from "@/lib/utils/report-overview";
-import { getMonthRange, todayISODate, toMonthKey } from "@/lib/utils/date";
-import { companyFirstMonth } from "@/lib/utils/reporting-period";
+import { getMonthRange } from "@/lib/utils/date";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -32,16 +31,13 @@ const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 
 export const ReportsView = () => {
-  const { company } = useCompany();
   const { user } = useAuth();
 
-  const [chosenMonth, setChosenMonth] = useState<string | null>(null);
+  const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
-  const currentMonth = toMonthKey(todayISODate(company?.timezone));
-  const month = chosenMonth ?? currentMonth;
   const range: ReportRange = getMonthRange(month);
 
   const people = usePeopleReport(range);
@@ -210,8 +206,8 @@ export const ReportsView = () => {
           <ReportMonthStepper
             month={month}
             currentMonth={currentMonth}
-            companyFirstMonth={company ? companyFirstMonth(company) : undefined}
-            onChange={setChosenMonth}
+            companyFirstMonth={firstMonth}
+            onChange={showMonth}
           />
           {/* One line high even while a month loads, so the header holds still and
               says nothing about the month before. */}

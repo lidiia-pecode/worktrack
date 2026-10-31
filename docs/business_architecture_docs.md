@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 27 October 2026.** Phases 0 to 37 in §7 are
-delivered, and so is the permission model. The work ahead was re-planned on 28
+**Last verified against the code: 31 October 2026.** Phases 0 to 39 in §7 are
+delivered, and so is the permission model; Phase 40 is delivered on its merge. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -355,28 +355,35 @@ All verified in the current implementation.
 
 ### Time logging
 
-Every write passes five checks, in this order:
+Every write passes five checks, in this order (`time-logs.service.ts`):
 
-1. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
+1. **Write scope** — the caller must be allowed to act for the entry's owner
+   (D9), through `assertCanActForUser`: an owner for anyone in the company, a
+   manager for the people in the teams they lead, an employee for themselves.
+   The entry is always matched on `companyId` too. The rest runs in one
+   transaction, after the owner's user row is locked.
+2. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
    update, both the old and the new date are checked, so an entry cannot be
    moved into or out of a locked period.
-2. **No future date** — a time entry records work done (D6), so one dated
+3. **No future date** — a time entry records work done (D6), so one dated
    after the company's today is rejected (400), for every role, on create and
    on update. An entry already in the future can be moved back or deleted.
    Absences may be booked ahead (Phase 35, Decision 13).
-3. **Write scope** — the caller must be allowed to act for the entry's owner
-   (D9), through `assertCanActForUser`: an owner for anyone in the company, a
-   manager for the people in the teams they lead, an employee for themselves.
-   The entry is always matched on `companyId` too.
-4. **Project-activity validity** — the `ProjectActivity` must belong to the
-   caller's company, be active, and sit on an ACTIVE project with an ACTIVE
-   activity.
-5. **Project membership** — a `project_users` row must exist for
-   `(projectId, userId)`. Submitting a valid `projectActivityId` for a project
-   you are not assigned to is rejected (403).
+4. **Employed on that day** — a day on or after the owner's deactivation, or
+   inside an earlier inactive spell, is rejected (400, saying why), on create
+   and when an entry moves to a new date (`assertEmployedOn`).
+5. **Project activity and membership** — the `ProjectActivity` must belong to
+   the caller's company (404); the owner must be on its project, a
+   `project_users` row for `(projectId, userId)` (403), so a valid
+   `projectActivityId` for a project the owner is not assigned to is refused;
+   and it must be active, on an ACTIVE project with an ACTIVE activity (400).
 
-On update, checks 4 and 5 run only when the entry moves to another project or
-activity. An entry on an archived project or activity, or on a project its owner
+After them, a day an absence covers is refused (see Absences) and the daily
+total is checked (below).
+
+On update, the new date's lock, the employed-day check and the absence check
+run only when the entry moves to another date, before check 5; check 5 runs
+only when the entry moves to another project or activity. An entry on an archived project or activity, or on a project its owner
 has left, keeps its project and activity and can still have its duration, note
 and billable flag corrected. Notes on time entries and absences can be cleared.
 
@@ -924,9 +931,11 @@ see, and how a new company gets started. §7 plans that work.
   entries, so an owner or manager sees what a week consisted of and fixes it in
   the cell, with no side panel beside the grid; the timesheet stays the
   person's own screen.
-- **Reports are for owners and managers.** No report route is open to
-  employees; the planned-vs-actual route they could read was removed in Phase
-  34, since the People report covers it and no screen used it.
+- **Reports are for owners and managers.** The Reports page, the timeline and
+  the export are theirs. Since Phase 35 the hours and People reports answer
+  every role, an employee's pinned to their own rows (`applyUserVisibility`),
+  because Review my time is built from them; the planned-vs-actual route was
+  removed in Phase 34, since the People report covers it and no screen used it.
 - **No utilisation ratios** (Phase 34). Billable utilisation, client share,
   non-billable client share and logging completeness were replaced by plain
   hours: one bar per row against expected or planned hours, with whole-hour
@@ -954,22 +963,22 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-seven
-suites and 840 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is forty-nine
+suites and 859 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-one Vitest files and 417 tests: its date, month,
+The frontend has seventy-three Vitest files and 438 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column and its
 list of days on a phone, the
-Team time view, its day cells, rows, filters and sort order, the week a grid shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
+Team time view, its day cells, rows, filters and sort order, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -1015,7 +1024,8 @@ itself started without help.
 ### Delivered
 
 Built from August to October 2026, one branch and one pull request per phase,
-except Phases 20 to 25, which shipped together.
+except Phases 20 to 25, which shipped together, and Phase 38, which shipped as
+three pull requests (#56, #57, #58).
 The rules each one settled are in §2 and §4–§6; the detail of how each was built
 is in its pull request.
 
@@ -1059,6 +1069,7 @@ is in its pull request.
 | 38 (part 2) | Projects, activities, categories and plans: every activity always in a category, drafts removed and the database requiring one; taking an activity out of its category a move or an archive; archiving a project removing everyone's plans from today on, named first, and its archived activities listed on its panel; the activity catalogue and archiving or restoring a project the owner's, with a manager's menu of People and Projects; membership dates set by the server; restore of an activity or category no longer failing; the unused `COMPLETED` and `INACTIVE` statuses removed |
 | 38 (part 3) | Cross-cutting: a deactivated account unable to reset its password or keep a session, and edited only once reactivated; one owner per company; archiving a project or removing a member deleting exactly the plans it names, with plan saves waiting for it; one confirmation dialog with Delete and Remove by what happens to the data and colours by what can be undone; changing the time zone or week start asking first, with one dialog for several changes; Team time closing the days of an earlier inactive spell, and an invitation unable to slip into a team being archived; a person's plans changed and deleted across a period from the period form |
 | 39 | Time entry on a phone: the timesheet's week as a list of days where seven columns don't fit, each entry, plan and absence a row with its details and the list opening at today; short entries at least one readable line tall on the grid; a day no longer one button around its entries, the empty part of a day logging time and an absence opening from its own button; Timesheet and My time renamed Log my time and Review my time |
+| 40 | Consistent screens: WorkTrack's own pages for a missing address, an error and a loading route; a browser-tab title per page; the month on Reports and Review my time, and Planning's team, kept in the address; Settings asking before unsaved edits are dropped by a link or a reload; "company" for the company and its settings, "workspace" only for the working environment; the capacity date on the shared calendar, unable to reach a locked month; the setup checklist no longer ticking Company details; Team time's total following its search; the documentation checked against the code |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1100,7 +1111,7 @@ activities properly, clients and billable defaults included. The public landing
 and sign-in pages, the invitation email and the Google sign-in paths belong
 here, as do the basics of a person's own account settings.
 
-**Area 2 — Application shell and shared UI** *(done, Phases 18–19 and 33)*. The frame
+**Area 2 — Application shell and shared UI** *(done, Phases 18–19, 33 and 40)*. The frame
 every page sits in and the parts every page is built from: navigation per role,
 the sidebar, header and user menu, page layout and headers, and one version each
 of the table, card, form field, select, dialog, confirmation, loading, empty and
@@ -1337,8 +1348,8 @@ their time logs, such as anonymising the person and keeping the hours.
   everyone directly, with the manager steps optional (Area 1). Only a user with
   the Manager role can be a team's manager; the owner changes an employee's
   role to Manager first. Recorded in
-  [`permission-model.md`](./permission-model.md) §3.2 and enforced from Area 1's
-  first phase; §4 and §5 change when it ships.
+  [`permission-model.md`](./permission-model.md) §3.2 and enforced since Area
+  1's first phase (Phase 14); §5 describes it.
 - **Q14** — Expected starts on the day the person's account was created, in the
   company's time zone, with no new field; days before it expect nothing. Moved
   from Area 3 into Area 1's last phase (1 October 2026) and in force since; see

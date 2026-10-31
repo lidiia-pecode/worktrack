@@ -32,6 +32,7 @@ import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
+import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
 import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanningDayModal } from "./components/PlanningDayModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
@@ -63,7 +64,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   } = useWorkSettings();
 
   const { weekStart, showWeekOf } = useShownWeek();
-  const [teamId, setTeamId] = useState<string | undefined>();
+  const { teamId, setFilters } = useTeamTimeFilters();
+  const setTeamId = (nextTeamId?: string) => setFilters({ teamId: nextTeamId });
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
@@ -172,7 +174,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
       <div className="flex flex-col">
         <LoadingState
           title="Loading the week's plan"
-          description="Fetching planned work and workspace settings."
+          description="Fetching planned work and company settings."
         />
       </div>
     );

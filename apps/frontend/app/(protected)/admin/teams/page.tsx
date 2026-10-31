@@ -1,6 +1,10 @@
+import type { Metadata } from "next";
 import { requireOwnerAccess } from "@/lib/api/server/auth";
 import { EntityPanelProvider } from "@/app/components/entity-panel/EntityPanelProvider";
 import { TeamsContent } from "@/app/components/teams/TeamsContent";
+import { teams } from "@/app/components/layout/sidebar/sidebar-navigation";
+
+export const metadata: Metadata = { title: teams.label };
 
 export default async function TeamsAdminPage() {
   await requireOwnerAccess();

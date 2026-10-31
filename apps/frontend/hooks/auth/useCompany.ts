@@ -28,7 +28,7 @@ export function useCompany({
     onSuccess: (company) => {
       queryClient.setQueryData(queryKeys.company.current, company);
 
-      toast.success("Workspace settings updated");
+      toast.success("Company settings updated");
     },
 
     ...(showsSaveErrorInline && { onError: () => {} }),
