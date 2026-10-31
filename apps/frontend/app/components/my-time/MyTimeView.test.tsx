@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -24,6 +25,21 @@ vi.mock("@/hooks/auth/useCompany", () => ({
   }),
 }));
 vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
+
+// The month lives in the URL; Next's router re-renders on a `history.replaceState`.
+const urlListeners = new Set<() => void>();
+vi.mock("next/navigation", () => ({
+  useSearchParams: () =>
+    new URLSearchParams(
+      useSyncExternalStore(
+        (onChange) => {
+          urlListeners.add(onChange);
+          return () => urlListeners.delete(onChange);
+        },
+        () => window.location.search,
+      ),
+    ),
+}));
 vi.mock("@/hooks/useHoursReport", () => ({ useHoursReport: vi.fn() }));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({
   useTeamTimeSummary: () => ({
@@ -120,11 +136,21 @@ const showMyTime = (report: PeopleReport) => {
 };
 
 describe("MyTimeView", () => {
+  const replaceState = window.history.replaceState.bind(window.history);
+
   beforeEach(() => {
     // Only the clock: user-event still needs real timers.
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
+    replaceState(null, "", "/my-time");
+    vi.spyOn(window.history, "replaceState").mockImplementation((...args) => {
+      replaceState(...args);
+      urlListeners.forEach((onChange) => onChange());
+    });
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
 
   it("shows the person's own month: logged against expected, the facts and the projects", () => {
     // A manager's report lists their team too; the page takes their own row.

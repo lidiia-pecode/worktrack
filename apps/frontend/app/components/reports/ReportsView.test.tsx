@@ -15,7 +15,14 @@ import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useTimeline } from "@/hooks/useTimeline";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
-import { addDays, isWeekend, toISODate } from "@/lib/utils/date";
+import {
+  addDays,
+  addMonthsToKey,
+  isWeekend,
+  todayISODate,
+  toISODate,
+  toMonthKey,
+} from "@/lib/utils/date";
 import { AbsenceType } from "@/types/enums";
 
 import { ReportsView } from "./ReportsView";
@@ -800,7 +807,7 @@ describe("ReportsView", () => {
       expect(navigation.search).toBe("");
     });
 
-    it("closes the panel, URL included, when another period leaves the person out", async () => {
+    it("closes the panel, URL included, when another month leaves the person out", async () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
       await user.click(peopleRow("Ethan Brooks"));
@@ -813,7 +820,9 @@ describe("ReportsView", () => {
       await user.click(screen.getByRole("button", { name: "Previous month" }));
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
-      expect(navigation.history).toEqual([""]);
+      // The month stays in the address; only the panel's parameter goes.
+      const lastMonth = addMonthsToKey(toMonthKey(todayISODate("UTC")), -1);
+      expect(navigation.history).toEqual(["", `?month=${lastMonth}`]);
     });
   });
 });
