@@ -33,7 +33,6 @@ export function usePlanningWeek(params: PlanningWeekQuery) {
   });
 
   return {
-    week: query.data ?? null,
     rows: query.data?.rows ?? [],
     isLoading: query.isLoading,
     isPlaceholderData: query.isPlaceholderData,

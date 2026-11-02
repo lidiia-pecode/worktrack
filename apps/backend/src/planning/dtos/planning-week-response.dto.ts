@@ -25,6 +25,9 @@ export class PlanningWeekRowResponse {
   availableMinutes!: number;
 
   @Expose()
+  dayLimitMinutes!: number;
+
+  @Expose()
   @Type(() => PlanningProjectOptionResponse)
   projects!: PlanningProjectOptionResponse[];
 
@@ -40,9 +43,6 @@ export class PlanningWeekResponse {
 
   @Expose()
   weekEnd!: string;
-
-  @Expose()
-  dayLimitMinutes!: number;
 
   @Expose()
   @Type(() => PlanningWeekRowResponse)

@@ -70,6 +70,7 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
+  dayLimitMinutes: 480,
   projects: [
     { id: "project-northwind", name: "Northwind" },
     { id: "project-internal", name: "Internal" },
@@ -89,7 +90,7 @@ const OCTOBER_DAYS = Array.from({ length: 22 }, (_, i) => {
 
 const renderModal = (row = ALICE) => {
   const onClose = vi.fn();
-  render(<PlanPeriodModal row={row} dayLimitMinutes={480} onClose={onClose} />);
+  render(<PlanPeriodModal row={row} onClose={onClose} />);
   return { onClose };
 };
 

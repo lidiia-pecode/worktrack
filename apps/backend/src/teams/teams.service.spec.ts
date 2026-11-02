@@ -642,6 +642,9 @@ describe('TeamsService', () => {
         userId: employee.id,
         roleInTeam: TeamRole.MEMBER,
       });
+      // Attached now, so a refusal before the commit below is still this
+      // expectation's, not an unhandled rejection.
+      const refused = expect(addition).rejects.toThrow(BadRequestException);
       // Long enough for the addition to reach the team while the archive is open.
       await new Promise((resolve) =>
         setTimeout(resolve, ADDITION_HEAD_START_MS),
@@ -649,7 +652,7 @@ describe('TeamsService', () => {
       await archiving.commitTransaction();
       await archiving.release();
 
-      await expect(addition).rejects.toThrow(BadRequestException);
+      await refused;
     });
 
     it('lists what is still on the team: open memberships and the invitation count', async () => {

@@ -12,6 +12,7 @@ import {
   describeDays,
   listedChangeText,
   listedLines,
+  setHoursDetail,
 } from "./period-lines";
 
 // November 2026: Monday the 2nd to Friday the 27th, four full weeks.
@@ -64,27 +65,28 @@ describe("describeDays", () => {
     );
   });
 
-  it("gives each day its hours when they differ, or their range", () => {
-    expect(
-      describeDays(
-        lineOf([plan("2026-11-03", 60), plan("2026-11-11", 120)]),
-        WORKING_DAYS,
-      ),
-    ).toBe(`${dayLabel("2026-11-03")} · 1h, ${dayLabel("2026-11-11")} · 2h`);
-
+  it("sums up hours that differ by day without naming the days", () => {
     expect(
       describeDays(
         lineOf(WORKING_DAYS.slice(0, 5).map((d, i) => plan(d, i ? 120 : 60))),
         WORKING_DAYS,
       ),
-    ).toBe("5 days, 1h to 2h a day");
+    ).toBe("5 days · hours vary, mostly 2h");
+
+    // No value repeats, so there is no "mostly".
+    expect(
+      describeDays(
+        lineOf([plan("2026-11-03", 60), plan("2026-11-11", 120)]),
+        WORKING_DAYS,
+      ),
+    ).toBe("2 days · hours vary, 1h to 2h");
   });
 });
 
 describe("listedChangeText", () => {
   it("says what the save changes, with the hours it replaces", () => {
     const same = lineOf(["2026-11-02", "2026-11-09"].map((d) => plan(d, 120)));
-    expect(listedChangeText(same, 180, 2)).toBe(
+    expect(listedChangeText(same, 180, 2, WORKING_DAYS)).toBe(
       "change Support from 2h to 3h on 2 days",
     );
 
@@ -94,8 +96,25 @@ describe("listedChangeText", () => {
       plan("2026-11-19", 120),
     ]);
     expect(differing.commonMinutes).toBe(120);
-    expect(listedChangeText(differing, 120, 1)).toBe(
-      `set Support to 2h on ${["2026-11-03", "2026-11-11", "2026-11-19"].map(dayLabel).join(", ")} (was 1h, 2h, 2h)`,
+    expect(listedChangeText(differing, 120, 1, WORKING_DAYS)).toBe(
+      "set Support to 2h on all 3 days",
+    );
+  });
+});
+
+describe("a plan on a day with no working hours", () => {
+  it("is left out of what a save changes, as the save leaves it", () => {
+    const line = lineOf([
+      plan("2026-11-03", 60),
+      plan("2026-11-11", 120),
+      plan("2026-11-19", 90),
+    ]);
+    // Their hours on Thursday the 19th were set to 0.
+    const workingDays = WORKING_DAYS.filter((day) => day !== "2026-11-19");
+
+    expect(setHoursDetail(line, workingDays)).toBe("Same hours on all 2 days");
+    expect(listedChangeText(line, 120, 1, workingDays)).toBe(
+      "set Support to 2h on all 2 days",
     );
   });
 });

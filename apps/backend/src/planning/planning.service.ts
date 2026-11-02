@@ -46,6 +46,8 @@ import {
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { CapacityService } from 'src/capacity/capacity.service';
+import { WORKING_DAYS_PER_WEEK } from 'src/capacity/working-days.util';
 import {
   addDays,
   isWorkingDay,
@@ -72,6 +74,8 @@ export interface PlanningWeekRow {
   user: VisibleUser;
   plannedMinutes: number;
   availableMinutes: number;
+  /** The most the person can be planned on a day, as of the week's first. */
+  dayLimitMinutes: number;
   projects: Pick<Project, 'id' | 'name'>[];
   entries: PlanningEntry[];
 }
@@ -79,7 +83,6 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  dayLimitMinutes: number;
   rows: PlanningWeekRow[];
 }
 
@@ -106,8 +109,8 @@ interface ResolvedPeriod {
   writes: PeriodWrites;
 }
 
-const dayLimitMinutes = (company: PlanningCompany): number =>
-  Math.round(Number(company.standardWorkHoursPerDay) * 60);
+/** Who can be planned how much on a day; see `dayLimitsFor`. */
+type DayLimitOn = (userId: string, date: string) => number;
 
 @Injectable()
 export class PlanningService {
@@ -121,6 +124,7 @@ export class PlanningService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
+    private readonly capacity: CapacityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -255,9 +259,10 @@ export class PlanningService {
     );
     const userIds = users.map((row) => row.id);
 
-    const [available, projectsByUser] = await Promise.all([
+    const [available, projectsByUser, dayLimitOn] = await Promise.all([
       this.expectedHours.expectedFor(user.companyId, userIds, start, end),
       this.activeProjectsFor(user.companyId, userIds),
+      this.dayLimitsFor(company, userIds, start),
     ]);
 
     const rows = users.map((rowUser): PlanningWeekRow => {
@@ -267,6 +272,7 @@ export class PlanningService {
         user: rowUser,
         plannedMinutes: own.reduce((sum, e) => sum + e.plannedMinutes, 0),
         availableMinutes: available.get(rowUser.id)?.total ?? 0,
+        dayLimitMinutes: dayLimitOn(rowUser.id, start),
         projects: projectsByUser.get(rowUser.id) ?? [],
         entries: own,
       };
@@ -275,7 +281,6 @@ export class PlanningService {
     return {
       weekStart: start,
       weekEnd: end,
-      dayLimitMinutes: dayLimitMinutes(company),
       rows,
     };
   }
@@ -639,13 +644,14 @@ export class PlanningService {
       .getMany();
 
     const writes = periodWrites({ plannedDays, lines, existing });
+    const dayLimitOn = await this.dayLimitsFor(company, [userId], endDate);
     const problems = periodProblems({
       weeks,
       plannedDays,
       lines,
       writes,
       existing,
-      dayLimit: dayLimitMinutes(company),
+      dayLimitOn: (date) => dayLimitOn(userId, date),
     });
 
     return { plannedDays, problems, lines, writes };
@@ -974,6 +980,33 @@ export class PlanningService {
   }
 
   /**
+   * The most each person can be planned on a day: their working hours a week
+   * on that date over five, the day their expected hours count (Decision 5,
+   * Phase 41), or the company's standard day when they have none of their own.
+   */
+  private async dayLimitsFor(
+    company: PlanningCompany,
+    userIds: string[],
+    until: string,
+  ): Promise<DayLimitOn> {
+    const standardDay = Math.round(
+      Number(company.standardWorkHoursPerDay) * 60,
+    );
+    const timelines = await this.capacity.timelinesFor(
+      company.id,
+      userIds,
+      until,
+      standardDay * WORKING_DAYS_PER_WEEK,
+    );
+
+    return (userId, date) =>
+      Math.round(
+        (timelines.get(userId)?.minutesPerWeekOn(date) ?? 0) /
+          WORKING_DAYS_PER_WEEK,
+      );
+  }
+
+  /**
    * Every company week the range touches, with what the person has available
    * in it — the same figure a single plan is checked against.
    */
@@ -1128,7 +1161,8 @@ export class PlanningService {
       next.date,
       excludeId,
     );
-    const dayLimit = dayLimitMinutes(company);
+    const dayLimitOn = await this.dayLimitsFor(company, [userId], next.date);
+    const dayLimit = dayLimitOn(userId, next.date);
     const nextDay = otherDay + next.minutes;
 
     if (
@@ -1136,7 +1170,7 @@ export class PlanningService {
       nextDay > otherDay + previousIn(next.date, next.date)
     ) {
       throw new BadRequestException(
-        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${next.date} of a ${formatMinutes(dayLimit)} working day.`,
+        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${formatDay(next.date)}, of ${formatMinutes(dayLimit)} a day.`,
       );
     }
 
@@ -1161,7 +1195,7 @@ export class PlanningService {
 
     if (nextWeek > available) {
       throw new BadRequestException(
-        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${week.start}.`,
+        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${formatDay(week.start, false)}.`,
       );
     }
   }

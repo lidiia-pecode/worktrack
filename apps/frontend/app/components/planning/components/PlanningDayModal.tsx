@@ -84,7 +84,6 @@ const withArticle = (duration: string) =>
 type PlanningDayModalProps = {
   row: PlanningWeekRow;
   date: string;
-  dayLimitMinutes: number;
   /**
    * The absence covering the day, shown here only while a locked month
    * freezes it; an editable one opens its form straight from the grid.
@@ -97,7 +96,6 @@ type PlanningDayModalProps = {
 export const PlanningDayModal = ({
   row,
   date,
-  dayLimitMinutes,
   absence,
   onAddAbsence,
   onClose,
@@ -135,6 +133,30 @@ export const PlanningDayModal = ({
   });
 
   const [hours, minutes] = useWatch({ control, name: ["hours", "minutes"] });
+
+  // The API's limits, said before the save: a plan may not raise the day past
+  // the person's own day or the week past what they have available, though
+  // lowering one already over is fine.
+  const enteredMinutes = Number(hours) * 60 + Number(minutes);
+  const editedMinutes = editing?.plannedMinutes ?? 0;
+  const isRaising = enteredMinutes > editedMinutes;
+  const dayLeft = row.dayLimitMinutes - (plannedMinutes - editedMinutes);
+  const weekLeft = row.availableMinutes - (row.plannedMinutes - editedMinutes);
+  const limitMessage = (() => {
+    if (!isRaising) return null;
+    if (enteredMinutes > dayLeft) {
+      return dayLeft > 0
+        ? `Only ${formatDuration(dayLeft)} left on this day`
+        : "This day is already full";
+    }
+    if (enteredMinutes > weekLeft) {
+      const week = `${row.user.firstName}'s ${formatDuration(row.availableMinutes)} week`;
+      return weekLeft > 0
+        ? `Only ${formatDuration(weekLeft)} left in ${week}`
+        : `${week} is already full`;
+    }
+    return null;
+  })();
 
   // Closing or switching to another plan asks first while the form has
   // unsaved changes, as × and Escape do; the action waits for the answer.
@@ -182,6 +204,7 @@ export const PlanningDayModal = ({
   };
 
   const onSubmit = async (data: PlanFormData) => {
+    if (limitMessage) return;
     const plannedMinutes = data.hours * 60 + data.minutes;
 
     try {
@@ -207,7 +230,8 @@ export const PlanningDayModal = ({
         });
       }
 
-      startNew();
+      // Like the time form, a saved plan closes the day.
+      onClose();
     } catch {
       // Reported by the global mutation handler; keep the form as it is.
     }
@@ -267,7 +291,7 @@ export const PlanningDayModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
+        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(row.dayLimitMinutes))} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={
           <>
@@ -313,7 +337,7 @@ export const PlanningDayModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={create.isPending || update.isPending}
-              disabled={hasNoOptions}
+              disabled={hasNoOptions || !!limitMessage}
             >
               {editing ? "Save changes" : "Add plan"}
             </Button>
@@ -417,7 +441,11 @@ export const PlanningDayModal = ({
                   />
                 )}
               />
-              <Field id="plan-hours" group error={errors.hours?.message}>
+              <Field
+                id="plan-hours"
+                group
+                error={errors.hours?.message ?? limitMessage ?? undefined}
+              >
                 <TimePicker
                   aria-label="Hours"
                   hours={Number(hours)}
@@ -430,7 +458,7 @@ export const PlanningDayModal = ({
                   onMinutesChange={(value) =>
                     setValue("minutes", value, { shouldDirty: true })
                   }
-                  error={!!errors.hours}
+                  error={!!errors.hours || !!limitMessage}
                   className="w-fit"
                 />
               </Field>

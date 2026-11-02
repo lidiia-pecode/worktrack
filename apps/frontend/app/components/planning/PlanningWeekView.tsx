@@ -75,7 +75,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const dateTo = toISODate(getWeekEnd(weekStart));
 
   const {
-    week,
     rows,
     isLoading: isLoadingWeek,
     isPlaceholderData: isShowingPreviousWeek,
@@ -317,12 +316,11 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         </div>
       )}
 
-      {openedDay && openedRow && week && (
+      {openedDay && openedRow && (
         <PlanningDayModal
           key={`${openedDay.userId}-${openedDay.date}`}
           row={openedRow}
           date={openedDay.date}
-          dayLimitMinutes={week.dayLimitMinutes}
           absence={openedAbsence}
           onAddAbsence={() =>
             setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
@@ -358,11 +356,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {periodRow && week && (
+      {periodRow && (
         <PlanPeriodModal
           key={periodRow.user.id}
           row={periodRow}
-          dayLimitMinutes={week.dayLimitMinutes}
           onClose={() => setPeriodUserId(null)}
         />
       )}

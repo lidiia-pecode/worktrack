@@ -35,6 +35,7 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
+  dayLimitMinutes: 480,
   projects: [
     { id: "project-northwind", name: "Northwind" },
     { id: "project-internal", name: "Internal" },
@@ -63,7 +64,6 @@ const renderModal = (props: {
     <PlanningDayModal
       row={{ ...ALICE, entries: props.entries ?? [] }}
       date="2026-11-10"
-      dayLimitMinutes={480}
       absence={props.absence}
       onAddAbsence={onAddAbsence}
       onClose={onClose}

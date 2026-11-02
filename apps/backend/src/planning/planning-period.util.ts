@@ -83,7 +83,7 @@ export const periodProblems = ({
   lines,
   writes,
   existing,
-  dayLimit,
+  dayLimitOn,
 }: {
   weeks: PeriodWeek[];
   plannedDays: Set<string>;
@@ -91,7 +91,8 @@ export const periodProblems = ({
   writes: PeriodWrites;
   /** The person's plans across every week the period touches. */
   existing: PlanningEntry[];
-  dayLimit: number;
+  /** The most the person can be planned on a date. */
+  dayLimitOn: (date: string) => number;
 }): string[] => {
   const listed = new Set(lines.map((line) => line.projectId));
   const newMinutes = new Map(
@@ -134,6 +135,7 @@ export const periodProblems = ({
   for (const week of weeks) {
     for (const date of week.workingDays.filter((d) => plannedDays.has(d))) {
       const day = totalsBetween(date, date);
+      const dayLimit = dayLimitOn(date);
       if (day.after > dayLimit && day.after > day.before) {
         problems.push(
           `${formatDay(date)}: ${formatMinutes(day.after)} planned, over the ${formatMinutes(dayLimit)} working day${onOtherProjects(day.otherProjects)}`,

@@ -74,7 +74,7 @@ export const PeriodListedRow = ({
         <p className="text-xs text-muted-foreground">
           {line.sameMinutes === null && isEdited ? (
             <>
-              {setHoursDetail(line)} ·{" "}
+              {setHoursDetail(line, workingDays)} ·{" "}
               <button
                 type="button"
                 onClick={() => onEdit(() => undefined)}
@@ -111,6 +111,7 @@ export const PeriodListedRow = ({
             size="sm"
             onClick={() => onEdit(() => line.commonMinutes)}
             aria-label={`Set the same hours for ${line.name} on all ${line.days.length} days`}
+            title={`Give all ${line.days.length} days the same hours. To change one day, open it in the grid.`}
             className="h-10 border-border bg-transparent text-brand"
           >
             <Clock className="size-3.5" />

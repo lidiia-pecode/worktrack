@@ -92,6 +92,8 @@ export interface PlanningWeekRow {
   user: TeamSummaryUser;
   plannedMinutes: number;
   availableMinutes: number;
+  /** The most the person can be planned on a day: their own working day. */
+  dayLimitMinutes: number;
   projects: PlanningProjectOption[];
   entries: PlanningEntry[];
 }
@@ -99,7 +101,6 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  dayLimitMinutes: number;
   rows: PlanningWeekRow[];
 }
 

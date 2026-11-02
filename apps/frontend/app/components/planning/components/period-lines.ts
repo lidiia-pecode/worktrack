@@ -76,12 +76,38 @@ const hoursRange = (days: PlannedDay[]) => {
   return `${formatDuration(Math.min(...minutes))} to ${formatDuration(Math.max(...minutes))}`;
 };
 
-const isNamed = (line: ListedLine) => line.days.length <= MAX_NAMED_DAYS;
+const isNamed = (days: PlannedDay[]) => days.length <= MAX_NAMED_DAYS;
+
+const dayLabels = (days: PlannedDay[]) =>
+  days.map((day) => dayLabel(day.date)).join(", ");
+
+/**
+ * Hours that differ by day, without naming the days: "hours vary, mostly 2h",
+ * or the range when no value repeats.
+ */
+const varyingHours = (line: ListedLine) => {
+  const isRepeated =
+    line.days.filter((day) => day.minutes === line.commonMinutes).length > 1;
+
+  return isRepeated
+    ? `hours vary, mostly ${formatDuration(line.commonMinutes)}`
+    : `hours vary, ${hoursRange(line.days)}`;
+};
+
+/**
+ * The row's days a save changes: a listed project changes only on working
+ * days (`periodWrites`), so a plan left on a day with no hours keeps its own.
+ * Every day until the preview has named the working days.
+ */
+const savedDays = (line: ListedLine, workingDays: string[]) =>
+  workingDays.length === 0
+    ? line.days
+    : line.days.filter((day) => workingDays.includes(day.date));
 
 /**
  * Which days a row is on: "Every working day · 19 days", the days themselves
- * when there are a few, or how many and between which.
- * Hours that differ by day are named with each day, or given as a range.
+ * when there are a few, or how many and between which. Hours that differ by
+ * day are summed up rather than listed: "21 days · hours vary, mostly 2h".
  */
 export const describeDays = (
   line: ListedLine,
@@ -91,13 +117,7 @@ export const describeDays = (
   const count = daysCount(dates.length);
 
   if (line.sameMinutes === null) {
-    return isNamed(line)
-      ? line.days
-          .map(
-            (day) => `${dayLabel(day.date)} · ${formatDuration(day.minutes)}`,
-          )
-          .join(", ")
-      : `${count}, ${hoursRange(line.days)} a day`;
+    return `${count} · ${varyingHours(line)}`;
   }
 
   if (
@@ -107,28 +127,31 @@ export const describeDays = (
     return `Every working day · ${count}`;
   }
 
-  return isNamed(line)
-    ? `${dates.map(dayLabel).join(", ")} · ${count}`
+  return isNamed(line.days)
+    ? `${dayLabels(line.days)} · ${count}`
     : `${count}, ${formatDayMonthLabel(dates[0])} – ${formatDayMonthLabel(dates[dates.length - 1])}`;
 };
 
-/** What a row in "Set hours" says it changes: "All 3 days: … · was 1h, 2h, 2h". */
-export const setHoursDetail = (line: ListedLine): string =>
-  isNamed(line)
-    ? `All ${daysCount(line.days.length)}: ${line.days.map((day) => dayLabel(day.date)).join(", ")} · was ${line.days.map((day) => formatDuration(day.minutes)).join(", ")}`
-    : `All ${daysCount(line.days.length)} · was ${hoursRange(line.days)}`;
+/** What a row in "Set hours" says it changes: "Same hours on all 21 days". */
+export const setHoursDetail = (
+  line: ListedLine,
+  workingDays: string[],
+): string =>
+  `Same hours on all ${daysCount(savedDays(line, workingDays).length)}`;
 
 /** The preview's line for a listed row whose hours change on `changedDays`. */
 export const listedChangeText = (
   line: ListedLine,
   minutes: number,
   changedDays: number,
-): string =>
-  line.sameMinutes !== null
-    ? `change ${line.name} from ${formatDuration(line.sameMinutes)} to ${formatDuration(minutes)} on ${daysCount(changedDays)}`
-    : isNamed(line)
-      ? `set ${line.name} to ${formatDuration(minutes)} on ${line.days.map((day) => dayLabel(day.date)).join(", ")} (was ${line.days.map((day) => formatDuration(day.minutes)).join(", ")})`
-      : `set ${line.name} to ${formatDuration(minutes)} on ${daysCount(line.days.length)} (was ${hoursRange(line.days)})`;
+  workingDays: string[],
+): string => {
+  if (line.sameMinutes !== null) {
+    return `change ${line.name} from ${formatDuration(line.sameMinutes)} to ${formatDuration(minutes)} on ${daysCount(changedDays)}`;
+  }
+
+  return `set ${line.name} to ${formatDuration(minutes)} on all ${daysCount(savedDays(line, workingDays).length)}`;
+};
 
 /** The preview's line for a project added to every working day. */
 export const addedText = (

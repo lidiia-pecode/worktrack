@@ -346,12 +346,35 @@ export class ProjectsService {
     return this.findOrFail(id, companyId, manager);
   }
 
+  /**
+   * Share-locks the people a change may add, before the project is locked: a
+   * plan write locks the person, then the project, so the new `project_users`
+   * row waiting on the person while the project is held could deadlock with it.
+   */
+  private async lockJoiningPeople(
+    manager: EntityManager,
+    userIds: string[],
+    companyId: string,
+  ): Promise<void> {
+    if (!userIds.length) return;
+
+    await manager
+      .createQueryBuilder(User, 'u')
+      .select('u.id')
+      .setLock('pessimistic_read')
+      .where('u.id IN (:...userIds)', { userIds })
+      .andWhere('u.company_id = :companyId', { companyId })
+      .getMany();
+  }
+
   private changeLinks(
     id: string,
     user: AuthUser,
     change: (project: Project, manager: EntityManager) => Promise<void>,
+    joiningUserIds: string[] = [],
   ): Promise<Project> {
     return this.dataSource.transaction(async (manager) => {
+      await this.lockJoiningPeople(manager, joiningUserIds, user.companyId);
       const project = await this.findLockedOrFail(id, user.companyId, manager);
       assertChangeable(project);
 
@@ -509,6 +532,11 @@ export class ProjectsService {
   ): Promise<Project> {
     return this.dataSource.transaction(async (manager) => {
       const projectRepo = manager.getRepository(Project);
+      await this.lockJoiningPeople(
+        manager,
+        payload.userIds ?? [],
+        user.companyId,
+      );
       const project = await this.findLockedOrFail(id, user.companyId, manager);
       assertChangeable(project);
 
@@ -611,7 +639,7 @@ export class ProjectsService {
     userId: string,
     user: AuthUser,
   ): Promise<Project> {
-    return this.changeLinks(id, user, async (project, manager) => {
+    const addPerson = async (project: Project, manager: EntityManager) => {
       // Scope first, so the answer says nothing about people outside it.
       await this.assertCanAssign(
         userId,
@@ -632,7 +660,9 @@ export class ProjectsService {
         .relation(Project, 'users')
         .of(project.id)
         .add(userId);
-    });
+    };
+
+    return this.changeLinks(id, user, addPerson, [userId]);
   }
 
   /** Removes one person and their future plans on the project. */

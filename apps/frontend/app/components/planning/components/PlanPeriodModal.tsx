@@ -99,7 +99,6 @@ const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
   row: PlanningWeekRow;
-  dayLimitMinutes: number;
   onClose: () => void;
 };
 
@@ -108,11 +107,7 @@ type PlanPeriodModalProps = {
  * planned in it change only on their own days, and a project added fills
  * every working day. A planned project is deleted from its row at once.
  */
-export const PlanPeriodModal = ({
-  row,
-  dayLimitMinutes,
-  onClose,
-}: PlanPeriodModalProps) => {
+export const PlanPeriodModal = ({ row, onClose }: PlanPeriodModalProps) => {
   const { timezone } = useWorkSettings();
   const planPeriod = usePlanPeriod();
   const deletePeriodPlans = useDeletePeriodPlans();
@@ -234,6 +229,7 @@ export const PlanPeriodModal = ({
               line,
               minutes,
               changeOf(line.projectId)?.changed ?? line.days.length,
+              workingDays,
             ),
           ];
     }),
@@ -533,7 +529,7 @@ export const PlanPeriodModal = ({
               firstName={row.user.firstName}
               startDate={startDate}
               endDate={endDate}
-              dayLimitMinutes={dayLimitMinutes}
+              dayLimitMinutes={row.dayLimitMinutes}
               busiestDay={busiestDay({
                 plannedDays: workingDays,
                 plans: existingPlans,
