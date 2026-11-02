@@ -1,5 +1,6 @@
 import { PaginatedResponse, PaginationParams } from ".";
 import { AbsenceType } from "./enums";
+import { UserName } from "./User";
 
 /**
  * Mirrors the backend `AbsenceResponse` DTO. An absence covers a whole range
@@ -14,6 +15,10 @@ export interface Absence {
   note?: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Who added it; null for records from before this was kept. On reads only. */
+  createdBy?: UserName | null;
+  /** Who last changed it; null until it is changed. On reads only. */
+  updatedBy?: UserName | null;
 }
 
 export interface AbsencePayload {

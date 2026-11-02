@@ -13,6 +13,15 @@ export class PlanningProjectOptionResponse {
 }
 
 @Exclude()
+export class PlanningDayLimitResponse {
+  @Expose()
+  date!: string;
+
+  @Expose()
+  minutes!: number;
+}
+
+@Exclude()
 export class PlanningWeekRowResponse {
   @Expose()
   @Type(() => TeamSummaryUserResponse)
@@ -23,6 +32,11 @@ export class PlanningWeekRowResponse {
 
   @Expose()
   availableMinutes!: number;
+
+  /** The most the person can be planned on each day of the week. */
+  @Expose()
+  @Type(() => PlanningDayLimitResponse)
+  dayLimits!: PlanningDayLimitResponse[];
 
   @Expose()
   @Type(() => PlanningProjectOptionResponse)
@@ -40,9 +54,6 @@ export class PlanningWeekResponse {
 
   @Expose()
   weekEnd!: string;
-
-  @Expose()
-  dayLimitMinutes!: number;
 
   @Expose()
   @Type(() => PlanningWeekRowResponse)

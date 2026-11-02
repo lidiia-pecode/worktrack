@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 31 October 2026.** Phases 0 to 39 in §7 are
-delivered, and so is the permission model; Phase 40 is delivered on its merge. The work ahead was re-planned on 28
+**Last verified against the code: 2 November 2026.** Phases 0 to 40 in §7 are
+delivered, and so is the permission model; Phase 41 is delivered on its merge. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -221,10 +221,10 @@ every role without exception; the daily 1440-minute ceiling, the project
 membership requirement and the billability default all still hold, and they apply
 to **the person the entry belongs to**, not to whoever is typing.
 
-*Deliberately not included: audit tracking.* `TimeLog` records no actor, and
-nothing in the current architecture requires one. Adding `lastEditedById` is a
-migration and a UI change for a need nobody has stated yet, so it stays out until
-someone asks for it.
+*Who wrote it is recorded, not a full history.* Since Phase 41 a time entry and
+an absence keep who added them and who last changed them, and say so wherever
+the record is read when that wasn't the person it belongs to (§4). A trace of
+deleted entries or of every change stays out until someone needs it.
 
 ### D10 — A manager sees only their own teams, everywhere
 
@@ -278,7 +278,8 @@ Company  (tenant root — everything below carries companyId)
 │                   (each spell kept in user_inactive_periods once they return)
 │
 ├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
-│                   contracted hours, effective from a date
+│                   working hours, effective from a date: set as a
+│                   working day, stored as the week of five of them
 │
 ├── Team ──< TeamMembership >── User
 │                   roleInTeam: MEMBER | MANAGER
@@ -298,8 +299,10 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── Absence         user + type + startDate + endDate + note
 │                   type: VACATION | SICK_LEAVE | PUBLIC_HOLIDAY
+│                   createdBy + updatedBy (who added it, who last changed it)
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
+│                   createdBy + updatedBy (who added it, who last changed it)
 ├── PlanningEntry   user + project + date + plannedMinutes + createdBy
 └── ReportingPeriod month + status (OPEN | LOCKED) + changedBy
                     only for months an owner has reopened
@@ -398,6 +401,15 @@ internal one (D2). The time form starts a new entry the same way once the
 activity is chosen, with the switch off until then, and the person can change
 it on each entry, on any project.
 
+**Who wrote it.** Every create records the caller as the entry's author
+(`createdBy`) and every update as its last editor (`updatedBy`), whoever they
+are; absences do the same. When either isn't the person the record belongs to,
+it is named to everyone who can see the record, the person included: "Added
+by", "Changed by", "Added and changed by", or both names. A person's own
+records, and records from before Phase 41 (both empty), show nothing. If the
+person edits after a manager, they become the last editor and the "changed"
+part goes. Deletes leave no trace.
+
 ### Absences
 
 An absence is a date range belonging to one person, with a type — vacation, sick
@@ -413,6 +425,9 @@ Every write passes three checks:
    changed or deleted, and neither can it be moved into one.
 3. **The day is free** — no day of the range may already have logged time, and
    no day may already be covered by another absence, whatever its type.
+
+Who added and last changed an absence is recorded and shown as for time
+entries (see Time logging).
 
 The rule runs both ways: time logging is refused on a day an absence covers.
 An absence also deletes its owner's plans on those days (see Planning).
@@ -461,11 +476,14 @@ Every write is checked on the server:
 2. Only Monday to Friday can be planned.
 3. Nothing inside a LOCKED period can be created, changed or deleted.
 4. An entry on an archived project can only be deleted.
-5. A day may not rise above `Company.standardWorkHoursPerDay`, and a week — as
-   set by `Company.weekStartDay` — above the person's **available** hours
-   (capacity minus absences). Both refuse only a write that *raises* a total, so
-   a week left over budget by a later absence or capacity change can always be
-   reduced.
+5. A day may not rise above the person's own working day — their capacity on
+   that date over five, the company's standard day for someone with no
+   capacity of their own, the same day Expected counts (Phase 41, Decision 5,
+   reversing Phase 32's one company-wide cap) — and a week, as set by
+   `Company.weekStartDay`, above the person's **available** hours (capacity
+   minus absences). Both refuse only a write that *raises* a total, so a day
+   or week left over by a later absence or a lowered capacity is kept (a week
+   over is flagged "Over by", below) and can always be reduced.
 
 An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
 minutes. A day an absence covers cannot be planned: a new plan, or one moved
@@ -485,7 +503,9 @@ deleted from its row, after a confirmation, at once and in one go; that delete
 follows a single plan's delete (the same people, nothing in a locked month).
 Saving applies to the result as a whole: a range touching a LOCKED month is
 refused, and if any day or week would go over its limit, nothing is saved and
-every day and week that does not fit is named. As with a single plan, only a
+every day and week that does not fit is named; the form sums them up (how
+many days go over the person's day, how many weeks over what they have
+available, each with its worst). As with a single plan, only a
 total the write raises is refused. The same checks run without saving (a
 preview), so the form shows the fullest day, what saving will add and change,
 the absences skipped and every conflict before anything is written, and saves
@@ -495,7 +515,12 @@ The planning grid shows managers one figure of its own: **no longer fits**
 (planned above available, flagged as "Over by" and never fixed automatically).
 It is not shown to an employee, who sees only their own plan, and it does not
 affect whether somebody is behind. A deactivated person's plans stay visible in
-the grid, read-only.
+the grid, read-only. The grid shows working days only, since nothing can be
+planned on a weekend, and its hour pickers stop at the person's own day; the
+day dialog's hours stop at what still fits on the day and in the week, and
+say so. "Add
+absence" from a day records that day; from the period form it opens on the
+chosen range.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -524,7 +549,13 @@ and this document:
 | **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People card shows it as each person's logged time against expected, and since Phase 31 nothing else marks it |
 
 **Capacity** is a `UserCapacity` row: contracted minutes per week with the date
-it takes effect, unique on `(companyId, userId, validFrom)`. The row in force on
+it takes effect, unique on `(companyId, userId, validFrom)`. An owner sets it
+as **working hours a day**, in 30-minute steps up to 12h, and the week is that
+day times five (Phase 41, Decision 6), so the API accepts only multiples of
+2h 30m a week up to 60h; hours saved before keep their value until next
+changed. The day is what is expected of the person on every working day and
+the most they can be planned on one; an uneven week is set as its usual day,
+and logged time is never limited by it. The row in force on
 a date is the last one starting on or before it; with no row at all, the company
 default `standardWorkHoursPerDay × 5` applies, so an ordinary full-time company
 keeps an empty table. A change is a new row rather than an edit, which is what
@@ -587,7 +618,8 @@ The company holds `timezone`, `currency`, `weekStartDay` and
 `standardWorkHoursPerDay`. The timesheet reads all except currency rather than
 hardcoding calendar assumptions. Currency is neither asked for nor shown (D7).
 The time zone is any valid IANA zone except Russia's; the old name `Europe/Kiev`
-is saved as `Europe/Kyiv`. The standard working day allows half hours. Slugs are
+is saved as `Europe/Kyiv`. The standard working day is 1h to 12h in 30-minute
+steps, as a person's working day is. Slugs are
 unique and regenerated on rename. Changing the time zone, the week start or the
 standard working day asks first and says what each one moves; several changed
 at once are confirmed together in one dialog.
@@ -813,25 +845,32 @@ see, and how a new company gets started. §7 plans that work.
   week and the filters are in the URL, so a reload keeps them. A deactivated
   person is marked and listed on every week before they left, logged time or
   not; their days before they left stay editable in an open month, and from
-  their leave day on the row is read-only. Filtered to
+  their leave day on the row is read-only, and their week reads against what
+  was expected up to the day they left. Filtered to
   a project, the rows and the team total show only that project's hours, with
-  no Expected, since that is about the whole week. Days follow the timesheet's look: a day over
+  no Expected, since that is about the whole week; the rows are the project's
+  members plus anyone who logged on it that week, so somebody removed from it
+  since stays listed, marked "Former member", with their hours in the total
+  and their entries correctable (Phase 41). Days follow the timesheet's look: a day over
   the person's hours on solid amber, a weekend with time in amber stripes.
 - **Absences** — a person records their own days away as a date range with a
   type, from the timesheet, and an owner or manager records them for somebody
   from Team time; the timesheet and the team grid mark those days, so an empty
   week explains itself. A day is either worked or absent, never both.
-- **Capacity and expected hours** — an owner sets somebody's contracted hours
-  from a date; both week views read one backend figure for what was expected,
+- **Capacity and expected hours** — an owner sets somebody's working hours a
+  day from a date, the week shown beside it; both week views read one backend figure for what was expected,
   absences reduce it, and each shows logged time against it; no screen marks a
   person behind (Phase 31, by decision).
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, or a whole period for one person from their cell: a month at a
   time or any range, several projects with hours per working day, with a
   preview of the working days, the absences skipped, what is already planned
-  and anything that does not fit before saving, all-or-nothing. They see
-  planned against available hours and which weeks no longer fit, and open an
-  absence day straight into its form. Everyone sees their own plan on the
+  and anything that does not fit before saving, all-or-nothing. The grid
+  shows working days only; each person's week reads planned against available
+  hours ("30h of 32h") with a bar, and says which weeks no longer fit. A day
+  can be planned up to the person's own working day, in 15-minute steps, and the day dialog's
+  hours stop at what still fits. An absence day opens straight into its form, and
+  an absence can be added from a day or a period. Everyone sees their own plan on the
   timesheet until they log time that day, as faint blocks in the project's
   colour that open the time form on that project; recording an absence removes
   the plans on its days.
@@ -963,15 +1002,16 @@ rule everywhere — the people in the teams they lead, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is forty-nine
-suites and 859 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is fifty
+suites and 883 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, monthly locking in and outside UTC and a Close that waits for
+planning rules, who added and changed a time entry or an absence, the lock
+order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export, page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-three Vitest files and 438 tests: its date, month,
+The frontend has seventy-three Vitest files and 439 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
@@ -1023,7 +1063,7 @@ itself started without help.
 
 ### Delivered
 
-Built from August to October 2026, one branch and one pull request per phase,
+Built from August to November 2026, one branch and one pull request per phase,
 except Phases 20 to 25, which shipped together, and Phase 38, which shipped as
 three pull requests (#56, #57, #58).
 The rules each one settled are in §2 and §4–§6; the detail of how each was built
@@ -1070,6 +1110,7 @@ is in its pull request.
 | 38 (part 3) | Cross-cutting: a deactivated account unable to reset its password or keep a session, and edited only once reactivated; one owner per company; archiving a project or removing a member deleting exactly the plans it names, with plan saves waiting for it; one confirmation dialog with Delete and Remove by what happens to the data and colours by what can be undone; changing the time zone or week start asking first, with one dialog for several changes; Team time closing the days of an earlier inactive spell, and an invitation unable to slip into a team being archived; a person's plans changed and deleted across a period from the period form |
 | 39 | Time entry on a phone: the timesheet's week as a list of days where seven columns don't fit, each entry, plan and absence a row with its details and the list opening at today; short entries at least one readable line tall on the grid; a day no longer one button around its entries, the empty part of a day logging time and an absence opening from its own button; Timesheet and My time renamed Log my time and Review my time |
 | 40 | Consistent screens: WorkTrack's own pages for a missing address, an error and a loading route; a browser-tab title per page; the month on Reports and Review my time, and Planning's team, kept in the address; Settings asking before unsaved edits are dropped by a link or a reload; "company" for the company and its settings, "workspace" only for the working environment; the capacity date on the shared calendar, unable to reach a locked month; the setup checklist no longer ticking Company details; Team time's total following its search; the documentation checked against the code |
+| 41 | History that keeps its people: Team time's project filter keeping the people removed from the project, marked "Former member", with their hours in its total; who added and last changed a time entry or an absence recorded and named to everyone who can see it; the period preview naming only the days a save changes, and adding a person to a project locking them before the project, as a plan save does; the daily planning limit as the person's own day, and working hours set as a day in 30-minute steps up to 12h, the company's standard day too; Planning on working days only, with a compact "Planned" column, hour pickers stopping at the person's day, a day dialog whose hours stop at what fits and that closes after a save, conflicts in a period summed up, and "Add absence" from a day or a period |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1127,7 +1168,7 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning** *(started, Phases 31–32 and 37)*. The
+**Area 4 — Team oversight and planning** *(started, Phases 31–32, 37 and 41)*. The
 manager's and owner's week views: the team grid and the planning grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,
 absences and locks the same way. Planning and Team time stay separate screens by

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarRange, Plus, X } from "lucide-react";
+import { CalendarOff, CalendarRange, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PlanningWeekRow } from "@/types";
@@ -39,6 +39,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { PLAN_MINUTE_STEP, isOnPlanStep, toPlanStep } from "../plan-minutes";
 import { PeriodListedRow } from "./PeriodListedRow";
 import { PeriodPicker } from "./PeriodPicker";
 import { PeriodPreview } from "./PeriodPreview";
@@ -52,8 +53,6 @@ import {
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
-const MINUTE_STEP = 15;
-
 const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
   Number(hours) * 60 + Number(minutes);
 
@@ -64,7 +63,7 @@ const addedLineSchema = z
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
   })
-  .refine((data) => data.minutes % MINUTE_STEP === 0, {
+  .refine((data) => isOnPlanStep(data.minutes), {
     message: "Plan in 15-minute steps",
     path: ["hours"],
   })
@@ -99,7 +98,8 @@ const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
   row: PlanningWeekRow;
-  dayLimitMinutes: number;
+  /** Opens the absence form on the chosen days, to change before saving. */
+  onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
 };
 
@@ -110,7 +110,7 @@ type PlanPeriodModalProps = {
  */
 export const PlanPeriodModal = ({
   row,
-  dayLimitMinutes,
+  onAddAbsence,
   onClose,
 }: PlanPeriodModalProps) => {
   const { timezone } = useWorkSettings();
@@ -216,6 +216,12 @@ export const PlanPeriodModal = ({
       ? { userId: row.user.id, startDate, endDate, projects: payloadProjects }
       : null,
   );
+  // No project can take more than the person's longest day in the period;
+  // until the server says, the longest in the week the dialog opened from.
+  const dayLimitMinutes =
+    preview?.dayLimitMinutes ??
+    Math.max(0, ...row.dayLimits.map((day) => day.minutes));
+  const maxPlanMinutes = toPlanStep(dayLimitMinutes);
   const { items: absences } = useAllAbsencesQuery(
     { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
     { enabled: hasPeriod },
@@ -234,6 +240,7 @@ export const PlanPeriodModal = ({
               line,
               minutes,
               changeOf(line.projectId)?.changed ?? line.days.length,
+              workingDays,
             ),
           ];
     }),
@@ -254,7 +261,9 @@ export const PlanPeriodModal = ({
   // Nothing saves until there is a change and the server has said it fits.
   const cannotSave =
     payloadProjects.length === 0 ||
-    [...editedMinutes.values()].includes(0) ||
+    [...editedMinutes.values()].some(
+      (minutes) => minutes === 0 || !isOnPlanStep(minutes),
+    ) ||
     added.some((line) => isListedAbove(line.projectId)) ||
     !preview ||
     preview.plannedDays.length === 0 ||
@@ -345,6 +354,18 @@ export const PlanPeriodModal = ({
           <>
             <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onAddAbsence(startDate, endDate)}
+              className="mr-auto"
+              disabled={!hasPeriod || planPeriod.isPending}
+            >
+              <CalendarOff className="size-4" />
+              Add absence
+            </Button>
+
+            <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
@@ -407,7 +428,7 @@ export const PlanPeriodModal = ({
                     isOnProject={personProjects.some(
                       (project) => project.id === line.projectId,
                     )}
-                    minuteStep={MINUTE_STEP}
+                    maxMinutes={maxPlanMinutes}
                     formId={FORM_ID}
                     onEdit={editLine(line.projectId)}
                     onDelete={() => setDeleting(line)}
@@ -476,7 +497,8 @@ export const PlanPeriodModal = ({
                         aria-label={`Hours a day for project ${index + 1}`}
                         hours={Number(added[index]?.hours ?? 0)}
                         minutes={Number(added[index]?.minutes ?? 0)}
-                        minuteStep={MINUTE_STEP}
+                        minuteStep={PLAN_MINUTE_STEP}
+                        maxMinutes={maxPlanMinutes}
                         formId={FORM_ID}
                         onHoursChange={(value) =>
                           setValue(`added.${index}.hours`, value, {

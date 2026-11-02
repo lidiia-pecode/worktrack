@@ -58,6 +58,14 @@ export class TimeLog {
   @Column({ type: 'date', nullable: false })
   date!: string;
 
+  /** Who added the record; null before this was recorded. */
+  @Column({ type: 'uuid', name: 'created_by_id', nullable: true })
+  createdById!: string | null;
+
+  /** Who last changed the record; null until it is changed. */
+  @Column({ type: 'uuid', name: 'updated_by_id', nullable: true })
+  updatedById!: string | null;
+
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;
 
@@ -78,6 +86,14 @@ export class TimeLog {
   })
   @JoinColumn({ name: 'user_id' })
   user!: User;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by_id' })
+  createdBy?: User | null;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'updated_by_id' })
+  updatedBy?: User | null;
 
   @ManyToOne(() => ProjectActivity, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'project_activity_id' })

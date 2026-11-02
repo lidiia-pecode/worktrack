@@ -28,8 +28,10 @@ import {
 } from './dtos/plan-period-payload.dto';
 import {
   PeriodLine,
+  PeriodProblem,
   PeriodWeek,
   PeriodWrites,
+  describePeriodProblem,
   formatDay,
   formatMinutes,
   periodProblems,
@@ -46,8 +48,10 @@ import {
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { CapacityService } from 'src/capacity/capacity.service';
 import {
   addDays,
+  eachDate,
   isWorkingDay,
   todayISODate,
   weekRange,
@@ -72,6 +76,8 @@ export interface PlanningWeekRow {
   user: VisibleUser;
   plannedMinutes: number;
   availableMinutes: number;
+  /** The most the person can be planned on each day of the week. */
+  dayLimits: { date: string; minutes: number }[];
   projects: Pick<Project, 'id' | 'name'>[];
   entries: PlanningEntry[];
 }
@@ -79,7 +85,6 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  dayLimitMinutes: number;
   rows: PlanningWeekRow[];
 }
 
@@ -94,20 +99,23 @@ export interface PeriodPreview {
   /** The working days the plan would cover. */
   plannedDays: string[];
   /** Every day and week the plan would take over its limit. */
-  problems: string[];
+  problems: PeriodProblem[];
   /** How many plans saving would add and change, per listed project. */
   changes: { projectId: string; added: number; changed: number }[];
+  /** The person's longest day in the period: the most one project can take. */
+  dayLimitMinutes: number;
 }
 
 interface ResolvedPeriod {
   plannedDays: Set<string>;
-  problems: string[];
+  problems: PeriodProblem[];
   lines: PeriodLine[];
   writes: PeriodWrites;
+  dayLimitMinutes: number;
 }
 
-const dayLimitMinutes = (company: PlanningCompany): number =>
-  Math.round(Number(company.standardWorkHoursPerDay) * 60);
+/** Who can be planned how much on a day; see `dayLimitsFor`. */
+type DayLimitOn = (userId: string, date: string) => number;
 
 @Injectable()
 export class PlanningService {
@@ -121,6 +129,7 @@ export class PlanningService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
+    private readonly capacity: CapacityService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -255,9 +264,10 @@ export class PlanningService {
     );
     const userIds = users.map((row) => row.id);
 
-    const [available, projectsByUser] = await Promise.all([
+    const [available, projectsByUser, dayLimitOn] = await Promise.all([
       this.expectedHours.expectedFor(user.companyId, userIds, start, end),
       this.activeProjectsFor(user.companyId, userIds),
+      this.dayLimitsFor(company.id, userIds, end),
     ]);
 
     const rows = users.map((rowUser): PlanningWeekRow => {
@@ -267,6 +277,10 @@ export class PlanningService {
         user: rowUser,
         plannedMinutes: own.reduce((sum, e) => sum + e.plannedMinutes, 0),
         availableMinutes: available.get(rowUser.id)?.total ?? 0,
+        dayLimits: [...eachDate(start, end)].map((date) => ({
+          date,
+          minutes: dayLimitOn(rowUser.id, date),
+        })),
         projects: projectsByUser.get(rowUser.id) ?? [],
         entries: own,
       };
@@ -275,7 +289,6 @@ export class PlanningService {
     return {
       weekStart: start,
       weekEnd: end,
-      dayLimitMinutes: dayLimitMinutes(company),
       rows,
     };
   }
@@ -511,7 +524,7 @@ export class PlanningService {
     payload: PlanPeriodPayload,
     user: AuthUser,
   ): Promise<PeriodPreview> {
-    const { plannedDays, problems, lines, writes } =
+    const { plannedDays, problems, lines, writes, dayLimitMinutes } =
       await this.dataSource.transaction((manager) =>
         this.resolvePeriod(payload, user, manager),
       );
@@ -525,6 +538,7 @@ export class PlanningService {
         changed: writes.changed.filter((c) => c.entry.projectId === projectId)
           .length,
       })),
+      dayLimitMinutes,
     };
   }
 
@@ -554,7 +568,9 @@ export class PlanningService {
           `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences and days before the person joined are skipped.`,
         );
       }
-      if (problems.length > 0) throw new BadRequestException(problems);
+      if (problems.length > 0) {
+        throw new BadRequestException(problems.map(describePeriodProblem));
+      }
 
       await manager.save(PlanningEntry, [
         ...writes.created.map(({ date, projectId, minutes }) =>
@@ -639,16 +655,23 @@ export class PlanningService {
       .getMany();
 
     const writes = periodWrites({ plannedDays, lines, existing });
+    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], endDate);
     const problems = periodProblems({
       weeks,
       plannedDays,
       lines,
       writes,
       existing,
-      dayLimit: dayLimitMinutes(company),
+      dayLimitOn: (date) => dayLimitOn(userId, date),
     });
+    const dayLimitMinutes = Math.max(
+      0,
+      ...[...eachDate(startDate, endDate)].map((date) =>
+        dayLimitOn(userId, date),
+      ),
+    );
 
-    return { plannedDays, problems, lines, writes };
+    return { plannedDays, problems, lines, writes, dayLimitMinutes };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
@@ -974,6 +997,27 @@ export class PlanningService {
   }
 
   /**
+   * The most each person can be planned on a day: their working hours a week
+   * on that date over five, the day their expected hours count (Decision 5,
+   * Phase 41), or the company's standard day when they have none of their own.
+   */
+  private async dayLimitsFor(
+    companyId: string,
+    userIds: string[],
+    until: string,
+  ): Promise<DayLimitOn> {
+    const timelines = await this.capacity.timelinesFor(
+      companyId,
+      userIds,
+      until,
+    );
+
+    // Whole minutes: a day saved before the 30-minute steps can be 6h 24.4m.
+    return (userId, date) =>
+      Math.floor(timelines.get(userId)?.minutesPerDayOn(date) ?? 0);
+  }
+
+  /**
    * Every company week the range touches, with what the person has available
    * in it — the same figure a single plan is checked against.
    */
@@ -1128,7 +1172,8 @@ export class PlanningService {
       next.date,
       excludeId,
     );
-    const dayLimit = dayLimitMinutes(company);
+    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], next.date);
+    const dayLimit = dayLimitOn(userId, next.date);
     const nextDay = otherDay + next.minutes;
 
     if (
@@ -1136,7 +1181,7 @@ export class PlanningService {
       nextDay > otherDay + previousIn(next.date, next.date)
     ) {
       throw new BadRequestException(
-        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${next.date} of a ${formatMinutes(dayLimit)} working day.`,
+        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${formatDay(next.date)}, of ${formatMinutes(dayLimit)} a day.`,
       );
     }
 
@@ -1161,7 +1206,7 @@ export class PlanningService {
 
     if (nextWeek > available) {
       throw new BadRequestException(
-        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${week.start}.`,
+        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${formatDay(week.start, false)}.`,
       );
     }
   }

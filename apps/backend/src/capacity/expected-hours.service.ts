@@ -6,12 +6,7 @@ import { Absence } from 'src/absences/entities/absence.entity';
 import { assertDateRange } from 'src/reporting/date-range.util';
 
 import { CapacityService, InactiveSpell } from './capacity.service';
-import {
-  WORKING_DAYS_PER_WEEK,
-  eachDate,
-  isWorkingDay,
-  todayISODate,
-} from './working-days.util';
+import { eachDate, isWorkingDay, todayISODate } from './working-days.util';
 
 export interface ExpectedDay {
   date: string;
@@ -220,8 +215,7 @@ export class ExpectedHoursService {
           continue;
         }
 
-        const share =
-          (timeline?.minutesPerWeekOn(date) ?? 0) / WORKING_DAYS_PER_WEEK;
+        const share = timeline?.minutesPerDayOn(date) ?? 0;
         const hasFinished = date < today;
 
         const isAbsent = absences.some(

@@ -17,9 +17,20 @@ type TimePickerProps = {
   formId?: string;
   /** Names the pair where no visible label does, e.g. in a row of controls. */
   "aria-label"?: string;
+  /** The longest duration it offers; a whole day unless a form limits it. */
+  maxMinutes?: number;
 };
 
 const MAX_MINUTES = 24 * 60;
+
+/**
+ * A minutes step lands on the step's grid: 24 goes up to 30 and down to 15
+ * with 15-minute steps, so a value typed off the grid comes back onto it.
+ */
+const nextOnStep = (total: number, direction: 1 | -1, step: number) =>
+  direction === 1
+    ? Math.floor(total / step) * step + step
+    : Math.ceil(total / step) * step - step;
 
 /**
  * Hours and minutes as one control the height of an input, so it sits beside
@@ -36,19 +47,20 @@ export const TimePicker = ({
   minuteStep = 5,
   formId,
   "aria-label": ariaLabel,
+  maxMinutes = MAX_MINUTES,
 }: TimePickerProps) => {
   const total = hours * 60 + minutes;
 
   // Steps and typing both set the whole duration, so minutes carry into the
   // hours: "75" in the minutes is an hour and a quarter more.
   const setTotal = (minutesInAll: number) => {
-    const next = Math.max(0, Math.min(MAX_MINUTES, minutesInAll));
+    const next = Math.max(0, Math.min(maxMinutes, minutesInAll));
     onHoursChange(Math.floor(next / 60));
     onMinutesChange(next % 60);
   };
 
   const fieldProps = {
-    canIncrease: total < MAX_MINUTES,
+    canIncrease: total < maxMinutes,
     canDecrease: total > 0,
     formId,
   };
@@ -70,7 +82,7 @@ export const TimePicker = ({
         {...fieldProps}
         label="Hours"
         value={hours}
-        max={24}
+        max={Math.floor(maxMinutes / 60)}
         onStep={(direction) => setTotal(total + direction * 60)}
         onChange={(value) => setTotal(value * 60 + minutes)}
       />
@@ -85,7 +97,9 @@ export const TimePicker = ({
         label="Minutes"
         value={minutes}
         max={59}
-        onStep={(direction) => setTotal(total + direction * minuteStep)}
+        onStep={(direction) =>
+          setTotal(nextOnStep(total, direction, minuteStep))
+        }
         onChange={(value) => setTotal(hours * 60 + value)}
       />
     </div>

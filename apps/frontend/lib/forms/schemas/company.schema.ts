@@ -2,6 +2,7 @@ import { WeekDay } from "@/types/enums";
 import { z } from "zod";
 
 import { companyNameSchema } from "./names.schema";
+import { workDayHoursSchema } from "./work-day.schema";
 
 export const companySchema = z.object({
   companyName: companyNameSchema,
@@ -10,10 +11,7 @@ export const companySchema = z.object({
 
   weekStartDay: z.enum(WeekDay),
 
-  standardWorkHoursPerDay: z
-    .number()
-    .min(1, "Work hours must be at least 1")
-    .max(24, "Work hours cannot exceed 24"),
+  standardWorkHoursPerDay: workDayHoursSchema(1),
 });
 
 export type CompanyFormValues = z.infer<typeof companySchema>;

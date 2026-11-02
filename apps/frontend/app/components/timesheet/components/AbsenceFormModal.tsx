@@ -10,7 +10,12 @@ import TextareaAutosize from "react-textarea-autosize";
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
-import { formatDuration, isISODateRange } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  fromISODate,
+  isISODateRange,
+} from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import { Field, fieldControlClassName } from "@/components/ui/field";
@@ -21,6 +26,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { ChangedByNote } from "./ChangedByNote";
 
 const FORM_ID = "absence-form";
 
@@ -59,7 +65,11 @@ type Props = {
   userId: string;
   /** Named under the title when the form is for someone else. */
   subjectName?: string;
+  /** The first day a new absence starts on, and its last unless `endDate` says. */
   date: string;
+  endDate?: string;
+  /** For one known day, such as a Planning day: no dates to pick, the day named. */
+  isSingleDay?: boolean;
   absence?: Absence;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
   onUpdate: (id: string, payload: UpdateAbsencePayload) => Promise<unknown>;
@@ -74,6 +84,8 @@ export const AbsenceFormModal = ({
   userId,
   subjectName,
   date,
+  endDate: lastDate = date,
+  isSingleDay = false,
   absence,
   onCreate,
   onUpdate,
@@ -88,10 +100,10 @@ export const AbsenceFormModal = ({
     () => ({
       type: absence?.type ?? AbsenceType.VACATION,
       startDate: absence?.startDate ?? date,
-      endDate: absence?.endDate ?? date,
+      endDate: absence?.endDate ?? lastDate,
       note: absence?.note ?? "",
     }),
-    [absence, date],
+    [absence, date, lastDate],
   );
 
   const {
@@ -187,7 +199,13 @@ export const AbsenceFormModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description={subjectName}
+        description={
+          isSingleDay
+            ? [subjectName, formatLongDayLabel(fromISODate(date))]
+                .filter(Boolean)
+                .join(" · ")
+            : subjectName
+        }
         icon={<CalendarOff className="size-5" />}
         footer={
           <>
@@ -247,26 +265,29 @@ export const AbsenceFormModal = ({
             )}
           />
 
-          <Field
-            id="absence-days"
-            label="Days"
-            group
-            error={errors.startDate?.message ?? errors.endDate?.message}
-          >
-            <DateRangePicker
-              startDate={startDate}
-              endDate={endDate}
-              invalid={!!(errors.startDate || errors.endDate)}
-              onChange={setDays}
-            />
-          </Field>
+          {!isSingleDay && (
+            <Field
+              id="absence-days"
+              label="Days"
+              group
+              error={errors.startDate?.message ?? errors.endDate?.message}
+            >
+              <DateRangePicker
+                startDate={startDate}
+                endDate={endDate}
+                invalid={!!(errors.startDate || errors.endDate)}
+                onChange={setDays}
+              />
+            </Field>
+          )}
 
           {removedPlans && (
             <p className="flex gap-2 text-sm text-muted-foreground">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 Deletes {removedPlans.count}{" "}
-                {removedPlans.count === 1 ? "plan" : "plans"} on these days:{" "}
+                {removedPlans.count === 1 ? "plan" : "plans"} on{" "}
+                {isSingleDay ? "this day" : "these days"}:{" "}
                 {removedPlans.projects}
               </span>
             </p>
@@ -285,6 +306,8 @@ export const AbsenceFormModal = ({
               )}
             />
           </Field>
+
+          {absence && <ChangedByNote record={absence} />}
         </form>
       </ResourceFormModal>
 
@@ -348,6 +371,8 @@ export const LockedAbsenceModal = ({
         </div>
       )}
     </dl>
+
+    <ChangedByNote record={absence} className="mt-6" />
 
     <p className="mt-6 flex gap-2 text-sm text-muted-foreground">
       <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />

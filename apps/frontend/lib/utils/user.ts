@@ -1,4 +1,4 @@
-import { AvatarUser, InactiveSpell, User } from "@/types";
+import { AvatarUser, InactiveSpell, User, UserName } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
 import { formatDayMonthYearLabel, isoDateInTimeZone } from "./date";
@@ -10,6 +10,34 @@ export const initials = (u: User | AvatarUser | null) => {
 
 export const fullName = (u: User | AvatarUser) =>
   `${u.firstName} ${u.lastName}`;
+
+type AuthoredRecord = {
+  userId: string;
+  createdBy?: UserName | null;
+  updatedBy?: UserName | null;
+};
+
+/**
+ * Who else added or last changed someone's time entry or absence, or null
+ * when only the person did (or it predates the record being kept).
+ */
+export const changedByText = ({
+  userId,
+  createdBy,
+  updatedBy,
+}: AuthoredRecord) => {
+  const addedBy = createdBy?.id !== userId ? createdBy : null;
+  const changedBy = updatedBy?.id !== userId ? updatedBy : null;
+
+  if (addedBy && changedBy) {
+    return addedBy.id === changedBy.id
+      ? `Added and changed by ${fullName(addedBy)}`
+      : `Added by ${fullName(addedBy)} · changed by ${fullName(changedBy)}`;
+  }
+  if (addedBy) return `Added by ${fullName(addedBy)}`;
+  if (changedBy) return `Changed by ${fullName(changedBy)}`;
+  return null;
+};
 
 export const hasManagerAccess = (role?: string) =>
   role === UserRole.MANAGER || role === UserRole.OWNER;

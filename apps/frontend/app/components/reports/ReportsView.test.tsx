@@ -18,6 +18,7 @@ import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import {
   addDays,
   addMonthsToKey,
+  formatDayMonthLabel,
   isWeekend,
   todayISODate,
   toISODate,
@@ -28,6 +29,8 @@ import { AbsenceType } from "@/types/enums";
 import { ReportsView } from "./ReportsView";
 
 const HOUR = 60;
+// The page opens on the current month, so a counted day has to fall inside it.
+const countedUntil = `${toMonthKey(todayISODate("UTC"))}-01`;
 
 vi.mock("@/hooks/auth/useCompany", () => ({
   useCompany: () => ({
@@ -464,12 +467,11 @@ describe("ReportsView", () => {
   it("says how far the month is counted, whether it can change, and whose it is", () => {
     const report = peopleReport(team);
 
-    showReports(
-      { ...report, countedUntil: "2026-10-23" },
-      projectsReport(projects),
-    );
+    showReports({ ...report, countedUntil }, projectsReport(projects));
     expect(
-      screen.getByText("Up to Oct 23 · open for edits · your teams"),
+      screen.getByText(
+        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits · your teams`,
+      ),
     ).toBeInTheDocument();
     cleanup();
 
@@ -483,7 +485,7 @@ describe("ReportsView", () => {
   });
 
   it("says nothing about the month while the next one loads", () => {
-    const report = { ...peopleReport(team), countedUntil: "2026-10-23" };
+    const report = { ...peopleReport(team), countedUntil };
     vi.mocked(usePeopleReport).mockReturnValue({
       ...loaded(report),
       isPlaceholderData: true,
@@ -495,7 +497,7 @@ describe("ReportsView", () => {
     );
     render(<ReportsView />);
 
-    expect(screen.queryByText(/Up to Oct 23/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Up to/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "People" }).closest("[aria-busy]"),
     ).toHaveAttribute("aria-busy", "true");

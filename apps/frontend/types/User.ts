@@ -87,6 +87,9 @@ export interface UserDetails extends User {
   teams: UserTeamMembership[];
 }
 
+/** Just enough to name someone, such as who added or changed a record. */
+export type UserName = Pick<User, "id" | "firstName" | "lastName">;
+
 export type AvatarUser = Pick<User, "firstName" | "lastName"> & {
   avatarUrl?: string | null;
 };

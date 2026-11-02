@@ -3,6 +3,7 @@ import {
   ArrayMinSize,
   IsArray,
   IsBoolean,
+  IsDivisibleBy,
   IsInt,
   IsOptional,
   IsUUID,
@@ -11,6 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
+import { MAX_PLAN_MINUTES, PLAN_MINUTES_STEP } from '../planning-period.util';
 
 export class PeriodProjectPayload {
   @IsUUID()
@@ -18,7 +20,10 @@ export class PeriodProjectPayload {
 
   @IsInt()
   @Min(1)
-  @Max(1440)
+  @Max(MAX_PLAN_MINUTES)
+  @IsDivisibleBy(PLAN_MINUTES_STEP, {
+    message: 'minutesPerDay must be in 15-minute steps',
+  })
   minutesPerDay!: number;
 
   /** Only the days in the range that already have this project; otherwise every working day. */

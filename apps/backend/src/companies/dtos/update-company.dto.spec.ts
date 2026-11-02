@@ -44,3 +44,20 @@ describe('UpdateCompanyDto timezone', () => {
     },
   );
 });
+
+describe('UpdateCompanyDto standard day', () => {
+  const isAccepted = async (standardWorkHoursPerDay: number) =>
+    (
+      await validate(
+        plainToInstance(UpdateCompanyDto, { standardWorkHoursPerDay }),
+      )
+    ).length === 0;
+
+  it.each([1, 6.5, 8, 12])('accepts %ph', async (hours) => {
+    await expect(isAccepted(hours)).resolves.toBe(true);
+  });
+
+  it.each([6.4, 7.75, 12.5, 24])('refuses %ph', async (hours) => {
+    await expect(isAccepted(hours)).resolves.toBe(false);
+  });
+});

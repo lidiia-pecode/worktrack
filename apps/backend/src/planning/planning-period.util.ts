@@ -8,6 +8,14 @@ export interface PeriodWeek {
   workingDays: string[];
 }
 
+/**
+ * Plans are made in quarter hours, so a person's day, whole half-hours since
+ * Phase 41 (decision 6), can always be filled exactly.
+ */
+export const PLAN_MINUTES_STEP = 15;
+/** No plan can be longer than a day. */
+export const MAX_PLAN_MINUTES = 24 * 60;
+
 export const formatMinutes = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -73,6 +81,22 @@ export const periodWrites = ({
 };
 
 /**
+ * A day over the person's own day, or a week over what they have available,
+ * as a period plan would leave it. The screen sums them up; a refusal words
+ * each one (`describePeriodProblem`).
+ */
+export interface PeriodProblem {
+  kind: 'day' | 'week';
+  /** The day, or the week's first day. */
+  date: string;
+  plannedMinutes: number;
+  /** The person's day, or what they have available in the week. */
+  limitMinutes: number;
+  /** Planned on projects the period doesn't list. */
+  otherProjectsMinutes: number;
+}
+
+/**
  * Every day and week a period plan would take over its limit, on the plans as
  * they would be after it. As with a single plan, only a total the write
  * raises counts.
@@ -83,7 +107,7 @@ export const periodProblems = ({
   lines,
   writes,
   existing,
-  dayLimit,
+  dayLimitOn,
 }: {
   weeks: PeriodWeek[];
   plannedDays: Set<string>;
@@ -91,8 +115,9 @@ export const periodProblems = ({
   writes: PeriodWrites;
   /** The person's plans across every week the period touches. */
   existing: PlanningEntry[];
-  dayLimit: number;
-}): string[] => {
+  /** The most the person can be planned on a date. */
+  dayLimitOn: (date: string) => number;
+}): PeriodProblem[] => {
   const listed = new Set(lines.map((line) => line.projectId));
   const newMinutes = new Map(
     writes.changed.map(({ entry, minutes }) => [entry.id, minutes]),
@@ -124,30 +149,46 @@ export const periodProblems = ({
       ),
     };
   };
-  const onOtherProjects = (minutes: number): string =>
-    minutes > 0
-      ? ` (${formatMinutes(minutes)} already planned on other projects)`
-      : '';
-
-  const problems: string[] = [];
+  const problems: PeriodProblem[] = [];
 
   for (const week of weeks) {
     for (const date of week.workingDays.filter((d) => plannedDays.has(d))) {
       const day = totalsBetween(date, date);
-      if (day.after > dayLimit && day.after > day.before) {
-        problems.push(
-          `${formatDay(date)}: ${formatMinutes(day.after)} planned, over the ${formatMinutes(dayLimit)} working day${onOtherProjects(day.otherProjects)}`,
-        );
+      const limitMinutes = dayLimitOn(date);
+      if (day.after > limitMinutes && day.after > day.before) {
+        problems.push({
+          kind: 'day',
+          date,
+          plannedMinutes: day.after,
+          limitMinutes,
+          otherProjectsMinutes: day.otherProjects,
+        });
       }
     }
 
     const total = totalsBetween(week.start, week.end);
     if (total.after > week.availableMinutes && total.after > total.before) {
-      problems.push(
-        `Week of ${formatDay(week.start, false)}: ${formatMinutes(total.after)} planned of ${formatMinutes(week.availableMinutes)} available${onOtherProjects(total.otherProjects)}`,
-      );
+      problems.push({
+        kind: 'week',
+        date: week.start,
+        plannedMinutes: total.after,
+        limitMinutes: week.availableMinutes,
+        otherProjectsMinutes: total.otherProjects,
+      });
     }
   }
 
   return problems;
+};
+
+/** A problem in words, for a refusal: "Mon 2 Nov: 8h planned, over the 6h working day". */
+export const describePeriodProblem = (problem: PeriodProblem): string => {
+  const onOtherProjects =
+    problem.otherProjectsMinutes > 0
+      ? ` (${formatMinutes(problem.otherProjectsMinutes)} already planned on other projects)`
+      : '';
+
+  return problem.kind === 'day'
+    ? `${formatDay(problem.date)}: ${formatMinutes(problem.plannedMinutes)} planned, over the ${formatMinutes(problem.limitMinutes)} working day${onOtherProjects}`
+    : `Week of ${formatDay(problem.date, false)}: ${formatMinutes(problem.plannedMinutes)} planned of ${formatMinutes(problem.limitMinutes)} available${onOtherProjects}`;
 };

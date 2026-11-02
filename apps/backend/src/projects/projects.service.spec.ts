@@ -9,6 +9,7 @@ import {
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { Company } from 'src/companies/entities/company.entity';
 import { ActivitiesService } from 'src/activities/activities.service';
@@ -791,6 +792,45 @@ describe('ProjectsService membership scope', () => {
         sorted(alphaManager, alphaMember),
       );
       expect(project.membersCount).toBe(2);
+    });
+
+    it('waits for the person before taking the project, as a plan write does', async () => {
+      const projectId = await createProject('lock order', [alphaManager]);
+      // A plan write for the person: it holds them while it reaches for the project.
+      const planWrite = dataSource.createQueryRunner();
+      await planWrite.connect();
+      await planWrite.startTransaction();
+
+      try {
+        await planWrite.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+          alphaMember.id,
+        ]);
+        const addition = service.addMember(
+          projectId,
+          alphaMember.id,
+          alphaManager,
+        );
+        await waitUntilBlockedBy(dataSource, planWrite);
+
+        // Still free for the plan write to take, so neither waits on the other.
+        await expect(
+          dataSource.query(
+            'SELECT id FROM projects WHERE id = $1 FOR SHARE NOWAIT',
+            [projectId],
+          ),
+        ).resolves.toHaveLength(1);
+
+        await planWrite.commitTransaction();
+        await addition;
+      } finally {
+        if (planWrite.isTransactionActive)
+          await planWrite.rollbackTransaction();
+        await planWrite.release();
+      }
+
+      await expect(memberIds(projectId)).resolves.toEqual(
+        sorted(alphaManager, alphaMember),
+      );
     });
 
     it("refuses someone from another manager's team", async () => {

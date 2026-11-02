@@ -58,14 +58,28 @@ export interface PlannedPeriod {
   updated: number;
 }
 
+/** Mirrors the backend `PeriodProblem`: a day or a week a period plan takes over its limit. */
+export interface PeriodProblem {
+  kind: "day" | "week";
+  /** The day, or the week's first day. */
+  date: string;
+  plannedMinutes: number;
+  /** The person's day, or what they have available in the week. */
+  limitMinutes: number;
+  /** Planned on projects the period doesn't list. */
+  otherProjectsMinutes: number;
+}
+
 // Response (back PeriodPreview): the same plan checked, not saved
 export interface PeriodPreview {
   /** The working days the plan would cover. */
   plannedDays: string[];
   /** Every day and week the plan would take over its limit. */
-  problems: string[];
+  problems: PeriodProblem[];
   /** How many plans saving would add and change, per listed project. */
   changes: { projectId: string; added: number; changed: number }[];
+  /** The person's longest day in the period: the most one project can take. */
+  dayLimitMinutes: number;
 }
 
 // Query (back PlanningQueryDto)
@@ -92,6 +106,8 @@ export interface PlanningWeekRow {
   user: TeamSummaryUser;
   plannedMinutes: number;
   availableMinutes: number;
+  /** The most the person can be planned on each day of the week: their own day then. */
+  dayLimits: { date: string; minutes: number }[];
   projects: PlanningProjectOption[];
   entries: PlanningEntry[];
 }
@@ -99,7 +115,6 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  dayLimitMinutes: number;
   rows: PlanningWeekRow[];
 }
 

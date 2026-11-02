@@ -10,7 +10,7 @@ import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
-import { DayShare } from "./period-lines";
+import { DayShare, problemSummary } from "./period-lines";
 
 const countWeekdays = (startDate: string, endDate: string): number => {
   let count = 0;
@@ -171,24 +171,28 @@ export const PeriodPreview = ({
         </p>
       )}
 
-      {(conflicts.length > 0 || refusal.length > 0) && (
+      {refusal.length > 0 && (
         <div className="space-y-1 text-destructive-text" role="alert">
-          <p className="font-medium">
-            {refusal.length > 0
-              ? "This period can't be planned."
-              : `Doesn't fit on ${conflicts.length} ${conflicts.length === 1 ? "day or week" : "days or weeks"}:`}
-          </p>
+          <p className="font-medium">This period can&apos;t be planned.</p>
           <ul className="list-disc space-y-0.5 pl-4">
-            {[...refusal, ...conflicts].map((problem) => (
+            {refusal.map((problem) => (
               <li key={problem}>{problem}</li>
             ))}
           </ul>
-          {conflicts.length > 0 && (
-            <p>
-              Lower the hours or change the period. Nothing is saved until
-              everything fits.
-            </p>
-          )}
+        </div>
+      )}
+
+      {refusal.length === 0 && conflicts.length > 0 && (
+        <div className="space-y-1 text-destructive-text" role="alert">
+          <p className="font-medium">
+            Doesn&apos;t fit {firstName}&apos;s hours
+          </p>
+          <ul className="list-disc space-y-0.5 pl-4">
+            {problemSummary(conflicts, firstName).map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          <p>Lower the hours or change the period.</p>
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
+import { PLAN_MINUTE_STEP, isOnPlanStep, toPlanStep } from "../plan-minutes";
 import { ListedLine, describeDays, setHoursDetail } from "./period-lines";
 
 type PeriodListedRowProps = {
@@ -19,7 +20,8 @@ type PeriodListedRowProps = {
   editedMinutes?: number;
   /** Whether the person is still on the project, so its hours can change. */
   isOnProject: boolean;
-  minuteStep: number;
+  /** The person's own day: the most a project's plan can take. */
+  maxMinutes: number;
   formId: string;
   /** Applies a change to the row's unsaved hours; none keeps it as planned. */
   onEdit: (update: (minutes: number | undefined) => number | undefined) => void;
@@ -35,7 +37,7 @@ export const PeriodListedRow = ({
   workingDays,
   editedMinutes,
   isOnProject,
-  minuteStep,
+  maxMinutes,
   formId,
   onEdit,
   onDelete,
@@ -43,6 +45,7 @@ export const PeriodListedRow = ({
   const isEdited = editedMinutes !== undefined;
   // Deleting the project's plans is the bin's job, so no hours is a mistake.
   const hasNoHours = editedMinutes === 0;
+  const isOffStep = editedMinutes !== undefined && !isOnPlanStep(editedMinutes);
   const canChangeHours = !line.isArchived && isOnProject;
   const shownMinutes = editedMinutes ?? line.sameMinutes ?? 0;
   // The picker reports the hours, then the minutes, so each part applies to
@@ -74,7 +77,7 @@ export const PeriodListedRow = ({
         <p className="text-xs text-muted-foreground">
           {line.sameMinutes === null && isEdited ? (
             <>
-              {setHoursDetail(line)} ·{" "}
+              {setHoursDetail(line, workingDays)} ·{" "}
               <button
                 type="button"
                 onClick={() => onEdit(() => undefined)}
@@ -96,9 +99,11 @@ export const PeriodListedRow = ({
           )}
         </p>
 
-        {hasNoHours && (
+        {(hasNoHours || isOffStep) && (
           <p className="text-xs text-destructive-text">
-            Enter hours greater than 0, or delete it with the bin.
+            {hasNoHours
+              ? "Enter hours greater than 0, or delete it with the bin."
+              : `Plan in ${PLAN_MINUTE_STEP}-minute steps.`}
           </p>
         )}
       </div>
@@ -109,8 +114,17 @@ export const PeriodListedRow = ({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => onEdit(() => line.commonMinutes)}
+            // The most common hours, on the step and within the person's day.
+            onClick={() =>
+              onEdit(() =>
+                Math.min(
+                  maxMinutes,
+                  Math.max(PLAN_MINUTE_STEP, toPlanStep(line.commonMinutes)),
+                ),
+              )
+            }
             aria-label={`Set the same hours for ${line.name} on all ${line.days.length} days`}
+            title={`Give all ${line.days.length} days the same hours. To change one day, open it in the grid.`}
             className="h-10 border-border bg-transparent text-brand"
           >
             <Clock className="size-3.5" />
@@ -121,14 +135,16 @@ export const PeriodListedRow = ({
             aria-label={`Hours a day for ${line.name}`}
             hours={Math.floor(shownMinutes / 60)}
             minutes={shownMinutes % 60}
-            minuteStep={minuteStep}
+            minuteStep={PLAN_MINUTE_STEP}
+            maxMinutes={maxMinutes}
             formId={formId}
             onHoursChange={setPart("hours")}
             onMinutesChange={setPart("minutes")}
-            error={hasNoHours}
+            error={hasNoHours || isOffStep}
             className={cn(
               "h-10 bg-transparent",
               !hasNoHours &&
+                !isOffStep &&
                 (isEdited
                   ? "border-brand/40 bg-brand-subtle"
                   : "border-border"),

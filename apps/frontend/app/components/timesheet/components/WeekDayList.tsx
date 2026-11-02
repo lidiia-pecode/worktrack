@@ -16,6 +16,7 @@ import {
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
+import { changedByText } from "@/lib/utils/user";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -336,6 +337,7 @@ const EntryRow = ({
 }) => {
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
+  const changedBy = changedByText(timelog);
   // The project colour is translucent, so it sits on the card colour.
   const style = {
     backgroundColor: "var(--card)",
@@ -359,6 +361,9 @@ const EntryRow = ({
           <span className="rounded bg-muted/40 px-1.5 text-2xs text-muted-foreground">
             Non-billable
           </span>
+        )}
+        {changedBy && (
+          <span className="text-xs text-foreground/70">{changedBy}</span>
         )}
       </span>
     </>

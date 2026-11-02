@@ -34,27 +34,25 @@ import { FormSelect } from "../../shared/FormSelect";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import {
+  PLAN_MINUTE_STEP,
+  dayLimitOn,
+  isOnPlanStep,
+  toPlanStep,
+} from "../plan-minutes";
 
 const FORM_ID = "planning-form";
-const MINUTE_STEP = 15;
 
 const planSchema = z
   .object({
     projectId: z.string().min(1, "Select a project"),
-    hours: z.coerce.number().min(0).max(24),
+    // The picker stops at what fits on the day, so only the floor is checked.
+    hours: z.coerce.number().min(0),
     minutes: z.coerce.number().min(0).max(59),
     note: optionalNoteSchema,
   })
   .refine((data) => data.hours * 60 + data.minutes > 0, {
     message: "Enter a duration greater than 0",
-    path: ["hours"],
-  })
-  .refine((data) => data.minutes % MINUTE_STEP === 0, {
-    message: "Plan in 15-minute steps",
-    path: ["hours"],
-  })
-  .refine((data) => data.hours * 60 + data.minutes <= 1440, {
-    message: "Duration can't exceed 24 hours",
     path: ["hours"],
   });
 
@@ -84,7 +82,6 @@ const withArticle = (duration: string) =>
 type PlanningDayModalProps = {
   row: PlanningWeekRow;
   date: string;
-  dayLimitMinutes: number;
   /**
    * The absence covering the day, shown here only while a locked month
    * freezes it; an editable one opens its form straight from the grid.
@@ -97,7 +94,6 @@ type PlanningDayModalProps = {
 export const PlanningDayModal = ({
   row,
   date,
-  dayLimitMinutes,
   absence,
   onAddAbsence,
   onClose,
@@ -126,6 +122,7 @@ export const PlanningDayModal = ({
     handleSubmit,
     control,
     setValue,
+    setError,
     reset,
     formState: { errors, isDirty },
   } = useForm<PlanFormData>({
@@ -135,6 +132,21 @@ export const PlanningDayModal = ({
   });
 
   const [hours, minutes] = useWatch({ control, name: ["hours", "minutes"] });
+
+  // What still fits beside the day's other plans and the week's: the hours
+  // stop there, so a plan the API would refuse can't be entered, and one
+  // already over can still be lowered.
+  const editedMinutes = editing?.plannedMinutes ?? 0;
+  const dayLimitMinutes = dayLimitOn(row, date);
+  const dayLeft = dayLimitMinutes - (plannedMinutes - editedMinutes);
+  const weekLeft = row.availableMinutes - (row.plannedMinutes - editedMinutes);
+  const fitsMinutes = toPlanStep(Math.max(0, Math.min(dayLeft, weekLeft)));
+  const fitsWhere =
+    dayLeft <= weekLeft ? "on this day" : `in ${row.user.firstName}'s week`;
+  const fitsHint =
+    fitsMinutes > 0
+      ? `Up to ${formatDuration(fitsMinutes)} fits ${fitsWhere}`
+      : `Nothing more fits ${fitsWhere}`;
 
   // Closing or switching to another plan asks first while the form has
   // unsaved changes, as × and Escape do; the action waits for the answer.
@@ -183,13 +195,20 @@ export const PlanningDayModal = ({
 
   const onSubmit = async (data: PlanFormData) => {
     const plannedMinutes = data.hours * 60 + data.minutes;
+    // A plan from before the 15-minute steps saves as it is until its hours
+    // change, as the API allows.
+    const keepsHours = plannedMinutes === editing?.plannedMinutes;
+    if (!keepsHours && !isOnPlanStep(plannedMinutes)) {
+      setError("hours", { message: "Plan in 15-minute steps" });
+      return;
+    }
 
     try {
       if (editing) {
         await update.mutateAsync({
           id: editing.id,
           data: {
-            plannedMinutes,
+            ...(!keepsHours && { plannedMinutes }),
             // null clears a saved note; undefined would leave it unchanged.
             note: data.note || null,
             ...(data.projectId !== editing.project.id && {
@@ -207,7 +226,8 @@ export const PlanningDayModal = ({
         });
       }
 
-      startNew();
+      // Like the time form, a saved plan closes the day.
+      onClose();
     } catch {
       // Reported by the global mutation handler; keep the form as it is.
     }
@@ -417,12 +437,13 @@ export const PlanningDayModal = ({
                   />
                 )}
               />
-              <Field id="plan-hours" group error={errors.hours?.message}>
+              <Field id="plan-hours" group>
                 <TimePicker
                   aria-label="Hours"
                   hours={Number(hours)}
                   minutes={Number(minutes)}
-                  minuteStep={MINUTE_STEP}
+                  minuteStep={PLAN_MINUTE_STEP}
+                  maxMinutes={Math.max(editedMinutes, fitsMinutes)}
                   formId={FORM_ID}
                   onHoursChange={(value) =>
                     setValue("hours", value, { shouldDirty: true })
@@ -435,6 +456,21 @@ export const PlanningDayModal = ({
                 />
               </Field>
             </div>
+
+            {/* Always one line under both fields, so neither changes width. */}
+            {!hasNoOptions && (
+              <p
+                aria-live="polite"
+                className={cn(
+                  "-mt-4 text-xs",
+                  errors.hours
+                    ? "text-destructive-text"
+                    : "text-muted-foreground",
+                )}
+              >
+                {errors.hours?.message ?? fitsHint}
+              </p>
+            )}
 
             {hasNoProjects && (
               <p className="text-sm text-muted-foreground">
