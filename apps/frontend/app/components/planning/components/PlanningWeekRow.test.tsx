@@ -1,15 +1,16 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
-import { AbsenceType, UserStatus } from "@/types/enums";
+import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
 
 import { PlanningWeekRow } from "./PlanningWeekRow";
 
-const WEEK_DATES = getWeekDates(new Date("2026-11-02T00:00:00"));
+// The grid shows working days only, Monday 2 to Friday 6 November.
+const WEEK_DATES = getWeekDates(new Date("2026-11-02T00:00:00")).slice(0, 5);
 
 const NORTHWIND_MONDAY = {
   id: "plan-1",
@@ -38,14 +39,6 @@ const row = (
   projects: [],
   entries,
 });
-
-const WEEKEND_VACATION = {
-  id: "absence-1",
-  userId: "user-alice",
-  type: AbsenceType.VACATION,
-  startDate: "2026-11-07",
-  endDate: "2026-11-08",
-} as Absence;
 
 const renderRow = (
   status?: UserStatus,
@@ -115,20 +108,6 @@ describe("PlanningWeekRow", () => {
     });
   });
 
-  it("shows an absence on a weekend in the day-off stripes, and a plain weekend in the weekend stripes", () => {
-    renderRow(UserStatus.ACTIVE, [], {
-      "2026-11-07": WEEKEND_VACATION,
-    });
-
-    const saturday = screen.getByText("Vacation").closest("td");
-    expect(saturday).toHaveClass("bg-stripes-day-off");
-    expect(within(saturday!).queryByRole("button")).not.toBeInTheDocument();
-
-    const sunday = screen.getAllByRole("cell").at(-2);
-    expect(sunday).toHaveTextContent("-");
-    expect(sunday).toHaveClass("bg-stripes-weekend");
-  });
-
   it("shows the plus on an empty day without hovering", () => {
     const { container } = renderRow();
 
@@ -140,7 +119,7 @@ describe("PlanningWeekRow", () => {
   it("shows planned against available and nothing else", () => {
     renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
 
-    expect(screen.getByText("/ 40h")).toBeInTheDocument();
+    expect(screen.getByText(/of 40h/)).toBeInTheDocument();
     expect(screen.queryByText(/free/)).not.toBeInTheDocument();
   });
 

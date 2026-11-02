@@ -13,6 +13,7 @@ import {
   formatDuration,
   getWeekDates,
   getWeekEnd,
+  isWeekend,
   toISODate,
   todayISODate,
 } from "@/lib/utils/date";
@@ -73,6 +74,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
+  // Plans go on working days only, so the grid shows only those; Team time
+  // keeps the weekend, where time can be logged.
+  const workingDates = useMemo(
+    () => weekDates.filter((date) => !isWeekend(date)),
+    [weekDates],
+  );
   const dateFrom = toISODate(weekStart);
   const dateTo = toISODate(getWeekEnd(weekStart));
 
@@ -251,15 +258,15 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             .join(" ")}
           aria-busy={isShowingPreviousWeek}
         >
-          <table className="w-full min-w-5xl table-fixed border-collapse">
+          <table className="w-full min-w-4xl table-fixed border-collapse">
             <colgroup>
               <col className="w-56" />
 
-              {weekDates.map((date) => (
+              {workingDates.map((date) => (
                 <col key={toISODate(date)} className="w-28" />
               ))}
 
-              <col className="w-36" />
+              <col className="w-32" />
             </colgroup>
 
             <thead>
@@ -277,7 +284,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   </span>
                 </th>
 
-                {weekDates.map((date) => (
+                {workingDates.map((date) => (
                   <th
                     key={toISODate(date)}
                     scope="col"
@@ -293,9 +300,9 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
                 <th
                   scope="col"
-                  className="p-2 text-right text-2xs font-medium uppercase tracking-wider text-muted-foreground"
+                  className="p-2 pr-4 text-right text-2xs whitespace-nowrap uppercase tracking-wider text-muted-foreground"
                 >
-                  Planned / available
+                  Planned
                 </th>
               </tr>
             </thead>
@@ -305,7 +312,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                 <PlanningWeekRow
                   key={row.user.id}
                   row={row}
-                  weekDates={weekDates}
+                  weekDates={workingDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
                   isEditable={isEditable}

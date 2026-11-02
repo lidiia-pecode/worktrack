@@ -5,7 +5,6 @@ import { ProjectStatus, UserStatus } from "@/types/enums";
 import {
   formatDuration,
   formatLongDayLabel,
-  isWeekend,
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
@@ -16,8 +15,9 @@ import { cn } from "@/lib/utils/cn";
 import { Badge } from "@/components/ui/badge";
 
 import { PersonLabel } from "../../shared/PersonLabel";
-import { ABSENCE_PATTERN, WEEKEND_PATTERN } from "../../timesheet/consts";
+import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
+import { ReportBar } from "../../reports/components/ReportBar";
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -140,26 +140,9 @@ export const PlanningWeekRow = ({
         const entries = entriesByDate.get(iso) ?? [];
         const absence = absencesByDate[iso];
 
-        const weekend = isWeekend(date);
-
-        if (weekend && !absence) {
-          return (
-            <td
-              key={iso}
-              className={cn(
-                "border-r border-border/60 p-3 text-center text-sm text-muted-foreground",
-                WEEKEND_PATTERN,
-              )}
-            >
-              -
-            </td>
-          );
-        }
-
         // A deactivated person's plans stay visible, but nothing can be
-        // written for them, like a locked day. An absence on a weekend is
-        // shown, as on the other week views, but plans never go there.
-        if (weekend || !isActive || !isEditable(iso)) {
+        // written for them, like a locked day.
+        if (!isActive || !isEditable(iso)) {
           return (
             <td
               key={iso}
@@ -209,26 +192,40 @@ export const PlanningWeekRow = ({
         );
       })}
 
-      <td className="p-3 text-right text-sm whitespace-nowrap tabular-nums">
-        <div>
-          <span className="font-semibold text-foreground">
-            {formatDuration(row.plannedMinutes)}
+      {/* The week against what is available, read as Team time reads a person's week. */}
+      <td className="p-3 align-top">
+        <div className="flex flex-col items-end gap-1.5">
+          <span className="text-xs whitespace-nowrap tabular-nums">
+            <span
+              className={cn(
+                "text-sm font-semibold",
+                overMinutes > 0 ? "text-warning-text" : "text-foreground",
+              )}
+            >
+              {formatDuration(row.plannedMinutes)}
+            </span>
+            <span className="text-muted-foreground">
+              {" "}
+              of {formatDuration(row.availableMinutes)}
+            </span>
           </span>
 
-          <span className="ml-1.5 text-xs text-muted-foreground">
-            / {formatDuration(row.availableMinutes)}
-          </span>
+          <ReportBar
+            value={row.plannedMinutes}
+            reference={row.availableMinutes}
+            label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
+            className="h-1.5 w-full"
+          />
+
+          {overMinutes > 0 && (
+            <span
+              title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
+              className="text-2xs font-medium whitespace-nowrap text-warning-text"
+            >
+              Over by {formatDuration(overMinutes)}
+            </span>
+          )}
         </div>
-
-        {overMinutes > 0 && (
-          <Badge
-            variant="warning"
-            title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
-            className="mt-1 px-1.5 text-2xs font-medium"
-          >
-            Over by {formatDuration(overMinutes)}
-          </Badge>
-        )}
       </td>
     </tr>
   );
