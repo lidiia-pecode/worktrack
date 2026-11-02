@@ -12,12 +12,22 @@ export const WORK_DAYS_PER_WEEK = 5;
 const isWorkDayStep = (hours: number) =>
   Number.isInteger(hours / WORK_DAY_STEP_HOURS);
 
-/** Hours in a working day; `kept` is a saved value from before the steps, accepted unchanged. */
-export const workDayHoursSchema = (min: number, kept?: number) =>
-  z
+/**
+ * Hours in a working day; `kept` is a value saved before these limits, such as
+ * 4.8 or 14, accepted unchanged so the rest of the form can still be saved.
+ */
+export const workDayHoursSchema = (min: number, kept?: number) => {
+  const isKept = (hours: number) => hours === kept;
+
+  return z
     .number({ error: "Enter the hours in a working day" })
-    .min(min, `A working day is at least ${min}h`)
-    .max(MAX_WORK_DAY_HOURS, `A working day is at most ${MAX_WORK_DAY_HOURS}h`)
-    .refine((hours) => hours === kept || isWorkDayStep(hours), {
+    .refine((hours) => isKept(hours) || hours >= min, {
+      message: `A working day is at least ${min}h`,
+    })
+    .refine((hours) => isKept(hours) || hours <= MAX_WORK_DAY_HOURS, {
+      message: `A working day is at most ${MAX_WORK_DAY_HOURS}h`,
+    })
+    .refine((hours) => isKept(hours) || isWorkDayStep(hours), {
       message: "Use 30-minute steps, such as 6 or 6.5",
     });
+};

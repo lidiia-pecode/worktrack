@@ -79,11 +79,6 @@ export const periodWrites = ({
 };
 
 /**
- * Every day and week a period plan would take over its limit, on the plans as
- * they would be after it. As with a single plan, only a total the write
- * raises counts.
- */
-/**
  * A day over the person's own day, or a week over what they have available,
  * as a period plan would leave it. The screen sums them up; a refusal words
  * each one (`describePeriodProblem`).
@@ -99,6 +94,11 @@ export interface PeriodProblem {
   otherProjectsMinutes: number;
 }
 
+/**
+ * Every day and week a period plan would take over its limit, on the plans as
+ * they would be after it. As with a single plan, only a total the write
+ * raises counts.
+ */
 export const periodProblems = ({
   weeks,
   plannedDays,

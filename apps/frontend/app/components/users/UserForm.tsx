@@ -78,7 +78,14 @@ export const UserForm = ({
   useReportDirty(isDirty, onDirtyChange);
 
   return (
-    <form id={formId} onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    // The schema checks the hours, so a value saved before the working day had
+    // its steps and limit isn't refused by the browser's own checks.
+    <form
+      id={formId}
+      onSubmit={handleSubmit(onSubmit)}
+      noValidate
+      className="space-y-6"
+    >
       <Input
         label="Position"
         {...register("position")}
