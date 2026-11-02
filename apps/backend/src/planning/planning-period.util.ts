@@ -13,6 +13,8 @@ export interface PeriodWeek {
  * Phase 41 (decision 6), can always be filled exactly.
  */
 export const PLAN_MINUTES_STEP = 15;
+/** No plan can be longer than a day. */
+export const MAX_PLAN_MINUTES = 24 * 60;
 
 export const formatMinutes = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);

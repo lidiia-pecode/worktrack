@@ -9,6 +9,14 @@ export const MAX_WORK_DAY_HOURS = 12;
 export const WORK_DAY_STEP_HOURS = 0.5;
 export const WORK_DAYS_PER_WEEK = 5;
 
+/** A person's week, as the API stores it, from the hours in their day. */
+export const minutesPerWeekOf = (hoursPerDay: number) =>
+  Math.round(hoursPerDay * 60) * WORK_DAYS_PER_WEEK;
+
+/** The day in a stored week, in whole minutes for showing. */
+export const minutesPerDayOf = (minutesPerWeek: number) =>
+  Math.round(minutesPerWeek / WORK_DAYS_PER_WEEK);
+
 const isWorkDayStep = (hours: number) =>
   Number.isInteger(hours / WORK_DAY_STEP_HOURS);
 

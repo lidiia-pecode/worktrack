@@ -49,9 +49,9 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import { CapacityService } from 'src/capacity/capacity.service';
-import { WORKING_DAYS_PER_WEEK } from 'src/capacity/working-days.util';
 import {
   addDays,
+  eachDate,
   isWorkingDay,
   todayISODate,
   weekRange,
@@ -76,8 +76,8 @@ export interface PlanningWeekRow {
   user: VisibleUser;
   plannedMinutes: number;
   availableMinutes: number;
-  /** The most the person can be planned on a day, as of the week's first. */
-  dayLimitMinutes: number;
+  /** The most the person can be planned on each day of the week. */
+  dayLimits: { date: string; minutes: number }[];
   projects: Pick<Project, 'id' | 'name'>[];
   entries: PlanningEntry[];
 }
@@ -102,6 +102,8 @@ export interface PeriodPreview {
   problems: PeriodProblem[];
   /** How many plans saving would add and change, per listed project. */
   changes: { projectId: string; added: number; changed: number }[];
+  /** The person's longest day in the period: the most one project can take. */
+  dayLimitMinutes: number;
 }
 
 interface ResolvedPeriod {
@@ -109,6 +111,7 @@ interface ResolvedPeriod {
   problems: PeriodProblem[];
   lines: PeriodLine[];
   writes: PeriodWrites;
+  dayLimitMinutes: number;
 }
 
 /** Who can be planned how much on a day; see `dayLimitsFor`. */
@@ -264,7 +267,7 @@ export class PlanningService {
     const [available, projectsByUser, dayLimitOn] = await Promise.all([
       this.expectedHours.expectedFor(user.companyId, userIds, start, end),
       this.activeProjectsFor(user.companyId, userIds),
-      this.dayLimitsFor(company, userIds, start),
+      this.dayLimitsFor(company.id, userIds, end),
     ]);
 
     const rows = users.map((rowUser): PlanningWeekRow => {
@@ -274,7 +277,10 @@ export class PlanningService {
         user: rowUser,
         plannedMinutes: own.reduce((sum, e) => sum + e.plannedMinutes, 0),
         availableMinutes: available.get(rowUser.id)?.total ?? 0,
-        dayLimitMinutes: dayLimitOn(rowUser.id, start),
+        dayLimits: [...eachDate(start, end)].map((date) => ({
+          date,
+          minutes: dayLimitOn(rowUser.id, date),
+        })),
         projects: projectsByUser.get(rowUser.id) ?? [],
         entries: own,
       };
@@ -518,7 +524,7 @@ export class PlanningService {
     payload: PlanPeriodPayload,
     user: AuthUser,
   ): Promise<PeriodPreview> {
-    const { plannedDays, problems, lines, writes } =
+    const { plannedDays, problems, lines, writes, dayLimitMinutes } =
       await this.dataSource.transaction((manager) =>
         this.resolvePeriod(payload, user, manager),
       );
@@ -532,6 +538,7 @@ export class PlanningService {
         changed: writes.changed.filter((c) => c.entry.projectId === projectId)
           .length,
       })),
+      dayLimitMinutes,
     };
   }
 
@@ -648,7 +655,7 @@ export class PlanningService {
       .getMany();
 
     const writes = periodWrites({ plannedDays, lines, existing });
-    const dayLimitOn = await this.dayLimitsFor(company, [userId], endDate);
+    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], endDate);
     const problems = periodProblems({
       weeks,
       plannedDays,
@@ -657,8 +664,14 @@ export class PlanningService {
       existing,
       dayLimitOn: (date) => dayLimitOn(userId, date),
     });
+    const dayLimitMinutes = Math.max(
+      0,
+      ...[...eachDate(startDate, endDate)].map((date) =>
+        dayLimitOn(userId, date),
+      ),
+    );
 
-    return { plannedDays, problems, lines, writes };
+    return { plannedDays, problems, lines, writes, dayLimitMinutes };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
@@ -989,25 +1002,19 @@ export class PlanningService {
    * Phase 41), or the company's standard day when they have none of their own.
    */
   private async dayLimitsFor(
-    company: PlanningCompany,
+    companyId: string,
     userIds: string[],
     until: string,
   ): Promise<DayLimitOn> {
-    const standardDay = Math.round(
-      Number(company.standardWorkHoursPerDay) * 60,
-    );
     const timelines = await this.capacity.timelinesFor(
-      company.id,
+      companyId,
       userIds,
       until,
-      standardDay * WORKING_DAYS_PER_WEEK,
     );
 
+    // Whole minutes: a day saved before the 30-minute steps can be 6h 24.4m.
     return (userId, date) =>
-      Math.round(
-        (timelines.get(userId)?.minutesPerWeekOn(date) ?? 0) /
-          WORKING_DAYS_PER_WEEK,
-      );
+      Math.floor(timelines.get(userId)?.minutesPerDayOn(date) ?? 0);
   }
 
   /**
@@ -1165,7 +1172,7 @@ export class PlanningService {
       next.date,
       excludeId,
     );
-    const dayLimitOn = await this.dayLimitsFor(company, [userId], next.date);
+    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], next.date);
     const dayLimit = dayLimitOn(userId, next.date);
     const nextDay = otherDay + next.minutes;
 

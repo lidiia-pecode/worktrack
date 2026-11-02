@@ -486,29 +486,59 @@ describe('PlanningService', () => {
       expect(await entriesFor(member.id)).toHaveLength(1);
     });
 
-    it('plans someone with hours of their own up to their own day', async () => {
+    it("plans each day up to the person's own day on that date", async () => {
+      // A full-timer down to 6h 30m a day from Wednesday.
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: member.id,
+        validFrom: WEDNESDAY,
+        minutesPerWeek: 32 * HOUR + 30,
+      });
+
+      const week = await service.getWeek({ date: MONDAY }, owner);
+      const limits = week.rows.find((r) => r.user.id === member.id)?.dayLimits;
+      expect(limits?.find((day) => day.date === TUESDAY)?.minutes).toBe(
+        8 * HOUR,
+      );
+      expect(limits?.find((day) => day.date === WEDNESDAY)?.minutes).toBe(
+        6 * HOUR + 30,
+      );
+
+      await service.create(plan(member.id, TUESDAY, 8 * HOUR), manager);
+      await existingEntry(member.id, WEDNESDAY, 6 * HOUR);
+      await service.create(
+        plan(member.id, WEDNESDAY, 30, otherProjectId),
+        manager,
+      );
+      await expect(
+        service.create(
+          plan(member.id, addDays(MONDAY, 3), 6 * HOUR + 45),
+          manager,
+        ),
+      ).rejects.toThrow(
+        `Daily planning limit exceeded: 6h 30m left on ${formatDay(addDays(MONDAY, 3))}, of 6h 30m a day.`,
+      );
+    });
+
+    it('lets a plan over a lowered own day be lowered, not raised', async () => {
+      const id = await existingEntry(member.id, MONDAY, 8 * HOUR);
       await dataSource.getRepository(UserCapacity).save({
         companyId,
         userId: member.id,
         validFrom: '2020-01-01',
-        minutesPerWeek: 32 * HOUR,
+        minutesPerWeek: 32 * HOUR + 30,
       });
-      await existingEntry(member.id, MONDAY, 6 * HOUR);
 
-      const week = await service.getWeek({ date: MONDAY }, owner);
-      expect(
-        week.rows.find((r) => r.user.id === member.id)?.dayLimitMinutes,
-      ).toBe(6 * HOUR + 24);
-
-      await service.create(
-        plan(member.id, MONDAY, 24, otherProjectId),
+      const lowered = await service.update(
+        id,
+        { plannedMinutes: 7 * HOUR },
         manager,
       );
+      expect(lowered.plannedMinutes).toBe(7 * HOUR);
+
       await expect(
-        service.create(plan(member.id, MONDAY, 15, otherProjectId), manager),
-      ).rejects.toThrow(
-        `Daily planning limit exceeded: 0h left on ${formatDay(MONDAY)}, of 6h 24m a day.`,
-      );
+        service.update(id, { plannedMinutes: 7 * HOUR + 15 }, manager),
+      ).rejects.toThrow(/Daily planning limit exceeded/);
     });
 
     it('refuses going past the standard day across projects', async () => {
@@ -1174,7 +1204,9 @@ describe('PlanningService', () => {
 
       expect(week.weekStart).toBe(MONDAY);
       // No working hours of their own: the company's standard day.
-      expect(row.dayLimitMinutes).toBe(8 * HOUR);
+      expect(row.dayLimits.map((day) => day.minutes)).toEqual(
+        Array(7).fill(8 * HOUR),
+      );
       expect(row.entries).toHaveLength(2);
       expect(row.plannedMinutes).toBe(5 * HOUR);
       expect(row.availableMinutes).toBe(32 * HOUR);

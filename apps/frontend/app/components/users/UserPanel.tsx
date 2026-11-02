@@ -45,7 +45,11 @@ import {
   TeamRemoval,
 } from "../teams/TeamMemberRemoveDialog";
 import { UserProjectsPicker } from "./UserProjectsPicker";
-import { WORK_DAYS_PER_WEEK } from "@/lib/forms/schemas/work-day.schema";
+import {
+  WORK_DAYS_PER_WEEK,
+  minutesPerDayOf,
+  minutesPerWeekOf,
+} from "@/lib/forms/schemas/work-day.schema";
 
 const EDIT_FORM_ID = "user-edit-form";
 
@@ -61,7 +65,7 @@ const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
 
   return (
     <>
-      {formatDuration(capacity.minutesPerWeek / WORK_DAYS_PER_WEEK)} a day
+      {formatDuration(minutesPerDayOf(capacity.minutesPerWeek))} a day
       <span className="text-muted-foreground">
         {" "}
         · {formatDuration(capacity.minutesPerWeek)} a week
@@ -98,8 +102,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
       return;
     }
 
-    const minutesPerWeek =
-      Math.round(capacityHoursPerDay * 60) * WORK_DAYS_PER_WEEK;
+    const minutesPerWeek = minutesPerWeekOf(capacityHoursPerDay);
     const hoursChanged =
       capacity !== null && minutesPerWeek !== capacity.minutesPerWeek;
 

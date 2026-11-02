@@ -35,7 +35,7 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
-  dayLimitMinutes: 480,
+  dayLimits: [{ date: "2026-11-10", minutes: 480 }],
   projects: [
     { id: "project-northwind", name: "Northwind" },
     { id: "project-internal", name: "Internal" },

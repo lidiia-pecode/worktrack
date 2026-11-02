@@ -35,7 +35,7 @@ const row = (
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
-  dayLimitMinutes: 480,
+  dayLimits: [],
   projects: [],
   entries,
 });

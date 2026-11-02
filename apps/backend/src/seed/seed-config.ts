@@ -1330,19 +1330,19 @@ export const REPORT_HISTORY: SeedHistory[] = [
       {
         project: 'Cloud Infrastructure',
         activity: 'Deployment',
-        minutes: 192,
+        minutes: 195,
         from: '2026-09-01',
       },
       {
         project: 'Cloud Infrastructure',
         activity: 'Monitoring and Alerting',
-        minutes: 96,
+        minutes: 105,
         from: '2026-09-01',
       },
       {
         project: 'Cloud Infrastructure',
         activity: 'Incident Response',
-        minutes: 96,
+        minutes: 90,
         from: '2026-09-01',
       },
     ],

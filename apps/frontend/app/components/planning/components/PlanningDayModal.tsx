@@ -34,23 +34,25 @@ import { FormSelect } from "../../shared/FormSelect";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import {
+  PLAN_MINUTE_STEP,
+  dayLimitOn,
+  isOnPlanStep,
+  toPlanStep,
+} from "../plan-minutes";
 
 const FORM_ID = "planning-form";
-const MINUTE_STEP = 15;
 
 const planSchema = z
   .object({
     projectId: z.string().min(1, "Select a project"),
-    hours: z.coerce.number().min(0).max(24),
+    // The picker stops at what fits on the day, so only the floor is checked.
+    hours: z.coerce.number().min(0),
     minutes: z.coerce.number().min(0).max(59),
     note: optionalNoteSchema,
   })
   .refine((data) => data.hours * 60 + data.minutes > 0, {
     message: "Enter a duration greater than 0",
-    path: ["hours"],
-  })
-  .refine((data) => data.hours * 60 + data.minutes <= 1440, {
-    message: "Duration can't exceed 24 hours",
     path: ["hours"],
   });
 
@@ -135,11 +137,10 @@ export const PlanningDayModal = ({
   // stop there, so a plan the API would refuse can't be entered, and one
   // already over can still be lowered.
   const editedMinutes = editing?.plannedMinutes ?? 0;
-  const dayLeft = row.dayLimitMinutes - (plannedMinutes - editedMinutes);
+  const dayLimitMinutes = dayLimitOn(row, date);
+  const dayLeft = dayLimitMinutes - (plannedMinutes - editedMinutes);
   const weekLeft = row.availableMinutes - (row.plannedMinutes - editedMinutes);
-  const fitsMinutes =
-    Math.floor(Math.max(0, Math.min(dayLeft, weekLeft)) / MINUTE_STEP) *
-    MINUTE_STEP;
+  const fitsMinutes = toPlanStep(Math.max(0, Math.min(dayLeft, weekLeft)));
   const fitsWhere =
     dayLeft <= weekLeft ? "on this day" : `in ${row.user.firstName}'s week`;
   const fitsHint =
@@ -197,7 +198,7 @@ export const PlanningDayModal = ({
     // A plan from before the 15-minute steps saves as it is until its hours
     // change, as the API allows.
     const keepsHours = plannedMinutes === editing?.plannedMinutes;
-    if (!keepsHours && plannedMinutes % MINUTE_STEP !== 0) {
+    if (!keepsHours && !isOnPlanStep(plannedMinutes)) {
       setError("hours", { message: "Plan in 15-minute steps" });
       return;
     }
@@ -286,7 +287,7 @@ export const PlanningDayModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(row.dayLimitMinutes))} day planned`}
+        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
         icon={<CalendarClock className="size-5" />}
         footer={
           <>
@@ -441,7 +442,7 @@ export const PlanningDayModal = ({
                   aria-label="Hours"
                   hours={Number(hours)}
                   minutes={Number(minutes)}
-                  minuteStep={MINUTE_STEP}
+                  minuteStep={PLAN_MINUTE_STEP}
                   maxMinutes={Math.max(editedMinutes, fitsMinutes)}
                   formId={FORM_ID}
                   onHoursChange={(value) =>

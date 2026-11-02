@@ -12,8 +12,8 @@ import { useReportDirty } from "@/hooks/useReportDirty";
 import { formatDuration } from "@/lib/utils/date";
 import {
   MAX_WORK_DAY_HOURS,
-  WORK_DAYS_PER_WEEK,
   WORK_DAY_STEP_HOURS,
+  minutesPerWeekOf,
   workDayHoursSchema,
 } from "@/lib/forms/schemas/work-day.schema";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
@@ -67,7 +67,7 @@ export const UserForm = ({
     defaultValues,
   });
   const hoursPerDay = useWatch({ control, name: "capacityHoursPerDay" });
-  const minutesPerWeek = Math.round(hoursPerDay * 60) * WORK_DAYS_PER_WEEK;
+  const minutesPerWeek = minutesPerWeekOf(hoursPerDay);
   const role = useWatch({ control, name: "role" });
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;

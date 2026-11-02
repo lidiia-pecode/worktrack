@@ -39,6 +39,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { PLAN_MINUTE_STEP, isOnPlanStep, toPlanStep } from "../plan-minutes";
 import { PeriodListedRow } from "./PeriodListedRow";
 import { PeriodPicker } from "./PeriodPicker";
 import { PeriodPreview } from "./PeriodPreview";
@@ -52,8 +53,6 @@ import {
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
-const MINUTE_STEP = 15;
-
 const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
   Number(hours) * 60 + Number(minutes);
 
@@ -64,7 +63,7 @@ const addedLineSchema = z
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
   })
-  .refine((data) => data.minutes % MINUTE_STEP === 0, {
+  .refine((data) => isOnPlanStep(data.minutes), {
     message: "Plan in 15-minute steps",
     path: ["hours"],
   })
@@ -114,9 +113,6 @@ export const PlanPeriodModal = ({
   onAddAbsence,
   onClose,
 }: PlanPeriodModalProps) => {
-  // No project can take more than the person's own day, in whole steps.
-  const maxPlanMinutes =
-    Math.floor(row.dayLimitMinutes / MINUTE_STEP) * MINUTE_STEP;
   const { timezone } = useWorkSettings();
   const planPeriod = usePlanPeriod();
   const deletePeriodPlans = useDeletePeriodPlans();
@@ -220,6 +216,12 @@ export const PlanPeriodModal = ({
       ? { userId: row.user.id, startDate, endDate, projects: payloadProjects }
       : null,
   );
+  // No project can take more than the person's longest day in the period;
+  // until the server says, the longest in the week the dialog opened from.
+  const dayLimitMinutes =
+    preview?.dayLimitMinutes ??
+    Math.max(0, ...row.dayLimits.map((day) => day.minutes));
+  const maxPlanMinutes = toPlanStep(dayLimitMinutes);
   const { items: absences } = useAllAbsencesQuery(
     { userId: row.user.id, dateFrom: startDate, dateTo: endDate },
     { enabled: hasPeriod },
@@ -260,7 +262,7 @@ export const PlanPeriodModal = ({
   const cannotSave =
     payloadProjects.length === 0 ||
     [...editedMinutes.values()].some(
-      (minutes) => minutes === 0 || minutes % MINUTE_STEP !== 0,
+      (minutes) => minutes === 0 || !isOnPlanStep(minutes),
     ) ||
     added.some((line) => isListedAbove(line.projectId)) ||
     !preview ||
@@ -426,7 +428,6 @@ export const PlanPeriodModal = ({
                     isOnProject={personProjects.some(
                       (project) => project.id === line.projectId,
                     )}
-                    minuteStep={MINUTE_STEP}
                     maxMinutes={maxPlanMinutes}
                     formId={FORM_ID}
                     onEdit={editLine(line.projectId)}
@@ -496,7 +497,7 @@ export const PlanPeriodModal = ({
                         aria-label={`Hours a day for project ${index + 1}`}
                         hours={Number(added[index]?.hours ?? 0)}
                         minutes={Number(added[index]?.minutes ?? 0)}
-                        minuteStep={MINUTE_STEP}
+                        minuteStep={PLAN_MINUTE_STEP}
                         maxMinutes={maxPlanMinutes}
                         formId={FORM_ID}
                         onHoursChange={(value) =>
@@ -554,7 +555,7 @@ export const PlanPeriodModal = ({
               firstName={row.user.firstName}
               startDate={startDate}
               endDate={endDate}
-              dayLimitMinutes={row.dayLimitMinutes}
+              dayLimitMinutes={dayLimitMinutes}
               busiestDay={busiestDay({
                 plannedDays: workingDays,
                 plans: existingPlans,

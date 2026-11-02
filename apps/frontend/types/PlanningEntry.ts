@@ -78,6 +78,8 @@ export interface PeriodPreview {
   problems: PeriodProblem[];
   /** How many plans saving would add and change, per listed project. */
   changes: { projectId: string; added: number; changed: number }[];
+  /** The person's longest day in the period: the most one project can take. */
+  dayLimitMinutes: number;
 }
 
 // Query (back PlanningQueryDto)
@@ -104,8 +106,8 @@ export interface PlanningWeekRow {
   user: TeamSummaryUser;
   plannedMinutes: number;
   availableMinutes: number;
-  /** The most the person can be planned on a day: their own working day. */
-  dayLimitMinutes: number;
+  /** The most the person can be planned on each day of the week: their own day then. */
+  dayLimits: { date: string; minutes: number }[];
   projects: PlanningProjectOption[];
   entries: PlanningEntry[];
 }

@@ -19,6 +19,11 @@ import { WORKING_DAYS_PER_WEEK, isoDateIn } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
+  /**
+   * The person's working day on the date: a fifth of their week, the day both
+   * expected hours and the planning limit count.
+   */
+  minutesPerDayOn(date: string): number;
 }
 
 /** What a day-by-day walk needs from the company, read in one query. */
@@ -340,16 +345,19 @@ function buildTimeline(
   rows: Pick<UserCapacity, 'validFrom' | 'minutesPerWeek'>[],
   fallback: number,
 ): CapacityTimeline {
+  const minutesPerWeekOn = (date: string): number => {
+    let minutes = fallback;
+
+    for (const row of rows) {
+      if (row.validFrom > date) break;
+      minutes = row.minutesPerWeek;
+    }
+
+    return minutes;
+  };
+
   return {
-    minutesPerWeekOn(date: string): number {
-      let minutes = fallback;
-
-      for (const row of rows) {
-        if (row.validFrom > date) break;
-        minutes = row.minutesPerWeek;
-      }
-
-      return minutes;
-    },
+    minutesPerWeekOn,
+    minutesPerDayOn: (date) => minutesPerWeekOn(date) / WORKING_DAYS_PER_WEEK,
   };
 }
