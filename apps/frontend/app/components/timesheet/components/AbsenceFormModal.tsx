@@ -21,6 +21,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { ChangedByNote } from "./ChangedByNote";
 
 const FORM_ID = "absence-form";
 
@@ -285,6 +286,8 @@ export const AbsenceFormModal = ({
               )}
             />
           </Field>
+
+          {absence && <ChangedByNote record={absence} />}
         </form>
       </ResourceFormModal>
 
@@ -348,6 +351,8 @@ export const LockedAbsenceModal = ({
         </div>
       )}
     </dl>
+
+    <ChangedByNote record={absence} className="mt-6" />
 
     <p className="mt-6 flex gap-2 text-sm text-muted-foreground">
       <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />

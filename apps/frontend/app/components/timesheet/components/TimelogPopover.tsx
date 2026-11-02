@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { Clock, StickyNote, Tag } from "lucide-react";
+import { Clock, StickyNote, Tag, UserPen } from "lucide-react";
 
 import { TimeLog } from "@/types";
 import { formatDuration } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
+import { changedByText } from "@/lib/utils/user";
 
 const POPOVER_WIDTH = 240;
 const VIEWPORT_MARGIN = 8;
@@ -68,6 +69,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
 
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
+  const changedBy = changedByText(timelog);
 
   return createPortal(
     <div
@@ -108,6 +110,13 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
             <span className="line-clamp-3 text-foreground/80">
               {timelog.note}
             </span>
+          </div>
+        )}
+
+        {changedBy && (
+          <div className="mt-1.5 flex items-start gap-1.5 border-t border-border/60 pt-1.5">
+            <UserPen className="mt-0.5 size-3.5 shrink-0" />
+            <span>{changedBy}</span>
           </div>
         )}
       </div>

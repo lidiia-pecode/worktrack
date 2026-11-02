@@ -54,7 +54,12 @@ export class AbsencesService {
       throw new BadRequestException('dateFrom cannot be after dateTo');
     }
 
-    const qb = this.repo.createQueryBuilder('a');
+    const qb = this.repo
+      .createQueryBuilder('a')
+      .leftJoin('a.createdBy', 'createdBy')
+      .addSelect(['createdBy.id', 'createdBy.firstName', 'createdBy.lastName'])
+      .leftJoin('a.updatedBy', 'updatedBy')
+      .addSelect(['updatedBy.id', 'updatedBy.firstName', 'updatedBy.lastName']);
     this.applyVisibilityFilter(qb, user);
 
     if (query.userId) {
@@ -133,6 +138,7 @@ export class AbsencesService {
         startDate: payload.startDate,
         endDate: payload.endDate,
         note: payload.note,
+        createdById: user.id,
       });
 
       return manager.save(entity);
@@ -185,6 +191,7 @@ export class AbsencesService {
       absence.endDate = endDate;
       if (payload.type !== undefined) absence.type = payload.type;
       if (payload.note !== undefined) absence.note = payload.note;
+      absence.updatedById = user.id;
 
       await this.assertRangeIsFree(
         manager,

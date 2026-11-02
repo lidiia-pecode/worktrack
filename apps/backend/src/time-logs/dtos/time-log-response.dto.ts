@@ -1,5 +1,6 @@
 import { Expose, Type } from 'class-transformer';
 import { ProjectActivityResponse } from 'src/projects/dtos/project-activity-response.dto';
+import { UserNameResponse } from 'src/users/dtos/user-name-response.dto';
 
 export class TimeLogResponse {
   @Expose()
@@ -23,6 +24,16 @@ export class TimeLogResponse {
 
   @Expose()
   date!: string;
+
+  /** Who added it; null for records from before this was kept. On reads only. */
+  @Expose()
+  @Type(() => UserNameResponse)
+  createdBy?: UserNameResponse | null;
+
+  /** Who last changed it; null until it is changed. On reads only. */
+  @Expose()
+  @Type(() => UserNameResponse)
+  updatedBy?: UserNameResponse | null;
 
   @Expose()
   createdAt!: Date;

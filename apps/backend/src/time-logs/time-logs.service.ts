@@ -106,7 +106,11 @@ export class TimeLogsService {
       .leftJoinAndSelect('t.projectActivity', 'projectActivity')
       .leftJoinAndSelect('projectActivity.project', 'project')
       .leftJoinAndSelect('projectActivity.activity', 'activity')
-      .leftJoinAndSelect('activity.category', 'category');
+      .leftJoinAndSelect('activity.category', 'category')
+      .leftJoin('t.createdBy', 'createdBy')
+      .addSelect(['createdBy.id', 'createdBy.firstName', 'createdBy.lastName'])
+      .leftJoin('t.updatedBy', 'updatedBy')
+      .addSelect(['updatedBy.id', 'updatedBy.firstName', 'updatedBy.lastName']);
   }
 
   /**
@@ -344,6 +348,7 @@ export class TimeLogsService {
         minutes: payload.minutes,
         note: payload.note,
         date: payload.date,
+        createdById: user.id,
       });
 
       return manager.save(entity);
@@ -402,6 +407,7 @@ export class TimeLogsService {
       if (payload.isBillable !== undefined) log.isBillable = payload.isBillable;
       if (payload.note !== undefined) log.note = payload.note;
       if (payload.date !== undefined) log.date = payload.date;
+      log.updatedById = user.id;
 
       await this.assertDailyLimit(
         manager,

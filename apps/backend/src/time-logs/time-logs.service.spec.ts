@@ -552,6 +552,32 @@ describe('TimeLogsService write scope', () => {
       expect(saved.note).toBeNull();
     });
 
+    it('names who added and last changed an entry, whoever they are', async () => {
+      const own = await service.create(logFor(member.id), member);
+      const added = await service.create(
+        logFor(member.id, '2026-02-11'),
+        manager,
+      );
+      await service.update(added.id, { minutes: 90 }, manager);
+      const read = (id: string) => service.getById(id, member);
+
+      expect(await read(own.id)).toMatchObject({
+        createdBy: { id: member.id },
+        updatedBy: null,
+      });
+      expect(await read(added.id)).toMatchObject({
+        createdBy: { id: manager.id, firstName: 'manager', lastName: 'Test' },
+        updatedBy: { id: manager.id },
+      });
+
+      // The person correcting it after the manager becomes the last editor.
+      await service.update(added.id, { minutes: 60 }, member);
+      expect(await read(added.id)).toMatchObject({
+        createdBy: { id: manager.id },
+        updatedBy: { id: member.id },
+      });
+    });
+
     it('reports a missing entry as not found', async () => {
       await expect(
         service.update(

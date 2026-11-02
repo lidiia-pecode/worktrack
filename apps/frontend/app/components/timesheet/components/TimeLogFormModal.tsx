@@ -13,6 +13,7 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { ChangedByNote } from "./ChangedByNote";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -524,6 +525,8 @@ export const TimeLogFormModal = ({
               )}
             />
           </Field>
+
+          {timelog && <ChangedByNote record={timelog} />}
         </form>
       </ResourceFormModal>
 

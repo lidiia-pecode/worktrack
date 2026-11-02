@@ -621,6 +621,27 @@ describe('AbsencesService', () => {
       expect(results).toHaveLength(2);
     });
 
+    it('names who added and last changed an absence, whoever they are', async () => {
+      const { id } = await service.create(absenceFor(member.id), manager);
+      const read = async () =>
+        (await service.list(query({ userId: member.id }), member)).results[0];
+
+      expect(await read()).toMatchObject({
+        createdBy: { id: manager.id, firstName: 'manager' },
+        updatedBy: null,
+      });
+
+      await service.update(id, { note: 'Moved by the manager' }, manager);
+      expect((await read()).updatedBy).toMatchObject({ id: manager.id });
+
+      // The person correcting it after the manager becomes the last editor.
+      await service.update(id, { note: 'Mine' }, member);
+      expect(await read()).toMatchObject({
+        createdBy: { id: manager.id },
+        updatedBy: { id: member.id },
+      });
+    });
+
     it('lets a manager who leads no team read their own', async () => {
       await service.create(absenceFor(loneManager.id), loneManager);
       await service.create(absenceFor(member.id), member);

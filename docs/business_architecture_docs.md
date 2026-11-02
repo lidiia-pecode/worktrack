@@ -221,10 +221,10 @@ every role without exception; the daily 1440-minute ceiling, the project
 membership requirement and the billability default all still hold, and they apply
 to **the person the entry belongs to**, not to whoever is typing.
 
-*Deliberately not included: audit tracking.* `TimeLog` records no actor, and
-nothing in the current architecture requires one. Adding `lastEditedById` is a
-migration and a UI change for a need nobody has stated yet, so it stays out until
-someone asks for it.
+*Who wrote it is recorded, not a full history.* Since Phase 41 a time entry and
+an absence keep who added them and who last changed them, and say so wherever
+the record is read when that wasn't the person it belongs to (§4). A trace of
+deleted entries or of every change stays out until someone needs it.
 
 ### D10 — A manager sees only their own teams, everywhere
 
@@ -298,8 +298,10 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── Absence         user + type + startDate + endDate + note
 │                   type: VACATION | SICK_LEAVE | PUBLIC_HOLIDAY
+│                   createdBy + updatedBy (who added it, who last changed it)
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
+│                   createdBy + updatedBy (who added it, who last changed it)
 ├── PlanningEntry   user + project + date + plannedMinutes + createdBy
 └── ReportingPeriod month + status (OPEN | LOCKED) + changedBy
                     only for months an owner has reopened
@@ -398,6 +400,15 @@ internal one (D2). The time form starts a new entry the same way once the
 activity is chosen, with the switch off until then, and the person can change
 it on each entry, on any project.
 
+**Who wrote it.** Every create records the caller as the entry's author
+(`createdBy`) and every update as its last editor (`updatedBy`), whoever they
+are; absences do the same. When either isn't the person the record belongs to,
+it is named to everyone who can see the record, the person included: "Added
+by", "Changed by", "Added and changed by", or both names. A person's own
+records, and records from before Phase 41 (both empty), show nothing. If the
+person edits after a manager, they become the last editor and the "changed"
+part goes. Deletes leave no trace.
+
 ### Absences
 
 An absence is a date range belonging to one person, with a type — vacation, sick
@@ -413,6 +424,9 @@ Every write passes three checks:
    changed or deleted, and neither can it be moved into one.
 3. **The day is free** — no day of the range may already have logged time, and
    no day may already be covered by another absence, whatever its type.
+
+Who added and last changed an absence is recorded and shown as for time
+entries (see Time logging).
 
 The rule runs both ways: time logging is refused on a day an absence covers.
 An absence also deletes its owner's plans on those days (see Planning).

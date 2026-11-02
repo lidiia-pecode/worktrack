@@ -2,6 +2,7 @@ import { PaginatedResponse, PaginationParams } from ".";
 import { UserStatus } from "./enums";
 import { ExpectedDay } from "./Capacity";
 import { ProjectActivity } from "./ProjectActivities";
+import { UserName } from "./User";
 
 /**
  * Mirrors the backend `TimeLogResponse` DTO. Fields the API never serializes
@@ -17,6 +18,10 @@ export interface TimeLog {
   date: string;
   createdAt: string;
   updatedAt: string;
+  /** Who added it; null for records from before this was kept. On reads only. */
+  createdBy?: UserName | null;
+  /** Who last changed it; null until it is changed. On reads only. */
+  updatedBy?: UserName | null;
   /**
    * Present on list, get and create. Absent on the update response when the
    * payload did not change `projectActivityId`, because the backend reloads
