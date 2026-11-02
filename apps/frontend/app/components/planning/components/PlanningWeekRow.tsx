@@ -198,7 +198,7 @@ export const PlanningWeekRow = ({
           <span className="text-xs whitespace-nowrap tabular-nums">
             <span
               className={cn(
-                "text-sm font-semibold",
+                "font-semibold",
                 overMinutes > 0 ? "text-warning-text" : "text-foreground",
               )}
             >
@@ -214,7 +214,7 @@ export const PlanningWeekRow = ({
             value={row.plannedMinutes}
             reference={row.availableMinutes}
             label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-            className="h-1.5 w-full"
+            className="h-[5px] w-full max-w-32"
           />
 
           {overMinutes > 0 && (

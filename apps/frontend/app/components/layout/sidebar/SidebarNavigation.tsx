@@ -138,23 +138,34 @@ export const GettingStartedLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "flex items-center gap-3 rounded-xl border border-brand-strong p-3 transition-colors",
+        "group flex items-center gap-3 overflow-hidden rounded-xl border border-brand-strong p-3",
+        "transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none",
+        // The desktop sidebar shows the icon alone and opens to the name on
+        // hover or focus; the phone menu keeps the whole card, where nothing hovers.
+        "md:w-14.5 md:hover:w-full md:focus-visible:w-full",
         FOCUS_RING,
         isActive ? "bg-brand-muted" : "bg-brand-subtle hover:bg-brand-muted",
       )}
     >
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground">
+      <span className="relative flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand text-brand-foreground">
         <Icon className="size-4" aria-hidden="true" />
+        {isSetupOpen && (
+          <span
+            className="absolute -top-1 -right-1 size-2.5 rounded-full bg-warning"
+            aria-hidden="true"
+          />
+        )}
       </span>
 
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold text-foreground">
+      <span className="min-w-0 transition-opacity duration-200 motion-reduce:transition-none md:opacity-0 md:group-hover:opacity-100 md:group-focus-visible:opacity-100">
+        <span className="block text-sm font-semibold whitespace-nowrap text-muted-foreground">
           {gettingStarted.label}
         </span>
-        <span className="block text-xs text-muted-foreground">
+        {/* Still read out on desktop, where the setup state is otherwise only the dot. */}
+        <span className="block text-xs text-muted-foreground md:sr-only">
           {isSetupOpen
             ? "Finish setting up your company"
-            : "How WorkTrack fits together"}
+            : "Getting to Know WorkTrack"}
         </span>
       </span>
     </Link>
