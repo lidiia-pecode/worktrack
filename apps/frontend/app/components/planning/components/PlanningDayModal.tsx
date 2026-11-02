@@ -451,6 +451,9 @@ export const PlanningDayModal = ({
                   hours={Number(hours)}
                   minutes={Number(minutes)}
                   minuteStep={MINUTE_STEP}
+                  maxMinutes={
+                    Math.floor(row.dayLimitMinutes / MINUTE_STEP) * MINUTE_STEP
+                  }
                   formId={FORM_ID}
                   onHoursChange={(value) =>
                     setValue("hours", value, { shouldDirty: true })

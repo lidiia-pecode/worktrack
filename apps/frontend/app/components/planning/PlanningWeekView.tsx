@@ -47,6 +47,8 @@ type OpenedDay = {
 type AbsenceFormState = {
   userId: string;
   date: string;
+  /** The last day of a period's absence; a day's absence has none. */
+  endDate?: string;
   absence?: Absence;
 };
 
@@ -335,6 +337,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           onClose={() => setAbsenceForm(null)}
           userId={absenceForm.userId}
           date={absenceForm.date}
+          endDate={absenceForm.endDate}
+          // A new absence from a day is for that day; one from the period
+          // form, or one opened to edit, picks its days.
+          isSingleDay={!absenceForm.absence && !absenceForm.endDate}
           absence={absenceForm.absence}
           onCreate={async (payload) => {
             await absenceActions.create.mutateAsync({
@@ -360,6 +366,13 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <PlanPeriodModal
           key={periodRow.user.id}
           row={periodRow}
+          onAddAbsence={(startDate, endDate) =>
+            setAbsenceForm({
+              userId: periodRow.user.id,
+              date: startDate,
+              endDate,
+            })
+          }
           onClose={() => setPeriodUserId(null)}
         />
       )}

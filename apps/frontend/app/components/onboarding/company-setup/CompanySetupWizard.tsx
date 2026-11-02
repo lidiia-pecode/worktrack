@@ -24,6 +24,10 @@ import { OnboardingProgress } from "./OnboardingProgress";
 import { OnboardingStepHeader } from "./OnboardingStepHeader";
 import { StepActions } from "./StepActions";
 import { FormAlert } from "../../shared/FormAlert";
+import {
+  MAX_WORK_DAY_HOURS,
+  WORK_DAY_STEP_HOURS,
+} from "@/lib/forms/schemas/work-day.schema";
 
 const setupSchema = companySchema.pick({
   timezone: true,
@@ -206,8 +210,8 @@ export const CompanySetupWizard = () => {
               label="Hours in a working day"
               type="number"
               min={1}
-              max={24}
-              step={0.5}
+              max={MAX_WORK_DAY_HOURS}
+              step={WORK_DAY_STEP_HOURS}
               {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
               error={errors.standardWorkHoursPerDay?.message}
               disabled={isSaving}

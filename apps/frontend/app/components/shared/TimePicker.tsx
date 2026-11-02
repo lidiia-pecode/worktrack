@@ -17,6 +17,8 @@ type TimePickerProps = {
   formId?: string;
   /** Names the pair where no visible label does, e.g. in a row of controls. */
   "aria-label"?: string;
+  /** The longest duration it offers; a whole day unless a form limits it. */
+  maxMinutes?: number;
 };
 
 const MAX_MINUTES = 24 * 60;
@@ -36,19 +38,20 @@ export const TimePicker = ({
   minuteStep = 5,
   formId,
   "aria-label": ariaLabel,
+  maxMinutes = MAX_MINUTES,
 }: TimePickerProps) => {
   const total = hours * 60 + minutes;
 
   // Steps and typing both set the whole duration, so minutes carry into the
   // hours: "75" in the minutes is an hour and a quarter more.
   const setTotal = (minutesInAll: number) => {
-    const next = Math.max(0, Math.min(MAX_MINUTES, minutesInAll));
+    const next = Math.max(0, Math.min(maxMinutes, minutesInAll));
     onHoursChange(Math.floor(next / 60));
     onMinutesChange(next % 60);
   };
 
   const fieldProps = {
-    canIncrease: total < MAX_MINUTES,
+    canIncrease: total < maxMinutes,
     canDecrease: total > 0,
     formId,
   };
@@ -70,7 +73,7 @@ export const TimePicker = ({
         {...fieldProps}
         label="Hours"
         value={hours}
-        max={24}
+        max={Math.floor(maxMinutes / 60)}
         onStep={(direction) => setTotal(total + direction * 60)}
         onChange={(value) => setTotal(value * 60 + minutes)}
       />

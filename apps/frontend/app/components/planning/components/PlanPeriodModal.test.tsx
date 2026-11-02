@@ -90,7 +90,9 @@ const OCTOBER_DAYS = Array.from({ length: 22 }, (_, i) => {
 
 const renderModal = (row = ALICE) => {
   const onClose = vi.fn();
-  render(<PlanPeriodModal row={row} onClose={onClose} />);
+  render(
+    <PlanPeriodModal row={row} onAddAbsence={vi.fn()} onClose={onClose} />,
+  );
   return { onClose };
 };
 

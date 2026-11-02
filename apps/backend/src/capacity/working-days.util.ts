@@ -6,6 +6,10 @@ import { WeekDay } from 'src/companies/enums/week-day.enum';
  */
 export const WORKING_DAYS_PER_WEEK = 5;
 
+/** A working day, a person's or the company's, is set in these steps, up to the most. */
+export const MINUTES_STEP_PER_DAY = 30;
+export const MAX_MINUTES_PER_DAY = 12 * 60;
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Dates are handled as YYYY-MM-DD in UTC so a timezone never shifts a day. */

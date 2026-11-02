@@ -142,7 +142,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Smith',
     role: UserRole.EMPLOYEE,
     position: 'Product Designer',
-    capacityHoursPerWeek: 24,
+    capacityHoursPerWeek: 25,
     note: 'On the team, part-time (24h/week), has time logged this week.',
   },
   {
@@ -214,7 +214,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Turner',
     role: UserRole.EMPLOYEE,
     position: 'Full-Stack Developer',
-    capacityHoursPerWeek: 32,
+    capacityHoursPerWeek: 32.5,
   },
   {
     email: AVA,
@@ -231,7 +231,7 @@ export const USERS: SeedUser[] = [
     role: UserRole.EMPLOYEE,
     position: 'DevOps Engineer',
     capacityHoursPerWeek: 40,
-    capacityFrom: { validFrom: '2026-09-01', hoursPerWeek: 32 },
+    capacityFrom: { validFrom: '2026-09-01', hoursPerWeek: 32.5 },
     note: 'Down to 32h a week from 1 September, with his 40h plan left as it was.',
   },
   {
@@ -256,7 +256,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Hayes',
     role: UserRole.EMPLOYEE,
     position: 'UX Designer',
-    capacityHoursPerWeek: 24,
+    capacityHoursPerWeek: 25,
   },
   {
     email: JAMES,
@@ -272,7 +272,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Price',
     role: UserRole.EMPLOYEE,
     position: 'Content Designer',
-    capacityHoursPerWeek: 32,
+    capacityHoursPerWeek: 32.5,
   },
   {
     email: BENJAMIN,
@@ -361,7 +361,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Bailey',
     role: UserRole.EMPLOYEE,
     position: 'BI Developer',
-    capacityHoursPerWeek: 32,
+    capacityHoursPerWeek: 32.5,
   },
   {
     email: NATHAN,

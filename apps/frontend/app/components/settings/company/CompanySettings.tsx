@@ -25,6 +25,10 @@ import { settingsNumberInputClassName } from "../styles/settings-styles";
 import { NumberInputControls } from "../components/NumberInputControls";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useReportDirty } from "@/hooks/useReportDirty";
+import {
+  MAX_WORK_DAY_HOURS,
+  WORK_DAY_STEP_HOURS,
+} from "@/lib/forms/schemas/work-day.schema";
 
 interface CompanySettingsProps {
   onDirtyChange?: (isDirty: boolean) => void;
@@ -124,7 +128,7 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
   const updateWorkHours = (delta: number) => {
     const current = Number(getValues("standardWorkHoursPerDay")) || 0;
 
-    const next = Math.min(24, Math.max(1, current + delta));
+    const next = Math.min(MAX_WORK_DAY_HOURS, Math.max(1, current + delta));
 
     setValue("standardWorkHoursPerDay", next, {
       shouldDirty: true,
@@ -222,8 +226,8 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
                     label="Standard work hours / day"
                     type="number"
                     min={1}
-                    max={24}
-                    step={0.5}
+                    max={MAX_WORK_DAY_HOURS}
+                    step={WORK_DAY_STEP_HOURS}
                     placeholder="8"
                     {...register("standardWorkHoursPerDay", {
                       valueAsNumber: true,
@@ -233,8 +237,8 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
                   />
 
                   <NumberInputControls
-                    onIncrement={() => updateWorkHours(0.5)}
-                    onDecrement={() => updateWorkHours(-0.5)}
+                    onIncrement={() => updateWorkHours(WORK_DAY_STEP_HOURS)}
+                    onDecrement={() => updateWorkHours(-WORK_DAY_STEP_HOURS)}
                   />
                 </div>
 

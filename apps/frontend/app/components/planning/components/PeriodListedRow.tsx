@@ -20,6 +20,8 @@ type PeriodListedRowProps = {
   /** Whether the person is still on the project, so its hours can change. */
   isOnProject: boolean;
   minuteStep: number;
+  /** The person's own day: the most a project's plan can take. */
+  maxMinutes: number;
   formId: string;
   /** Applies a change to the row's unsaved hours; none keeps it as planned. */
   onEdit: (update: (minutes: number | undefined) => number | undefined) => void;
@@ -36,6 +38,7 @@ export const PeriodListedRow = ({
   editedMinutes,
   isOnProject,
   minuteStep,
+  maxMinutes,
   formId,
   onEdit,
   onDelete,
@@ -123,6 +126,7 @@ export const PeriodListedRow = ({
             hours={Math.floor(shownMinutes / 60)}
             minutes={shownMinutes % 60}
             minuteStep={minuteStep}
+            maxMinutes={maxMinutes}
             formId={formId}
             onHoursChange={setPart("hours")}
             onMinutesChange={setPart("minutes")}

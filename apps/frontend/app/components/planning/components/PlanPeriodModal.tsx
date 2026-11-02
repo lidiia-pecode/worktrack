@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarRange, Plus, X } from "lucide-react";
+import { CalendarOff, CalendarRange, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PlanningWeekRow } from "@/types";
@@ -99,6 +99,8 @@ const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
   row: PlanningWeekRow;
+  /** Opens the absence form on the chosen days, to change before saving. */
+  onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
 };
 
@@ -107,7 +109,14 @@ type PlanPeriodModalProps = {
  * planned in it change only on their own days, and a project added fills
  * every working day. A planned project is deleted from its row at once.
  */
-export const PlanPeriodModal = ({ row, onClose }: PlanPeriodModalProps) => {
+export const PlanPeriodModal = ({
+  row,
+  onAddAbsence,
+  onClose,
+}: PlanPeriodModalProps) => {
+  // No project can take more than the person's own day, in whole steps.
+  const maxPlanMinutes =
+    Math.floor(row.dayLimitMinutes / MINUTE_STEP) * MINUTE_STEP;
   const { timezone } = useWorkSettings();
   const planPeriod = usePlanPeriod();
   const deletePeriodPlans = useDeletePeriodPlans();
@@ -341,6 +350,18 @@ export const PlanPeriodModal = ({ row, onClose }: PlanPeriodModalProps) => {
           <>
             <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onAddAbsence(startDate, endDate)}
+              className="mr-auto"
+              disabled={!hasPeriod || planPeriod.isPending}
+            >
+              <CalendarOff className="size-4" />
+              Add absence
+            </Button>
+
+            <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={onClose}
@@ -404,6 +425,7 @@ export const PlanPeriodModal = ({ row, onClose }: PlanPeriodModalProps) => {
                       (project) => project.id === line.projectId,
                     )}
                     minuteStep={MINUTE_STEP}
+                    maxMinutes={maxPlanMinutes}
                     formId={FORM_ID}
                     onEdit={editLine(line.projectId)}
                     onDelete={() => setDeleting(line)}
@@ -473,6 +495,7 @@ export const PlanPeriodModal = ({ row, onClose }: PlanPeriodModalProps) => {
                         hours={Number(added[index]?.hours ?? 0)}
                         minutes={Number(added[index]?.minutes ?? 0)}
                         minuteStep={MINUTE_STEP}
+                        maxMinutes={maxPlanMinutes}
                         formId={FORM_ID}
                         onHoursChange={(value) =>
                           setValue(`added.${index}.hours`, value, {

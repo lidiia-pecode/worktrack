@@ -45,6 +45,7 @@ import {
   TeamRemoval,
 } from "../teams/TeamMemberRemoveDialog";
 import { UserProjectsPicker } from "./UserProjectsPicker";
+import { WORK_DAYS_PER_WEEK } from "@/lib/forms/schemas/work-day.schema";
 
 const EDIT_FORM_ID = "user-edit-form";
 
@@ -60,8 +61,12 @@ const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
 
   return (
     <>
-      {formatDuration(capacity.minutesPerWeek)} a week
-      {source && <span className="text-muted-foreground"> · {source}</span>}
+      {formatDuration(capacity.minutesPerWeek / WORK_DAYS_PER_WEEK)} a day
+      <span className="text-muted-foreground">
+        {" "}
+        · {formatDuration(capacity.minutesPerWeek)} a week
+        {source && ` · ${source}`}
+      </span>
     </>
   );
 };
@@ -84,7 +89,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   );
 
   const save = async (data: UserFormData) => {
-    const { capacityHoursPerWeek, capacityValidFrom, ...userData } = data;
+    const { capacityHoursPerDay, capacityValidFrom, ...userData } = data;
 
     const becomesEmployee =
       user.role === UserRole.MANAGER && userData.role === UserRole.EMPLOYEE;
@@ -93,7 +98,8 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
       return;
     }
 
-    const minutesPerWeek = Math.round(capacityHoursPerWeek * 60);
+    const minutesPerWeek =
+      Math.round(capacityHoursPerDay * 60) * WORK_DAYS_PER_WEEK;
     const hoursChanged =
       capacity !== null && minutesPerWeek !== capacity.minutesPerWeek;
 
@@ -127,7 +133,8 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
           defaultValues={{
             position: user.position ?? "",
             role: user.role,
-            capacityHoursPerWeek: (capacity?.minutesPerWeek ?? 0) / 60,
+            capacityHoursPerDay:
+              (capacity?.minutesPerWeek ?? 0) / WORK_DAYS_PER_WEEK / 60,
             capacityValidFrom: todayISODate(timezone),
           }}
           onSubmit={save}
