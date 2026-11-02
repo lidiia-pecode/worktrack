@@ -165,7 +165,8 @@ type PersonSummaryProps = {
 const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
   const isDeactivated = isDeactivatedUser(row.user);
   const isFormerMember = row.isOnProject === false;
-  const expectsTime = !isDeactivated && row.expectedMinutes > 0;
+  // A leaver is expected time up to the day they left, as on Reports.
+  const expectsTime = row.expectedMinutes > 0;
   const isOver = !projectName && row.minutes > row.expectedMinutes;
   const showsBar = !projectName && expectsTime;
 
@@ -201,19 +202,7 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
         {expectation && (
           <span className="truncate text-muted-foreground">{expectation}</span>
         )}
-        {isDeactivated && (
-          <Badge variant="neutral" className="mt-0.5 self-start">
-            Deactivated
-          </Badge>
-        )}
       </span>
-
-      {/* Too wide to share the hours' line in the narrow column. */}
-      {isFormerMember && (
-        <Badge variant="neutral" className="mt-1 self-start whitespace-nowrap">
-          Former member
-        </Badge>
-      )}
 
       {showsBar && (
         <span className="mt-0.5 flex w-28">
@@ -222,6 +211,21 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
             nonBillableMinutes={row.nonBillableMinutes}
             expectedMinutes={row.expectedMinutes}
           />
+        </span>
+      )}
+
+      {(isDeactivated || isFormerMember) && (
+        <span className="mt-1 flex flex-wrap gap-1">
+          {isDeactivated && (
+            <Badge variant="neutral" size="sm">
+              Deactivated
+            </Badge>
+          )}
+          {isFormerMember && (
+            <Badge variant="neutral" size="sm" className="whitespace-nowrap">
+              Former member
+            </Badge>
+          )}
         </span>
       )}
     </div>
