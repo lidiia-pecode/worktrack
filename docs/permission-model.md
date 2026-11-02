@@ -366,8 +366,35 @@ Visible and deliberately unanswered; each waits for a real need.
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*
-- **P4 — Should time visibility be bounded by membership dates?** Recommend no
-  while §3.3 holds; revisit if transfers become common.
+- **P4 — Should a manager's reach follow the dates a person was in their
+  team?** *Reopened 31 October 2026, open.* Today reach reads current
+  membership only (`left_at IS NULL` in `TeamVisibilityService`): a manager
+  reaches the whole history of everyone now in a team they now lead, for
+  reading and, in open periods, for writing (D9). The "no" rested on §3.3's
+  premise that a manager only gains people new to the company. Since P1 an
+  Owner moves people between teams (`leaveCurrentTeam`, effective today), so
+  after a move from team A to team B:
+  - B's manager reaches everything the person did in A, notes included, and
+    can correct their days in A in an open period; past weeks on Team time
+    and Planning and B's reports and export for past months include it.
+  - A's manager loses all of it: their past months' figures and export drop
+    the person, locked months included, and they can't finish correcting the
+    days before the move in a still-open month.
+  - The Owner sees everything either way, so company figures don't change.
+
+  Options: (a) keep current membership, possibly with the move dialog saying
+  that the history goes with the person; (b) a team keeps its history: a
+  manager reaches a person's records on the days they were in a team the
+  manager now leads, for reading and writing; (c) (b) for reports and the
+  export only, current membership for the week views and writes, two rules
+  for one question; (d) (b) applied to writes only, so A's manager can finish
+  the days before the move. (b) needs no migration (`joined_at`/`left_at`
+  exist and are indexed) but changes every query that reads reach, in seven
+  services, and lists people per period. It is also the prerequisite for any
+  grant that widens reach over people (§7, configurable permissions).
+  *Recommendation: (b), as a phase of its own before the launch stage; not
+  part of Phase 41.* Until it is decided, §3.3's "Why this is enough" and §5's
+  note on membership dates describe the rule, not a guarantee.
 - **P5 — Should an employee see their own team and teammates?** *Answered 24
   October 2026: no.* Who is in a team, who manages it and who is away belong to
   an HR product's directory, outside WorkTrack's boundary

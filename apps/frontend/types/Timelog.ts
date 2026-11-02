@@ -99,6 +99,8 @@ export interface TeamSummaryRow {
   expectedByDate: ExpectedDay[];
   /** The days nothing can be recorded on, in the company's time zone. */
   inactiveSpells: InactiveSpell[];
+  /** Only under a project filter: false for someone removed from it since. */
+  isOnProject?: boolean;
   days: TeamSummaryDay[];
 }
 

@@ -764,6 +764,46 @@ describe('TimeLogsService write scope', () => {
       expect(summary.minutes).toBe(60);
     });
 
+    it("keeps the people removed from a project in its past, within the caller's reach", async () => {
+      const { projectId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      // Both logged on the project and were taken off it since.
+      const removed = await createUser('removed', UserRole.EMPLOYEE);
+      const removedOutsider = await createUser(
+        'removedoutsider',
+        UserRole.EMPLOYEE,
+      );
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId,
+        userId: removed.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
+      await existingLogFor(removed.id);
+      await existingLogFor(removedOutsider.id);
+
+      const summary = await service.getTeamSummary(
+        { dateFrom: DATE, dateTo: DATE, projectId },
+        manager,
+      );
+      const rowOf = (id: string) =>
+        summary.rows.find((row) => row.user.id === id);
+
+      expect(rowOf(removed.id)).toMatchObject({
+        isOnProject: false,
+        minutes: 60,
+      });
+      // A current member with nothing logged stays listed.
+      expect(rowOf(member.id)).toMatchObject({ isOnProject: true, minutes: 0 });
+      expect(rowOf(removedOutsider.id)).toBeUndefined();
+      expect(summary.minutes).toBe(
+        summary.rows.reduce((sum, row) => sum + row.minutes, 0),
+      );
+      expect(summary.minutes).toBe(60);
+    });
+
     describe('with entries', () => {
       const entriesOf = (summary: { rows: TeamSummaryRow[] }) =>
         summary.rows.flatMap((row) =>

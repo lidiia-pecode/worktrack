@@ -35,7 +35,10 @@ export interface VisibleUsersFilter {
   teamId?: string;
   projectId?: string;
   userId?: string;
-  /** Deactivated people who still belong in the view, e.g. they have data in it. */
+  /**
+   * People with data in the view: listed even when deactivated, or no longer
+   * on the filtered project.
+   */
   includeUserIds?: string[];
   /**
    * Also the deactivated people who still had days to work in the view: they
@@ -216,14 +219,24 @@ export class TeamVisibilityService {
       qb.andWhere('u.id = :visibleUserId', { visibleUserId: filter.userId });
     }
 
+    const hasIncludedUsers = Boolean(filter.includeUserIds?.length);
+    if (hasIncludedUsers) {
+      qb.setParameter('includeUserIds', filter.includeUserIds);
+    }
+
+    // A project's past keeps the people removed from it since: they are
+    // listed while they have data in the view.
     if (filter.projectId) {
-      qb.andWhere(
-        `EXISTS (
+      const onProject = `EXISTS (
           SELECT 1
           FROM project_users pu
           WHERE pu.project_id = :visibleProjectId
             AND pu.user_id = u.id
-        )`,
+        )`;
+      qb.andWhere(
+        hasIncludedUsers
+          ? `(${onProject} OR u.id IN (:...includeUserIds))`
+          : onProject,
         { visibleProjectId: filter.projectId },
       );
     }
@@ -231,9 +244,8 @@ export class TeamVisibilityService {
     // Deactivated people are listed only with a reason: they are named, or
     // they were still employed on the view's first day.
     const alsoListed: string[] = [];
-    if (filter.includeUserIds?.length) {
+    if (hasIncludedUsers) {
       alsoListed.push('u.id IN (:...includeUserIds)');
-      qb.setParameter('includeUserIds', filter.includeUserIds);
     }
     if (filter.leftAfter) {
       alsoListed.push(

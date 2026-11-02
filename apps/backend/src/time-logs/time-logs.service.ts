@@ -67,6 +67,11 @@ export interface TeamSummaryRow {
   expectedByDate: ExpectedDay[];
   /** The days nothing can be recorded on, as the API refuses them. */
   inactiveSpells: InactiveSpell[];
+  /**
+   * Only under a project filter: false for someone removed from the project
+   * who is listed for their time on it.
+   */
+  isOnProject?: boolean;
   days: TeamSummaryDay[];
 }
 
@@ -211,7 +216,7 @@ export class TimeLogsService {
     );
 
     const userIds = users.map((summaryUser) => summaryUser.id);
-    const [expected, activeDates] = await Promise.all([
+    const [expected, activeDates, projectMemberIds] = await Promise.all([
       this.expectedHours.expectedFor(
         user.companyId,
         userIds,
@@ -219,6 +224,9 @@ export class TimeLogsService {
         query.dateTo,
       ),
       this.capacity.activeDatesFor(user.companyId, userIds, timezone),
+      query.projectId
+        ? this.findProjectMemberIds(query.projectId, userIds)
+        : undefined,
     ]);
 
     const rows = new Map<string, TeamSummaryRow>(
@@ -233,6 +241,7 @@ export class TimeLogsService {
           expectedToDateMinutes: expected.get(summaryUser.id)?.toDate ?? 0,
           expectedByDate: expected.get(summaryUser.id)?.byDate ?? [],
           inactiveSpells: activeDates.get(summaryUser.id)?.inactiveSpells ?? [],
+          isOnProject: projectMemberIds?.has(summaryUser.id),
           days: [],
         },
       ]),
@@ -630,6 +639,24 @@ export class TimeLogsService {
     }
 
     return pa;
+  }
+
+  /** Of the given people, the ones on the project now. */
+  private async findProjectMemberIds(
+    projectId: string,
+    userIds: string[],
+  ): Promise<Set<string>> {
+    if (!userIds.length) return new Set();
+
+    const rows = await this.dataSource
+      .createQueryBuilder()
+      .select('pu.user_id', 'userId')
+      .from('project_users', 'pu')
+      .where('pu.project_id = :projectId', { projectId })
+      .andWhere('pu.user_id IN (:...userIds)', { userIds })
+      .getRawMany<{ userId: string }>();
+
+    return new Set(rows.map((row) => row.userId));
   }
 
   private async assertProjectMembership(

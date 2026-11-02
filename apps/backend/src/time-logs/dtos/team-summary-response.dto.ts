@@ -92,6 +92,10 @@ export class TeamSummaryRowResponse {
   @Type(() => InactiveSpellResponse)
   inactiveSpells!: InactiveSpellResponse[];
 
+  /** Only under a project filter: false for someone removed from it since. */
+  @Expose()
+  isOnProject?: boolean;
+
   @Expose()
   @Type(() => TeamSummaryDayResponse)
   days!: TeamSummaryDayResponse[];

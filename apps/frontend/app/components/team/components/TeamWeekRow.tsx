@@ -164,6 +164,7 @@ type PersonSummaryProps = {
 /** Who the row is, and their week against what was expected of them. */
 const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
   const isDeactivated = isDeactivatedUser(row.user);
+  const isFormerMember = row.isOnProject === false;
   const expectsTime = !isDeactivated && row.expectedMinutes > 0;
   const isOver = !projectName && row.minutes > row.expectedMinutes;
   const showsBar = !projectName && expectsTime;
@@ -206,6 +207,13 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
           </Badge>
         )}
       </span>
+
+      {/* Too wide to share the hours' line in the narrow column. */}
+      {isFormerMember && (
+        <Badge variant="neutral" className="mt-1 self-start whitespace-nowrap">
+          Former member
+        </Badge>
+      )}
 
       {showsBar && (
         <span className="mt-0.5 flex w-28">
