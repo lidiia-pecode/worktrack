@@ -7,13 +7,13 @@ import {
   HoursReportRow,
   PeopleReport,
   PeopleReportRow,
+  Timeline,
 } from "@/types";
 import { HoursReportGroupBy, UserRole, UserStatus } from "@/types/enums";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
-import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useReportOverview } from "@/hooks/useReportOverview";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
-import { useTimeline } from "@/hooks/useTimeline";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import {
   addDays,
@@ -43,9 +43,8 @@ vi.mock("@/hooks/auth/useAuth", () => ({
     user: { role: auth.isOwner ? UserRole.OWNER : UserRole.MANAGER },
   }),
 }));
-vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
+vi.mock("@/hooks/useReportOverview", () => ({ useReportOverview: vi.fn() }));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
-vi.mock("@/hooks/useTimeline", () => ({ useTimeline: vi.fn() }));
 vi.mock("@/hooks/useActivityCategories", () => ({
   useActivityCategoriesAllPagesQuery: () => ({
     items: [{ name: "Design" }, { name: "Development" }],
@@ -176,6 +175,34 @@ const projectsReport = (rows: HoursReportRow[]): HoursReport => ({
   countedUntil: null,
 });
 
+const timeline: Timeline = {
+  bucketSize: "week",
+  buckets: [
+    {
+      start: "2026-10-01",
+      end: "2026-10-04",
+      workingDays: 2,
+      isPartial: true,
+      loggedMinutes: 14 * HOUR,
+      billableMinutes: 0,
+      plannedMinutes: 12 * HOUR,
+      expectedMinutes: 16 * HOUR,
+    },
+    {
+      start: "2026-10-05",
+      end: "2026-10-11",
+      workingDays: 5,
+      isPartial: false,
+      loggedMinutes: 38 * HOUR,
+      billableMinutes: 0,
+      plannedMinutes: 40 * HOUR,
+      expectedMinutes: 40 * HOUR,
+    },
+  ],
+  isProvisional: true,
+  countedUntil: null,
+};
+
 const loaded = <T,>(report: T) => ({
   report,
   isLoading: false,
@@ -183,6 +210,16 @@ const loaded = <T,>(report: T) => ({
   isError: false,
   refetch: vi.fn(),
 });
+
+/** The page's one request: the People report with its timeline. */
+const showOverview = (
+  people: PeopleReport | null,
+  state: { isError?: boolean; isPlaceholderData?: boolean } = {},
+) =>
+  vi.mocked(useReportOverview).mockReturnValue({
+    ...loaded(people && { people, timeline }),
+    ...state,
+  } as unknown as ReturnType<typeof useReportOverview>);
 
 /** What the panels load: a person's projects and a project's people. */
 const panelRows = {
@@ -203,9 +240,7 @@ const peopleRow = (name: string) =>
   });
 
 const showReports = (people: PeopleReport, projects: HoursReport) => {
-  vi.mocked(usePeopleReport).mockReturnValue(
-    loaded(people) as unknown as ReturnType<typeof usePeopleReport>,
-  );
+  showOverview(people);
   vi.mocked(useHoursReport).mockImplementation(
     (params) =>
       loaded(
@@ -235,7 +270,7 @@ describe("ReportsView", () => {
 
   beforeEach(() => {
     auth.isOwner = false;
-    vi.mocked(usePeopleReport).mockReset();
+    vi.mocked(useReportOverview).mockReset();
     vi.mocked(useHoursReport).mockReset();
     navigation.history.splice(0, navigation.history.length, "");
     vi.mocked(useTeamTimeSummary).mockReturnValue({
@@ -244,37 +279,6 @@ describe("ReportsView", () => {
       isError: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useTeamTimeSummary>);
-    vi.mocked(useTimeline).mockReturnValue({
-      timeline: {
-        buckets: [
-          {
-            start: "2026-10-01",
-            end: "2026-10-04",
-            workingDays: 2,
-            isPartial: true,
-            loggedMinutes: 14 * HOUR,
-            billableMinutes: 0,
-            plannedMinutes: 12 * HOUR,
-            expectedMinutes: 16 * HOUR,
-          },
-          {
-            start: "2026-10-05",
-            end: "2026-10-11",
-            workingDays: 5,
-            isPartial: false,
-            loggedMinutes: 38 * HOUR,
-            billableMinutes: 0,
-            plannedMinutes: 40 * HOUR,
-            expectedMinutes: 40 * HOUR,
-          },
-        ],
-        isProvisional: true,
-        countedUntil: null,
-      },
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useTimeline>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
       items: [],
       isLoading: false,
@@ -448,10 +452,7 @@ describe("ReportsView", () => {
   });
 
   it("offers to try again when the report fails", () => {
-    vi.mocked(usePeopleReport).mockReturnValue({
-      ...loaded(null),
-      isError: true,
-    } as unknown as ReturnType<typeof usePeopleReport>);
+    showOverview(null, { isError: true });
     vi.mocked(useHoursReport).mockReturnValue(
       loaded(projectsReport([])) as unknown as ReturnType<
         typeof useHoursReport
@@ -486,10 +487,7 @@ describe("ReportsView", () => {
 
   it("says nothing about the month while the next one loads", () => {
     const report = { ...peopleReport(team), countedUntil };
-    vi.mocked(usePeopleReport).mockReturnValue({
-      ...loaded(report),
-      isPlaceholderData: true,
-    } as unknown as ReturnType<typeof usePeopleReport>);
+    showOverview(report, { isPlaceholderData: true });
     vi.mocked(useHoursReport).mockReturnValue(
       loaded(projectsReport(projects)) as unknown as ReturnType<
         typeof useHoursReport
@@ -814,11 +812,7 @@ describe("ReportsView", () => {
       showReports(peopleReport([ethan]), projectsReport(projects));
       await user.click(peopleRow("Ethan Brooks"));
 
-      vi.mocked(usePeopleReport).mockReturnValue(
-        loaded(peopleReport(team.slice(1))) as unknown as ReturnType<
-          typeof usePeopleReport
-        >,
-      );
+      showOverview(peopleReport(team.slice(1)));
       await user.click(screen.getByRole("button", { name: "Previous month" }));
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();

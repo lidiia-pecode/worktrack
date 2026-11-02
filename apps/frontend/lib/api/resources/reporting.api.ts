@@ -7,7 +7,7 @@ import {
   ReportRange,
   ReportingMonth,
   ReportingPeriodsQuery,
-  Timeline,
+  ReportOverview,
 } from "@/types";
 
 import { buildQueryString, createClient } from "../core";
@@ -33,6 +33,7 @@ export const ReportingClientApi = {
   getPeopleReport: (params: ReportRange) =>
     client.get<PeopleReport>(`/people${buildQueryString(params)}`),
 
-  getTimeline: (params: ReportRange) =>
-    client.get<Timeline>(`/timeline${buildQueryString(params)}`),
+  /** The People report and its timeline, for owners and managers. */
+  getOverview: (params: ReportRange) =>
+    client.get<ReportOverview>(`/overview${buildQueryString(params)}`),
 };

@@ -6,7 +6,7 @@ import { FileBarChart } from "lucide-react";
 import { ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
-import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useReportOverview } from "@/hooks/useReportOverview";
 import { useShownMonth } from "@/hooks/useShownMonth";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
@@ -40,21 +40,23 @@ export const ReportsView = () => {
 
   const range: ReportRange = getMonthRange(month);
 
-  const people = usePeopleReport(range);
+  const overview = useReportOverview(range);
+  const people = overview.report?.people ?? null;
+  const timeline = overview.report?.timeline ?? null;
   const projects = useHoursReport({
     ...range,
     groupBy: HoursReportGroupBy.PROJECT,
   });
   const isManager = user?.role === UserRole.MANAGER;
-  const isUpdating = people.isPlaceholderData || projects.isPlaceholderData;
-  const peopleReport = isUpdating ? null : people.report;
+  const isUpdating = overview.isPlaceholderData || projects.isPlaceholderData;
+  const peopleReport = isUpdating ? null : people;
   // Only finished days count, so a month starting today has nothing yet.
   const isNothingCounted = Boolean(
     peopleReport?.countedUntil && peopleReport.countedUntil < range.dateFrom,
   );
 
   const renderOverview = () => {
-    if (people.isLoading || projects.isLoading) {
+    if (overview.isLoading || projects.isLoading) {
       return (
         <LoadingState
           title="Loading the report"
@@ -63,20 +65,20 @@ export const ReportsView = () => {
       );
     }
 
-    if (people.isError || projects.isError) {
+    if (overview.isError || projects.isError) {
       return (
         <ErrorState
           title="We couldn't load the report"
           description="The figures for this month are unavailable right now."
           onRetry={() => {
-            void people.refetch();
+            void overview.refetch();
             void projects.refetch();
           }}
         />
       );
     }
 
-    if (!people.report || !projects.report) return null;
+    if (!people || !timeline || !projects.report) return null;
 
     if (isNothingCounted) {
       return (
@@ -88,7 +90,7 @@ export const ReportsView = () => {
       );
     }
 
-    const { totals, isProvisional, countedUntil } = people.report;
+    const { totals, isProvisional, countedUntil } = people;
     if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
       return (
         <EmptyState
@@ -102,7 +104,7 @@ export const ReportsView = () => {
     // A locked month is for reference only, so nothing is marked (Decision 34).
     const attention = isProvisional
       ? reportAttention({
-          people: people.report.rows,
+          people: people.rows,
           projects: projects.report.rows,
           countedUntil,
           isManager,
@@ -118,7 +120,7 @@ export const ReportsView = () => {
         )}
         aria-busy={isUpdating}
       >
-        <WeekByWeek range={range} totals={totals} />
+        <WeekByWeek timeline={timeline} totals={totals} />
         {isProvisional && (
           <div className="mt-4">
             <NeedsAttention
@@ -132,7 +134,7 @@ export const ReportsView = () => {
         )}
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
           <PeopleCard
-            people={people.report.rows}
+            people={people.rows}
             marked={attention.people}
             onOpenPerson={openPerson}
           />
@@ -150,7 +152,7 @@ export const ReportsView = () => {
 
   const openedPerson =
     opened?.param === PERSON_PARAM
-      ? people.report?.rows.find((row) => row.userId === opened.id)
+      ? people?.rows.find((row) => row.userId === opened.id)
       : undefined;
   const openedProject =
     opened?.param === PROJECT_PARAM
@@ -171,7 +173,7 @@ export const ReportsView = () => {
   }, [isOpenedGone, close]);
 
   const renderPanel = () => {
-    if (!people.report) return null;
+    if (!people) return null;
 
     if (openedPerson) {
       return (
@@ -179,7 +181,7 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
-          countedUntil={people.report.countedUntil}
+          countedUntil={people.countedUntil}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -219,7 +221,7 @@ export const ReportsView = () => {
         </div>
 
         {/* The last figures keep the button in place while a month loads. */}
-        {(people.report?.totals.loggedMinutes ?? 0) > 0 && (
+        {(people?.totals.loggedMinutes ?? 0) > 0 && (
           <HoursExportButton range={range} />
         )}
       </div>

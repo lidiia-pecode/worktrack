@@ -44,7 +44,7 @@ describe("GettingStartedLink", () => {
 
     const link = screen.getByRole("link");
 
-    expect(link).toHaveAccessibleName(/How WorkTrack fits together/);
+    expect(link).toHaveAccessibleName(/Getting to Know WorkTrack/);
     expect(link).toHaveAttribute("aria-current", "page");
   });
 });

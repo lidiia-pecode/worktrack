@@ -21,12 +21,13 @@ export class PeopleReportController {
     return this.peopleReportService.getPeopleReport(user, query);
   }
 
-  @Get('timeline')
+  /** Reports' opening figures; the timeline in it stays closed to employees (Q11). */
+  @Get('overview')
   @Role(UserRole.OWNER, UserRole.MANAGER)
-  getTimeline(
+  getOverview(
     @CurrentUser() user: AuthUser,
     @Query() query: PeopleReportQuery,
   ) {
-    return this.peopleReportService.getTimeline(user, query);
+    return this.peopleReportService.getOverview(user, query);
   }
 }

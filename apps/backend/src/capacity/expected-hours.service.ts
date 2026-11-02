@@ -30,6 +30,8 @@ export interface Availability {
   absenceDays: number;
   /** The finished days they were expected to work, in date order. */
   expectedDates: string[];
+  /** Every date's expected minutes, as in Expected's byDate. */
+  byDate: ExpectedDay[];
 }
 
 /** Unrounded sums, so every figure is rounded once at the end. */
@@ -159,6 +161,7 @@ export class ExpectedHoursService {
         availableMinutes: Math.round(sum.availableToDate),
         absenceDays: sum.absenceDaysToDate,
         expectedDates: sum.expectedDatesToDate,
+        byDate: roundDays(sum.availableByDate),
       });
     });
 

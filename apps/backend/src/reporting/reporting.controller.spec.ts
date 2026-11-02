@@ -64,10 +64,10 @@ describe('PeopleReportController route roles', () => {
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
 
-  it('allows owners and managers on the timeline, and refuses employees', () => {
-    expect(allows('getTimeline', UserRole.OWNER)).toBe(true);
-    expect(allows('getTimeline', UserRole.MANAGER)).toBe(true);
-    expect(allows('getTimeline', UserRole.EMPLOYEE)).toBe(false);
+  it('allows owners and managers on the overview and its timeline, and refuses employees', () => {
+    expect(allows('getOverview', UserRole.OWNER)).toBe(true);
+    expect(allows('getOverview', UserRole.MANAGER)).toBe(true);
+    expect(allows('getOverview', UserRole.EMPLOYEE)).toBe(false);
   });
 
   it.each(Object.values(UserRole))(

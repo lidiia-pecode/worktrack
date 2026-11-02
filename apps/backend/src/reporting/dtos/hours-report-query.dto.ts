@@ -22,4 +22,9 @@ export class HoursReportQuery {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  /** Only the current members of this team, within the people the caller sees. */
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
 }

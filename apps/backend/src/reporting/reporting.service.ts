@@ -588,7 +588,7 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
-    this.applyRowFilters(qb, query);
+    this.applyRowFilters(qb, query, user);
 
     qb.groupBy(grouping.groupBy.join(', '));
 
@@ -703,7 +703,7 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
     });
-    this.applyRowFilters(qb, query);
+    this.applyRowFilters(qb, query, user);
 
     return qb
       .groupBy(grouping.groupBy.join(', '))
@@ -715,12 +715,15 @@ export class ReportingService {
   /**
    * Narrows a query that joins projects as `p` and users as `u` to one
    * project or one person, the way Reports opens a project's people or a
-   * person's projects.
+   * person's projects, and to one team's current members.
    */
   private applyRowFilters(
     qb: SelectQueryBuilder<ObjectLiteral>,
-    { projectId, userId }: HoursReportQuery,
+    { projectId, userId, teamId }: HoursReportQuery,
+    user: AuthUser,
   ): void {
+    this.teamVisibility.applyTeamMembershipFilter(qb, 'u.id', teamId, user);
+
     if (projectId) {
       qb.andWhere('p.id = :projectId', { projectId });
     }
@@ -844,6 +847,12 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      'tl.user_id',
+      query.teamId,
+      user,
+    );
 
     const [rawRows, lockedMonths] = await Promise.all([
       qb
