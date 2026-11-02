@@ -324,7 +324,7 @@ describe("ReportsView", () => {
       name: /Core Development/,
     });
     expect(coreRow).toHaveAttribute("aria-expanded", "true");
-    expect(coreRow).toHaveTextContent("187h of 184h");
+    expect(coreRow.closest("li")).toHaveTextContent("187h of 184h");
 
     const ethan = within(people).getByText("Ethan Brooks").closest("li")!;
     expect(ethan).toHaveTextContent("5 days off");

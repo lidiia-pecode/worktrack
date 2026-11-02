@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils/cn";
 
 const Tooltip = TooltipPrimitive.Root;
 
-/** A short hover delay, so a tip doesn't flash while the pointer passes over. */
-const OPEN_DELAY_MS = 300;
+/** Opens at once, as the chart's column tips do; Base UI waits 600ms by default. */
+const OPEN_DELAY_MS = 0;
 
 function TooltipTrigger({
   delay = OPEN_DELAY_MS,

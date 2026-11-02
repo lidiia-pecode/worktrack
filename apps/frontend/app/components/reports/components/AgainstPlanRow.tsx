@@ -36,6 +36,7 @@ export const AgainstPlanRow = ({
         <ReportBar
           value={row.totalMinutes}
           reference={planned}
+          billable={row.billableMinutes}
           label={
             planned > 0
               ? `${name}: ${figure} planned`
@@ -44,7 +45,15 @@ export const AgainstPlanRow = ({
         />
       }
       figure={figure}
-      subFigure={planned > 0 ? undefined : "no plan"}
+      subFigure={
+        planned === 0 ? (
+          "no plan"
+        ) : row.totalMinutes > planned ? (
+          <span className="text-warning-text">
+            +{formatReportHours(row.totalMinutes - planned)} over
+          </span>
+        ) : undefined
+      }
     />
   );
 };

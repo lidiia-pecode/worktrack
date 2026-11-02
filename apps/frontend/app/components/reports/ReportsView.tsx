@@ -208,6 +208,8 @@ export const ReportsView = () => {
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
           <PeopleCard
             people={people.rows}
+            previousPeople={previousReport?.rows}
+            previousName={periodLabel(previousPeriod)}
             marked={attention.people}
             onOpenPerson={openPerson}
           />

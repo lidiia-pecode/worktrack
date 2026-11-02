@@ -98,6 +98,7 @@ const MonthTotal = ({
     <ReportBar
       value={person.loggedMinutes}
       reference={person.expectedMinutes}
+      billable={person.billableMinutes}
       label={`${againstExpected(person.loggedMinutes, person.expectedMinutes)} expected`}
       className="mt-3 h-2.5"
     />

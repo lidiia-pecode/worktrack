@@ -57,6 +57,9 @@ export const percentOf = (part: number, whole: number) =>
 export interface FigureChange {
   points: number;
   minutes: number;
+  /** Both shares as the page shows them, whole percentages. */
+  share: number;
+  previousShare: number;
 }
 
 export interface PeriodChange {
@@ -85,15 +88,11 @@ export const periodChange = (
   const change = (
     part: (figures: ChangeFigures) => number,
     whole: (figures: ChangeFigures) => number,
-  ): FigureChange | null =>
-    whole(current) > 0 && whole(previous) > 0
-      ? {
-          points:
-            percentOf(part(current), whole(current)) -
-            percentOf(part(previous), whole(previous)),
-          minutes: part(current) - part(previous),
-        }
-      : null;
+  ) =>
+    shareChange(
+      { part: part(current), whole: whole(current) },
+      { part: part(previous), whole: whole(previous) },
+    );
 
   return {
     logged: change(
@@ -111,18 +110,50 @@ export const periodChange = (
   };
 };
 
-/** "▲ 4 pts", "▼ 1 pt" or "– 0 pts": direction only, the colour left muted. */
-export const changeLabel = ({ points }: FigureChange) => {
-  const size = Math.abs(points);
-  const arrow = points > 0 ? "▲" : points < 0 ? "▼" : "–";
-  return `${arrow} ${size} ${size === 1 ? "pt" : "pts"}`;
+/**
+ * One share against the previous period's, as `periodChange` compares each
+ * figure; a team row compares its logged share the same way.
+ */
+export const shareChange = (
+  current: { part: number; whole: number },
+  previous: { part: number; whole: number },
+): FigureChange | null => {
+  if (current.whole === 0 || previous.whole === 0) return null;
+
+  const share = percentOf(current.part, current.whole);
+  const previousShare = percentOf(previous.part, previous.whole);
+  return {
+    points: share - previousShare,
+    minutes: current.part - previous.part,
+    share,
+    previousShare,
+  };
 };
 
-/** The hours behind a change, for its tip: "About 64h more", "About 12h less". */
-export const changeHours = ({ minutes }: FigureChange) =>
-  minutes === 0
-    ? "The same hours"
-    : `About ${formatReportHours(Math.abs(minutes))} ${minutes > 0 ? "more" : "less"}`;
+/** "4 pts", "1 pt": the size of a change; its direction is an icon beside it. */
+export const changeLabel = ({ points }: FigureChange) => {
+  const size = Math.abs(points);
+  return `${size} ${size === 1 ? "pt" : "pts"}`;
+};
+
+/**
+ * What a change means, for its tip: "Down 3 points from September 2026" over
+ * "97% → 94% · about 109h less", or one line, "Same as September 2026 · 89%".
+ */
+export const changeTip = (change: FigureChange, previousName: string) => {
+  const { points, minutes, share, previousShare } = change;
+  if (points === 0) return [`Same as ${previousName} · ${share}%`];
+
+  const size = Math.abs(points);
+  const hours =
+    minutes === 0
+      ? "the same hours"
+      : `about ${formatReportHours(Math.abs(minutes))} ${minutes > 0 ? "more" : "less"}`;
+  return [
+    `${points > 0 ? "Up" : "Down"} ${size} ${size === 1 ? "point" : "points"} from ${previousName}`,
+    `${previousShare}% → ${share}% · ${hours}`,
+  ];
+};
 
 /** Up to this many people, every team starts open; past it, folded. */
 export const PEOPLE_SHOWN_OPEN = 15;
@@ -133,6 +164,7 @@ export interface TeamGroup {
   name: string;
   people: PeopleReportRow[];
   loggedMinutes: number;
+  billableMinutes: number;
   expectedMinutes: number;
 }
 
@@ -151,10 +183,12 @@ export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
       name,
       people: [],
       loggedMinutes: 0,
+      billableMinutes: 0,
       expectedMinutes: 0,
     };
     group.people.push(person);
     group.loggedMinutes += person.loggedMinutes;
+    group.billableMinutes += person.billableMinutes;
     group.expectedMinutes += person.expectedMinutes;
     groups.set(id, group);
   };

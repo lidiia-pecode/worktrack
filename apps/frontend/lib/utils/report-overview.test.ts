@@ -3,7 +3,13 @@ import { describe, expect, it } from "vitest";
 import { PeopleReportRow } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
-import { groupPeopleByTeam, periodChange, personDays } from "./report-overview";
+import {
+  changeLabel,
+  changeTip,
+  groupPeopleByTeam,
+  periodChange,
+  personDays,
+} from "./report-overview";
 
 const HOUR = 60;
 
@@ -51,14 +57,15 @@ describe("groupPeopleByTeam", () => {
     ]);
   });
 
-  it("adds up each team's logged and expected hours", () => {
+  it("adds up each team's logged, billable and expected hours", () => {
     const [core] = groupPeopleByTeam([
-      withTeams("Emma Clarke", "Core"),
+      { ...withTeams("Emma Clarke", "Core"), billableMinutes: 6 * HOUR },
       withTeams("Liam Carter", "Core"),
     ]);
 
     expect(core).toMatchObject({
       loggedMinutes: 20 * HOUR,
+      billableMinutes: 6 * HOUR,
       expectedMinutes: 40 * HOUR,
     });
   });
@@ -128,8 +135,13 @@ describe("periodChange", () => {
       figures(90, 91, 56.7, 100),
     );
 
-    expect(change.logged).toEqual({ points: 4, minutes: 4 * HOUR });
-    expect(change.planned).toEqual({ points: -2, minutes: -2 * HOUR });
+    expect(change.logged).toEqual({
+      points: 4,
+      minutes: 4 * HOUR,
+      share: 94,
+      previousShare: 90,
+    });
+    expect(change.planned).toMatchObject({ points: -2, minutes: -2 * HOUR });
     expect(change.billable?.points).toBe(-3);
   });
 
@@ -137,5 +149,32 @@ describe("periodChange", () => {
     const change = periodChange(figures(10, 0, 0, 40), figures(0, 0, 0, 0));
 
     expect(change).toEqual({ logged: null, planned: null, billable: null });
+  });
+});
+
+describe("changeTip", () => {
+  const change = (share: number, previousShare: number, minutes: number) => ({
+    points: share - previousShare,
+    minutes,
+    share,
+    previousShare,
+  });
+
+  it("says the points, both shares and the hours behind them", () => {
+    expect(changeTip(change(94, 97, -109 * 60), "September 2026")).toEqual([
+      "Down 3 points from September 2026",
+      "97% → 94% · about 109h less",
+    ]);
+    expect(changeTip(change(91, 90, 24 * 60), "Q2 2026")[0]).toBe(
+      "Up 1 point from Q2 2026",
+    );
+  });
+
+  it("calls no change the same, and sizes a change in points", () => {
+    expect(changeTip(change(89, 89, 6 * 60), "September 2026")).toEqual([
+      "Same as September 2026 · 89%",
+    ]);
+    expect(changeLabel(change(89, 89, 0))).toBe("0 pts");
+    expect(changeLabel(change(90, 91, 0))).toBe("1 pt");
   });
 });

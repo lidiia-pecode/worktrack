@@ -17,8 +17,6 @@ import {
   hourScale,
 } from "@/lib/utils/report-charts";
 import {
-  changeHours,
-  changeLabel,
   FigureChange,
   PeriodChange,
   percentOf,
@@ -26,11 +24,8 @@ import {
 
 import { BrandPattern } from "@/components/ui/brand-pattern";
 import { Card } from "@/components/ui/card";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+
+import { ChangeTip } from "./ChangeTip";
 
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
@@ -88,24 +83,6 @@ const ShareRing = ({ percent, tone }: { percent: number; tone: string }) => (
   </svg>
 );
 
-/** "▲ 4 pts", with the hours behind it on hover and keyboard focus. */
-const ChangeTip = ({ change }: { change: FigureChange }) => {
-  const hours = changeHours(change);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={<span tabIndex={0} />}
-        aria-label={`${changeLabel(change)}, ${hours.toLowerCase()}`}
-        className="rounded-sm whitespace-nowrap focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-      >
-        {changeLabel(change)}
-      </TooltipTrigger>
-      <TooltipContent>{hours}</TooltipContent>
-    </Tooltip>
-  );
-};
-
 type FigureCardProps = {
   label: string;
   value: string;
@@ -115,6 +92,7 @@ type FigureCardProps = {
   tone: string;
   note: string;
   change: FigureChange | null;
+  previousName: string;
 };
 
 const FigureCard = ({
@@ -124,6 +102,7 @@ const FigureCard = ({
   tone,
   note,
   change,
+  previousName,
 }: FigureCardProps) => (
   <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5">
     {percent !== null && <ShareRing percent={percent} tone={tone} />}
@@ -138,7 +117,7 @@ const FigureCard = ({
         {change && (
           <>
             {" · "}
-            <ChangeTip change={change} />
+            <ChangeTip change={change} previousName={previousName} />
           </>
         )}
       </p>
@@ -223,8 +202,8 @@ type PeriodOverviewProps = {
   firstDay?: string;
   /** "October 2026", "Q3 2026": the band's heading. */
   periodName: string;
-  /** The period compared with, for the caption; none without a comparison. */
-  previousName?: string;
+  /** The period compared with, for the caption and the changes' tips. */
+  previousName: string;
   change: PeriodChange | null;
 };
 
@@ -280,7 +259,7 @@ export const PeriodOverview = ({
               {periodName}
             </h2>
           </div>
-          {previousName && hasChange && (
+          {hasChange && (
             <p className="text-xs text-muted-foreground">
               Change from {previousName}
             </p>
@@ -301,6 +280,7 @@ export const PeriodOverview = ({
                 : "Nobody was expected to work"
             }
             change={change?.logged ?? null}
+            previousName={previousName}
           />
           <FigureCard
             label="Planned"
@@ -313,6 +293,7 @@ export const PeriodOverview = ({
               isExpected ? "of expected" : "Nothing expected to plan against"
             }
             change={change?.planned ?? null}
+            previousName={previousName}
           />
           <FigureCard
             label="Billable"
@@ -325,6 +306,7 @@ export const PeriodOverview = ({
             tone="text-brand"
             note={loggedMinutes > 0 ? "of logged" : "Nothing logged yet"}
             change={change?.billable ?? null}
+            previousName={previousName}
           />
         </ul>
       </div>
