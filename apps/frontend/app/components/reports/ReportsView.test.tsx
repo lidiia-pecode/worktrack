@@ -19,6 +19,7 @@ import {
   addDays,
   addMonthsToKey,
   formatDayMonthLabel,
+  formatMonthLabel,
   isWeekend,
   todayISODate,
   toISODate,
@@ -44,6 +45,10 @@ vi.mock("@/hooks/auth/useAuth", () => ({
   }),
 }));
 vi.mock("@/hooks/useReportOverview", () => ({ useReportOverview: vi.fn() }));
+// The previous period's figures, for the change; none unless a test gives them.
+vi.mock("@/hooks/usePeopleReport", () => ({
+  usePeopleReport: () => ({ report: null, isPlaceholderData: false }),
+}));
 vi.mock("@/hooks/useReportingPeriods", () => ({
   useReportingPeriods: () => ({ months: [] }),
 }));
@@ -293,9 +298,14 @@ describe("ReportsView", () => {
   it("sums the month up above its weeks", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const weeks = screen.getByRole("region", { name: "Week by week" });
-    expect(weeks).toHaveTextContent("Logged187h102% of 184h expected");
-    expect(weeks).toHaveTextContent("50% of logged");
+    const month = screen.getByRole("region", {
+      name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+    });
+    expect(month).toHaveTextContent("Logged187h102% of 184h expected");
+    expect(month).toHaveTextContent("50% of logged");
+    expect(
+      within(month).getByRole("region", { name: "Week by week" }),
+    ).toBeInTheDocument();
   });
 
   it("puts each person under their team, against what was expected, with their days off", () => {
@@ -410,7 +420,7 @@ describe("ReportsView", () => {
     expect(weeks).toHaveTextContent("2 days");
     // Each week can be focused, and names all three of its figures.
     const week = within(weeks).getByRole("img", {
-      name: "Oct 5–11: 5 days · 38h logged · 40h planned · 40h expected",
+      name: "Oct 5–11: 5 days · 38h logged · 0h billable · 40h planned · 40h expected",
     });
     expect(week).toHaveAttribute("tabindex", "0");
   });

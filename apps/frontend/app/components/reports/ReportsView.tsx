@@ -5,12 +5,13 @@ import { FileBarChart } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
+import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import { reportScope } from "@/lib/utils/report-overview";
+import { periodChange, reportScope } from "@/lib/utils/report-overview";
 import {
   containsDate,
   isShowablePeriod,
@@ -35,7 +36,7 @@ import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportPeriodControl } from "./components/ReportPeriodControl";
-import { WeekByWeek } from "./components/WeekByWeek";
+import { PeriodOverview } from "./components/PeriodOverview";
 import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
 import { NeedsAttention, OpenMonthLinks } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
@@ -64,6 +65,14 @@ export const ReportsView = () => {
 
   const overview = useReportOverview(range);
   const people = overview.report?.people ?? null;
+  // The period before, of the same kind, for each figure's change; none
+  // before the company's first month.
+  const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
+  const previous = usePeopleReport(previousPeriod.range, {
+    enabled: isPreviousShowable,
+  });
+  const previousReport =
+    isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
   const timeline = overview.report?.timeline ?? null;
   const projects = useHoursReport({
     ...range,
@@ -92,8 +101,7 @@ export const ReportsView = () => {
   // The current period starts empty, as a month does in its first days, so
   // its empty state offers the period before.
   const showPrevious =
-    containsDate(range, today) &&
-    isShowablePeriod(previousPeriod, today, firstDay) ? (
+    containsDate(range, today) && isPreviousShowable ? (
       <Button variant="secondary" onClick={() => showPeriod(previousPeriod)}>
         Show {periodLabel(previousPeriod)}
       </Button>
@@ -168,7 +176,14 @@ export const ReportsView = () => {
         )}
         aria-busy={isUpdating}
       >
-        <WeekByWeek timeline={timeline} totals={totals} firstDay={firstDay} />
+        <PeriodOverview
+          timeline={timeline}
+          totals={totals}
+          firstDay={firstDay}
+          periodName={periodName}
+          previousName={periodLabel(previousPeriod)}
+          change={previousReport && periodChange(totals, previousReport.totals)}
+        />
         {isProvisional && isMonth && (
           <div className="mt-4">
             <NeedsAttention

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FolderKanban } from "lucide-react";
 
 import { HoursReportRow, ReportRange } from "@/types";
 import { countLabel } from "@/lib/utils/text";
@@ -12,6 +13,7 @@ import { SegmentedControl } from "../../shared/SegmentedControl";
 
 import { AgainstPlanRow } from "./AgainstPlanRow";
 import { KindOfWork } from "./KindOfWork";
+import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionLegend } from "./ReportRow";
 
 type WhereView = "projects" | "work";
@@ -102,16 +104,17 @@ export const WhereTheTimeWent = ({
   return (
     <Card as="section" aria-labelledby="report-where" className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 id="report-where" className="text-base font-semibold">
-            Where the time went
-          </h2>
+        <ReportCardTitle
+          id="report-where"
+          title="Where the time went"
+          icon={FolderKanban}
+        >
           {isManager && (
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Your teams’ time only
             </p>
           )}
-        </div>
+        </ReportCardTitle>
         <SegmentedControl
           label="Show"
           options={VIEWS}

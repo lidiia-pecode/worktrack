@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { PeopleReportRow } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
-import { personDays, groupPeopleByTeam } from "./report-overview";
+import { groupPeopleByTeam, periodChange, personDays } from "./report-overview";
 
 const HOUR = 60;
 
@@ -104,5 +104,38 @@ describe("personDays", () => {
       ["2026-10-09", "off", "future"],
       ["2026-10-11", "logged", "future"],
     ]);
+  });
+});
+
+describe("periodChange", () => {
+  const HOUR = 60;
+  const figures = (
+    logged: number,
+    planned: number,
+    billable: number,
+    expected: number,
+  ) => ({
+    loggedMinutes: logged * HOUR,
+    plannedMinutes: planned * HOUR,
+    billableMinutes: billable * HOUR,
+    expectedMinutes: expected * HOUR,
+  });
+
+  it("compares each share in points between the shares shown, with the hours behind it", () => {
+    // 94% logged after 90%, 89% planned after 91%, 60% billable after 63%.
+    const change = periodChange(
+      figures(94, 89, 56.4, 100),
+      figures(90, 91, 56.7, 100),
+    );
+
+    expect(change.logged).toEqual({ points: 4, minutes: 4 * HOUR });
+    expect(change.planned).toEqual({ points: -2, minutes: -2 * HOUR });
+    expect(change.billable?.points).toBe(-3);
+  });
+
+  it("has no change for a figure with nothing to measure it against in either period", () => {
+    const change = periodChange(figures(10, 0, 0, 40), figures(0, 0, 0, 0));
+
+    expect(change).toEqual({ logged: null, planned: null, billable: null });
   });
 });

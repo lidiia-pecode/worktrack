@@ -177,6 +177,8 @@
     var(--report-planned-base) 50%,
     var(--card)
   );
+  /* The planned share's ring in the summary band, at full strength. */
+  --report-planned-strong: var(--report-planned-base);
   /* Logged time with no plan to measure it against: the logged teal, lighter. */
   --report-unplanned: color-mix(in oklch, var(--brand) 35%, var(--card));
 
@@ -341,6 +343,7 @@
   --color-excess: var(--excess);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
+  --color-report-planned-strong: var(--report-planned-strong);
   --color-report-unplanned: var(--report-unplanned);
 
   --color-category-1: var(--category-1);
@@ -397,6 +400,19 @@
 .bg-stripes-extra {
   --stripe-line: var(--stripe-extra);
   --stripe-ground: var(--stripe-extra-ground);
+}
+
+/* Billable time in Reports: the brand's lines on the softer logged teal, so
+   the billable part of a logged bar reads without colour too. Denser than the
+   day stripes, since it fills narrow bars. */
+.bg-stripes-billable {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--brand) 0px,
+    var(--brand) 3px,
+    var(--report-logged) 3px,
+    var(--report-logged) 6px
+  );
 }
 
 html,

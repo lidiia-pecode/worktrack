@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 import { AttentionFact, AttentionItem } from "@/lib/utils/report-attention";
 
 import { Card } from "@/components/ui/card";
 
+import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionDot } from "./ReportRow";
 
 /** People or projects named before the rest open on request. */
@@ -121,9 +123,12 @@ export const NeedsAttention = ({
 
   return (
     <Card as="section" aria-labelledby="report-attention" className="p-6">
-      <h2 id="report-attention" className="text-base font-semibold">
-        Needs attention
-      </h2>
+      <ReportCardTitle
+        id="report-attention"
+        title="Needs attention"
+        icon={TriangleAlert}
+        tone="warning"
+      />
 
       {facts.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">{emptyLine}</p>

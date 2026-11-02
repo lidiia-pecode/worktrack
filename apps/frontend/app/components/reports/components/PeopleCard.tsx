@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, UsersRound } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
 import { isDeactivatedUser } from "@/lib/utils/user";
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { ReportBar } from "./ReportBar";
+import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionDot, AttentionLegend, ReportRow } from "./ReportRow";
 
 const PersonRow = ({
@@ -157,15 +158,12 @@ export const PeopleCard = ({
   return (
     <Card as="section" aria-labelledby="report-people" className="p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="report-people" className="text-base font-semibold">
-            People
-          </h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">
+        <ReportCardTitle id="report-people" title="People" icon={UsersRound}>
+          <p className="text-sm text-muted-foreground">
             Hours logged against what each person was expected to work
           </p>
           {marked.size > 0 && <AttentionLegend />}
-        </div>
+        </ReportCardTitle>
         {groups.length > 1 && (
           <Button
             type="button"

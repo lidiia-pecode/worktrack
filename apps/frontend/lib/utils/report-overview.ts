@@ -1,4 +1,9 @@
-import { PeopleReportRow, ReportCoverage, ReportRange } from "@/types";
+import {
+  PeopleReportFigures,
+  PeopleReportRow,
+  ReportCoverage,
+  ReportRange,
+} from "@/types";
 
 import {
   addDays,
@@ -47,6 +52,77 @@ export const daysOffLabel = (days: number) =>
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
+
+/** One figure's change from the previous period: its share in points, and the hours behind it. */
+export interface FigureChange {
+  points: number;
+  minutes: number;
+}
+
+export interface PeriodChange {
+  logged: FigureChange | null;
+  planned: FigureChange | null;
+  billable: FigureChange | null;
+}
+
+type ChangeFigures = Pick<
+  PeopleReportFigures,
+  "loggedMinutes" | "plannedMinutes" | "billableMinutes" | "expectedMinutes"
+>;
+
+/**
+ * Each figure's share against the previous period's, in percentage points
+ * between the shares as the page shows them, so 94% after 90% is 4. Shares,
+ * not hours, since periods differ in working days and people (Phase 42,
+ * decision 5). A figure has none when either period has nothing to measure it
+ * against: no expected hours for logged and planned, no logged time for
+ * billable.
+ */
+export const periodChange = (
+  current: ChangeFigures,
+  previous: ChangeFigures,
+): PeriodChange => {
+  const change = (
+    part: (figures: ChangeFigures) => number,
+    whole: (figures: ChangeFigures) => number,
+  ): FigureChange | null =>
+    whole(current) > 0 && whole(previous) > 0
+      ? {
+          points:
+            percentOf(part(current), whole(current)) -
+            percentOf(part(previous), whole(previous)),
+          minutes: part(current) - part(previous),
+        }
+      : null;
+
+  return {
+    logged: change(
+      (figures) => figures.loggedMinutes,
+      (figures) => figures.expectedMinutes,
+    ),
+    planned: change(
+      (figures) => figures.plannedMinutes,
+      (figures) => figures.expectedMinutes,
+    ),
+    billable: change(
+      (figures) => figures.billableMinutes,
+      (figures) => figures.loggedMinutes,
+    ),
+  };
+};
+
+/** "▲ 4 pts", "▼ 1 pt" or "– 0 pts": direction only, the colour left muted. */
+export const changeLabel = ({ points }: FigureChange) => {
+  const size = Math.abs(points);
+  const arrow = points > 0 ? "▲" : points < 0 ? "▼" : "–";
+  return `${arrow} ${size} ${size === 1 ? "pt" : "pts"}`;
+};
+
+/** The hours behind a change, for its tip: "About 64h more", "About 12h less". */
+export const changeHours = ({ minutes }: FigureChange) =>
+  minutes === 0
+    ? "The same hours"
+    : `About ${formatReportHours(Math.abs(minutes))} ${minutes > 0 ? "more" : "less"}`;
 
 /** Up to this many people, every team starts open; past it, folded. */
 export const PEOPLE_SHOWN_OPEN = 15;
