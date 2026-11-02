@@ -260,7 +260,7 @@ export const ReportsView = () => {
     opened?.param === PROJECT_PARAM
       ? projects.report?.rows.find((row) => row.id === opened.id)
       : undefined;
-  // A panel opens from the rows on screen. When the month drops its person or
+  // A panel opens from the rows on screen. When the period drops its person or
   // project, or a link names someone outside them, it closes, URL included,
   // as on Team time, rather than reopening by itself later.
   const isOpenedGone =

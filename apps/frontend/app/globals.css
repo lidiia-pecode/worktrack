@@ -372,7 +372,8 @@
    Stripes mark a day that expects nothing: a weekend in a quiet grey, a day
    off in the brand colour, and a weekend with time logged in the warning
    colour, since all of it is extra. Time past a working day's figure sits on
-   the solid warning tint (`bg-excess`) instead. One geometry, so only the colour tells them apart.
+   the solid warning tint (`bg-excess`) instead. One geometry, so only the
+   colour tells them apart.
    ============================================================================ */
 
 .bg-stripes-weekend,

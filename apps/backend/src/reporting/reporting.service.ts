@@ -807,10 +807,6 @@ export class ReportingService {
   }
 
   /**
-   * The Hours report's time, for the same people and days, one row per
-   * person, day, project, activity and billing.
-   */
-  /**
    * A team's name for the export's file, only when the caller can see the
    * team, so the name never tells a manager about a team they don't lead.
    */
@@ -825,6 +821,10 @@ export class ReportingService {
     return team?.name ?? null;
   }
 
+  /**
+   * The Hours report's time, for the same people and days, one row per
+   * person, day, project, activity and billing.
+   */
   async getHoursExport(
     user: AuthUser,
     query: HoursExportQuery,

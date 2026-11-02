@@ -95,7 +95,7 @@ type WhereTheTimeWentProps = {
   onOpenProject: (projectId: string) => void;
 };
 
-/** Where the month's time went: by project against the plan, or by kind of work. */
+/** Where the period's time went: by project against the plan, or by kind of work. */
 export const WhereTheTimeWent = ({
   query,
   projects,

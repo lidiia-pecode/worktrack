@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
+import { isDeactivatedUser } from "@/lib/utils/user";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -258,12 +259,17 @@ export const PersonPanel = ({
             dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
           />
         </PanelSection>
-      ) : (
+      ) : withoutTime > 0 ? (
         <p className="text-sm">
-          {withoutTime > 0
-            ? `${countLabel(withoutTime, "day", "days")} with no time logged`
-            : "Time logged on every expected day"}
+          {countLabel(withoutTime, "day", "days")} with no time logged
         </p>
+      ) : (
+        // Days without time are counted only for someone who can still log,
+        // so a deactivated person, or one expected nowhere, gets no claim.
+        !isDeactivatedUser(person) &&
+        person.expectedMinutes > 0 && (
+          <p className="text-sm">Time logged on every expected day</p>
+        )
       )}
 
       <PanelSection title="Projects" note="Logged against planned">
@@ -291,7 +297,7 @@ type ProjectPanelProps = {
   onClose: () => void;
 };
 
-/** One project's month: its billable time and the people on it. */
+/** One project's period: its billable time and the people on it. */
 export const ProjectPanel = ({
   project,
   query,
