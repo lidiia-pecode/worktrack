@@ -140,7 +140,9 @@ entire time history. Moving someone between teams is an Owner action (P2).
 **Why this is enough.** Because a manager only ever gains people who are new to
 the company, there is no prior history for them to acquire retroactively. That
 removes the need to bound visibility by membership dates, which would otherwise
-have to be threaded through every query. See P4.
+have to be threaded through every query. Since P1 an Owner can move a person
+between teams, and the new team's manager then reaches their history, so this
+describes the rule rather than a guarantee; P4 (§6) is reopened for it.
 
 **A person is a member of at most one team.** A Manager may lead any number
 of teams, and may be a member of one team led by somebody else. Adding a
@@ -198,6 +200,13 @@ have reopened D10, but it would have given managers a way to reach each other's
 teams directly and so route around the Owner. Reinstating per-person identity is
 not the fix either. The scoped list, the true count, and the Owner are the whole
 answer here.
+
+**One name on a record, by decision.** Who added or last changed a time entry
+or an absence is named to everyone who can read that record, the person it
+belongs to included, even when that is someone the reader can't otherwise see
+(Phase 41, decision 4). It names the one person who wrote the record, not a
+roster, so it is not the directory P5 keeps out of WorkTrack; knowing who
+changed your record is the point of it.
 
 ### 3.5 Projects: creation, visibility and membership
 
@@ -349,8 +358,10 @@ structure, the catalogue and project archiving by Owner-only routes, people visi
 call it.
 
 Two things this model does *not* treat as gaps. Visibility is not bounded by
-membership dates, and it does not need to be while §3.3 holds (P4). Projects are
-company-wide for managers, which is intended rather than a defect.
+membership dates: reach reads current team membership, as §3.3 describes, and
+whether it should follow the dates now that an Owner moves people between
+teams is open (P4). Projects are company-wide for managers, which is intended
+rather than a defect.
 
 ---
 

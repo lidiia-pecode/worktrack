@@ -143,7 +143,7 @@ export const USERS: SeedUser[] = [
     role: UserRole.EMPLOYEE,
     position: 'Product Designer',
     capacityHoursPerWeek: 25,
-    note: 'On the team, part-time (24h/week), has time logged this week.',
+    note: 'On the team, part-time (5h a day, 25h a week), has time logged this week.',
   },
   {
     email: UNASSIGNED_EMAIL,
@@ -232,7 +232,7 @@ export const USERS: SeedUser[] = [
     position: 'DevOps Engineer',
     capacityHoursPerWeek: 40,
     capacityFrom: { validFrom: '2026-09-01', hoursPerWeek: 32.5 },
-    note: 'Down to 32h a week from 1 September, with his 40h plan left as it was.',
+    note: 'Down to 32h 30m a week from 1 September, with his 40h plan left as it was.',
   },
   {
     email: MIA,
@@ -1146,9 +1146,9 @@ export const REPORT_HISTORY: SeedHistory[] = [
     email: DESIGNER_EMAIL,
     work: [
       { project: 'Mobile App', activity: 'UI Design', minutes: 180 },
-      { project: 'Mobile App', activity: 'UX Research', minutes: 108 },
+      { project: 'Mobile App', activity: 'UX Research', minutes: 120 },
     ],
-    plan: [{ project: 'Mobile App', minutes: 288 }],
+    plan: [{ project: 'Mobile App', minutes: 300 }],
   },
   {
     // Logs twice the plan on CRM System, which only the owner sees.
@@ -1266,14 +1266,14 @@ export const REPORT_HISTORY: SeedHistory[] = [
         project:
           'Enterprise Resource Planning Integration for Global Logistics Operations',
         activity: 'Manual Testing',
-        minutes: 84,
+        minutes: 90,
       },
     ],
     plan: [
       {
         project:
           'Enterprise Resource Planning Integration for Global Logistics Operations',
-        minutes: 384,
+        minutes: 390,
       },
     ],
     missedDays: ['2026-10-01', '2026-10-02', '2026-10-15'],
@@ -1306,7 +1306,7 @@ export const REPORT_HISTORY: SeedHistory[] = [
     ],
   },
   {
-    // A 40h plan kept after the contract went down to 32h on 1 September.
+    // A 40h plan kept after the contract went down to 32h 30m on 1 September.
     email: ETHAN,
     work: [
       {
@@ -1420,10 +1420,10 @@ export const REPORT_HISTORY: SeedHistory[] = [
       {
         project: 'Customer Portal Redesign',
         activity: 'Prototyping',
-        minutes: 108,
+        minutes: 120,
       },
     ],
-    plan: [{ project: 'Customer Portal Redesign', minutes: 288 }],
+    plan: [{ project: 'Customer Portal Redesign', minutes: 300 }],
     absences: [
       {
         type: AbsenceType.VACATION,
@@ -1452,7 +1452,7 @@ export const REPORT_HISTORY: SeedHistory[] = [
     email: CHARLOTTE,
     work: [
       { project: 'Brand Refresh', activity: 'Documentation', minutes: 120 },
-      { project: 'Brand Refresh', activity: 'Prototyping', minutes: 144 },
+      { project: 'Brand Refresh', activity: 'Prototyping', minutes: 150 },
       {
         project: 'Marketing Website',
         activity: 'Content Writing',
@@ -1460,7 +1460,7 @@ export const REPORT_HISTORY: SeedHistory[] = [
       },
     ],
     plan: [
-      { project: 'Brand Refresh', minutes: 264 },
+      { project: 'Brand Refresh', minutes: 270 },
       { project: 'Marketing Website', minutes: 120 },
     ],
   },
@@ -1658,15 +1658,15 @@ export const REPORT_HISTORY: SeedHistory[] = [
       {
         project: 'Energy Usage Dashboard',
         activity: 'Dashboard Building',
-        minutes: 192,
+        minutes: 195,
       },
       {
         project: 'Fraud Analytics Platform',
         activity: 'Dashboard Building',
-        minutes: 192,
+        minutes: 195,
       },
     ],
-    plan: [{ project: 'Energy Usage Dashboard', minutes: 384 }],
+    plan: [{ project: 'Energy Usage Dashboard', minutes: 390 }],
   },
   {
     email: NATHAN,

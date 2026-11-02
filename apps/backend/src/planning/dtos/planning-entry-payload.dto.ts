@@ -1,4 +1,5 @@
 import {
+  IsDivisibleBy,
   IsInt,
   IsNotEmpty,
   IsOptional,
@@ -11,6 +12,7 @@ import {
 } from 'class-validator';
 import { OmitType, PartialType } from '@nestjs/swagger';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
+import { PLAN_MINUTES_STEP } from '../planning-period.util';
 
 export class CreatePlanningEntryDto {
   @IsUUID()
@@ -26,6 +28,9 @@ export class CreatePlanningEntryDto {
   @IsInt()
   @Min(1)
   @Max(1440)
+  @IsDivisibleBy(PLAN_MINUTES_STEP, {
+    message: 'plannedMinutes must be in 15-minute steps',
+  })
   plannedMinutes!: number;
 
   @IsOptional()

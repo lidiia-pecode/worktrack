@@ -24,6 +24,15 @@ type TimePickerProps = {
 const MAX_MINUTES = 24 * 60;
 
 /**
+ * A minutes step lands on the step's grid: 24 goes up to 30 and down to 15
+ * with 15-minute steps, so a value typed off the grid comes back onto it.
+ */
+const nextOnStep = (total: number, direction: 1 | -1, step: number) =>
+  direction === 1
+    ? Math.floor(total / step) * step + step
+    : Math.ceil(total / step) * step - step;
+
+/**
  * Hours and minutes as one control the height of an input, so it sits beside
  * a select or a text field. Each field types, steps by arrow key, wheel or
  * its small chevrons, and the minutes carry into the hours.
@@ -88,7 +97,9 @@ export const TimePicker = ({
         label="Minutes"
         value={minutes}
         max={59}
-        onStep={(direction) => setTotal(total + direction * minuteStep)}
+        onStep={(direction) =>
+          setTotal(nextOnStep(total, direction, minuteStep))
+        }
         onChange={(value) => setTotal(hours * 60 + value)}
       />
     </div>

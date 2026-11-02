@@ -807,14 +807,24 @@ describe('PlanningService', () => {
         addDays(MONDAY, 3),
         FRIDAY,
       ]);
+      // The screen sums these up, so they come as figures, not sentences.
       expect(preview.problems).toHaveLength(5);
       expect(preview.problems).toEqual(
         expect.arrayContaining([
-          expect.stringMatching(/: 9h planned, over the 4h 48m working day/),
+          {
+            kind: 'day',
+            date: TUESDAY,
+            plannedMinutes: 9 * HOUR,
+            limitMinutes: 4 * HOUR + 48,
+            otherProjectsMinutes: 3 * HOUR,
+          },
           // 24h a week, less the absent day.
-          expect.stringMatching(
-            /^Week of .+: 27h planned of 19h 12m available/,
-          ),
+          expect.objectContaining({
+            kind: 'week',
+            date: MONDAY,
+            plannedMinutes: 27 * HOUR,
+            limitMinutes: 19 * HOUR + 12,
+          }),
         ]),
       );
       expect(await entriesFor(member.id)).toHaveLength(1);
@@ -876,7 +886,11 @@ describe('PlanningService', () => {
 
       // Every day fits the 6h 24m day; the week does not once Friday counts.
       expect(preview.problems).toEqual([
-        expect.stringMatching(/^Week of .+: 33h planned of 32h available/),
+        expect.objectContaining({
+          kind: 'week',
+          plannedMinutes: 33 * HOUR,
+          limitMinutes: 32 * HOUR,
+        }),
       ]);
     });
 

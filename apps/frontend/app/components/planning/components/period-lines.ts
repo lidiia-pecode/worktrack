@@ -1,4 +1,4 @@
-import { PlanningEntry } from "@/types";
+import { PeriodProblem, PlanningEntry } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 import {
   formatDayMonthLabel,
@@ -209,4 +209,34 @@ export const busiestDay = ({
     shares: busiest?.shares ?? [],
     isSameEveryDay: days.every((day) => day.minutes === busiest?.minutes),
   };
+};
+
+/**
+ * What doesn't fit, in at most two lines: how many days go over the person's
+ * day and how many weeks over what they have available, each with its worst.
+ */
+export const problemSummary = (
+  problems: PeriodProblem[],
+  firstName: string,
+): string[] => {
+  const worstOf = (kind: PeriodProblem["kind"]) => {
+    const ofKind = problems.filter((problem) => problem.kind === kind);
+    if (ofKind.length === 0) return null;
+
+    const worst = ofKind.reduce((most, problem) =>
+      problem.plannedMinutes > most.plannedMinutes ? problem : most,
+    );
+    return { count: ofKind.length, worst };
+  };
+
+  const days = worstOf("day");
+  const weeks = worstOf("week");
+  const goes = (count: number) => (count === 1 ? "goes" : "go");
+
+  return [
+    days &&
+      `${daysCount(days.count)} ${goes(days.count)} over ${firstName}'s ${formatDuration(days.worst.limitMinutes)} day (up to ${formatDuration(days.worst.plannedMinutes)}${days.worst.otherProjectsMinutes > 0 ? " with other plans" : ""})`,
+    weeks &&
+      `${weeks.count} ${weeks.count === 1 ? "week" : "weeks"} ${goes(weeks.count)} over ${firstName}'s available hours (up to ${formatDuration(weeks.worst.plannedMinutes)} of ${formatDuration(weeks.worst.limitMinutes)})`,
+  ].filter((line): line is string => Boolean(line));
 };

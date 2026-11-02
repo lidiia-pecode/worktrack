@@ -46,6 +46,8 @@ export const PeriodListedRow = ({
   const isEdited = editedMinutes !== undefined;
   // Deleting the project's plans is the bin's job, so no hours is a mistake.
   const hasNoHours = editedMinutes === 0;
+  const isOffStep =
+    editedMinutes !== undefined && editedMinutes % minuteStep !== 0;
   const canChangeHours = !line.isArchived && isOnProject;
   const shownMinutes = editedMinutes ?? line.sameMinutes ?? 0;
   // The picker reports the hours, then the minutes, so each part applies to
@@ -99,9 +101,11 @@ export const PeriodListedRow = ({
           )}
         </p>
 
-        {hasNoHours && (
+        {(hasNoHours || isOffStep) && (
           <p className="text-xs text-destructive-text">
-            Enter hours greater than 0, or delete it with the bin.
+            {hasNoHours
+              ? "Enter hours greater than 0, or delete it with the bin."
+              : `Plan in ${minuteStep}-minute steps.`}
           </p>
         )}
       </div>
@@ -130,10 +134,11 @@ export const PeriodListedRow = ({
             formId={formId}
             onHoursChange={setPart("hours")}
             onMinutesChange={setPart("minutes")}
-            error={hasNoHours}
+            error={hasNoHours || isOffStep}
             className={cn(
               "h-10 bg-transparent",
               !hasNoHours &&
+                !isOffStep &&
                 (isEdited
                   ? "border-brand/40 bg-brand-subtle"
                   : "border-border"),

@@ -244,17 +244,27 @@ describe("PlanPeriodModal", () => {
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 
-  it("lists what does not fit and will not save until it does", () => {
+  it("sums up what does not fit and will not save until it does", () => {
+    const overDay = (date: string) => ({
+      kind: "day" as const,
+      date,
+      plannedMinutes: 10 * 60,
+      limitMinutes: 8 * 60,
+      otherProjectsMinutes: 2 * 60,
+    });
     server.preview = {
       plannedDays: OCTOBER_DAYS,
-      problems: ["Mon 12 Oct: 12h planned, over the 8h working day"],
+      problems: [overDay("2026-10-12"), overDay("2026-10-13")],
       changes: [],
     };
     renderModal();
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent("Doesn't fit on 1 day or week:");
-    expect(alert).toHaveTextContent("Mon 12 Oct: 12h planned");
+    expect(alert).toHaveTextContent("Doesn't fit Alice's hours");
+    expect(alert).toHaveTextContent(
+      "2 days go over Alice's 8h day (up to 10h with other plans)",
+    );
+    expect(alert).not.toHaveTextContent("planned of 8h");
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 

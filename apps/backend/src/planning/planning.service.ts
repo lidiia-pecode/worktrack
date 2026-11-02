@@ -28,8 +28,10 @@ import {
 } from './dtos/plan-period-payload.dto';
 import {
   PeriodLine,
+  PeriodProblem,
   PeriodWeek,
   PeriodWrites,
+  describePeriodProblem,
   formatDay,
   formatMinutes,
   periodProblems,
@@ -97,14 +99,14 @@ export interface PeriodPreview {
   /** The working days the plan would cover. */
   plannedDays: string[];
   /** Every day and week the plan would take over its limit. */
-  problems: string[];
+  problems: PeriodProblem[];
   /** How many plans saving would add and change, per listed project. */
   changes: { projectId: string; added: number; changed: number }[];
 }
 
 interface ResolvedPeriod {
   plannedDays: Set<string>;
-  problems: string[];
+  problems: PeriodProblem[];
   lines: PeriodLine[];
   writes: PeriodWrites;
 }
@@ -559,7 +561,9 @@ export class PlanningService {
           `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences and days before the person joined are skipped.`,
         );
       }
-      if (problems.length > 0) throw new BadRequestException(problems);
+      if (problems.length > 0) {
+        throw new BadRequestException(problems.map(describePeriodProblem));
+      }
 
       await manager.save(PlanningEntry, [
         ...writes.created.map(({ date, projectId, minutes }) =>

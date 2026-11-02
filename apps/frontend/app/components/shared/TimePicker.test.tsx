@@ -94,6 +94,17 @@ describe("TimePicker", () => {
     expect(shown()).toBe("00:55");
   });
 
+  it("steps the minutes onto the step's grid from a value off it", async () => {
+    const user = userEvent.setup();
+    render(<Picker initialMinutes={4 * 60 + 24} />);
+
+    await user.click(screen.getByRole("button", { name: "Increase: Minutes" }));
+    expect(shown()).toBe("04:25");
+
+    await user.click(screen.getByRole("button", { name: "Decrease: Minutes" }));
+    expect(shown()).toBe("04:20");
+  });
+
   it("shows and keeps a value stepped by arrow key while the field has focus", async () => {
     const user = userEvent.setup();
     render(<Picker initialMinutes={90} />);

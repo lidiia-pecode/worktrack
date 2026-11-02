@@ -31,6 +31,19 @@ describe('PlanPeriodPayload', () => {
     ).toEqual(['projects']);
   });
 
+  it('takes hours in 15-minute steps only', async () => {
+    const plan = (minutesPerDay: number) =>
+      plainToInstance(
+        PlanPeriodPayload,
+        body([
+          { projectId: '4f7a3c2e-8b1d-4e6f-9a0b-1c2d3e4f5a6b', minutesPerDay },
+        ]),
+      );
+
+    expect(await failing(plan(4 * 60 + 15))).toEqual([]);
+    expect(await failing(plan(4 * 60 + 20))).toEqual(['projects']);
+  });
+
   it('previews with no project yet, checking the ones listed', async () => {
     expect(
       await failing(plainToInstance(PreviewPeriodPayload, body([]))),

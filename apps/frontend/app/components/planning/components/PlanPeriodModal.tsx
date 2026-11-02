@@ -259,7 +259,9 @@ export const PlanPeriodModal = ({
   // Nothing saves until there is a change and the server has said it fits.
   const cannotSave =
     payloadProjects.length === 0 ||
-    [...editedMinutes.values()].includes(0) ||
+    [...editedMinutes.values()].some(
+      (minutes) => minutes === 0 || minutes % MINUTE_STEP !== 0,
+    ) ||
     added.some((line) => isListedAbove(line.projectId)) ||
     !preview ||
     preview.plannedDays.length === 0 ||
