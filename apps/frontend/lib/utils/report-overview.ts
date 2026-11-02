@@ -1,4 +1,4 @@
-import { PeopleReportRow, ReportCoverage } from "@/types";
+import { PeopleReportRow, ReportCoverage, ReportRange } from "@/types";
 
 import {
   addDays,
@@ -11,17 +11,25 @@ import {
 import { countLabel } from "./text";
 
 /**
- * One line saying how far the month is counted, whether it can still change,
- * and whose figures they are: "Up to Oct 23 · open for edits · your teams".
+ * One line saying how far the period is counted, whether it can still change,
+ * and whose figures they are: "Up to Oct 23 · open for edits · your teams" for
+ * a month, whose name says its dates, and "Oct 1 – Nov 1 · open for edits"
+ * for any other period, given as `periodRange`.
  */
 export const reportScope = (
   { countedUntil, isProvisional }: ReportCoverage,
   isManager: boolean,
+  periodRange?: ReportRange,
 ) => {
   const state = isProvisional ? "open for edits" : "locked";
-  const parts = countedUntil
-    ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
-    : [isProvisional ? "Open for edits" : "Locked"];
+  const parts = periodRange
+    ? [
+        `${formatDayMonthLabel(periodRange.dateFrom)} – ${formatDayMonthLabel(countedUntil ?? periodRange.dateTo)}`,
+        state,
+      ]
+    : countedUntil
+      ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
+      : [isProvisional ? "Open for edits" : "Locked"];
   if (isManager) parts.push("your teams");
 
   return parts.join(" · ");

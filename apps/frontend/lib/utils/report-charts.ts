@@ -1,15 +1,20 @@
-import { HoursReportRow, TimelineBucket } from "@/types";
+import { HoursReportRow, TimelineBucket, TimelineBucketSize } from "@/types";
 
 import { formatDayMonthLabel, fromISODate } from "./date";
 import { countLabel } from "./text";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
+const MONTH_LABEL = new Intl.DateTimeFormat(undefined, { month: "short" });
 
-/** A run of days by name: "Oct 5–9", "Sep 29 – Oct 3", or the one day. */
-export const bucketLabel = ({
-  start,
-  end,
-}: Pick<TimelineBucket, "start" | "end">) => {
+/**
+ * A bucket by name: a month as "Jan", whatever part of it the range covers; a
+ * week as its run of days, "Oct 5–9" or "Sep 29 – Oct 3", or the one day.
+ */
+export const bucketLabel = (
+  { start, end }: Pick<TimelineBucket, "start" | "end">,
+  bucketSize: TimelineBucketSize,
+) => {
+  if (bucketSize === "month") return MONTH_LABEL.format(fromISODate(start));
   if (start === end) return formatDayMonthLabel(start);
 
   const sameMonth = start.slice(0, 7) === end.slice(0, 7);

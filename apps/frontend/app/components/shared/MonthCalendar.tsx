@@ -39,6 +39,8 @@ type MonthCalendarProps = {
   autoFocusDate?: Date;
   /** The earliest day that can be chosen; earlier ones stay focusable but inert. */
   minDate?: Date;
+  /** The latest day that can be chosen, inert past it like `minDate`. */
+  maxDate?: Date;
   onSelectDay: (day: Date) => void;
   /** The day under the pointer or keyboard focus, null once it leaves. */
   onHoverDay?: (day: Date | null) => void;
@@ -54,6 +56,7 @@ export const MonthCalendar = ({
   selectionLabel,
   autoFocusDate,
   minDate,
+  maxDate,
   onSelectDay,
   onHoverDay,
 }: MonthCalendarProps) => {
@@ -151,7 +154,8 @@ export const MonthCalendar = ({
             !!selection &&
             (isSameDay(day, selection.start) || isSameDay(day, selection.end));
           const today = isToday(day, timezone);
-          const isBeforeMin = !!minDate && day < minDate;
+          const isUnavailable =
+            (!!minDate && day < minDate) || (!!maxDate && day > maxDate);
 
           return (
             <button
@@ -165,9 +169,9 @@ export const MonthCalendar = ({
                   : formatLongDayLabel(day)
               }
               aria-current={today ? "date" : undefined}
-              aria-disabled={isBeforeMin || undefined}
+              aria-disabled={isUnavailable || undefined}
               autoFocus={!!autoFocusDate && isSameDay(day, autoFocusDate)}
-              onClick={() => !isBeforeMin && onSelectDay(day)}
+              onClick={() => !isUnavailable && onSelectDay(day)}
               onFocus={() => {
                 setFocusDate(day);
                 onHoverDay?.(day);
@@ -175,8 +179,8 @@ export const MonthCalendar = ({
               onMouseEnter={() => onHoverDay?.(day)}
               className={`
                 relative mx-auto h-8 w-8 rounded-md text-xs transition
-                ${inCurrentMonth && !isBeforeMin ? "text-foreground" : "text-muted-foreground"}
-                ${isBeforeMin ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-accent"}
+                ${inCurrentMonth && !isUnavailable ? "text-foreground" : "text-muted-foreground"}
+                ${isUnavailable ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-accent"}
                 ${isEnd ? "font-semibold text-brand" : ""}
               `}
             >

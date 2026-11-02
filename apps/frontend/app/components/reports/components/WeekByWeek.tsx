@@ -1,6 +1,11 @@
 "use client";
 
-import { PeopleReport, Timeline, TimelineBucket } from "@/types";
+import {
+  PeopleReport,
+  Timeline,
+  TimelineBucket,
+  TimelineBucketSize,
+} from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
 import { bucketLabel, bucketNote, hourScale } from "@/lib/utils/report-charts";
@@ -11,7 +16,7 @@ import { Card } from "@/components/ui/card";
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
 
-/** Room for a week's label and hours, gap included; past it the chart scrolls. */
+/** Room for a column's label and hours, gap included; past it the chart scrolls. */
 const MIN_COLUMN_REM = 5;
 
 const LEGEND = [
@@ -38,8 +43,18 @@ const Figure = ({
   </div>
 );
 
-/** A week's figures in words, for its panel and for screen readers. */
-const weekSummary = (bucket: TimelineBucket) =>
+const TITLES: Record<TimelineBucketSize, string> = {
+  week: "Week by week",
+  month: "Month by month",
+};
+
+const SCROLL_LABELS: Record<TimelineBucketSize, string> = {
+  week: "Weeks, scrolls sideways when narrow",
+  month: "Months, scrolls sideways when narrow",
+};
+
+/** A week's or a month's figures in words, for its panel and for screen readers. */
+const bucketSummary = (bucket: TimelineBucket) =>
   [
     `${formatReportHours(bucket.loggedMinutes)} logged`,
     bucket.plannedMinutes > 0
@@ -50,18 +65,20 @@ const weekSummary = (bucket: TimelineBucket) =>
       : "nothing expected",
   ].join(" · ");
 
-const WeekColumn = ({
+const BucketColumn = ({
   bucket,
+  label,
   endMinutes,
 }: {
   bucket: TimelineBucket;
+  label: string;
   endMinutes: number;
 }) => (
   // Focusable, so its figures open by keyboard and on a tap as well as on hover.
   <div
     tabIndex={0}
     role="img"
-    aria-label={`${bucketLabel(bucket)}: ${weekSummary(bucket)}`}
+    aria-label={`${label}: ${bucketSummary(bucket)}`}
     className="group relative flex h-full items-end justify-center rounded-t-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
   >
     <span
@@ -79,8 +96,8 @@ const WeekColumn = ({
       />
     </span>
     <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
-      <span className="block font-semibold">{bucketLabel(bucket)}</span>
-      {weekSummary(bucket)}
+      <span className="block font-semibold">{label}</span>
+      {bucketSummary(bucket)}
     </span>
   </div>
 );
@@ -91,9 +108,9 @@ type WeekByWeekProps = {
 };
 
 /**
- * The month at the top of the page: its three figures, and each week as a
- * pale block of what was expected with what was logged and planned standing
- * inside it.
+ * The period at the top of the page: its three figures, and each week or month
+ * as a pale block of what was expected with what was logged and planned
+ * standing inside it.
  */
 export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
   const { loggedMinutes, plannedMinutes, billableMinutes, expectedMinutes } =
@@ -118,7 +135,7 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
     <Card as="section" aria-labelledby="report-timeline" className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="report-timeline" className="text-base font-semibold">
-          Week by week
+          {TITLES[timeline.bucketSize]}
         </h2>
         <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           {LEGEND.map(({ label, className }) => (
@@ -176,7 +193,7 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
         </div>
         <div
           role="group"
-          aria-label="Weeks, scrolls sideways when narrow"
+          aria-label={SCROLL_LABELS[timeline.bucketSize]}
           tabIndex={0}
           className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
@@ -192,9 +209,10 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
               ))}
               <div className="absolute inset-0 grid gap-4" style={columns}>
                 {buckets.map((bucket) => (
-                  <WeekColumn
+                  <BucketColumn
                     key={bucket.start}
                     bucket={bucket}
+                    label={bucketLabel(bucket, timeline.bucketSize)}
                     endMinutes={scale.endMinutes}
                   />
                 ))}
@@ -207,7 +225,9 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
             >
               {buckets.map((bucket) => (
                 <div key={bucket.start} className="min-w-0">
-                  <p className="truncate font-medium">{bucketLabel(bucket)}</p>
+                  <p className="truncate font-medium">
+                    {bucketLabel(bucket, timeline.bucketSize)}
+                  </p>
                   <p className="tabular-nums">
                     {formatReportHours(bucket.loggedMinutes)}
                   </p>

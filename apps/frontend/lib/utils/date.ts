@@ -259,12 +259,20 @@ export function formatShortWeekRangeLabel(weekStart: Date): string {
 }
 
 /** e.g. "30 Jun – 6 Jul, 2026", or "29 Dec 2026 – 4 Jan 2027" across a new year. */
-export function formatWeekRangeLabel(weekStart: Date): string {
-  const weekEnd = getWeekEnd(weekStart);
+export function formatDateRangeLabel(dateFrom: string, dateTo: string): string {
+  const start = fromISODate(dateFrom);
+  const end = fromISODate(dateTo);
 
-  if (weekStart.getFullYear() !== weekEnd.getFullYear()) {
-    return `${DAY_MONTH_YEAR_LABEL.format(weekStart)} – ${DAY_MONTH_YEAR_LABEL.format(weekEnd)}`;
+  if (start.getFullYear() !== end.getFullYear()) {
+    return `${DAY_MONTH_YEAR_LABEL.format(start)} – ${DAY_MONTH_YEAR_LABEL.format(end)}`;
   }
 
-  return `${DAY_MONTH_LABEL.format(weekStart)} – ${DAY_MONTH_LABEL.format(weekEnd)}, ${weekEnd.getFullYear()}`;
+  return `${DAY_MONTH_LABEL.format(start)} – ${DAY_MONTH_LABEL.format(end)}, ${end.getFullYear()}`;
+}
+
+export function formatWeekRangeLabel(weekStart: Date): string {
+  return formatDateRangeLabel(
+    toISODate(weekStart),
+    toISODate(getWeekEnd(weekStart)),
+  );
 }

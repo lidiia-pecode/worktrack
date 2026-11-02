@@ -4,6 +4,7 @@ import { ComponentProps, ReactNode, useRef, useState } from "react";
 import { CalendarDays, ChevronDown } from "lucide-react";
 
 import {
+  addDays,
   formatDayMonthLabel,
   formatDayMonthYearLabel,
   fromISODate,
@@ -64,6 +65,13 @@ type DateRangePickerProps = {
   /** What the field shows; the dates by default. */
   label?: string;
   invalid?: boolean;
+  /** The first and last day that can be chosen, as YYYY-MM-DD. */
+  minDate?: string;
+  maxDate?: string;
+  /** The longest range, both ends counted; days past it can't end the range. */
+  maxDays?: number;
+  /** Opens the calendar as the picker appears, when choosing the range is the next step. */
+  defaultOpen?: boolean;
   onChange: (startDate: string, endDate: string) => void;
   /** Shortcuts under the calendar. */
   children?: ReactNode;
@@ -81,11 +89,15 @@ export const DateRangePicker = ({
   endDate,
   label,
   invalid = false,
+  minDate,
+  maxDate,
+  maxDays,
+  defaultOpen = false,
   onChange,
   children,
   className,
 }: DateRangePickerProps) => {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const [draftStart, setDraftStart] = useState<string | null>(null);
   const [previewEnd, setPreviewEnd] = useState<string | null>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -99,6 +111,15 @@ export const DateRangePicker = ({
       setOpen(false);
     }
   };
+
+  const lastDayOfDraft =
+    draftStart && maxDays
+      ? toISODate(addDays(fromISODate(draftStart), maxDays - 1))
+      : undefined;
+  const lastDay =
+    lastDayOfDraft && (!maxDate || lastDayOfDraft < maxDate)
+      ? lastDayOfDraft
+      : maxDate;
 
   const selection = draftStart
     ? {
@@ -144,6 +165,8 @@ export const DateRangePicker = ({
             selection={selection}
             selectionLabel="in the period"
             autoFocusDate={fromISODate(startDate)}
+            minDate={minDate ? fromISODate(minDate) : undefined}
+            maxDate={lastDay ? fromISODate(lastDay) : undefined}
             onSelectDay={pickDay}
             onHoverDay={(day) => setPreviewEnd(day && toISODate(day))}
           />

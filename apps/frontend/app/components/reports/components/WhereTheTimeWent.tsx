@@ -3,11 +3,12 @@
 import { useState } from "react";
 
 import { HoursReportRow, ReportRange } from "@/types";
-import { cn } from "@/lib/utils/cn";
 import { countLabel } from "@/lib/utils/text";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
+import { SegmentedControl } from "../../shared/SegmentedControl";
 
 import { AgainstPlanRow } from "./AgainstPlanRow";
 import { KindOfWork } from "./KindOfWork";
@@ -111,29 +112,12 @@ export const WhereTheTimeWent = ({
             </p>
           )}
         </div>
-        <div
-          role="group"
-          aria-label="Show"
-          className="flex h-8 overflow-hidden rounded-lg border border-border"
-        >
-          {VIEWS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={view === value}
-              onClick={() => setView(value)}
-              className={cn(
-                "border-l border-border px-3 text-sm transition first:border-l-0",
-                "focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none focus-visible:ring-inset",
-                view === value
-                  ? "bg-accent font-semibold text-accent-foreground"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Show"
+          options={VIEWS}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {view === "projects" ? (

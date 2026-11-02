@@ -3,15 +3,13 @@
 import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
-import { ReportRange } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
-import { useShownMonth } from "@/hooks/useShownMonth";
+import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { reportScope } from "@/lib/utils/report-overview";
-import { getMonthRange } from "@/lib/utils/date";
 import { HoursReportGroupBy, UserRole } from "@/types/enums";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -21,7 +19,7 @@ import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
-import { ReportMonthStepper } from "./components/ReportMonthStepper";
+import { ReportPeriodControl } from "./components/ReportPeriodControl";
 import { WeekByWeek } from "./components/WeekByWeek";
 import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
 import { NeedsAttention } from "./components/NeedsAttention";
@@ -33,12 +31,13 @@ const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 export const ReportsView = () => {
   const { user } = useAuth();
 
-  const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
+  const { period, today, firstDay, showPeriod } = useShownPeriod();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
-  const range: ReportRange = getMonthRange(month);
+  const { range } = period;
+  const isMonth = period.unit === "month";
 
   const overview = useReportOverview(range);
   const people = overview.report?.people ?? null;
@@ -101,15 +100,17 @@ export const ReportsView = () => {
       );
     }
 
-    // A locked month is for reference only, so nothing is marked (Decision 34).
-    const attention = isProvisional
-      ? reportAttention({
-          people: people.rows,
-          projects: projects.report.rows,
-          countedUntil,
-          isManager,
-        })
-      : NO_ATTENTION;
+    // A locked month is for reference only, so nothing is marked (Decision 34);
+    // Needs attention reads one month at a time.
+    const attention =
+      isProvisional && isMonth
+        ? reportAttention({
+            people: people.rows,
+            projects: projects.report.rows,
+            countedUntil,
+            isManager,
+          })
+        : NO_ATTENTION;
 
     return (
       // A container, so the cards follow the room beside an open panel, not the window.
@@ -121,7 +122,7 @@ export const ReportsView = () => {
         aria-busy={isUpdating}
       >
         <WeekByWeek timeline={timeline} totals={totals} />
-        {isProvisional && (
+        {isProvisional && isMonth && (
           <div className="mt-4">
             <NeedsAttention
               facts={attention.facts}
@@ -205,22 +206,22 @@ export const ReportsView = () => {
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
-          <ReportMonthStepper
-            month={month}
-            currentMonth={currentMonth}
-            companyFirstMonth={firstMonth}
-            onChange={showMonth}
+          <ReportPeriodControl
+            period={period}
+            today={today}
+            firstDay={firstDay}
+            onChange={showPeriod}
           />
-          {/* One line high even while a month loads, so the header holds still and
-              says nothing about the month before. */}
+          {/* One line high even while a period loads, so the header holds still and
+              says nothing about the period before. */}
           <p className="min-h-5 text-sm text-muted-foreground">
             {peopleReport &&
               !isNothingCounted &&
-              reportScope(peopleReport, isManager)}
+              reportScope(peopleReport, isManager, isMonth ? undefined : range)}
           </p>
         </div>
 
-        {/* The last figures keep the button in place while a month loads. */}
+        {/* The last figures keep the button in place while a period loads. */}
         {(people?.totals.loggedMinutes ?? 0) > 0 && (
           <HoursExportButton range={range} />
         )}
