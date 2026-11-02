@@ -8,6 +8,7 @@ import {
   fromISODate,
   getMonthRange,
   isISODate,
+  isMonthKey,
   lastDayOfReportRange,
   toISODate,
   toMonthKey,
@@ -34,7 +35,6 @@ const MONTHS_PER_QUARTER = MONTHS_PER_UNIT.quarter;
 /** The address parameter of each unit; a custom range uses `from` and `to`. */
 export const PERIOD_PARAMS = ["month", "quarter", "year", "from", "to"];
 
-const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 const QUARTER_KEY = /^(\d{4})-Q([1-4])$/;
 const YEAR_KEY = /^\d{4}$/;
 
@@ -54,15 +54,24 @@ const daysIn = ({ dateFrom, dateTo }: ReportRange) =>
 const isRealDate = (date: string) =>
   isISODate(date) && toISODate(fromISODate(date)) === date;
 
+const yearOf = (date: string) => date.slice(0, 4);
+
+/** 1 for January. */
+const monthNumberOf = (date: string) => Number(date.slice(5, 7));
+
+/** A year's month as YYYY-MM, 1 for January. */
+const monthKeyOf = (year: string, monthNumber: number) =>
+  `${year}-${String(monthNumber).padStart(2, "0")}`;
+
 const quarterOf = (date: string) =>
-  Math.floor((Number(date.slice(5, 7)) - 1) / MONTHS_PER_QUARTER) + 1;
+  Math.floor((monthNumberOf(date) - 1) / MONTHS_PER_QUARTER) + 1;
 
 /** The calendar month, quarter or year a date falls in. */
 export const periodOf = (unit: CalendarUnit, date: string): ShownPeriod => {
   const months = MONTHS_PER_UNIT[unit];
-  const monthIndex = Number(date.slice(5, 7)) - 1;
-  const firstMonthIndex = Math.floor(monthIndex / months) * months;
-  const firstMonth = `${date.slice(0, 4)}-${String(firstMonthIndex + 1).padStart(2, "0")}`;
+  const firstMonthNumber =
+    Math.floor((monthNumberOf(date) - 1) / months) * months + 1;
+  const firstMonth = monthKeyOf(yearOf(date), firstMonthNumber);
   const lastMonth = addMonthsToKey(firstMonth, months - 1);
 
   return {
@@ -112,18 +121,23 @@ export const switchUnit = (
   const isLarger =
     period.unit !== "custom" &&
     MONTHS_PER_UNIT[unit] >= MONTHS_PER_UNIT[period.unit];
-  const lastShownDay =
-    period.range.dateTo < today ? period.range.dateTo : today;
 
-  return periodOf(unit, isLarger ? period.range.dateFrom : lastShownDay);
+  return periodOf(
+    unit,
+    isLarger ? period.range.dateFrom : lastShownDay(period.range, today),
+  );
 };
+
+/** The range's last day, or today while it runs. */
+export const lastShownDay = ({ dateTo }: ReportRange, today: string) =>
+  dateTo < today ? dateTo : today;
 
 export const containsDate = ({ dateFrom, dateTo }: ReportRange, date: string) =>
   dateFrom <= date && date <= dateTo;
 
 /** "October 2026", "Q3 2026", "2026", or a custom range's dates. */
 export const periodLabel = ({ unit, range }: ShownPeriod) => {
-  const year = range.dateFrom.slice(0, 4);
+  const year = yearOf(range.dateFrom);
 
   switch (unit) {
     case "month":
@@ -142,19 +156,24 @@ export const periodFromParams = (
   params: URLSearchParams,
 ): ShownPeriod | null => {
   const month = params.get("month");
-  if (month && MONTH_KEY.test(month)) return periodOf("month", `${month}-01`);
+  if (month && isMonthKey(month)) {
+    return periodOf("month", getMonthRange(month).dateFrom);
+  }
 
   const quarter = params.get("quarter")?.match(QUARTER_KEY);
   if (quarter) {
-    const firstMonth = (Number(quarter[2]) - 1) * MONTHS_PER_QUARTER + 1;
-    return periodOf(
-      "quarter",
-      `${quarter[1]}-${String(firstMonth).padStart(2, "0")}-01`,
+    const [, year, quarterNumber] = quarter;
+    const firstMonth = monthKeyOf(
+      year,
+      (Number(quarterNumber) - 1) * MONTHS_PER_QUARTER + 1,
     );
+    return periodOf("quarter", getMonthRange(firstMonth).dateFrom);
   }
 
   const year = params.get("year");
-  if (year && YEAR_KEY.test(year)) return periodOf("year", `${year}-01-01`);
+  if (year && YEAR_KEY.test(year)) {
+    return periodOf("year", `${year}-01-01`);
+  }
 
   const from = params.get("from");
   const to = params.get("to");
@@ -184,10 +203,10 @@ export const periodToParams = (
         : { month: toMonthKey(range.dateFrom) };
     case "quarter":
       return {
-        quarter: `${range.dateFrom.slice(0, 4)}-Q${quarterOf(range.dateFrom)}`,
+        quarter: `${yearOf(range.dateFrom)}-Q${quarterOf(range.dateFrom)}`,
       };
     case "year":
-      return { year: range.dateFrom.slice(0, 4) };
+      return { year: yearOf(range.dateFrom) };
     case "custom":
       return { from: range.dateFrom, to: range.dateTo };
   }

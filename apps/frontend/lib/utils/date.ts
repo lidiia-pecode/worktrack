@@ -191,6 +191,13 @@ export function lastDayOfReportRange(dateFrom: string): string {
   return toISODate(addDays(firstDay, MAX_REPORT_RANGE_DAYS - 1));
 }
 
+const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+/** Whether a value is a YYYY-MM month key, such as one read from an address. */
+export function isMonthKey(value: string): boolean {
+  return MONTH_KEY.test(value);
+}
+
 /** The YYYY-MM month key of a YYYY-MM-DD date. */
 export function toMonthKey(date: string): string {
   return date.slice(0, 7);

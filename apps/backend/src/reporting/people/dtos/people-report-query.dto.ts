@@ -1,16 +1,3 @@
-import { IsOptional, IsUUID } from 'class-validator';
+import { ReportRangeQuery } from '../../dtos/report-range-query.dto';
 
-import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
-
-export class PeopleReportQuery {
-  @IsDateWithoutTimeString()
-  dateFrom!: string;
-
-  @IsDateWithoutTimeString()
-  dateTo!: string;
-
-  /** Only the current members of this team, within the people the caller sees. */
-  @IsOptional()
-  @IsUUID()
-  teamId?: string;
-}
+export class PeopleReportQuery extends ReportRangeQuery {}

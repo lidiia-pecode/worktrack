@@ -10,13 +10,13 @@ import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
-import { useTeamOptions } from "@/hooks/useTeams";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { periodChange, reportScope } from "@/lib/utils/report-overview";
 import {
   containsDate,
   isShowablePeriod,
+  lastShownDay,
   periodLabel,
   periodOf,
   stepPeriod,
@@ -61,17 +61,8 @@ export const ReportsView = () => {
   const isOwner = user?.role === UserRole.OWNER;
   const isManager = user?.role === UserRole.MANAGER;
 
-  // The teams the caller can see: every active one for an owner, the ones
-  // they lead for a manager. One team at a time is for an owner, and for a
-  // manager who leads more than one (decision 7).
-  const teams = useTeamOptions();
-  const { teamId, showTeam } = useShownTeam(
-    teams.isLoading ? undefined : teams.options.map((team) => team.value),
-  );
-  const teamName = teams.options.find((team) => team.value === teamId)?.label;
-  // Shown once the teams have loaded, so the page renders the same on the
-  // server, where they haven't, and in the browser's first pass.
-  const choosesTeam = !teams.isLoading && (isOwner || teams.options.length > 1);
+  const { teamId, teamName, teamOptions, choosesTeam, showTeam } =
+    useShownTeam(isOwner);
   const query: ReportQuery = { ...range, teamId };
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
@@ -82,9 +73,11 @@ export const ReportsView = () => {
       ? { ...range, dateFrom: firstDay }
       : range;
   const previousPeriod = stepPeriod(period, -1);
+  const previousName = periodLabel(previousPeriod);
 
   const overview = useReportOverview(query);
   const people = overview.report?.people ?? null;
+  const timeline = overview.report?.timeline ?? null;
   // The period before, of the same kind, for each figure's change; none
   // before the company's first month.
   const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
@@ -94,7 +87,6 @@ export const ReportsView = () => {
   );
   const previousReport =
     isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
-  const timeline = overview.report?.timeline ?? null;
   const projects = useHoursReport({
     ...query,
     groupBy: HoursReportGroupBy.PROJECT,
@@ -103,7 +95,7 @@ export const ReportsView = () => {
   const reportingMonths = useReportingPeriods(
     {
       from: toMonthKey(range.dateFrom),
-      to: toMonthKey(range.dateTo < today ? range.dateTo : today),
+      to: toMonthKey(lastShownDay(range, today)),
     },
     { enabled: !isMonth },
   );
@@ -112,10 +104,12 @@ export const ReportsView = () => {
     .map((month) => month.month)
     .sort();
   const isUpdating = overview.isPlaceholderData || projects.isPlaceholderData;
-  const peopleReport = isUpdating ? null : people;
+  // `people` keeps the last period's figures while the next loads; these are
+  // only the shown period's own.
+  const settledPeople = isUpdating ? null : people;
   // Only finished days count, so a month starting today has nothing yet.
   const isNothingCounted = Boolean(
-    peopleReport?.countedUntil && peopleReport.countedUntil < range.dateFrom,
+    settledPeople?.countedUntil && settledPeople.countedUntil < range.dateFrom,
   );
 
   // The current period starts empty, as a month does in its first days, so
@@ -123,7 +117,7 @@ export const ReportsView = () => {
   const showPrevious =
     containsDate(range, today) && isPreviousShowable ? (
       <Button variant="secondary" onClick={() => showPeriod(previousPeriod)}>
-        Show {periodLabel(previousPeriod)}
+        Show {previousName}
       </Button>
     ) : undefined;
 
@@ -177,15 +171,15 @@ export const ReportsView = () => {
 
     // A locked month is for reference only, so nothing is marked (Decision 34);
     // Needs attention reads one month at a time.
-    const attention =
-      isProvisional && isMonth
-        ? reportAttention({
-            people: people.rows,
-            projects: projects.report.rows,
-            countedUntil,
-            isManager,
-          })
-        : NO_ATTENTION;
+    const showsAttention = isProvisional && isMonth;
+    const attention = showsAttention
+      ? reportAttention({
+          people: people.rows,
+          projects: projects.report.rows,
+          countedUntil,
+          isManager,
+        })
+      : NO_ATTENTION;
 
     return (
       // A container, so the cards follow the room beside an open panel, not the window.
@@ -201,10 +195,10 @@ export const ReportsView = () => {
           totals={totals}
           firstDay={firstDay}
           periodName={periodName}
-          previousName={periodLabel(previousPeriod)}
+          previousName={previousName}
           change={previousReport && periodChange(totals, previousReport.totals)}
         />
-        {isProvisional && isMonth && (
+        {showsAttention && (
           <div className="mt-4">
             <NeedsAttention
               facts={attention.facts}
@@ -229,7 +223,7 @@ export const ReportsView = () => {
           <PeopleCard
             people={people.rows}
             previousPeople={previousReport?.rows}
-            previousName={periodLabel(previousPeriod)}
+            previousName={previousName}
             marked={attention.people}
             isOneTeam={Boolean(teamId)}
             onOpenPerson={openPerson}
@@ -265,7 +259,7 @@ export const ReportsView = () => {
   // as on Team time, rather than reopening by itself later.
   const isOpenedGone =
     !!opened &&
-    !!peopleReport &&
+    !!settledPeople &&
     !!projects.report &&
     !openedPerson &&
     !openedProject;
@@ -325,7 +319,7 @@ export const ReportsView = () => {
                 value={teamId ?? ALL_TEAMS}
                 options={[
                   { value: ALL_TEAMS, label: "All teams" },
-                  ...teams.options,
+                  ...teamOptions,
                 ]}
                 onValueChange={(value) =>
                   showTeam(value === ALL_TEAMS ? undefined : value)
@@ -336,9 +330,9 @@ export const ReportsView = () => {
           {/* One line high even while a period loads, so the header holds still and
               says nothing about the period before. */}
           <p className="min-h-5 text-sm text-muted-foreground">
-            {peopleReport &&
+            {settledPeople &&
               !isNothingCounted &&
-              reportScope(peopleReport, {
+              reportScope(settledPeople, {
                 periodRange: isMonth ? undefined : rangeSinceCompanyStart,
                 teamName,
               })}

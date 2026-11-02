@@ -18,7 +18,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { MonthCalendar } from "../MonthCalendar";
+import { calendarTabStop, MonthCalendar } from "../MonthCalendar";
 
 /** "Oct 19 – Oct 23, 2026", or the one day. */
 const formatDateRange = (startDate: string, endDate: string) =>
@@ -147,11 +147,7 @@ export const DateRangePicker = ({
 
       <PopoverContent
         className="w-76"
-        initialFocus={() =>
-          calendarRef.current?.querySelector<HTMLElement>(
-            '[data-date][tabindex="0"]',
-          ) ?? true
-        }
+        initialFocus={() => calendarTabStop(calendarRef.current)}
       >
         <div ref={calendarRef}>
           <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">

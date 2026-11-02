@@ -29,6 +29,13 @@ const ARROW_STEP_DAYS: Record<string, number> = {
   ArrowDown: 7,
 };
 
+/**
+ * The calendar's day in the Tab order, for a popover's `initialFocus`; `true`
+ * keeps the popover's default focus when the calendar isn't there yet.
+ */
+export const calendarTabStop = (calendar: HTMLElement | null) =>
+  calendar?.querySelector<HTMLElement>('[data-date][tabindex="0"]') ?? true;
+
 type MonthCalendarProps = {
   initialMonth: Date;
   /** The chosen days, drawn as one band with both ends in bold. */

@@ -208,11 +208,8 @@ type PeriodOverviewProps = {
 };
 
 /**
- * The period at the top of the page: a band in the brand tint with its three
- * figures, each with its share as a ring and its change from the previous
- * period, and under it each week or month as a pale block of what was
- * expected with what was logged, its billable part striped, and planned
- * standing inside it.
+ * The period's summary band, three figures with their share and change, above
+ * a chart of each week or month: expected behind, logged and planned inside.
  */
 export const PeriodOverview = ({
   timeline,

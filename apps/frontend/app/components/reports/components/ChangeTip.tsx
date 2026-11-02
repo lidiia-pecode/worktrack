@@ -4,7 +4,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 import {
   changeLabel,
-  changeTip,
+  changeTipLines,
   FigureChange,
 } from "@/lib/utils/report-overview";
 
@@ -34,7 +34,7 @@ const Direction = ({ points }: { points: number }) => {
  * colour stays muted: the arrow tells the direction, not good or bad.
  */
 export const ChangeTip = ({ change, previousName }: ChangeTipProps) => {
-  const lines = changeTip(change, previousName);
+  const lines = changeTipLines(change, previousName);
 
   return (
     <Tooltip>

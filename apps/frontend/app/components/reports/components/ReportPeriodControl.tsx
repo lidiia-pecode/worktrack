@@ -11,6 +11,7 @@ import {
 import {
   CalendarUnit,
   containsDate,
+  lastShownDay,
   PeriodUnit,
   periodLabel,
   periodOf,
@@ -24,7 +25,7 @@ import { Popover, PopoverContent } from "@/components/ui/popover";
 
 import { BackToNowButton } from "../../shared/buttons/BackToNowButton";
 import { DateFieldTrigger, DateRangePicker } from "../../shared/inputs";
-import { MonthCalendar } from "../../shared/MonthCalendar";
+import { calendarTabStop, MonthCalendar } from "../../shared/MonthCalendar";
 import { SegmentedControl } from "../../shared/SegmentedControl";
 
 const UNITS: { value: PeriodUnit; label: string }[] = [
@@ -36,10 +37,6 @@ const UNITS: { value: PeriodUnit; label: string }[] = [
 
 /** Sized like Team time's week button, and taller on a phone like its arrows. */
 const PERIOD_BUTTON_CLASS = "h-9 w-auto max-sm:h-10";
-
-/** Focuses the calendar's tab stop as its popover opens, as the range picker does. */
-const tabStopIn = (calendar: HTMLDivElement | null) =>
-  calendar?.querySelector<HTMLElement>('[data-date][tabindex="0"]') ?? true;
 
 type PeriodPickerProps = {
   period: ShownPeriod;
@@ -62,8 +59,7 @@ const CalendarPeriodPicker = ({
   const calendarRef = useRef<HTMLDivElement>(null);
 
   const marked = hoveredDay ? periodOf(unit, hoveredDay) : period;
-  const lastShownDay =
-    period.range.dateTo < today ? period.range.dateTo : today;
+  const openingDay = fromISODate(lastShownDay(period.range, today));
 
   return (
     <Popover
@@ -80,17 +76,17 @@ const CalendarPeriodPicker = ({
 
       <PopoverContent
         className="w-76"
-        initialFocus={() => tabStopIn(calendarRef.current)}
+        initialFocus={() => calendarTabStop(calendarRef.current)}
       >
         <div ref={calendarRef}>
           <MonthCalendar
-            initialMonth={fromISODate(lastShownDay)}
+            initialMonth={openingDay}
             selection={{
               start: fromISODate(marked.range.dateFrom),
               end: fromISODate(marked.range.dateTo),
             }}
             selectionLabel={`in the ${unit}`}
-            autoFocusDate={fromISODate(lastShownDay)}
+            autoFocusDate={openingDay}
             minDate={firstDay ? fromISODate(firstDay) : undefined}
             maxDate={fromISODate(today)}
             onSelectDay={(day) => {

@@ -12,11 +12,9 @@ type ReportBarProps = {
 };
 
 /**
- * One bar: logged time as a share of what it is measured against, full at or
- * past it, its billable part striped. Time past the reference ends the bar in
- * the warning colour, as Team time's week bar does, so "198h of 176h" doesn't
- * read as "176h of 176h". With nothing to measure against, logged time is a
- * full bar in a lighter teal, so it doesn't read as reaching a plan.
+ * Logged time against its reference, the billable part striped. Time past the
+ * reference ends the bar in the warning colour, as on Team time; with no
+ * reference the bar is full in a lighter teal, so it doesn't read as on plan.
  */
 export const ReportBar = ({
   value,
@@ -34,13 +32,13 @@ export const ReportBar = ({
   const overShare =
     hasReference && value > reference ? ((value - reference) / value) * 100 : 0;
   const isOver = overShare > 0;
-  // Past the reference the bar splits like Team time's week bar: the logged
-  // part up to the reference, then the overrun on its own, never on top of it.
+  // Past the reference the logged part stops at it and the overrun follows.
   const loggedWidth = isOver ? 100 - overShare : percent;
+  // The stripes are a share of the logged part, which past the reference
+  // stands for only the reference's minutes.
+  const loggedPartMinutes = isOver ? reference : value;
   const billableWidth =
-    value > 0
-      ? Math.min(100, (billable / (isOver ? reference : value)) * 100)
-      : 0;
+    value > 0 ? Math.min(100, (billable / loggedPartMinutes) * 100) : 0;
 
   return (
     // Spans, so a team row can put the bar beside its button.

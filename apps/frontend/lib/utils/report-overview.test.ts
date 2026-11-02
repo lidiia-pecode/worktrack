@@ -5,7 +5,7 @@ import { UserRole, UserStatus } from "@/types/enums";
 
 import {
   changeLabel,
-  changeTip,
+  changeTipLines,
   groupPeopleByTeam,
   periodChange,
   personDays,
@@ -152,7 +152,7 @@ describe("periodChange", () => {
   });
 });
 
-describe("changeTip", () => {
+describe("changeTipLines", () => {
   const change = (share: number, previousShare: number, minutes: number) => ({
     points: share - previousShare,
     minutes,
@@ -161,17 +161,16 @@ describe("changeTip", () => {
   });
 
   it("says the points, both shares and the hours behind them", () => {
-    expect(changeTip(change(94, 97, -109 * 60), "September 2026")).toEqual([
-      "Down 3 points from September 2026",
-      "97% → 94% · about 109h less",
-    ]);
-    expect(changeTip(change(91, 90, 24 * 60), "Q2 2026")[0]).toBe(
+    expect(changeTipLines(change(94, 97, -109 * 60), "September 2026")).toEqual(
+      ["Down 3 points from September 2026", "97% → 94% · about 109h less"],
+    );
+    expect(changeTipLines(change(91, 90, 24 * 60), "Q2 2026")[0]).toBe(
       "Up 1 point from Q2 2026",
     );
   });
 
   it("calls no change the same, and sizes a change in points", () => {
-    expect(changeTip(change(89, 89, 6 * 60), "September 2026")).toEqual([
+    expect(changeTipLines(change(89, 89, 6 * 60), "September 2026")).toEqual([
       "Same as September 2026 · 89%",
     ]);
     expect(changeLabel(change(89, 89, 0))).toBe("0 pts");

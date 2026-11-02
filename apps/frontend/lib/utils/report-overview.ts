@@ -16,10 +16,9 @@ import {
 import { countLabel } from "./text";
 
 /**
- * One line saying how far the period is counted and whether it can still
- * change: "Up to Oct 23 · open for edits" for a month, whose name says its
- * dates, and "Oct 1 – Nov 1 · open for edits" for any other period, given as
- * `periodRange`; with one team chosen, its name ends the line.
+ * How far the period is counted and whether it can change: "Up to Oct 23 ·
+ * open for edits" for a month, "Oct 1 – Nov 1 · open for edits" for a
+ * `periodRange`, then the team's name when there is one.
  */
 export const reportScope = (
   { countedUntil, isProvisional }: ReportCoverage,
@@ -76,46 +75,28 @@ type ChangeFigures = Pick<
 >;
 
 /**
- * Each figure's share against the previous period's, in percentage points
- * between the shares as the page shows them, so 94% after 90% is 4. Shares,
- * not hours, since periods differ in working days and people (Phase 42,
- * decision 5). A figure has none when either period has nothing to measure it
- * against: no expected hours for logged and planned, no logged time for
- * billable.
+ * Each figure's share against the previous period's, in points: 94% after 90%
+ * is 4. Shares, not hours, since periods differ in working days and people
+ * (Phase 42, decision 5).
  */
 export const periodChange = (
   current: ChangeFigures,
   previous: ChangeFigures,
 ): PeriodChange => {
-  const change = (
-    part: (figures: ChangeFigures) => number,
-    whole: (figures: ChangeFigures) => number,
-  ) =>
+  const change = (part: keyof ChangeFigures, whole: keyof ChangeFigures) =>
     shareChange(
-      { part: part(current), whole: whole(current) },
-      { part: part(previous), whole: whole(previous) },
+      { part: current[part], whole: current[whole] },
+      { part: previous[part], whole: previous[whole] },
     );
 
   return {
-    logged: change(
-      (figures) => figures.loggedMinutes,
-      (figures) => figures.expectedMinutes,
-    ),
-    planned: change(
-      (figures) => figures.plannedMinutes,
-      (figures) => figures.expectedMinutes,
-    ),
-    billable: change(
-      (figures) => figures.billableMinutes,
-      (figures) => figures.loggedMinutes,
-    ),
+    logged: change("loggedMinutes", "expectedMinutes"),
+    planned: change("plannedMinutes", "expectedMinutes"),
+    billable: change("billableMinutes", "loggedMinutes"),
   };
 };
 
-/**
- * One share against the previous period's, as `periodChange` compares each
- * figure; a team row compares its logged share the same way.
- */
+/** One share against the previous period's; none if either has no whole. */
 export const shareChange = (
   current: { part: number; whole: number },
   previous: { part: number; whole: number },
@@ -142,7 +123,7 @@ export const changeLabel = ({ points }: FigureChange) => {
  * What a change means, for its tip: "Down 3 points from September 2026" over
  * "97% → 94% · about 109h less", or one line, "Same as September 2026 · 89%".
  */
-export const changeTip = (change: FigureChange, previousName: string) => {
+export const changeTipLines = (change: FigureChange, previousName: string) => {
   const { points, minutes, share, previousShare } = change;
   if (points === 0) return [`Same as ${previousName} · ${share}%`];
 
