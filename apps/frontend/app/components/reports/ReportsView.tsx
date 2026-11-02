@@ -54,6 +54,12 @@ export const ReportsView = () => {
   const { range } = period;
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
+  // Nothing happened before the company existed, so a year that began before
+  // it is counted, like its chart, from the company's first month.
+  const rangeSinceCompanyStart =
+    firstDay && range.dateFrom < firstDay
+      ? { ...range, dateFrom: firstDay }
+      : range;
   const previousPeriod = stepPeriod(period, -1);
 
   const overview = useReportOverview(range);
@@ -255,7 +261,8 @@ export const ReportsView = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Fills the page, so an empty state stretches to the bottom as on Log my time.
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
           <ReportPeriodControl
@@ -269,7 +276,11 @@ export const ReportsView = () => {
           <p className="min-h-5 text-sm text-muted-foreground">
             {peopleReport &&
               !isNothingCounted &&
-              reportScope(peopleReport, isManager, isMonth ? undefined : range)}
+              reportScope(
+                peopleReport,
+                isManager,
+                isMonth ? undefined : rangeSinceCompanyStart,
+              )}
           </p>
         </div>
 
