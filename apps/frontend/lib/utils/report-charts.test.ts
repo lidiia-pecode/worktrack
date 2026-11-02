@@ -5,6 +5,7 @@ import { HoursReportRow, TimelineBucket } from "@/types";
 import {
   bucketLabel,
   bucketNote,
+  bucketsSinceCompanyStart,
   hourScale,
   kindOfWork,
   NO_CATEGORY,
@@ -60,6 +61,22 @@ describe("bucketLabel", () => {
     expect(bucketLabel(bucket("2026-01-10", "2026-01-31"), "month")).toBe(
       "Jan",
     );
+  });
+});
+
+describe("bucketsSinceCompanyStart", () => {
+  it("starts at the company's first month, keeping an earlier month with time on it", () => {
+    const may = bucket("2026-05-01", "2026-05-31");
+    const april = {
+      ...bucket("2026-04-01", "2026-04-30"),
+      loggedMinutes: HOUR,
+    };
+    const june = bucket("2026-06-01", "2026-06-30");
+
+    expect(bucketsSinceCompanyStart([april, may, june], "2026-06-01")).toEqual([
+      april,
+      june,
+    ]);
   });
 });
 

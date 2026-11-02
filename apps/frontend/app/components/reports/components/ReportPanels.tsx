@@ -191,7 +191,7 @@ export const PersonProjects = ({
   return (
     <PanelList
       report={projects}
-      empty="No time or plans on any project this month."
+      empty="No time or plans on any project in this period."
     >
       {(rows) =>
         rows.map((row) => (
@@ -210,15 +210,18 @@ type PersonPanelProps = {
   person: PeopleReportRow;
   range: ReportRange;
   countedUntil: string | null;
+  /** Day by day for a range read week by week; past it, a grid of days would run to fifty rows. */
+  showsDays: boolean;
   isUpdating: boolean;
   onClose: () => void;
 };
 
-/** One person's month: what the row doesn't say, their days and their projects. */
+/** One person's period: what the row doesn't say, their days and their projects. */
 export const PersonPanel = ({
   person,
   range,
   countedUntil,
+  showsDays,
   isUpdating,
   onClose,
 }: PersonPanelProps) => {
@@ -234,21 +237,29 @@ export const PersonPanel = ({
     >
       <PersonFacts person={person} range={range} countedUntil={countedUntil} />
 
-      <PanelSection
-        title="Day by day"
-        note={
-          withoutTime > 0
-            ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
-            : undefined
-        }
-      >
-        <PersonDayGrid
-          person={person}
-          range={range}
-          countedUntil={countedUntil}
-          dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
-        />
-      </PanelSection>
+      {showsDays ? (
+        <PanelSection
+          title="Day by day"
+          note={
+            withoutTime > 0
+              ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
+              : undefined
+          }
+        >
+          <PersonDayGrid
+            person={person}
+            range={range}
+            countedUntil={countedUntil}
+            dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
+          />
+        </PanelSection>
+      ) : (
+        <p className="text-sm">
+          {withoutTime > 0
+            ? `${countLabel(withoutTime, "day", "days")} with no time logged`
+            : "Time logged on every expected day"}
+        </p>
+      )}
 
       <PanelSection title="Projects" note="Logged against planned">
         <PersonProjects person={person} range={range} />

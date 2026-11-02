@@ -24,7 +24,25 @@ export const bucketLabel = (
 };
 
 /**
- * How much of a bucket counts, said under its name: "5 days", or "2 days so
+ * The buckets from the company's first day on. An earlier one is kept only
+ * with time or a plan on it, since time can be logged on any past date and
+ * the columns must still add up to the figures above them.
+ */
+export const bucketsSinceCompanyStart = (
+  buckets: TimelineBucket[],
+  firstDay: string | undefined,
+) =>
+  firstDay
+    ? buckets.filter(
+        (bucket) =>
+          bucket.end >= firstDay ||
+          bucket.loggedMinutes > 0 ||
+          bucket.plannedMinutes > 0,
+      )
+    : buckets;
+
+/**
+ * How much of a bucket counts, said in its tip: "5 days", or "2 days so
  * far" when the counting stopped at yesterday inside it.
  */
 export const bucketNote = (

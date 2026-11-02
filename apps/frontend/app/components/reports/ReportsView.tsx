@@ -6,11 +6,26 @@ import { FileBarChart } from "lucide-react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
+import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { reportScope } from "@/lib/utils/report-overview";
-import { HoursReportGroupBy, UserRole } from "@/types/enums";
+import {
+  containsDate,
+  isShowablePeriod,
+  periodLabel,
+  periodOf,
+  stepPeriod,
+} from "@/lib/utils/shown-period";
+import { toMonthKey } from "@/lib/utils/date";
+import {
+  HoursReportGroupBy,
+  ReportingMonthState,
+  UserRole,
+} from "@/types/enums";
+
+import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "../shared/EmptyState";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
@@ -22,7 +37,7 @@ import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
 import { ReportPeriodControl } from "./components/ReportPeriodControl";
 import { WeekByWeek } from "./components/WeekByWeek";
 import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
-import { NeedsAttention } from "./components/NeedsAttention";
+import { NeedsAttention, OpenMonthLinks } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
 
 const PROJECT_PARAM = "project";
@@ -38,6 +53,8 @@ export const ReportsView = () => {
 
   const { range } = period;
   const isMonth = period.unit === "month";
+  const periodName = periodLabel(period);
+  const previousPeriod = stepPeriod(period, -1);
 
   const overview = useReportOverview(range);
   const people = overview.report?.people ?? null;
@@ -46,6 +63,18 @@ export const ReportsView = () => {
     ...range,
     groupBy: HoursReportGroupBy.PROJECT,
   });
+  // A longer period links to its open months, each with its own Needs attention.
+  const reportingMonths = useReportingPeriods(
+    {
+      from: toMonthKey(range.dateFrom),
+      to: toMonthKey(range.dateTo < today ? range.dateTo : today),
+    },
+    { enabled: !isMonth },
+  );
+  const openMonths = reportingMonths.months
+    .filter((month) => month.state !== ReportingMonthState.LOCKED)
+    .map((month) => month.month)
+    .sort();
   const isManager = user?.role === UserRole.MANAGER;
   const isUpdating = overview.isPlaceholderData || projects.isPlaceholderData;
   const peopleReport = isUpdating ? null : people;
@@ -54,12 +83,22 @@ export const ReportsView = () => {
     peopleReport?.countedUntil && peopleReport.countedUntil < range.dateFrom,
   );
 
+  // The current period starts empty, as a month does in its first days, so
+  // its empty state offers the period before.
+  const showPrevious =
+    containsDate(range, today) &&
+    isShowablePeriod(previousPeriod, today, firstDay) ? (
+      <Button variant="secondary" onClick={() => showPeriod(previousPeriod)}>
+        Show {periodLabel(previousPeriod)}
+      </Button>
+    ) : undefined;
+
   const renderOverview = () => {
     if (overview.isLoading || projects.isLoading) {
       return (
         <LoadingState
           title="Loading the report"
-          description="Adding up the time for this month."
+          description={`Adding up the time for ${periodName}.`}
         />
       );
     }
@@ -68,7 +107,7 @@ export const ReportsView = () => {
       return (
         <ErrorState
           title="We couldn't load the report"
-          description="The figures for this month are unavailable right now."
+          description={`The figures for ${periodName} are unavailable right now.`}
           onRetry={() => {
             void overview.refetch();
             void projects.refetch();
@@ -83,8 +122,9 @@ export const ReportsView = () => {
       return (
         <EmptyState
           title="Nothing counted yet"
-          description="Only finished days count, and none of this month has finished yet."
+          description={`Only finished days count, and none of ${periodName} has finished yet.`}
           icon={<FileBarChart />}
+          action={showPrevious}
         />
       );
     }
@@ -93,9 +133,10 @@ export const ReportsView = () => {
     if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
       return (
         <EmptyState
-          title="Nothing logged or planned in this month"
-          description="Pick another month, or check that people have logged their time."
+          title={`Nothing logged or planned in ${periodName}`}
+          description="Pick another period, or check that people have logged their time."
           icon={<FileBarChart />}
+          action={showPrevious}
         />
       );
     }
@@ -121,7 +162,7 @@ export const ReportsView = () => {
         )}
         aria-busy={isUpdating}
       >
-        <WeekByWeek timeline={timeline} totals={totals} />
+        <WeekByWeek timeline={timeline} totals={totals} firstDay={firstDay} />
         {isProvisional && isMonth && (
           <div className="mt-4">
             <NeedsAttention
@@ -130,6 +171,16 @@ export const ReportsView = () => {
               isMonthRunning={countedUntil !== null}
               onOpenPerson={openPerson}
               onOpenProject={openProject}
+            />
+          </div>
+        )}
+        {!isMonth && openMonths.length > 0 && (
+          <div className="mt-4">
+            <OpenMonthLinks
+              months={openMonths}
+              onOpenMonth={(month) =>
+                showPeriod(periodOf("month", `${month}-01`))
+              }
             />
           </div>
         )}
@@ -183,6 +234,7 @@ export const ReportsView = () => {
           person={openedPerson}
           range={range}
           countedUntil={people.countedUntil}
+          showsDays={timeline?.bucketSize === "week"}
           isUpdating={isUpdating}
           onClose={close}
         />

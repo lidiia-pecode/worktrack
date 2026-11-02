@@ -880,13 +880,16 @@ see, and how a new company gets started. §7 plans that work.
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
-- **Reports** — owners and managers see one overview on `/reports`, one month
-  at a time, stepped with arrows from the company's first month. At the top,
-  week by week, the month's time logged against what the team was expected to
+- **Reports** — owners and managers see one overview on `/reports` for a
+  month, a quarter, a year or a custom range of up to 366 days, stepped with
+  arrows from the company's first month and kept in the address (Phase 42).
+  At the top, week by week (month by month past 92 days, from the company's
+  first month), the period's time logged against what the team was expected to
   work (capacity minus time off), what was planned, and billable time and its
-  share (by each entry's flag, D2): each week a pale block of what was expected
-  with what was logged and planned standing inside it, and weeks cut short
-  marked. While the month is open, "Needs attention" says each kind of
+  share (by each entry's flag, D2): each column a pale block of what was
+  expected with what was logged and planned standing inside it, named under it
+  and with its figures on hover. A longer period links to the months in it
+  still open. While a month is open, "Needs attention" says each kind of
   problem once, in at most two cards, each name opening its panel: people with
   working days with no time logged (in a month still running, only for weeks
   that have ended, since many log their week on Friday), and projects at least
@@ -1368,8 +1371,8 @@ their time logs, such as anonymising the person and keeping the hours.
 - **Q4** — The hours export is an Excel file, one row per person, day,
   project, activity and billing type, with no notes and a `Period` column
   (Phase 13), and an `Email` column after the name (Phase 34).
-- **Q10** — Reports are one overview page for owners and managers, one month
-  at a time, built around the questions they bring: logged against expected and
+- **Q10** — Reports are one overview page for owners and managers, a month at a
+  time at first (Phase 34) and any period up to a year since Phase 42, built around the questions they bring: logged against expected and
   planned, and billable, week by week; what needs attention while the month
   can still change; people by team;
   where the time went by project and kind of work, with a person or a project

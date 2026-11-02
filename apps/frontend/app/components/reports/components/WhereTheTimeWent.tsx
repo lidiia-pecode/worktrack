@@ -39,7 +39,7 @@ const ProjectList = ({
   if (projects.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        No time or plans on any project this month.
+        No time or plans on any project in this period.
       </p>
     );
   }

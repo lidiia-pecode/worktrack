@@ -66,6 +66,37 @@ const ItemList = ({
   );
 };
 
+type OpenMonthLinksProps = {
+  /** YYYY-MM, oldest first. */
+  months: string[];
+  onOpenMonth: (month: string) => void;
+};
+
+/**
+ * Needs attention reads one month at a time, so a longer period names the
+ * months in it still open for edits, each switching to its own.
+ */
+export const OpenMonthLinks = ({
+  months,
+  onOpenMonth,
+}: OpenMonthLinksProps) => (
+  <p className="text-sm text-muted-foreground">
+    What needs attention:{" "}
+    {months.map((month, index) => (
+      <span key={month}>
+        {index > 0 && " · "}
+        <button
+          type="button"
+          className={cn(NAME_CLASS, "font-medium text-foreground")}
+          onClick={() => onOpenMonth(month)}
+        >
+          {MONTH_NAME.format(new Date(`${month}-01T00:00:00`))} ›
+        </button>
+      </span>
+    ))}
+  </p>
+);
+
 type NeedsAttentionProps = {
   facts: AttentionFact[];
   /** The month's first day, for the line when nothing needs attention. */

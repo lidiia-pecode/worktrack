@@ -8,7 +8,12 @@ import {
 } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
-import { bucketLabel, bucketNote, hourScale } from "@/lib/utils/report-charts";
+import {
+  bucketLabel,
+  bucketNote,
+  bucketsSinceCompanyStart,
+  hourScale,
+} from "@/lib/utils/report-charts";
 import { percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
@@ -16,8 +21,14 @@ import { Card } from "@/components/ui/card";
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
 
-/** Room for a column's label and hours, gap included; past it the chart scrolls. */
-const MIN_COLUMN_REM = 5;
+/**
+ * Room for a column's label, gap included, so a week's whole "Sep 28 – Oct 4"
+ * fits; past it the chart scrolls sideways.
+ */
+const MIN_COLUMN_REM: Record<TimelineBucketSize, number> = {
+  week: 7.5,
+  month: 4,
+};
 
 const LEGEND = [
   { label: "Logged", className: "bg-brand" },
@@ -53,9 +64,10 @@ const SCROLL_LABELS: Record<TimelineBucketSize, string> = {
   month: "Months, scrolls sideways when narrow",
 };
 
-/** A week's or a month's figures in words, for its panel and for screen readers. */
-const bucketSummary = (bucket: TimelineBucket) =>
+/** A week's or a month's figures in words, for its tip and for screen readers. */
+const bucketSummary = (bucket: TimelineBucket, countedUntil: string | null) =>
   [
+    bucketNote(bucket, countedUntil),
     `${formatReportHours(bucket.loggedMinutes)} logged`,
     bucket.plannedMinutes > 0
       ? `${formatReportHours(bucket.plannedMinutes)} planned`
@@ -68,17 +80,19 @@ const bucketSummary = (bucket: TimelineBucket) =>
 const BucketColumn = ({
   bucket,
   label,
+  countedUntil,
   endMinutes,
 }: {
   bucket: TimelineBucket;
   label: string;
+  countedUntil: string | null;
   endMinutes: number;
 }) => (
   // Focusable, so its figures open by keyboard and on a tap as well as on hover.
   <div
     tabIndex={0}
     role="img"
-    aria-label={`${label}: ${bucketSummary(bucket)}`}
+    aria-label={`${label}: ${bucketSummary(bucket, countedUntil)}`}
     className="group relative flex h-full items-end justify-center rounded-t-lg outline-none focus-visible:ring-2 focus-visible:ring-ring"
   >
     <span
@@ -97,7 +111,7 @@ const BucketColumn = ({
     </span>
     <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
       <span className="block font-semibold">{label}</span>
-      {bucketSummary(bucket)}
+      {bucketSummary(bucket, countedUntil)}
     </span>
   </div>
 );
@@ -105,6 +119,8 @@ const BucketColumn = ({
 type WeekByWeekProps = {
   timeline: Timeline;
   totals: PeopleReport["totals"];
+  /** The company's first day; the chart starts there. */
+  firstDay?: string;
 };
 
 /**
@@ -112,11 +128,12 @@ type WeekByWeekProps = {
  * as a pale block of what was expected with what was logged and planned
  * standing inside it.
  */
-export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
+export const WeekByWeek = ({ timeline, totals, firstDay }: WeekByWeekProps) => {
   const { loggedMinutes, plannedMinutes, billableMinutes, expectedMinutes } =
     totals;
 
-  const { buckets, countedUntil } = timeline;
+  const { countedUntil, bucketSize } = timeline;
+  const buckets = bucketsSinceCompanyStart(timeline.buckets, firstDay);
   const scale = hourScale(
     Math.max(
       0,
@@ -135,7 +152,7 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
     <Card as="section" aria-labelledby="report-timeline" className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 id="report-timeline" className="text-base font-semibold">
-          {TITLES[timeline.bucketSize]}
+          {TITLES[bucketSize]}
         </h2>
         <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           {LEGEND.map(({ label, className }) => (
@@ -193,11 +210,15 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
         </div>
         <div
           role="group"
-          aria-label={SCROLL_LABELS[timeline.bucketSize]}
+          aria-label={SCROLL_LABELS[bucketSize]}
           tabIndex={0}
           className="min-w-0 flex-1 overflow-x-auto rounded-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
         >
-          <div style={{ minWidth: `${buckets.length * MIN_COLUMN_REM}rem` }}>
+          <div
+            style={{
+              minWidth: `${buckets.length * MIN_COLUMN_REM[bucketSize]}rem`,
+            }}
+          >
             <div className="relative h-48 border-b border-border">
               {scale.ticks.slice(1).map((tick) => (
                 <span
@@ -212,7 +233,8 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
                   <BucketColumn
                     key={bucket.start}
                     bucket={bucket}
-                    label={bucketLabel(bucket, timeline.bucketSize)}
+                    label={bucketLabel(bucket, bucketSize)}
+                    countedUntil={countedUntil}
                     endMinutes={scale.endMinutes}
                   />
                 ))}
@@ -224,17 +246,9 @@ export const WeekByWeek = ({ timeline, totals }: WeekByWeekProps) => {
               aria-hidden
             >
               {buckets.map((bucket) => (
-                <div key={bucket.start} className="min-w-0">
-                  <p className="truncate font-medium">
-                    {bucketLabel(bucket, timeline.bucketSize)}
-                  </p>
-                  <p className="tabular-nums">
-                    {formatReportHours(bucket.loggedMinutes)}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {bucketNote(bucket, countedUntil)}
-                  </p>
-                </div>
+                <p key={bucket.start} className="truncate font-medium">
+                  {bucketLabel(bucket, bucketSize)}
+                </p>
               ))}
             </div>
           </div>

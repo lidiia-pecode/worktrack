@@ -44,6 +44,9 @@ vi.mock("@/hooks/auth/useAuth", () => ({
   }),
 }));
 vi.mock("@/hooks/useReportOverview", () => ({ useReportOverview: vi.fn() }));
+vi.mock("@/hooks/useReportingPeriods", () => ({
+  useReportingPeriods: () => ({ months: [] }),
+}));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
 vi.mock("@/hooks/useActivityCategories", () => ({
   useActivityCategoriesAllPagesQuery: () => ({
@@ -407,7 +410,7 @@ describe("ReportsView", () => {
     expect(weeks).toHaveTextContent("2 days");
     // Each week can be focused, and names all three of its figures.
     const week = within(weeks).getByRole("img", {
-      name: "Oct 5–11: 38h logged · 40h planned · 40h expected",
+      name: "Oct 5–11: 5 days · 38h logged · 40h planned · 40h expected",
     });
     expect(week).toHaveAttribute("tabindex", "0");
   });
@@ -447,7 +450,7 @@ describe("ReportsView", () => {
     );
 
     expect(
-      screen.getByText("Nothing logged or planned in this month"),
+      screen.getByText(/^Nothing logged or planned in /),
     ).toBeInTheDocument();
   });
 

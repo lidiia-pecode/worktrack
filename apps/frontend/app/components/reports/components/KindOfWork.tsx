@@ -81,7 +81,7 @@ export const KindOfWork = ({ range }: { range: ReportRange }) => {
   if (shares.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        No time logged this month.
+        No time logged in this period.
       </p>
     );
   }
