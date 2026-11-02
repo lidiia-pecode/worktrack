@@ -80,7 +80,7 @@ const TeamRows = ({
   );
 
   return (
-    <li className="border-t border-border first:border-t-0">
+    <li className="border-t border-border/60 first:border-t-0">
       <button
         type="button"
         aria-expanded={isOpen}

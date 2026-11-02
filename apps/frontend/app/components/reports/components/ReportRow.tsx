@@ -59,7 +59,7 @@ export const ReportRow = ({
   <li
     className={cn(
       COLUMNS,
-      "items-center gap-y-2 border-t border-border/60 py-3",
+      "items-center gap-y-2 border-t border-border/40 py-3",
     )}
   >
     <div className="col-span-2 min-w-0 @sm:col-span-1">

@@ -10,7 +10,8 @@ const badgeVariants = cva(
       variant: {
         default: "bg-brand-subtle text-brand border border-brand/20",
         success: "bg-success/10 text-success-text border border-success/20",
-        warning: "bg-warning/10 text-warning-text border border-warning/20",
+        warning:
+          "bg-warning-subtle text-warning-text border border-warning-border",
         destructive:
           "bg-destructive/10 text-destructive-text border border-destructive/20",
         // A state such as Archived or Deactivated, on a lighter `muted` ground

@@ -64,9 +64,9 @@ const buttonVariants = cva(
         ],
 
         warning: [
-          "border border-warning/20",
-          "bg-warning/10 text-warning-text",
-          "hover:bg-warning/20",
+          "border border-warning-border",
+          "bg-warning-subtle text-warning-text",
+          "hover:bg-warning-border",
         ],
 
         link: ["h-auto bg-transparent p-0 text-primary", "hover:underline"],

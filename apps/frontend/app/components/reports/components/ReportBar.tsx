@@ -37,7 +37,7 @@ export const ReportBar = ({
       <span
         className={cn(
           "block h-full rounded-full",
-          hasReference ? "bg-brand" : "bg-report-unplanned",
+          hasReference ? "bg-report-logged" : "bg-report-unplanned",
         )}
         style={{ width: `${percent}%` }}
       />

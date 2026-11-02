@@ -66,7 +66,7 @@ const RemoveButton = ({
     aria-label={label}
     title={label}
     onClick={onClick}
-    className="text-muted-foreground group-hover:text-foreground hover:bg-warning/10 hover:text-warning-text"
+    className="text-muted-foreground group-hover:text-foreground hover:bg-warning-subtle hover:text-warning-text"
   >
     <X className="size-4" />
   </Button>

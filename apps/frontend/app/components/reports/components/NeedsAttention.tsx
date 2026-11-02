@@ -142,7 +142,7 @@ export const NeedsAttention = ({
             return (
               <li
                 key={fact.kind}
-                className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/8 px-4 py-3.5"
+                className="flex items-start gap-2 rounded-xl border border-warning-border bg-warning-subtle px-4 py-3.5"
               >
                 {/* One line high, so the dot sits beside the first line. */}
                 <span className="flex h-6 items-center">

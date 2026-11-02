@@ -97,7 +97,7 @@ export const EntityPanelLayout = ({
                   className={cn(
                     TOOLBAR_BUTTON,
                     action.warning
-                      ? "text-muted-foreground hover:bg-warning/10 hover:text-warning-text"
+                      ? "text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
                       : "text-brand",
                   )}
                 >

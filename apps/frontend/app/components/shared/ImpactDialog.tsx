@@ -121,7 +121,7 @@ export const ImpactDialog = ({
           ))}
 
           {blocker ? (
-            <p className="rounded-lg bg-warning/10 px-3 py-2 text-sm text-warning-text">
+            <p className="rounded-lg bg-warning-subtle px-3 py-2 text-sm text-warning-text">
               {blocker}
             </p>
           ) : (

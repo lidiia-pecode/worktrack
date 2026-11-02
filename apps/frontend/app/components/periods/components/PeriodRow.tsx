@@ -76,7 +76,7 @@ export const PeriodRow = ({
     <TableRow
       className={cn(
         "h-14",
-        period.state === ReportingMonthState.REOPENED && "bg-warning/5",
+        period.state === ReportingMonthState.REOPENED && "bg-warning-subtle",
       )}
     >
       <TableRowHeader

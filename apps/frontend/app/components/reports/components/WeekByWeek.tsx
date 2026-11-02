@@ -31,7 +31,7 @@ const MIN_COLUMN_REM: Record<TimelineBucketSize, number> = {
 };
 
 const LEGEND = [
-  { label: "Logged", className: "bg-brand" },
+  { label: "Logged", className: "bg-report-logged" },
   { label: "Planned", className: "bg-report-planned" },
   { label: "Expected", className: "border border-border bg-report-expected" },
 ];
@@ -101,7 +101,7 @@ const BucketColumn = ({
     />
     <span className="relative flex h-full w-3/5 max-w-16 items-end gap-1">
       <span
-        className="flex-1 rounded-t-md bg-brand"
+        className="flex-1 rounded-t-md bg-report-logged"
         style={{ height: heightOn(bucket.loggedMinutes, endMinutes) }}
       />
       <span

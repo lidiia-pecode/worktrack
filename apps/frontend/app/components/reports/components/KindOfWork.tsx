@@ -31,7 +31,7 @@ const fillOf = (slot: number | null) =>
   slot === null ? "bg-category-other" : FILLS[slot];
 
 const ROW_CLASS =
-  "grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/60 py-2.5 text-sm";
+  "grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/40 py-2.5 text-sm";
 
 const Figures = ({ minutes, share }: CategoryShare) => (
   <>
