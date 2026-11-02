@@ -45,6 +45,13 @@ vi.mock("@/hooks/auth/useAuth", () => ({
   }),
 }));
 vi.mock("@/hooks/useReportOverview", () => ({ useReportOverview: vi.fn() }));
+// The teams the viewer can narrow to; one unless a test gives more.
+const teams = vi.hoisted(() => ({
+  options: [{ value: "core", label: "Core Development" }],
+}));
+vi.mock("@/hooks/useTeams", () => ({
+  useTeamOptions: () => ({ ...teams, isLoading: false, isError: false }),
+}));
 // The previous period's figures, for the change; none unless a test gives them.
 vi.mock("@/hooks/usePeopleReport", () => ({
   usePeopleReport: () => ({ report: null, isPlaceholderData: false }),
@@ -278,6 +285,7 @@ describe("ReportsView", () => {
 
   beforeEach(() => {
     auth.isOwner = false;
+    teams.options = [{ value: "core", label: "Core Development" }];
     vi.mocked(useReportOverview).mockReset();
     vi.mocked(useHoursReport).mockReset();
     navigation.history.splice(0, navigation.history.length, "");
@@ -478,19 +486,19 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says how far the month is counted, whether it can change, and whose it is", () => {
+  it("says how far the month is counted and whether it can change", () => {
     const report = peopleReport(team);
 
     showReports({ ...report, countedUntil }, projectsReport(projects));
     expect(
       screen.getByText(
-        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits · your teams`,
+        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits`,
       ),
     ).toBeInTheDocument();
     cleanup();
 
     showReports(report, projectsReport(projects));
-    expect(screen.getByText("Open for edits · your teams")).toBeInTheDocument();
+    expect(screen.getByText("Open for edits")).toBeInTheDocument();
     cleanup();
 
     auth.isOwner = true;
@@ -524,6 +532,27 @@ describe("ReportsView", () => {
     auth.isOwner = true;
     showReports(peopleReport(team), projectsReport(projects));
     expect(card()).not.toHaveTextContent("Your teams’ time only");
+  });
+
+  it("offers one team to an owner and to a manager of several teams, not to a manager of one", () => {
+    const teamSelect = () => screen.queryByRole("combobox", { name: "Team" });
+
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).not.toBeInTheDocument();
+    cleanup();
+
+    teams.options = [
+      { value: "core", label: "Core Development" },
+      { value: "mobile", label: "Mobile Squad" },
+    ];
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).toBeInTheDocument();
+    cleanup();
+
+    teams.options = [{ value: "core", label: "Core Development" }];
+    auth.isOwner = true;
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).toBeInTheDocument();
   });
 
   describe("panels", () => {

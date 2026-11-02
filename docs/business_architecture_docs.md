@@ -882,7 +882,9 @@ see, and how a new company gets started. §7 plans that work.
   during the grace week the timesheet says until when last month can be edited.
 - **Reports** — owners and managers see one overview on `/reports` for a
   month, a quarter, a year or a custom range of up to 366 days, stepped with
-  arrows from the company's first month and kept in the address (Phase 42).
+  arrows from the company's first month and kept in the address, and for one
+  team at a time: an owner any team, a manager who leads several any of
+  theirs, the export included (Phase 42).
   At the top, week by week (month by month past 92 days, from the company's
   first month), the period's time logged against what the team was expected to
   work (capacity minus time off), what was planned, and billable time and its

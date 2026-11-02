@@ -169,6 +169,12 @@ type PeopleCardProps = {
   previousName: string;
   /** The people Needs attention names, with why. */
   marked: Map<string, string>;
+  /**
+   * The one team the page is narrowed to: its people then stand in one plain
+   * list, since their other teams would show as groups with part of their
+   * totals (Phase 42, decision 9).
+   */
+  isOneTeam?: boolean;
   onOpenPerson: (userId: string) => void;
 };
 
@@ -181,6 +187,7 @@ export const PeopleCard = ({
   previousPeople,
   previousName,
   marked,
+  isOneTeam = false,
   onOpenPerson,
 }: PeopleCardProps) => {
   const groups = groupPeopleByTeam(people);
@@ -214,7 +221,7 @@ export const PeopleCard = ({
           </p>
           {marked.size > 0 && <AttentionLegend />}
         </ReportCardTitle>
-        {groups.length > 1 && (
+        {!isOneTeam && groups.length > 1 && (
           <Button
             type="button"
             variant="link"
@@ -228,20 +235,29 @@ export const PeopleCard = ({
       </div>
 
       <ul className="mt-3 @container">
-        {groups.map((group) => (
-          <TeamRows
-            key={group.id}
-            group={group}
-            change={changeOf(group)}
-            previousName={previousName}
-            marked={marked}
-            isOpen={isOpen(group)}
-            onToggle={() =>
-              setToggled({ ...toggled, [group.id]: !isOpen(group) })
-            }
-            onOpenPerson={onOpenPerson}
-          />
-        ))}
+        {isOneTeam
+          ? people.map((person) => (
+              <PersonRow
+                key={person.userId}
+                person={person}
+                flag={marked.get(person.userId)}
+                onOpen={onOpenPerson}
+              />
+            ))
+          : groups.map((group) => (
+              <TeamRows
+                key={group.id}
+                group={group}
+                change={changeOf(group)}
+                previousName={previousName}
+                marked={marked}
+                isOpen={isOpen(group)}
+                onToggle={() =>
+                  setToggled({ ...toggled, [group.id]: !isOpen(group) })
+                }
+                onOpenPerson={onOpenPerson}
+              />
+            ))}
       </ul>
     </Card>
   );

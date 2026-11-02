@@ -4,7 +4,12 @@ import { ReactNode, useId } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { HoursReportRow, PeopleReportRow, ReportRange } from "@/types";
+import {
+  HoursReportRow,
+  PeopleReportRow,
+  ReportQuery,
+  ReportRange,
+} from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
@@ -280,7 +285,8 @@ export const PersonPanel = ({
 
 type ProjectPanelProps = {
   project: HoursReportRow;
-  range: ReportRange;
+  /** The period and, when one is chosen, the team, whose people it lists. */
+  query: ReportQuery;
   isUpdating: boolean;
   onClose: () => void;
 };
@@ -288,12 +294,12 @@ type ProjectPanelProps = {
 /** One project's month: its billable time and the people on it. */
 export const ProjectPanel = ({
   project,
-  range,
+  query,
   isUpdating,
   onClose,
 }: ProjectPanelProps) => {
   const people = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.PERSON,
     projectId: project.id,
   });

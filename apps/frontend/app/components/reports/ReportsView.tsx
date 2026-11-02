@@ -3,12 +3,14 @@
 import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
+import { ReportQuery } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
+import { useTeamOptions } from "@/hooks/useTeams";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
 import { periodChange, reportScope } from "@/lib/utils/report-overview";
@@ -29,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "../shared/EmptyState";
+import { FormSelect } from "../shared/FormSelect";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
 import { PERSON_PARAM } from "../team/team-links";
 import { ErrorState } from "../shared/ErrorState";
@@ -40,9 +43,11 @@ import { PeriodOverview } from "./components/PeriodOverview";
 import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
 import { NeedsAttention, OpenMonthLinks } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
+import { useShownTeam } from "./useShownTeam";
 
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
+const ALL_TEAMS = "all";
 
 export const ReportsView = () => {
   const { user } = useAuth();
@@ -53,6 +58,21 @@ export const ReportsView = () => {
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
   const { range } = period;
+  const isOwner = user?.role === UserRole.OWNER;
+  const isManager = user?.role === UserRole.MANAGER;
+
+  // The teams the caller can see: every active one for an owner, the ones
+  // they lead for a manager. One team at a time is for an owner, and for a
+  // manager who leads more than one (decision 7).
+  const teams = useTeamOptions();
+  const { teamId, showTeam } = useShownTeam(
+    teams.isLoading ? undefined : teams.options.map((team) => team.value),
+  );
+  const teamName = teams.options.find((team) => team.value === teamId)?.label;
+  // Shown once the teams have loaded, so the page renders the same on the
+  // server, where they haven't, and in the browser's first pass.
+  const choosesTeam = !teams.isLoading && (isOwner || teams.options.length > 1);
+  const query: ReportQuery = { ...range, teamId };
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
   // Nothing happened before the company existed, so a year that began before
@@ -63,19 +83,20 @@ export const ReportsView = () => {
       : range;
   const previousPeriod = stepPeriod(period, -1);
 
-  const overview = useReportOverview(range);
+  const overview = useReportOverview(query);
   const people = overview.report?.people ?? null;
   // The period before, of the same kind, for each figure's change; none
   // before the company's first month.
   const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
-  const previous = usePeopleReport(previousPeriod.range, {
-    enabled: isPreviousShowable,
-  });
+  const previous = usePeopleReport(
+    { ...previousPeriod.range, teamId },
+    { enabled: isPreviousShowable },
+  );
   const previousReport =
     isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
   const timeline = overview.report?.timeline ?? null;
   const projects = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.PROJECT,
   });
   // A longer period links to its open months, each with its own Needs attention.
@@ -90,7 +111,6 @@ export const ReportsView = () => {
     .filter((month) => month.state !== ReportingMonthState.LOCKED)
     .map((month) => month.month)
     .sort();
-  const isManager = user?.role === UserRole.MANAGER;
   const isUpdating = overview.isPlaceholderData || projects.isPlaceholderData;
   const peopleReport = isUpdating ? null : people;
   // Only finished days count, so a month starting today has nothing yet.
@@ -211,13 +231,20 @@ export const ReportsView = () => {
             previousPeople={previousReport?.rows}
             previousName={periodLabel(previousPeriod)}
             marked={attention.people}
+            isOneTeam={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
-            range={range}
+            query={query}
             projects={projects.report.rows}
             marked={attention.projects}
-            isManager={isManager}
+            scopeNote={
+              teamName
+                ? `${teamName}’s time only`
+                : isManager
+                  ? "Your teams’ time only"
+                  : undefined
+            }
             onOpenProject={openProject}
           />
         </div>
@@ -269,7 +296,7 @@ export const ReportsView = () => {
         <ProjectPanel
           key={openedProject.id}
           project={openedProject}
-          range={range}
+          query={query}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -282,28 +309,45 @@ export const ReportsView = () => {
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
-          <ReportPeriodControl
-            period={period}
-            today={today}
-            firstDay={firstDay}
-            onChange={showPeriod}
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <ReportPeriodControl
+              period={period}
+              today={today}
+              firstDay={firstDay}
+              onChange={showPeriod}
+            />
+            {choosesTeam && (
+              <FormSelect
+                aria-label="Team"
+                className="max-sm:w-full sm:w-56"
+                // As tall as the period's buttons beside it.
+                triggerClassName="h-9 max-sm:h-10"
+                value={teamId ?? ALL_TEAMS}
+                options={[
+                  { value: ALL_TEAMS, label: "All teams" },
+                  ...teams.options,
+                ]}
+                onValueChange={(value) =>
+                  showTeam(value === ALL_TEAMS ? undefined : value)
+                }
+              />
+            )}
+          </div>
           {/* One line high even while a period loads, so the header holds still and
               says nothing about the period before. */}
           <p className="min-h-5 text-sm text-muted-foreground">
             {peopleReport &&
               !isNothingCounted &&
-              reportScope(
-                peopleReport,
-                isManager,
-                isMonth ? undefined : rangeSinceCompanyStart,
-              )}
+              reportScope(peopleReport, {
+                periodRange: isMonth ? undefined : rangeSinceCompanyStart,
+                teamName,
+              })}
           </p>
         </div>
 
         {/* The last figures keep the button in place while a period loads. */}
         {(people?.totals.loggedMinutes ?? 0) > 0 && (
-          <HoursExportButton range={range} />
+          <HoursExportButton query={query} />
         )}
       </div>
 

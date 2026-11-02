@@ -61,5 +61,26 @@ export const buildHoursExportWorkbook = async (
   return Buffer.from(await workbook.xlsx.writeBuffer());
 };
 
-export const hoursExportFileName = ({ dateFrom, dateTo }: HoursExportQuery) =>
-  `worktrack-hours-${dateFrom}-${dateTo}.xlsx`;
+/** "Mobile Squad" as "mobile-squad"; a name with no Latin letters or digits gives none. */
+const fileNamePart = (name: string) =>
+  name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+
+/**
+ * `worktrack-hours-2026-10-01-2026-10-31.xlsx`, with the team between when the
+ * export is for one: `worktrack-hours-mobile-squad-…`.
+ */
+export const hoursExportFileName = (
+  { dateFrom, dateTo }: HoursExportQuery,
+  teamName?: string | null,
+) => {
+  const team = teamName ? fileNamePart(teamName) : '';
+  return (
+    ['worktrack-hours', team, dateFrom, dateTo].filter(Boolean).join('-') +
+    '.xlsx'
+  );
+};

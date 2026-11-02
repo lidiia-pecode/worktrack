@@ -35,6 +35,7 @@ import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import { HoursBilling } from './enums/hours-billing.enum';
+import { Team } from 'src/teams/entities/team.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 
@@ -809,6 +810,21 @@ export class ReportingService {
    * The Hours report's time, for the same people and days, one row per
    * person, day, project, activity and billing.
    */
+  /**
+   * A team's name for the export's file, only when the caller can see the
+   * team, so the name never tells a manager about a team they don't lead.
+   */
+  async exportTeamName(user: AuthUser, teamId: string): Promise<string | null> {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) return null;
+
+    const team = await this.periodRepo.manager.findOne(Team, {
+      where: { id: teamId, companyId: user.companyId },
+      select: ['id', 'name'],
+    });
+    return team?.name ?? null;
+  }
+
   async getHoursExport(
     user: AuthUser,
     query: HoursExportQuery,

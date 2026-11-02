@@ -16,15 +16,17 @@ import {
 import { countLabel } from "./text";
 
 /**
- * One line saying how far the period is counted, whether it can still change,
- * and whose figures they are: "Up to Oct 23 · open for edits · your teams" for
- * a month, whose name says its dates, and "Oct 1 – Nov 1 · open for edits"
- * for any other period, given as `periodRange`.
+ * One line saying how far the period is counted and whether it can still
+ * change: "Up to Oct 23 · open for edits" for a month, whose name says its
+ * dates, and "Oct 1 – Nov 1 · open for edits" for any other period, given as
+ * `periodRange`; with one team chosen, its name ends the line.
  */
 export const reportScope = (
   { countedUntil, isProvisional }: ReportCoverage,
-  isManager: boolean,
-  periodRange?: ReportRange,
+  {
+    periodRange,
+    teamName,
+  }: { periodRange?: ReportRange; teamName?: string } = {},
 ) => {
   const state = isProvisional ? "open for edits" : "locked";
   const parts = periodRange
@@ -35,7 +37,7 @@ export const reportScope = (
     : countedUntil
       ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
       : [isProvisional ? "Open for edits" : "Locked"];
-  if (isManager) parts.push("your teams");
+  if (teamName) parts.push(teamName);
 
   return parts.join(" · ");
 };

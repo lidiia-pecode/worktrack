@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { FolderKanban } from "lucide-react";
 
-import { HoursReportRow, ReportRange } from "@/types";
+import { HoursReportRow, ReportQuery } from "@/types";
 import { countLabel } from "@/lib/utils/text";
 
 import { Button } from "@/components/ui/button";
@@ -82,21 +82,25 @@ const ProjectList = ({
 };
 
 type WhereTheTimeWentProps = {
-  range: ReportRange;
+  query: ReportQuery;
   projects: HoursReportRow[];
   /** The projects Needs attention names, with why. */
   marked: Map<string, string>;
-  /** A manager sees only their teams' time, which a project's figures don't say. */
-  isManager: boolean;
+  /**
+   * Whose time a project's figures are, which they don't say themselves:
+   * "Mobile Squad's time only" for one team, "Your teams' time only" for a
+   * manager.
+   */
+  scopeNote?: string;
   onOpenProject: (projectId: string) => void;
 };
 
 /** Where the month's time went: by project against the plan, or by kind of work. */
 export const WhereTheTimeWent = ({
-  range,
+  query,
   projects,
   marked,
-  isManager,
+  scopeNote,
   onOpenProject,
 }: WhereTheTimeWentProps) => {
   const [view, setView] = useState<WhereView>("projects");
@@ -109,10 +113,8 @@ export const WhereTheTimeWent = ({
           title="Where the time went"
           icon={FolderKanban}
         >
-          {isManager && (
-            <p className="text-sm text-muted-foreground">
-              Your teams’ time only
-            </p>
+          {scopeNote && (
+            <p className="text-sm text-muted-foreground">{scopeNote}</p>
           )}
         </ReportCardTitle>
         <SegmentedControl
@@ -130,7 +132,7 @@ export const WhereTheTimeWent = ({
           onOpenProject={onOpenProject}
         />
       ) : (
-        <KindOfWork range={range} />
+        <KindOfWork query={query} />
       )}
     </Card>
   );

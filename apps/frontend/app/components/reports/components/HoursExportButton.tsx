@@ -2,11 +2,11 @@
 
 import { FileSpreadsheet } from "lucide-react";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { Button } from "@/components/ui/button";
 import { useHoursExport } from "@/hooks/useHoursReport";
 
-export const HoursExportButton = ({ range }: { range: ReportRange }) => {
+export const HoursExportButton = ({ query }: { query: ReportQuery }) => {
   const exportHours = useHoursExport();
 
   return (
@@ -14,7 +14,7 @@ export const HoursExportButton = ({ range }: { range: ReportRange }) => {
       variant="outline"
       size="sm"
       isLoading={exportHours.isPending}
-      onClick={() => exportHours.mutate(range)}
+      onClick={() => exportHours.mutate(query)}
     >
       <FileSpreadsheet />
       Export to Excel

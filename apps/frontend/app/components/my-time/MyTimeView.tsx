@@ -225,7 +225,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
             onChange={showMonth}
           />
           <p className="min-h-5 text-sm text-muted-foreground">
-            {report && !isNothingCounted && reportScope(report, false)}
+            {report && !isNothingCounted && reportScope(report)}
           </p>
         </div>
 

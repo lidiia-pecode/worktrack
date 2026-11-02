@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { useHoursReport } from "@/hooks/useHoursReport";
@@ -49,10 +49,10 @@ const Figures = ({ minutes, share }: CategoryShare) => (
  * named with their hours, the rest in an "Other" that opens. It loads only
  * when shown.
  */
-export const KindOfWork = ({ range }: { range: ReportRange }) => {
+export const KindOfWork = ({ query }: { query: ReportQuery }) => {
   const [isOtherOpen, setIsOtherOpen] = useState(false);
   const activities = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.ACTIVITY,
   });
   const categories = useActivityCategoriesAllPagesQuery();
