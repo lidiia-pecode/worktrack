@@ -4,6 +4,7 @@ import { QueryFailedError } from 'typeorm';
 import { AuthErrorCode } from '../auth-error';
 import { AuthPolicyService } from './auth-policy.service';
 import { GoogleAuthService } from './google-auth.service';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 const stub = <T>(value: unknown): T => value as T;
 
@@ -99,7 +100,11 @@ describe('GoogleAuthService.validateGoogleLogin', () => {
     );
 
   it('offers linking to an account with a password', async () => {
-    const service = serviceFor({ id: 'user-1', passwordHash: 'hash' });
+    const service = serviceFor({
+      id: 'user-1',
+      passwordHash: 'hash',
+      status: UserStatus.ACTIVE,
+    });
 
     await expect(service.validateGoogleLogin(GOOGLE_USER)).resolves.toEqual({
       type: 'link',
@@ -145,7 +150,12 @@ describe('GoogleAuthService.completeGoogleLinkWithPassword', () => {
         findOne: () => Promise.resolve({ userId: 'user-1', googleId: 'g-1' }),
       },
       User: {
-        findOne: () => Promise.resolve({ id: 'user-1', passwordHash: 'hash' }),
+        findOne: () =>
+          Promise.resolve({
+            id: 'user-1',
+            passwordHash: 'hash',
+            status: UserStatus.ACTIVE,
+          }),
       },
     };
 

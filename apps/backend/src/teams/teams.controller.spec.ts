@@ -6,6 +6,7 @@ import { RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { TeamsController } from './teams.controller';
+import { handlerOf } from 'src/lib/testing/handlers';
 
 /**
  * Team structure decides who a manager can see, so the routes that change it
@@ -32,7 +33,7 @@ describe('TeamsController route roles', () => {
 
   const allows = (handler: Handler, role: UserRole): boolean =>
     guard.canActivate({
-      getHandler: () => TeamsController.prototype[handler],
+      getHandler: () => handlerOf(TeamsController, handler),
       getClass: () => TeamsController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);

@@ -40,10 +40,7 @@ export class MailService {
     });
 
     if (error) {
-      this.logger.error(
-        `Failed to send password reset email to ${email}`,
-        error,
-      );
+      this.logger.error('Failed to send password reset email', error);
 
       throw new InternalServerErrorException(
         'Failed to send password reset email',
@@ -69,7 +66,7 @@ export class MailService {
     });
 
     if (error) {
-      this.logger.error(`Failed to send invitation email to ${email}`, error);
+      this.logger.error('Failed to send invitation email', error);
 
       throw new InternalServerErrorException('Failed to send invitation email');
     }

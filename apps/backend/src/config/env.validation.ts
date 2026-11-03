@@ -49,9 +49,7 @@ export const envValidationSchema = Joi.object({
     .pattern(/^\d+[smhd]$/)
     .default('30s'),
 
-  AUTH_COOKIE_SAMESITE: Joi.string()
-    .valid('lax', 'strict', 'none')
-    .default('lax'),
+  AUTH_COOKIE_SAMESITE: Joi.string().valid('lax', 'strict').default('lax'),
 
   AUTH_COOKIE_SECURE: Joi.boolean().default(false),
 

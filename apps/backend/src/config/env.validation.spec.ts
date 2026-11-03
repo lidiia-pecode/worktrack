@@ -21,3 +21,16 @@ describe('FRONTEND_URL', () => {
     expect(frontendUrl.validate(value).error).toBeDefined();
   });
 });
+
+describe('AUTH_COOKIE_SAMESITE', () => {
+  const sameSite = envValidationSchema.extract('AUTH_COOKIE_SAMESITE');
+
+  it.each(['lax', 'strict'])('accepts %s', (value) => {
+    expect(sameSite.validate(value).error).toBeUndefined();
+  });
+
+  // SameSite is the only CSRF protection, so `none` is never a valid choice.
+  it('refuses none', () => {
+    expect(sameSite.validate('none').error).toBeDefined();
+  });
+});

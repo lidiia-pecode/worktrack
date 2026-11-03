@@ -10,6 +10,16 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DatabaseExceptionFilter } from './filters/database-exception.filter';
 import { createValidationException } from './lib/utils/validation-exception.util';
+import type { NextFunction, Request, Response } from 'express';
+
+// The API answers JSON and redirects, so these are the headers that matter.
+// The frontend sends the same set (next.config.ts).
+const SECURITY_HEADERS = {
+  'Strict-Transport-Security': 'max-age=63072000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+};
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -18,6 +28,12 @@ async function bootstrap() {
   app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
   app.useGlobalFilters(new DatabaseExceptionFilter());
   app.use(cookieParser());
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    for (const [header, value] of Object.entries(SECURITY_HEADERS)) {
+      res.setHeader(header, value);
+    }
+    next();
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
