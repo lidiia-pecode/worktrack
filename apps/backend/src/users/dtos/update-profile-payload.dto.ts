@@ -1,4 +1,4 @@
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsUrl, MaxLength } from 'class-validator';
 import { OptionalNotNull } from 'src/lib/decorators';
 import { PersonName } from 'src/lib/validators/account-fields';
 
@@ -12,6 +12,7 @@ export class UpdateProfilePayload {
   lastName?: string;
 
   @IsOptional()
-  @IsString()
+  @IsUrl({ protocols: ['https'], require_protocol: true })
+  @MaxLength(255)
   avatarUrl?: string;
 }

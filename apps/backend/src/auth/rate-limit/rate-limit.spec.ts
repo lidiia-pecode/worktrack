@@ -19,6 +19,7 @@ import {
   REFRESHES_PER_MINUTE,
 } from './rate-limit.decorators';
 import { createRateLimitOptions } from './rate-limit.options';
+import { handlerOf } from 'src/lib/testing/handlers';
 
 const CONFIG: Record<string, string> = {
   'auth.accessToken.secret': 'test-access-secret',
@@ -93,13 +94,13 @@ describe('Rate limits', () => {
 
   const hit = (route: Route, req: FakeRequest) =>
     guard.canActivate(
-      contextFor(AuthController.prototype[route], AuthController, req),
+      contextFor(handlerOf(AuthController, route), AuthController, req),
     );
 
   const hitInvitations = (route: InvitationRoute, req: FakeRequest) =>
     guard.canActivate(
       contextFor(
-        InvitationsController.prototype[route],
+        handlerOf(InvitationsController, route),
         InvitationsController,
         req,
       ),

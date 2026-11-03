@@ -148,6 +148,8 @@ export class GoogleAuthService {
         await this.usersService.findByEmailWithCompany(normalizedEmail);
 
       if (existingUser && existingUser.passwordHash) {
+        this.authPolicyService.validateUserAccess(existingUser);
+
         return {
           type: 'link',
           userId: existingUser.id,
@@ -246,6 +248,7 @@ export class GoogleAuthService {
 
         const userEntity = await userRepository.findOne({
           where: { id: userId },
+          relations: { company: true },
         });
         if (!userEntity || !userEntity.passwordHash) {
           throw new UnauthorizedException('Invalid user account');
@@ -258,6 +261,10 @@ export class GoogleAuthService {
         if (!isPasswordValid) {
           throw createValidationException({ password: ['Incorrect password'] });
         }
+
+        // After the password, as on sign-in: only someone who knows it learns
+        // that the account is deactivated or the company suspended.
+        this.authPolicyService.validateUserAccess(userEntity);
 
         const existingGoogleUser = await userRepository.findOne({
           where: { googleId },

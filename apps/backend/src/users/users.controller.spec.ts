@@ -4,6 +4,7 @@ import { INTERCEPTORS_METADATA } from '@nestjs/common/constants';
 import { lastValueFrom, of, Observable } from 'rxjs';
 
 import { UsersController } from './users.controller';
+import { handlerOf } from 'src/lib/testing/handlers';
 
 // The service returns plain objects, which the global serializer doesn't strip,
 // so every route returning a user needs its own serializer to hide its secrets.
@@ -36,7 +37,7 @@ const storedUser = {
 const respond = async (handler: Handler, data: unknown): Promise<string> => {
   const interceptors = (Reflect.getMetadata(
     INTERCEPTORS_METADATA,
-    UsersController.prototype[handler],
+    handlerOf(UsersController, handler),
   ) ?? []) as NestInterceptor[];
 
   let response: Observable<unknown> = of(data);

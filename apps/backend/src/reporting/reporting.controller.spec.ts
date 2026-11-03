@@ -7,6 +7,7 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 
 import { ReportingController } from './reporting.controller';
 import { PeopleReportController } from './people/people-report.controller';
+import { handlerOf } from 'src/lib/testing/handlers';
 
 type Handler = keyof ReportingController;
 
@@ -19,7 +20,7 @@ describe('ReportingController route roles', () => {
 
   const allows = (handler: Handler, role: UserRole): boolean =>
     guard.canActivate({
-      getHandler: () => ReportingController.prototype[handler],
+      getHandler: () => handlerOf(ReportingController, handler),
       getClass: () => ReportingController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
@@ -59,7 +60,7 @@ describe('PeopleReportController route roles', () => {
     role: UserRole,
   ): boolean =>
     guard.canActivate({
-      getHandler: () => PeopleReportController.prototype[handler],
+      getHandler: () => handlerOf(PeopleReportController, handler),
       getClass: () => PeopleReportController,
       switchToHttp: () => ({ getRequest: () => ({ user: { role } }) }),
     } as unknown as ExecutionContext);
