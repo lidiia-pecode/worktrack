@@ -8,7 +8,7 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import { fullName } from "@/lib/utils/user";
+import { closedSpellOn, fullName } from "@/lib/utils/user";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { PersonLabel } from "../../shared/PersonLabel";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
+import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
+import { MoveBadges } from "../../shared/week/MoveBadges";
 import { ReportBar } from "../../reports/components/ReportBar";
 
 type PlanningWeekRowProps = {
@@ -112,7 +114,9 @@ export const PlanningWeekRow = ({
             aria-label={`Plan a period for ${fullName(row.user)}`}
             className="group flex w-full min-w-0 cursor-pointer items-center gap-2.5 p-3 text-left transition hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <PersonLabel user={row.user} />
+            <PersonLabel user={row.user}>
+              {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
+            </PersonLabel>
 
             {/* Says what the cell does once it is hovered or focused; it
                 takes no room until then, so the name keeps its width. */}
@@ -126,7 +130,9 @@ export const PlanningWeekRow = ({
           </button>
         ) : (
           <div className="flex min-w-0 items-center gap-2.5 p-3">
-            <PersonLabel user={row.user} />
+            <PersonLabel user={row.user}>
+              {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
+            </PersonLabel>
 
             <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
               Deactivated
@@ -137,6 +143,14 @@ export const PlanningWeekRow = ({
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
+        // A deactivated person's days keep their leftover plans, read-only;
+        // any other closed day holds nothing.
+        const closed = closedSpellOn(row.closedSpells, iso);
+        const keepsLeftoverPlans = !isActive && closed?.reason === "inactive";
+        if (closed && !keepsLeftoverPlans) {
+          return <ClosedDayCell key={iso} reason={closed.reason} />;
+        }
+
         const entries = entriesByDate.get(iso) ?? [];
         const absence = absencesByDate[iso];
 

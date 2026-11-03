@@ -35,7 +35,11 @@ import {
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
-import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
+import {
+  canWriteTimeLogsFor,
+  fullName,
+  reachesIntoAnotherTeam,
+} from "@/lib/utils/user";
 import {
   DEFAULT_TEAM_SORT,
   nextTeamSort,
@@ -57,6 +61,8 @@ import { onlyViewerReason } from "../shared/week/only-viewer";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import {
   AbsenceFormModal,
+  ABSENCE_IN_ANOTHER_TEAM,
+  ABSENCE_IN_LOCKED_MONTH,
   LockedAbsenceModal,
 } from "../timesheet/components/AbsenceFormModal";
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
@@ -79,6 +85,8 @@ type AbsenceForm = {
   user: TeamSummaryUser;
   date: string;
   absence?: Absence;
+  /** It covers days of another team's, which only the owner may change. */
+  isInAnotherTeam?: boolean;
 };
 
 type TeamTimeViewProps = {
@@ -296,6 +304,11 @@ export const TeamTimeView = ({
   const isOpenedAbsenceLocked =
     !!openedAbsence &&
     isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+  const openedAbsenceReadOnlyReason = isOpenedAbsenceLocked
+    ? ABSENCE_IN_LOCKED_MONTH
+    : absenceForm?.isInAnotherTeam
+      ? ABSENCE_IN_ANOTHER_TEAM
+      : undefined;
 
   const clearFilters = () => {
     setFilters({ teamId: undefined, projectId: undefined });
@@ -469,6 +482,10 @@ export const TeamTimeView = ({
                       user: row.user,
                       date: absence.startDate,
                       absence,
+                      isInAnotherTeam: reachesIntoAnotherTeam(
+                        absence,
+                        row.closedSpells,
+                      ),
                     })
                   }
                   onAddAbsence={() => openNewAbsence(row.user)}
@@ -486,9 +503,10 @@ export const TeamTimeView = ({
       />
 
       {absenceForm &&
-        (openedAbsence && isOpenedAbsenceLocked ? (
+        (openedAbsence && openedAbsenceReadOnlyReason ? (
           <LockedAbsenceModal
             absence={openedAbsence}
+            reason={openedAbsenceReadOnlyReason}
             subjectName={fullName(absenceForm.user)}
             onClose={() => setAbsenceForm(null)}
           />

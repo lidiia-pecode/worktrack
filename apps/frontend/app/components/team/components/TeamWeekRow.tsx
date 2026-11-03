@@ -6,7 +6,12 @@ import { CalendarOff } from "lucide-react";
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/utils/date";
 import { isRangeLocked } from "@/lib/utils/reporting-period";
-import { fullName, isDeactivatedUser, isClosedOn } from "@/lib/utils/user";
+import {
+  closedSpellOn,
+  fullName,
+  isClosedOn,
+  isDeactivatedUser,
+} from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +20,8 @@ import { WeekBar } from "../../timesheet/components/WeekSummary";
 import { Button } from "@/components/ui/button";
 import { TeamDayCell } from "./TeamDayCell";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
+import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
+import { MoveBadges } from "../../shared/week/MoveBadges";
 
 type TeamWeekRowProps = {
   row: TeamSummaryRow;
@@ -61,8 +68,6 @@ export const TeamWeekRow = ({
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
   const name = fullName(row.user);
-  // The API refuses a day outside the team in view or the person's employment.
-  const isActiveOn = (iso: string) => !isClosedOn(row.closedSpells, iso);
 
   useEffect(() => {
     if (isHighlighted) rowRef.current?.scrollIntoView({ block: "center" });
@@ -98,7 +103,9 @@ export const TeamWeekRow = ({
           <PersonSummary row={row} projectName={projectName} />
 
           {canWrite &&
-            weekDates.some((date) => isActiveOn(toISODate(date))) && (
+            weekDates.some(
+              (date) => !isClosedOn(row.closedSpells, toISODate(date)),
+            ) && (
               <Button
                 type="button"
                 variant="ghost"
@@ -115,9 +122,14 @@ export const TeamWeekRow = ({
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
+        // The API refuses a day outside the team in view or the person's
+        // employment, so it holds nothing here.
+        const closed = closedSpellOn(row.closedSpells, iso);
+        if (closed) return <ClosedDayCell key={iso} reason={closed.reason} />;
+
         const day = daysByDate.get(iso);
         const absence = absencesByDate[iso];
-        const canWriteDay = canWrite && isEditable(iso) && isActiveOn(iso);
+        const canWriteDay = canWrite && isEditable(iso);
         // Time is logged only for a day that has happened.
         const canLogTime = canWriteDay && iso <= todayIso;
         // An absence is frozen whole once any of its days locks; it then
@@ -214,8 +226,9 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
         </span>
       )}
 
-      {(isDeactivated || isFormerMember) && (
+      {(isDeactivated || isFormerMember || row.moves.length > 0) && (
         <span className="mt-1 flex flex-wrap gap-1">
+          <MoveBadges moves={row.moves} />
           {isDeactivated && (
             <Badge variant="neutral" size="sm">
               Deactivated

@@ -1,7 +1,18 @@
-import { AvatarUser, ClosedSpell, User, UserName } from "@/types";
+import {
+  Absence,
+  AvatarUser,
+  ClosedSpell,
+  TeamMove,
+  User,
+  UserName,
+} from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
-import { formatDayMonthYearLabel, isoDateInTimeZone } from "./date";
+import {
+  formatDayMonthLabel,
+  formatDayMonthYearLabel,
+  isoDateInTimeZone,
+} from "./date";
 
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
@@ -62,11 +73,39 @@ export const deactivatedOnLabel = (
       )
     : null;
 
-/** Whether a day falls in one of a row's closed spells, as the API refuses it. */
-export const isClosedOn = (spells: ClosedSpell[], date: string) =>
-  spells.some(
+/** The closed spell a day falls in, as the API refuses it, if any. */
+export const closedSpellOn = (spells: ClosedSpell[], date: string) =>
+  spells.find(
     (spell) =>
       spell.from <= date && (spell.until === null || date < spell.until),
+  );
+
+export const isClosedOn = (spells: ClosedSpell[], date: string) =>
+  Boolean(closedSpellOn(spells, date));
+
+/** What a closed day says on hover and to a screen reader. */
+export const CLOSED_DAY_TEXT: Record<ClosedSpell["reason"], string> = {
+  "outside-team": "Not in this team on this day",
+  inactive: "Not employed on this day",
+};
+
+/** "Moved out · 14 Oct" or "Joined · 14 Oct"; no team is named. */
+export const moveLabel = ({ date, direction }: TeamMove) =>
+  `${direction === "in" ? "Joined" : "Moved out"} · ${formatDayMonthLabel(date)}`;
+
+/**
+ * Whether an absence covers a day of another team's, so only someone who
+ * reaches all of it, such as the owner, may change it.
+ */
+export const reachesIntoAnotherTeam = (
+  absence: Pick<Absence, "startDate" | "endDate">,
+  spells: ClosedSpell[],
+) =>
+  spells.some(
+    (spell) =>
+      spell.reason === "outside-team" &&
+      spell.from <= absence.endDate &&
+      (spell.until === null || absence.startDate < spell.until),
   );
 
 /**

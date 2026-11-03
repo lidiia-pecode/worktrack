@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import {
   BadRequestException,
   ConflictException,
@@ -51,6 +52,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
+import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
 import { PeriodProjectPayload } from './dtos/plan-period-payload.dto';
 
 /**
@@ -1446,6 +1448,19 @@ describe('PlanningService', () => {
       const whole = await rowOf(owner);
       expect(whole.plannedMinutes).toBe(40 * HOUR);
       expect(whole.closedSpells).toEqual([]);
+
+      // The response keeps them, as the grid reads them.
+      const served = plainToInstance(
+        PlanningWeekResponse,
+        await service.getWeek({ date: MONDAY }, manager),
+        { excludeExtraneousValues: true },
+      );
+      expect(served.rows.find((row) => row.user.id === mover.id)).toMatchObject(
+        {
+          closedSpells: alpha.closedSpells,
+          moves: alpha.moves,
+        },
+      );
     });
 
     it("refuses a plan on the other team's day", async () => {

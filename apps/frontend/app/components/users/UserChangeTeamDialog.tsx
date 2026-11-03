@@ -77,7 +77,7 @@ export const UserChangeTeamDialog = ({
         : `${name} is in no team, so only the owner sees them. Choose the team they join.`;
     }
     return currentTeam
-      ? `${name} leaves ${currentTeam.name} today and joins ${selectedTeam!.label} as a member. Their time, absences and plans stay as they are.`
+      ? `${name} leaves ${currentTeam.name} and joins ${selectedTeam!.label} today. Their time and absences before today stay with ${currentTeam.name}. From today, their time, absences and plans belong to ${selectedTeam!.label}.`
       : `${name} joins ${selectedTeam!.label} as a member today.`;
   })();
 

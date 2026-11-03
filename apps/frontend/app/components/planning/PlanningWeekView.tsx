@@ -19,6 +19,7 @@ import {
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
+import { fullName, reachesIntoAnotherTeam } from "@/lib/utils/user";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { UserRole } from "@/types/enums";
@@ -34,7 +35,11 @@ import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
-import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
+import {
+  ABSENCE_IN_ANOTHER_TEAM,
+  AbsenceFormModal,
+  LockedAbsenceModal,
+} from "../timesheet/components/AbsenceFormModal";
 import { PlanningDayModal } from "./components/PlanningDayModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
@@ -71,6 +76,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const setTeamId = (nextTeamId?: string) => setFilters({ teamId: nextTeamId });
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
+  const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
+    absence: Absence;
+    row: PlanningRow;
+  } | null>(null);
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
@@ -136,13 +145,20 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     : undefined;
 
   // An absence day opens the absence itself, unless a locked month freezes
-  // it; then the day dialog shows it and says so.
+  // it; then the day dialog shows it and says so. One that reaches into
+  // another team's days opens to be read only.
   const openDay = (row: PlanningRow, date: string) => {
     const absence = absencesByUser[row.user.id]?.[date];
     const isFrozen =
       !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
 
-    if (absence && !isFrozen) {
+    if (
+      absence &&
+      !isFrozen &&
+      reachesIntoAnotherTeam(absence, row.closedSpells)
+    ) {
+      setReadOnlyAbsence({ absence, row });
+    } else if (absence && !isFrozen) {
       setAbsenceForm({ userId: row.user.id, date: absence.startDate, absence });
     } else {
       setOpenedDay({ userId: row.user.id, date });
@@ -332,6 +348,15 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
           }
           onClose={() => setOpenedDay(null)}
+        />
+      )}
+
+      {readOnlyAbsence && (
+        <LockedAbsenceModal
+          absence={readOnlyAbsence.absence}
+          subjectName={fullName(readOnlyAbsence.row.user)}
+          reason={ABSENCE_IN_ANOTHER_TEAM}
+          onClose={() => setReadOnlyAbsence(null)}
         />
       )}
 

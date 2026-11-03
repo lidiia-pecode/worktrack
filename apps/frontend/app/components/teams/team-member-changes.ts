@@ -42,8 +42,7 @@ export const memberChangeCopy = (
   if (change.kind === "role" && change.roleInTeam === TeamRole.MANAGER) {
     return {
       title: `Make ${name} the manager of ${team.name}?`,
-      description:
-        "They will see every member of the team, and their time, absences and plans.",
+      description: `${name} can manage the team and access its time, absences and plans, including former members' records from their time in the team.`,
       confirmText: "Make manager",
     };
   }
@@ -53,7 +52,7 @@ export const memberChangeCopy = (
     return {
       title: `Move ${name} to ${team.name} as a member?`,
       description: [
-        `They leave ${otherMemberTeam.name} today and no longer see ${team.name}'s members.`,
+        `${name} leaves ${otherMemberTeam.name} today and no longer sees ${team.name}'s members or their records. Their own records before today stay with ${otherMemberTeam.name}.`,
         leavesNoManager,
       ]
         .filter(Boolean)
@@ -76,17 +75,22 @@ export const memberChangeCopy = (
     };
   }
 
-  const inNoTeam =
-    otherTeamsCount === 0 &&
-    (isOwner
-      ? "They are then in no team, so only you see them."
-      : "You will no longer see them.");
+  // A team keeps its history: the days before today stay with it.
+  const removal = isOwner
+    ? [
+        `${name} leaves ${team.name} today. Their records from before today stay with the team.`,
+        otherTeamsCount === 0 &&
+          "From today, only you can access their new records.",
+      ]
+    : [
+        `${name} leaves the team today. You can still access their records from before today.`,
+        otherTeamsCount === 0 &&
+          "From today, only the owner can access their new records.",
+      ];
 
   return {
     title: `Remove ${name} from ${team.name}?`,
-    description: ["They leave the team today.", inNoTeam, leavesNoManager]
-      .filter(Boolean)
-      .join(" "),
+    description: [...removal, leavesNoManager].filter(Boolean).join(" "),
     confirmText: "Remove",
   };
 };
@@ -121,10 +125,10 @@ export const pickerChangesCopy = (
 
   const movesText =
     moves.length === 1
-      ? `${moves[0].name} leaves ${moves[0].fromTeam.name} today.`
+      ? `${moves[0].name} leaves ${moves[0].fromTeam.name} today. Their records before today stay with ${moves[0].fromTeam.name}.`
       : `They leave their current team today: ${moves
           .map((move) => `${move.name} (${move.fromTeam.name})`)
-          .join(", ")}.`;
+          .join(", ")}. Their records before today stay with those teams.`;
 
   if (moves.length === 0) {
     return {

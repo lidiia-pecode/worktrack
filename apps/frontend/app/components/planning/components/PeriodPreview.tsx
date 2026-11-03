@@ -73,6 +73,7 @@ export const PeriodPreview = ({
 }: PeriodPreviewProps) => {
   const plannedDays = preview?.plannedDays ?? [];
   const conflicts = preview?.problems ?? [];
+  const inAnotherTeam = preview?.daysInAnotherTeam.length ?? 0;
   const weekdays = countWeekdays(startDate, endDate);
   const awayDays = absences.reduce(
     (total, absence) => total + awayWeekdays(absence, startDate, endDate),
@@ -156,6 +157,13 @@ export const PeriodPreview = ({
                 : `${firstName}'s account did not exist yet. Choose a later period.`}
           </p>
         </div>
+      )}
+
+      {inAnotherTeam > 0 && (
+        <p className="text-muted-foreground">
+          {inAnotherTeam} working {inAnotherTeam === 1 ? "day" : "days"} in
+          another team {inAnotherTeam === 1 ? "is" : "are"} skipped.
+        </p>
       )}
 
       {absences.length > 0 && (
