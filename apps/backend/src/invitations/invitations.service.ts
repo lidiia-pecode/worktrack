@@ -333,7 +333,7 @@ export class InvitationsService {
       this.configService.getOrThrow<string>('app.frontendUrl');
     const inviteUrl = `${frontendUrl}/invitations/complete?token=${rawToken}`;
 
-    await this.dataSource.transaction(async (manager) => {
+    const saved = await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Invitation);
 
       // Checked again under a lock, so a team archive at the same moment either
@@ -356,21 +356,24 @@ export class InvitationsService {
 
       const { id } = await repository.save(invitation);
 
-      const saved = await repository.findOneOrFail({
+      return repository.findOneOrFail({
         where: { id },
         relations: { company: true, invitedBy: true, team: true },
       });
+    });
 
-      await this.mailService.sendInvitationEmail(saved.email, {
-        inviteUrl,
-        companyName: saved.company.companyName,
-        inviterName: fullName(saved.invitedBy),
-        roleDescription:
-          saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
-        teamName: saved.team?.name ?? null,
-        leadsTeam: saved.role === UserRole.MANAGER,
-        validDays: INVITATION_VALID_DAYS,
-      });
+    // Sent once the save is committed, so no lock is held through the mail
+    // call and a link that did reach someone always opens. A failed send
+    // leaves the invitation pending, to be resent from the list.
+    await this.mailService.sendInvitationEmail(saved.email, {
+      inviteUrl,
+      companyName: saved.company.companyName,
+      inviterName: fullName(saved.invitedBy),
+      roleDescription:
+        saved.role === UserRole.MANAGER ? 'a manager' : 'an employee',
+      teamName: saved.team?.name ?? null,
+      leadsTeam: saved.role === UserRole.MANAGER,
+      validDays: INVITATION_VALID_DAYS,
     });
   }
 
@@ -540,9 +543,12 @@ export class InvitationsService {
 
     const teamRepository = manager.getRepository(Team);
 
+    // Share-locked, as adding a member is, so an archive checking the team at
+    // the same moment waits for this membership and then refuses.
     const team = await teamRepository.findOne({
       where: { id: invitation.teamId, companyId: invitation.companyId },
       select: ['id', 'status'],
+      lock: { mode: 'pessimistic_read' },
     });
 
     if (!team || team.status === TeamStatus.ARCHIVED) {

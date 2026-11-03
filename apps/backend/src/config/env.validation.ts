@@ -31,16 +31,16 @@ export const envValidationSchema = Joi.object({
   // JWT Configuration
   ACCESS_TOKEN_SECRET: Joi.string().min(32).required(),
   ACCESS_TOKEN_EXPIRES_IN: Joi.string()
-    .pattern(/^(\d+[smhd]|\d+)$/)
+    .pattern(/^\d+[smhd]$/)
     .default('15m'),
 
   REFRESH_TOKEN_SECRET: Joi.string().min(32).required(),
   REFRESH_TOKEN_EXPIRES_IN: Joi.string()
-    .pattern(/^(\d+[smhd]|\d+)$/)
+    .pattern(/^\d+[smhd]$/)
     .default('30d'),
 
   GOOGLE_TOKEN_EXPIRES_IN: Joi.string()
-    .pattern(/^(\d+[smhd]|\d+)$/)
+    .pattern(/^\d+[smhd]$/)
     .default('1m'),
 
   REFRESH_TOKEN_HASH_SECRET: Joi.string().min(32).required(),

@@ -24,7 +24,7 @@ import {
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
-import { assertDateRange } from 'src/reporting/date-range.util';
+import { assertDateRange, MAX_RANGE_DAYS } from 'src/reporting/date-range.util';
 import {
   TimeLogPayload,
   UpdateTimeLogPayload,
@@ -95,6 +95,9 @@ export interface TeamSummary {
 }
 
 const dayKey = (userId: string, date: string) => `${userId}:${date}`;
+
+/** A grid shows a few weeks of entries; a longer range only needs the totals. */
+const MAX_ENTRIES_RANGE_DAYS = 31;
 
 @Injectable()
 export class TimeLogsService {
@@ -207,7 +210,11 @@ export class TimeLogsService {
     query: TeamSummaryQuery,
     user: AuthUser,
   ): Promise<TeamSummary> {
-    assertDateRange(query.dateFrom, query.dateTo);
+    // Entries are listed one by one for a grid, so a range with them is bounded.
+    const maxDays = query.includeEntries
+      ? MAX_ENTRIES_RANGE_DAYS
+      : MAX_RANGE_DAYS;
+    assertDateRange(query.dateFrom, query.dateTo, maxDays);
 
     const [dailyTotals, entriesByDay] = await Promise.all([
       this.aggregateDailyMinutes(query, user),

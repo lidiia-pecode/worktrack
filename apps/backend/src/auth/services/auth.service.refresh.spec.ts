@@ -12,8 +12,10 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
+import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 
 import { AuthSession } from '../entities/auth-session.entity';
+import { AuthErrorCode } from '../auth-error';
 import type { AuthContext, AuthUser } from '../auth-strategies/types';
 import { AuthPolicyService } from './auth-policy.service';
 import { AuthService } from './auth.service';
@@ -45,6 +47,10 @@ const CONFIG: Record<string, unknown> = {
 };
 
 const stub = <T>(value: unknown): T => value as T;
+
+// Every sign-in and password change here hashes with scrypt at full cost, one
+// hash at a time, so a test can need several seconds when both suites run.
+jest.setTimeout(30_000);
 
 describe('AuthService refresh', () => {
   let dataSource: DataSource;
@@ -307,6 +313,36 @@ describe('AuthService refresh', () => {
       expect(await findSession(first.sessionId)).toBeNull();
       expect(await findSession(second.sessionId)).toBeNull();
       expect(await sessionRepo().countBy({ userId: user.id })).toBe(1);
+    });
+  });
+
+  describe('a sign-in during a deactivation', () => {
+    it('waits for the deactivation and is then refused', async () => {
+      const deactivation = dataSource.createQueryRunner();
+      await deactivation.connect();
+      await deactivation.startTransaction();
+
+      try {
+        await deactivation.query('UPDATE users SET status = $1 WHERE id = $2', [
+          UserStatus.DEACTIVATED,
+          user.id,
+        ]);
+        const signingIn = sessionService.createSession(user);
+        await waitUntilBlockedBy(dataSource, deactivation);
+        await deactivation.commitTransaction();
+
+        await expect(signingIn).rejects.toMatchObject({
+          response: { code: AuthErrorCode.ACCOUNT_INACTIVE },
+        });
+      } finally {
+        if (deactivation.isTransactionActive) {
+          await deactivation.rollbackTransaction();
+        }
+        await deactivation.release();
+        await dataSource
+          .getRepository(User)
+          .update(user.id, { status: UserStatus.ACTIVE });
+      }
     });
   });
 });

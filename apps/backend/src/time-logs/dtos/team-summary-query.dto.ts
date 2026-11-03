@@ -30,7 +30,7 @@ export class TeamSummaryQuery {
   @IsUUID()
   userId?: string;
 
-  /** Each day also lists its entries (Team time's cells). */
+  /** Each day also lists its entries (Team time's cells); a month at most. */
   @IsOptional()
   @Transform(toBoolean)
   @IsBoolean()

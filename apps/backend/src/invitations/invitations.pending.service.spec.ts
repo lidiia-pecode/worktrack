@@ -178,8 +178,10 @@ describe('InvitationsService pending invitations', () => {
     await dataSource.destroy();
   });
 
+  // The email goes out after the save is committed, so a failed send leaves a
+  // pending invitation to resend rather than nothing.
   describe('a failed email', () => {
-    it('leaves no invitation behind', async () => {
+    it('keeps the invitation pending, to be resent', async () => {
       const email = nextEmail();
       failNextSend();
 
@@ -187,20 +189,18 @@ describe('InvitationsService pending invitations', () => {
         InternalServerErrorException,
       );
 
-      await expect(findInvitations(email)).resolves.toHaveLength(0);
+      const { id } = await findPending(email);
+      await expect(invite(owner, email, alpha)).rejects.toThrow(
+        ConflictException,
+      );
+
+      await service.resend(id, owner);
+      await expect(
+        service.describeByToken(lastSentToken()),
+      ).resolves.toMatchObject({ email });
     });
 
-    it('lets the same address be invited again straight away', async () => {
-      const email = nextEmail();
-      failNextSend();
-
-      await expect(invite(owner, email, alpha)).rejects.toThrow();
-      await invite(owner, email, alpha);
-
-      await expect(findPending(email)).resolves.toBeDefined();
-    });
-
-    it('keeps the expired invitation it would replace', async () => {
+    it('still replaces the expired invitation', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
 
@@ -213,9 +213,9 @@ describe('InvitationsService pending invitations', () => {
 
       const invitations = await findInvitations(email);
 
-      expect(invitations.map((invitation) => invitation.status)).toEqual([
-        InvitationStatus.PENDING,
-      ]);
+      expect(invitations.map((invitation) => invitation.status).sort()).toEqual(
+        [InvitationStatus.PENDING, InvitationStatus.REVOKED],
+      );
     });
   });
 
@@ -390,7 +390,7 @@ describe('InvitationsService pending invitations', () => {
       expect(sent.inviterName).toBe('alphamanager Test');
     });
 
-    it('keeps the old link working when the email fails', async () => {
+    it('stops the old link working even when the email fails', async () => {
       const email = nextEmail();
       await invite(owner, email, alpha);
       const oldToken = lastSentToken();
@@ -401,9 +401,13 @@ describe('InvitationsService pending invitations', () => {
         InternalServerErrorException,
       );
 
-      await expect(service.describeByToken(oldToken)).resolves.toMatchObject({
-        email,
-      });
+      await expectUnusable(
+        service.describeByToken(oldToken),
+        UnusableInvitationCode.NOT_FOUND,
+      );
+      await expect(
+        service.describeByToken(lastSentToken()),
+      ).resolves.toMatchObject({ email });
     });
 
     it('answers "not found" to a manager for another team', async () => {

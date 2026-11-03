@@ -22,6 +22,22 @@ describe('FRONTEND_URL', () => {
   });
 });
 
+describe('token lifetimes', () => {
+  const accessTokenExpiresIn = envValidationSchema.extract(
+    'ACCESS_TOKEN_EXPIRES_IN',
+  );
+
+  it.each(['15m', '12h', '30d', '45s'])('accepts %s', (value) => {
+    expect(accessTokenExpiresIn.validate(value).error).toBeUndefined();
+  });
+
+  // auth.config.ts parses a unit, so a bare number would pass here and then
+  // stop the boot with "Invalid duration".
+  it.each(['900', '15 m', '1w'])('refuses %s', (value) => {
+    expect(accessTokenExpiresIn.validate(value).error).toBeDefined();
+  });
+});
+
 describe('AUTH_COOKIE_SAMESITE', () => {
   const sameSite = envValidationSchema.extract('AUTH_COOKIE_SAMESITE');
 
