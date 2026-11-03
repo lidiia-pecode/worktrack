@@ -28,6 +28,7 @@ import {
 const RUN = Date.now();
 const SLUG_A = `visibility-test-a-${RUN}`;
 const SLUG_B = `visibility-test-b-${RUN}`;
+const SLUG_C = `visibility-test-c-${RUN}`;
 
 const TODAY = '2026-01-01';
 const YESTERDAY = '2025-12-31';
@@ -41,6 +42,7 @@ describe('TeamVisibilityService', () => {
   let owner: AuthUser;
   let manager: AuthUser; // leads "Alpha"
   let loneManager: AuthUser; // has the MANAGER role but is on no team
+  let alphaId: string;
   let nonLeadManager: AuthUser; // has the MANAGER role but is only a member of "Alpha"
   let member: AuthUser; // active member of "Alpha"
   let formerMember: AuthUser; // left "Alpha" (leftAt is set)
@@ -49,6 +51,13 @@ describe('TeamVisibilityService', () => {
 
   // Company B — exists only to prove tenants stay separate.
   let otherCompanyUser: AuthUser;
+
+  // Company C — team history: Emma moves from North to South on 15 Dec.
+  let northManager: AuthUser;
+  let southManager: AuthUser;
+  let mover: AuthUser; // North 1–14 Dec, South from 15 Dec
+  let returner: AuthUser; // North 1–9 Nov, and again from 20 Nov
+  let addedByMistake: AuthUser; // North for no day: joined and left on 5 Dec
 
   const createCompany = async (slug: string): Promise<string> => {
     const company = await dataSource
@@ -83,15 +92,40 @@ describe('TeamVisibilityService', () => {
     user: AuthUser,
     roleInTeam: TeamRole,
     leftAt: string | null = null,
+    joinedAt = YESTERDAY,
   ): Promise<void> => {
     await dataSource.getRepository(TeamMembership).save({
       companyId,
       teamId,
       userId: user.id,
       roleInTeam,
-      joinedAt: YESTERDAY,
+      joinedAt,
       leftAt,
     });
+  };
+
+  /** Whether the caller reaches the person's records on the given days. */
+  const reaches = async (
+    caller: AuthUser,
+    person: AuthUser,
+    from: string,
+    to = from,
+  ): Promise<boolean> => {
+    const qb = dataSource
+      .createQueryBuilder()
+      .select('u.id', 'id')
+      .from(User, 'u')
+      .where('u.id = :personId', { personId: person.id })
+      .setParameters({ dayFrom: from, dayTo: to });
+
+    service.applyUserVisibility(qb, 'u.id', caller, {
+      onDays: {
+        startColumn: 'CAST(:dayFrom AS date)',
+        endColumn: 'CAST(:dayTo AS date)',
+      },
+    });
+
+    return (await qb.getRawMany()).length > 0;
   };
 
   /**
@@ -105,7 +139,7 @@ describe('TeamVisibilityService', () => {
       .from(User, 'u')
       .where('u.company_id = :tenantId', { tenantId: caller.companyId });
 
-    service.applyUserVisibility(qb, 'u.id', caller);
+    service.applyUserVisibility(qb, 'u.id', caller, { onDays: 'today' });
 
     const rows = await qb.getRawMany<{ id: string }>();
 
@@ -160,11 +194,40 @@ describe('TeamVisibilityService', () => {
     const alpha = await dataSource
       .getRepository(Team)
       .save({ companyId: companyA, name: `Alpha ${RUN}` });
+    alphaId = alpha.id;
 
     await addToTeam(alpha.id, companyA, manager, TeamRole.MANAGER);
     await addToTeam(alpha.id, companyA, nonLeadManager, TeamRole.MEMBER);
     await addToTeam(alpha.id, companyA, member, TeamRole.MEMBER);
     await addToTeam(alpha.id, companyA, formerMember, TeamRole.MEMBER, TODAY);
+
+    const companyC = await createCompany(SLUG_C);
+    northManager = await createUser(companyC, 'north', UserRole.MANAGER);
+    southManager = await createUser(companyC, 'south', UserRole.MANAGER);
+    mover = await createUser(companyC, 'mover', UserRole.EMPLOYEE);
+    returner = await createUser(companyC, 'returner', UserRole.EMPLOYEE);
+    addedByMistake = await createUser(companyC, 'mistake', UserRole.EMPLOYEE);
+
+    const north = await dataSource
+      .getRepository(Team)
+      .save({ companyId: companyC, name: `North ${RUN}` });
+    const south = await dataSource
+      .getRepository(Team)
+      .save({ companyId: companyC, name: `South ${RUN}` });
+    const memberOf = (
+      teamId: string,
+      user: AuthUser,
+      joinedAt: string,
+      leftAt: string | null = null,
+    ) => addToTeam(teamId, companyC, user, TeamRole.MEMBER, leftAt, joinedAt);
+
+    await addToTeam(north.id, companyC, northManager, TeamRole.MANAGER);
+    await addToTeam(south.id, companyC, southManager, TeamRole.MANAGER);
+    await memberOf(north.id, mover, '2025-12-01', '2025-12-15');
+    await memberOf(south.id, mover, '2025-12-15');
+    await memberOf(north.id, returner, '2025-11-01', '2025-11-10');
+    await memberOf(north.id, returner, '2025-11-20');
+    await memberOf(north.id, addedByMistake, '2025-12-05', '2025-12-05');
   });
 
   afterAll(async () => {
@@ -173,7 +236,7 @@ describe('TeamVisibilityService', () => {
     // Users, teams and memberships all cascade from the company.
     await dataSource
       .getRepository(Company)
-      .delete({ slug: In([SLUG_A, SLUG_B]) });
+      .delete({ slug: In([SLUG_A, SLUG_B, SLUG_C]) });
 
     await dataSource.destroy();
   });
@@ -293,13 +356,63 @@ describe('TeamVisibilityService', () => {
     });
   });
 
-  describe('assertCanActForUser', () => {
-    const wording = { action: 'assign', subject: 'projects' };
+  describe('a team keeps its history', () => {
+    it('gives the days before a move to the old team and the move day on to the new one', async () => {
+      await expect(reaches(northManager, mover, '2025-12-14')).resolves.toBe(
+        true,
+      );
+      await expect(reaches(northManager, mover, '2025-12-15')).resolves.toBe(
+        false,
+      );
+      await expect(reaches(southManager, mover, '2025-12-15')).resolves.toBe(
+        true,
+      );
+      await expect(reaches(southManager, mover, '2025-12-14')).resolves.toBe(
+        false,
+      );
+    });
+
+    it('reaches nobody before they joined', async () => {
+      await expect(reaches(northManager, mover, '2025-11-30')).resolves.toBe(
+        false,
+      );
+    });
+
+    it('reaches a range on any of its days, so both teams see a span across the move', async () => {
+      await expect(
+        reaches(northManager, mover, '2025-12-10', '2025-12-20'),
+      ).resolves.toBe(true);
+      await expect(
+        reaches(southManager, mover, '2025-12-10', '2025-12-20'),
+      ).resolves.toBe(true);
+    });
+
+    it('covers no day for a membership that started and ended on the same day', async () => {
+      await expect(
+        reaches(northManager, addedByMistake, '2025-12-05'),
+      ).resolves.toBe(false);
+    });
+
+    it('leaves out the gap between two spells in the same team', async () => {
+      await expect(reaches(northManager, returner, '2025-11-05')).resolves.toBe(
+        true,
+      );
+      await expect(reaches(northManager, returner, '2025-11-15')).resolves.toBe(
+        false,
+      );
+      await expect(reaches(northManager, returner, '2025-11-25')).resolves.toBe(
+        true,
+      );
+    });
+  });
+
+  describe('assertCanReadUser', () => {
+    const wording = { action: 'view', subject: 'time logs' };
 
     const assertFor = (userId: string, caller: AuthUser): Promise<void> =>
-      service.assertCanActForUser(userId, caller, wording);
+      service.assertCanReadUser(userId, caller, wording);
 
-    it('lets an owner act for anyone in their company', async () => {
+    it('lets an owner read anyone in their company', async () => {
       await expect(assertFor(outsider.id, owner)).resolves.toBeUndefined();
     });
 
@@ -309,31 +422,107 @@ describe('TeamVisibilityService', () => {
       );
     });
 
-    it('lets a manager act for someone in a team they lead', async () => {
+    it('lets a manager read someone who was in a team they lead, even after they left it', async () => {
       await expect(assertFor(member.id, manager)).resolves.toBeUndefined();
+      await expect(assertFor(mover.id, northManager)).resolves.toBeUndefined();
     });
 
-    it('refuses a manager for someone outside their teams', async () => {
+    it('refuses a manager for someone never in their teams', async () => {
       await expect(assertFor(outsider.id, manager)).rejects.toThrow(
-        'You can only assign projects of users in teams you manage',
+        'You can only view time logs of users in teams you manage',
       );
     });
 
-    it('lets an employee act for themselves', async () => {
-      await expect(assertFor(member.id, member)).resolves.toBeUndefined();
+    it('refuses a manager whose only membership of the person covers no day', async () => {
+      await expect(assertFor(addedByMistake.id, northManager)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
-    it('refuses an employee for anyone else', async () => {
+    it('lets anyone read themselves, and an employee nobody else', async () => {
+      await expect(assertFor(member.id, member)).resolves.toBeUndefined();
+      await expect(
+        assertFor(loneManager.id, loneManager),
+      ).resolves.toBeUndefined();
       await expect(assertFor(outsider.id, member)).rejects.toThrow(
         ForbiddenException,
       );
     });
+  });
 
-    it('treats a deactivated person like anyone else in scope', async () => {
-      await expect(assertFor(deactivated.id, owner)).resolves.toBeUndefined();
-      await expect(assertFor(deactivated.id, manager)).rejects.toThrow(
-        ForbiddenException,
+  describe('daysInView', () => {
+    // Alpha's memberships start yesterday.
+    const week = { from: TODAY, to: '2026-01-07' };
+
+    it("holds a manager's own days under a team they only belong to", async () => {
+      const inView = await service.daysInView(
+        nonLeadManager,
+        [nonLeadManager.id, member.id],
+        week,
+        alphaId,
       );
+
+      expect(inView.get(nonLeadManager.id)).toEqual({ outside: [], moves: [] });
+      // Somebody else in that team is out of reach for a manager who doesn't lead it.
+      expect(inView.get(member.id)?.outside).toEqual([
+        { from: week.from, until: '2026-01-08' },
+      ]);
+    });
+  });
+
+  describe('assertCanWriteUser', () => {
+    const wording = { action: 'change', subject: 'absences' };
+
+    const assertFor = (
+      userId: string,
+      caller: AuthUser,
+      from: string,
+      to = from,
+    ): Promise<void> =>
+      service.assertCanWriteUser(userId, caller, wording, { from, to });
+
+    it('lets a manager write on the days the person was in their team', async () => {
+      await expect(
+        assertFor(mover.id, northManager, '2025-12-10', '2025-12-14'),
+      ).resolves.toBeUndefined();
+      await expect(
+        assertFor(mover.id, southManager, '2025-12-15', '2026-01-31'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('refuses a range with a day outside their team, naming the person and the day', async () => {
+      await expect(
+        assertFor(mover.id, northManager, '2025-12-10', '2025-12-16'),
+      ).rejects.toThrow(
+        "You can't change absences here: mover Test isn't in a team you lead on Mon 15 Dec",
+      );
+      await expect(
+        assertFor(mover.id, southManager, '2025-12-14'),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('refuses a range across the gap between two spells', async () => {
+      await expect(
+        assertFor(returner.id, northManager, '2025-11-05', '2025-11-25'),
+      ).rejects.toThrow('on Mon 10 Nov');
+    });
+
+    it('lets an owner write for anyone in their company, and anyone for themselves', async () => {
+      await expect(
+        assertFor(outsider.id, owner, '2025-12-01', '2025-12-31'),
+      ).resolves.toBeUndefined();
+      await expect(
+        assertFor(member.id, member, '2025-12-01'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('refuses an employee for anyone else, and an owner outside their company', async () => {
+      await expect(
+        assertFor(outsider.id, member, '2025-12-01'),
+      ).rejects.toThrow('You can only change your own absences');
+      await expect(
+        assertFor(otherCompanyUser.id, owner, '2025-12-01'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -325,16 +325,25 @@ export const AbsenceFormModal = ({
   );
 };
 
+/** Why an absence opens to be read only, by default a locked month. */
+export const ABSENCE_IN_LOCKED_MONTH =
+  "Part of it is in a locked month, so it can no longer be changed.";
+/** For an absence the viewer can't change because some of its days are another team's. */
+export const absenceInAnotherTeam = (subjectName: string) =>
+  `This absence includes days in another team. ${subjectName} or your company owner can change it.`;
+
 type LockedAbsenceModalProps = {
   absence: Absence;
   subjectName?: string;
+  reason?: string;
   onClose: () => void;
 };
 
-/** An absence in a locked month, to read in full: nothing about it can change. */
+/** An absence the viewer can only read in full: nothing about it can change. */
 export const LockedAbsenceModal = ({
   absence,
   subjectName,
+  reason = ABSENCE_IN_LOCKED_MONTH,
   onClose,
 }: LockedAbsenceModalProps) => (
   <ResourceFormModal
@@ -376,7 +385,7 @@ export const LockedAbsenceModal = ({
 
     <p className="mt-6 flex gap-2 text-sm text-muted-foreground">
       <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-      Part of it is in a locked month, so it can no longer be changed.
+      {reason}
     </p>
   </ResourceFormModal>
 );

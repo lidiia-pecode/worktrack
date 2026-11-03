@@ -5,7 +5,8 @@ work, and every rule in it is enforced today. The team-manager role rule in
 §3.2 was confirmed and enforced in September 2026 with the company-setup work of
 the improvement roadmap. The archived-team rule enforced then, "archiving closes
 the team", was reversed in October 2026 (Phase 38 part 1): only an empty team is
-archived now (§3.2).
+archived now (§3.2). Since Phase 43 (November 2026) a manager's reach follows
+the dates a person was in their team (§3.3, P4 answered).
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§6 remain
 the record of current behaviour; §6 below lists the questions still open.
 
@@ -133,16 +134,35 @@ everyone else, and alone removes a team's manager, the caller included
 
 The guarantee this rests on constrains everything else:
 
-A manager may **not** add an existing company user to their team. That is the
-move that would hand them another manager's person — and with it that person's
-entire time history. Moving someone between teams is an Owner action (P2).
+A manager may **not** add an existing company user to their team. Moving
+someone between teams is an Owner action (P2).
 
-**Why this is enough.** Because a manager only ever gains people who are new to
-the company, there is no prior history for them to acquire retroactively. That
-removes the need to bound visibility by membership dates, which would otherwise
-have to be threaded through every query. Since P1 an Owner can move a person
-between teams, and the new team's manager then reaches their history, so this
-describes the rule rather than a guarantee; P4 (§6) is reopened for it.
+**A team keeps its history.** A manager reaches a person's records only on the
+days that person was in a team the manager leads now, for reading and, in an
+open month, for writing. A membership covers the days from the day it starts
+up to the day before it ends, so the day of a move belongs to the new team,
+and one added and removed on the same day covers none. After a move from
+Alpha to Beta, Alpha's manager keeps the days before the move and can still
+correct them while the month is open; Beta's manager reaches the move day on
+and nothing before, notes included. A team's figures, its filter on Team time,
+Planning and Reports, and its export over a past period count the people who
+were in it then, for their days in it, so a move no longer changes a team's
+past months. It is the leadership held now that counts: a new manager of a
+team reaches its whole history, and one who stops leading it reaches none of
+it. Days a person spent in no team are the Owner's alone.
+
+A record that spans days is read on any of them and changed only by someone
+who reaches all of them: an absence across a move opens read-only for a
+manager of one of the two teams, and the Owner changes it. A period plan skips
+the days the caller doesn't reach and lists them. A move deletes nothing: the
+person's plans from the move day on stay and become the new team's. Answered
+on 3 November 2026 and built in Phase 43 (P4, option b); before it, reach read
+current membership, which held only while a manager gained nobody with a
+history.
+
+The lists that are about now — the People list and panel, the team pickers,
+project rosters and assignment, invitations and the Teams page — keep current
+membership.
 
 **A person is a member of at most one team.** A Manager may lead any number
 of teams, and may be a member of one team led by somebody else. Adding a
@@ -168,8 +188,9 @@ records. Decided 28 October 2026.
 ### 3.4 People visibility
 
 **One level, and one rule.** A manager sees the people in the teams they
-currently lead, plus themselves. An Owner sees everyone in the company. Nobody
-else's name, profile, time or plan is readable, on any screen, by any route.
+currently lead, on the days they were in them (§3.3), plus themselves. An
+Owner sees everyone in the company. Nobody else's name, profile, time or plan
+is readable, on any screen, by any route.
 
 Sharing a project grants nothing. A manager working on a cross-team project
 reads their own people on it and no one else — not a name, not an avatar.
@@ -273,7 +294,8 @@ decision, not a field waiting to be filled in.
 ### 3.7 Time-log visibility and editing
 
 Unchanged from D9 and D10 in the business reference: an Owner for anyone in the
-company, a manager for people in teams they lead, an employee for themselves.
+company, a manager for people in teams they lead, on the days they were in
+them (§3.3), an employee for themselves.
 This model does not change the rule; it changes what it takes to *become* the
 manager of a person, which is what makes the rule trustworthy. Everyone reads
 their own time logs, absences and hours, including a manager who leads no team.
@@ -338,7 +360,7 @@ project staffed from both teams.
 | Mary hires Sophie | Mary invites Sophie as an EMPLOYEE **into Alpha**. On acceptance Sophie joins Alpha and Mary manages her. No Owner involvement |
 | Mary tries to invite a new MANAGER | Refused. Appointing managers is Olivia's |
 | Mary tries to add Peter to Alpha | Refused. Peter already belongs to Beta; only Olivia moves people |
-| Mary removes Irene from Alpha | Allowed. `leftAt` is closed; the row and the history stay |
+| Mary removes Irene from Alpha | Allowed. `leftAt` is closed; the row and the history stay, and Mary still reaches Irene's days before today (§3.3) |
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
@@ -357,11 +379,8 @@ structure, the catalogue and project archiving by Owner-only routes, people visi
 `TeamVisibilityService`, time logs and planning by their own scope checks that
 call it.
 
-Two things this model does *not* treat as gaps. Visibility is not bounded by
-membership dates: reach reads current team membership, as §3.3 describes, and
-whether it should follow the dates now that an Owner moves people between
-teams is open (P4). Projects are company-wide for managers, which is intended
-rather than a defect.
+Projects are company-wide for managers, which this model does not treat as a
+gap: it is intended rather than a defect.
 
 ---
 
@@ -378,36 +397,19 @@ Visible and deliberately unanswered; each waits for a real need.
   Owner action. Whether a manager may ever do it, or request it, is open.
   *Deferred by decision.*
 - **P4 — Should a manager's reach follow the dates a person was in their
-  team?** *Reopened 31 October 2026, open.* Today reach reads current
-  membership only (`left_at IS NULL` in `TeamVisibilityService`): a manager
-  reaches the whole history of everyone now in a team they now lead, for
-  reading and, in open periods, for writing (D9). The "no" rested on §3.3's
-  premise that a manager only gains people new to the company. Since P1 an
-  Owner moves people between teams (`leaveCurrentTeam`, effective today), so
-  after a move from team A to team B:
-  - B's manager reaches everything the person did in A, notes included, and
-    can correct their days in A in an open period; past weeks on Team time
-    and Planning and B's reports and export for past months include it.
-  - A's manager loses all of it: their past months' figures and export drop
-    the person, locked months included, and they can't finish correcting the
-    days before the move in a still-open month.
-  - The Owner sees everything either way, so company figures don't change.
+  team?** *Answered 3 November 2026: yes, option (b), built in Phase 43.* A
+  team keeps its history (§3.3). Rejected: keeping current membership with a
+  warning in the move dialog, which left a team's past figures changing after
+  a move and the new manager reading the old team's records; and the partial
+  options, reports-only or writes-only, two rules for one question.
 
-  Options: (a) keep current membership, possibly with the move dialog saying
-  that the history goes with the person; (b) a team keeps its history: a
-  manager reaches a person's records on the days they were in a team the
-  manager now leads, for reading and writing; (c) (b) for reports and the
-  export only, current membership for the week views and writes, two rules
-  for one question; (d) (b) applied to writes only, so A's manager can finish
-  the days before the move. (b) needs no migration (`joined_at`/`left_at`
-  exist and are indexed) but changes every query that reads reach, in seven
-  services, and lists people per period. It is also the prerequisite for any
-  grant that widens reach over people (§7, configurable permissions).
-  *Recommendation: (b), as a phase of its own before the launch stage; not
-  part of Phase 41.* *Direction agreed 3 November 2026: option (b), in full, as
-  its own phase right after Phase 42 (`product-assessment.md`, Phase 43); not
-  part of Phase 42. Still open until that phase is planned and built.* Until it is decided, §3.3's "Why this is enough" and §5's
-  note on membership dates describe the rule, not a guarantee.
+  *Room for later grants.* A manager's reach is one set of dated rows (person,
+  from, to), built in one place (`TeamVisibilityService`) and read by every
+  list, report and write check, and kept apart from which team a day belongs
+  to, which reports read from the memberships themselves. A later grant, to a
+  manager or to an employee, would be another source of such rows, with its
+  own dates, rather than a new branch at each check; writes keep their own
+  check, so a read-only grant would change one place.
 - **P5 — Should an employee see their own team and teammates?** *Answered 24
   October 2026: no.* Who is in a team, who manages it and who is away belong to
   an HR product's directory, outside WorkTrack's boundary

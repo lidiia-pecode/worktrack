@@ -35,11 +35,19 @@ const person = (
 });
 
 describe("groupPeopleByTeam", () => {
-  const team = (id: string) => ({ id, name: `${id} team` });
-  const withTeams = (name: string, ...teams: string[]) => ({
-    ...person(name, 10, 0, 20),
-    teams: teams.map(team),
-  });
+  const withTeams = (name: string, ...teams: string[]) => {
+    const row = person(name, 10, 0, 20);
+    return {
+      ...row,
+      teams: teams.map((id) => ({
+        id,
+        name: `${id} team`,
+        isArchived: false,
+        figures: row,
+        moves: [],
+      })),
+    };
+  };
 
   it("puts people under each of their teams, by team name, with no team last", () => {
     const groups = groupPeopleByTeam([
@@ -57,17 +65,41 @@ describe("groupPeopleByTeam", () => {
     ]);
   });
 
-  it("adds up each team's logged, billable and expected hours", () => {
-    const [core] = groupPeopleByTeam([
-      { ...withTeams("Emma Clarke", "Core"), billableMinutes: 6 * HOUR },
+  it("adds up each team's people on that team's days, so a mover counts once in each part", () => {
+    const moved = {
+      ...person("Emma Clarke", 10, 0, 20),
+      teams: [
+        {
+          id: "Core",
+          name: "Core team",
+          isArchived: false,
+          figures: { ...person("", 4, 0, 8), billableMinutes: 2 * HOUR },
+          moves: [{ date: "2026-10-14", direction: "out" as const }],
+        },
+        {
+          id: "Platform",
+          name: "Platform team",
+          isArchived: false,
+          figures: person("", 6, 0, 12),
+          moves: [{ date: "2026-10-14", direction: "in" as const }],
+        },
+      ],
+    };
+    const [core, platform] = groupPeopleByTeam([
+      moved,
       withTeams("Liam Carter", "Core"),
     ]);
 
     expect(core).toMatchObject({
-      loggedMinutes: 20 * HOUR,
-      billableMinutes: 6 * HOUR,
-      expectedMinutes: 40 * HOUR,
+      loggedMinutes: 14 * HOUR,
+      billableMinutes: 2 * HOUR,
+      expectedMinutes: 28 * HOUR,
     });
+    expect(core.people[0]).toMatchObject({
+      loggedMinutes: 4 * HOUR,
+      moves: [{ date: "2026-10-14", direction: "out" }],
+    });
+    expect(platform.loggedMinutes).toBe(6 * HOUR);
   });
 });
 
@@ -81,6 +113,7 @@ describe("personDays", () => {
       ["2026-10-05", 480],
       ["2026-10-11", 60],
     ]),
+    isClosed: () => false,
     isOff: (date: string) => date === "2026-10-06",
     daysWithoutTime: new Set(["2026-10-07"]),
   };
@@ -92,6 +125,23 @@ describe("personDays", () => {
       ["2026-10-07", "withoutTime"],
       ["2026-10-08", "nothingExpected"],
       ["2026-10-09", "nothingExpected"],
+      ["2026-10-11", "logged"],
+    ]);
+  });
+
+  it("closes a day the view doesn't hold, before a day off or a day to come", () => {
+    const days = personDays({
+      ...input,
+      countedUntil: "2026-10-07",
+      isClosed: (date: string) => date >= "2026-10-06",
+    });
+
+    expect(days.map((day) => [day.date, day.kind])).toEqual([
+      ["2026-10-05", "logged"],
+      ["2026-10-06", "closed"],
+      ["2026-10-07", "closed"],
+      ["2026-10-08", "closed"],
+      ["2026-10-09", "closed"],
       ["2026-10-11", "logged"],
     ]);
   });

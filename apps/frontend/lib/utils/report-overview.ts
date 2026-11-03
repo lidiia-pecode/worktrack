@@ -3,6 +3,7 @@ import {
   PeopleReportRow,
   ReportCoverage,
   ReportRange,
+  TeamMove,
 } from "@/types";
 
 import {
@@ -141,11 +142,15 @@ export const changeTipLines = (change: FigureChange, previousName: string) => {
 /** Up to this many people, every team starts open; past it, folded. */
 export const PEOPLE_SHOWN_OPEN = 15;
 
+/** A person under one team: their figures on that team's days. */
+export type TeamMember = PeopleReportRow & { moves: TeamMove[] };
+
 export interface TeamGroup {
   /** The team's id, or "" for the people in no team. */
   id: string;
   name: string;
-  people: PeopleReportRow[];
+  isArchived: boolean;
+  people: TeamMember[];
   loggedMinutes: number;
   billableMinutes: number;
   expectedMinutes: number;
@@ -154,16 +159,23 @@ export interface TeamGroup {
 const NO_TEAM = "No team";
 
 /**
- * People under each of their teams, so somebody in two teams is in both, and
+ * People under each team they were in during the period, so somebody in two
+ * teams is in both, each time with their figures on that team's days, and
  * those in no team last under "No team". Teams run by name, people keep their
  * order; each team's figures add up its people.
  */
 export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
   const groups = new Map<string, TeamGroup>();
-  const add = (id: string, name: string, person: PeopleReportRow) => {
+  const add = (
+    id: string,
+    name: string,
+    isArchived: boolean,
+    person: TeamMember,
+  ) => {
     const group = groups.get(id) ?? {
       id,
       name,
+      isArchived,
       people: [],
       loggedMinutes: 0,
       billableMinutes: 0,
@@ -177,8 +189,16 @@ export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
   };
 
   for (const person of people) {
-    if (person.teams.length === 0) add("", NO_TEAM, person);
-    for (const team of person.teams) add(team.id, team.name, person);
+    if (person.teams.length === 0) {
+      add("", NO_TEAM, false, { ...person, moves: [] });
+    }
+    for (const team of person.teams) {
+      add(team.id, team.name, team.isArchived, {
+        ...person,
+        ...team.figures,
+        moves: team.moves,
+      });
+    }
   }
 
   return [...groups.values()].sort(
@@ -189,6 +209,8 @@ export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
 
 export type ReportDayKind =
   | "logged"
+  /** Outside the view: another team's day, or after they left. */
+  | "closed"
   | "off"
   | "withoutTime"
   | "nothingExpected"
@@ -211,21 +233,25 @@ type PersonDaysInput = {
   /** The last day counted when the period reaches today; today follows it. */
   countedUntil: string | null;
   loggedByDate: Map<string, number>;
+  /** A day the view doesn't hold; the API logs nothing on one. */
+  isClosed: (date: string) => boolean;
   isOff: (date: string) => boolean;
   daysWithoutTime: Set<string>;
 };
 
 /**
  * A person's days in the period: each working day, and a weekend only when
- * time was logged on it. A finished day is logged, off, without time or with
- * nothing expected (before they started, say); today and the days to come
- * show what is already on them, a day off or time, and are otherwise pending.
+ * time was logged on it. A finished day is logged, closed, off, without time
+ * or with nothing expected (before they started, say); today and the days to
+ * come show what is already on them, a day off or time, and are otherwise
+ * pending.
  */
 export const personDays = ({
   dateFrom,
   dateTo,
   countedUntil,
   loggedByDate,
+  isClosed,
   isOff,
   daysWithoutTime,
 }: PersonDaysInput): ReportDay[] => {
@@ -248,13 +274,15 @@ export const personDays = ({
     const kind: ReportDayKind =
       minutes > 0
         ? "logged"
-        : isOff(date)
-          ? "off"
-          : when !== "past"
-            ? "pending"
-            : daysWithoutTime.has(date)
-              ? "withoutTime"
-              : "nothingExpected";
+        : isClosed(date)
+          ? "closed"
+          : isOff(date)
+            ? "off"
+            : when !== "past"
+              ? "pending"
+              : daysWithoutTime.has(date)
+                ? "withoutTime"
+                : "nothingExpected";
     days.push({ date, kind, when, minutes });
   }
 

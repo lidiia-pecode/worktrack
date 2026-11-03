@@ -1,6 +1,10 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 
-import { TeamSummaryUserResponse } from 'src/time-logs/dtos/team-summary-response.dto';
+import {
+  ClosedSpellResponse,
+  TeamMoveResponse,
+  TeamSummaryUserResponse,
+} from 'src/time-logs/dtos/team-summary-response.dto';
 import { PlanningEntryResponse } from './planning-entry-response.dto';
 
 @Exclude()
@@ -45,6 +49,15 @@ export class PlanningWeekRowResponse {
   @Expose()
   @Type(() => PlanningEntryResponse)
   entries!: PlanningEntryResponse[];
+
+  /** The days the viewer can't touch, as on the team summary. */
+  @Expose()
+  @Type(() => ClosedSpellResponse)
+  closedSpells!: ClosedSpellResponse[];
+
+  @Expose()
+  @Type(() => TeamMoveResponse)
+  moves!: TeamMoveResponse[];
 }
 
 @Exclude()

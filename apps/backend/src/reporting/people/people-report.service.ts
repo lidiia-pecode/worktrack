@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
@@ -21,6 +21,13 @@ import {
   TeamVisibilityService,
   VisibleUser,
 } from 'src/teams/team-visibility.service';
+import {
+  DateRange,
+  DaySpan,
+  TeamMove,
+  isWithinSpan,
+  movesIn,
+} from 'src/teams/days-in-view.util';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
@@ -28,6 +35,7 @@ import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import { firstDayOfMonth, lastDayOfMonth } from '../reporting-months.util';
 import {
+  DayMinutes,
   HoursReport,
   ReportCoverage,
   ReportingService,
@@ -46,9 +54,18 @@ export interface PeopleReportFigures {
   timeOffDays: number;
 }
 
+/**
+ * A team the person was in during the period, with their figures on the days
+ * they were in it, so a team's rows add up to what the team did.
+ */
 export interface ReportTeam {
   id: string;
   name: string;
+  /** Archived since; only the owner sees one, as nobody leads it. */
+  isArchived: boolean;
+  figures: PeopleReportFigures;
+  /** Where they joined or left the team inside the period. */
+  moves: TeamMove[];
 }
 
 export interface PeopleReportRow extends PeopleReportFigures {
@@ -58,7 +75,10 @@ export interface PeopleReportRow extends PeopleReportFigures {
   role: UserRole;
   /** A deactivated person is listed while their time counts in the range. */
   status: UserStatus;
-  /** Their active teams, by name; for a manager, only the teams they lead. */
+  /**
+   * The teams they were in during the period, by name, archived ones
+   * included; for a manager, only the teams they lead.
+   */
   teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
   daysWithoutTime: string[];
@@ -113,7 +133,15 @@ interface ReportBasis {
   people: VisibleUser[];
   availability: Map<string, Availability>;
   loggedDates: Map<string, Set<string>>;
+  /** Each person's minutes per day, over the days counted. */
+  days: DayMinutes[];
   teams: Map<string, ReportTeam[]>;
+}
+
+/** A team and the days a person was in it. */
+interface TeamSpans {
+  team: Pick<ReportTeam, 'id' | 'name' | 'isArchived'>;
+  spans: DaySpan[];
 }
 
 /** An owner's days count too; Needs attention leaves owners out by `role`. */
@@ -148,6 +176,72 @@ const coverageOf = ({
 const bucketSizeFor = (dateFrom: string, dateTo: string): TimelineBucketSize =>
   dateTo <= addDays(dateFrom, WEEKLY_TIMELINE_MAX_DAYS - 1) ? 'week' : 'month';
 
+/**
+ * Each person's teams with their figures on the days they were in each team,
+ * and on the days the view holds them. A person in one team for the whole
+ * period gets their whole figures under it.
+ */
+const teamPartsFrom = ({
+  range,
+  teamSpans,
+  outside,
+  availability,
+  days,
+}: {
+  range: DateRange;
+  teamSpans: Map<string, TeamSpans[]>;
+  outside: Map<string, DaySpan[]>;
+  availability: Map<string, Availability>;
+  days: DayMinutes[];
+}): Map<string, ReportTeam[]> => {
+  const daysByUser = new Map<string, DayMinutes[]>();
+  for (const day of days) {
+    const userDays = daysByUser.get(day.userId) ?? [];
+    userDays.push(day);
+    daysByUser.set(day.userId, userDays);
+  }
+
+  return new Map(
+    [...teamSpans].map(([userId, teams]) => {
+      const userOutside = outside.get(userId) ?? [];
+      const personAvailability = availability.get(userId);
+
+      return [
+        userId,
+        teams.map(({ team, spans }): ReportTeam => {
+          const counts = (date: string) =>
+            spans.some((span) => isWithinSpan(span, date)) &&
+            !userOutside.some((span) => isWithinSpan(span, date));
+          const teamDays = (daysByUser.get(userId) ?? []).filter((day) =>
+            counts(day.date),
+          );
+          const sum = (pick: (day: DayMinutes) => number) =>
+            teamDays.reduce((total, day) => total + pick(day), 0);
+          const loggedMinutes = sum((day) => day.loggedMinutes);
+          const billableMinutes = sum((day) => day.billableMinutes);
+
+          return {
+            ...team,
+            figures: {
+              loggedMinutes,
+              billableMinutes,
+              nonBillableMinutes: loggedMinutes - billableMinutes,
+              plannedMinutes: sum((day) => day.plannedMinutes),
+              expectedMinutes: (personAvailability?.byDate ?? [])
+                .filter((day) => counts(day.date))
+                .reduce((total, day) => total + day.minutes, 0),
+              timeOffDays: (personAvailability?.absenceDates ?? []).filter(
+                counts,
+              ).length,
+            },
+            moves: movesIn(range, spans),
+          };
+        }),
+      ];
+    }),
+  );
+};
+
 /** Each person's row and the totals, from what `basisFor` worked out. */
 const peopleReportFrom = ({
   hours,
@@ -174,7 +268,7 @@ const peopleReportFrom = ({
       nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
       plannedMinutes: personHours?.plannedMinutes ?? 0,
       expectedMinutes: personAvailability?.availableMinutes ?? 0,
-      timeOffDays: personAvailability?.absenceDays ?? 0,
+      timeOffDays: personAvailability?.absenceDates.length ?? 0,
       daysWithoutTime: canStillLog(person)
         ? (personAvailability?.expectedDates ?? []).filter(
             (date) => !personLoggedDates?.has(date),
@@ -248,22 +342,47 @@ export class PeopleReportService {
       teamId,
       groupBy: HoursReportGroupBy.PERSON,
     });
-    const people = await this.peopleFor(user, hours, teamId);
+    const people = await this.peopleFor(user, hours, dateFrom, dateTo, teamId);
     // Expected stops where the Hours report stopped counting, so both use the
     // same "today" even across the company's midnight.
     const countedTo = hours.countedUntil ?? dateTo;
+    const counted = { from: dateFrom, to: countedTo };
+    const hasCountedDays = countedTo >= dateFrom;
     const peopleIds = people.map((person) => person.id);
-    const [availability, loggedDates, teams] = await Promise.all([
-      countedTo >= dateFrom
+
+    // A person counts only on the days the view holds them: a manager's
+    // teams', or the filtered team's.
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      peopleIds,
+      counted,
+      teamId,
+    );
+    const outside = new Map(
+      [...inView].map(([id, days]) => [id, days.outside]),
+    );
+
+    const [availability, loggedDates, days, teamSpans] = await Promise.all([
+      hasCountedDays
         ? this.expectedHours.availabilityToDateFor(
             user.companyId,
             peopleIds,
             dateFrom,
             countedTo,
+            outside,
           )
         : new Map<string, Availability>(),
       this.loggedDatesFor(user.companyId, peopleIds, dateFrom, countedTo),
-      this.teamsFor(user, peopleIds),
+      hasCountedDays
+        ? this.reportingService.minutesPerPersonDay(
+            user,
+            peopleIds,
+            dateFrom,
+            countedTo,
+            teamId,
+          )
+        : [],
+      this.teamSpansFor(user, peopleIds, dateFrom, dateTo, teamId),
     ]);
 
     return {
@@ -274,7 +393,14 @@ export class PeopleReportService {
       people,
       availability,
       loggedDates,
-      teams,
+      days,
+      teams: teamPartsFrom({
+        range: { from: dateFrom, to: dateTo },
+        teamSpans,
+        outside,
+        availability,
+        days,
+      }),
     };
   }
 
@@ -285,22 +411,14 @@ export class PeopleReportService {
    */
   private async timelineFrom(
     user: AuthUser,
-    { dateFrom, dateTo, countedTo, hours, people, availability }: ReportBasis,
+    { dateFrom, dateTo, countedTo, hours, availability, days }: ReportBasis,
   ): Promise<Timeline> {
     const bucketSize = bucketSizeFor(dateFrom, dateTo);
     const coverage = coverageOf(hours);
 
     if (countedTo < dateFrom) return { bucketSize, buckets: [], ...coverage };
 
-    const [days, weekStartDay] = await Promise.all([
-      this.reportingService.minutesPerDay(
-        user,
-        people.map((person) => person.id),
-        dateFrom,
-        countedTo,
-      ),
-      this.weekStartDayOf(user.companyId),
-    ]);
+    const weekStartDay = await this.weekStartDayOf(user.companyId);
     const spanOf = (date: string) =>
       bucketSize === 'week'
         ? weekRange(date, weekStartDay)
@@ -358,6 +476,8 @@ export class PeopleReportService {
   private async peopleFor(
     user: AuthUser,
     hours: HoursReport,
+    dateFrom: string,
+    dateTo: string,
     teamId: string | undefined,
   ) {
     const loggedIds = new Set(
@@ -370,7 +490,11 @@ export class PeopleReportService {
     );
     const people = await this.teamVisibility.findVisibleUsers(
       user,
-      { includeUserIds: [...loggedIds], teamId },
+      {
+        includeUserIds: [...loggedIds],
+        teamId,
+        during: { from: dateFrom, to: dateTo },
+      },
       { includeSelf: true },
     );
 
@@ -383,36 +507,56 @@ export class PeopleReportService {
   }
 
   /**
-   * Each person's active teams, by name. A manager gets only the teams they
-   * lead, so Reports never names a team they can't open elsewhere.
+   * The teams each person was in during the period, by name, with the days
+   * they were in each; under a team filter only that team. A manager gets
+   * only the teams they lead, so Reports never names a team they can't open
+   * elsewhere; a team archived since is the owner's to see, marked as such.
    */
-  private async teamsFor(
+  private async teamSpansFor(
     user: AuthUser,
     userIds: string[],
-  ): Promise<Map<string, ReportTeam[]>> {
-    const byUser = new Map<string, ReportTeam[]>();
+    dateFrom: string,
+    dateTo: string,
+    teamId: string | undefined,
+  ): Promise<Map<string, TeamSpans[]>> {
+    const byUser = new Map<string, TeamSpans[]>();
     if (userIds.length === 0) return byUser;
 
+    // Every team for an owner and the teams they lead for a manager, or the
+    // filtered team among them.
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
-    if (visibleTeamIds?.length === 0) return byUser;
+    const teamIds = teamId
+      ? (visibleTeamIds ?? [teamId]).filter((id) => id === teamId)
+      : visibleTeamIds;
+    if (teamIds?.length === 0) return byUser;
 
-    const memberships = await this.membershipRepo.find({
-      relations: { team: true },
-      where: {
-        companyId: user.companyId,
-        userId: In(userIds),
-        leftAt: IsNull(),
-        team: {
-          status: TeamStatus.ACTIVE,
-          ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
-        },
-      },
-      order: { team: { name: 'ASC' } },
-    });
+    const qb = this.membershipRepo
+      .createQueryBuilder('tm')
+      .innerJoinAndSelect('tm.team', 'team')
+      .where('tm.company_id = :companyId', { companyId: user.companyId })
+      .andWhere('tm.user_id IN (:...userIds)', { userIds })
+      .andWhere('tm.joined_at <= :dateTo', { dateTo })
+      .andWhere('(tm.left_at IS NULL OR tm.left_at > :dateFrom)', { dateFrom })
+      .orderBy('team.name', 'ASC');
+    if (teamIds) qb.andWhere('team.id IN (:...teamIds)', { teamIds });
+    const memberships = await qb.getMany();
 
-    for (const { userId, team } of memberships) {
+    for (const { userId, team, joinedAt, leftAt } of memberships) {
       const teams = byUser.get(userId) ?? [];
-      teams.push({ id: team.id, name: team.name });
+      const span = { from: joinedAt, until: leftAt };
+      const known = teams.find((entry) => entry.team.id === team.id);
+      if (known) {
+        known.spans.push(span);
+      } else {
+        teams.push({
+          team: {
+            id: team.id,
+            name: team.name,
+            isArchived: team.status === TeamStatus.ARCHIVED,
+          },
+          spans: [span],
+        });
+      }
       byUser.set(userId, teams);
     }
 

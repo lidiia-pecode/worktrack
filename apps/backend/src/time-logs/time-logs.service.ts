@@ -35,7 +35,12 @@ import {
   ExpectedDay,
   ExpectedHoursService,
 } from 'src/capacity/expected-hours.service';
-import { CapacityService, InactiveSpell } from 'src/capacity/capacity.service';
+import { CapacityService } from 'src/capacity/capacity.service';
+import {
+  ClosedSpell,
+  TeamMove,
+  closedSpellsIn,
+} from 'src/teams/days-in-view.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
@@ -65,8 +70,13 @@ export interface TeamSummaryRow {
   expectedToDateMinutes: number;
   /** Every date in the range, so a grid can tell a day over the person's hours. */
   expectedByDate: ExpectedDay[];
-  /** The days nothing can be recorded on, as the API refuses them. */
-  inactiveSpells: InactiveSpell[];
+  /**
+   * The days the viewer can't touch in this row, as the API refuses them:
+   * outside the team in view, or when the person wasn't employed.
+   */
+  closedSpells: ClosedSpell[];
+  /** Where the row's days start or stop belonging to the view. */
+  moves: TeamMove[];
   /**
    * Only under a project filter: false for someone removed from the project
    * who is listed for their time on it.
@@ -130,6 +140,7 @@ export class TimeLogsService {
     this.applyTenantFilter(qb, user.companyId);
     this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 't.date' },
     });
   }
 
@@ -215,17 +226,31 @@ export class TimeLogsService {
         userId: query.userId,
         includeUserIds: loggedUserIds,
         leftAfter: { date: query.dateFrom, timezone },
+        during: { from: query.dateFrom, to: query.dateTo },
       },
       { includeSelf: true },
     );
 
     const userIds = users.map((summaryUser) => summaryUser.id);
+    const range = { from: query.dateFrom, to: query.dateTo };
+    // A row holds only the days the view does: a manager's teams', or the
+    // filtered team's. Nothing is expected of the rest.
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      userIds,
+      range,
+      query.teamId,
+    );
+    const outside = new Map(
+      [...inView].map(([id, days]) => [id, days.outside]),
+    );
     const [expected, activeDates, projectMemberIds] = await Promise.all([
       this.expectedHours.expectedFor(
         user.companyId,
         userIds,
         query.dateFrom,
         query.dateTo,
+        outside,
       ),
       this.capacity.activeDatesFor(user.companyId, userIds, timezone),
       query.projectId
@@ -244,7 +269,12 @@ export class TimeLogsService {
           expectedMinutes: expected.get(summaryUser.id)?.total ?? 0,
           expectedToDateMinutes: expected.get(summaryUser.id)?.toDate ?? 0,
           expectedByDate: expected.get(summaryUser.id)?.byDate ?? [],
-          inactiveSpells: activeDates.get(summaryUser.id)?.inactiveSpells ?? [],
+          closedSpells: closedSpellsIn(
+            range,
+            inView.get(summaryUser.id)!.outside,
+            activeDates.get(summaryUser.id)?.inactiveSpells ?? [],
+          ),
+          moves: inView.get(summaryUser.id)!.moves,
           isOnProject: projectMemberIds?.has(summaryUser.id),
           days: [],
         },
@@ -299,7 +329,7 @@ export class TimeLogsService {
 
   async create(payload: TimeLogPayload, user: AuthUser): Promise<TimeLog> {
     const ownerId = payload.userId ?? user.id;
-    await this.assertCanWriteFor(ownerId, user);
+    await this.assertCanWriteFor(ownerId, user, payload.date);
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
@@ -360,7 +390,7 @@ export class TimeLogsService {
     payload: UpdateTimeLogPayload,
     user: AuthUser,
   ): Promise<TimeLog> {
-    const ownerId = await this.resolveWritableOwner(id, user);
+    const ownerId = await this.resolveWritableOwner(id, user, payload.date);
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
@@ -460,12 +490,14 @@ export class TimeLogsService {
 
     this.teamVisibility.applyUserVisibility(qb, 't.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 't.date' },
     });
     this.teamVisibility.applyTeamMembershipFilter(
       qb,
       't.user_id',
       query.teamId,
       user,
+      { startColumn: 't.date' },
     );
 
     if (query.userId) {
@@ -575,22 +607,26 @@ export class TimeLogsService {
   }
 
   /**
-   * Who the entry belongs to, once the caller is allowed to write for them.
-   * Read before the transaction so the owner's row is the one locked, rather
-   * than the caller's.
+   * Who the entry belongs to, once the caller is allowed to write for them on
+   * its day, and on the day it moves to. Read before the transaction so the
+   * owner's row is the one locked, rather than the caller's.
    */
   private async resolveWritableOwner(
     id: string,
     user: AuthUser,
+    newDate?: string,
   ): Promise<string> {
     const log = await this.repo.findOne({
       where: { id, companyId: user.companyId },
-      select: ['id', 'userId'],
+      select: ['id', 'userId', 'date'],
     });
 
     if (!log) throw new NotFoundException('TimeLog not found');
 
-    await this.assertCanWriteFor(log.userId, user);
+    await this.assertCanWriteFor(log.userId, user, log.date);
+    if (newDate && newDate !== log.date) {
+      await this.assertCanWriteFor(log.userId, user, newDate);
+    }
 
     return log.userId;
   }
@@ -766,25 +802,28 @@ export class TimeLogsService {
 
   /** Verifies the caller may filter by a specific user id. */
   private assertUserVisible(userId: string, user: AuthUser): Promise<void> {
-    if (userId === user.id) return Promise.resolve();
-
-    return this.teamVisibility.assertCanActForUser(userId, user, {
+    return this.teamVisibility.assertCanReadUser(userId, user, {
       action: 'view',
       subject: 'time logs',
     });
   }
 
   /**
-   * Verifies the caller may write an entry belonging to someone else. Write
-   * scope mirrors read scope, deactivated people included: their last open
-   * month can still be corrected, on the days before they left.
+   * Verifies the caller may write an entry belonging to someone else on the
+   * given day. Write scope mirrors read scope, deactivated people included:
+   * their last open month can still be corrected, on the days before they
+   * left.
    */
-  private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
-    if (ownerId === user.id) return Promise.resolve();
-
-    return this.teamVisibility.assertCanActForUser(ownerId, user, {
-      action: 'change',
-      subject: 'time logs',
-    });
+  private assertCanWriteFor(
+    ownerId: string,
+    user: AuthUser,
+    date: string,
+  ): Promise<void> {
+    return this.teamVisibility.assertCanWriteUser(
+      ownerId,
+      user,
+      { action: 'change', subject: 'time logs' },
+      { from: date, to: date },
+    );
   }
 }

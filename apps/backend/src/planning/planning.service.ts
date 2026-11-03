@@ -32,12 +32,19 @@ import {
   PeriodWeek,
   PeriodWrites,
   describePeriodProblem,
-  formatDay,
   formatMinutes,
   periodProblems,
   periodWrites,
 } from './planning-period.util';
 import { Company } from 'src/companies/entities/company.entity';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import {
+  ClosedSpell,
+  DaySpan,
+  TeamMove,
+  closedSpellsIn,
+  isWithinSpan,
+} from 'src/teams/days-in-view.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
@@ -80,6 +87,9 @@ export interface PlanningWeekRow {
   dayLimits: { date: string; minutes: number }[];
   projects: Pick<Project, 'id' | 'name'>[];
   entries: PlanningEntry[];
+  /** The days the viewer can't touch in this row; see `TeamSummaryRow`. */
+  closedSpells: ClosedSpell[];
+  moves: TeamMove[];
 }
 
 export interface PlanningWeek {
@@ -104,15 +114,20 @@ export interface PeriodPreview {
   changes: { projectId: string; added: number; changed: number }[];
   /** The person's longest day in the period: the most one project can take. */
   dayLimitMinutes: number;
+  /** Working days skipped because the person was in a team the caller doesn't lead. */
+  daysInAnotherTeam: string[];
 }
 
 interface ResolvedPeriod {
   plannedDays: Set<string>;
+  daysInAnotherTeam: string[];
   problems: PeriodProblem[];
   lines: PeriodLine[];
   writes: PeriodWrites;
   dayLimitMinutes: number;
 }
+
+const PLAN_WORDING = { action: 'change', subject: 'plans' };
 
 /** Who can be planned how much on a day; see `dayLimitsFor`. */
 type DayLimitOn = (userId: string, date: string) => number;
@@ -124,8 +139,6 @@ export class PlanningService {
     private readonly repo: Repository<PlanningEntry>,
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
@@ -158,6 +171,7 @@ export class PlanningService {
     this.applyTenantFilter(qb, user.companyId);
     this.teamVisibility.applyUserVisibility(qb, 'p.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 'p.date' },
     });
   }
 
@@ -209,9 +223,10 @@ export class PlanningService {
     this.applyVisibilityFilter(qb, user);
 
     if (query.userId) {
-      if (query.userId !== user.id) {
-        await this.assertUserVisible(query.userId, user);
-      }
+      await this.teamVisibility.assertCanReadUser(query.userId, user, {
+        action: 'view',
+        subject: 'planning',
+      });
       qb.andWhere('p.user_id = :userId', { userId: query.userId });
     }
 
@@ -259,19 +274,44 @@ export class PlanningService {
       {
         teamId: query.teamId,
         includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
+        during: { from: start, to: end },
       },
       { includeSelf: true },
     );
     const userIds = users.map((row) => row.id);
+    const week = { from: start, to: end };
+    // A row holds only the days the view does, as on Team time.
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      userIds,
+      week,
+      query.teamId,
+    );
+    const outside = new Map(
+      [...inView].map(([id, days]) => [id, days.outside]),
+    );
 
-    const [available, projectsByUser, dayLimitOn] = await Promise.all([
-      this.expectedHours.expectedFor(user.companyId, userIds, start, end),
-      this.activeProjectsFor(user.companyId, userIds),
-      this.dayLimitsFor(company.id, userIds, end),
-    ]);
+    const [available, projectsByUser, dayLimitOn, activeDates] =
+      await Promise.all([
+        this.expectedHours.expectedFor(
+          user.companyId,
+          userIds,
+          start,
+          end,
+          outside,
+        ),
+        this.activeProjectsFor(user.companyId, userIds),
+        this.dayLimitsFor(company.id, userIds, end),
+        this.capacity.activeDatesFor(user.companyId, userIds, company.timezone),
+      ]);
 
     const rows = users.map((rowUser): PlanningWeekRow => {
-      const own = entries.filter((entry) => entry.userId === rowUser.id);
+      const { outside: rowOutside, moves } = inView.get(rowUser.id)!;
+      const own = entries.filter(
+        (entry) =>
+          entry.userId === rowUser.id &&
+          !rowOutside.some((span) => isWithinSpan(span, entry.date)),
+      );
 
       return {
         user: rowUser,
@@ -283,6 +323,12 @@ export class PlanningService {
         })),
         projects: projectsByUser.get(rowUser.id) ?? [],
         entries: own,
+        closedSpells: closedSpellsIn(
+          week,
+          rowOutside,
+          activeDates.get(rowUser.id)?.inactiveSpells ?? [],
+        ),
+        moves,
       };
     });
 
@@ -376,7 +422,7 @@ export class PlanningService {
         manager,
       );
 
-      await this.assertCanPlanForUser(targetUser, user);
+      await this.assertCanPlanForUser(targetUser, user, payload.date);
 
       this.assertWorkingDay(payload.date);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
@@ -436,7 +482,10 @@ export class PlanningService {
         user.companyId,
         manager,
       );
-      await this.assertCanPlanForUser(targetUser, user);
+      await this.assertCanPlanForUser(targetUser, user, entry.date);
+      if (payload.date !== undefined && payload.date !== entry.date) {
+        await this.assertCanPlanForUser(targetUser, user, payload.date);
+      }
 
       await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
@@ -524,10 +573,16 @@ export class PlanningService {
     payload: PlanPeriodPayload,
     user: AuthUser,
   ): Promise<PeriodPreview> {
-    const { plannedDays, problems, lines, writes, dayLimitMinutes } =
-      await this.dataSource.transaction((manager) =>
-        this.resolvePeriod(payload, user, manager),
-      );
+    const {
+      plannedDays,
+      daysInAnotherTeam,
+      problems,
+      lines,
+      writes,
+      dayLimitMinutes,
+    } = await this.dataSource.transaction((manager) =>
+      this.resolvePeriod(payload, user, manager),
+    );
 
     return {
       plannedDays: [...plannedDays].sort(),
@@ -539,6 +594,7 @@ export class PlanningService {
           .length,
       })),
       dayLimitMinutes,
+      daysInAnotherTeam,
     };
   }
 
@@ -565,7 +621,7 @@ export class PlanningService {
 
       if (plannedDays.size === 0) {
         throw new BadRequestException(
-          `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences and days before the person joined are skipped.`,
+          `There is no working day to plan from ${formatDay(startDate)} to ${formatDay(endDate)}: weekends, absences, days before the person joined and days in another team are skipped.`,
         );
       }
       if (problems.length > 0) {
@@ -621,7 +677,12 @@ export class PlanningService {
       user.companyId,
       manager,
     );
-    await this.assertCanPlanForUser(targetUser, user);
+    const outsideReach = await this.daysOutsideReach(
+      targetUser,
+      user,
+      startDate,
+      endDate,
+    );
 
     for (const projectId of projectIds) {
       await this.resolveProject(projectId, user.companyId, manager);
@@ -638,11 +699,13 @@ export class PlanningService {
     const company = await this.getCompany(user.companyId, manager);
     const weeks = await this.periodWeeks(company, userId, startDate, endDate);
 
-    const plannedDays = new Set(
-      weeks
-        .flatMap((week) => week.workingDays)
-        .filter((date) => date >= startDate && date <= endDate),
-    );
+    const workingDays = weeks
+      .flatMap((week) => week.workingDays)
+      .filter((date) => date >= startDate && date <= endDate);
+    const isOutside = (date: string) =>
+      outsideReach.some((span) => isWithinSpan(span, date));
+    const plannedDays = new Set(workingDays.filter((date) => !isOutside(date)));
+    const daysInAnotherTeam = workingDays.filter(isOutside);
 
     const existing = await manager
       .createQueryBuilder(PlanningEntry, 'p')
@@ -671,7 +734,14 @@ export class PlanningService {
       ),
     );
 
-    return { plannedDays, problems, lines, writes, dayLimitMinutes };
+    return {
+      plannedDays,
+      daysInAnotherTeam,
+      problems,
+      lines,
+      writes,
+      dayLimitMinutes,
+    };
   }
 
   async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
@@ -684,7 +754,7 @@ export class PlanningService {
       });
       if (!targetUser) throw new NotFoundException('User not found');
 
-      await this.assertCanPlanForUser(targetUser, user);
+      await this.assertCanPlanForUser(targetUser, user, entry.date);
       await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
       await manager.remove(PlanningEntry, entry);
@@ -715,7 +785,8 @@ export class PlanningService {
       });
       if (!targetUser) throw new NotFoundException('User not found');
 
-      await this.assertCanPlanForUser(targetUser, user);
+      // Refuses a range with no day in reach; the delete keeps to the rest.
+      await this.daysOutsideReach(targetUser, user, startDate, endDate);
       await this.assertPeriodNotLocked(
         manager,
         user.companyId,
@@ -723,7 +794,9 @@ export class PlanningService {
         endDate,
       );
 
-      const { affected } = await manager
+      // A delete has no alias, so the columns name the table.
+      const table = manager.getRepository(PlanningEntry).metadata.tableName;
+      const qb = manager
         .createQueryBuilder()
         .delete()
         .from(PlanningEntry)
@@ -733,8 +806,12 @@ export class PlanningService {
         .andWhere('date BETWEEN :startDate AND :endDate', {
           startDate,
           endDate,
-        })
-        .execute();
+        });
+      this.teamVisibility.applyUserVisibility(qb, `${table}.user_id`, user, {
+        includeSelf: true,
+        onDays: { startColumn: `${table}.date` },
+      });
+      const { affected } = await qb.execute();
 
       return { count: affected ?? 0 };
     });
@@ -774,58 +851,62 @@ export class PlanningService {
   // AUTHORIZATION HELPERS
   // ==========================================
 
+  /** Refuses a plan on `date` unless the caller may plan the person then. */
   private async assertCanPlanForUser(
     targetUser: User,
     user: AuthUser,
+    date: string,
   ): Promise<void> {
-    if (user.role === UserRole.OWNER) return;
-
     if (user.role === UserRole.EMPLOYEE) {
       throw new ForbiddenException('Employees cannot change planning');
     }
 
-    if (targetUser.id === user.id) return;
-
-    const manages = await this.teamVisibility.isUserInManagedTeams(
+    await this.teamVisibility.assertCanWriteUser(
       targetUser.id,
       user,
+      PLAN_WORDING,
+      { from: date, to: date },
     );
-
-    if (!manages) {
-      throw new ForbiddenException(
-        'You can only plan for users in teams you manage',
-      );
-    }
   }
 
-  private async assertUserVisible(
-    userId: string,
+  /**
+   * The days of a period the caller may not plan the person on, which a
+   * period plan skips: for a manager, the days the person was in a team they
+   * don't lead. Refuses an employee, and a period with no day in reach.
+   */
+  private async daysOutsideReach(
+    targetUser: User,
     user: AuthUser,
-  ): Promise<void> {
+    startDate: string,
+    endDate: string,
+  ): Promise<DaySpan[]> {
     if (user.role === UserRole.EMPLOYEE) {
-      if (userId !== user.id) {
-        throw new ForbiddenException('You can only view your own planning');
-      }
-      return;
+      throw new ForbiddenException('Employees cannot change planning');
     }
 
-    if (user.role === UserRole.MANAGER) {
-      const visible = await this.teamVisibility.isUserInManagedTeams(
-        userId,
+    const range = { from: startDate, to: endDate };
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      [targetUser.id],
+      range,
+    );
+    const { outside } = inView.get(targetUser.id)!;
+
+    // Not one day in reach: refused, as a single plan would be.
+    const reachesNoDay = outside.some(
+      (span) =>
+        span.from <= startDate && (span.until === null || span.until > endDate),
+    );
+    if (reachesNoDay) {
+      await this.teamVisibility.assertCanWriteUser(
+        targetUser.id,
         user,
+        PLAN_WORDING,
+        range,
       );
-      if (!visible) {
-        throw new ForbiddenException(
-          'You can only view planning of users in teams you manage',
-        );
-      }
-      return;
     }
 
-    const exists = await this.userRepo.exists({
-      where: { id: userId, companyId: user.companyId },
-    });
-    if (!exists) throw new NotFoundException('User not found');
+    return outside;
   }
 
   // ==========================================

@@ -32,6 +32,10 @@ export class AbsenceResponse {
   @Type(() => UserNameResponse)
   updatedBy?: UserNameResponse | null;
 
+  /** Whether the caller may change it; on a list only. */
+  @Expose()
+  canChange?: boolean;
+
   @Expose()
   createdAt!: Date;
 

@@ -44,7 +44,7 @@ const teamOf = (memberships: TeamMembership[]): Team => ({
 const asOwner = { isOwner: true, otherTeamsCount: 1 };
 
 describe("memberChangeCopy", () => {
-  it("says a new manager sees the whole team", () => {
+  it("says a new manager sees the team's records, its former members' included", () => {
     const copy = memberChangeCopy(
       { kind: "role", membership: john, roleInTeam: TeamRole.MANAGER },
       teamOf([emma, john]),
@@ -52,7 +52,9 @@ describe("memberChangeCopy", () => {
     );
 
     expect(copy.title).toBe("Make John Clarke the manager of Design?");
-    expect(copy.description).toContain("see every member of the team");
+    expect(copy.description).toBe(
+      "John Clarke can manage the team and access its time, absences and plans, including former members' records from their time in the team.",
+    );
   });
 
   it("warns when the only active manager steps down", () => {
@@ -83,7 +85,7 @@ describe("memberChangeCopy", () => {
 
     expect(copy.title).toBe("Move Emma Clarke to Design as a member?");
     expect(copy.description).toBe(
-      "They leave Platform today and no longer see Design's members. Design is then left without an active manager.",
+      "Emma Clarke leaves Platform today and no longer sees Design's members or their records. Their own records before today stay with Platform. Design is then left without an active manager.",
     );
     expect(copy.confirmText).toBe("Move");
   });
@@ -100,10 +102,12 @@ describe("memberChangeCopy", () => {
         teamOf([deactivated, john]),
         asOwner,
       ).description,
-    ).toBe("They leave the team today.");
+    ).toBe(
+      "Emma Clarke leaves Design today. Their records from before today stay with the team.",
+    );
   });
 
-  it("tells the owner a person left in no team is theirs alone to see", () => {
+  it("tells the owner the team keeps the past and a person in no team is theirs alone", () => {
     const copy = memberChangeCopy(
       { kind: "remove", membership: john },
       teamOf([emma, john]),
@@ -111,11 +115,11 @@ describe("memberChangeCopy", () => {
     );
 
     expect(copy.description).toBe(
-      "They leave the team today. They are then in no team, so only you see them.",
+      "John Clarke leaves Design today. Their records from before today stay with the team. From today, only you can access their new records.",
     );
   });
 
-  it("tells a manager they lose sight of the person", () => {
+  it("tells a manager they keep the past and lose what comes next", () => {
     const copy = memberChangeCopy(
       { kind: "remove", membership: john },
       teamOf([emma, john]),
@@ -123,7 +127,7 @@ describe("memberChangeCopy", () => {
     );
 
     expect(copy.description).toBe(
-      "They leave the team today. You will no longer see them.",
+      "John Clarke leaves the team today. You can still access their records from before today. From today, only the owner can access their new records.",
     );
   });
 
@@ -135,7 +139,7 @@ describe("memberChangeCopy", () => {
     );
 
     expect(copy.description).toBe(
-      "They leave the team today. Design is then left without an active manager.",
+      "Emma Clarke leaves Design today. Their records from before today stay with the team. Design is then left without an active manager.",
     );
   });
 });
@@ -152,7 +156,9 @@ describe("pickerChangesCopy", () => {
     });
 
     expect(copy.title).toBe("Move Anna Smith to Design?");
-    expect(copy.description).toBe("Anna Smith leaves Design Studio today.");
+    expect(copy.description).toBe(
+      "Anna Smith leaves Design Studio today. Their records before today stay with Design Studio.",
+    );
     expect(copy.confirmText).toBe("Move");
   });
 
@@ -168,7 +174,7 @@ describe("pickerChangesCopy", () => {
 
     expect(copy.title).toBe("Move 2 people to Design?");
     expect(copy.description).toBe(
-      "They leave their current team today: Anna Smith (Design Studio), Bob Jones (Delivery).",
+      "They leave their current team today: Anna Smith (Design Studio), Bob Jones (Delivery). Their records before today stay with those teams.",
     );
   });
 
@@ -183,7 +189,7 @@ describe("pickerChangesCopy", () => {
       "Move Anna Smith to Design and remove Emma Clarke?",
     );
     expect(copy.description).toBe(
-      "Anna Smith leaves Design Studio today. Removed from Design today: Emma Clarke. Design is then left without an active manager.",
+      "Anna Smith leaves Design Studio today. Their records before today stay with Design Studio. Removed from Design today: Emma Clarke. Design is then left without an active manager.",
     );
     expect(copy.confirmVariant).toBe("warning");
   });

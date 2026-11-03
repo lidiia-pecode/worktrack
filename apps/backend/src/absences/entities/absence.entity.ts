@@ -91,4 +91,10 @@ export class Absence {
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'updated_by_id' })
   updatedBy?: User | null;
+
+  /**
+   * Whether the caller may change it: every day of it within their reach,
+   * their own, or an owner's. Set on a list, not a column.
+   */
+  canChange?: boolean;
 }

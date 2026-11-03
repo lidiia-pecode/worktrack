@@ -215,6 +215,8 @@ export const PersonProjects = ({
 type PersonPanelProps = {
   person: PeopleReportRow;
   range: ReportRange;
+  /** Reports' team filter, so the days match the figures above them. */
+  teamId?: string;
   countedUntil: string | null;
   /** Day by day for a range read week by week; past it, a grid of days would run to fifty rows. */
   showsDays: boolean;
@@ -226,6 +228,7 @@ type PersonPanelProps = {
 export const PersonPanel = ({
   person,
   range,
+  teamId,
   countedUntil,
   showsDays,
   isUpdating,
@@ -255,6 +258,7 @@ export const PersonPanel = ({
           <PersonDayGrid
             person={person}
             range={range}
+            teamId={teamId}
             countedUntil={countedUntil}
             dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
           />

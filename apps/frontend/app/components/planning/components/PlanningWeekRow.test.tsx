@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
+import {
+  Absence,
+  PlanningEntry,
+  PlanningWeekRow as Row,
+  TeamMove,
+} from "@/types";
 import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 import { getProjectColor } from "@/lib/utils/project-colors";
@@ -23,6 +28,7 @@ const NORTHWIND_MONDAY = {
 const row = (
   status = UserStatus.ACTIVE,
   entries: PlanningEntry[] = [],
+  moves: TeamMove[] = [],
 ): Row => ({
   user: {
     id: "user-alice",
@@ -38,12 +44,15 @@ const row = (
   dayLimits: [],
   projects: [],
   entries,
+  closedSpells: [],
+  moves,
 });
 
 const renderRow = (
   status?: UserStatus,
   entries?: PlanningEntry[],
   absencesByDate: Record<string, Absence> = {},
+  moves?: TeamMove[],
 ) => {
   const onPlanPeriod = vi.fn();
   const onOpenDay = vi.fn();
@@ -51,7 +60,7 @@ const renderRow = (
     <table>
       <tbody>
         <PlanningWeekRow
-          row={row(status, entries)}
+          row={row(status, entries, moves)}
           weekDates={WEEK_DATES}
           absencesByDate={absencesByDate}
           isLocked={() => false}
@@ -121,6 +130,20 @@ describe("PlanningWeekRow", () => {
 
     expect(screen.getByText(/of 40h/)).toBeInTheDocument();
     expect(screen.queryByText(/free/)).not.toBeInTheDocument();
+  });
+
+  it("plans no period for someone who moved out this week, while their days still open", () => {
+    renderRow(UserStatus.ACTIVE, [], {}, [
+      { date: "2026-11-04", direction: "out" },
+    ]);
+
+    expect(
+      screen.queryByRole("button", { name: "Plan a period for Alice Cooper" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/^Moved out/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /^Monday, November 2:/ }),
+    ).toBeInTheDocument();
   });
 
   it("marks a deactivated person and keeps their row read-only", () => {

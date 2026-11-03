@@ -3,11 +3,12 @@
 import { useMemo } from "react";
 import Link from "next/link";
 
-import { Absence, PeopleReportRow, ReportRange } from "@/types";
+import { Absence, ClosedSpell, PeopleReportRow, ReportRange } from "@/types";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
+import { CLOSED_DAY_TEXT, closedSpellOn, isClosedOn } from "@/lib/utils/user";
 import {
   formatDuration,
   formatWeekdayLabel,
@@ -16,12 +17,20 @@ import {
 } from "@/lib/utils/date";
 import { personDays, ReportDay } from "@/lib/utils/report-overview";
 
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 
 const KIND_STYLES: Record<ReportDay["kind"], string> = {
   logged: "border-brand/25 bg-brand-subtle",
+  // The quiet fill a closed day has on Team time.
+  closed: "border-border/60 bg-muted/20",
   off: cn("border-border", ABSENCE_PATTERN),
   withoutTime: "border-border bg-card",
   nothingExpected: "border-border bg-card",
@@ -38,6 +47,8 @@ const WHEN_STYLES: Record<ReportDay["when"], string> = {
 
 const SWATCH = "size-3 rounded-sm border";
 
+const NO_CLOSED_SPELLS: ClosedSpell[] = [];
+
 const WarningDot = () => (
   <span className="size-1.5 shrink-0 rounded-full bg-warning" aria-hidden />
 );
@@ -53,37 +64,48 @@ const dayLabel = (date: string) =>
 type PersonDayGridProps = {
   person: PeopleReportRow;
   range: ReportRange;
+  /** A team filter closes the person's days outside the team. */
+  teamId?: string;
   countedUntil: string | null;
   dayWithoutTimeHref?: (date: string) => string;
 };
 
 /**
  * A person's working days, Monday to Friday in columns so the grid reads week
- * by week; a weekend day with time is listed under it.
+ * by week; a weekend day with time is listed under it. A day the view doesn't
+ * hold, another team's or after they left, is closed, as on Team time.
  */
 export const PersonDayGrid = ({
   person,
   range,
+  teamId,
   countedUntil,
   dayWithoutTimeHref,
 }: PersonDayGridProps) => {
   // Only this person's days, not the whole team's.
-  const summary = useTeamTimeSummary({ ...range, userId: person.userId });
+  const summary = useTeamTimeSummary({
+    ...range,
+    userId: person.userId,
+    teamId,
+  });
   const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
+  const row = summary.rows.find((entry) => entry.user.id === person.userId);
+  const closedSpells = row?.closedSpells ?? NO_CLOSED_SPELLS;
 
-  const days = useMemo(() => {
-    const row = summary.rows.find((entry) => entry.user.id === person.userId);
-
-    return personDays({
-      ...range,
-      countedUntil,
-      loggedByDate: new Map(
-        (row?.days ?? []).map((day) => [day.date, day.minutes]),
-      ),
-      isOff: (date) => Boolean(absenceOn(absences.items, date)),
-      daysWithoutTime: new Set(person.daysWithoutTime),
-    });
-  }, [summary.rows, absences.items, person, range, countedUntil]);
+  const days = useMemo(
+    () =>
+      personDays({
+        ...range,
+        countedUntil,
+        loggedByDate: new Map(
+          (row?.days ?? []).map((day) => [day.date, day.minutes]),
+        ),
+        isClosed: (date) => isClosedOn(closedSpells, date),
+        isOff: (date) => Boolean(absenceOn(absences.items, date)),
+        daysWithoutTime: new Set(person.daysWithoutTime),
+      }),
+    [row, closedSpells, absences.items, person, range, countedUntil],
+  );
 
   // Days off come from the absences, so the grid waits for both.
   if (summary.isLoading || absences.isLoading) {
@@ -106,10 +128,17 @@ export const PersonDayGrid = ({
     const absence = absenceOn(absences.items, date);
     return absence ? ABSENCE_TYPE_SHORT_LABELS[absence.type] : "Off";
   };
+  const closedText = (date: string) => {
+    const spell = closedSpellOn(closedSpells, date);
+    return spell ? CLOSED_DAY_TEXT[spell.reason] : undefined;
+  };
   const dayValue = (day: ReportDay) => {
     switch (day.kind) {
       case "logged":
         return formatDuration(day.minutes);
+      case "closed":
+        // Said on hover and to a screen reader; the day itself stays quiet.
+        return <span className="sr-only">{closedText(day.date)}</span>;
       case "off":
         return offLabel(day.date);
       case "withoutTime":
@@ -133,6 +162,16 @@ export const PersonDayGrid = ({
       label: "Day off",
       shows: days.some((day) => day.kind === "off"),
       swatch: <span className={cn(SWATCH, KIND_STYLES.off)} />,
+    },
+    {
+      label: "Not in this team",
+      shows: closedSpells.some((spell) => spell.reason === "outside-team"),
+      swatch: <span className={cn(SWATCH, KIND_STYLES.closed)} />,
+    },
+    {
+      label: "Not employed",
+      shows: closedSpells.some((spell) => spell.reason === "inactive"),
+      swatch: <span className={cn(SWATCH, KIND_STYLES.closed)} />,
     },
     {
       label: "No time logged",
@@ -208,6 +247,20 @@ export const PersonDayGrid = ({
                 >
                   {content}
                 </Link>
+              ) : day.kind === "closed" ? (
+                // Says why on hover, as a closed day on Team time does.
+                <Tooltip>
+                  <TooltipTrigger
+                    render={<div tabIndex={0} />}
+                    className={cn(
+                      dayStyle,
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    )}
+                  >
+                    {content}
+                  </TooltipTrigger>
+                  <TooltipContent>{closedText(day.date)}</TooltipContent>
+                </Tooltip>
               ) : (
                 <div className={dayStyle}>{content}</div>
               )}

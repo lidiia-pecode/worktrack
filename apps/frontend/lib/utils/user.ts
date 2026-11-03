@@ -1,7 +1,11 @@
-import { AvatarUser, InactiveSpell, User, UserName } from "@/types";
+import { AvatarUser, ClosedSpell, TeamMove, User, UserName } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
-import { formatDayMonthYearLabel, isoDateInTimeZone } from "./date";
+import {
+  formatDayMonthLabel,
+  formatDayMonthYearLabel,
+  isoDateInTimeZone,
+} from "./date";
 
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
@@ -62,19 +66,32 @@ export const deactivatedOnLabel = (
       )
     : null;
 
-/** Whether a day falls in one of the spells someone was deactivated for, as the API checks. */
-export const isInactiveOn = (spells: InactiveSpell[], date: string) =>
-  spells.some(
+/** The closed spell a day falls in, as the API refuses it, if any. */
+export const closedSpellOn = (spells: ClosedSpell[], date: string) =>
+  spells.find(
     (spell) =>
       spell.from <= date && (spell.until === null || date < spell.until),
   );
+
+export const isClosedOn = (spells: ClosedSpell[], date: string) =>
+  Boolean(closedSpellOn(spells, date));
+
+/** What a closed day says on hover and to a screen reader. */
+export const CLOSED_DAY_TEXT: Record<ClosedSpell["reason"], string> = {
+  "outside-team": "Not in this team on this day",
+  inactive: "Not employed on this day",
+};
+
+/** "Moved out · 14 Oct" or "Joined · 14 Oct"; no team is named. */
+export const moveLabel = ({ date, direction }: TeamMove) =>
+  `${direction === "in" ? "Joined" : "Moved out"} · ${formatDayMonthLabel(date)}`;
 
 /**
  * Whether the viewer may create, edit and delete someone's time entries.
  * Write access follows what the viewer can already see, so anyone whose row
  * reaches the team grid is also someone they may correct; everyone else only
- * ever edits their own. The backend enforces the same rule; it refuses the days
- * someone was deactivated for (`isInactiveOn`), which the caller checks.
+ * ever edits their own. The backend enforces the same rule; it refuses a row's
+ * closed days (`isClosedOn`), which the caller checks.
  */
 export const canWriteTimeLogsFor = (
   role: string | undefined,

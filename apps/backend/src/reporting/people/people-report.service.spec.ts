@@ -416,7 +416,7 @@ describe('PeopleReportService', () => {
   });
 
   describe('teams', () => {
-    it("names each person's active teams, leaving out an archived one", async () => {
+    it("names each person's teams, an archived one marked for the owner", async () => {
       const [design, archived] = await dataSource.getRepository(Team).save([
         { companyId, name: `Design ${RUN}` },
         { companyId, name: `Archived ${RUN}`, status: TeamStatus.ARCHIVED },
@@ -436,12 +436,21 @@ describe('PeopleReportService', () => {
       const nobody = await rowFor(owner, partTimer);
       await dataSource.getRepository(Team).delete([design.id, archived.id]);
 
-      expect(forOwner?.teams).toEqual([
-        { id: design.id, name: `Design ${RUN}` },
-        { id: teamId, name: `Team ${RUN}` },
+      const named = (row: typeof forOwner) =>
+        row?.teams.map(({ id, name, isArchived }) => ({
+          id,
+          name,
+          isArchived,
+        }));
+      expect(named(forOwner)).toEqual([
+        { id: archived.id, name: `Archived ${RUN}`, isArchived: true },
+        { id: design.id, name: `Design ${RUN}`, isArchived: false },
+        { id: teamId, name: `Team ${RUN}`, isArchived: false },
       ]);
-      // The manager leads only the first team, so the other isn't named.
-      expect(forManager?.teams).toEqual([{ id: teamId, name: `Team ${RUN}` }]);
+      // The manager leads only one of them, so the others aren't named.
+      expect(named(forManager)).toEqual([
+        { id: teamId, name: `Team ${RUN}`, isArchived: false },
+      ]);
       expect(nobody?.teams).toEqual([]);
     });
   });
@@ -514,6 +523,7 @@ describe('PeopleReportService', () => {
       expect.any(Array),
       addDays(today, -10),
       addDays(today, -1),
+      expect.any(Map),
     );
     walk.mockRestore();
   });
@@ -712,5 +722,115 @@ describe('PeopleReportService', () => {
         dateTo: '2026-01-02',
       }),
     ).rejects.toThrow(BadRequestException);
+  });
+  describe('a move between teams', () => {
+    // Emma is in North until Friday 13 March and in South from Monday 16.
+    const MOVE_DAY = '2026-03-16';
+    const NORTH_WORKING_DAYS = 10;
+    const SOUTH_WORKING_DAYS = WORKING_DAYS_IN_MARCH - NORTH_WORKING_DAYS;
+
+    let northManager: AuthUser;
+    let southManager: AuthUser;
+    let mover: string;
+    let northId: string;
+    let southId: string;
+
+    beforeAll(async () => {
+      northManager = await createUser('Northmanager', UserRole.MANAGER);
+      southManager = await createUser('Southmanager', UserRole.MANAGER);
+      mover = (await createUser('Emma', UserRole.EMPLOYEE)).id;
+
+      const [north, south] = await dataSource.getRepository(Team).save([
+        { companyId, name: `North ${RUN}` },
+        { companyId, name: `South ${RUN}` },
+      ]);
+      northId = north.id;
+      southId = south.id;
+      const membership = (
+        teamOf: string,
+        userId: string,
+        roleInTeam: TeamRole,
+        joinedAt = '2020-01-01',
+        leftAt: string | null = null,
+      ) => ({
+        companyId,
+        teamId: teamOf,
+        userId,
+        roleInTeam,
+        joinedAt,
+        leftAt,
+      });
+      await dataSource
+        .getRepository(TeamMembership)
+        .save([
+          membership(northId, northManager.id, TeamRole.MANAGER),
+          membership(southId, southManager.id, TeamRole.MANAGER),
+          membership(northId, mover, TeamRole.MEMBER, '2020-01-01', MOVE_DAY),
+          membership(southId, mover, TeamRole.MEMBER, MOVE_DAY),
+        ]);
+
+      await dataSource.getRepository(TimeLog).save(
+        [
+          { date: '2026-03-12', isBillable: true },
+          { date: '2026-03-18', isBillable: false },
+        ].map((log) => ({
+          ...log,
+          companyId,
+          userId: mover,
+          projectActivityId,
+          minutes: FULL_DAY,
+        })),
+      );
+    });
+
+    it("counts a mover's days for each team, and both parts under the owner", async () => {
+      expect(await rowFor(northManager, mover)).toMatchObject({
+        loggedMinutes: FULL_DAY,
+        expectedMinutes: NORTH_WORKING_DAYS * FULL_DAY,
+        teams: [
+          {
+            id: northId,
+            figures: { loggedMinutes: FULL_DAY, billableMinutes: FULL_DAY },
+            moves: [{ date: MOVE_DAY, direction: 'out' }],
+          },
+        ],
+      });
+      expect(await rowFor(southManager, mover)).toMatchObject({
+        loggedMinutes: FULL_DAY,
+        expectedMinutes: SOUTH_WORKING_DAYS * FULL_DAY,
+        teams: [{ id: southId, moves: [{ date: MOVE_DAY, direction: 'in' }] }],
+      });
+
+      const forOwner = await rowFor(owner, mover);
+      expect(forOwner).toMatchObject({
+        loggedMinutes: 2 * FULL_DAY,
+        expectedMinutes: WORKING_DAYS_IN_MARCH * FULL_DAY,
+      });
+      expect(
+        forOwner?.teams.map(({ id, figures }) => [
+          id,
+          figures.loggedMinutes,
+          figures.expectedMinutes,
+        ]),
+      ).toEqual([
+        [northId, FULL_DAY, NORTH_WORKING_DAYS * FULL_DAY],
+        [southId, FULL_DAY, SOUTH_WORKING_DAYS * FULL_DAY],
+      ]);
+    });
+
+    it("keeps each team's export and timeline to its own days", async () => {
+      const exportDates = async (team: string) =>
+        (await reporting.getHoursExport(owner, { ...MARCH, teamId: team }))
+          .filter((row) => row.email.startsWith('Emma'))
+          .map((row) => row.date);
+
+      expect(await exportDates(northId)).toEqual(['2026-03-12']);
+      expect(await exportDates(southId)).toEqual(['2026-03-18']);
+
+      const { timeline } = await service.getOverview(southManager, MARCH);
+      expect(
+        timeline.buckets.reduce((sum, bucket) => sum + bucket.loggedMinutes, 0),
+      ).toBe(FULL_DAY);
+    });
   });
 });

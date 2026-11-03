@@ -151,6 +151,20 @@ const project = (
   plannedMinutes: plannedHours * HOUR,
 });
 
+/** In the given teams for the whole period, with all of their figures. */
+const inTeams = (
+  row: PeopleReportRow,
+  ...teams: { id: string; name: string }[]
+): PeopleReportRow => ({
+  ...row,
+  teams: teams.map((team) => ({
+    ...team,
+    isArchived: false,
+    figures: row,
+    moves: [],
+  })),
+});
+
 const peopleReport = (rows: PeopleReportRow[]): PeopleReport => ({
   rows,
   totals: rows.reduce(
@@ -320,8 +334,8 @@ describe("ReportsView", () => {
     const core = { id: "core", name: "Core Development" };
     showReports(
       peopleReport([
-        { ...team[0], teams: [core], daysWithoutTime: ["2026-10-02"] },
-        { ...team[1], teams: [core] },
+        inTeams({ ...team[0], daysWithoutTime: ["2026-10-02"] }, core),
+        inTeams(team[1], core),
         person("Grace Morgan", 10, 0, 0),
       ]),
       projectsReport(projects),
@@ -362,10 +376,12 @@ describe("ReportsView", () => {
 
   it("folds a long list to its teams, and opens them on request", async () => {
     const user = userEvent.setup();
-    const many = Array.from({ length: 16 }, (_, i) => ({
-      ...person(`Person ${String(i).padStart(2, "0")}`, 40, 40, 40),
-      teams: [{ id: i < 8 ? "a" : "b", name: i < 8 ? "Alpha" : "Beta" }],
-    }));
+    const many = Array.from({ length: 16 }, (_, i) =>
+      inTeams(person(`Person ${String(i).padStart(2, "0")}`, 40, 40, 40), {
+        id: i < 8 ? "a" : "b",
+        name: i < 8 ? "Alpha" : "Beta",
+      }),
+    );
     showReports(peopleReport(many), projectsReport(projects));
 
     const people = screen.getByRole("region", { name: "People" });

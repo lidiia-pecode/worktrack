@@ -32,10 +32,20 @@ export async function seedTeams(dataSource: DataSource, companyId: string) {
 
       if (!user) throw new Error(`Team member "${entry.email}" not found`);
 
+      // A membership starts with the account, as an invitation's does, so a
+      // team's history covers everything the person logged.
+      const joinedAt =
+        entry.joinedOn ??
+        (isArchived
+          ? dayOfWeek(ARCHIVED_TEAM_JOINED_DAY)
+          : user.createdAt.toISOString().slice(0, 10));
+      const leftAt =
+        entry.leftOn ?? (isArchived ? dayOfWeek(ARCHIVED_TEAM_LEFT_DAY) : null);
+
       const existing = await membershipRepo.findOneBy({
         teamId: team.id,
         userId: user.id,
-        leftAt: isArchived ? Not(IsNull()) : IsNull(),
+        leftAt: leftAt ? Not(IsNull()) : IsNull(),
       });
 
       if (!existing) {
@@ -45,8 +55,8 @@ export async function seedTeams(dataSource: DataSource, companyId: string) {
             teamId: team.id,
             userId: user.id,
             roleInTeam: entry.roleInTeam,
-            joinedAt: dayOfWeek(isArchived ? ARCHIVED_TEAM_JOINED_DAY : 0),
-            leftAt: isArchived ? dayOfWeek(ARCHIVED_TEAM_LEFT_DAY) : null,
+            joinedAt,
+            leftAt,
           }),
         );
       }

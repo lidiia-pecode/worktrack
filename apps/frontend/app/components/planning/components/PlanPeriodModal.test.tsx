@@ -76,6 +76,8 @@ const ALICE: PlanningWeekRow = {
     { id: "project-internal", name: "Internal" },
   ],
   entries: [],
+  closedSpells: [],
+  moves: [],
 };
 
 const OCTOBER_DAYS = Array.from({ length: 22 }, (_, i) => {
@@ -142,6 +144,7 @@ describe("PlanPeriodModal", () => {
     server.deletePeriodPlans.mockReset();
     server.preview = {
       plannedDays: OCTOBER_DAYS,
+      daysInAnotherTeam: [],
       problems: [],
       changes: [],
       dayLimitMinutes: 480,
@@ -192,6 +195,7 @@ describe("PlanPeriodModal", () => {
   it("lists what is already planned and the absences skipped, and saves nothing untouched", () => {
     server.preview = {
       plannedDays: OCTOBER_DAYS.slice(0, 16),
+      daysInAnotherTeam: [],
       dayLimitMinutes: 480,
       problems: [],
       changes: [],
@@ -229,6 +233,7 @@ describe("PlanPeriodModal", () => {
   it("explains a period with no working days", () => {
     server.preview = {
       plannedDays: [],
+      daysInAnotherTeam: [],
       problems: [],
       changes: [],
       dayLimitMinutes: 480,
@@ -265,6 +270,7 @@ describe("PlanPeriodModal", () => {
     });
     server.preview = {
       plannedDays: OCTOBER_DAYS,
+      daysInAnotherTeam: [],
       dayLimitMinutes: 480,
       problems: [overDay("2026-10-12"), overDay("2026-10-13")],
       changes: [],
@@ -361,6 +367,7 @@ describe("PlanPeriodModal", () => {
     );
     server.preview = {
       plannedDays: OCTOBER_DAYS,
+      daysInAnotherTeam: [],
       dayLimitMinutes: 480,
       problems: [],
       changes: [{ projectId: "project-internal", added: 0, changed: 2 }],

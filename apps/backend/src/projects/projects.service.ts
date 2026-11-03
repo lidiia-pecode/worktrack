@@ -285,8 +285,10 @@ export class ProjectsService {
       .addOrderBy('u.lastName', 'ASC')
       .addOrderBy('u.id', 'ASC');
 
+    // A project's roster is about now.
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
       includeSelf: true,
+      onDays: 'today',
     });
 
     return qb;
@@ -771,12 +773,11 @@ export class ProjectsService {
   ) {
     const targetUserId = query.userId ?? user.id;
 
-    if (targetUserId !== user.id) {
-      await this.teamVisibility.assertCanActForUser(targetUserId, user, {
-        action: 'list',
-        subject: 'projects',
-      });
-    }
+    // Whoever may log time for the person, on any day, sees what they can log.
+    await this.teamVisibility.assertCanReadUser(targetUserId, user, {
+      action: 'list',
+      subject: 'projects',
+    });
 
     const [results, count] = await this.projectActivityRepo
       .createQueryBuilder('pa')

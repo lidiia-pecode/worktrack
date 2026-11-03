@@ -1,3 +1,5 @@
+import { formatDay } from 'src/lib/utils/format-day.util';
+
 import { PlanningEntry } from './entities/planning-entry.entity';
 
 export interface PeriodWeek {
@@ -21,15 +23,6 @@ export const formatMinutes = (minutes: number): string => {
   const rest = minutes % 60;
   return rest ? `${hours}h ${rest}m` : `${hours}h`;
 };
-
-/** "Thu 20 Nov", or "20 Nov" without the weekday. */
-export const formatDay = (date: string, withWeekday = true): string =>
-  new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', {
-    weekday: withWeekday ? 'short' : undefined,
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'UTC',
-  });
 
 /** One project of a period plan and the hours it gets each day. */
 export interface PeriodLine {

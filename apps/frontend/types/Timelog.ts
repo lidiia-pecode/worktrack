@@ -78,10 +78,21 @@ export interface TeamSummaryUser {
   deactivatedAt: string | null;
 }
 
-/** Deactivated from `from` up to the day before `until`; `until` is null while they still are. */
-export interface InactiveSpell {
+/**
+ * Days a row holds that the viewer can't touch, from `from` up to the day
+ * before `until` (null: no end): outside the team in view, or while the person
+ * wasn't employed.
+ */
+export interface ClosedSpell {
   from: string;
   until: string | null;
+  reason: "outside-team" | "inactive";
+}
+
+/** Where a row's days start (`in`) or stop (`out`) belonging to the view. */
+export interface TeamMove {
+  date: string;
+  direction: "in" | "out";
 }
 
 export interface TeamSummaryDay {
@@ -102,8 +113,9 @@ export interface TeamSummaryRow {
   expectedToDateMinutes: number;
   /** Every date of the range, so a day over the person's hours can be marked. */
   expectedByDate: ExpectedDay[];
-  /** The days nothing can be recorded on, in the company's time zone. */
-  inactiveSpells: InactiveSpell[];
+  /** The days the viewer can't touch, in the company's time zone. */
+  closedSpells: ClosedSpell[];
+  moves: TeamMove[];
   /** Only under a project filter: false for someone removed from it since. */
   isOnProject?: boolean;
   days: TeamSummaryDay[];

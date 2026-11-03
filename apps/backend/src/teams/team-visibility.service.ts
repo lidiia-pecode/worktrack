@@ -4,19 +4,49 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, ObjectLiteral, Repository, SelectQueryBuilder } from 'typeorm';
+import { In, IsNull, Repository, WhereExpressionBuilder } from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
+import { formatDay } from 'src/lib/utils/format-day.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+
+import {
+  DateRange,
+  DaySpan,
+  TeamMove,
+  coversADay,
+  daysOutside,
+  movesIn,
+} from './days-in-view.util';
 
 /** Wording for the refusal, e.g. `{ action: 'view', subject: 'time logs' }`. */
 export interface UserScopeWording {
   action: string;
   subject: string;
 }
+
+/**
+ * The people a manager reaches and the days they reach them on: one row per
+ * membership in a team the manager leads now, covering `joined_at` up to the
+ * day before `left_at`, so the day someone moves belongs to their new team.
+ * Every manager check reads these rows, so another source of reach is one
+ * more set of rows here.
+ */
+const MANAGED_REACH_SQL = `
+  SELECT tm_member.user_id AS user_id,
+    tm_mgr.team_id AS team_id,
+    tm_member.joined_at AS reach_from,
+    tm_member.left_at AS reach_to
+  FROM team_memberships tm_mgr
+  JOIN team_memberships tm_member ON tm_member.team_id = tm_mgr.team_id
+  WHERE tm_mgr.user_id = :reachCallerId
+    AND tm_mgr.role_in_team = :reachManagerRole
+    AND tm_mgr.left_at IS NULL
+    AND tm_mgr.company_id = :reachCompanyId
+    AND tm_member.company_id = :reachCompanyId`;
 
 export type VisibleUser = Pick<
   User,
@@ -45,6 +75,33 @@ export interface VisibleUsersFilter {
    * left after its first day, where the company is.
    */
   leftAfter?: { date: string; timezone: string };
+  /**
+   * The view's days: a manager, and a team filter, keep the people in the
+   * team on any of them. Without it, the people in it today.
+   */
+  during?: { from: string; to: string };
+}
+
+/** A record's days, as SQL: one date column, or a range's start and end. */
+interface OnDays {
+  startColumn: string;
+  endColumn?: string;
+}
+
+/**
+ * The days a check reaches a person on: a record's days, or `'today'` for a
+ * list about now (People, pickers, project rosters), the people in a
+ * manager's teams today. Named at every call site, so a list can't fall back
+ * to current membership by leaving it out.
+ */
+type ReachDays = OnDays | 'today';
+
+/** What a view holds of one person's range; see `daysInView`. */
+export interface DaysInView {
+  /** The days outside the view: another team's, or a team not led. */
+  outside: DaySpan[];
+  /** Where the person's days start or stop belonging to the view. */
+  moves: TeamMove[];
 }
 
 interface VisibilityOptions {
@@ -53,6 +110,8 @@ interface VisibilityOptions {
    * team can still read their own data and pick themselves.
    */
   includeSelf?: boolean;
+  /** The record's days: a manager reaches it on any of them; or `'today'`. */
+  onDays: ReachDays;
 }
 
 /**
@@ -70,61 +129,51 @@ export class TeamVisibilityService {
 
   /**
    * Narrows a query to the users the caller may read: an owner sees everyone
-   * in the company, a manager sees the members of the teams they currently
-   * lead, and anyone else sees only themselves.
+   * in the company, a manager the members of the teams they lead now, on the
+   * record's days or today (`onDays`), and anyone else only themselves.
    *
    * `userColumn` is the column holding the owning user, e.g. `t.user_id`.
    * Tenant scoping stays with the caller — this only filters by user.
    */
-  applyUserVisibility<T extends ObjectLiteral>(
-    qb: SelectQueryBuilder<T>,
+  applyUserVisibility(
+    qb: WhereExpressionBuilder,
     userColumn: string,
     user: AuthUser,
-    options: VisibilityOptions = {},
+    options: VisibilityOptions,
   ): void {
     if (user.role === UserRole.OWNER) return;
 
     if (user.role === UserRole.MANAGER) {
-      const managedTeams = `${userColumn} IN (
-          SELECT tm_member.user_id
-          FROM team_memberships tm_mgr
-          JOIN team_memberships tm_member ON tm_member.team_id = tm_mgr.team_id
-          WHERE tm_mgr.user_id = :visibilityUserId
-            AND tm_mgr.role_in_team = :visibilityManagerRole
-            AND tm_mgr.left_at IS NULL
-            AND tm_member.left_at IS NULL
-            AND tm_mgr.company_id = :visibilityCompanyId
-            AND tm_member.company_id = :visibilityCompanyId
+      const reached = `EXISTS (
+          SELECT 1 FROM (${MANAGED_REACH_SQL}) reach
+          WHERE reach.user_id = ${userColumn}
+            AND ${coversDays('reach.reach_from', 'reach.reach_to', options.onDays)}
         )`;
 
       qb.andWhere(
         options.includeSelf
-          ? `(${managedTeams} OR ${userColumn} = :visibilityUserId)`
-          : managedTeams,
-        {
-          visibilityUserId: user.id,
-          visibilityManagerRole: TeamRole.MANAGER,
-          visibilityCompanyId: user.companyId,
-        },
+          ? `(${reached} OR ${userColumn} = :reachCallerId)`
+          : reached,
+        this.reachParameters(user),
       );
       return;
     }
 
-    qb.andWhere(`${userColumn} = :visibilityUserId`, {
-      visibilityUserId: user.id,
+    qb.andWhere(`${userColumn} = :reachCallerId`, {
+      reachCallerId: user.id,
     });
   }
 
   /**
-   * Of the given user ids, the ones the caller may see. Same rule as
-   * `applyUserVisibility`, for callers holding a list of ids rather than a
-   * query — including its convention that tenant scoping stays with the
-   * caller, so an owner gets every id back untouched.
+   * Of the given user ids, the ones the caller may see today: the `'today'`
+   * form of `applyUserVisibility`, for callers holding a list of ids rather
+   * than a query — including its convention that tenant scoping stays with
+   * the caller, so an owner gets every id back untouched.
    */
   async filterVisibleUserIds(
     userIds: string[],
     user: AuthUser,
-    options: VisibilityOptions = {},
+    options: Pick<VisibilityOptions, 'includeSelf'> = {},
   ): Promise<Set<string>> {
     const uniqueIds = Array.from(new Set(userIds));
     if (!uniqueIds.length) return new Set();
@@ -148,7 +197,7 @@ export class TeamVisibilityService {
       })
       .andWhere('tm.left_at IS NULL');
 
-    this.applyUserVisibility(qb, 'tm.user_id', user);
+    this.applyUserVisibility(qb, 'tm.user_id', user, { onDays: 'today' });
 
     const rows = await qb.getRawMany<{ userId: string }>();
 
@@ -156,36 +205,118 @@ export class TeamVisibilityService {
   }
 
   /**
-   * Refuses the caller when the target user is outside their scope: an owner
-   * may act for anyone in their company, a manager for the people in the teams
-   * they lead, anyone else only for themselves.
+   * Refuses the caller when they may read none of the person's records: an
+   * owner reads anyone in their company, a manager the people in the teams
+   * they lead, on the days they were in them, anyone else only themselves.
+   * Which records, by day, is for the query to narrow (`onDays`).
    */
-  async assertCanActForUser(
+  async assertCanReadUser(
     userId: string,
     user: AuthUser,
     wording: UserScopeWording,
   ): Promise<void> {
-    if (user.role === UserRole.OWNER) {
-      const exists = await this.userRepo.exists({
-        where: { id: userId, companyId: user.companyId },
-      });
-      if (!exists) throw new NotFoundException('User not found');
+    if (await this.isSelfOrOwnerOf(userId, user)) return;
+
+    if (
+      user.role === UserRole.MANAGER &&
+      (await this.reachSpans(userId, user)).some(coversADay)
+    ) {
       return;
     }
 
-    if (user.role === UserRole.MANAGER) {
-      if (await this.isUserInManagedTeams(userId, user)) return;
+    throw outOfScope(user, wording);
+  }
+
+  /**
+   * Refuses the caller unless they may write the person's records on every
+   * day of the range: an owner for anyone in their company, a manager on the
+   * days the person was in a team they lead, anyone else only for themselves.
+   */
+  async assertCanWriteUser(
+    userId: string,
+    user: AuthUser,
+    wording: UserScopeWording,
+    range: DateRange,
+  ): Promise<void> {
+    if (await this.isSelfOrOwnerOf(userId, user)) return;
+
+    const spans =
+      user.role === UserRole.MANAGER ? await this.reachSpans(userId, user) : [];
+
+    // Someone the manager reaches on other days is named with the day missed;
+    // anyone else is refused without saying who they are.
+    if (spans.length > 0) {
+      const firstMissed = daysOutside(range, spans).at(0)?.from;
+      if (!firstMissed) return;
+
+      const person = await this.userRepo.findOne({
+        select: ['id', 'firstName', 'lastName'],
+        where: { id: userId, companyId: user.companyId },
+      });
+      if (!person) throw new NotFoundException('User not found');
 
       throw new ForbiddenException(
-        `You can only ${wording.action} ${wording.subject} of users in teams you manage`,
+        `You can't ${wording.action} ${wording.subject} here: ${person.firstName} ${person.lastName} isn't in a team you lead on ${formatDay(firstMissed)}`,
       );
     }
 
-    if (userId !== user.id) {
-      throw new ForbiddenException(
-        `You can only ${wording.action} your own ${wording.subject}`,
-      );
-    }
+    throw outOfScope(user, wording);
+  }
+
+  /**
+   * True for the caller themselves and for an owner acting on someone in
+   * their company; an owner naming nobody in it is refused as not found.
+   */
+  private async isSelfOrOwnerOf(
+    userId: string,
+    user: AuthUser,
+  ): Promise<boolean> {
+    if (userId === user.id) return true;
+    if (user.role !== UserRole.OWNER) return false;
+
+    const exists = await this.userRepo.exists({
+      where: { id: userId, companyId: user.companyId },
+    });
+    if (!exists) throw new NotFoundException('User not found');
+    return true;
+  }
+
+  /** The days the manager reaches the person on. */
+  private reachSpans(userId: string, user: AuthUser): Promise<DaySpan[]> {
+    return this.managedSpans(user, [userId]);
+  }
+
+  /**
+   * The `MANAGED_REACH_SQL` rows of the given people, under a team filter only
+   * that team's, with the days as text so they compare as the app's do.
+   */
+  private managedSpans(
+    user: AuthUser,
+    userIds: string[],
+    teamId?: string,
+  ): Promise<(DaySpan & { userId: string })[]> {
+    const qb = this.repo.manager
+      .createQueryBuilder()
+      .select([
+        'reach.user_id AS "userId"',
+        `to_char(reach.reach_from, 'YYYY-MM-DD') AS "from"`,
+        `to_char(reach.reach_to, 'YYYY-MM-DD') AS "until"`,
+      ])
+      .from(`(${MANAGED_REACH_SQL})`, 'reach')
+      .where('reach.user_id IN (:...reachUserIds)', { reachUserIds: userIds })
+      .setParameters(this.reachParameters(user));
+    if (teamId)
+      qb.andWhere('reach.team_id = :reachTeamId', { reachTeamId: teamId });
+
+    return qb.getRawMany();
+  }
+
+  private reachParameters(user: AuthUser) {
+    return {
+      reachCallerId: user.id,
+      reachManagerRole: TeamRole.MANAGER,
+      reachCompanyId: user.companyId,
+    };
   }
 
   /**
@@ -195,7 +326,7 @@ export class TeamVisibilityService {
   async findVisibleUsers(
     user: AuthUser,
     filter: VisibleUsersFilter = {},
-    options: VisibilityOptions = {},
+    options: Pick<VisibilityOptions, 'includeSelf'> = {},
   ): Promise<VisibleUser[]> {
     const qb = this.userRepo
       .createQueryBuilder('u')
@@ -212,8 +343,21 @@ export class TeamVisibilityService {
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
 
-    this.applyUserVisibility(qb, 'u.id', user, options);
-    this.applyTeamMembershipFilter(qb, 'u.id', filter.teamId, user);
+    const onDays: ReachDays = filter.during
+      ? {
+          startColumn: 'CAST(:visibleFrom AS date)',
+          endColumn: 'CAST(:visibleTo AS date)',
+        }
+      : 'today';
+    if (filter.during) {
+      qb.setParameters({
+        visibleFrom: filter.during.from,
+        visibleTo: filter.during.to,
+      });
+    }
+
+    this.applyUserVisibility(qb, 'u.id', user, { ...options, onDays });
+    this.applyTeamMembershipFilter(qb, 'u.id', filter.teamId, user, onDays);
 
     if (filter.userId) {
       qb.andWhere('u.id = :visibleUserId', { visibleUserId: filter.userId });
@@ -271,32 +415,115 @@ export class TeamVisibilityService {
   }
 
   /**
-   * Filters the query to users who are currently members of the given team.
+   * Filters the query to the members of the given team, on the record's days
+   * or today (`onDays`).
    *
    * The caller's visibility scope is applied separately, so passing a team
    * the caller cannot access results in no matching users.
    */
-  applyTeamMembershipFilter<T extends ObjectLiteral>(
-    qb: SelectQueryBuilder<T>,
+  applyTeamMembershipFilter(
+    qb: WhereExpressionBuilder,
     userColumn: string,
     teamId: string | undefined,
     user: AuthUser,
+    onDays: ReachDays,
   ): void {
     if (!teamId) return;
 
     qb.andWhere(
-      `${userColumn} IN (
-        SELECT tm_team.user_id
+      `EXISTS (
+        SELECT 1
         FROM team_memberships tm_team
-        WHERE tm_team.team_id = :teamFilterTeamId
-          AND tm_team.left_at IS NULL
+        WHERE tm_team.user_id = ${userColumn}
+          AND tm_team.team_id = :teamFilterTeamId
           AND tm_team.company_id = :teamFilterCompanyId
+          AND ${coversDays('tm_team.joined_at', 'tm_team.left_at', onDays)}
       )`,
       {
         teamFilterTeamId: teamId,
         teamFilterCompanyId: user.companyId,
       },
     );
+  }
+
+  /**
+   * For each person, what a view of the range holds of them: a manager's view
+   * the days they were in a team the manager leads, a team filter that team's
+   * days, and anything else every day. Their own row is every day for a
+   * manager, as their own records always are.
+   */
+  async daysInView(
+    user: AuthUser,
+    userIds: string[],
+    range: DateRange,
+    teamId?: string,
+  ): Promise<Map<string, DaysInView>> {
+    const spans = await this.viewSpans(user, userIds, teamId);
+
+    return new Map(
+      userIds.map((id) => {
+        // Undefined holds every day.
+        const inView =
+          !spans || (id === user.id && !teamId)
+            ? undefined
+            : (spans.get(id) ?? []);
+        return [
+          id,
+          {
+            outside: daysOutside(range, inView),
+            moves: movesIn(range, inView),
+          },
+        ];
+      }),
+    );
+  }
+
+  /**
+   * The memberships that give each person's days in a view, or undefined
+   * when the view holds every day.
+   */
+  private async viewSpans(
+    user: AuthUser,
+    userIds: string[],
+    teamId?: string,
+  ): Promise<Map<string, DaySpan[]> | undefined> {
+    if (userIds.length === 0) return undefined;
+
+    let rows: (DaySpan & { userId: string })[];
+    if (user.role === UserRole.MANAGER) {
+      rows = await this.managedSpans(user, userIds, teamId);
+      // Their own days under a team filter are that team's, led or not.
+      if (teamId && userIds.includes(user.id)) {
+        rows.push(...(await this.membershipSpans(user, teamId, [user.id])));
+      }
+    } else if (teamId) {
+      rows = await this.membershipSpans(user, teamId, userIds);
+    } else {
+      return undefined;
+    }
+
+    const byUser = new Map<string, DaySpan[]>();
+    for (const { userId, from, until } of rows) {
+      byUser.set(userId, [...(byUser.get(userId) ?? []), { from, until }]);
+    }
+    return byUser;
+  }
+
+  /** The given people's memberships of one team, as spans. */
+  private async membershipSpans(
+    user: AuthUser,
+    teamId: string,
+    userIds: string[],
+  ): Promise<(DaySpan & { userId: string })[]> {
+    const memberships = await this.repo.find({
+      select: ['userId', 'joinedAt', 'leftAt'],
+      where: { companyId: user.companyId, teamId, userId: In(userIds) },
+    });
+    return memberships.map(({ userId, joinedAt, leftAt }) => ({
+      userId,
+      from: joinedAt,
+      until: leftAt,
+    }));
   }
 
   /**
@@ -322,22 +549,29 @@ export class TeamVisibilityService {
 
   /** True when the caller currently leads a team the given user belongs to. */
   async isUserInManagedTeams(userId: string, user: AuthUser): Promise<boolean> {
-    return this.repo
-      .createQueryBuilder('tm_mgr')
-      .innerJoin(
-        TeamMembership,
-        'tm_member',
-        'tm_member.team_id = tm_mgr.team_id',
-      )
-      .where('tm_mgr.user_id = :managerId', { managerId: user.id })
-      .andWhere('tm_mgr.role_in_team = :managerRole', {
-        managerRole: TeamRole.MANAGER,
-      })
-      .andWhere('tm_mgr.left_at IS NULL')
-      .andWhere('tm_member.user_id = :userId', { userId })
-      .andWhere('tm_member.left_at IS NULL')
-      .andWhere('tm_mgr.company_id = :companyId', { companyId: user.companyId })
-      .andWhere('tm_member.company_id = :companyId')
-      .getExists();
+    const spans = await this.reachSpans(userId, user);
+    return spans.some((span) => span.until === null);
   }
 }
+
+/**
+ * SQL: a membership from `fromColumn` up to the day before `untilColumn`
+ * covers one of the record's days, or is open today.
+ */
+const coversDays = (
+  fromColumn: string,
+  untilColumn: string,
+  onDays: ReachDays,
+): string =>
+  onDays === 'today'
+    ? `${untilColumn} IS NULL`
+    : `${fromColumn} <= ${onDays.endColumn ?? onDays.startColumn}
+        AND (${untilColumn} IS NULL OR ${onDays.startColumn} < ${untilColumn})`;
+
+/** The refusal for somebody wholly outside the caller's scope. */
+const outOfScope = (user: AuthUser, wording: UserScopeWording) =>
+  new ForbiddenException(
+    user.role === UserRole.MANAGER
+      ? `You can only ${wording.action} ${wording.subject} of users in teams you manage`
+      : `You can only ${wording.action} your own ${wording.subject}`,
+  );

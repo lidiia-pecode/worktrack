@@ -41,6 +41,8 @@ const ALICE: PlanningWeekRow = {
     { id: "project-internal", name: "Internal" },
   ],
   entries: [],
+  closedSpells: [],
+  moves: [],
 };
 
 const VACATION: Absence = {

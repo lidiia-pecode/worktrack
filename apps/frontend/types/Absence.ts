@@ -19,6 +19,11 @@ export interface Absence {
   createdBy?: UserName | null;
   /** Who last changed it; null until it is changed. On reads only. */
   updatedBy?: UserName | null;
+  /**
+   * Whether the viewer may change it: every day of it within their reach,
+   * their own, or an owner's. On a list only.
+   */
+  canChange?: boolean;
 }
 
 export interface AbsencePayload {

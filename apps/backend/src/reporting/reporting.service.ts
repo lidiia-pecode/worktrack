@@ -98,8 +98,9 @@ interface HoursReportRawRow {
   totalMinutes: string;
 }
 
-/** One day's time and plans, over the people the Hours report counts. */
+/** One person's minutes on one day. */
 export interface DayMinutes {
+  userId: string;
   date: string;
   loggedMinutes: number;
   billableMinutes: number;
@@ -107,6 +108,7 @@ export interface DayMinutes {
 }
 
 interface DayMinutesRawRow {
+  userId: string;
   date: string;
   loggedMinutes?: string;
   billableMinutes?: string;
@@ -588,8 +590,9 @@ export class ReportingService {
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 'tl.date' },
     });
-    this.applyRowFilters(qb, query, user);
+    this.applyRowFilters(qb, query, user, 'tl.date');
 
     qb.groupBy(grouping.groupBy.join(', '));
 
@@ -703,8 +706,9 @@ export class ReportingService {
 
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 'e.date' },
     });
-    this.applyRowFilters(qb, query, user);
+    this.applyRowFilters(qb, query, user, 'e.date');
 
     return qb
       .groupBy(grouping.groupBy.join(', '))
@@ -716,14 +720,17 @@ export class ReportingService {
   /**
    * Narrows a query that joins projects as `p` and users as `u` to one
    * project or one person, the way Reports opens a project's people or a
-   * person's projects, and to one team's current members.
+   * person's projects, and to one team's members on the record's day.
    */
   private applyRowFilters(
     qb: SelectQueryBuilder<ObjectLiteral>,
     { projectId, userId, teamId }: HoursReportQuery,
     user: AuthUser,
+    dateColumn: string,
   ): void {
-    this.teamVisibility.applyTeamMembershipFilter(qb, 'u.id', teamId, user);
+    this.teamVisibility.applyTeamMembershipFilter(qb, 'u.id', teamId, user, {
+      startColumn: dateColumn,
+    });
 
     if (projectId) {
       qb.andWhere('p.id = :projectId', { projectId });
@@ -734,23 +741,25 @@ export class ReportingService {
   }
 
   /**
-   * Logged, billable and planned minutes per day for the given people, within
-   * what the viewer sees. The caller has checked the range and cut it at
-   * `countedTo`.
-   * Days with neither time nor a plan are left out.
+   * Logged, billable and planned minutes per person and day, within what the
+   * viewer sees and, under a team filter, on the team's days. The caller has
+   * checked the range and cut it at `countedTo`. Days with neither time nor a
+   * plan are left out.
    */
-  async minutesPerDay(
+  async minutesPerPersonDay(
     user: AuthUser,
     userIds: string[],
     dateFrom: string,
     countedTo: string,
+    teamId?: string,
   ): Promise<DayMinutes[]> {
     if (userIds.length === 0) return [];
 
     const manager = this.periodRepo.manager;
     const logged = manager
       .createQueryBuilder()
-      .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
+      .select('tl.user_id', 'userId')
+      .addSelect(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
       .addSelect('SUM(tl.minutes)', 'loggedMinutes')
       .addSelect(
         'SUM(CASE WHEN tl.is_billable THEN tl.minutes ELSE 0 END)',
@@ -765,7 +774,8 @@ export class ReportingService {
       });
     const planned = manager
       .createQueryBuilder()
-      .select(`TO_CHAR(e.date, 'YYYY-MM-DD')`, 'date')
+      .select('e.user_id', 'userId')
+      .addSelect(`TO_CHAR(e.date, 'YYYY-MM-DD')`, 'date')
       .addSelect('SUM(e.planned_minutes)', 'plannedMinutes')
       .from('planning_entries', 'e')
       .where('e.company_id = :companyId', { companyId: user.companyId })
@@ -775,23 +785,36 @@ export class ReportingService {
         countedTo,
       });
 
-    this.teamVisibility.applyUserVisibility(logged, 'tl.user_id', user, {
-      includeSelf: true,
-    });
-    this.teamVisibility.applyUserVisibility(planned, 'e.user_id', user, {
-      includeSelf: true,
-    });
+    for (const [qb, alias] of [
+      [logged, 'tl'],
+      [planned, 'e'],
+    ] as const) {
+      const onDays = { startColumn: `${alias}.date` };
+      this.teamVisibility.applyUserVisibility(qb, `${alias}.user_id`, user, {
+        includeSelf: true,
+        onDays,
+      });
+      this.teamVisibility.applyTeamMembershipFilter(
+        qb,
+        `${alias}.user_id`,
+        teamId,
+        user,
+        onDays,
+      );
+    }
 
     const rawRows = (
       await Promise.all([
-        logged.groupBy('tl.date').getRawMany<DayMinutesRawRow>(),
-        planned.groupBy('e.date').getRawMany<DayMinutesRawRow>(),
+        logged.groupBy('tl.user_id, tl.date').getRawMany<DayMinutesRawRow>(),
+        planned.groupBy('e.user_id, e.date').getRawMany<DayMinutesRawRow>(),
       ])
     ).flat();
 
-    const byDate = new Map<string, DayMinutes>();
+    const byPersonDay = new Map<string, DayMinutes>();
     for (const raw of rawRows) {
-      const day = byDate.get(raw.date) ?? {
+      const key = `${raw.userId}:${raw.date}`;
+      const day = byPersonDay.get(key) ?? {
+        userId: raw.userId,
         date: raw.date,
         loggedMinutes: 0,
         billableMinutes: 0,
@@ -800,10 +823,10 @@ export class ReportingService {
       day.loggedMinutes += Number(raw.loggedMinutes ?? 0);
       day.billableMinutes += Number(raw.billableMinutes ?? 0);
       day.plannedMinutes += Number(raw.plannedMinutes ?? 0);
-      byDate.set(raw.date, day);
+      byPersonDay.set(key, day);
     }
 
-    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    return [...byPersonDay.values()];
   }
 
   /**
@@ -862,12 +885,14 @@ export class ReportingService {
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 'tl.date' },
     });
     this.teamVisibility.applyTeamMembershipFilter(
       qb,
       'tl.user_id',
       query.teamId,
       user,
+      { startColumn: 'tl.date' },
     );
 
     const [rawRows, lockedMonths] = await Promise.all([

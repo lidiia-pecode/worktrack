@@ -1,6 +1,6 @@
 import { PaginationParams } from ".";
 import { Project } from "./Project";
-import { TeamSummaryUser } from "./Timelog";
+import { ClosedSpell, TeamMove, TeamSummaryUser } from "./Timelog";
 
 export interface PlanningEntry {
   id: string;
@@ -80,6 +80,8 @@ export interface PeriodPreview {
   changes: { projectId: string; added: number; changed: number }[];
   /** The person's longest day in the period: the most one project can take. */
   dayLimitMinutes: number;
+  /** Working days skipped because the person was in a team the viewer doesn't lead. */
+  daysInAnotherTeam: string[];
 }
 
 // Query (back PlanningQueryDto)
@@ -110,6 +112,9 @@ export interface PlanningWeekRow {
   dayLimits: { date: string; minutes: number }[];
   projects: PlanningProjectOption[];
   entries: PlanningEntry[];
+  /** The days the viewer can't touch, as on Team time. */
+  closedSpells: ClosedSpell[];
+  moves: TeamMove[];
 }
 
 export interface PlanningWeek {

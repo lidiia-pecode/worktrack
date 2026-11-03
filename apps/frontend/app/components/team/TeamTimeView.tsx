@@ -57,6 +57,8 @@ import { onlyViewerReason } from "../shared/week/only-viewer";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
 import {
   AbsenceFormModal,
+  ABSENCE_IN_LOCKED_MONTH,
+  absenceInAnotherTeam,
   LockedAbsenceModal,
 } from "../timesheet/components/AbsenceFormModal";
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
@@ -296,6 +298,13 @@ export const TeamTimeView = ({
   const isOpenedAbsenceLocked =
     !!openedAbsence &&
     isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+  // The API says whether the viewer may change it (some of its days may be
+  // another team's); here that is the person's and the owner's to do.
+  const openedAbsenceReadOnlyReason = isOpenedAbsenceLocked
+    ? ABSENCE_IN_LOCKED_MONTH
+    : openedAbsence?.canChange === false && absenceForm
+      ? absenceInAnotherTeam(fullName(absenceForm.user))
+      : undefined;
 
   const clearFilters = () => {
     setFilters({ teamId: undefined, projectId: undefined });
@@ -486,9 +495,10 @@ export const TeamTimeView = ({
       />
 
       {absenceForm &&
-        (openedAbsence && isOpenedAbsenceLocked ? (
+        (openedAbsence && openedAbsenceReadOnlyReason ? (
           <LockedAbsenceModal
             absence={openedAbsence}
+            reason={openedAbsenceReadOnlyReason}
             subjectName={fullName(absenceForm.user)}
             onClose={() => setAbsenceForm(null)}
           />

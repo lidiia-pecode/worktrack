@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 3 November 2026.** Phases 0 to 41 in §7 are
-delivered, and so is the permission model; Phase 42 is delivered on its merge. The work ahead was re-planned on 28
+**Last verified against the code: 3 November 2026.** Phases 0 to 42 in §7 are
+delivered, and so is the permission model; Phase 43 is delivered on its merge. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -202,7 +202,8 @@ correct move at that point, not before.
 Creating, editing and deleting a time entry is allowed for:
 
 - **OWNER** — anyone in the company.
-- **MANAGER** — employees in the teams they actively manage, and nobody else.
+- **MANAGER** — employees in the teams they actively manage, on the days they
+  were in them, and nobody else.
 - **EMPLOYEE** — themselves only.
 
 *Why.* The person who notices a wrong or missing entry is usually not the person
@@ -229,7 +230,8 @@ deleted entries or of every change stays out until someone needs it.
 ### D10 — A manager sees only their own teams, everywhere
 
 An OWNER has company-wide visibility: every team, every person. A MANAGER sees
-the teams they actively manage and the people in them — and that limit applies
+the teams they actively manage and the people in them, on the days they were
+in them (Phase 43: a team keeps its history) — and that limit applies
 to every list, not only to time data.
 
 *Why.* The rule held for time logs, planning and reporting, but `GET /users`
@@ -361,8 +363,10 @@ All verified in the current implementation.
 Every write passes five checks, in this order (`time-logs.service.ts`):
 
 1. **Write scope** — the caller must be allowed to act for the entry's owner
-   (D9), through `assertCanActForUser`: an owner for anyone in the company, a
-   manager for the people in the teams they lead, an employee for themselves.
+   on its day (D9), through `assertCanWriteUser`: an owner for anyone in the
+   company, a manager for the people in the teams they lead on the days they
+   were in them, an employee for themselves. Moving an entry to another day
+   needs both days.
    The entry is always matched on `companyId` too. The rest runs in one
    transaction, after the owner's user row is locked.
 2. **Period lock** — a write touching a `LOCKED` period is rejected (403). On
@@ -419,8 +423,12 @@ never appears in an hours total (D6).
 Every write passes three checks:
 
 1. **Write scope** — the same rule as time logs, through the same
-   `assertCanActForUser` helper: an owner records for anyone in the company, a
-   manager for the people in the teams they lead, an employee for themselves.
+   `assertCanWriteUser` helper, over every day of the absence: an owner
+   records for anyone in the company, a manager for the people in the teams
+   they lead on the days they were in them, an employee for themselves. An
+   absence across a team move is read by both teams' managers and changed only
+   by someone who reaches all of it, such as the owner; the screens open it
+   read-only for anyone else and say who can change it.
 2. **Period lock** — a range touching a `LOCKED` period cannot be created,
    changed or deleted, and neither can it be moved into one.
 3. **The day is free** — no day of the range may already have logged time, and
@@ -451,7 +459,8 @@ holiday calendar and nothing tells a person which days are holidays.
 ### The invariant worth internalising
 
 > **Write access for a time entry matches read visibility: owners company-wide,
-> managers within the teams they lead, employees themselves.**
+> managers within the teams they lead, on the days a person was in them,
+> employees themselves.**
 
 This is enforced in the service, and the caller is kept distinct from the
 entry's owner throughout the write path — the daily ceiling, the project
@@ -759,9 +768,14 @@ Owner-owned structure, manager-operated teams — is in
 **Manager scope comes from team leadership, not from the role.** A MANAGER who
 leads no team sees nobody else, and under D9 may therefore edit nobody's time but
 their own; like everyone, they can always read their own time logs, absences,
-plan and hours. Scope is computed from active `TeamMembership` rows with
-`roleInTeam = MANAGER`, so it follows team changes automatically and respects
-membership history.
+plan and hours. Scope is computed from the `TeamMembership` rows of the teams
+they lead now (`roleInTeam = MANAGER`, still open), by date: a manager reaches
+a person on the days that person was in one of those teams, from the day the
+membership starts up to the day before it ends, so the day of a move belongs
+to the new team. After a move the old team keeps its history and its past
+figures, and the new team's manager reaches nothing from before it
+(`permission-model.md` §3.3, Phase 43). The lists that are about now (People,
+pickers, project rosters) read current membership.
 
 D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the Team time grid is where an
@@ -931,7 +945,13 @@ see, and how a new company gets started. §7 plans that work.
   counted, whether it is open for edits or locked, and the team when one is
   chosen. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
-  teams they lead, and are told that projects show their teams' time only.
+  teams they lead, and are told that projects show their teams' time only. A
+  person counts on the days the view holds them: someone who moved during the
+  period appears under each team they were in, with that team's part and
+  "Moved out" or "Joined" and the date beside the name, a team archived since
+  marked "Archived" (the owner's view, as nobody leads an archived team), and
+  the headline counts them once. A person's day grid closes the days the
+  view doesn't hold, as Team time does.
 - **Review my time** — every role has `/my-time`, their own month, one at a time,
   back to the company's first: logged against expected with their days off,
   planned, billable and its share, every working day of the month (a past day
@@ -1010,13 +1030,15 @@ Every gap found in the original review is closed: managers cannot widen their
 own reach, invitations place people in the inviter's team, project rosters and
 staffing are scoped to the caller, and project and admin routes are guarded by
 role on the server and in the pages. What a manager may see and change is one
-rule everywhere — the people in the teams they lead, plus themselves.
+rule everywhere — the people in the teams they lead, on the days they were in
+them, plus themselves.
 [`permission-model.md`](./permission-model.md) describes the model.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is fifty
-suites and 886 tests, covering the role-visibility filters, team and invitation
+This is the one place that counts the tests. Backend coverage is fifty-one
+suites and 911 tests, covering the role-visibility filters and reach by team
+membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, who added and changed a time entry or an absence, the lock
 order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
@@ -1129,6 +1151,7 @@ is in its pull request.
 | 40 | Consistent screens: WorkTrack's own pages for a missing address, an error and a loading route; a browser-tab title per page; the month on Reports and Review my time, and Planning's team, kept in the address; Settings asking before unsaved edits are dropped by a link or a reload; "company" for the company and its settings, "workspace" only for the working environment; the capacity date on the shared calendar, unable to reach a locked month; the setup checklist no longer ticking Company details; Team time's total following its search; the documentation checked against the code |
 | 41 | History that keeps its people: Team time's project filter keeping the people removed from the project, marked "Former member", with their hours in its total; who added and last changed a time entry or an absence recorded and named to everyone who can see it; the period preview naming only the days a save changes, and adding a person to a project locking them before the project, as a plan save does; the daily planning limit as the person's own day, and working hours set as a day in 30-minute steps up to 12h, the company's standard day too; Planning on working days only, with a compact "Planned" column, hour pickers stopping at the person's day, a day dialog whose hours stop at what fits and that closes after a save, conflicts in a period summed up, and "Add absence" from a day or a period |
 | 42 | Reports beyond one month: a month, a quarter, a year or a custom range of up to 366 days, stepped by its unit, chosen in a calendar and kept in the address, with a way back to the current one; weeks up to 92 days and months beyond, from the company's first month; the People report and its timeline worked out once in one request; one team at a time for an owner and a manager of several, the export and its file name included; the three figures in a branded band with their shares as rings and the change in points from the period before; billable time striped on the chart and the rows, overruns ending a bar, teams showing their change; Needs attention for a single month, with links from a longer period; a light salmon warning colour across WorkTrack, a mauve Planned and a softer logged teal in report marks; Planning's last column and Getting started lighter |
+| 43 | A team keeps its history: a manager reaches a person's time, absences and plans, for reading and writing, only on the days the person was in a team the manager leads now, the day of a move belonging to the new team; Team time and Planning list someone who moved in both teams' weeks, the other days closed in the read-only tint with a tip, and "Moved out" or "Joined" and the date under the name; an absence across a move read-only for a manager of one team, and a planned period skipping the other team's days; Reports, the comparison and the export counting each team's own days, with someone who moved under each team for the owner; a leaver's days after they left closed the same way; the move and removal dialogs saying where the days go |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1241,8 +1264,9 @@ details then.
   manager may grant selected ones to employees in the teams they lead.
 - A permission extends what someone may **do**, never **whose data** they may
   reach: reach stays defined by teams (D9, D10). A grant that would widen reach
-  over people, such as managing teams, waits for membership-dated history (A2,
-  [`permission-model.md`](./permission-model.md) P4).
+  over people, such as managing teams, builds on the membership-dated reach of
+  Phase 43: a grant would be another source of dated reach
+  ([`permission-model.md`](./permission-model.md) P4).
 - Creating activities may be granted apart from renaming or archiving the
   shared activities and categories.
 - Managing permissions stays simple and visually polished: a few

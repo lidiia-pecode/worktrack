@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import {
   BadRequestException,
   ConflictException,
@@ -32,7 +33,7 @@ import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
-import { formatDay } from './planning-period.util';
+import { formatDay } from 'src/lib/utils/format-day.util';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
   isWorkingDay,
@@ -51,6 +52,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
+import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
 import { PeriodProjectPayload } from './dtos/plan-period-payload.dto';
 
 /**
@@ -213,7 +215,6 @@ describe('PlanningService', () => {
     service = new PlanningService(
       dataSource.getRepository(PlanningEntry),
       dataSource.getRepository(Project),
-      dataSource.getRepository(User),
       teamVisibility,
       reporting,
       expectedHours,
@@ -1375,6 +1376,138 @@ describe('PlanningService', () => {
       await expect(
         service.create(plan(member.id, DATE_IN_MONTH, HOUR), manager),
       ).rejects.toThrow(/LOCKED/);
+    });
+  });
+  describe('a move between teams', () => {
+    // Emma is in Alpha until Tuesday and in Beta from Wednesday.
+    let betaManager: AuthUser;
+    let mover: AuthUser;
+
+    const rowOf = async (caller: AuthUser) =>
+      (await service.getWeek({ date: MONDAY }, caller)).rows.find(
+        (row) => row.user.id === mover.id,
+      )!;
+
+    beforeAll(async () => {
+      betaManager = await createUser('betamanager', UserRole.MANAGER);
+      mover = await createUser('emma', UserRole.EMPLOYEE);
+
+      const beta = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Beta ${RUN}` });
+      await dataSource.getRepository(TeamMembership).save([
+        {
+          companyId,
+          teamId: beta.id,
+          userId: betaManager.id,
+          roleInTeam: TeamRole.MANAGER,
+          joinedAt: '2026-01-01',
+        },
+        {
+          companyId,
+          teamId: alphaTeamId,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: '2026-01-01',
+          leftAt: WEDNESDAY,
+        },
+        {
+          companyId,
+          teamId: beta.id,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: WEDNESDAY,
+        },
+      ]);
+      await addMembers(projectId, [mover]);
+    });
+
+    it("shows each manager the mover's week with only their team's days", async () => {
+      await planFullWeek(mover.id);
+
+      const alpha = await rowOf(manager);
+      expect(alpha.entries.map((entry) => entry.date).sort()).toEqual([
+        MONDAY,
+        TUESDAY,
+      ]);
+      expect(alpha.plannedMinutes).toBe(16 * HOUR);
+      expect(alpha.availableMinutes).toBe(16 * HOUR);
+      expect(alpha.closedSpells).toEqual([
+        { from: WEDNESDAY, until: NEXT_MONDAY, reason: 'outside-team' },
+      ]);
+      expect(alpha.moves).toEqual([{ date: WEDNESDAY, direction: 'out' }]);
+
+      const beta = await rowOf(betaManager);
+      expect(beta.plannedMinutes).toBe(24 * HOUR);
+      expect(beta.closedSpells).toEqual([
+        { from: MONDAY, until: WEDNESDAY, reason: 'outside-team' },
+      ]);
+      expect(beta.moves).toEqual([{ date: WEDNESDAY, direction: 'in' }]);
+
+      const whole = await rowOf(owner);
+      expect(whole.plannedMinutes).toBe(40 * HOUR);
+      expect(whole.closedSpells).toEqual([]);
+
+      // The response keeps them, as the grid reads them.
+      const served = plainToInstance(
+        PlanningWeekResponse,
+        await service.getWeek({ date: MONDAY }, manager),
+        { excludeExtraneousValues: true },
+      );
+      expect(served.rows.find((row) => row.user.id === mover.id)).toMatchObject(
+        {
+          closedSpells: alpha.closedSpells,
+          moves: alpha.moves,
+        },
+      );
+    });
+
+    it("refuses a plan on the other team's day", async () => {
+      await expect(
+        service.create(plan(mover.id, WEDNESDAY, HOUR), manager),
+      ).rejects.toThrow("emma Test isn't in a team you lead on");
+      await expect(
+        service.create(plan(mover.id, WEDNESDAY, HOUR), betaManager),
+      ).resolves.toBeDefined();
+    });
+
+    it("skips the other team's days in a period, and lists them", async () => {
+      const listed = {
+        userId: mover.id,
+        startDate: MONDAY,
+        endDate: FRIDAY,
+        projects: [{ projectId, minutesPerDay: 2 * HOUR }],
+      };
+
+      const preview = await service.previewPeriod(listed, betaManager);
+      expect(preview.plannedDays).toEqual([
+        WEDNESDAY,
+        addDays(MONDAY, 3),
+        FRIDAY,
+      ]);
+      expect(preview.daysInAnotherTeam).toEqual([MONDAY, TUESDAY]);
+
+      await expect(service.planPeriod(listed, betaManager)).resolves.toEqual({
+        days: 3,
+        created: 3,
+        updated: 0,
+      });
+    });
+
+    it("deletes a period's plans only on the caller's days", async () => {
+      await planFullWeek(mover.id);
+
+      await expect(
+        service.deletePeriodPlans(
+          { userId: mover.id, projectId, startDate: MONDAY, endDate: FRIDAY },
+          manager,
+        ),
+      ).resolves.toEqual({ count: 2 });
+      expect((await entriesFor(mover.id)).map((e) => e.date)).toEqual([
+        WEDNESDAY,
+        addDays(MONDAY, 3),
+        FRIDAY,
+      ]);
     });
   });
 });
