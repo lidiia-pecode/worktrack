@@ -18,6 +18,7 @@ export interface TeamMove {
   direction: 'in' | 'out';
 }
 
+/** Days from `from` to `to`, both included. */
 export interface DateRange {
   from: string;
   to: string;
@@ -79,16 +80,13 @@ export const daysOutside = (
   return outside;
 };
 
-/** A row's closed days in the range: outside the view first, then inactive. */
+/** A row's closed days in the range: the days outside the view, then inactive. */
 export const closedSpellsIn = (
   range: DateRange,
-  inView: DaySpan[] | undefined,
+  outside: DaySpan[],
   inactive: DaySpan[],
 ): ClosedSpell[] => [
-  ...daysOutside(range, inView).map((span): ClosedSpell => ({
-    ...span,
-    reason: 'outside-team',
-  })),
+  ...outside.map((span): ClosedSpell => ({ ...span, reason: 'outside-team' })),
   ...inactive
     .filter(
       (spell) =>

@@ -449,7 +449,7 @@ describe('TeamVisibilityService', () => {
       userId: string,
       caller: AuthUser,
       from: string,
-      to?: string,
+      to = from,
     ): Promise<void> =>
       service.assertCanWriteUser(userId, caller, wording, { from, to });
 

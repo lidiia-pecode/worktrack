@@ -15,10 +15,8 @@ import {
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
-import {
-  DayRange,
-  TeamVisibilityService,
-} from 'src/teams/team-visibility.service';
+import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import { DateRange } from 'src/teams/days-in-view.util';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
@@ -436,7 +434,7 @@ export class AbsencesService {
   private assertCanWriteFor(
     ownerId: string,
     user: AuthUser,
-    days: DayRange,
+    days: DateRange,
   ): Promise<void> {
     return this.teamVisibility.assertCanWriteUser(
       ownerId,

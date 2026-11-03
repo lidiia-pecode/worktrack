@@ -43,9 +43,7 @@ import {
   DaySpan,
   TeamMove,
   closedSpellsIn,
-  daysOutside,
   isWithinSpan,
-  movesIn,
 } from 'src/teams/days-in-view.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -288,10 +286,11 @@ export class PlanningService {
     const inView = await this.teamVisibility.daysInView(
       user,
       userIds,
+      week,
       query.teamId,
     );
     const outside = new Map(
-      userIds.map((id) => [id, daysOutside(week, inView?.get(id))]),
+      [...inView].map(([id, days]) => [id, days.outside]),
     );
 
     const [available, projectsByUser, dayLimitOn, activeDates] =
@@ -309,7 +308,7 @@ export class PlanningService {
       ]);
 
     const rows = users.map((rowUser): PlanningWeekRow => {
-      const rowOutside = outside.get(rowUser.id) ?? [];
+      const { outside: rowOutside, moves } = inView.get(rowUser.id)!;
       const own = entries.filter(
         (entry) =>
           entry.userId === rowUser.id &&
@@ -328,10 +327,10 @@ export class PlanningService {
         entries: own,
         closedSpells: closedSpellsIn(
           week,
-          inView?.get(rowUser.id),
+          rowOutside,
           activeDates.get(rowUser.id)?.inactiveSpells ?? [],
         ),
-        moves: movesIn(week, inView?.get(rowUser.id)),
+        moves,
       };
     });
 
@@ -868,7 +867,7 @@ export class PlanningService {
       targetUser.id,
       user,
       PLAN_WORDING,
-      { from: date },
+      { from: date, to: date },
     );
   }
 
@@ -888,15 +887,19 @@ export class PlanningService {
     }
 
     const range = { from: startDate, to: endDate };
-    const inView = await this.teamVisibility.daysInView(user, [targetUser.id]);
-    const outside = daysOutside(range, inView?.get(targetUser.id));
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      [targetUser.id],
+      range,
+    );
+    const { outside } = inView.get(targetUser.id)!;
 
-    const coversEveryDay =
-      outside.length === 1 &&
-      outside[0].from === startDate &&
-      (outside[0].until === null || outside[0].until > endDate);
-    if (coversEveryDay) {
-      // Not one day in reach: refused, as a single plan would be.
+    // Not one day in reach: refused, as a single plan would be.
+    const reachesNoDay = outside.some(
+      (span) =>
+        span.from <= startDate && (span.until === null || span.until > endDate),
+    );
+    if (reachesNoDay) {
       await this.teamVisibility.assertCanWriteUser(
         targetUser.id,
         user,

@@ -40,8 +40,6 @@ import {
   ClosedSpell,
   TeamMove,
   closedSpellsIn,
-  daysOutside,
-  movesIn,
 } from 'src/teams/days-in-view.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -240,10 +238,11 @@ export class TimeLogsService {
     const inView = await this.teamVisibility.daysInView(
       user,
       userIds,
+      range,
       query.teamId,
     );
     const outside = new Map(
-      userIds.map((id) => [id, daysOutside(range, inView?.get(id))]),
+      [...inView].map(([id, days]) => [id, days.outside]),
     );
     const [expected, activeDates, projectMemberIds] = await Promise.all([
       this.expectedHours.expectedFor(
@@ -272,10 +271,10 @@ export class TimeLogsService {
           expectedByDate: expected.get(summaryUser.id)?.byDate ?? [],
           closedSpells: closedSpellsIn(
             range,
-            inView?.get(summaryUser.id),
+            inView.get(summaryUser.id)!.outside,
             activeDates.get(summaryUser.id)?.inactiveSpells ?? [],
           ),
-          moves: movesIn(range, inView?.get(summaryUser.id)),
+          moves: inView.get(summaryUser.id)!.moves,
           isOnProject: projectMemberIds?.has(summaryUser.id),
           days: [],
         },
@@ -824,7 +823,7 @@ export class TimeLogsService {
       ownerId,
       user,
       { action: 'change', subject: 'time logs' },
-      { from: date },
+      { from: date, to: date },
     );
   }
 }

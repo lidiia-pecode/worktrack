@@ -1,4 +1,4 @@
-import { closedSpellsIn, daysOutside, movesIn } from './days-in-view.util';
+import { daysOutside, movesIn } from './days-in-view.util';
 
 const WEEK = { from: '2026-02-09', to: '2026-02-15' };
 
@@ -19,8 +19,8 @@ describe('days in view', () => {
       { from: '2026-02-13', until: null },
     ];
 
-    expect(closedSpellsIn(WEEK, awayMidWeek, [])).toEqual([
-      { from: '2026-02-11', until: '2026-02-13', reason: 'outside-team' },
+    expect(daysOutside(WEEK, awayMidWeek)).toEqual([
+      { from: '2026-02-11', until: '2026-02-13' },
     ]);
     expect(movesIn(WEEK, awayMidWeek)).toEqual([
       { date: '2026-02-11', direction: 'out' },

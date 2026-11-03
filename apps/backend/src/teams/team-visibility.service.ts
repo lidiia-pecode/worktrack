@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository, WhereExpressionBuilder } from 'typeorm';
+import { In, IsNull, Repository, WhereExpressionBuilder } from 'typeorm';
 
 import { TeamMembership } from './entities/team-membership.entity';
 import { TeamRole } from './enums/team-role.enum';
@@ -13,18 +13,18 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { formatDay } from 'src/lib/utils/format-day.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
-import { DaySpan } from './days-in-view.util';
+import {
+  DateRange,
+  DaySpan,
+  TeamMove,
+  daysOutside,
+  movesIn,
+} from './days-in-view.util';
 
 /** Wording for the refusal, e.g. `{ action: 'view', subject: 'time logs' }`. */
 export interface UserScopeWording {
   action: string;
   subject: string;
-}
-
-/** Days from `from` to `to`, both included; one day when `to` is left out. */
-export interface DayRange {
-  from: string;
-  to?: string;
 }
 
 /**
@@ -85,6 +85,14 @@ export interface VisibleUsersFilter {
 interface OnDays {
   startColumn: string;
   endColumn?: string;
+}
+
+/** What a view holds of one person's range; see `daysInView`. */
+export interface DaysInView {
+  /** The days outside the view: another team's, or a team not led. */
+  outside: DaySpan[];
+  /** Where the person's days start or stop belonging to the view. */
+  moves: TeamMove[];
 }
 
 interface VisibilityOptions {
@@ -202,7 +210,7 @@ export class TeamVisibilityService {
     user: AuthUser,
     wording: UserScopeWording,
   ): Promise<void> {
-    if (await this.isOwnOrOwnerOf(userId, user)) return;
+    if (await this.isSelfOrOwnerOf(userId, user)) return;
 
     if (
       user.role === UserRole.MANAGER &&
@@ -223,9 +231,9 @@ export class TeamVisibilityService {
     userId: string,
     user: AuthUser,
     wording: UserScopeWording,
-    range: DayRange,
+    range: DateRange,
   ): Promise<void> {
-    if (await this.isOwnOrOwnerOf(userId, user)) return;
+    if (await this.isSelfOrOwnerOf(userId, user)) return;
 
     const spans =
       user.role === UserRole.MANAGER ? await this.reachSpans(userId, user) : [];
@@ -233,8 +241,8 @@ export class TeamVisibilityService {
     // Someone the manager reaches on other days is named with the day missed;
     // anyone else is refused without saying who they are.
     if (spans.length > 0) {
-      const firstMissed = firstDayNotCovered(spans, range);
-      if (firstMissed === null) return;
+      const firstMissed = daysOutside(range, spans).at(0)?.from;
+      if (!firstMissed) return;
 
       const person = await this.userRepo.findOne({
         select: ['id', 'firstName', 'lastName'],
@@ -254,7 +262,7 @@ export class TeamVisibilityService {
    * True for the caller themselves and for an owner acting on someone in
    * their company; an owner naming nobody in it is refused as not found.
    */
-  private async isOwnOrOwnerOf(
+  private async isSelfOrOwnerOf(
     userId: string,
     user: AuthUser,
   ): Promise<boolean> {
@@ -268,21 +276,34 @@ export class TeamVisibilityService {
     return true;
   }
 
-  /**
-   * The days the manager reaches the person on, as `MANAGED_REACH_SQL` rows,
-   * with the days as text so they compare as the rest of the app's do.
-   */
+  /** The days the manager reaches the person on. */
   private reachSpans(userId: string, user: AuthUser): Promise<DaySpan[]> {
-    return this.repo.manager
+    return this.managedSpans(user, [userId]);
+  }
+
+  /**
+   * The `MANAGED_REACH_SQL` rows of the given people, under a team filter only
+   * that team's, with the days as text so they compare as the app's do.
+   */
+  private managedSpans(
+    user: AuthUser,
+    userIds: string[],
+    teamId?: string,
+  ): Promise<(DaySpan & { userId: string })[]> {
+    const qb = this.repo.manager
       .createQueryBuilder()
       .select([
+        'reach.user_id AS "userId"',
         `to_char(reach.reach_from, 'YYYY-MM-DD') AS "from"`,
         `to_char(reach.reach_to, 'YYYY-MM-DD') AS "until"`,
       ])
       .from(`(${MANAGED_REACH_SQL})`, 'reach')
-      .where('reach.user_id = :reachUserId', { reachUserId: userId })
-      .setParameters(this.reachParameters(user))
-      .getRawMany<DaySpan>();
+      .where('reach.user_id IN (:...reachUserIds)', { reachUserIds: userIds })
+      .setParameters(this.reachParameters(user));
+    if (teamId)
+      qb.andWhere('reach.team_id = :reachTeamId', { reachTeamId: teamId });
+
+    return qb.getRawMany();
   }
 
   private reachParameters(user: AuthUser) {
@@ -419,12 +440,42 @@ export class TeamVisibilityService {
   }
 
   /**
-   * For each person, the days a view of them holds: a manager's, the days in
-   * the teams they lead; under a team filter, only that team's. Undefined
-   * when the caller sees every listed person on every day, as an owner
-   * without a team filter, or anyone looking at themselves alone, does.
+   * For each person, what a view of the range holds of them: a manager's view
+   * the days they were in a team the manager leads, a team filter that team's
+   * days, and anything else every day. Their own row is every day for a
+   * manager, as their own records always are.
    */
   async daysInView(
+    user: AuthUser,
+    userIds: string[],
+    range: DateRange,
+    teamId?: string,
+  ): Promise<Map<string, DaysInView>> {
+    const spans = await this.viewSpans(user, userIds, teamId);
+
+    return new Map(
+      userIds.map((id) => {
+        // Undefined holds every day.
+        const inView =
+          !spans || (id === user.id && !teamId)
+            ? undefined
+            : (spans.get(id) ?? []);
+        return [
+          id,
+          {
+            outside: daysOutside(range, inView),
+            moves: movesIn(range, inView),
+          },
+        ];
+      }),
+    );
+  }
+
+  /**
+   * The memberships that give each person's days in a view, or undefined
+   * when the view holds every day.
+   */
+  private async viewSpans(
     user: AuthUser,
     userIds: string[],
     teamId?: string,
@@ -432,41 +483,23 @@ export class TeamVisibilityService {
     const isManager = user.role === UserRole.MANAGER;
     if (userIds.length === 0 || (!isManager && !teamId)) return undefined;
 
-    const qb = this.repo.manager
-      .createQueryBuilder()
-      .select([
-        'spans.user_id AS "userId"',
-        `to_char(spans.reach_from, 'YYYY-MM-DD') AS "from"`,
-        `to_char(spans.reach_to, 'YYYY-MM-DD') AS "until"`,
-      ])
-      .where('spans.user_id IN (:...viewUserIds)', { viewUserIds: userIds });
+    const rows = isManager
+      ? await this.managedSpans(user, userIds, teamId)
+      : (
+          await this.repo.find({
+            select: ['userId', 'joinedAt', 'leftAt'],
+            where: { companyId: user.companyId, teamId, userId: In(userIds) },
+          })
+        ).map(({ userId, joinedAt, leftAt }) => ({
+          userId,
+          from: joinedAt,
+          until: leftAt,
+        }));
 
-    if (isManager) {
-      qb.from(`(${MANAGED_REACH_SQL})`, 'spans').setParameters(
-        this.reachParameters(user),
-      );
-    } else {
-      qb.from(
-        `(SELECT user_id, team_id, joined_at AS reach_from, left_at AS reach_to
-          FROM team_memberships WHERE company_id = :viewCompanyId)`,
-        'spans',
-      ).setParameter('viewCompanyId', user.companyId);
-    }
-    if (teamId) {
-      qb.andWhere('spans.team_id = :viewTeamId', { viewTeamId: teamId });
-    }
-
-    const rows = await qb.getRawMany<DaySpan & { userId: string }>();
-    const byUser = new Map<string, DaySpan[]>(userIds.map((id) => [id, []]));
+    const byUser = new Map<string, DaySpan[]>();
     for (const { userId, from, until } of rows) {
-      byUser.get(userId)!.push({ from, until });
+      byUser.set(userId, [...(byUser.get(userId) ?? []), { from, until }]);
     }
-
-    // A manager's own row holds every day, as their own records always are.
-    if (isManager && !teamId && byUser.has(user.id)) {
-      byUser.set(user.id, [{ from: '0001-01-01', until: null }]);
-    }
-
     return byUser;
   }
 
@@ -519,25 +552,3 @@ const outOfScope = (user: AuthUser, wording: UserScopeWording) =>
       ? `You can only ${wording.action} ${wording.subject} of users in teams you manage`
       : `You can only ${wording.action} your own ${wording.subject}`,
   );
-
-/**
- * The first day of the range the spans leave out, or null when they cover it
- * all. Spans may overlap or leave gaps, as memberships of several teams do.
- */
-const firstDayNotCovered = (
-  spans: DaySpan[],
-  range: DayRange,
-): string | null => {
-  const lastDay = range.to ?? range.from;
-  const sorted = [...spans].sort((a, b) => a.from.localeCompare(b.from));
-  let nextDay = range.from;
-
-  for (const span of sorted) {
-    if (span.from > nextDay) break;
-    if (span.until === null) return null;
-    if (span.until > nextDay) nextDay = span.until;
-    if (nextDay > lastDay) return null;
-  }
-
-  return nextDay;
-};
