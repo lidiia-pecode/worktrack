@@ -190,6 +190,7 @@ describe("periodChange", () => {
       minutes: 4 * HOUR,
       share: 94,
       previousShare: 90,
+      previousMinutes: 90 * HOUR,
     });
     expect(change.planned).toMatchObject({ points: -2, minutes: -2 * HOUR });
     expect(change.billable?.points).toBe(-3);
@@ -203,11 +204,17 @@ describe("periodChange", () => {
 });
 
 describe("changeTipLines", () => {
-  const change = (share: number, previousShare: number, minutes: number) => ({
+  const change = (
+    share: number,
+    previousShare: number,
+    minutes: number,
+    previousMinutes = 1,
+  ) => ({
     points: share - previousShare,
     minutes,
     share,
     previousShare,
+    previousMinutes,
   });
 
   it("says the points, both shares and the hours behind them", () => {
@@ -217,6 +224,17 @@ describe("changeTipLines", () => {
     expect(changeTipLines(change(91, 90, 24 * 60), "Q2 2026")[0]).toBe(
       "Up 1 point from Q2 2026",
     );
+  });
+
+  it("says when the previous period had nothing to compare with", () => {
+    expect(changeTipLines(change(95, 0, 150 * HOUR, 0), "Q2 2026")).toEqual([
+      "Up 95 points from Q2 2026",
+      "0% → 95% · about 150h more",
+      "Nothing logged in Q2 2026",
+    ]);
+    expect(
+      changeTipLines(change(80, 0, 40 * HOUR, 0), "Q2 2026", "planned")[2],
+    ).toBe("Nothing planned in Q2 2026");
   });
 
   it("calls no change the same, and sizes a change in points", () => {

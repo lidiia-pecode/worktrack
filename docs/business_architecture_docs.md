@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 3 November 2026.** Phases 0 to 42 in §7 are
-delivered, and so is the permission model; Phase 43 is delivered on its merge. The work ahead was re-planned on 28
+**Last verified against the code: 3 November 2026.** Phases 0 to 43 in §7 are
+delivered, and so is the permission model. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -1037,7 +1037,7 @@ them, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 911 tests, covering the role-visibility filters and reach by team
+suites and 926 tests, covering the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, who added and changed a time entry or an absence, the lock
@@ -1045,9 +1045,9 @@ order between plan saves and project changes, monthly locking in and outside UTC
 an open write, the reports and the export (weeks or months on the timeline,
 one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
-session refresh, rate limits and token clean-up — most against a real
+session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-five Vitest files and 453 tests: its date, month,
+The frontend has seventy-five Vitest files and 456 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, the change from the previous period and its tip,
@@ -1209,7 +1209,7 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning** *(started, Phases 31–32, 37 and 41)*. The
+**Area 4 — Team oversight and planning** *(started, Phases 31–32, 37, 41 and 43)*. The
 manager's and owner's week views: the team grid and the planning grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,
 absences and locks the same way. Planning and Team time stay separate screens by
@@ -1223,7 +1223,7 @@ items with search that covers everything, confirmations before anything is
 archived, forms and dialogs that behave the same on every screen, and settings
 that say what a change will do.
 
-**Area 6 — Reporting and insights** *(started, Phase 34)*. What owners and managers learn from
+**Area 6 — Reporting and insights** *(started, Phases 34 and 42)*. What owners and managers learn from
 `/reports` and the export. Which questions each role actually brings, and how
 the answers are best shown — charts, drill-down from a client to its projects and
 people, trends over months, a team view for the owner, sensible date presets —
@@ -1248,8 +1248,10 @@ started. After Phase 33, by decision (21 October 2026), Area 6 came next,
 starting with its two counting bugs, then Area 7, done by Phase 35. Phase 36
 then fixed the defects open across areas, and Phase 37 rebuilt Team time
 around its cells. Phase 38 then made the entity lifecycle coherent, and
-Phase 39 put the timesheet on a phone; the rest of Areas 3 and 4, Team time
-and Planning on a phone among it, follows. Area 8 closes the stage. A
+Phase 39 put the timesheet on a phone, Phase 40 made the screens consistent,
+Phases 41 and 43 made history accurate across edits and team moves, and Phase
+42 took Reports beyond one month; the rest of Areas 3 and 4, Team time and
+Planning on a phone among it, follows. Area 8 closes the stage. A
 defect that distorts figures can be pulled into whichever scope comes first.
 
 ---

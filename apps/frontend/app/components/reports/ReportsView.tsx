@@ -221,6 +221,9 @@ export const ReportsView = () => {
         )}
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
           <PeopleCard
+            // A new period starts with every team open or folded by its size
+            // again, not as the last period left them.
+            key={`${range.dateFrom}:${range.dateTo}`}
             people={people.rows}
             previousPeople={previousReport?.rows}
             previousName={previousName}

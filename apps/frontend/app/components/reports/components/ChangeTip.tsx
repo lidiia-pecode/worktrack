@@ -18,6 +18,8 @@ type ChangeTipProps = {
   change: FigureChange;
   /** The period compared with, as the caption names it: "September 2026". */
   previousName: string;
+  /** What the figure counts, for "Nothing logged in …": logged by default. */
+  subject?: string;
 };
 
 /** The arrows of Team time's sort buttons: up, down, and both for no change. */
@@ -33,8 +35,12 @@ const Direction = ({ points }: { points: number }) => {
  * keyboard focus, saying what the points are and the hours behind them. The
  * colour stays muted: the arrow tells the direction, not good or bad.
  */
-export const ChangeTip = ({ change, previousName }: ChangeTipProps) => {
-  const lines = changeTipLines(change, previousName);
+export const ChangeTip = ({
+  change,
+  previousName,
+  subject,
+}: ChangeTipProps) => {
+  const lines = changeTipLines(change, previousName, subject);
 
   return (
     <Tooltip>
