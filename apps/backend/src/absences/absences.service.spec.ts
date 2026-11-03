@@ -913,6 +913,39 @@ describe('AbsencesService', () => {
       ).resolves.toMatchObject({ note: 'Ski trip' });
     });
 
+    it('says which absences each caller may change', async () => {
+      await existingAbsence(mover.id, '2026-02-02', '2026-02-04');
+      await existingAbsence(mover.id, '2026-02-09', '2026-02-13');
+      await existingAbsence(mover.id, '2026-02-16', '2026-02-17');
+      const changeableFor = async (caller: AuthUser) =>
+        Object.fromEntries(
+          (await service.list(query({ userId: mover.id }), caller)).results.map(
+            ({ startDate, canChange }) => [startDate, canChange],
+          ),
+        );
+
+      // Alpha's manager reaches the days before the move, Beta's the days
+      // from it; the absence across it is nobody's but the owner's and Emma's.
+      expect(await changeableFor(manager)).toEqual({
+        '2026-02-02': true,
+        '2026-02-09': false,
+      });
+      expect(await changeableFor(betaManager)).toEqual({
+        '2026-02-09': false,
+        '2026-02-16': true,
+      });
+      expect(await changeableFor(owner)).toEqual({
+        '2026-02-02': true,
+        '2026-02-09': true,
+        '2026-02-16': true,
+      });
+      expect(await changeableFor(mover)).toEqual({
+        '2026-02-02': true,
+        '2026-02-09': true,
+        '2026-02-16': true,
+      });
+    });
+
     it("refuses moving an absence into the other team's days", async () => {
       const id = await existingAbsence(mover.id, '2026-02-02', '2026-02-04');
 

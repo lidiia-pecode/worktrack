@@ -427,7 +427,8 @@ Every write passes three checks:
    records for anyone in the company, a manager for the people in the teams
    they lead on the days they were in them, an employee for themselves. An
    absence across a team move is read by both teams' managers and changed only
-   by someone who reaches all of it, such as the owner.
+   by someone who reaches all of it, such as the owner; the screens open it
+   read-only for anyone else and say who can change it.
 2. **Period lock** — a range touching a `LOCKED` period cannot be created,
    changed or deleted, and neither can it be moved into one.
 3. **The day is free** — no day of the range may already have logged time, and

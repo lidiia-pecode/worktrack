@@ -99,6 +99,9 @@ export const PlanningWeekRow = ({
   });
 
   const isActive = row.user.status === UserStatus.ACTIVE;
+  // Someone who left the team in view this week has no period to plan here;
+  // their days before the move still open one by one.
+  const hasMovedOut = row.moves.some((move) => move.direction === "out");
   const overMinutes = Math.max(0, row.plannedMinutes - row.availableMinutes);
 
   return (
@@ -107,7 +110,7 @@ export const PlanningWeekRow = ({
         scope="row"
         className={cn(STICKY_PERSON_CELL, "p-0 text-left font-normal")}
       >
-        {isActive ? (
+        {isActive && !hasMovedOut ? (
           <button
             type="button"
             onClick={() => onPlanPeriod(row)}
@@ -134,9 +137,11 @@ export const PlanningWeekRow = ({
               {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
             </PersonLabel>
 
-            <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
-              Deactivated
-            </Badge>
+            {!isActive && (
+              <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
+                Deactivated
+              </Badge>
+            )}
           </div>
         )}
       </th>

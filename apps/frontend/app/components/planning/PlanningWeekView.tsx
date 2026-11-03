@@ -19,7 +19,7 @@ import {
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
-import { fullName, reachesIntoAnotherTeam } from "@/lib/utils/user";
+import { fullName } from "@/lib/utils/user";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { UserRole } from "@/types/enums";
@@ -36,7 +36,7 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
 import {
-  ABSENCE_IN_ANOTHER_TEAM,
+  absenceInAnotherTeam,
   AbsenceFormModal,
   LockedAbsenceModal,
 } from "../timesheet/components/AbsenceFormModal";
@@ -145,18 +145,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     : undefined;
 
   // An absence day opens the absence itself, unless a locked month freezes
-  // it; then the day dialog shows it and says so. One that reaches into
-  // another team's days opens to be read only.
+  // it; then the day dialog shows it and says so. One the API says the viewer
+  // can't change (some of its days are another team's) opens to be read only.
   const openDay = (row: PlanningRow, date: string) => {
     const absence = absencesByUser[row.user.id]?.[date];
     const isFrozen =
       !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
 
-    if (
-      absence &&
-      !isFrozen &&
-      reachesIntoAnotherTeam(absence, row.closedSpells)
-    ) {
+    if (absence && !isFrozen && absence.canChange === false) {
       setReadOnlyAbsence({ absence, row });
     } else if (absence && !isFrozen) {
       setAbsenceForm({ userId: row.user.id, date: absence.startDate, absence });
@@ -355,7 +351,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <LockedAbsenceModal
           absence={readOnlyAbsence.absence}
           subjectName={fullName(readOnlyAbsence.row.user)}
-          reason={ABSENCE_IN_ANOTHER_TEAM}
+          reason={absenceInAnotherTeam(fullName(readOnlyAbsence.row.user))}
           onClose={() => setReadOnlyAbsence(null)}
         />
       )}

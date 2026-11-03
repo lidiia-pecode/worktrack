@@ -43,9 +43,10 @@ export class AbsencesService {
   // ==========================================
 
   /**
-   * Absences overlapping the range, narrowed to the people the caller may see.
-   * An absence spanning the edge of the range still belongs in it, so the
-   * comparison is an overlap rather than a containment.
+   * Absences overlapping the range, narrowed to the people the caller may see,
+   * each saying whether the caller may change it. An absence spanning the
+   * edge of the range still belongs in it, so the comparison is an overlap
+   * rather than a containment.
    */
   async list(
     query: AbsencesQuery,
@@ -87,7 +88,45 @@ export class AbsencesService {
       .take(query.pageSize)
       .getManyAndCount();
 
+    await this.markChangeable(results, user);
+
     return { results, count };
+  }
+
+  /**
+   * Sets `canChange` on each absence: the write rule, every day of it within
+   * the caller's reach, worked out from one reach query for the whole list.
+   * An owner and the person themselves reach every day.
+   */
+  private async markChangeable(
+    absences: Absence[],
+    user: AuthUser,
+  ): Promise<void> {
+    if (absences.length === 0) return;
+
+    const inView = await this.teamVisibility.daysInView(
+      user,
+      [...new Set(absences.map((absence) => absence.userId))],
+      {
+        from: absences.reduce(
+          (min, { startDate }) => (startDate < min ? startDate : min),
+          absences[0].startDate,
+        ),
+        to: absences.reduce(
+          (max, { endDate }) => (endDate > max ? endDate : max),
+          absences[0].endDate,
+        ),
+      },
+    );
+
+    for (const absence of absences) {
+      const outside = inView.get(absence.userId)?.outside ?? [];
+      absence.canChange = !outside.some(
+        (span) =>
+          span.from <= absence.endDate &&
+          (span.until === null || absence.startDate < span.until),
+      );
+    }
   }
 
   // ==========================================

@@ -1,11 +1,4 @@
-import {
-  Absence,
-  AvatarUser,
-  ClosedSpell,
-  TeamMove,
-  User,
-  UserName,
-} from "@/types";
+import { AvatarUser, ClosedSpell, TeamMove, User, UserName } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
 import {
@@ -92,21 +85,6 @@ export const CLOSED_DAY_TEXT: Record<ClosedSpell["reason"], string> = {
 /** "Moved out · 14 Oct" or "Joined · 14 Oct"; no team is named. */
 export const moveLabel = ({ date, direction }: TeamMove) =>
   `${direction === "in" ? "Joined" : "Moved out"} · ${formatDayMonthLabel(date)}`;
-
-/**
- * Whether an absence covers a day of another team's, so only someone who
- * reaches all of it, such as the owner, may change it.
- */
-export const reachesIntoAnotherTeam = (
-  absence: Pick<Absence, "startDate" | "endDate">,
-  spells: ClosedSpell[],
-) =>
-  spells.some(
-    (spell) =>
-      spell.reason === "outside-team" &&
-      spell.from <= absence.endDate &&
-      (spell.until === null || absence.startDate < spell.until),
-  );
 
 /**
  * Whether the viewer may create, edit and delete someone's time entries.

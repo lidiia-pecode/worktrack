@@ -328,8 +328,9 @@ export const AbsenceFormModal = ({
 /** Why an absence opens to be read only, by default a locked month. */
 export const ABSENCE_IN_LOCKED_MONTH =
   "Part of it is in a locked month, so it can no longer be changed.";
-export const ABSENCE_IN_ANOTHER_TEAM =
-  "This absence includes days in another team. Your company owner can change it.";
+/** For an absence the viewer can't change because some of its days are another team's. */
+export const absenceInAnotherTeam = (subjectName: string) =>
+  `This absence includes days in another team. ${subjectName} or your company owner can change it.`;
 
 type LockedAbsenceModalProps = {
   absence: Absence;
