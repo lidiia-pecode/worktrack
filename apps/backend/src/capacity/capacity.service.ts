@@ -13,6 +13,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
+import { DaySpan } from 'src/teams/days-in-view.util';
 
 import { UserCapacity } from './entities/user-capacity.entity';
 import { WORKING_DAYS_PER_WEEK, isoDateIn } from './working-days.util';
@@ -33,10 +34,7 @@ export interface CompanyCalendar {
 }
 
 /** Deactivated from `from` up to the day before `until`; `until` is null while they still are. */
-export interface InactiveSpell {
-  from: string;
-  until: string | null;
-}
+export type InactiveSpell = DaySpan;
 
 /** The first day somebody is expected to work, and the spells they were not. */
 export interface ActiveDates {

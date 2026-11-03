@@ -169,7 +169,10 @@ export class UsersService {
       andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
-    this.teamVisibility.applyUserVisibility(qb, 'u.id', user);
+    // The People list is about now.
+    this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
+      onDays: 'today',
+    });
 
     const [users, count] = await qb
       .orderBy('u.created_at', 'DESC')
@@ -271,8 +274,10 @@ export class UsersService {
       andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
+    // Who can be picked now.
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
       includeSelf: true,
+      onDays: 'today',
     });
 
     const [users, count] = await qb

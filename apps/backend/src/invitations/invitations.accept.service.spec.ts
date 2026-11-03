@@ -118,7 +118,7 @@ describe('InvitationsService acceptance', () => {
       .from(User, 'u')
       .where('u.company_id = :tenantId', { tenantId: caller.companyId });
 
-    teamVisibility.applyUserVisibility(qb, 'u.id', caller);
+    teamVisibility.applyUserVisibility(qb, 'u.id', caller, { onDays: 'today' });
 
     const rows = await qb.getRawMany<{ id: string }>();
 

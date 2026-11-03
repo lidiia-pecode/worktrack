@@ -138,7 +138,7 @@ describe('TeamVisibilityService', () => {
       .from(User, 'u')
       .where('u.company_id = :tenantId', { tenantId: caller.companyId });
 
-    service.applyUserVisibility(qb, 'u.id', caller);
+    service.applyUserVisibility(qb, 'u.id', caller, { onDays: 'today' });
 
     const rows = await qb.getRawMany<{ id: string }>();
 

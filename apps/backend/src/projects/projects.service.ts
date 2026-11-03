@@ -285,8 +285,10 @@ export class ProjectsService {
       .addOrderBy('u.lastName', 'ASC')
       .addOrderBy('u.id', 'ASC');
 
+    // A project's roster is about now.
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
       includeSelf: true,
+      onDays: 'today',
     });
 
     return qb;

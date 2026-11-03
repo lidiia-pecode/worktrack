@@ -87,6 +87,14 @@ interface OnDays {
   endColumn?: string;
 }
 
+/**
+ * The days a check reaches a person on: a record's days, or `'today'` for a
+ * list about now (People, pickers, project rosters), the people in a
+ * manager's teams today. Named at every call site, so a list can't fall back
+ * to current membership by leaving it out.
+ */
+type ReachDays = OnDays | 'today';
+
 /** What a view holds of one person's range; see `daysInView`. */
 export interface DaysInView {
   /** The days outside the view: another team's, or a team not led. */
@@ -101,11 +109,8 @@ interface VisibilityOptions {
    * team can still read their own data and pick themselves.
    */
   includeSelf?: boolean;
-  /**
-   * The record's days, as SQL: a manager reaches it on any of them. Without
-   * it, a manager reaches the people in their teams today.
-   */
-  onDays?: OnDays;
+  /** The record's days: a manager reaches it on any of them; or `'today'`. */
+  onDays: ReachDays;
 }
 
 /**
@@ -123,9 +128,8 @@ export class TeamVisibilityService {
 
   /**
    * Narrows a query to the users the caller may read: an owner sees everyone
-   * in the company, a manager the members of the teams they lead now (on the
-   * record's days, when `onDays` names them), and anyone else only
-   * themselves.
+   * in the company, a manager the members of the teams they lead now, on the
+   * record's days or today (`onDays`), and anyone else only themselves.
    *
    * `userColumn` is the column holding the owning user, e.g. `t.user_id`.
    * Tenant scoping stays with the caller — this only filters by user.
@@ -134,7 +138,7 @@ export class TeamVisibilityService {
     qb: WhereExpressionBuilder,
     userColumn: string,
     user: AuthUser,
-    options: VisibilityOptions = {},
+    options: VisibilityOptions,
   ): void {
     if (user.role === UserRole.OWNER) return;
 
@@ -168,7 +172,7 @@ export class TeamVisibilityService {
   async filterVisibleUserIds(
     userIds: string[],
     user: AuthUser,
-    options: VisibilityOptions = {},
+    options: Pick<VisibilityOptions, 'includeSelf'> = {},
   ): Promise<Set<string>> {
     const uniqueIds = Array.from(new Set(userIds));
     if (!uniqueIds.length) return new Set();
@@ -192,7 +196,7 @@ export class TeamVisibilityService {
       })
       .andWhere('tm.left_at IS NULL');
 
-    this.applyUserVisibility(qb, 'tm.user_id', user);
+    this.applyUserVisibility(qb, 'tm.user_id', user, { onDays: 'today' });
 
     const rows = await qb.getRawMany<{ userId: string }>();
 
@@ -321,7 +325,7 @@ export class TeamVisibilityService {
   async findVisibleUsers(
     user: AuthUser,
     filter: VisibleUsersFilter = {},
-    options: VisibilityOptions = {},
+    options: Pick<VisibilityOptions, 'includeSelf'> = {},
   ): Promise<VisibleUser[]> {
     const qb = this.userRepo
       .createQueryBuilder('u')
@@ -338,10 +342,12 @@ export class TeamVisibilityService {
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
 
-    const onDays = filter.during && {
-      startColumn: 'CAST(:visibleFrom AS date)',
-      endColumn: 'CAST(:visibleTo AS date)',
-    };
+    const onDays: ReachDays = filter.during
+      ? {
+          startColumn: 'CAST(:visibleFrom AS date)',
+          endColumn: 'CAST(:visibleTo AS date)',
+        }
+      : 'today';
     if (filter.during) {
       qb.setParameters({
         visibleFrom: filter.during.from,
@@ -408,8 +414,8 @@ export class TeamVisibilityService {
   }
 
   /**
-   * Filters the query to the members of the given team: on the record's days
-   * when `onDays` names them, otherwise today.
+   * Filters the query to the members of the given team, on the record's days
+   * or today (`onDays`).
    *
    * The caller's visibility scope is applied separately, so passing a team
    * the caller cannot access results in no matching users.
@@ -419,7 +425,7 @@ export class TeamVisibilityService {
     userColumn: string,
     teamId: string | undefined,
     user: AuthUser,
-    onDays?: OnDays,
+    onDays: ReachDays,
   ): void {
     if (!teamId) return;
 
@@ -533,17 +539,17 @@ export class TeamVisibilityService {
 
 /**
  * SQL: a membership from `fromColumn` up to the day before `untilColumn`
- * covers one of the record's days, or is open today when no days are given.
+ * covers one of the record's days, or is open today.
  */
 const coversDays = (
   fromColumn: string,
   untilColumn: string,
-  onDays: OnDays | undefined,
+  onDays: ReachDays,
 ): string =>
-  onDays
-    ? `${fromColumn} <= ${onDays.endColumn ?? onDays.startColumn}
-        AND (${untilColumn} IS NULL OR ${onDays.startColumn} < ${untilColumn})`
-    : `${untilColumn} IS NULL`;
+  onDays === 'today'
+    ? `${untilColumn} IS NULL`
+    : `${fromColumn} <= ${onDays.endColumn ?? onDays.startColumn}
+        AND (${untilColumn} IS NULL OR ${onDays.startColumn} < ${untilColumn})`;
 
 /** The refusal for somebody wholly outside the caller's scope. */
 const outOfScope = (user: AuthUser, wording: UserScopeWording) =>
