@@ -32,12 +32,12 @@ import {
   PeriodWeek,
   PeriodWrites,
   describePeriodProblem,
-  formatDay,
   formatMinutes,
   periodProblems,
   periodWrites,
 } from './planning-period.util';
 import { Company } from 'src/companies/entities/company.entity';
+import { formatDay } from 'src/lib/utils/format-day.util';
 import { Project } from 'src/projects/entities/project.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';

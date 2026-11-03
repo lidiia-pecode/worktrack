@@ -15,7 +15,10 @@ import {
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
-import { TeamVisibilityService } from 'src/teams/team-visibility.service';
+import {
+  DayRange,
+  TeamVisibilityService,
+} from 'src/teams/team-visibility.service';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
@@ -63,12 +66,10 @@ export class AbsencesService {
     this.applyVisibilityFilter(qb, user);
 
     if (query.userId) {
-      if (query.userId !== user.id) {
-        await this.teamVisibility.assertCanActForUser(query.userId, user, {
-          action: 'view',
-          subject: 'absences',
-        });
-      }
+      await this.teamVisibility.assertCanReadUser(query.userId, user, {
+        action: 'view',
+        subject: 'absences',
+      });
       qb.andWhere('a.userId = :userId', { userId: query.userId });
     }
 
@@ -97,7 +98,10 @@ export class AbsencesService {
 
   async create(payload: AbsencePayload, user: AuthUser): Promise<Absence> {
     const ownerId = payload.userId ?? user.id;
-    await this.assertCanWriteFor(ownerId, user);
+    await this.assertCanWriteFor(ownerId, user, {
+      from: payload.startDate,
+      to: payload.endDate,
+    });
 
     this.assertRangeOrder(payload.startDate, payload.endDate);
 
@@ -150,7 +154,7 @@ export class AbsencesService {
     payload: UpdateAbsencePayload,
     user: AuthUser,
   ): Promise<Absence> {
-    const ownerId = await this.resolveWritableOwner(id, user);
+    const ownerId = await this.resolveWritableOwner(id, user, payload);
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
@@ -244,6 +248,7 @@ export class AbsencesService {
     qb.andWhere('a.companyId = :companyId', { companyId: user.companyId });
     this.teamVisibility.applyUserVisibility(qb, 'a.user_id', user, {
       includeSelf: true,
+      onDays: { startColumn: 'a.start_date', endColumn: 'a.end_date' },
     });
   }
 
@@ -355,24 +360,39 @@ export class AbsencesService {
   }
 
   /**
-   * Who the absence belongs to, once the caller is allowed to write for them.
-   * Read before the transaction so the owner's row is the one locked, rather
-   * than the caller's.
+   * Who the absence belongs to, once the caller is allowed to write for them
+   * on every day it covers, and on every day it moves to. Read before the
+   * transaction so the owner's row is the one locked, rather than the
+   * caller's.
    */
   private async resolveWritableOwner(
     id: string,
     user: AuthUser,
+    moveTo?: { startDate?: string; endDate?: string },
   ): Promise<string> {
     const absence = await this.repo.findOne({
       where: { id, companyId: user.companyId },
-      select: ['id', 'userId'],
+      select: ['id', 'userId', 'startDate', 'endDate'],
     });
 
     if (!absence) throw new NotFoundException('Absence not found');
 
-    await this.assertCanWriteFor(absence.userId, user);
+    const { userId, startDate, endDate } = absence;
+    await this.assertCanWriteFor(userId, user, {
+      from: startDate,
+      to: endDate,
+    });
 
-    return absence.userId;
+    const newStart = moveTo?.startDate ?? startDate;
+    const newEnd = moveTo?.endDate ?? endDate;
+    if (newStart !== startDate || newEnd !== endDate) {
+      await this.assertCanWriteFor(userId, user, {
+        from: newStart,
+        to: newEnd,
+      });
+    }
+
+    return userId;
   }
 
   private async getForUpdate(
@@ -410,14 +430,19 @@ export class AbsencesService {
 
   /**
    * Recording an absence for somebody follows the time-log write scope, so the
-   * two can never disagree about who may speak for whom.
+   * two can never disagree about who may speak for whom: every day of it has
+   * to be within the caller's reach.
    */
-  private assertCanWriteFor(ownerId: string, user: AuthUser): Promise<void> {
-    if (ownerId === user.id) return Promise.resolve();
-
-    return this.teamVisibility.assertCanActForUser(ownerId, user, {
-      action: 'change',
-      subject: 'absences',
-    });
+  private assertCanWriteFor(
+    ownerId: string,
+    user: AuthUser,
+    days: DayRange,
+  ): Promise<void> {
+    return this.teamVisibility.assertCanWriteUser(
+      ownerId,
+      user,
+      { action: 'change', subject: 'absences' },
+      days,
+    );
   }
 }

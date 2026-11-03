@@ -771,12 +771,11 @@ export class ProjectsService {
   ) {
     const targetUserId = query.userId ?? user.id;
 
-    if (targetUserId !== user.id) {
-      await this.teamVisibility.assertCanActForUser(targetUserId, user, {
-        action: 'list',
-        subject: 'projects',
-      });
-    }
+    // Whoever may log time for the person, on any day, sees what they can log.
+    await this.teamVisibility.assertCanReadUser(targetUserId, user, {
+      action: 'list',
+      subject: 'projects',
+    });
 
     const [results, count] = await this.projectActivityRepo
       .createQueryBuilder('pa')

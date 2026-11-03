@@ -978,4 +978,105 @@ describe('TimeLogsService write scope', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+  describe('a move between teams', () => {
+    // Emma is in Alpha until 11 Feb and in Beta from Thu 12 Feb.
+    const LAST_DAY_IN_ALPHA = '2026-02-11';
+    const MOVE_DAY = '2026-02-12';
+
+    let betaManager: AuthUser;
+    let mover: AuthUser;
+
+    const datesListedFor = async (caller: AuthUser) =>
+      (
+        await service.list(
+          Object.assign(new TimeLogsQuery(), { userId: mover.id }),
+          caller,
+        )
+      ).results
+        .map((log) => log.date)
+        .sort();
+
+    beforeAll(async () => {
+      betaManager = await createUser('betamanager', UserRole.MANAGER);
+      mover = await createUser('emma', UserRole.EMPLOYEE);
+
+      const beta = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Beta ${RUN}` });
+      await dataSource.getRepository(TeamMembership).save([
+        {
+          companyId,
+          teamId: beta.id,
+          userId: betaManager.id,
+          roleInTeam: TeamRole.MANAGER,
+          joinedAt: '2026-01-01',
+        },
+        {
+          companyId,
+          teamId,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: '2026-01-01',
+          leftAt: MOVE_DAY,
+        },
+        {
+          companyId,
+          teamId: beta.id,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: MOVE_DAY,
+        },
+      ]);
+
+      const { projectId } = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ id: projectActivityId });
+      await dataSource.query(
+        'INSERT INTO project_users (project_id, user_id) VALUES ($1, $2)',
+        [projectId, mover.id],
+      );
+    });
+
+    it('lets the old manager log the days before the move and the new one the move day on', async () => {
+      await expect(
+        service.create(logFor(mover.id, LAST_DAY_IN_ALPHA), manager),
+      ).resolves.toBeDefined();
+      await expect(
+        service.create(logFor(mover.id, MOVE_DAY), manager),
+      ).rejects.toThrow("emma Test isn't in a team you lead on Thu 12 Feb");
+
+      await expect(
+        service.create(logFor(mover.id, MOVE_DAY), betaManager),
+      ).resolves.toBeDefined();
+      await expect(
+        service.create(logFor(mover.id, LAST_DAY_IN_ALPHA), betaManager),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("shows each manager only their team's days", async () => {
+      await existingLogFor(mover.id, LAST_DAY_IN_ALPHA);
+      await existingLogFor(mover.id, MOVE_DAY);
+
+      expect(await datesListedFor(manager)).toEqual([LAST_DAY_IN_ALPHA]);
+      expect(await datesListedFor(betaManager)).toEqual([MOVE_DAY]);
+      expect(await datesListedFor(owner)).toEqual([
+        LAST_DAY_IN_ALPHA,
+        MOVE_DAY,
+      ]);
+    });
+
+    it("refuses moving an entry into the other team's days, and changing one there", async () => {
+      const id = await existingLogFor(mover.id, LAST_DAY_IN_ALPHA);
+
+      await expect(
+        service.update(id, { date: MOVE_DAY }, manager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(service.delete(id, betaManager)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(
+        service.update(id, { date: MOVE_DAY }, owner),
+      ).resolves.toMatchObject({ date: MOVE_DAY });
+    });
+  });
 });

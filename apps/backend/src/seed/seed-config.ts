@@ -463,8 +463,18 @@ export interface SeedTeam {
   name: string;
   /** An archived team's memberships are closed, as archiving does. */
   status?: TeamStatus;
-  members: { email: string; roleInTeam: TeamRole }[];
+  members: {
+    email: string;
+    roleInTeam: TeamRole;
+    /** When a membership doesn't start with the account, as after a move. */
+    joinedOn?: string;
+    /** The day a membership ends; that day belongs to the next team. */
+    leftOn?: string;
+  }[];
 }
+
+/** Leo moves from Mobile Squad to Data and Analytics on this day. */
+const LEO_MOVED_ON = '2026-10-14';
 
 export const TEAMS: SeedTeam[] = [
   {
@@ -523,6 +533,7 @@ export const TEAMS: SeedTeam[] = [
       { email: MICHAEL, roleInTeam: TeamRole.MANAGER },
       { email: SOPHIA, roleInTeam: TeamRole.MEMBER },
       { email: OLIVER, roleInTeam: TeamRole.MEMBER },
+      { email: LEO, roleInTeam: TeamRole.MEMBER, joinedOn: LEO_MOVED_ON },
       { email: HARPER, roleInTeam: TeamRole.MEMBER },
       { email: JACK, roleInTeam: TeamRole.MEMBER },
       { email: ELLA, roleInTeam: TeamRole.MEMBER },
@@ -534,7 +545,7 @@ export const TEAMS: SeedTeam[] = [
     name: 'Mobile Squad',
     members: [
       { email: RACHEL, roleInTeam: TeamRole.MANAGER },
-      { email: LEO, roleInTeam: TeamRole.MEMBER },
+      { email: LEO, roleInTeam: TeamRole.MEMBER, leftOn: LEO_MOVED_ON },
       { email: ZOE, roleInTeam: TeamRole.MEMBER },
       { email: MAX, roleInTeam: TeamRole.MEMBER },
       { email: RUBY, roleInTeam: TeamRole.MEMBER },

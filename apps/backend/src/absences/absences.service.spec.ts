@@ -829,4 +829,96 @@ describe('AbsencesService', () => {
       ).rejects.toThrow(ForbiddenException);
     });
   });
+  describe('a move between teams', () => {
+    // Emma is in Alpha until 11 Feb and in Beta from Thu 12 Feb.
+    const MOVE_DAY = '2026-02-12';
+
+    let betaManager: AuthUser;
+    let mover: AuthUser;
+
+    const listedFor = async (caller: AuthUser) =>
+      (await service.list(query({ userId: mover.id }), caller)).count;
+
+    beforeAll(async () => {
+      betaManager = await createUser('betamanager', UserRole.MANAGER);
+      mover = await createUser('emma', UserRole.EMPLOYEE);
+
+      const alpha = await dataSource
+        .getRepository(Team)
+        .findOneByOrFail({ companyId, name: `Alpha ${RUN}` });
+      const beta = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Beta ${RUN}` });
+      await dataSource.getRepository(TeamMembership).save([
+        {
+          companyId,
+          teamId: beta.id,
+          userId: betaManager.id,
+          roleInTeam: TeamRole.MANAGER,
+          joinedAt: '2026-01-01',
+        },
+        {
+          companyId,
+          teamId: alpha.id,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: '2026-01-01',
+          leftAt: MOVE_DAY,
+        },
+        {
+          companyId,
+          teamId: beta.id,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: MOVE_DAY,
+        },
+      ]);
+    });
+
+    it('lets each manager record an absence on their own days only', async () => {
+      await expect(
+        service.create(
+          absenceFor(mover.id, '2026-02-02', '2026-02-04'),
+          manager,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        service.create(
+          absenceFor(mover.id, '2026-02-16', '2026-02-17'),
+          betaManager,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        service.create(
+          absenceFor(mover.id, '2026-02-09', '2026-02-13'),
+          manager,
+        ),
+      ).rejects.toThrow("emma Test isn't in a team you lead on Thu 12 Feb");
+    });
+
+    it('shows an absence across the move to both managers, and lets neither change it', async () => {
+      const id = await existingAbsence(mover.id, '2026-02-09', '2026-02-13');
+
+      expect(await listedFor(manager)).toBe(1);
+      expect(await listedFor(betaManager)).toBe(1);
+
+      await expect(
+        service.update(id, { note: 'Ski trip' }, manager),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(service.delete(id, betaManager)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(
+        service.update(id, { note: 'Ski trip' }, owner),
+      ).resolves.toMatchObject({ note: 'Ski trip' });
+    });
+
+    it("refuses moving an absence into the other team's days", async () => {
+      const id = await existingAbsence(mover.id, '2026-02-02', '2026-02-04');
+
+      await expect(
+        service.update(id, { endDate: MOVE_DAY }, manager),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
 });
