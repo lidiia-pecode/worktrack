@@ -27,11 +27,17 @@ export interface DateRange {
 export const isWithinSpan = ({ from, until }: DaySpan, date: string) =>
   date >= from && (until === null || date < until);
 
+/** A span with at least one day; one that starts and ends the same day has none. */
+export const coversADay = ({ from, until }: DaySpan) =>
+  until === null || until > from;
+
 /** One span per unbroken run, so a move between two teams in view is no gap. */
 const mergeSpans = (spans: DaySpan[]): DaySpan[] => {
   const merged: DaySpan[] = [];
 
-  for (const span of [...spans].sort((a, b) => a.from.localeCompare(b.from))) {
+  for (const span of spans
+    .filter(coversADay)
+    .sort((a, b) => a.from.localeCompare(b.from))) {
     const last = merged.at(-1);
     if (last && (last.until === null || span.from <= last.until)) {
       if (

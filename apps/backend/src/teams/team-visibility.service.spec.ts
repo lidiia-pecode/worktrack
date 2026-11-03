@@ -42,6 +42,7 @@ describe('TeamVisibilityService', () => {
   let owner: AuthUser;
   let manager: AuthUser; // leads "Alpha"
   let loneManager: AuthUser; // has the MANAGER role but is on no team
+  let alphaId: string;
   let nonLeadManager: AuthUser; // has the MANAGER role but is only a member of "Alpha"
   let member: AuthUser; // active member of "Alpha"
   let formerMember: AuthUser; // left "Alpha" (leftAt is set)
@@ -193,6 +194,7 @@ describe('TeamVisibilityService', () => {
     const alpha = await dataSource
       .getRepository(Team)
       .save({ companyId: companyA, name: `Alpha ${RUN}` });
+    alphaId = alpha.id;
 
     await addToTeam(alpha.id, companyA, manager, TeamRole.MANAGER);
     await addToTeam(alpha.id, companyA, nonLeadManager, TeamRole.MEMBER);
@@ -431,6 +433,12 @@ describe('TeamVisibilityService', () => {
       );
     });
 
+    it('refuses a manager whose only membership of the person covers no day', async () => {
+      await expect(assertFor(addedByMistake.id, northManager)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
     it('lets anyone read themselves, and an employee nobody else', async () => {
       await expect(assertFor(member.id, member)).resolves.toBeUndefined();
       await expect(
@@ -439,6 +447,26 @@ describe('TeamVisibilityService', () => {
       await expect(assertFor(outsider.id, member)).rejects.toThrow(
         ForbiddenException,
       );
+    });
+  });
+
+  describe('daysInView', () => {
+    // Alpha's memberships start yesterday.
+    const week = { from: TODAY, to: '2026-01-07' };
+
+    it("holds a manager's own days under a team they only belong to", async () => {
+      const inView = await service.daysInView(
+        nonLeadManager,
+        [nonLeadManager.id, member.id],
+        week,
+        alphaId,
+      );
+
+      expect(inView.get(nonLeadManager.id)).toEqual({ outside: [], moves: [] });
+      // Somebody else in that team is out of reach for a manager who doesn't lead it.
+      expect(inView.get(member.id)?.outside).toEqual([
+        { from: week.from, until: '2026-01-08' },
+      ]);
     });
   });
 

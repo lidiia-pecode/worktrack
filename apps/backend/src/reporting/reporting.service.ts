@@ -98,7 +98,6 @@ interface HoursReportRawRow {
   totalMinutes: string;
 }
 
-/** One day's time and plans, over the people the Hours report counts. */
 /** One person's minutes on one day. */
 export interface DayMinutes {
   userId: string;

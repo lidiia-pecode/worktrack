@@ -20,8 +20,8 @@ export const ClosedDayCell = ({
   <td className="h-px border-r border-border/60 bg-muted/20 p-0 align-top">
     <Tooltip>
       <TooltipTrigger
-        render={<div />}
-        className="h-full min-h-10 w-full cursor-default"
+        render={<div tabIndex={0} />}
+        className="h-full min-h-10 w-full cursor-default focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none"
       >
         <span className="sr-only">{CLOSED_DAY_TEXT[reason]}</span>
       </TooltipTrigger>

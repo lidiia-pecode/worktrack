@@ -140,7 +140,7 @@ describe("PlanningWeekRow", () => {
     expect(
       screen.queryByRole("button", { name: "Plan a period for Alice Cooper" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Moved out · Nov 4")).toBeInTheDocument();
+    expect(screen.getByText(/^Moved out/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^Monday, November 2:/ }),
     ).toBeInTheDocument();

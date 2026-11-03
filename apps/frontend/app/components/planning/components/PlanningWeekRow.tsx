@@ -148,10 +148,14 @@ export const PlanningWeekRow = ({
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
-        // A deactivated person's days keep their leftover plans, read-only;
-        // any other closed day holds nothing.
+        // A day someone wasn't employed on keeps the plans left over from
+        // before, read-only, for a deactivated person's whole row and for an
+        // earlier spell of someone since back; any other closed day holds
+        // nothing.
         const closed = closedSpellOn(row.closedSpells, iso);
-        const keepsLeftoverPlans = !isActive && closed?.reason === "inactive";
+        const keepsLeftoverPlans =
+          closed?.reason === "inactive" &&
+          (!isActive || (entriesByDate.get(iso)?.length ?? 0) > 0);
         if (closed && !keepsLeftoverPlans) {
           return <ClosedDayCell key={iso} reason={closed.reason} />;
         }

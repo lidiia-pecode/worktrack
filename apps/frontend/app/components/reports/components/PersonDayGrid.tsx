@@ -8,7 +8,7 @@ import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
-import { CLOSED_DAY_TEXT, closedSpellOn } from "@/lib/utils/user";
+import { CLOSED_DAY_TEXT, closedSpellOn, isClosedOn } from "@/lib/utils/user";
 import {
   formatDuration,
   formatWeekdayLabel,
@@ -100,7 +100,7 @@ export const PersonDayGrid = ({
         loggedByDate: new Map(
           (row?.days ?? []).map((day) => [day.date, day.minutes]),
         ),
-        isClosed: (date) => Boolean(closedSpellOn(closedSpells, date)),
+        isClosed: (date) => isClosedOn(closedSpells, date),
         isOff: (date) => Boolean(absenceOn(absences.items, date)),
         daysWithoutTime: new Set(person.daysWithoutTime),
       }),
@@ -250,7 +250,13 @@ export const PersonDayGrid = ({
               ) : day.kind === "closed" ? (
                 // Says why on hover, as a closed day on Team time does.
                 <Tooltip>
-                  <TooltipTrigger render={<div />} className={dayStyle}>
+                  <TooltipTrigger
+                    render={<div tabIndex={0} />}
+                    className={cn(
+                      dayStyle,
+                      "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    )}
+                  >
                     {content}
                   </TooltipTrigger>
                   <TooltipContent>{closedText(day.date)}</TooltipContent>

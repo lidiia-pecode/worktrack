@@ -17,6 +17,7 @@ import {
   DateRange,
   DaySpan,
   TeamMove,
+  coversADay,
   daysOutside,
   movesIn,
 } from './days-in-view.util';
@@ -164,10 +165,10 @@ export class TeamVisibilityService {
   }
 
   /**
-   * Of the given user ids, the ones the caller may see. Same rule as
-   * `applyUserVisibility`, for callers holding a list of ids rather than a
-   * query — including its convention that tenant scoping stays with the
-   * caller, so an owner gets every id back untouched.
+   * Of the given user ids, the ones the caller may see today: the `'today'`
+   * form of `applyUserVisibility`, for callers holding a list of ids rather
+   * than a query — including its convention that tenant scoping stays with
+   * the caller, so an owner gets every id back untouched.
    */
   async filterVisibleUserIds(
     userIds: string[],
@@ -218,7 +219,7 @@ export class TeamVisibilityService {
 
     if (
       user.role === UserRole.MANAGER &&
-      (await this.reachSpans(userId, user)).length > 0
+      (await this.reachSpans(userId, user)).some(coversADay)
     ) {
       return;
     }
@@ -486,27 +487,43 @@ export class TeamVisibilityService {
     userIds: string[],
     teamId?: string,
   ): Promise<Map<string, DaySpan[]> | undefined> {
-    const isManager = user.role === UserRole.MANAGER;
-    if (userIds.length === 0 || (!isManager && !teamId)) return undefined;
+    if (userIds.length === 0) return undefined;
 
-    const rows = isManager
-      ? await this.managedSpans(user, userIds, teamId)
-      : (
-          await this.repo.find({
-            select: ['userId', 'joinedAt', 'leftAt'],
-            where: { companyId: user.companyId, teamId, userId: In(userIds) },
-          })
-        ).map(({ userId, joinedAt, leftAt }) => ({
-          userId,
-          from: joinedAt,
-          until: leftAt,
-        }));
+    let rows: (DaySpan & { userId: string })[];
+    if (user.role === UserRole.MANAGER) {
+      rows = await this.managedSpans(user, userIds, teamId);
+      // Their own days under a team filter are that team's, led or not.
+      if (teamId && userIds.includes(user.id)) {
+        rows.push(...(await this.membershipSpans(user, teamId, [user.id])));
+      }
+    } else if (teamId) {
+      rows = await this.membershipSpans(user, teamId, userIds);
+    } else {
+      return undefined;
+    }
 
     const byUser = new Map<string, DaySpan[]>();
     for (const { userId, from, until } of rows) {
       byUser.set(userId, [...(byUser.get(userId) ?? []), { from, until }]);
     }
     return byUser;
+  }
+
+  /** The given people's memberships of one team, as spans. */
+  private async membershipSpans(
+    user: AuthUser,
+    teamId: string,
+    userIds: string[],
+  ): Promise<(DaySpan & { userId: string })[]> {
+    const memberships = await this.repo.find({
+      select: ['userId', 'joinedAt', 'leftAt'],
+      where: { companyId: user.companyId, teamId, userId: In(userIds) },
+    });
+    return memberships.map(({ userId, joinedAt, leftAt }) => ({
+      userId,
+      from: joinedAt,
+      until: leftAt,
+    }));
   }
 
   /**

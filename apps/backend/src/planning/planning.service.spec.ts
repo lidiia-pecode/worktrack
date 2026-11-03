@@ -215,7 +215,6 @@ describe('PlanningService', () => {
     service = new PlanningService(
       dataSource.getRepository(PlanningEntry),
       dataSource.getRepository(Project),
-      dataSource.getRepository(User),
       teamVisibility,
       reporting,
       expectedHours,

@@ -139,8 +139,6 @@ export class PlanningService {
     private readonly repo: Repository<PlanningEntry>,
     @InjectRepository(Project)
     private readonly projectRepo: Repository<Project>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly reportingService: ReportingService,
     private readonly expectedHours: ExpectedHoursService,
