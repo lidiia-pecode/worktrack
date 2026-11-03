@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, UsersRound } from "lucide-react";
 
-import { PeopleReportRow } from "@/types";
+import { PeopleReportRow, TeamMove } from "@/types";
 import { isDeactivatedUser } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 import {
@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
+import { MoveBadges } from "../../shared/week/MoveBadges";
 import { ChangeTip } from "./ChangeTip";
 import { ReportBar } from "./ReportBar";
 import { ReportCardTitle } from "./ReportCardTitle";
@@ -33,10 +34,13 @@ import {
 
 const PersonRow = ({
   person,
+  moves,
   flag,
   onOpen,
 }: {
   person: PeopleReportRow;
+  /** Where they joined or left the team the row is under. */
+  moves: TeamMove[];
   /** Why Needs attention names them, when it does. */
   flag?: string;
   onOpen: (userId: string) => void;
@@ -53,9 +57,12 @@ const PersonRow = ({
       }
       flag={flag}
       status={
-        isDeactivatedUser(person) && (
-          <Badge variant="neutral">Deactivated</Badge>
-        )
+        <>
+          {isDeactivatedUser(person) && (
+            <Badge variant="neutral">Deactivated</Badge>
+          )}
+          <MoveBadges moves={moves} />
+        </>
       }
       bar={
         <ReportBar
@@ -151,6 +158,7 @@ const TeamRows = ({
             <PersonRow
               key={person.userId}
               person={person}
+              moves={person.moves}
               flag={marked.get(person.userId)}
               onOpen={onOpenPerson}
             />
@@ -240,6 +248,7 @@ export const PeopleCard = ({
               <PersonRow
                 key={person.userId}
                 person={person}
+                moves={person.teams[0]?.moves ?? []}
                 flag={marked.get(person.userId)}
                 onOpen={onOpenPerson}
               />

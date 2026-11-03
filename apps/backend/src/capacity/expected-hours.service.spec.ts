@@ -402,7 +402,7 @@ describe('ExpectedHoursService', () => {
 
       // Thursday's absence counts; Tuesday's and Wednesday's fall in the spell.
       expect(availability.get(returner)).toMatchObject({
-        absenceDays: 1,
+        absenceDates: ['2026-02-12'],
         expectedDates: ['2026-02-09', '2026-02-13'],
       });
     });

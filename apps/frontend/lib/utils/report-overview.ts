@@ -3,6 +3,7 @@ import {
   PeopleReportRow,
   ReportCoverage,
   ReportRange,
+  TeamMove,
 } from "@/types";
 
 import {
@@ -141,11 +142,14 @@ export const changeTipLines = (change: FigureChange, previousName: string) => {
 /** Up to this many people, every team starts open; past it, folded. */
 export const PEOPLE_SHOWN_OPEN = 15;
 
+/** A person under one team: their figures on that team's days. */
+export type TeamMember = PeopleReportRow & { moves: TeamMove[] };
+
 export interface TeamGroup {
   /** The team's id, or "" for the people in no team. */
   id: string;
   name: string;
-  people: PeopleReportRow[];
+  people: TeamMember[];
   loggedMinutes: number;
   billableMinutes: number;
   expectedMinutes: number;
@@ -154,13 +158,14 @@ export interface TeamGroup {
 const NO_TEAM = "No team";
 
 /**
- * People under each of their teams, so somebody in two teams is in both, and
+ * People under each team they were in during the period, so somebody in two
+ * teams is in both, each time with their figures on that team's days, and
  * those in no team last under "No team". Teams run by name, people keep their
  * order; each team's figures add up its people.
  */
 export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
   const groups = new Map<string, TeamGroup>();
-  const add = (id: string, name: string, person: PeopleReportRow) => {
+  const add = (id: string, name: string, person: TeamMember) => {
     const group = groups.get(id) ?? {
       id,
       name,
@@ -177,8 +182,14 @@ export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
   };
 
   for (const person of people) {
-    if (person.teams.length === 0) add("", NO_TEAM, person);
-    for (const team of person.teams) add(team.id, team.name, person);
+    if (person.teams.length === 0) add("", NO_TEAM, { ...person, moves: [] });
+    for (const team of person.teams) {
+      add(team.id, team.name, {
+        ...person,
+        ...team.figures,
+        moves: team.moves,
+      });
+    }
   }
 
   return [...groups.values()].sort(

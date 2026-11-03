@@ -28,8 +28,8 @@ export interface ExpectedMinutes {
 export interface Availability {
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
-  /** Working days an absence covered, from the start date. */
-  absenceDays: number;
+  /** The finished working days an absence covered, from the start date. */
+  absenceDates: string[];
   /** The finished days they were expected to work, in date order. */
   expectedDates: string[];
   /** Every date's expected minutes, as in Expected's byDate. */
@@ -40,7 +40,7 @@ export interface Availability {
 interface ShareSums {
   available: number;
   availableToDate: number;
-  absenceDaysToDate: number;
+  absenceDatesToDate: string[];
   /** The finished dates with an available share, in date order. */
   expectedDatesToDate: string[];
   /** Each date's available share, in date order. */
@@ -156,20 +156,28 @@ export class ExpectedHoursService {
    * finished, so a month in progress is measured against the time that has
    * actually passed.
    */
+  /** `leaveOut` as for `expectedFor`: days the view doesn't hold. */
   async availabilityToDateFor(
     companyId: string,
     userIds: string[],
     from: string,
     to: string,
+    leaveOut?: Map<string, DaySpan[]>,
   ): Promise<Map<string, Availability>> {
     assertDateRange(from, to);
-    const sums = await this.sumSharesFor(companyId, userIds, from, to);
+    const sums = await this.sumSharesFor(
+      companyId,
+      userIds,
+      from,
+      to,
+      leaveOut,
+    );
     const availability = new Map<string, Availability>();
 
     sums.forEach((sum, userId) => {
       availability.set(userId, {
         availableMinutes: Math.round(sum.availableToDate),
-        absenceDays: sum.absenceDaysToDate,
+        absenceDates: sum.absenceDatesToDate,
         expectedDates: sum.expectedDatesToDate,
         byDate: roundDays(sum.availableByDate),
       });
@@ -215,7 +223,7 @@ export class ExpectedHoursService {
       const sum: ShareSums = {
         available: 0,
         availableToDate: 0,
-        absenceDaysToDate: 0,
+        absenceDatesToDate: [],
         expectedDatesToDate: [],
         availableByDate: [],
       };
@@ -238,7 +246,7 @@ export class ExpectedHoursService {
           (a) => a.startDate <= date && a.endDate >= date,
         );
         if (isAbsent) {
-          if (hasFinished) sum.absenceDaysToDate += 1;
+          if (hasFinished) sum.absenceDatesToDate.push(date);
           continue;
         }
 
