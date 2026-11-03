@@ -1,15 +1,9 @@
 import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 
-import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
+import { ReportRangeQuery } from './report-range-query.dto';
 
-export class HoursReportQuery {
-  @IsDateWithoutTimeString()
-  dateFrom!: string;
-
-  @IsDateWithoutTimeString()
-  dateTo!: string;
-
+export class HoursReportQuery extends ReportRangeQuery {
   @IsEnum(HoursReportGroupBy)
   groupBy!: HoursReportGroupBy;
 

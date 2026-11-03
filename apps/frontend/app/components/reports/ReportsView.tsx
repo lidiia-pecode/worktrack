@@ -3,106 +3,178 @@
 import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
-import { useShownMonth } from "@/hooks/useShownMonth";
+import { useReportOverview } from "@/hooks/useReportOverview";
+import { useReportingPeriods } from "@/hooks/useReportingPeriods";
+import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import { reportScope } from "@/lib/utils/report-overview";
-import { getMonthRange } from "@/lib/utils/date";
-import { HoursReportGroupBy, UserRole } from "@/types/enums";
+import { periodChange, reportScope } from "@/lib/utils/report-overview";
+import {
+  containsDate,
+  isShowablePeriod,
+  lastShownDay,
+  periodLabel,
+  periodOf,
+  stepPeriod,
+} from "@/lib/utils/shown-period";
+import { toMonthKey } from "@/lib/utils/date";
+import {
+  HoursReportGroupBy,
+  ReportingMonthState,
+  UserRole,
+} from "@/types/enums";
+
+import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "../shared/EmptyState";
+import { FormSelect } from "../shared/FormSelect";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
 import { PERSON_PARAM } from "../team/team-links";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { HoursExportButton } from "./components/HoursExportButton";
 import { PersonPanel, ProjectPanel } from "./components/ReportPanels";
-import { ReportMonthStepper } from "./components/ReportMonthStepper";
-import { WeekByWeek } from "./components/WeekByWeek";
+import { ReportPeriodControl } from "./components/ReportPeriodControl";
+import { PeriodOverview } from "./components/PeriodOverview";
 import { WhereTheTimeWent } from "./components/WhereTheTimeWent";
-import { NeedsAttention } from "./components/NeedsAttention";
+import { NeedsAttention, OpenMonthLinks } from "./components/NeedsAttention";
 import { PeopleCard } from "./components/PeopleCard";
+import { useShownTeam } from "./useShownTeam";
 
 const PROJECT_PARAM = "project";
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
+const ALL_TEAMS = "all";
 
 export const ReportsView = () => {
   const { user } = useAuth();
 
-  const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
+  const { period, today, firstDay, showPeriod } = useShownPeriod();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
-  const range: ReportRange = getMonthRange(month);
+  const { range } = period;
+  const isOwner = user?.role === UserRole.OWNER;
+  const isManager = user?.role === UserRole.MANAGER;
 
-  const people = usePeopleReport(range);
+  const { teamId, teamName, teamOptions, choosesTeam, showTeam } =
+    useShownTeam(isOwner);
+  const query: ReportQuery = { ...range, teamId };
+  const isMonth = period.unit === "month";
+  const periodName = periodLabel(period);
+  // Nothing happened before the company existed, so a year that began before
+  // it is counted, like its chart, from the company's first month.
+  const rangeSinceCompanyStart =
+    firstDay && range.dateFrom < firstDay
+      ? { ...range, dateFrom: firstDay }
+      : range;
+  const previousPeriod = stepPeriod(period, -1);
+  const previousName = periodLabel(previousPeriod);
+
+  const overview = useReportOverview(query);
+  const people = overview.report?.people ?? null;
+  const timeline = overview.report?.timeline ?? null;
+  // The period before, of the same kind, for each figure's change; none
+  // before the company's first month.
+  const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
+  const previous = usePeopleReport(
+    { ...previousPeriod.range, teamId },
+    { enabled: isPreviousShowable },
+  );
+  const previousReport =
+    isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
   const projects = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.PROJECT,
   });
-  const isManager = user?.role === UserRole.MANAGER;
-  const isUpdating = people.isPlaceholderData || projects.isPlaceholderData;
-  const peopleReport = isUpdating ? null : people.report;
+  // A longer period links to its open months, each with its own Needs attention.
+  const reportingMonths = useReportingPeriods(
+    {
+      from: toMonthKey(range.dateFrom),
+      to: toMonthKey(lastShownDay(range, today)),
+    },
+    { enabled: !isMonth },
+  );
+  const openMonths = reportingMonths.months
+    .filter((month) => month.state !== ReportingMonthState.LOCKED)
+    .map((month) => month.month)
+    .sort();
+  const isUpdating = overview.isPlaceholderData || projects.isPlaceholderData;
+  // `people` keeps the last period's figures while the next loads; these are
+  // only the shown period's own.
+  const settledPeople = isUpdating ? null : people;
   // Only finished days count, so a month starting today has nothing yet.
   const isNothingCounted = Boolean(
-    peopleReport?.countedUntil && peopleReport.countedUntil < range.dateFrom,
+    settledPeople?.countedUntil && settledPeople.countedUntil < range.dateFrom,
   );
 
+  // The current period starts empty, as a month does in its first days, so
+  // its empty state offers the period before.
+  const showPrevious =
+    containsDate(range, today) && isPreviousShowable ? (
+      <Button variant="secondary" onClick={() => showPeriod(previousPeriod)}>
+        Show {previousName}
+      </Button>
+    ) : undefined;
+
   const renderOverview = () => {
-    if (people.isLoading || projects.isLoading) {
+    if (overview.isLoading || projects.isLoading) {
       return (
         <LoadingState
           title="Loading the report"
-          description="Adding up the time for this month."
+          description={`Adding up the time for ${periodName}.`}
         />
       );
     }
 
-    if (people.isError || projects.isError) {
+    if (overview.isError || projects.isError) {
       return (
         <ErrorState
           title="We couldn't load the report"
-          description="The figures for this month are unavailable right now."
+          description={`The figures for ${periodName} are unavailable right now.`}
           onRetry={() => {
-            void people.refetch();
+            void overview.refetch();
             void projects.refetch();
           }}
         />
       );
     }
 
-    if (!people.report || !projects.report) return null;
+    if (!people || !timeline || !projects.report) return null;
 
     if (isNothingCounted) {
       return (
         <EmptyState
           title="Nothing counted yet"
-          description="Only finished days count, and none of this month has finished yet."
+          description={`Only finished days count, and none of ${periodName} has finished yet.`}
           icon={<FileBarChart />}
+          action={showPrevious}
         />
       );
     }
 
-    const { totals, isProvisional, countedUntil } = people.report;
+    const { totals, isProvisional, countedUntil } = people;
     if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
       return (
         <EmptyState
-          title="Nothing logged or planned in this month"
-          description="Pick another month, or check that people have logged their time."
+          title={`Nothing logged or planned in ${periodName}`}
+          description="Pick another period, or check that people have logged their time."
           icon={<FileBarChart />}
+          action={showPrevious}
         />
       );
     }
 
-    // A locked month is for reference only, so nothing is marked (Decision 34).
-    const attention = isProvisional
+    // A locked month is for reference only, so nothing is marked (Decision 34);
+    // Needs attention reads one month at a time.
+    const showsAttention = isProvisional && isMonth;
+    const attention = showsAttention
       ? reportAttention({
-          people: people.report.rows,
+          people: people.rows,
           projects: projects.report.rows,
           countedUntil,
           isManager,
@@ -118,8 +190,15 @@ export const ReportsView = () => {
         )}
         aria-busy={isUpdating}
       >
-        <WeekByWeek range={range} totals={totals} />
-        {isProvisional && (
+        <PeriodOverview
+          timeline={timeline}
+          totals={totals}
+          firstDay={firstDay}
+          periodName={periodName}
+          previousName={previousName}
+          change={previousReport && periodChange(totals, previousReport.totals)}
+        />
+        {showsAttention && (
           <div className="mt-4">
             <NeedsAttention
               facts={attention.facts}
@@ -130,17 +209,36 @@ export const ReportsView = () => {
             />
           </div>
         )}
+        {!isMonth && openMonths.length > 0 && (
+          <div className="mt-4">
+            <OpenMonthLinks
+              months={openMonths}
+              onOpenMonth={(month) =>
+                showPeriod(periodOf("month", `${month}-01`))
+              }
+            />
+          </div>
+        )}
         <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
           <PeopleCard
-            people={people.report.rows}
+            people={people.rows}
+            previousPeople={previousReport?.rows}
+            previousName={previousName}
             marked={attention.people}
+            isOneTeam={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
-            range={range}
+            query={query}
             projects={projects.report.rows}
             marked={attention.projects}
-            isManager={isManager}
+            scopeNote={
+              teamName
+                ? `${teamName}’s time only`
+                : isManager
+                  ? "Your teams’ time only"
+                  : undefined
+            }
             onOpenProject={openProject}
           />
         </div>
@@ -150,18 +248,18 @@ export const ReportsView = () => {
 
   const openedPerson =
     opened?.param === PERSON_PARAM
-      ? people.report?.rows.find((row) => row.userId === opened.id)
+      ? people?.rows.find((row) => row.userId === opened.id)
       : undefined;
   const openedProject =
     opened?.param === PROJECT_PARAM
       ? projects.report?.rows.find((row) => row.id === opened.id)
       : undefined;
-  // A panel opens from the rows on screen. When the month drops its person or
+  // A panel opens from the rows on screen. When the period drops its person or
   // project, or a link names someone outside them, it closes, URL included,
   // as on Team time, rather than reopening by itself later.
   const isOpenedGone =
     !!opened &&
-    !!peopleReport &&
+    !!settledPeople &&
     !!projects.report &&
     !openedPerson &&
     !openedProject;
@@ -171,7 +269,7 @@ export const ReportsView = () => {
   }, [isOpenedGone, close]);
 
   const renderPanel = () => {
-    if (!people.report) return null;
+    if (!people) return null;
 
     if (openedPerson) {
       return (
@@ -179,7 +277,8 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
-          countedUntil={people.report.countedUntil}
+          countedUntil={people.countedUntil}
+          showsDays={timeline?.bucketSize === "week"}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -191,7 +290,7 @@ export const ReportsView = () => {
         <ProjectPanel
           key={openedProject.id}
           project={openedProject}
-          range={range}
+          query={query}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -200,27 +299,49 @@ export const ReportsView = () => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Fills the page, so an empty state stretches to the bottom as on Log my time.
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
-          <ReportMonthStepper
-            month={month}
-            currentMonth={currentMonth}
-            companyFirstMonth={firstMonth}
-            onChange={showMonth}
-          />
-          {/* One line high even while a month loads, so the header holds still and
-              says nothing about the month before. */}
+          <div className="flex flex-wrap items-center gap-3">
+            <ReportPeriodControl
+              period={period}
+              today={today}
+              firstDay={firstDay}
+              onChange={showPeriod}
+            />
+            {choosesTeam && (
+              <FormSelect
+                aria-label="Team"
+                className="max-sm:w-full sm:w-56"
+                // As tall as the period's buttons beside it.
+                triggerClassName="h-9 max-sm:h-10"
+                value={teamId ?? ALL_TEAMS}
+                options={[
+                  { value: ALL_TEAMS, label: "All teams" },
+                  ...teamOptions,
+                ]}
+                onValueChange={(value) =>
+                  showTeam(value === ALL_TEAMS ? undefined : value)
+                }
+              />
+            )}
+          </div>
+          {/* One line high even while a period loads, so the header holds still and
+              says nothing about the period before. */}
           <p className="min-h-5 text-sm text-muted-foreground">
-            {peopleReport &&
+            {settledPeople &&
               !isNothingCounted &&
-              reportScope(peopleReport, isManager)}
+              reportScope(settledPeople, {
+                periodRange: isMonth ? undefined : rangeSinceCompanyStart,
+                teamName,
+              })}
           </p>
         </div>
 
-        {/* The last figures keep the button in place while a month loads. */}
-        {(people.report?.totals.loggedMinutes ?? 0) > 0 && (
-          <HoursExportButton range={range} />
+        {/* The last figures keep the button in place while a period loads. */}
+        {(people?.totals.loggedMinutes ?? 0) > 0 && (
+          <HoursExportButton query={query} />
         )}
       </div>
 

@@ -1,15 +1,20 @@
-import { HoursReportRow, TimelineBucket } from "@/types";
+import { HoursReportRow, TimelineBucket, TimelineBucketSize } from "@/types";
 
 import { formatDayMonthLabel, fromISODate } from "./date";
 import { countLabel } from "./text";
 
 const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
+const MONTH_LABEL = new Intl.DateTimeFormat(undefined, { month: "short" });
 
-/** A run of days by name: "Oct 5–9", "Sep 29 – Oct 3", or the one day. */
-export const bucketLabel = ({
-  start,
-  end,
-}: Pick<TimelineBucket, "start" | "end">) => {
+/**
+ * A bucket by name: a month as "Jan", whatever part of it the range covers; a
+ * week as its run of days, "Oct 5–9" or "Sep 29 – Oct 3", or the one day.
+ */
+export const bucketLabel = (
+  { start, end }: Pick<TimelineBucket, "start" | "end">,
+  bucketSize: TimelineBucketSize,
+) => {
+  if (bucketSize === "month") return MONTH_LABEL.format(fromISODate(start));
   if (start === end) return formatDayMonthLabel(start);
 
   const sameMonth = start.slice(0, 7) === end.slice(0, 7);
@@ -19,7 +24,25 @@ export const bucketLabel = ({
 };
 
 /**
- * How much of a bucket counts, said under its name: "5 days", or "2 days so
+ * The buckets from the company's first day on. An earlier one is kept only
+ * with time or a plan on it, since time can be logged on any past date and
+ * the columns must still add up to the figures above them.
+ */
+export const bucketsSinceCompanyStart = (
+  buckets: TimelineBucket[],
+  firstDay: string | undefined,
+) =>
+  firstDay
+    ? buckets.filter(
+        (bucket) =>
+          bucket.end >= firstDay ||
+          bucket.loggedMinutes > 0 ||
+          bucket.plannedMinutes > 0,
+      )
+    : buckets;
+
+/**
+ * How much of a bucket counts, said in its tip: "5 days", or "2 days so
  * far" when the counting stopped at yesterday inside it.
  */
 export const bucketNote = (

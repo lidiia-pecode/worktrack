@@ -11,3 +11,13 @@ export const teamTimeHref = (personId: string, week?: string) => {
 /** Team time's filters, kept in the URL so a reload returns to them. */
 export const TEAM_PARAM = "team";
 export const PROJECT_PARAM = "project";
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * An id from the address, or none for anything that isn't one: a mistyped
+ * link would otherwise be refused by the API, leaving the page on an error
+ * with no filter to clear.
+ */
+export const readIdParam = (value: string | null) =>
+  value && UUID.test(value) ? value : undefined;

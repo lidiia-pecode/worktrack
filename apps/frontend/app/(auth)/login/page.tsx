@@ -13,8 +13,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <AuthFormWrapper
       badge="Sign in"
-      title="Pick up right where you left off."
-      description="Your timesheet, projects and team's time are where you left them."
+      title="Let's get back to it"
+      description="Keep track of your work, projects and time"
     >
       <AuthForm mode="login" googleErrorCode={error} />
     </AuthFormWrapper>

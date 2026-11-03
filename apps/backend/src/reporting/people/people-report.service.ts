@@ -8,6 +8,7 @@ import {
   ExpectedHoursService,
 } from 'src/capacity/expected-hours.service';
 import {
+  addDays,
   eachDate,
   isWorkingDay,
   weekRange,
@@ -25,6 +26,7 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
 import { assertDateRange } from '../date-range.util';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
+import { firstDayOfMonth, lastDayOfMonth } from '../reporting-months.util';
 import {
   HoursReport,
   ReportCoverage,
@@ -67,13 +69,15 @@ export interface PeopleReport extends ReportCoverage {
   totals: PeopleReportFigures;
 }
 
-/** One week of the range, cut to the days it counts. */
+export type TimelineBucketSize = 'week' | 'month';
+
+/** One week or month of the range, cut to the days it counts. */
 export interface TimelineBucket {
   start: string;
   end: string;
   /** Working days among the days it counts. */
   workingDays: number;
-  /** True when the range or the cut-off leaves part of the week out. */
+  /** True when the range or the cut-off leaves part of the week or month out. */
   isPartial: boolean;
   loggedMinutes: number;
   billableMinutes: number;
@@ -82,8 +86,34 @@ export interface TimelineBucket {
 }
 
 export interface Timeline extends ReportCoverage {
+  bucketSize: TimelineBucketSize;
   /** Oldest first, up to the last day counted. */
   buckets: TimelineBucket[];
+}
+
+/** What Reports opens with: the People report and its timeline, worked out together. */
+export interface ReportOverview {
+  people: PeopleReport;
+  timeline: Timeline;
+}
+
+/**
+ * A range of up to this many days, both ends counted (a quarter), reads week
+ * by week; a longer one month by month.
+ */
+const WEEKLY_TIMELINE_MAX_DAYS = 92;
+
+/** What the People report and the timeline both stand on, worked out once. */
+interface ReportBasis {
+  dateFrom: string;
+  dateTo: string;
+  /** The last day counted; before `dateFrom` when no day of the range has finished. */
+  countedTo: string;
+  hours: HoursReport;
+  people: VisibleUser[];
+  availability: Map<string, Availability>;
+  loggedDates: Map<string, Set<string>>;
+  teams: Map<string, ReportTeam[]>;
 }
 
 /** An owner's days count too; Needs attention leaves owners out by `role`. */
@@ -108,6 +138,56 @@ const addFigures = (
     sum[key] += b[key];
   }
   return sum;
+};
+
+const coverageOf = ({
+  isProvisional,
+  countedUntil,
+}: HoursReport): ReportCoverage => ({ isProvisional, countedUntil });
+
+const bucketSizeFor = (dateFrom: string, dateTo: string): TimelineBucketSize =>
+  dateTo <= addDays(dateFrom, WEEKLY_TIMELINE_MAX_DAYS - 1) ? 'week' : 'month';
+
+/** Each person's row and the totals, from what `basisFor` worked out. */
+const peopleReportFrom = ({
+  hours,
+  people,
+  availability,
+  loggedDates,
+  teams,
+}: ReportBasis): PeopleReport => {
+  const hoursByUser = new Map(hours.rows.map((row) => [row.id, row]));
+  const rows = people.map((person): PeopleReportRow => {
+    const personHours = hoursByUser.get(person.id);
+    const personAvailability = availability.get(person.id);
+    const personLoggedDates = loggedDates.get(person.id);
+
+    return {
+      userId: person.id,
+      name: `${person.firstName} ${person.lastName}`,
+      position: person.position ?? null,
+      role: person.role,
+      status: person.status,
+      teams: teams.get(person.id) ?? [],
+      loggedMinutes: personHours?.totalMinutes ?? 0,
+      billableMinutes: personHours?.billableMinutes ?? 0,
+      nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
+      plannedMinutes: personHours?.plannedMinutes ?? 0,
+      expectedMinutes: personAvailability?.availableMinutes ?? 0,
+      timeOffDays: personAvailability?.absenceDays ?? 0,
+      daysWithoutTime: canStillLog(person)
+        ? (personAvailability?.expectedDates ?? []).filter(
+            (date) => !personLoggedDates?.has(date),
+          )
+        : [],
+    };
+  });
+
+  return {
+    rows,
+    totals: rows.reduce<PeopleReportFigures>(addFigures, NO_FIGURES),
+    ...coverageOf(hours),
+  };
 };
 
 /**
@@ -136,25 +216,45 @@ export class PeopleReportService {
     user: AuthUser,
     query: PeopleReportQuery,
   ): Promise<PeopleReport> {
-    const { dateFrom, dateTo } = query;
+    return peopleReportFrom(await this.basisFor(user, query));
+  }
 
+  /**
+   * The People report and the timeline from one Hours report, one list of
+   * people and one walk of expected hours, so the timeline's buckets add up
+   * to the report's totals.
+   */
+  async getOverview(
+    user: AuthUser,
+    query: PeopleReportQuery,
+  ): Promise<ReportOverview> {
+    const basis = await this.basisFor(user, query);
+
+    return {
+      people: peopleReportFrom(basis),
+      timeline: await this.timelineFrom(user, basis),
+    };
+  }
+
+  private async basisFor(
+    user: AuthUser,
+    { dateFrom, dateTo, teamId }: PeopleReportQuery,
+  ): Promise<ReportBasis> {
     assertDateRange(dateFrom, dateTo);
 
     const hours = await this.reportingService.getHoursReport(user, {
       dateFrom,
       dateTo,
+      teamId,
       groupBy: HoursReportGroupBy.PERSON,
     });
-    const hoursByUser = new Map(hours.rows.map((row) => [row.id, row]));
-    const people = await this.peopleFor(user, hours);
+    const people = await this.peopleFor(user, hours, teamId);
     // Expected stops where the Hours report stopped counting, so both use the
     // same "today" even across the company's midnight.
     const countedTo = hours.countedUntil ?? dateTo;
-    const hasCountedDays = countedTo >= dateFrom;
-
     const peopleIds = people.map((person) => person.id);
     const [availability, loggedDates, teams] = await Promise.all([
-      hasCountedDays
+      countedTo >= dateFrom
         ? this.expectedHours.availabilityToDateFor(
             user.companyId,
             peopleIds,
@@ -166,84 +266,51 @@ export class PeopleReportService {
       this.teamsFor(user, peopleIds),
     ]);
 
-    const rows = people.map((person): PeopleReportRow => {
-      const personHours = hoursByUser.get(person.id);
-      const personAvailability = availability.get(person.id);
-      const personLoggedDates = loggedDates.get(person.id);
-
-      return {
-        userId: person.id,
-        name: `${person.firstName} ${person.lastName}`,
-        position: person.position ?? null,
-        role: person.role,
-        status: person.status,
-        teams: teams.get(person.id) ?? [],
-        loggedMinutes: personHours?.totalMinutes ?? 0,
-        billableMinutes: personHours?.billableMinutes ?? 0,
-        nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
-        plannedMinutes: personHours?.plannedMinutes ?? 0,
-        expectedMinutes: personAvailability?.availableMinutes ?? 0,
-        timeOffDays: personAvailability?.absenceDays ?? 0,
-        daysWithoutTime: canStillLog(person)
-          ? (personAvailability?.expectedDates ?? []).filter(
-              (date) => !personLoggedDates?.has(date),
-            )
-          : [],
-      };
-    });
-
     return {
-      rows,
-      totals: rows.reduce<PeopleReportFigures>(addFigures, NO_FIGURES),
-      isProvisional: hours.isProvisional,
-      countedUntil: hours.countedUntil,
+      dateFrom,
+      dateTo,
+      countedTo,
+      hours,
+      people,
+      availability,
+      loggedDates,
+      teams,
     };
   }
 
   /**
-   * The range's time, plans and expected hours week by week, over the same
-   * people and finished days as the People report, so the buckets add up to
-   * its totals.
+   * The range's time, plans and expected hours week by week, or month by
+   * month past `WEEKLY_TIMELINE_MAX_DAYS`, over the same people and finished
+   * days as the People report.
    */
-  async getTimeline(
+  private async timelineFrom(
     user: AuthUser,
-    query: PeopleReportQuery,
+    { dateFrom, dateTo, countedTo, hours, people, availability }: ReportBasis,
   ): Promise<Timeline> {
-    const { dateFrom, dateTo } = query;
+    const bucketSize = bucketSizeFor(dateFrom, dateTo);
+    const coverage = coverageOf(hours);
 
-    assertDateRange(dateFrom, dateTo);
+    if (countedTo < dateFrom) return { bucketSize, buckets: [], ...coverage };
 
-    const hours = await this.reportingService.getHoursReport(user, {
-      dateFrom,
-      dateTo,
-      groupBy: HoursReportGroupBy.PERSON,
-    });
-    const coverage: ReportCoverage = {
-      isProvisional: hours.isProvisional,
-      countedUntil: hours.countedUntil,
-    };
-    const countedTo = hours.countedUntil ?? dateTo;
-
-    if (countedTo < dateFrom) return { buckets: [], ...coverage };
-
-    const people = await this.peopleFor(user, hours);
-    const peopleIds = people.map((person) => person.id);
-    const [days, expected, weekStartDay] = await Promise.all([
-      this.reportingService.minutesPerDay(user, peopleIds, dateFrom, countedTo),
-      this.expectedHours.expectedFor(
-        user.companyId,
-        peopleIds,
+    const [days, weekStartDay] = await Promise.all([
+      this.reportingService.minutesPerDay(
+        user,
+        people.map((person) => person.id),
         dateFrom,
         countedTo,
       ),
       this.weekStartDayOf(user.companyId),
     ]);
+    const spanOf = (date: string) =>
+      bucketSize === 'week'
+        ? weekRange(date, weekStartDay)
+        : { start: firstDayOfMonth(date), end: lastDayOfMonth(date) };
 
     const buckets: TimelineBucket[] = [];
     const bucketByDate = new Map<string, TimelineBucket>();
 
     for (const date of eachDate(dateFrom, countedTo)) {
-      const span = weekRange(date, weekStartDay);
+      const span = spanOf(date);
       let bucket = buckets.at(-1);
 
       if (!bucket || date > bucket.end) {
@@ -272,13 +339,13 @@ export class PeopleReportService {
       bucket.billableMinutes += day.billableMinutes;
       bucket.plannedMinutes += day.plannedMinutes;
     }
-    expected.forEach(({ byDate }) => {
+    availability.forEach(({ byDate }) => {
       for (const { date, minutes } of byDate) {
         bucketByDate.get(date)!.expectedMinutes += minutes;
       }
     });
 
-    return { buckets, ...coverage };
+    return { bucketSize, buckets, ...coverage };
   }
 
   /**
@@ -288,7 +355,11 @@ export class PeopleReportService {
    * owners often don't track their own, but a plan made for them is part of
    * the month's plan (Decision 27, refined by Decision 44).
    */
-  private async peopleFor(user: AuthUser, hours: HoursReport) {
+  private async peopleFor(
+    user: AuthUser,
+    hours: HoursReport,
+    teamId: string | undefined,
+  ) {
     const loggedIds = new Set(
       hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id),
     );
@@ -299,7 +370,7 @@ export class PeopleReportService {
     );
     const people = await this.teamVisibility.findVisibleUsers(
       user,
-      { includeUserIds: [...loggedIds] },
+      { includeUserIds: [...loggedIds], teamId },
       { includeSelf: true },
     );
 

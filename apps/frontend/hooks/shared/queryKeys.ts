@@ -182,8 +182,8 @@ export const queryKeys = {
     people: (params?: QueryParams) =>
       ["reporting", "figures", "people", params ?? {}] as const,
 
-    timeline: (params?: QueryParams) =>
-      ["reporting", "figures", "timeline", params ?? {}] as const,
+    overview: (params?: QueryParams) =>
+      ["reporting", "figures", "overview", params ?? {}] as const,
   },
 
   projectActivities: {

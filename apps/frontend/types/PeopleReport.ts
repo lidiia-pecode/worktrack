@@ -35,13 +35,15 @@ export interface PeopleReport extends ReportCoverage {
   totals: PeopleReportFigures;
 }
 
-/** One week of the range, cut to the days it counts. */
+export type TimelineBucketSize = "week" | "month";
+
+/** One week or month of the range, cut to the days it counts. */
 export interface TimelineBucket {
   start: string;
   end: string;
   /** Working days among the days it counts. */
   workingDays: number;
-  /** True when the range or the cut-off leaves part of the week out. */
+  /** True when the range or the cut-off leaves part of the week or month out. */
   isPartial: boolean;
   loggedMinutes: number;
   billableMinutes: number;
@@ -50,6 +52,14 @@ export interface TimelineBucket {
 }
 
 export interface Timeline extends ReportCoverage {
+  /** Weeks up to 92 days, months beyond. */
+  bucketSize: TimelineBucketSize;
   /** Oldest first, up to the last day counted. */
   buckets: TimelineBucket[];
+}
+
+/** What Reports opens with: the People report and its timeline, worked out together. */
+export interface ReportOverview {
+  people: PeopleReport;
+  timeline: Timeline;
 }

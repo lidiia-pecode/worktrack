@@ -5,6 +5,7 @@ import { HoursReportRow, TimelineBucket } from "@/types";
 import {
   bucketLabel,
   bucketNote,
+  bucketsSinceCompanyStart,
   hourScale,
   kindOfWork,
   NO_CATEGORY,
@@ -45,10 +46,37 @@ const activity = (
 
 describe("bucketLabel", () => {
   it("names a week by its days, across a month end too", () => {
-    expect(bucketLabel(bucket("2026-10-05", "2026-10-11"))).toBe("Oct 5–11");
-    expect(bucketLabel(bucket("2026-09-28", "2026-10-04"))).toBe(
+    expect(bucketLabel(bucket("2026-10-05", "2026-10-11"), "week")).toBe(
+      "Oct 5–11",
+    );
+    expect(bucketLabel(bucket("2026-09-28", "2026-10-04"), "week")).toBe(
       "Sep 28 – Oct 4",
     );
+  });
+
+  it("names a month by its name, cut by the range or not", () => {
+    expect(bucketLabel(bucket("2026-01-01", "2026-01-31"), "month")).toBe(
+      "Jan",
+    );
+    expect(bucketLabel(bucket("2026-01-10", "2026-01-31"), "month")).toBe(
+      "Jan",
+    );
+  });
+});
+
+describe("bucketsSinceCompanyStart", () => {
+  it("starts at the company's first month, keeping an earlier month with time on it", () => {
+    const may = bucket("2026-05-01", "2026-05-31");
+    const april = {
+      ...bucket("2026-04-01", "2026-04-30"),
+      loggedMinutes: HOUR,
+    };
+    const june = bucket("2026-06-01", "2026-06-30");
+
+    expect(bucketsSinceCompanyStart([april, may, june], "2026-06-01")).toEqual([
+      april,
+      june,
+    ]);
   });
 });
 

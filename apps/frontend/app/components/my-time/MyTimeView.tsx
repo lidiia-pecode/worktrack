@@ -98,6 +98,7 @@ const MonthTotal = ({
     <ReportBar
       value={person.loggedMinutes}
       reference={person.expectedMinutes}
+      billable={person.billableMinutes}
       label={`${againstExpected(person.loggedMinutes, person.expectedMinutes)} expected`}
       className="mt-3 h-2.5"
     />
@@ -213,7 +214,8 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    // Fills the page, so an empty state stretches to the bottom as on Log my time.
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-2">
           <ReportMonthStepper
@@ -223,7 +225,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
             onChange={showMonth}
           />
           <p className="min-h-5 text-sm text-muted-foreground">
-            {report && !isNothingCounted && reportScope(report, false)}
+            {report && !isNothingCounted && reportScope(report)}
           </p>
         </div>
 

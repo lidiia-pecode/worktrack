@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { TriangleAlert } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 import { AttentionFact, AttentionItem } from "@/lib/utils/report-attention";
 
 import { Card } from "@/components/ui/card";
 
+import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionDot } from "./ReportRow";
 
 /** People or projects named before the rest open on request. */
@@ -66,6 +68,37 @@ const ItemList = ({
   );
 };
 
+type OpenMonthLinksProps = {
+  /** YYYY-MM, oldest first. */
+  months: string[];
+  onOpenMonth: (month: string) => void;
+};
+
+/**
+ * Needs attention reads one month at a time, so a longer period names the
+ * months in it still open for edits, each switching to its own.
+ */
+export const OpenMonthLinks = ({
+  months,
+  onOpenMonth,
+}: OpenMonthLinksProps) => (
+  <p className="text-sm text-muted-foreground">
+    What needs attention:{" "}
+    {months.map((month, index) => (
+      <span key={month}>
+        {index > 0 && " · "}
+        <button
+          type="button"
+          className={cn(NAME_CLASS, "font-medium text-foreground")}
+          onClick={() => onOpenMonth(month)}
+        >
+          {MONTH_NAME.format(new Date(`${month}-01T00:00:00`))} ›
+        </button>
+      </span>
+    ))}
+  </p>
+);
+
 type NeedsAttentionProps = {
   facts: AttentionFact[];
   /** The month's first day, for the line when nothing needs attention. */
@@ -90,9 +123,12 @@ export const NeedsAttention = ({
 
   return (
     <Card as="section" aria-labelledby="report-attention" className="p-6">
-      <h2 id="report-attention" className="text-base font-semibold">
-        Needs attention
-      </h2>
+      <ReportCardTitle
+        id="report-attention"
+        title="Needs attention"
+        icon={TriangleAlert}
+        tone="warning"
+      />
 
       {facts.length === 0 ? (
         <p className="mt-3 text-sm text-muted-foreground">{emptyLine}</p>
@@ -111,7 +147,7 @@ export const NeedsAttention = ({
             return (
               <li
                 key={fact.kind}
-                className="flex items-start gap-2 rounded-xl border border-warning/25 bg-warning/8 px-4 py-3.5"
+                className="flex items-start gap-2 rounded-xl border border-warning-border bg-warning-subtle px-4 py-3.5"
               >
                 {/* One line high, so the dot sits beside the first line. */}
                 <span className="flex h-6 items-center">

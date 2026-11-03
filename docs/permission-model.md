@@ -404,7 +404,9 @@ Visible and deliberately unanswered; each waits for a real need.
   services, and lists people per period. It is also the prerequisite for any
   grant that widens reach over people (§7, configurable permissions).
   *Recommendation: (b), as a phase of its own before the launch stage; not
-  part of Phase 41.* Until it is decided, §3.3's "Why this is enough" and §5's
+  part of Phase 41.* *Direction agreed 3 November 2026: option (b), in full, as
+  its own phase right after Phase 42 (`product-assessment.md`, Phase 43); not
+  part of Phase 42. Still open until that phase is planned and built.* Until it is decided, §3.3's "Why this is enough" and §5's
   note on membership dates describe the rule, not a guarantee.
 - **P5 — Should an employee see their own team and teammates?** *Answered 24
   October 2026: no.* Who is in a team, who manages it and who is away belong to

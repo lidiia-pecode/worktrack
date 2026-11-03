@@ -1,9 +1,3 @@
-import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
+import { ReportRangeQuery } from '../../dtos/report-range-query.dto';
 
-export class PeopleReportQuery {
-  @IsDateWithoutTimeString()
-  dateFrom!: string;
-
-  @IsDateWithoutTimeString()
-  dateTo!: string;
-}
+export class PeopleReportQuery extends ReportRangeQuery {}

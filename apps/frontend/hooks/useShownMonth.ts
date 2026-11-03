@@ -3,13 +3,12 @@
 import { useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { todayISODate, toMonthKey } from "@/lib/utils/date";
+import { isMonthKey, todayISODate, toMonthKey } from "@/lib/utils/date";
 import { companyFirstMonth } from "@/lib/utils/reporting-period";
 
 import { useCompany } from "./auth/useCompany";
 
 const MONTH_PARAM = "month";
-const MONTH_KEY = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
  * The month a month view shows, kept in `?month=` (YYYY-MM), as `useShownWeek`
@@ -31,7 +30,7 @@ export function useShownMonth() {
   const linkedMonth = searchParams.get(MONTH_PARAM);
   const isShowable =
     linkedMonth !== null &&
-    MONTH_KEY.test(linkedMonth) &&
+    isMonthKey(linkedMonth) &&
     linkedMonth <= currentMonth &&
     (firstMonth === undefined || linkedMonth >= firstMonth);
   const month = isShowable ? linkedMonth : currentMonth;

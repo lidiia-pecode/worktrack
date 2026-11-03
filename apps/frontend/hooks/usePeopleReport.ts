@@ -2,16 +2,20 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-export function usePeopleReport(params: ReportRange) {
+export function usePeopleReport(
+  params: ReportQuery,
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const query = useQuery({
     queryKey: queryKeys.reporting.people({ ...params }),
     queryFn: () => ReportingClientApi.getPeopleReport(params),
     placeholderData: keepPreviousData,
+    enabled,
   });
 
   return {

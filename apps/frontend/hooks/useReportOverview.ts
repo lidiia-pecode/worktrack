@@ -2,21 +2,21 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { ReportingClientApi } from "@/lib/api/resources";
 
 import { queryKeys } from "./shared/queryKeys";
 
-/** The month's hours week by week. */
-export function useTimeline(params: ReportRange) {
+/** Reports' People report and its timeline, in one request. */
+export function useReportOverview(params: ReportQuery) {
   const query = useQuery({
-    queryKey: queryKeys.reporting.timeline({ ...params }),
-    queryFn: () => ReportingClientApi.getTimeline(params),
+    queryKey: queryKeys.reporting.overview({ ...params }),
+    queryFn: () => ReportingClientApi.getOverview(params),
     placeholderData: keepPreviousData,
   });
 
   return {
-    timeline: query.data ?? null,
+    report: query.data ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
     isPlaceholderData: query.isPlaceholderData,

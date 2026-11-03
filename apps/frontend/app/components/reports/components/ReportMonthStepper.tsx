@@ -28,7 +28,7 @@ export const ReportMonthStepper = ({
       <Button
         variant="ghost"
         size="iconSm"
-        className="w-9 rounded-none"
+        className="w-9 rounded-none max-sm:size-10"
         aria-label="Previous month"
         disabled={companyFirstMonth !== undefined && month <= companyFirstMonth}
         onClick={() => onChange(addMonthsToKey(month, -1))}
@@ -38,7 +38,7 @@ export const ReportMonthStepper = ({
       <Button
         variant="ghost"
         size="iconSm"
-        className="w-9 rounded-none border-0 border-l border-border"
+        className="w-9 rounded-none border-0 border-l border-border max-sm:size-10"
         aria-label="Next month"
         disabled={month >= currentMonth}
         onClick={() => onChange(addMonthsToKey(month, 1))}

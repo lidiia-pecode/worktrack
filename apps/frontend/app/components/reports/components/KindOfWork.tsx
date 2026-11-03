@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import { ReportRange } from "@/types";
+import { ReportQuery } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { useHoursReport } from "@/hooks/useHoursReport";
@@ -31,7 +31,7 @@ const fillOf = (slot: number | null) =>
   slot === null ? "bg-category-other" : FILLS[slot];
 
 const ROW_CLASS =
-  "grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/60 py-2.5 text-sm";
+  "grid grid-cols-[0.75rem_minmax(0,1fr)_auto_2.5rem] items-center gap-3 border-t border-border/40 py-2.5 text-sm";
 
 const Figures = ({ minutes, share }: CategoryShare) => (
   <>
@@ -49,10 +49,10 @@ const Figures = ({ minutes, share }: CategoryShare) => (
  * named with their hours, the rest in an "Other" that opens. It loads only
  * when shown.
  */
-export const KindOfWork = ({ range }: { range: ReportRange }) => {
+export const KindOfWork = ({ query }: { query: ReportQuery }) => {
   const [isOtherOpen, setIsOtherOpen] = useState(false);
   const activities = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.ACTIVITY,
   });
   const categories = useActivityCategoriesAllPagesQuery();
@@ -81,7 +81,7 @@ export const KindOfWork = ({ range }: { range: ReportRange }) => {
   if (shares.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        No time logged this month.
+        No time logged in this period.
       </p>
     );
   }

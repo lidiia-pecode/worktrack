@@ -279,9 +279,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   )}
                 >
                   Person
-                  <span className="block font-normal normal-case tracking-normal">
-                    click to plan a period
-                  </span>
                 </th>
 
                 {workingDates.map((date) => (

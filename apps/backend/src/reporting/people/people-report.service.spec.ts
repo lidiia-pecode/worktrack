@@ -41,6 +41,11 @@ const RUN = Date.now();
 const SLUG = `people-report-test-${RUN}`;
 
 const MARCH = { dateFrom: '2026-03-01', dateTo: '2026-03-31' };
+/** One day past the weekly timeline's 92, so it reads month by month. */
+const THIRTEEN_WEEKS_AND_A_DAY = {
+  dateFrom: '2026-01-10',
+  dateTo: '2026-04-12',
+};
 const WORKING_DAYS_IN_MARCH = 22;
 const FULL_DAY = 8 * 60;
 const PART_TIME_WEEK = 24 * 60;
@@ -363,8 +368,10 @@ describe('PeopleReportService', () => {
       plannedMinutes: 240,
     });
 
-    const { rows, totals } = await service.getPeopleReport(owner, MARCH);
-    const { buckets } = await service.getTimeline(owner, MARCH);
+    const {
+      people: { rows, totals },
+      timeline: { buckets },
+    } = await service.getOverview(owner, MARCH);
     await dataSource.getRepository(User).delete([leaver.id, plannedOnly.id]);
 
     expect(rows.find((row) => row.userId === leaver.id)).toMatchObject({
@@ -452,8 +459,10 @@ describe('PeopleReportService', () => {
       });
 
       const after = await rowFor(owner, owner.id);
-      const { buckets } = await service.getTimeline(owner, MARCH);
-      const { totals } = await service.getPeopleReport(owner, MARCH);
+      const {
+        people: { totals },
+        timeline: { buckets },
+      } = await service.getOverview(owner, MARCH);
       await dataSource.getRepository(TimeLog).remove(log);
 
       expect(before).toBeUndefined();
@@ -533,9 +542,13 @@ describe('PeopleReportService', () => {
         },
       );
 
-    it('shows a month week by week, from Monday, with partial weeks at both ends', async () => {
-      const { buckets } = await service.getTimeline(owner, MARCH);
+    const timelineOf = async (viewer: AuthUser, range: typeof MARCH) =>
+      (await service.getOverview(viewer, range)).timeline;
 
+    it('shows a month week by week, from Monday, with partial weeks at both ends', async () => {
+      const { bucketSize, buckets } = await timelineOf(owner, MARCH);
+
+      expect(bucketSize).toBe('week');
       expect(
         buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
       ).toEqual([
@@ -556,41 +569,65 @@ describe('PeopleReportService', () => {
       });
     });
 
-    it('adds up to the People report, for an owner and for a manager', async () => {
+    it('adds up to its People report, which matches the one asked for alone', async () => {
       for (const viewer of [owner, manager]) {
-        const { buckets } = await service.getTimeline(viewer, MARCH);
-        const { totals } = await service.getPeopleReport(viewer, MARCH);
+        for (const range of [MARCH, THIRTEEN_WEEKS_AND_A_DAY]) {
+          const { people, timeline } = await service.getOverview(viewer, range);
 
-        expect(sums(buckets)).toEqual({
-          loggedMinutes: totals.loggedMinutes,
-          billableMinutes: totals.billableMinutes,
-          plannedMinutes: totals.plannedMinutes,
-          expectedMinutes: totals.expectedMinutes,
-        });
+          expect(sums(timeline.buckets)).toEqual({
+            loggedMinutes: people.totals.loggedMinutes,
+            billableMinutes: people.totals.billableMinutes,
+            plannedMinutes: people.totals.plannedMinutes,
+            expectedMinutes: people.totals.expectedMinutes,
+          });
+          expect(people).toEqual(await service.getPeopleReport(viewer, range));
+        }
       }
     });
 
-    it('shows a longer range week by week too', async () => {
-      const { buckets } = await service.getTimeline(owner, {
-        dateFrom: '2026-01-01',
-        dateTo: '2026-03-31',
+    it('shows up to 92 days week by week', async () => {
+      const { bucketSize, buckets } = await timelineOf(owner, {
+        dateFrom: '2026-01-10',
+        dateTo: '2026-04-11',
       });
 
-      expect(buckets).toHaveLength(14);
+      expect(bucketSize).toBe('week');
       expect(
         buckets.every((bucket) => bucket.end <= addDays(bucket.start, 6)),
       ).toBe(true);
+    });
+
+    it('shows 93 days and more month by month, cut to the range', async () => {
+      const { bucketSize, buckets } = await timelineOf(
+        owner,
+        THIRTEEN_WEEKS_AND_A_DAY,
+      );
+
+      expect(bucketSize).toBe('month');
+      expect(
+        buckets.map((bucket) => [bucket.start, bucket.end, bucket.isPartial]),
+      ).toEqual([
+        ['2026-01-10', '2026-01-31', true],
+        ['2026-02-01', '2026-02-28', false],
+        ['2026-03-01', '2026-03-31', false],
+        ['2026-04-01', '2026-04-12', true],
+      ]);
+      expect(buckets[2]).toMatchObject({
+        workingDays: WORKING_DAYS_IN_MARCH,
+        loggedMinutes: 1200,
+        plannedMinutes: 600,
+      });
     });
 
     it('stops at yesterday, and has nothing for a range that starts today', async () => {
       const today = new Date().toISOString().slice(0, 10);
       const yesterday = addDays(today, -1);
 
-      const running = await service.getTimeline(owner, {
+      const running = await timelineOf(owner, {
         dateFrom: addDays(today, -10),
         dateTo: addDays(today, 10),
       });
-      const ahead = await service.getTimeline(owner, {
+      const ahead = await timelineOf(owner, {
         dateFrom: today,
         dateTo: addDays(today, 7),
       });
@@ -598,6 +635,67 @@ describe('PeopleReportService', () => {
       expect(running.buckets.at(-1)?.end).toBe(yesterday);
       expect(running.countedUntil).toBe(yesterday);
       expect(ahead.buckets).toEqual([]);
+    });
+  });
+
+  describe('one team', () => {
+    let otherTeamId: string; // partTimer alone, led by nobody here
+
+    beforeAll(async () => {
+      const otherTeam = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Other team ${RUN}` });
+      otherTeamId = otherTeam.id;
+
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: otherTeamId,
+        userId: partTimer,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2020-01-01',
+      });
+    });
+
+    const exportRows = (viewer: AuthUser, team?: string) =>
+      reporting.getHoursExport(viewer, { ...MARCH, teamId: team });
+
+    it("narrows an owner's report, its timeline and the export to the team's members", async () => {
+      const { people, timeline } = await service.getOverview(owner, {
+        ...MARCH,
+        teamId,
+      });
+      const hours = await reporting.getHoursReport(owner, {
+        ...MARCH,
+        teamId: otherTeamId,
+        groupBy: HoursReportGroupBy.PERSON,
+      });
+
+      expect(people.rows.map((row) => row.userId).sort()).toEqual(
+        [manager.id, member, awayAllMonth].sort(),
+      );
+      expect(timeline.buckets[3].loggedMinutes).toBe(1200);
+      expect(hours.rows).toEqual([]);
+      expect(await exportRows(owner, teamId)).toHaveLength(2);
+      expect(await exportRows(owner, otherTeamId)).toEqual([]);
+    });
+
+    it("gives a manager nothing for a team they don't lead", async () => {
+      const { people, timeline } = await service.getOverview(manager, {
+        ...MARCH,
+        teamId: otherTeamId,
+      });
+      const hours = await reporting.getHoursReport(manager, {
+        ...MARCH,
+        teamId: otherTeamId,
+        groupBy: HoursReportGroupBy.PROJECT,
+      });
+
+      expect(people.rows).toEqual([]);
+      expect(
+        timeline.buckets.every((bucket) => bucket.loggedMinutes === 0),
+      ).toBe(true);
+      expect(hours.rows).toEqual([]);
+      expect(await exportRows(manager, otherTeamId)).toEqual([]);
     });
   });
 
@@ -609,7 +707,7 @@ describe('PeopleReportService', () => {
       }),
     ).rejects.toThrow(BadRequestException);
     await expect(
-      service.getTimeline(owner, {
+      service.getOverview(owner, {
         dateFrom: '2025-01-01',
         dateTo: '2026-01-02',
       }),

@@ -35,6 +35,7 @@ import { HoursReportQuery } from './dtos/hours-report-query.dto';
 import { HoursReportGroupBy } from './enums/hours-report-group-by.enum';
 import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import { HoursBilling } from './enums/hours-billing.enum';
+import { Team } from 'src/teams/entities/team.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 
@@ -588,7 +589,7 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
-    this.applyRowFilters(qb, query);
+    this.applyRowFilters(qb, query, user);
 
     qb.groupBy(grouping.groupBy.join(', '));
 
@@ -703,7 +704,7 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
     });
-    this.applyRowFilters(qb, query);
+    this.applyRowFilters(qb, query, user);
 
     return qb
       .groupBy(grouping.groupBy.join(', '))
@@ -715,12 +716,15 @@ export class ReportingService {
   /**
    * Narrows a query that joins projects as `p` and users as `u` to one
    * project or one person, the way Reports opens a project's people or a
-   * person's projects.
+   * person's projects, and to one team's current members.
    */
   private applyRowFilters(
     qb: SelectQueryBuilder<ObjectLiteral>,
-    { projectId, userId }: HoursReportQuery,
+    { projectId, userId, teamId }: HoursReportQuery,
+    user: AuthUser,
   ): void {
+    this.teamVisibility.applyTeamMembershipFilter(qb, 'u.id', teamId, user);
+
     if (projectId) {
       qb.andWhere('p.id = :projectId', { projectId });
     }
@@ -803,6 +807,21 @@ export class ReportingService {
   }
 
   /**
+   * A team's name for the export's file, only when the caller can see the
+   * team, so the name never tells a manager about a team they don't lead.
+   */
+  async exportTeamName(user: AuthUser, teamId: string): Promise<string | null> {
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    if (visibleTeamIds && !visibleTeamIds.includes(teamId)) return null;
+
+    const team = await this.periodRepo.manager.findOne(Team, {
+      where: { id: teamId, companyId: user.companyId },
+      select: ['id', 'name'],
+    });
+    return team?.name ?? null;
+  }
+
+  /**
    * The Hours report's time, for the same people and days, one row per
    * person, day, project, activity and billing.
    */
@@ -844,6 +863,12 @@ export class ReportingService {
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
       includeSelf: true,
     });
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      'tl.user_id',
+      query.teamId,
+      user,
+    );
 
     const [rawRows, lockedMonths] = await Promise.all([
       qb

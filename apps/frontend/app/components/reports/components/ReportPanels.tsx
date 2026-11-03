@@ -4,7 +4,12 @@ import { ReactNode, useId } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { HoursReportRow, PeopleReportRow, ReportRange } from "@/types";
+import {
+  HoursReportRow,
+  PeopleReportRow,
+  ReportQuery,
+  ReportRange,
+} from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
@@ -13,6 +18,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
+import { isDeactivatedUser } from "@/lib/utils/user";
 
 import { buttonVariants } from "@/components/ui/button";
 
@@ -191,7 +197,7 @@ export const PersonProjects = ({
   return (
     <PanelList
       report={projects}
-      empty="No time or plans on any project this month."
+      empty="No time or plans on any project in this period."
     >
       {(rows) =>
         rows.map((row) => (
@@ -210,15 +216,18 @@ type PersonPanelProps = {
   person: PeopleReportRow;
   range: ReportRange;
   countedUntil: string | null;
+  /** Day by day for a range read week by week; past it, a grid of days would run to fifty rows. */
+  showsDays: boolean;
   isUpdating: boolean;
   onClose: () => void;
 };
 
-/** One person's month: what the row doesn't say, their days and their projects. */
+/** One person's period: what the row doesn't say, their days and their projects. */
 export const PersonPanel = ({
   person,
   range,
   countedUntil,
+  showsDays,
   isUpdating,
   onClose,
 }: PersonPanelProps) => {
@@ -234,21 +243,34 @@ export const PersonPanel = ({
     >
       <PersonFacts person={person} range={range} countedUntil={countedUntil} />
 
-      <PanelSection
-        title="Day by day"
-        note={
-          withoutTime > 0
-            ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
-            : undefined
-        }
-      >
-        <PersonDayGrid
-          person={person}
-          range={range}
-          countedUntil={countedUntil}
-          dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
-        />
-      </PanelSection>
+      {showsDays ? (
+        <PanelSection
+          title="Day by day"
+          note={
+            withoutTime > 0
+              ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
+              : undefined
+          }
+        >
+          <PersonDayGrid
+            person={person}
+            range={range}
+            countedUntil={countedUntil}
+            dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
+          />
+        </PanelSection>
+      ) : withoutTime > 0 ? (
+        <p className="text-sm">
+          {countLabel(withoutTime, "day", "days")} with no time logged
+        </p>
+      ) : (
+        // Days without time are counted only for someone who can still log,
+        // so a deactivated person, or one expected nowhere, gets no claim.
+        !isDeactivatedUser(person) &&
+        person.expectedMinutes > 0 && (
+          <p className="text-sm">Time logged on every expected day</p>
+        )
+      )}
 
       <PanelSection title="Projects" note="Logged against planned">
         <PersonProjects person={person} range={range} />
@@ -269,20 +291,21 @@ export const PersonPanel = ({
 
 type ProjectPanelProps = {
   project: HoursReportRow;
-  range: ReportRange;
+  /** The period and, when one is chosen, the team, whose people it lists. */
+  query: ReportQuery;
   isUpdating: boolean;
   onClose: () => void;
 };
 
-/** One project's month: its billable time and the people on it. */
+/** One project's period: its billable time and the people on it. */
 export const ProjectPanel = ({
   project,
-  range,
+  query,
   isUpdating,
   onClose,
 }: ProjectPanelProps) => {
   const people = useHoursReport({
-    ...range,
+    ...query,
     groupBy: HoursReportGroupBy.PERSON,
     projectId: project.id,
   });

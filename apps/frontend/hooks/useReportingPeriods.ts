@@ -23,10 +23,14 @@ import {
 import { useCompany } from "./auth/useCompany";
 import { queryKeys } from "./shared/queryKeys";
 
-export function useReportingPeriods(params: ReportingPeriodsQuery = {}) {
+export function useReportingPeriods(
+  params: ReportingPeriodsQuery = {},
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   const query = useQuery({
     queryKey: queryKeys.reporting.periods({ ...params }),
     queryFn: () => ReportingClientApi.getPeriods(params),
+    enabled,
   });
 
   return {

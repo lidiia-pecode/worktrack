@@ -7,18 +7,19 @@ import {
   HoursReportRow,
   PeopleReport,
   PeopleReportRow,
+  Timeline,
 } from "@/types";
 import { HoursReportGroupBy, UserRole, UserStatus } from "@/types/enums";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
-import { usePeopleReport } from "@/hooks/usePeopleReport";
+import { useReportOverview } from "@/hooks/useReportOverview";
 import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
-import { useTimeline } from "@/hooks/useTimeline";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import {
   addDays,
   addMonthsToKey,
   formatDayMonthLabel,
+  formatMonthLabel,
   isWeekend,
   todayISODate,
   toISODate,
@@ -43,9 +44,22 @@ vi.mock("@/hooks/auth/useAuth", () => ({
     user: { role: auth.isOwner ? UserRole.OWNER : UserRole.MANAGER },
   }),
 }));
-vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
+vi.mock("@/hooks/useReportOverview", () => ({ useReportOverview: vi.fn() }));
+// The teams the viewer can narrow to; one unless a test gives more.
+const teams = vi.hoisted(() => ({
+  options: [{ value: "core", label: "Core Development" }],
+}));
+vi.mock("@/hooks/useTeams", () => ({
+  useTeamOptions: () => ({ ...teams, isLoading: false, isError: false }),
+}));
+// The previous period's figures, for the change; none unless a test gives them.
+vi.mock("@/hooks/usePeopleReport", () => ({
+  usePeopleReport: () => ({ report: null, isPlaceholderData: false }),
+}));
+vi.mock("@/hooks/useReportingPeriods", () => ({
+  useReportingPeriods: () => ({ months: [] }),
+}));
 vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
-vi.mock("@/hooks/useTimeline", () => ({ useTimeline: vi.fn() }));
 vi.mock("@/hooks/useActivityCategories", () => ({
   useActivityCategoriesAllPagesQuery: () => ({
     items: [{ name: "Design" }, { name: "Development" }],
@@ -176,6 +190,34 @@ const projectsReport = (rows: HoursReportRow[]): HoursReport => ({
   countedUntil: null,
 });
 
+const timeline: Timeline = {
+  bucketSize: "week",
+  buckets: [
+    {
+      start: "2026-10-01",
+      end: "2026-10-04",
+      workingDays: 2,
+      isPartial: true,
+      loggedMinutes: 14 * HOUR,
+      billableMinutes: 0,
+      plannedMinutes: 12 * HOUR,
+      expectedMinutes: 16 * HOUR,
+    },
+    {
+      start: "2026-10-05",
+      end: "2026-10-11",
+      workingDays: 5,
+      isPartial: false,
+      loggedMinutes: 38 * HOUR,
+      billableMinutes: 0,
+      plannedMinutes: 40 * HOUR,
+      expectedMinutes: 40 * HOUR,
+    },
+  ],
+  isProvisional: true,
+  countedUntil: null,
+};
+
 const loaded = <T,>(report: T) => ({
   report,
   isLoading: false,
@@ -183,6 +225,16 @@ const loaded = <T,>(report: T) => ({
   isError: false,
   refetch: vi.fn(),
 });
+
+/** The page's one request: the People report with its timeline. */
+const showOverview = (
+  people: PeopleReport | null,
+  state: { isError?: boolean; isPlaceholderData?: boolean } = {},
+) =>
+  vi.mocked(useReportOverview).mockReturnValue({
+    ...loaded(people && { people, timeline }),
+    ...state,
+  } as unknown as ReturnType<typeof useReportOverview>);
 
 /** What the panels load: a person's projects and a project's people. */
 const panelRows = {
@@ -203,9 +255,7 @@ const peopleRow = (name: string) =>
   });
 
 const showReports = (people: PeopleReport, projects: HoursReport) => {
-  vi.mocked(usePeopleReport).mockReturnValue(
-    loaded(people) as unknown as ReturnType<typeof usePeopleReport>,
-  );
+  showOverview(people);
   vi.mocked(useHoursReport).mockImplementation(
     (params) =>
       loaded(
@@ -235,7 +285,8 @@ describe("ReportsView", () => {
 
   beforeEach(() => {
     auth.isOwner = false;
-    vi.mocked(usePeopleReport).mockReset();
+    teams.options = [{ value: "core", label: "Core Development" }];
+    vi.mocked(useReportOverview).mockReset();
     vi.mocked(useHoursReport).mockReset();
     navigation.history.splice(0, navigation.history.length, "");
     vi.mocked(useTeamTimeSummary).mockReturnValue({
@@ -244,37 +295,6 @@ describe("ReportsView", () => {
       isError: false,
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof useTeamTimeSummary>);
-    vi.mocked(useTimeline).mockReturnValue({
-      timeline: {
-        buckets: [
-          {
-            start: "2026-10-01",
-            end: "2026-10-04",
-            workingDays: 2,
-            isPartial: true,
-            loggedMinutes: 14 * HOUR,
-            billableMinutes: 0,
-            plannedMinutes: 12 * HOUR,
-            expectedMinutes: 16 * HOUR,
-          },
-          {
-            start: "2026-10-05",
-            end: "2026-10-11",
-            workingDays: 5,
-            isPartial: false,
-            loggedMinutes: 38 * HOUR,
-            billableMinutes: 0,
-            plannedMinutes: 40 * HOUR,
-            expectedMinutes: 40 * HOUR,
-          },
-        ],
-        isProvisional: true,
-        countedUntil: null,
-      },
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useTimeline>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
       items: [],
       isLoading: false,
@@ -286,9 +306,14 @@ describe("ReportsView", () => {
   it("sums the month up above its weeks", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const weeks = screen.getByRole("region", { name: "Week by week" });
-    expect(weeks).toHaveTextContent("Logged187h102% of 184h expected");
-    expect(weeks).toHaveTextContent("50% of logged");
+    const month = screen.getByRole("region", {
+      name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+    });
+    expect(month).toHaveTextContent("Logged187h102% of 184h expected");
+    expect(month).toHaveTextContent("50% of logged");
+    expect(
+      within(month).getByRole("region", { name: "Week by week" }),
+    ).toBeInTheDocument();
   });
 
   it("puts each person under their team, against what was expected, with their days off", () => {
@@ -307,7 +332,7 @@ describe("ReportsView", () => {
       name: /Core Development/,
     });
     expect(coreRow).toHaveAttribute("aria-expanded", "true");
-    expect(coreRow).toHaveTextContent("187h of 184h");
+    expect(coreRow.closest("li")).toHaveTextContent("187h of 184h");
 
     const ethan = within(people).getByText("Ethan Brooks").closest("li")!;
     expect(ethan).toHaveTextContent("5 days off");
@@ -403,7 +428,7 @@ describe("ReportsView", () => {
     expect(weeks).toHaveTextContent("2 days");
     // Each week can be focused, and names all three of its figures.
     const week = within(weeks).getByRole("img", {
-      name: "Oct 5–11: 38h logged · 40h planned · 40h expected",
+      name: "Oct 5–11: 5 days · 38h logged · 0h billable · 40h planned · 40h expected",
     });
     expect(week).toHaveAttribute("tabindex", "0");
   });
@@ -443,15 +468,12 @@ describe("ReportsView", () => {
     );
 
     expect(
-      screen.getByText("Nothing logged or planned in this month"),
+      screen.getByText(/^Nothing logged or planned in /),
     ).toBeInTheDocument();
   });
 
   it("offers to try again when the report fails", () => {
-    vi.mocked(usePeopleReport).mockReturnValue({
-      ...loaded(null),
-      isError: true,
-    } as unknown as ReturnType<typeof usePeopleReport>);
+    showOverview(null, { isError: true });
     vi.mocked(useHoursReport).mockReturnValue(
       loaded(projectsReport([])) as unknown as ReturnType<
         typeof useHoursReport
@@ -464,19 +486,19 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says how far the month is counted, whether it can change, and whose it is", () => {
+  it("says how far the month is counted and whether it can change", () => {
     const report = peopleReport(team);
 
     showReports({ ...report, countedUntil }, projectsReport(projects));
     expect(
       screen.getByText(
-        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits · your teams`,
+        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits`,
       ),
     ).toBeInTheDocument();
     cleanup();
 
     showReports(report, projectsReport(projects));
-    expect(screen.getByText("Open for edits · your teams")).toBeInTheDocument();
+    expect(screen.getByText("Open for edits")).toBeInTheDocument();
     cleanup();
 
     auth.isOwner = true;
@@ -486,10 +508,7 @@ describe("ReportsView", () => {
 
   it("says nothing about the month while the next one loads", () => {
     const report = { ...peopleReport(team), countedUntil };
-    vi.mocked(usePeopleReport).mockReturnValue({
-      ...loaded(report),
-      isPlaceholderData: true,
-    } as unknown as ReturnType<typeof usePeopleReport>);
+    showOverview(report, { isPlaceholderData: true });
     vi.mocked(useHoursReport).mockReturnValue(
       loaded(projectsReport(projects)) as unknown as ReturnType<
         typeof useHoursReport
@@ -513,6 +532,27 @@ describe("ReportsView", () => {
     auth.isOwner = true;
     showReports(peopleReport(team), projectsReport(projects));
     expect(card()).not.toHaveTextContent("Your teams’ time only");
+  });
+
+  it("offers one team to an owner and to a manager of several teams, not to a manager of one", () => {
+    const teamSelect = () => screen.queryByRole("combobox", { name: "Team" });
+
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).not.toBeInTheDocument();
+    cleanup();
+
+    teams.options = [
+      { value: "core", label: "Core Development" },
+      { value: "mobile", label: "Mobile Squad" },
+    ];
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).toBeInTheDocument();
+    cleanup();
+
+    teams.options = [{ value: "core", label: "Core Development" }];
+    auth.isOwner = true;
+    showReports(peopleReport(team), projectsReport(projects));
+    expect(teamSelect()).toBeInTheDocument();
   });
 
   describe("panels", () => {
@@ -814,11 +854,7 @@ describe("ReportsView", () => {
       showReports(peopleReport([ethan]), projectsReport(projects));
       await user.click(peopleRow("Ethan Brooks"));
 
-      vi.mocked(usePeopleReport).mockReturnValue(
-        loaded(peopleReport(team.slice(1))) as unknown as ReturnType<
-          typeof usePeopleReport
-        >,
-      );
+      showOverview(peopleReport(team.slice(1)));
       await user.click(screen.getByRole("button", { name: "Previous month" }));
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();

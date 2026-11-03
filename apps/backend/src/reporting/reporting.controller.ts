@@ -78,11 +78,16 @@ export class ReportingController {
     @CurrentUser() user: AuthUser,
     @Query() query: HoursExportQuery,
   ) {
-    const rows = await this.reportingService.getHoursExport(user, query);
+    const [rows, teamName] = await Promise.all([
+      this.reportingService.getHoursExport(user, query),
+      query.teamId
+        ? this.reportingService.exportTeamName(user, query.teamId)
+        : null,
+    ]);
 
     return new StreamableFile(await buildHoursExportWorkbook(rows), {
       type: XLSX_CONTENT_TYPE,
-      disposition: `attachment; filename="${hoursExportFileName(query)}"`,
+      disposition: `attachment; filename="${hoursExportFileName(query, teamName)}"`,
     });
   }
 }

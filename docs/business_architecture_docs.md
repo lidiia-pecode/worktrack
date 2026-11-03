@@ -15,8 +15,8 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 2 November 2026.** Phases 0 to 40 in §7 are
-delivered, and so is the permission model; Phase 41 is delivered on its merge. The work ahead was re-planned on 28
+**Last verified against the code: 3 November 2026.** Phases 0 to 41 in §7 are
+delivered, and so is the permission model; Phase 42 is delivered on its merge. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -880,13 +880,22 @@ see, and how a new company gets started. §7 plans that work.
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
   during the grace week the timesheet says until when last month can be edited.
-- **Reports** — owners and managers see one overview on `/reports`, one month
-  at a time, stepped with arrows from the company's first month. At the top,
-  week by week, the month's time logged against what the team was expected to
-  work (capacity minus time off), what was planned, and billable time and its
-  share (by each entry's flag, D2): each week a pale block of what was expected
-  with what was logged and planned standing inside it, and weeks cut short
-  marked. While the month is open, "Needs attention" says each kind of
+- **Reports** — owners and managers see one overview on `/reports` for a
+  month, a quarter, a year or a custom range of up to 366 days, stepped with
+  arrows from the company's first month and kept in the address, and for one
+  team at a time: an owner any team, a manager who leads several any of
+  theirs, the export included (Phase 42).
+  It opens with the period's three figures in a band in the brand colours:
+  time logged against what the team was expected to work (capacity minus time
+  off), what was planned against it, and billable time against logged (by each
+  entry's flag, D2), each with its share and its change in points from the
+  period before of the same kind, the hours behind the change on hover. Shares,
+  not hours, are compared, since periods differ in working days and people.
+  Below, week by week (month by month past 92 days, from the company's first
+  month): each column a pale block of what was expected with what was logged,
+  its billable part striped, and planned standing inside it, named under it
+  and with its figures on hover. A longer period links to the months in it
+  still open. While a month is open, "Needs attention" says each kind of
   problem once, in at most two cards, each name opening its panel: people with
   working days with no time logged (in a month still running, only for weeks
   that have ended, since many log their week on Friday), and projects at least
@@ -900,23 +909,27 @@ see, and how a new company gets started. §7 plans that work.
   period, with expected hours up to the day they left, and an owner only if
   they logged or planned time: owners often don't track their own, but a plan
   made for them is part of the month's plan. Below, People lists everyone by team (somebody in
-  two teams under both), each with one bar of their logged time against their
-  expected hours and their days off; a long list starts folded to its teams,
-  each with its people's total. The one mark is a dot beside somebody Needs
+  two teams under both; one plain list when one team is chosen), each with one
+  bar of their logged time against their expected hours, its billable part
+  striped, and their days off; time past what was expected ends the bar in the
+  warning colour; a long list starts folded to its teams, each with its
+  people's total and the change of its share from the period before. The one mark is a dot beside somebody Needs
   attention names, with a legend saying so. Figures are whole hours ("694h of
   819h"); the export and a person's days keep exact time. It is a fact, not a score (D3): nothing is red or green, and
   people are listed by name. Beside it, "Where the time went" switches between
   projects and the kind of work: each project, most logged first with its
-  client, as one bar of its time against its plan (a full, lighter bar and
-  "no plan" without one), or logged time by activity category, the five largest each in
+  client, as one bar of its time against its plan, striped for its billable
+  part and saying how far over when past it (a full, lighter bar and "no plan"
+  without one), or logged time by activity category, the five largest each in
   a colour of its own and named with its hours, the rest in an "Other" that
   opens. A person's name opens a panel with what the row doesn't say (their
   plan, billable time and kinds of time off), each day of the month (logged, a
   day off, or a working day with no time logged, which Reports alone shows,
   for checking before invoicing) and their projects against plan, with a link
   to their week on Team time; a project's name opens its billable time and its
-  people against their plans. One line under the month says how far it is
-  counted and whether it is open for edits or locked. Everything counts
+  people against their plans. One line under the period says how far it is
+  counted, whether it is open for edits or locked, and the team when one is
+  chosen. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
   teams they lead, and are told that projects show their teams' time only.
 - **Review my time** — every role has `/my-time`, their own month, one at a time,
@@ -1003,22 +1016,26 @@ rule everywhere — the people in the teams they lead, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty
-suites and 883 tests, covering the role-visibility filters, team and invitation
+suites and 886 tests, covering the role-visibility filters, team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, who added and changed a time entry or an absence, the lock
 order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
-an open write, the reports and the export, page and date-range limits, name
+an open write, the reports and the export (weeks or months on the timeline,
+one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-three Vitest files and 439 tests: its date, month,
-absence, lock, paging and time zone helpers, the report range check, tab
+The frontend has seventy-five Vitest files and 453 tests: its date, month,
+absence, lock, paging and time zone helpers, the report range check, the
+period Reports shows (in the address, stepped and switched between units),
+the chart's labels and start, the change from the previous period and its tip,
+a team's billable sum, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the form dialog's discard check,
 the time entry form, the duration stepper, the timesheet day column and its
 list of days on a phone, the
-Team time view, its day cells, rows, filters and sort order, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
+Team time view, its day cells, rows, filters and sort order, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -1111,6 +1128,7 @@ is in its pull request.
 | 39 | Time entry on a phone: the timesheet's week as a list of days where seven columns don't fit, each entry, plan and absence a row with its details and the list opening at today; short entries at least one readable line tall on the grid; a day no longer one button around its entries, the empty part of a day logging time and an absence opening from its own button; Timesheet and My time renamed Log my time and Review my time |
 | 40 | Consistent screens: WorkTrack's own pages for a missing address, an error and a loading route; a browser-tab title per page; the month on Reports and Review my time, and Planning's team, kept in the address; Settings asking before unsaved edits are dropped by a link or a reload; "company" for the company and its settings, "workspace" only for the working environment; the capacity date on the shared calendar, unable to reach a locked month; the setup checklist no longer ticking Company details; Team time's total following its search; the documentation checked against the code |
 | 41 | History that keeps its people: Team time's project filter keeping the people removed from the project, marked "Former member", with their hours in its total; who added and last changed a time entry or an absence recorded and named to everyone who can see it; the period preview naming only the days a save changes, and adding a person to a project locking them before the project, as a plan save does; the daily planning limit as the person's own day, and working hours set as a day in 30-minute steps up to 12h, the company's standard day too; Planning on working days only, with a compact "Planned" column, hour pickers stopping at the person's day, a day dialog whose hours stop at what fits and that closes after a save, conflicts in a period summed up, and "Add absence" from a day or a period |
+| 42 | Reports beyond one month: a month, a quarter, a year or a custom range of up to 366 days, stepped by its unit, chosen in a calendar and kept in the address, with a way back to the current one; weeks up to 92 days and months beyond, from the company's first month; the People report and its timeline worked out once in one request; one team at a time for an owner and a manager of several, the export and its file name included; the three figures in a branded band with their shares as rings and the change in points from the period before; billable time striped on the chart and the rows, overruns ending a bar, teams showing their change; Needs attention for a single month, with links from a longer period; a light salmon warning colour across WorkTrack, a mauve Planned and a softer logged teal in report marks; Planning's last column and Getting started lighter |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1368,13 +1386,15 @@ their time logs, such as anonymising the person and keeping the hours.
 - **Q4** — The hours export is an Excel file, one row per person, day,
   project, activity and billing type, with no notes and a `Period` column
   (Phase 13), and an `Email` column after the name (Phase 34).
-- **Q10** — Reports are one overview page for owners and managers, one month
-  at a time, built around the questions they bring: logged against expected and
-  planned, and billable, week by week; what needs attention while the month
-  can still change; people by team;
-  where the time went by project and kind of work, with a person or a project
-  opened in a side panel; the export holds every number (Phase 34). Comparison
-  with earlier periods stays in Area 6.
+- **Q10** — Reports are one overview page for owners and managers, a month at a
+  time at first (Phase 34) and any period up to a year since Phase 42, for the
+  whole company or one team, built around the questions they bring: logged
+  against expected and planned, and billable, week by week or month by month, with the
+  change from the period before; what needs attention while a month can still
+  change; people by team; where the time went by project and kind of work,
+  with a person or a project opened in a side panel; the export holds every
+  number (Phase 34). Whether a change from a period with nothing logged needs
+  explaining is open in `known-issues.md` Area 6.
 - **Q11** — Employees get their own month on the Review my time page, from the hours and
   people reports opened to them and pinned to themselves; the export and the
   timeline stay closed (Phase 35).

@@ -1,9 +1,3 @@
-import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
+import { ReportRangeQuery } from './report-range-query.dto';
 
-export class HoursExportQuery {
-  @IsDateWithoutTimeString()
-  dateFrom!: string;
-
-  @IsDateWithoutTimeString()
-  dateTo!: string;
-}
+export class HoursExportQuery extends ReportRangeQuery {}

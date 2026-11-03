@@ -2,10 +2,11 @@ import { ReactNode } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
-// The name, the bar and the figures; in a narrow list (an `@container`) the
-// name sits above the bar and the figures.
-const COLUMNS =
-  "grid grid-cols-[minmax(0,1fr)_10rem] gap-x-4 @sm:grid-cols-[minmax(8rem,1fr)_minmax(0,1.2fr)_10rem]";
+// The name, the bar and the figures, the name given the most room; in a narrow
+// list (an `@container`) the name sits above the bar and the figures. A team
+// row lays itself out the same way.
+export const REPORT_ROW_COLUMNS =
+  "grid grid-cols-[minmax(0,1fr)_9rem] gap-x-4 @sm:grid-cols-[minmax(10rem,1.4fr)_minmax(0,1fr)_9rem]";
 
 type ReportRowProps = {
   name: string;
@@ -58,8 +59,8 @@ export const ReportRow = ({
 }: ReportRowProps) => (
   <li
     className={cn(
-      COLUMNS,
-      "items-center gap-y-2 border-t border-border/60 py-3",
+      REPORT_ROW_COLUMNS,
+      "items-center gap-y-2 border-t border-border/40 py-3",
     )}
   >
     <div className="col-span-2 min-w-0 @sm:col-span-1">

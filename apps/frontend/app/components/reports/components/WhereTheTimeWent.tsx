@@ -1,16 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { FolderKanban } from "lucide-react";
 
-import { HoursReportRow, ReportRange } from "@/types";
-import { cn } from "@/lib/utils/cn";
+import { HoursReportRow, ReportQuery } from "@/types";
 import { countLabel } from "@/lib/utils/text";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
+import { SegmentedControl } from "../../shared/SegmentedControl";
+
 import { AgainstPlanRow } from "./AgainstPlanRow";
 import { KindOfWork } from "./KindOfWork";
+import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionLegend } from "./ReportRow";
 
 type WhereView = "projects" | "work";
@@ -38,7 +41,7 @@ const ProjectList = ({
   if (projects.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
-        No time or plans on any project this month.
+        No time or plans on any project in this period.
       </p>
     );
   }
@@ -79,21 +82,25 @@ const ProjectList = ({
 };
 
 type WhereTheTimeWentProps = {
-  range: ReportRange;
+  query: ReportQuery;
   projects: HoursReportRow[];
   /** The projects Needs attention names, with why. */
   marked: Map<string, string>;
-  /** A manager sees only their teams' time, which a project's figures don't say. */
-  isManager: boolean;
+  /**
+   * Whose time a project's figures are, which they don't say themselves:
+   * "Mobile Squad's time only" for one team, "Your teams' time only" for a
+   * manager.
+   */
+  scopeNote?: string;
   onOpenProject: (projectId: string) => void;
 };
 
-/** Where the month's time went: by project against the plan, or by kind of work. */
+/** Where the period's time went: by project against the plan, or by kind of work. */
 export const WhereTheTimeWent = ({
-  range,
+  query,
   projects,
   marked,
-  isManager,
+  scopeNote,
   onOpenProject,
 }: WhereTheTimeWentProps) => {
   const [view, setView] = useState<WhereView>("projects");
@@ -101,39 +108,21 @@ export const WhereTheTimeWent = ({
   return (
     <Card as="section" aria-labelledby="report-where" className="p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 id="report-where" className="text-base font-semibold">
-            Where the time went
-          </h2>
-          {isManager && (
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Your teams’ time only
-            </p>
-          )}
-        </div>
-        <div
-          role="group"
-          aria-label="Show"
-          className="flex h-8 overflow-hidden rounded-lg border border-border"
+        <ReportCardTitle
+          id="report-where"
+          title="Where the time went"
+          icon={FolderKanban}
         >
-          {VIEWS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              aria-pressed={view === value}
-              onClick={() => setView(value)}
-              className={cn(
-                "border-l border-border px-3 text-sm transition first:border-l-0",
-                "focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none focus-visible:ring-inset",
-                view === value
-                  ? "bg-accent font-semibold text-accent-foreground"
-                  : "text-foreground hover:bg-accent hover:text-accent-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          {scopeNote && (
+            <p className="text-sm text-muted-foreground">{scopeNote}</p>
+          )}
+        </ReportCardTitle>
+        <SegmentedControl
+          label="Show"
+          options={VIEWS}
+          value={view}
+          onChange={setView}
+        />
       </div>
 
       {view === "projects" ? (
@@ -143,7 +132,7 @@ export const WhereTheTimeWent = ({
           onOpenProject={onOpenProject}
         />
       ) : (
-        <KindOfWork range={range} />
+        <KindOfWork query={query} />
       )}
     </Card>
   );
