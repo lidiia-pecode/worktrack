@@ -33,13 +33,27 @@ export class TeamSummaryUserResponse {
 }
 
 @Exclude()
-export class InactiveSpellResponse {
+export class ClosedSpellResponse {
   @Expose()
   from!: string;
 
-  /** The day they came back; null while they are still deactivated. */
+  /** The first day open again; null when the spell doesn't end. */
   @Expose()
   until!: string | null;
+
+  /** Outside the team in view, or while the person wasn't employed. */
+  @Expose()
+  reason!: 'outside-team' | 'inactive';
+}
+
+@Exclude()
+export class TeamMoveResponse {
+  @Expose()
+  date!: string;
+
+  /** Into the view (joined) or out of it (moved out), on `date`. */
+  @Expose()
+  direction!: 'in' | 'out';
 }
 
 @Exclude()
@@ -87,10 +101,14 @@ export class TeamSummaryRowResponse {
   @Type(() => ExpectedDayResponse)
   expectedByDate!: ExpectedDayResponse[];
 
-  /** The days nothing can be recorded on, in the company's time zone. */
+  /** The days the viewer can't touch, in the company's time zone. */
   @Expose()
-  @Type(() => InactiveSpellResponse)
-  inactiveSpells!: InactiveSpellResponse[];
+  @Type(() => ClosedSpellResponse)
+  closedSpells!: ClosedSpellResponse[];
+
+  @Expose()
+  @Type(() => TeamMoveResponse)
+  moves!: TeamMoveResponse[];
 
   /** Only under a project filter: false for someone removed from it since. */
   @Expose()

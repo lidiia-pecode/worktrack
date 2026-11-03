@@ -5,7 +5,9 @@ import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { assertDateRange } from 'src/reporting/date-range.util';
 
-import { CapacityService, InactiveSpell } from './capacity.service';
+import { DaySpan, isWithinSpan } from 'src/teams/days-in-view.util';
+
+import { CapacityService } from './capacity.service';
 import { eachDate, isWorkingDay, todayISODate } from './working-days.util';
 
 export interface ExpectedDay {
@@ -44,9 +46,6 @@ interface ShareSums {
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
-
-const isWithin = ({ from, until }: InactiveSpell, date: string) =>
-  date >= from && (until === null || date < until);
 
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0, byDate: [] };
 
@@ -90,14 +89,25 @@ export class ExpectedHoursService {
     return expected.get(userId) ?? NOTHING_EXPECTED;
   }
 
+  /**
+   * `leaveOut` names, per person, days the view doesn't hold, such as the
+   * days they were in another team: nothing is expected of them there.
+   */
   async expectedFor(
     companyId: string,
     userIds: string[],
     from: string,
     to: string,
+    leaveOut?: Map<string, DaySpan[]>,
   ): Promise<Map<string, ExpectedMinutes>> {
     assertDateRange(from, to);
-    const sums = await this.sumSharesFor(companyId, userIds, from, to);
+    const sums = await this.sumSharesFor(
+      companyId,
+      userIds,
+      from,
+      to,
+      leaveOut,
+    );
     const expected = new Map<string, ExpectedMinutes>();
 
     sums.forEach((sum, userId) => {
@@ -179,6 +189,7 @@ export class ExpectedHoursService {
     userIds: string[],
     from: string,
     to: string,
+    leaveOut?: Map<string, DaySpan[]>,
   ): Promise<Map<string, ShareSums>> {
     const sums = new Map<string, ShareSums>();
     if (userIds.length === 0) return sums;
@@ -200,6 +211,7 @@ export class ExpectedHoursService {
       const timeline = timelines.get(userId);
       const active = activeDates.get(userId);
       const absences = absencesByUser.get(userId) ?? [];
+      const leftOut = leaveOut?.get(userId) ?? [];
       const sum: ShareSums = {
         available: 0,
         availableToDate: 0,
@@ -214,9 +226,10 @@ export class ExpectedHoursService {
 
         if (!isWorkingDay(date)) continue;
         if (active && date < active.startDate) continue;
-        if (active?.inactiveSpells.some((spell) => isWithin(spell, date))) {
+        if (active?.inactiveSpells.some((spell) => isWithinSpan(spell, date))) {
           continue;
         }
+        if (leftOut.some((span) => isWithinSpan(span, date))) continue;
 
         const share = timeline?.minutesPerDayOn(date) ?? 0;
         const hasFinished = date < today;

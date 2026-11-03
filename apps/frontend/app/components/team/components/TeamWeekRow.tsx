@@ -6,7 +6,7 @@ import { CalendarOff } from "lucide-react";
 import { Absence, PlanningEntry, TeamSummaryRow, TimeLog } from "@/types";
 import { formatDuration, toISODate } from "@/lib/utils/date";
 import { isRangeLocked } from "@/lib/utils/reporting-period";
-import { fullName, isDeactivatedUser, isInactiveOn } from "@/lib/utils/user";
+import { fullName, isDeactivatedUser, isClosedOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
@@ -61,8 +61,8 @@ export const TeamWeekRow = ({
     row.expectedByDate.map((day) => [day.date, day.minutes]),
   );
   const name = fullName(row.user);
-  // The API refuses any day the person was deactivated for.
-  const isActiveOn = (iso: string) => !isInactiveOn(row.inactiveSpells, iso);
+  // The API refuses a day outside the team in view or the person's employment.
+  const isActiveOn = (iso: string) => !isClosedOn(row.closedSpells, iso);
 
   useEffect(() => {
     if (isHighlighted) rowRef.current?.scrollIntoView({ block: "center" });

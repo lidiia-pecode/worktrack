@@ -26,7 +26,8 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
   expectedMinutes: 2400,
   expectedToDateMinutes: 2400,
   expectedByDate: [],
-  inactiveSpells: [],
+  closedSpells: [],
+  moves: [],
   days: [],
   ...overrides,
 });
@@ -129,7 +130,7 @@ describe("TeamWeekRow", () => {
           status: UserStatus.DEACTIVATED,
           deactivatedAt: "2026-11-05T10:00:00Z",
         },
-        inactiveSpells: [{ from: "2026-11-05", until: null }],
+        closedSpells: [{ from: "2026-11-05", until: null, reason: "inactive" }],
       }),
       { onAdd },
     );
@@ -147,7 +148,11 @@ describe("TeamWeekRow", () => {
   it("writes nothing in an earlier spell they were deactivated for", () => {
     const onAdd = vi.fn();
     renderRow(
-      row({ inactiveSpells: [{ from: "2026-10-26", until: "2026-11-04" }] }),
+      row({
+        closedSpells: [
+          { from: "2026-10-26", until: "2026-11-04", reason: "inactive" },
+        ],
+      }),
       { onAdd },
     );
 
@@ -160,7 +165,11 @@ describe("TeamWeekRow", () => {
 
   it("offers no absence for a week they were away throughout", () => {
     renderRow(
-      row({ inactiveSpells: [{ from: "2026-10-26", until: "2026-11-09" }] }),
+      row({
+        closedSpells: [
+          { from: "2026-10-26", until: "2026-11-09", reason: "inactive" },
+        ],
+      }),
     );
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

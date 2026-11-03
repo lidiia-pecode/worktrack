@@ -999,6 +999,9 @@ describe('TimeLogsService write scope', () => {
     beforeAll(async () => {
       betaManager = await createUser('betamanager', UserRole.MANAGER);
       mover = await createUser('emma', UserRole.EMPLOYEE);
+      await dataSource
+        .getRepository(User)
+        .update(mover.id, { createdAt: new Date('2026-01-01T00:00:00Z') });
 
       const beta = await dataSource
         .getRepository(Team)
@@ -1062,6 +1065,59 @@ describe('TimeLogsService write scope', () => {
       expect(await datesListedFor(owner)).toEqual([
         LAST_DAY_IN_ALPHA,
         MOVE_DAY,
+      ]);
+    });
+
+    const moveWeek = (caller: AuthUser, teamFilter?: string) =>
+      service.getTeamSummary(
+        { dateFrom: '2026-02-09', dateTo: '2026-02-15', teamId: teamFilter },
+        caller,
+      );
+    const rowOf = (summary: { rows: TeamSummaryRow[] }, id: string) =>
+      summary.rows.find((row) => row.user.id === id)!;
+
+    it("lists the mover in each team's week with only that team's days", async () => {
+      await existingLogFor(mover.id, LAST_DAY_IN_ALPHA);
+      await existingLogFor(mover.id, MOVE_DAY);
+
+      const alpha = rowOf(await moveWeek(manager), mover.id);
+      expect(alpha.minutes).toBe(60);
+      expect(alpha.closedSpells).toEqual([
+        { from: MOVE_DAY, until: '2026-02-16', reason: 'outside-team' },
+      ]);
+      expect(alpha.moves).toEqual([{ date: MOVE_DAY, direction: 'out' }]);
+      const expectedOn = (date: string) =>
+        alpha.expectedByDate.find((day) => day.date === date)?.minutes;
+      expect(expectedOn(LAST_DAY_IN_ALPHA)).toBeGreaterThan(0);
+      expect(expectedOn(MOVE_DAY)).toBe(0);
+
+      const beta = rowOf(await moveWeek(betaManager), mover.id);
+      expect(beta.minutes).toBe(60);
+      expect(beta.closedSpells).toEqual([
+        { from: '2026-02-09', until: MOVE_DAY, reason: 'outside-team' },
+      ]);
+      expect(beta.moves).toEqual([{ date: MOVE_DAY, direction: 'in' }]);
+
+      // An owner's team filter holds the team's days; all teams, one row.
+      expect(rowOf(await moveWeek(owner, teamId), mover.id)).toMatchObject({
+        minutes: 60,
+        closedSpells: alpha.closedSpells,
+      });
+      expect(rowOf(await moveWeek(owner), mover.id)).toMatchObject({
+        minutes: 120,
+        closedSpells: [],
+        moves: [],
+      });
+    });
+
+    it("closes a leaver's days after they left, with that reason", async () => {
+      const { rows } = await service.getTeamSummary(
+        { dateFrom: '2026-02-16', dateTo: '2026-02-22' },
+        manager,
+      );
+
+      expect(rowOf({ rows }, deactivated.id).closedSpells).toEqual([
+        { from: LEAVE_DAY, until: null, reason: 'inactive' },
       ]);
     });
 

@@ -38,6 +38,8 @@ const row = (
   dayLimits: [],
   projects: [],
   entries,
+  closedSpells: [],
+  moves: [],
 });
 
 const renderRow = (
