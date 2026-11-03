@@ -224,6 +224,26 @@ describe('Rate limits', () => {
     });
   });
 
+  describe('linking Google with a password', () => {
+    it('limits one address like sign-in', async () => {
+      const guess = (ip: string) =>
+        request({ ip, body: { token: 'link-token', password: 'wrong' } });
+
+      await hitTimes(
+        CLIENT_AUTH_ATTEMPTS_PER_MINUTE,
+        'completeGoogleLinkWithPassword',
+        guess('10.0.3.1'),
+      );
+
+      await expect(
+        hit('completeGoogleLinkWithPassword', guess('10.0.3.1')),
+      ).rejects.toThrow(ThrottlerException);
+      await expect(
+        hit('completeGoogleLinkWithPassword', guess('10.0.3.2')),
+      ).resolves.toBe(true);
+    });
+  });
+
   describe('changing a password', () => {
     it('is limited per account across sessions', async () => {
       for (let i = 0; i < ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE; i++) {

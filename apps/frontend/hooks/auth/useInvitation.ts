@@ -28,6 +28,9 @@ export const useInvitations = () => {
 
       toast.success("Invitation sent successfully");
     },
+
+    // A failed email still leaves the invitation saved, with a new link.
+    onError: invalidateInvitations,
   });
 
   const resend = useMutation({
@@ -40,6 +43,8 @@ export const useInvitations = () => {
         "Invitation sent again. The previous link no longer works.",
       );
     },
+
+    onError: invalidateInvitations,
   });
 
   const revoke = useMutation({

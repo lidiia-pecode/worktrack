@@ -7,6 +7,9 @@ import { randomUUID } from 'crypto';
 import { AuthSession } from '../entities/auth-session.entity';
 import { SessionMetadata } from 'src/lib/types/session-metadata';
 import { AuthUser } from '../auth-strategies/types';
+import { AuthErrorCode, authError } from '../auth-error';
+import { User } from 'src/users/entities/user.entity';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 import { TokenService } from './token.service';
 
@@ -120,6 +123,32 @@ export class SessionService {
     metadata?: SessionMetadata,
     manager?: EntityManager,
   ) {
+    const insert = (activeManager: EntityManager) =>
+      this.insertSession(user, metadata, activeManager);
+
+    return manager ? insert(manager) : this.repo.manager.transaction(insert);
+  }
+
+  /**
+   * A deactivation deletes the person's sessions in its own transaction, so
+   * the user row is share-locked first: the session is inserted either before
+   * that transaction, which then deletes it, or after it, and refused.
+   */
+  private async insertSession(
+    user: AuthUser,
+    metadata: SessionMetadata | undefined,
+    manager: EntityManager,
+  ) {
+    const current = await manager.getRepository(User).findOne({
+      where: { id: user.id },
+      select: ['id', 'status'],
+      lock: { mode: 'pessimistic_read' },
+    });
+
+    if (current?.status !== UserStatus.ACTIVE) {
+      throw authError(AuthErrorCode.ACCOUNT_INACTIVE);
+    }
+
     const expiresAt = this.getSessionExpirationDate();
     const sessionId = randomUUID();
 
@@ -142,9 +171,7 @@ export class SessionService {
       sessionId,
     );
 
-    const activeManager = manager ?? this.repo.manager;
-
-    await activeManager.getRepository(AuthSession).save({
+    await manager.getRepository(AuthSession).save({
       id: sessionId,
       userId: user.id,
       companyId: user.companyId,

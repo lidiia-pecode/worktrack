@@ -68,7 +68,9 @@ export class MailService {
     if (error) {
       this.logger.error('Failed to send invitation email', error);
 
-      throw new InternalServerErrorException('Failed to send invitation email');
+      throw new InternalServerErrorException(
+        'The invitation is saved, but its email could not be sent. Resend it from the list.',
+      );
     }
 
     this.logger.log(`Sent invitation email ${data?.id}`);

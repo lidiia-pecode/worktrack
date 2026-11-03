@@ -195,6 +195,9 @@ export class AuthController {
     return res.redirect(`${frontendUrl}/settings?google=linked`);
   }
 
+  // Each request guesses the password once, so it is limited as sign-in is;
+  // the body carries no email for the per-account limit.
+  @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @Post('google/link/complete')
   @Serialize(TokenResponse)
   async completeGoogleLinkWithPassword(

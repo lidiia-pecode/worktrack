@@ -657,6 +657,29 @@ describe('TimeLogsService write scope', () => {
       ).rejects.toThrow(BadRequestException);
     });
 
+    it('covers at most 31 days with entries', async () => {
+      await expect(
+        service.getTeamSummary(
+          {
+            dateFrom: '2025-01-01',
+            dateTo: '2025-01-31',
+            includeEntries: true,
+          },
+          owner,
+        ),
+      ).resolves.toBeDefined();
+      await expect(
+        service.getTeamSummary(
+          {
+            dateFrom: '2025-01-01',
+            dateTo: '2025-02-01',
+            includeEntries: true,
+          },
+          owner,
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
     const weekOf = (
       by: AuthUser,
       filter: {
