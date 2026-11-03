@@ -125,6 +125,11 @@ const TeamRows = ({
               <span title={group.name} className="line-clamp-2 font-semibold">
                 {group.name}
               </span>
+              {group.isArchived && (
+                <Badge variant="neutral" size="sm" className="shrink-0">
+                  Archived
+                </Badge>
+              )}
               {needsAttention && !isOpen && (
                 <AttentionDot title="Someone here needs attention" />
               )}

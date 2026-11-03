@@ -61,6 +61,8 @@ export interface PeopleReportFigures {
 export interface ReportTeam {
   id: string;
   name: string;
+  /** Archived since; only the owner sees one, as nobody leads it. */
+  isArchived: boolean;
   figures: PeopleReportFigures;
   /** Where they joined or left the team inside the period. */
   moves: TeamMove[];
@@ -74,8 +76,8 @@ export interface PeopleReportRow extends PeopleReportFigures {
   /** A deactivated person is listed while their time counts in the range. */
   status: UserStatus;
   /**
-   * The active teams they were in during the period, by name; for a manager,
-   * only the teams they lead.
+   * The teams they were in during the period, by name, archived ones
+   * included; for a manager, only the teams they lead.
    */
   teams: ReportTeam[];
   /** Finished days they were expected to work and logged nothing, in date order. */
@@ -138,7 +140,7 @@ interface ReportBasis {
 
 /** A team and the days a person was in it. */
 interface TeamSpans {
-  team: { id: string; name: string };
+  team: Pick<ReportTeam, 'id' | 'name' | 'isArchived'>;
   spans: DaySpan[];
 }
 
@@ -505,10 +507,10 @@ export class PeopleReportService {
   }
 
   /**
-   * The active teams each person was in during the period, by name, with the
-   * days they were in each; under a team filter only that team. A manager
-   * gets only the teams they lead, so Reports never names a team they can't
-   * open elsewhere.
+   * The teams each person was in during the period, by name, with the days
+   * they were in each; under a team filter only that team. A manager gets
+   * only the teams they lead, so Reports never names a team they can't open
+   * elsewhere; a team archived since is the owner's to see, marked as such.
    */
   private async teamSpansFor(
     user: AuthUser,
@@ -533,7 +535,6 @@ export class PeopleReportService {
       .innerJoinAndSelect('tm.team', 'team')
       .where('tm.company_id = :companyId', { companyId: user.companyId })
       .andWhere('tm.user_id IN (:...userIds)', { userIds })
-      .andWhere('team.status = :activeTeam', { activeTeam: TeamStatus.ACTIVE })
       .andWhere('tm.joined_at <= :dateTo', { dateTo })
       .andWhere('(tm.left_at IS NULL OR tm.left_at > :dateFrom)', { dateFrom })
       .orderBy('team.name', 'ASC');
@@ -547,7 +548,14 @@ export class PeopleReportService {
       if (known) {
         known.spans.push(span);
       } else {
-        teams.push({ team: { id: team.id, name: team.name }, spans: [span] });
+        teams.push({
+          team: {
+            id: team.id,
+            name: team.name,
+            isArchived: team.status === TeamStatus.ARCHIVED,
+          },
+          spans: [span],
+        });
       }
       byUser.set(userId, teams);
     }

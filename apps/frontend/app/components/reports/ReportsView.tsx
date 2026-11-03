@@ -277,6 +277,7 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
+          teamId={teamId}
           countedUntil={people.countedUntil}
           showsDays={timeline?.bucketSize === "week"}
           isUpdating={isUpdating}

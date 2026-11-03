@@ -947,8 +947,10 @@ see, and how a new company gets started. §7 plans that work.
   teams they lead, and are told that projects show their teams' time only. A
   person counts on the days the view holds them: someone who moved during the
   period appears under each team they were in, with that team's part and
-  "Moved out" or "Joined" and the date beside the name, and the headline
-  counts them once.
+  "Moved out" or "Joined" and the date beside the name, a team archived since
+  marked "Archived" (the owner's view, as nobody leads an archived team), and
+  the headline counts them once. A person's day grid closes the days the
+  view doesn't hold, as Team time does.
 - **Review my time** — every role has `/my-time`, their own month, one at a time,
   back to the company's first: logged against expected with their days off,
   planned, billable and its share, every working day of the month (a past day

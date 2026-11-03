@@ -42,6 +42,7 @@ describe("groupPeopleByTeam", () => {
       teams: teams.map((id) => ({
         id,
         name: `${id} team`,
+        isArchived: false,
         figures: row,
         moves: [],
       })),
@@ -71,12 +72,14 @@ describe("groupPeopleByTeam", () => {
         {
           id: "Core",
           name: "Core team",
+          isArchived: false,
           figures: { ...person("", 4, 0, 8), billableMinutes: 2 * HOUR },
           moves: [{ date: "2026-10-14", direction: "out" as const }],
         },
         {
           id: "Platform",
           name: "Platform team",
+          isArchived: false,
           figures: person("", 6, 0, 12),
           moves: [{ date: "2026-10-14", direction: "in" as const }],
         },
@@ -110,6 +113,7 @@ describe("personDays", () => {
       ["2026-10-05", 480],
       ["2026-10-11", 60],
     ]),
+    isClosed: () => false,
     isOff: (date: string) => date === "2026-10-06",
     daysWithoutTime: new Set(["2026-10-07"]),
   };
@@ -121,6 +125,23 @@ describe("personDays", () => {
       ["2026-10-07", "withoutTime"],
       ["2026-10-08", "nothingExpected"],
       ["2026-10-09", "nothingExpected"],
+      ["2026-10-11", "logged"],
+    ]);
+  });
+
+  it("closes a day the view doesn't hold, before a day off or a day to come", () => {
+    const days = personDays({
+      ...input,
+      countedUntil: "2026-10-07",
+      isClosed: (date: string) => date >= "2026-10-06",
+    });
+
+    expect(days.map((day) => [day.date, day.kind])).toEqual([
+      ["2026-10-05", "logged"],
+      ["2026-10-06", "closed"],
+      ["2026-10-07", "closed"],
+      ["2026-10-08", "closed"],
+      ["2026-10-09", "closed"],
       ["2026-10-11", "logged"],
     ]);
   });

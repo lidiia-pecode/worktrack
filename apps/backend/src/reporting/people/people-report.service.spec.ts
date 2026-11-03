@@ -416,7 +416,7 @@ describe('PeopleReportService', () => {
   });
 
   describe('teams', () => {
-    it("names each person's active teams, leaving out an archived one", async () => {
+    it("names each person's teams, an archived one marked for the owner", async () => {
       const [design, archived] = await dataSource.getRepository(Team).save([
         { companyId, name: `Design ${RUN}` },
         { companyId, name: `Archived ${RUN}`, status: TeamStatus.ARCHIVED },
@@ -437,13 +437,20 @@ describe('PeopleReportService', () => {
       await dataSource.getRepository(Team).delete([design.id, archived.id]);
 
       const named = (row: typeof forOwner) =>
-        row?.teams.map(({ id, name }) => ({ id, name }));
+        row?.teams.map(({ id, name, isArchived }) => ({
+          id,
+          name,
+          isArchived,
+        }));
       expect(named(forOwner)).toEqual([
-        { id: design.id, name: `Design ${RUN}` },
-        { id: teamId, name: `Team ${RUN}` },
+        { id: archived.id, name: `Archived ${RUN}`, isArchived: true },
+        { id: design.id, name: `Design ${RUN}`, isArchived: false },
+        { id: teamId, name: `Team ${RUN}`, isArchived: false },
       ]);
-      // The manager leads only the first team, so the other isn't named.
-      expect(named(forManager)).toEqual([{ id: teamId, name: `Team ${RUN}` }]);
+      // The manager leads only one of them, so the others aren't named.
+      expect(named(forManager)).toEqual([
+        { id: teamId, name: `Team ${RUN}`, isArchived: false },
+      ]);
       expect(nobody?.teams).toEqual([]);
     });
   });

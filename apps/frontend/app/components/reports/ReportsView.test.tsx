@@ -157,7 +157,12 @@ const inTeams = (
   ...teams: { id: string; name: string }[]
 ): PeopleReportRow => ({
   ...row,
-  teams: teams.map((team) => ({ ...team, figures: row, moves: [] })),
+  teams: teams.map((team) => ({
+    ...team,
+    isArchived: false,
+    figures: row,
+    moves: [],
+  })),
 });
 
 const peopleReport = (rows: PeopleReportRow[]): PeopleReport => ({
