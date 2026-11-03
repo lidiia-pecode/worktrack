@@ -184,12 +184,16 @@ export const PersonFacts = ({
 export const PersonProjects = ({
   person,
   range,
+  teamId,
 }: {
   person: PeopleReportRow;
   range: ReportRange;
+  /** Reports' team filter, so the projects add up to the row's hours. */
+  teamId?: string;
 }) => {
   const projects = useHoursReport({
     ...range,
+    teamId,
     groupBy: HoursReportGroupBy.PROJECT,
     userId: person.userId,
   });
@@ -277,7 +281,7 @@ export const PersonPanel = ({
       )}
 
       <PanelSection title="Projects" note="Logged against planned">
-        <PersonProjects person={person} range={range} />
+        <PersonProjects person={person} range={range} teamId={teamId} />
       </PanelSection>
 
       <div className="mt-auto border-t border-border pt-4">

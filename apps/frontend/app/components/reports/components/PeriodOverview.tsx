@@ -93,6 +93,8 @@ type FigureCardProps = {
   note: string;
   change: FigureChange | null;
   previousName: string;
+  /** What the figure counts, for the tip's "Nothing … in" line. */
+  subject?: string;
 };
 
 const FigureCard = ({
@@ -103,6 +105,7 @@ const FigureCard = ({
   note,
   change,
   previousName,
+  subject,
 }: FigureCardProps) => (
   <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5">
     {percent !== null && <ShareRing percent={percent} tone={tone} />}
@@ -117,7 +120,11 @@ const FigureCard = ({
         {change && (
           <>
             {" · "}
-            <ChangeTip change={change} previousName={previousName} />
+            <ChangeTip
+              change={change}
+              previousName={previousName}
+              subject={subject}
+            />
           </>
         )}
       </p>
@@ -290,6 +297,7 @@ export const PeriodOverview = ({
               isExpected ? "of expected" : "Nothing expected to plan against"
             }
             change={change?.planned ?? null}
+            subject="planned"
             previousName={previousName}
           />
           <FigureCard
@@ -303,6 +311,7 @@ export const PeriodOverview = ({
             tone="text-brand"
             note={loggedMinutes > 0 ? "of logged" : "Nothing logged yet"}
             change={change?.billable ?? null}
+            subject="billable"
             previousName={previousName}
           />
         </ul>

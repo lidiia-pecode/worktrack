@@ -62,6 +62,8 @@ export interface FigureChange {
   /** Both shares as the page shows them, whole percentages. */
   share: number;
   previousShare: number;
+  /** The previous period's hours behind its share: none, and the change needs saying. */
+  previousMinutes: number;
 }
 
 export interface PeriodChange {
@@ -111,6 +113,7 @@ export const shareChange = (
     minutes: current.part - previous.part,
     share,
     previousShare,
+    previousMinutes: previous.part,
   };
 };
 
@@ -123,9 +126,16 @@ export const changeLabel = ({ points }: FigureChange) => {
 /**
  * What a change means, for its tip: "Down 3 points from September 2026" over
  * "97% → 94% · about 109h less", or one line, "Same as September 2026 · 89%".
+ * A previous period with hours expected and none logged (people invited
+ * before they started logging) makes a large, true change that needs its
+ * reason: a third line, "Nothing logged in Q2 2026".
  */
-export const changeTipLines = (change: FigureChange, previousName: string) => {
-  const { points, minutes, share, previousShare } = change;
+export const changeTipLines = (
+  change: FigureChange,
+  previousName: string,
+  subject = "logged",
+) => {
+  const { points, minutes, share, previousShare, previousMinutes } = change;
   if (points === 0) return [`Same as ${previousName} · ${share}%`];
 
   const size = Math.abs(points);
@@ -133,10 +143,13 @@ export const changeTipLines = (change: FigureChange, previousName: string) => {
     minutes === 0
       ? "the same hours"
       : `about ${formatReportHours(Math.abs(minutes))} ${minutes > 0 ? "more" : "less"}`;
-  return [
+  const lines = [
     `${points > 0 ? "Up" : "Down"} ${size} ${size === 1 ? "point" : "points"} from ${previousName}`,
     `${previousShare}% → ${share}% · ${hours}`,
   ];
+  if (previousMinutes === 0)
+    lines.push(`Nothing ${subject} in ${previousName}`);
+  return lines;
 };
 
 /** Up to this many people, every team starts open; past it, folded. */

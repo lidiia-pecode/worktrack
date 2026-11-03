@@ -101,8 +101,9 @@ EMPLOYEE cannot be made one, and neither can the Owner, who already sees and
 acts for everyone. To give an employee a team, the Owner first changes their
 company role to MANAGER, then makes them the team's manager. The API refuses
 `roleInTeam = MANAGER` for anyone else, on adding and on changing a membership.
-A Manager who manages no team may be changed to Employee or Owner; one who
-manages a team may not, and the refusal names the teams — memberships never
+A Manager who manages no team may be changed to Employee, never to Owner (a
+company has one owner, and the API refuses the role); one who manages a team
+may not, and the refusal names the teams — memberships never
 change as a side effect. A closed membership is never reopened: someone coming
 back is added anew, from that day (Phase 38 part 2, which also has the server
 set every membership date). In the member list, choosing Manager
