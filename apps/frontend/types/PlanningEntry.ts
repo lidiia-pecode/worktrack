@@ -41,6 +41,8 @@ export interface PlanPeriodPayload {
     minutesPerDay: number;
     /** Only the days that already have the project; otherwise every working day. */
     existingDaysOnly?: boolean;
+    /** Set on the plans created and changed; null clears it. */
+    note?: string | null;
   }[];
 }
 

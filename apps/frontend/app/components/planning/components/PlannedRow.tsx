@@ -1,5 +1,6 @@
 "use client";
 
+import { ReactNode } from "react";
 import { Clock, Trash2 } from "lucide-react";
 
 import { formatDuration } from "@/lib/utils/date";
@@ -11,11 +12,14 @@ import { Button } from "@/components/ui/button";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
 import { TimePicker } from "../../shared/TimePicker";
 import { PLAN_MINUTE_STEP, isOnPlanStep, toPlanStep } from "../plan-minutes";
-import { ListedLine, describeDays, setHoursDetail } from "./period-lines";
+import { ListedLine } from "./period-lines";
 
-type PeriodListedRowProps = {
+type PlannedRowProps = {
   line: ListedLine;
-  workingDays: string[];
+  /** Under the name: the days on a period, the note on a day. */
+  detail: ReactNode;
+  /** "Hours" on a day, "Hours a day" over a period: the picker's name. */
+  hoursLabel: string;
   /** The new hours, unsaved; none while the row is as planned. */
   editedMinutes?: number;
   /** Whether the person is still on the project, so its hours can change. */
@@ -29,19 +33,21 @@ type PeriodListedRowProps = {
 };
 
 /**
- * A project already planned in the period: its days, and hours that apply to
- * those days only. Hours that differ by day are set together, from "Set hours".
+ * A project already planned: its hours changed in place, or deleted with the
+ * bin. Hours that differ by day are set together, from "Set hours". While the
+ * hours are wrong, the detail line says so instead, so the row keeps its height.
  */
-export const PeriodListedRow = ({
+export const PlannedRow = ({
   line,
-  workingDays,
+  detail,
+  hoursLabel,
   editedMinutes,
   isOnProject,
   maxMinutes,
   formId,
   onEdit,
   onDelete,
-}: PeriodListedRowProps) => {
+}: PlannedRowProps) => {
   const isEdited = editedMinutes !== undefined;
   // Deleting the project's plans is the bin's job, so no hours is a mistake.
   const hasNoHours = editedMinutes === 0;
@@ -74,38 +80,29 @@ export const PeriodListedRow = ({
           )}
         </p>
 
-        <p className="text-xs text-muted-foreground">
-          {line.sameMinutes === null && isEdited ? (
-            <>
-              {setHoursDetail(line, workingDays)} ·{" "}
-              <button
-                type="button"
-                onClick={() => onEdit(() => undefined)}
-                className="font-medium text-brand underline underline-offset-2"
-              >
-                Keep as is
-              </button>
-            </>
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-x-1 text-xs",
+            hasNoHours || isOffStep
+              ? "text-destructive-text"
+              : "text-muted-foreground",
+          )}
+        >
+          {hasNoHours ? (
+            "Enter hours, or delete the plan"
+          ) : isOffStep ? (
+            `Plan in ${PLAN_MINUTE_STEP}-minute steps`
           ) : (
             <>
-              {describeDays(line, workingDays)}
+              {detail}
               {isEdited && line.sameMinutes !== null && (
                 <span className="font-medium text-brand">
-                  {" "}
                   · was {formatDuration(line.sameMinutes)}
                 </span>
               )}
             </>
           )}
-        </p>
-
-        {(hasNoHours || isOffStep) && (
-          <p className="text-xs text-destructive-text">
-            {hasNoHours
-              ? "Enter hours greater than 0, or delete it with the bin."
-              : `Plan in ${PLAN_MINUTE_STEP}-minute steps.`}
-          </p>
-        )}
+        </div>
       </div>
 
       {canChangeHours &&
@@ -131,7 +128,7 @@ export const PeriodListedRow = ({
           </Button>
         ) : (
           <TimePicker
-            aria-label={`Hours a day for ${line.name}`}
+            aria-label={`${hoursLabel} for ${line.name}`}
             hours={Math.floor(shownMinutes / 60)}
             minutes={shownMinutes % 60}
             minuteStep={PLAN_MINUTE_STEP}

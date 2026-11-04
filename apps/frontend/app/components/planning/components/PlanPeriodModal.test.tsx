@@ -450,9 +450,7 @@ describe("PlanPeriodModal", () => {
     await user.tab();
 
     expect(
-      screen.getByText(
-        "Enter hours greater than 0, or delete it with the bin.",
-      ),
+      screen.getByText("Enter hours, or delete the plan"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });

@@ -1,16 +1,17 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
 import { AbsenceType, UserStatus } from "@/types/enums";
 
 import { PlanningDayModal } from "./PlanningDayModal";
 
+const server = vi.hoisted(() => ({ planPeriod: vi.fn() }));
+
 vi.mock("@/hooks/usePlanning", () => ({
+  usePlanPeriod: () => ({ mutateAsync: server.planPeriod, isPending: false }),
   usePlanningMutations: () => ({
-    create: { mutateAsync: vi.fn(), isPending: false },
-    update: { mutateAsync: vi.fn(), isPending: false },
     delete: { mutateAsync: vi.fn(), isPending: false },
   }),
 }));
@@ -64,7 +65,14 @@ const renderModal = (props: {
   const onClose = vi.fn();
   render(
     <PlanningDayModal
-      row={{ ...ALICE, entries: props.entries ?? [] }}
+      row={{
+        ...ALICE,
+        entries: props.entries ?? [],
+        plannedMinutes: (props.entries ?? []).reduce(
+          (total, entry) => total + entry.plannedMinutes,
+          0,
+        ),
+      }}
       date="2026-11-10"
       absence={props.absence}
       onAddAbsence={onAddAbsence}
@@ -74,12 +82,30 @@ const renderModal = (props: {
   return { onAddAbsence, onClose };
 };
 
-const makeDirty = (user: ReturnType<typeof userEvent.setup>) =>
-  user.type(screen.getByLabelText("Note"), "x");
+type User = ReturnType<typeof userEvent.setup>;
 
-const footerCancel = () => screen.getByRole("button", { name: "Cancel" });
+// The dialog moves its focus inside once open; typing before that is lost.
+const dialogSettled = () =>
+  waitFor(() => expect(document.activeElement).not.toBe(document.body));
+
+const setHours = async (user: User, group: string, hours: string) => {
+  await dialogSettled();
+  const field = within(screen.getByRole("group", { name: group })).getByRole(
+    "spinbutton",
+    { name: "Hours" },
+  );
+  await user.clear(field);
+  await user.type(field, hours);
+  await user.tab();
+};
+
+const saveButton = () => screen.getByRole("button", { name: "Save plan" });
 
 describe("PlanningDayModal", () => {
+  beforeEach(() => {
+    server.planPeriod.mockReset().mockResolvedValue({});
+  });
+
   it("shows a frozen absence instead of the form", () => {
     renderModal({ absence: VACATION });
 
@@ -87,21 +113,21 @@ describe("PlanningDayModal", () => {
     expect(screen.getByText("Skiing")).toBeInTheDocument();
     expect(screen.getByText(/touches a locked month/)).toBeInTheDocument();
     expect(
-      screen.queryByRole("combobox", { name: "Project" }),
+      screen.queryByRole("combobox", { name: "Project 1" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Add plan" }),
+      screen.queryByRole("button", { name: "Save plan" }),
     ).not.toBeInTheDocument();
   });
 
-  it("offers to add an absence on a working day", async () => {
+  it("offers to add an absence on a working day, and sums the day up", async () => {
     const user = userEvent.setup();
-    const { onAddAbsence } = renderModal({});
+    const { onAddAbsence } = renderModal({ entries: [NORTHWIND] });
 
-    expect(
-      screen.getByRole("combobox", { name: "Project" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/of an 8h day planned/)).toBeInTheDocument();
+    expect(screen.getByText("4h planned")).toBeInTheDocument();
+    expect(screen.getByText("8h working day")).toBeInTheDocument();
+    expect(screen.getByText("Up to 4h fits on this day")).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
 
     await user.click(screen.getByRole("button", { name: "Add absence" }));
     expect(onAddAbsence).toHaveBeenCalledOnce();
@@ -111,45 +137,69 @@ describe("PlanningDayModal", () => {
     const user = userEvent.setup();
     const { onClose } = renderModal({});
 
-    await makeDirty(user);
+    await dialogSettled();
+    await user.type(screen.getByLabelText("Note for project 1"), "x");
     await user.keyboard("{Escape}");
     expect(screen.getByText("Discard your changes?")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(onClose).not.toHaveBeenCalled();
 
-    await user.click(footerCancel());
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("adds only projects not planned that day, and edits keep their own", async () => {
+  it("offers a new line only the projects not planned that day", async () => {
     const user = userEvent.setup();
     renderModal({ entries: [NORTHWIND] });
 
-    await user.click(screen.getByRole("combobox", { name: "Project" }));
+    await user.click(screen.getByRole("combobox", { name: "Project 1" }));
     expect(
       (await screen.findAllByRole("option")).map((o) => o.textContent),
     ).toEqual(["Internal"]);
-    await user.keyboard("{Escape}");
-
-    await user.click(screen.getByRole("button", { name: "Edit Northwind" }));
-    await user.click(screen.getByRole("combobox", { name: "Project" }));
-    expect(
-      (await screen.findAllByRole("option")).map((o) => o.textContent),
-    ).toEqual(["Northwind", "Internal"]);
   });
 
-  it("asks before switching to another plan drops unsaved changes", async () => {
+  it("saves the changed hours and the added plan as one day", async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderModal({ entries: [NORTHWIND] });
+
+    await setHours(user, "Hours for Northwind", "3");
+    await user.click(screen.getByRole("combobox", { name: "Project 1" }));
+    await user.click(await screen.findByRole("option", { name: "Internal" }));
+    await setHours(user, "Hours for project 1", "2");
+
+    expect(
+      screen.getByText("change Northwind from 4h to 3h"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("add Internal, 2h")).toBeInTheDocument();
+
+    await user.click(saveButton());
+
+    expect(server.planPeriod).toHaveBeenCalledWith({
+      userId: "user-alice",
+      startDate: "2026-11-10",
+      endDate: "2026-11-10",
+      projects: [
+        {
+          projectId: "project-northwind",
+          minutesPerDay: 180,
+          existingDaysOnly: true,
+        },
+        { projectId: "project-internal", minutesPerDay: 120 },
+      ],
+    });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("asks for hours or the bin when a plan is set to 0h, and does not save", async () => {
     const user = userEvent.setup();
     renderModal({ entries: [NORTHWIND] });
 
-    await makeDirty(user);
-    await user.click(screen.getByRole("button", { name: "Edit Northwind" }));
-    expect(screen.getByText("Discard your changes?")).toBeInTheDocument();
+    await setHours(user, "Hours for Northwind", "0");
 
-    await user.click(screen.getByRole("button", { name: "Discard" }));
     expect(
-      screen.getByRole("button", { name: "Save changes" }),
+      screen.getByText("Enter hours, or delete the plan"),
     ).toBeInTheDocument();
+    expect(saveButton()).toBeDisabled();
   });
 });

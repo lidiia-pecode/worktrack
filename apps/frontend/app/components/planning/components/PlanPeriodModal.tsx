@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Plus, X } from "lucide-react";
+import { CalendarOff } from "lucide-react";
 import { toast } from "sonner";
 
 import { PlanningWeekRow } from "@/types";
@@ -19,6 +19,7 @@ import { getErrorMessages, isClientError } from "@/lib/api";
 import {
   formatDayMonthLabel,
   formatDayMonthYearLabel,
+  formatDuration,
   isISODateRange,
   lastDayOfReportRange,
   toISODate,
@@ -30,47 +31,27 @@ import { Field } from "@/components/ui/field";
 
 import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
 import { FormAlert } from "../../shared/FormAlert";
-import { FormSelect } from "../../shared/FormSelect";
 import { ImpactDialog } from "../../shared/ImpactDialog";
-import { ProjectColorDot } from "../../shared/ProjectColorDot";
-import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import { PLAN_MINUTE_STEP, isOnPlanStep, toPlanStep } from "../plan-minutes";
-import { PeriodListedRow } from "./PeriodListedRow";
+import { isOnPlanStep, toPlanStep } from "../plan-minutes";
+import { PlannedRow } from "./PlannedRow";
+import { PlanLines } from "./PlanLines";
 import { PeriodPicker } from "./PeriodPicker";
 import { PeriodPreview } from "./PeriodPreview";
 import {
   ListedLine,
   addedText,
   busiestDay,
+  describeDays,
   listedChangeText,
   listedLines,
+  setHoursDetail,
 } from "./period-lines";
+import { EMPTY_LINE, addedLineMinutes, addedLineSchema } from "./plan-lines";
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
-const minutesOf = ({ hours, minutes }: { hours: number; minutes: number }) =>
-  Number(hours) * 60 + Number(minutes);
-
-// A line left blank is ignored; one with a project needs hours, and hours a project.
-const addedLineSchema = z
-  .object({
-    projectId: z.string(),
-    hours: z.coerce.number().min(0).max(24),
-    minutes: z.coerce.number().min(0).max(59),
-  })
-  .refine((data) => isOnPlanStep(data.minutes), {
-    message: "Plan in 15-minute steps",
-    path: ["hours"],
-  })
-  .refine((data) => !data.projectId || minutesOf(data) > 0, {
-    message: "Enter hours greater than 0",
-    path: ["hours"],
-  })
-  .refine((data) => data.projectId || minutesOf(data) === 0, {
-    message: "Select a project",
-    path: ["projectId"],
-  });
+const minutesOf = addedLineMinutes;
 
 const periodSchema = z
   .object({
@@ -88,8 +69,6 @@ const periodSchema = z
   });
 
 type PeriodFormData = z.infer<typeof periodSchema>;
-
-const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
@@ -149,6 +128,12 @@ export const PlanPeriodModal = ({
   const personProjects = row.projects;
   const projectName = (projectId: string) =>
     personProjects.find((project) => project.id === projectId)?.name;
+  const setLine = (index: number, patch: Partial<(typeof added)[number]>) =>
+    Object.entries(patch).forEach(([key, value]) =>
+      setValue(`added.${index}.${key as keyof typeof patch}`, value, {
+        shouldDirty: true,
+      }),
+    );
   const periodError = errors.startDate?.message ?? errors.endDate?.message;
   const hasPeriod = isISODateRange(startDate, endDate);
 
@@ -419,10 +404,29 @@ export const PlanPeriodModal = ({
               </h3>
               <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
                 {lines.map((line) => (
-                  <PeriodListedRow
+                  <PlannedRow
                     key={line.projectId}
                     line={line}
-                    workingDays={workingDays}
+                    hoursLabel="Hours a day"
+                    detail={
+                      line.sameMinutes === null &&
+                      editedMinutes.has(line.projectId) ? (
+                        <>
+                          {setHoursDetail(line, workingDays)} ·{" "}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              editLine(line.projectId)(() => undefined)
+                            }
+                            className="font-medium text-brand underline underline-offset-2"
+                          >
+                            Keep as is
+                          </button>
+                        </>
+                      ) : (
+                        describeDays(line, workingDays)
+                      )
+                    }
                     editedMinutes={editedMinutes.get(line.projectId)}
                     isOnProject={personProjects.some(
                       (project) => project.id === line.projectId,
@@ -444,116 +448,24 @@ export const PlanPeriodModal = ({
             </p>
           ) : (
             hasLinesToAdd && (
-              <fieldset className="space-y-2">
-                <legend className="sr-only">Projects to add</legend>
-
-                {/* The lines' labels, once above them; each line's controls
-                  carry their own accessible names. */}
-                <div
-                  aria-hidden
-                  className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 text-xs font-medium text-muted-foreground"
-                >
-                  <span>Project</span>
-                  <span>Hours a day</span>
-                  <span className="w-8" />
-                </div>
-
-                {fields.map((field, index) => {
-                  const chosenId = added[index]?.projectId ?? "";
-                  // A blank line with nothing left to choose would only be in the way.
-                  if (!chosenId && freeProjectCount === 0) return null;
-                  const options = personProjects
-                    .filter(
-                      (project) =>
-                        project.id === chosenId ||
-                        !takenIds.includes(project.id),
-                    )
-                    .map((project) => ({
-                      value: project.id,
-                      label: project.name,
-                    }));
-                  const lineErrors = errors.added?.[index];
-
-                  return (
-                    <div
-                      key={field.id}
-                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2"
-                    >
-                      <Controller
-                        control={control}
-                        name={`added.${index}.projectId`}
-                        render={({ field: select }) => (
-                          <FormSelect
-                            aria-label={`Project ${index + 1}`}
-                            value={select.value}
-                            onValueChange={select.onChange}
-                            options={options}
-                            placeholder="Select project"
-                            leading={
-                              <ProjectColorDot projectId={select.value} />
-                            }
-                            error={
-                              isListedAbove(select.value)
-                                ? "Already planned in this period. Change it above."
-                                : lineErrors?.projectId?.message
-                            }
-                          />
-                        )}
-                      />
-
-                      <Field
-                        id={`period-hours-${field.id}`}
-                        error={lineErrors?.hours?.message}
-                      >
-                        <TimePicker
-                          aria-label={`Hours a day for project ${index + 1}`}
-                          hours={Number(added[index]?.hours ?? 0)}
-                          minutes={Number(added[index]?.minutes ?? 0)}
-                          minuteStep={PLAN_MINUTE_STEP}
-                          maxMinutes={maxPlanMinutes}
-                          formId={FORM_ID}
-                          onHoursChange={(value) =>
-                            setValue(`added.${index}.hours`, value, {
-                              shouldDirty: true,
-                            })
-                          }
-                          onMinutesChange={(value) =>
-                            setValue(`added.${index}.minutes`, value, {
-                              shouldDirty: true,
-                            })
-                          }
-                          error={!!lineErrors?.hours}
-                        />
-                      </Field>
-
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="iconSm"
-                        aria-label={`Drop the ${projectName(chosenId) ?? `project ${index + 1}`} line`}
-                        title="Drop this line"
-                        onClick={() => remove(index)}
-                        className="mt-1.5 text-muted-foreground"
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-
-                {canAddLine && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => append(EMPTY_LINE)}
-                    className="text-brand"
-                  >
-                    <Plus className="size-4" />
-                    Add project
-                  </Button>
-                )}
-              </fieldset>
+              <PlanLines
+                lines={added}
+                keys={fields.map((field) => field.id)}
+                errors={
+                  errors.added as Parameters<typeof PlanLines>[0]["errors"]
+                }
+                hoursLabel="Hours a day"
+                projects={personProjects}
+                takenIds={takenIds}
+                isListedAbove={isListedAbove}
+                maxMinutes={() => maxPlanMinutes}
+                hint={`Up to ${formatDuration(maxPlanMinutes)} a day`}
+                formId={FORM_ID}
+                canAddLine={canAddLine}
+                onChange={setLine}
+                onRemove={remove}
+                onAppend={() => append(EMPTY_LINE)}
+              />
             )
           )}
 

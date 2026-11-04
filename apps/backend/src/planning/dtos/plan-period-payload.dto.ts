@@ -6,9 +6,12 @@ import {
   IsDivisibleBy,
   IsInt,
   IsOptional,
+  IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
+  MinLength,
   ValidateNested,
 } from 'class-validator';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
@@ -30,6 +33,13 @@ export class PeriodProjectPayload {
   @IsOptional()
   @IsBoolean()
   existingDaysOnly?: boolean;
+
+  /** Set on the plans created and changed; null clears it, undefined leaves it. */
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(1000)
+  note?: string | null;
 }
 
 /** A plan checked but not saved; the projects may still be empty. */

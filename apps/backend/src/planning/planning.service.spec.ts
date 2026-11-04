@@ -750,6 +750,27 @@ describe('PlanningService', () => {
       ]);
     });
 
+    it('puts a note on the plans it creates and changes, and leaves the rest', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
+
+      const result = await service.planPeriod(
+        period(MONDAY, TUESDAY, [
+          { projectId, minutesPerDay: 2 * HOUR, note: 'Client review' },
+        ]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 2, created: 1, updated: 1 });
+      expect(
+        (await entriesFor(member.id)).map((e) => [e.date, e.projectId, e.note]),
+      ).toEqual([
+        [MONDAY, projectId, 'Client review'],
+        [TUESDAY, otherProjectId, null],
+        [TUESDAY, projectId, 'Client review'],
+      ]);
+    });
+
     it('checks the limits on the days a listed project changes', async () => {
       await existingEntry(member.id, MONDAY, 2 * HOUR);
       await existingEntry(member.id, MONDAY, 4 * HOUR, otherProjectId);
