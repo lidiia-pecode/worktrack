@@ -75,7 +75,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
     <div
       id={timelogDetailsId(timelog)}
       role="tooltip"
-      className="pointer-events-none fixed z-50 w-60 rounded-xl border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
+      className="pointer-events-none fixed z-50 w-60 rounded-lg border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
       style={style}
     >
       <div className="mb-2 flex items-center gap-2">

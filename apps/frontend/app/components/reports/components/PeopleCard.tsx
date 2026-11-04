@@ -239,7 +239,7 @@ export const PeopleCard = ({
             type="button"
             variant="link"
             size="sm"
-            className="h-auto px-0"
+            className="h-auto px-0 max-sm:h-auto"
             onClick={() => setAll(!allOpen)}
           >
             {allOpen ? "Collapse all" : "Expand all"}

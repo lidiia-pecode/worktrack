@@ -74,7 +74,7 @@ export class PlanningEntry {
     type: 'text',
     nullable: true,
   })
-  note?: string;
+  note?: string | null;
 
   @CreateDateColumn({
     type: 'timestamp with time zone',

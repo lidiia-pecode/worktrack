@@ -7,10 +7,9 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
-import { getProjectColor } from "@/lib/utils/project-colors";
-import { cn } from "@/lib/utils/cn";
 
 import { DayShare, problemSummary } from "./period-lines";
+import { PlanSummary } from "./PlanSummary";
 
 const countWeekdays = (startDate: string, endDate: string): number => {
   let count = 0;
@@ -81,40 +80,13 @@ export const PeriodPreview = ({
   );
 
   return (
-    <div
-      className={cn(
-        "space-y-3 rounded-xl bg-brand-subtle p-4 text-sm transition-opacity",
-        isOutdated && "opacity-60",
-      )}
-      aria-busy={isOutdated}
+    <PlanSummary
+      heading={`${busiestDay.isSameEveryDay ? "" : "Up to "}${formatDuration(busiestDay.minutes)} a day`}
+      dayLimitMinutes={dayLimitMinutes}
+      shares={busiestDay.shares}
+      changes={preview ? changes : []}
+      isOutdated={isOutdated}
     >
-      <div className="space-y-2">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-medium text-foreground tabular-nums">
-            {busiestDay.isSameEveryDay ? "" : "Up to "}
-            {formatDuration(busiestDay.minutes)} a day
-          </span>
-          <span className="text-muted-foreground tabular-nums">
-            {formatDuration(dayLimitMinutes)} working day
-          </span>
-        </div>
-
-        <div
-          className="flex h-2 overflow-hidden rounded-full bg-brand-muted"
-          aria-hidden
-        >
-          {busiestDay.shares.map((share) => (
-            <div
-              key={share.projectId}
-              style={{
-                width: `${Math.min(100, (share.minutes / dayLimitMinutes) * 100)}%`,
-                backgroundColor: getProjectColor(share.projectId),
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
       {!preview && refusal.length === 0 && !failed && (
         <p className="text-muted-foreground">Checking the period…</p>
       )}
@@ -123,25 +95,6 @@ export const PeriodPreview = ({
         <p className="text-destructive-text" role="alert">
           The period could not be checked. Try again in a moment.
         </p>
-      )}
-
-      {preview && changes.length > 0 && (
-        <div className="space-y-1 text-foreground">
-          <p className="font-medium">
-            Saving will
-            {isOutdated && (
-              <span className="font-normal text-muted-foreground">
-                {" "}
-                (updating…)
-              </span>
-            )}
-          </p>
-          <ul className="list-disc space-y-0.5 pl-4">
-            {changes.map((change) => (
-              <li key={change}>{change}</li>
-            ))}
-          </ul>
-        </div>
       )}
 
       {preview && plannedDays.length === 0 && (
@@ -203,6 +156,6 @@ export const PeriodPreview = ({
           <p>Lower the hours or change the period.</p>
         </div>
       )}
-    </div>
+    </PlanSummary>
   );
 };

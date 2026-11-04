@@ -221,6 +221,13 @@ export class PlanningService {
 
     const qb = this.buildBaseQuery();
     this.applyVisibilityFilter(qb, user);
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      'p.user_id',
+      query.teamId,
+      user,
+      { startColumn: 'p.date' },
+    );
 
     if (query.userId) {
       await this.teamVisibility.assertCanReadUser(query.userId, user, {
@@ -629,7 +636,7 @@ export class PlanningService {
       }
 
       await manager.save(PlanningEntry, [
-        ...writes.created.map(({ date, projectId, minutes }) =>
+        ...writes.created.map(({ date, projectId, minutes, note }) =>
           manager.create(PlanningEntry, {
             companyId: user.companyId,
             userId,
@@ -637,10 +644,12 @@ export class PlanningService {
             createdById: user.id,
             plannedMinutes: minutes,
             date,
+            note: note ?? undefined,
           }),
         ),
-        ...writes.changed.map(({ entry, minutes }) => {
+        ...writes.changed.map(({ entry, minutes, note }) => {
           entry.plannedMinutes = minutes;
+          if (note !== undefined) entry.note = note;
           return entry;
         }),
       ]);
@@ -666,6 +675,7 @@ export class PlanningService {
       projectId: project.projectId,
       minutesPerDay: project.minutesPerDay,
       existingDaysOnly: project.existingDaysOnly ?? false,
+      note: project.note,
     }));
     const projectIds = new Set(lines.map((line) => line.projectId));
     if (projectIds.size !== lines.length) {

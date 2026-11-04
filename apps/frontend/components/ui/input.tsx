@@ -2,7 +2,12 @@
 
 import { forwardRef, useId } from "react";
 
-import { Field, fieldControlClassName, fieldMessageId } from "./field";
+import {
+  Field,
+  fieldControlClassName,
+  fieldControlSizeClassName,
+  fieldMessageId,
+} from "./field";
 import { cn } from "@/lib/utils/cn";
 
 type InputProps = {
@@ -30,8 +35,8 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             aria-describedby={fieldMessageId(inputId, { error, description })}
             className={cn(
               fieldControlClassName(!!error),
-              "h-11",
-              endAdornment && "pr-11",
+              fieldControlSizeClassName.md,
+              endAdornment && "pr-10",
               className,
             )}
             {...props}

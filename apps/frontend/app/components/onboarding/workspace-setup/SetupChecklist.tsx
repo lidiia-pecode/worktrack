@@ -222,7 +222,6 @@ export const SetupChecklist = ({ state }: SetupChecklistProps) => {
         title="Skip setup?"
         description="This checklist won't start again. Getting started stays in the menu as a guide to how WorkTrack fits together."
         confirmText="Skip setup"
-        confirmVariant="warning"
         onConfirm={() => skipSetup.mutate()}
         onClose={() => setIsConfirmingSkip(false)}
         loading={skipSetup.isPending}

@@ -8,6 +8,7 @@ import {
   useMarkNotificationsRead,
   useNotifications,
 } from "@/hooks/useNotifications";
+import { Button } from "@/components/ui/button";
 import { NotificationType } from "@/types/enums";
 import type { AppNotification } from "@/types/Notification";
 import { urlWithOpenEntity } from "@/lib/utils/entity-ref";
@@ -138,7 +139,11 @@ export const NotificationsDialog = ({
       open={open}
       onClose={close}
       title="Notifications"
-      icon={<Bell className="size-5" />}
+      footer={
+        <Button type="button" variant="outline" size="sm" onClick={close}>
+          Close
+        </Button>
+      }
     >
       {isError && !data ? (
         <ErrorState

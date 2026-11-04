@@ -61,8 +61,8 @@ structure — who exists, which teams exist and who leads them. Managers run the
 teams they were given and see the people in them. Employees log their own time.
 
 The rule worth internalising: **write access to a time entry matches read
-visibility** — owners company-wide, managers within the teams they lead,
-employees themselves. This is D9 in
+visibility** — owners company-wide, managers within the teams they lead, on
+the days the person was in them, employees themselves. This is D9 in
 [`business_architecture_docs.md`](./business_architecture_docs.md), and it is
 enforced in `TimeLogsService`.
 

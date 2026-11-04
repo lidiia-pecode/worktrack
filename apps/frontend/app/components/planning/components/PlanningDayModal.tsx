@@ -1,16 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarClock, CalendarOff, Pencil, Trash2 } from "lucide-react";
-import TextareaAutosize from "react-textarea-autosize";
+import { CalendarOff } from "lucide-react";
+import { toast } from "sonner";
 
 import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
-import { ProjectStatus } from "@/types/enums";
-import { usePlanningMutations } from "@/hooks/usePlanning";
+import { useDeletePlan, usePlanPeriod } from "@/hooks/usePlanning";
+import { getErrorMessages, isClientError } from "@/lib/api";
 import {
+  formatDayMonthLabel,
   formatDuration,
   formatLongDayLabel,
   fromISODate,
@@ -18,66 +19,31 @@ import {
 import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
-import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
+import {
+  NOTE_MAX_LENGTH,
+  optionalNoteSchema,
+} from "@/lib/forms/schemas/note.schema";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Field,
-  fieldControlClassName,
-  fieldMessageId,
-} from "@/components/ui/field";
 
+import { FormAlert } from "../../shared/FormAlert";
 import { ImpactDialog } from "../../shared/ImpactDialog";
-import { DiscardChangesModal } from "../../shared/DiscardChangesModal";
-import { FormSelect } from "../../shared/FormSelect";
-import { ProjectColorDot } from "../../shared/ProjectColorDot";
-import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import {
-  PLAN_MINUTE_STEP,
-  dayLimitOn,
-  isOnPlanStep,
-  toPlanStep,
-} from "../plan-minutes";
+import { dayLimitOn, isOnPlanStep, toPlanStep } from "../plan-minutes";
+import { PlannedRow } from "./PlannedRow";
+import { PlanLines } from "./PlanLines";
+import { PlanSummary } from "./PlanSummary";
+import { listedLines } from "./period-lines";
+import { EMPTY_LINE, addedLineMinutes, addedLineSchema } from "./plan-lines";
 
 const FORM_ID = "planning-form";
+// The one note problem a row can have: the field stops at the most allowed.
+const NOTE_TOO_SHORT = "At least 3 characters";
 
-const planSchema = z
-  .object({
-    projectId: z.string().min(1, "Select a project"),
-    // The picker stops at what fits on the day, so only the floor is checked.
-    hours: z.coerce.number().min(0),
-    minutes: z.coerce.number().min(0).max(59),
-    note: optionalNoteSchema,
-  })
-  .refine((data) => data.hours * 60 + data.minutes > 0, {
-    message: "Enter a duration greater than 0",
-    path: ["hours"],
-  });
+const daySchema = z.object({ added: z.array(addedLineSchema) });
 
-type PlanFormData = z.infer<typeof planSchema>;
-
-const EMPTY_FORM: PlanFormData = {
-  projectId: "",
-  hours: 0,
-  minutes: 0,
-  note: "",
-};
-
-const toFormData = (entry: PlanningEntry): PlanFormData => ({
-  projectId: entry.project.id,
-  hours: Math.floor(entry.plannedMinutes / 60),
-  minutes: entry.plannedMinutes % 60,
-  note: entry.note ?? "",
-});
-
-const isArchivedEntry = (entry: PlanningEntry) =>
-  entry.project.status === ProjectStatus.ARCHIVED;
-
-/** "an 8h" but "a 7h 30m": the article follows how the hours are read out. */
-const withArticle = (duration: string) =>
-  `${/^(8|11|18)h/.test(duration) ? "an" : "a"} ${duration}`;
+type DayFormData = z.infer<typeof daySchema>;
 
 type PlanningDayModalProps = {
   row: PlanningWeekRow;
@@ -91,6 +57,12 @@ type PlanningDayModalProps = {
   onClose: () => void;
 };
 
+/**
+ * Plans and changes a person's day in one save, as the period dialog does:
+ * the day's plans are rows with their hours and note editable in place, the
+ * lines beneath add projects, and "Save plan" sends the day as a one-day
+ * period. A plan is deleted from its row at once.
+ */
 export const PlanningDayModal = ({
   row,
   date,
@@ -98,9 +70,13 @@ export const PlanningDayModal = ({
   onAddAbsence,
   onClose,
 }: PlanningDayModalProps) => {
-  const { create, update, delete: remove } = usePlanningMutations();
-
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const planPeriod = usePlanPeriod();
+  const remove = useDeletePlan();
+  const [problems, setProblems] = useState<string[] | null>(null);
+  const problemsRef = useRef<HTMLDivElement>(null);
+  // Unsaved hours and notes of the plans already made, by project.
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const [noteEdits, setNoteEdits] = useState<Record<string, string>>({});
   const [deletingEntry, setDeletingEntry] = useState<PlanningEntry | null>(
     null,
   );
@@ -109,37 +85,92 @@ export const PlanningDayModal = ({
     () => row.entries.filter((entry) => entry.date === date),
     [row.entries, date],
   );
-
-  const plannedMinutes = dayEntries.reduce(
-    (total, entry) => total + entry.plannedMinutes,
-    0,
+  const lines = listedLines(dayEntries);
+  const entryOf = (projectId: string) =>
+    dayEntries.find((entry) => entry.project.id === projectId);
+  const listedIds = lines.map((line) => line.projectId);
+  // An edit outlives its row only until the row is deleted.
+  const editedMinutes = new Map(
+    Object.entries(edits).filter(([projectId]) =>
+      listedIds.includes(projectId),
+    ),
+  );
+  const editedNotes = new Map(
+    Object.entries(noteEdits).filter(
+      ([projectId, note]) =>
+        listedIds.includes(projectId) &&
+        note !== (entryOf(projectId)?.note ?? ""),
+    ),
   );
 
-  const editing = dayEntries.find((entry) => entry.id === editingId) ?? null;
-
   const {
-    register,
     handleSubmit,
     control,
     setValue,
-    setError,
-    reset,
     formState: { errors, isDirty },
-  } = useForm<PlanFormData>({
+  } = useForm<DayFormData>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(planSchema) as any,
-    defaultValues: EMPTY_FORM,
+    resolver: zodResolver(daySchema) as any,
+    defaultValues: { added: [EMPTY_LINE] },
   });
+  const {
+    fields,
+    append,
+    remove: removeLine,
+  } = useFieldArray({
+    control,
+    name: "added",
+  });
+  const added = useWatch({ control, name: "added" });
+  const setLine = (index: number, patch: Partial<(typeof added)[number]>) =>
+    Object.entries(patch).forEach(([key, value]) =>
+      setValue(`added.${index}.${key as keyof typeof patch}`, value, {
+        shouldDirty: true,
+      }),
+    );
 
-  const [hours, minutes] = useWatch({ control, name: ["hours", "minutes"] });
+  const personProjects = row.projects;
+  const projectName = (projectId: string) =>
+    personProjects.find((project) => project.id === projectId)?.name ??
+    entryOf(projectId)?.project.name ??
+    "";
+  const takenIds = [...listedIds, ...added.map((line) => line.projectId)];
+  const freeProjectCount = personProjects.filter(
+    (project) => !takenIds.includes(project.id),
+  ).length;
+  // Each blank line holds a place for one of the projects still free.
+  const canAddLine =
+    freeProjectCount > added.filter((line) => !line.projectId).length;
+  // With every project planned and no line begun, there is nothing to show.
+  const hasLinesToAdd =
+    freeProjectCount > 0 || added.some((line) => line.projectId);
+  const addedLines = added
+    .map((line) => ({
+      projectId: line.projectId,
+      minutes: addedLineMinutes(line),
+      note: line.note?.trim() || undefined,
+    }))
+    .filter((line) => line.projectId && line.minutes > 0);
 
-  // What still fits beside the day's other plans and the week's: the hours
-  // stop there, so a plan the API would refuse can't be entered, and one
-  // already over can still be lowered.
-  const editedMinutes = editing?.plannedMinutes ?? 0;
+  // What is planned once saved: the rows at their current hours, plus the
+  // lines. The hours stop at what fits on the day and in the week beside
+  // everything else, so a plan the API would refuse can't be entered, and
+  // one already over can still be lowered.
+  const rowMinutes = (projectId: string) =>
+    editedMinutes.get(projectId) ?? entryOf(projectId)?.plannedMinutes ?? 0;
+  const savedDayMinutes = dayEntries.reduce(
+    (total, entry) => total + entry.plannedMinutes,
+    0,
+  );
+  const dayMinutes =
+    listedIds.reduce((total, projectId) => total + rowMinutes(projectId), 0) +
+    addedLines.reduce((total, line) => total + line.minutes, 0);
   const dayLimitMinutes = dayLimitOn(row, date);
-  const dayLeft = dayLimitMinutes - (plannedMinutes - editedMinutes);
-  const weekLeft = row.availableMinutes - (row.plannedMinutes - editedMinutes);
+  const weekMinutes = row.plannedMinutes - savedDayMinutes + dayMinutes;
+  const dayLeft = dayLimitMinutes - dayMinutes;
+  const weekLeft = row.availableMinutes - weekMinutes;
+  const fitsBeside = (current: number) =>
+    toPlanStep(Math.max(current, current + Math.min(dayLeft, weekLeft)));
   const fitsMinutes = toPlanStep(Math.max(0, Math.min(dayLeft, weekLeft)));
   const fitsWhere =
     dayLeft <= weekLeft ? "on this day" : `in ${row.user.firstName}'s week`;
@@ -148,97 +179,114 @@ export const PlanningDayModal = ({
       ? `Up to ${formatDuration(fitsMinutes)} fits ${fitsWhere}`
       : `Nothing more fits ${fitsWhere}`;
 
-  // Closing or switching to another plan asks first while the form has
-  // unsaved changes, as × and Escape do; the action waits for the answer.
-  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
-  const guardUnsaved = (action: () => void) => {
-    if (isDirty) setPendingAction(() => action);
-    else action();
-  };
+  const shares = [
+    ...listedIds.map((projectId) => ({
+      projectId,
+      minutes: rowMinutes(projectId),
+    })),
+    ...addedLines,
+  ];
+  const changes = [
+    ...lines.flatMap((line) => {
+      const minutes = editedMinutes.get(line.projectId);
+      const hoursChange =
+        minutes !== undefined && minutes > 0
+          ? `change ${line.name} from ${formatDuration(line.sameMinutes ?? 0)} to ${formatDuration(minutes)}`
+          : null;
+      const noteChange = editedNotes.has(line.projectId)
+        ? `change the note of ${line.name}`
+        : null;
+      return [hoursChange, noteChange].filter(
+        (change): change is string => change !== null,
+      );
+    }),
+    ...addedLines.map(
+      (line) =>
+        `add ${projectName(line.projectId)}, ${formatDuration(line.minutes)}`,
+    ),
+  ];
 
-  // One plan per project per day: a project planned today is changed from its
-  // own row, so only the plan being edited keeps its project here.
-  const projectOptions = useMemo(() => {
-    const options = row.projects
+  const payloadProjects = [
+    ...listedIds
       .filter(
-        (project) =>
-          project.id === editing?.project.id ||
-          !dayEntries.some((entry) => entry.project.id === project.id),
+        (projectId) =>
+          editedMinutes.has(projectId) || editedNotes.has(projectId),
       )
-      .map((project) => ({
-        value: project.id,
-        label: project.name,
-      }));
+      .map((projectId) => ({
+        projectId,
+        minutesPerDay: rowMinutes(projectId),
+        existingDaysOnly: true,
+        ...(editedNotes.has(projectId) && {
+          note: editedNotes.get(projectId)?.trim() || null,
+        }),
+      })),
+    ...addedLines.map((line) => ({
+      projectId: line.projectId,
+      minutesPerDay: line.minutes,
+      ...(line.note && { note: line.note }),
+    })),
+  ];
+  // A row's note follows the shared rule: empty, or 3 to 1000 characters.
+  const noteProblem = (projectId: string) =>
+    optionalNoteSchema.safeParse(editedNotes.get(projectId) ?? "").error
+      ?.issues[0]?.message;
+  // Nothing saves until there is a change and every row is right.
+  const cannotSave =
+    payloadProjects.length === 0 ||
+    [...editedMinutes.values()].some(
+      (minutes) => minutes === 0 || !isOnPlanStep(minutes),
+    ) ||
+    [...editedNotes.keys()].some((projectId) => noteProblem(projectId));
 
-    if (editing && !options.some((o) => o.value === editing.project.id)) {
-      options.unshift({
-        value: editing.project.id,
-        label: editing.project.name,
+  // The picker reports hours and minutes one after the other, so each update
+  // applies to the latest edit.
+  const editLine =
+    (projectId: string) =>
+    (update: (minutes: number | undefined) => number | undefined) =>
+      setEdits((current) => {
+        const { [projectId]: previous, ...others } = current;
+        const next = update(previous);
+        return next === undefined ? others : { ...others, [projectId]: next };
       });
-    }
 
-    return options;
-  }, [row.projects, dayEntries, editing]);
+  const hasNoProjects = personProjects.length === 0;
+  const isBusy = planPeriod.isPending || remove.isPending;
 
-  const hasNoProjects = row.projects.length === 0;
-  const hasNoOptions = projectOptions.length === 0;
-
-  const startNew = () => {
-    setEditingId(null);
-    reset(EMPTY_FORM);
-  };
-
-  const startEditing = (entry: PlanningEntry) => {
-    setEditingId(entry.id);
-    reset(toFormData(entry));
-  };
-
-  const onSubmit = async (data: PlanFormData) => {
-    const plannedMinutes = data.hours * 60 + data.minutes;
-    // A plan from before the 15-minute steps saves as it is until its hours
-    // change, as the API allows.
-    const keepsHours = plannedMinutes === editing?.plannedMinutes;
-    if (!keepsHours && !isOnPlanStep(plannedMinutes)) {
-      setError("hours", { message: "Plan in 15-minute steps" });
-      return;
-    }
+  const onSubmit = async () => {
+    setProblems(null);
 
     try {
-      if (editing) {
-        await update.mutateAsync({
-          id: editing.id,
-          data: {
-            ...(!keepsHours && { plannedMinutes }),
-            // null clears a saved note; undefined would leave it unchanged.
-            note: data.note || null,
-            ...(data.projectId !== editing.project.id && {
-              projectId: data.projectId,
-            }),
-          },
-        });
-      } else {
-        await create.mutateAsync({
-          userId: row.user.id,
-          projectId: data.projectId,
-          date,
-          plannedMinutes,
-          note: data.note || undefined,
-        });
-      }
+      await planPeriod.mutateAsync({
+        userId: row.user.id,
+        startDate: date,
+        endDate: date,
+        projects: payloadProjects,
+      });
 
-      // Like the time form, a saved plan closes the day.
+      // As the period does: a saved day says so and closes.
+      toast.success(
+        `Plan saved for ${fullName(row.user)}, ${formatDayMonthLabel(date)}`,
+      );
       onClose();
-    } catch {
-      // Reported by the global mutation handler; keep the form as it is.
+    } catch (error) {
+      // Anything but a refusal has already been toasted by the hook.
+      if (!isClientError(error)) return;
+
+      setProblems(getErrorMessages(error));
     }
   };
+
+  // A refusal is listed at the top of the form, which may be scrolled away.
+  useEffect(() => {
+    if (problems) problemsRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [problems]);
 
   const handleDelete = async () => {
     if (!deletingEntry) return;
 
     try {
       await remove.mutateAsync(deletingEntry.id);
-      if (deletingEntry.id === editingId) startNew();
+      editLine(deletingEntry.project.id)(() => undefined);
     } catch {
       // Reported by the global mutation handler.
     } finally {
@@ -251,9 +299,9 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · away, nothing to plan`}
-        icon={<CalendarOff className="size-5" />}
+        size="lg"
+        title="Plan a day"
+        description={`${fullName(row.user)} · ${formatLongDayLabel(fromISODate(date))} · away, nothing to plan`}
         footer={
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Close
@@ -285,230 +333,179 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        hasUnsavedChanges={isDirty}
-        title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
-        icon={<CalendarClock className="size-5" />}
+        hasUnsavedChanges={
+          isDirty || editedMinutes.size > 0 || editedNotes.size > 0
+        }
+        isBusy={isBusy}
+        size="lg"
+        title="Plan a day"
+        description={`${fullName(row.user)} · ${formatLongDayLabel(fromISODate(date))}`}
         footer={
           <>
-            {!editing && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onAddAbsence}
-                className="mr-auto"
-                disabled={create.isPending || update.isPending}
-              >
-                <CalendarOff className="size-4" />
-                Add absence
-              </Button>
-            )}
-
-            {editing && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={startNew}
-                className="mr-auto"
-                disabled={create.isPending || update.isPending}
-              >
-                Cancel edit
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onAddAbsence}
+              className="mr-auto"
+              disabled={isBusy}
+            >
+              <CalendarOff className="size-4" />
+              Add absence
+            </Button>
 
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => guardUnsaved(onClose)}
-              disabled={create.isPending || update.isPending}
+              onClick={onClose}
+              disabled={isBusy}
             >
-              Close
+              Cancel
             </Button>
 
             <Button
               type="submit"
               form={FORM_ID}
               size="sm"
-              isLoading={create.isPending || update.isPending}
-              disabled={hasNoOptions}
+              isLoading={planPeriod.isPending}
+              disabled={cannotSave}
             >
-              {editing ? "Save changes" : "Add plan"}
+              Save plan
             </Button>
           </>
         }
       >
-        <div className="space-y-6">
-          {dayEntries.length > 0 && (
-            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-              {dayEntries.map((entry) => {
-                const isArchived = isArchivedEntry(entry);
-
-                return (
-                  <li
-                    key={entry.id}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5",
-                      entry.id === editingId && "bg-brand-subtle",
-                    )}
-                  >
-                    <ProjectColorDot projectId={entry.project.id} />
-
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-2 truncate text-sm font-medium text-foreground">
-                        <span className="truncate">{entry.project.name}</span>
-                        {isArchived && (
-                          <Badge variant="neutral">Archived</Badge>
-                        )}
-                      </p>
-
-                      {entry.note && (
-                        <p className="truncate text-xs text-muted-foreground">
-                          {entry.note}
-                        </p>
-                      )}
-                    </div>
-
-                    <span className="text-sm font-semibold text-foreground tabular-nums">
-                      {formatDuration(entry.plannedMinutes)}
-                    </span>
-
-                    {!isArchived && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="iconSm"
-                        aria-label={`Edit ${entry.project.name}`}
-                        title="Edit plan"
-                        onClick={() => guardUnsaved(() => startEditing(entry))}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                    )}
-
-                    <Button
-                      type="button"
-                      variant="ghostDestructive"
-                      size="iconSm"
-                      aria-label={`Delete the ${entry.project.name} plan`}
-                      title="Delete plan"
-                      onClick={() => setDeletingEntry(entry)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
+        <form
+          id={FORM_ID}
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
+          {problems && (
+            <div ref={problemsRef}>
+              <FormAlert className="space-y-2">
+                <p className="font-medium">Nothing was saved.</p>
+                <ul className="list-disc space-y-1 pl-4">
+                  {problems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              </FormAlert>
+            </div>
           )}
 
-          <form
-            id={FORM_ID}
-            onSubmit={handleSubmit(onSubmit)}
-            className="space-y-6"
-          >
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_auto]">
-              <Controller
-                control={control}
-                name="projectId"
-                render={({ field }) => (
-                  <FormSelect
-                    aria-label="Project"
-                    value={field.value}
-                    leading={<ProjectColorDot projectId={field.value} />}
-                    onValueChange={(projectId) =>
-                      setValue("projectId", projectId, {
-                        shouldValidate: true,
-                        shouldDirty: true,
-                      })
-                    }
-                    options={projectOptions}
-                    placeholder={
-                      hasNoProjects
-                        ? "Not on any active project"
-                        : hasNoOptions
-                          ? "Every project is planned this day"
-                          : "Select project"
-                    }
-                    error={errors.projectId?.message}
-                    disabled={hasNoOptions}
-                  />
-                )}
-              />
-              <Field id="plan-hours" group>
-                <TimePicker
-                  aria-label="Hours"
-                  hours={Number(hours)}
-                  minutes={Number(minutes)}
-                  minuteStep={PLAN_MINUTE_STEP}
-                  maxMinutes={Math.max(editedMinutes, fitsMinutes)}
-                  formId={FORM_ID}
-                  onHoursChange={(value) =>
-                    setValue("hours", value, { shouldDirty: true })
-                  }
-                  onMinutesChange={(value) =>
-                    setValue("minutes", value, { shouldDirty: true })
-                  }
-                  error={!!errors.hours}
-                  className="w-fit"
-                />
-              </Field>
-            </div>
+          {lines.length > 0 && (
+            <section>
+              <h3 className="mb-2 text-sm font-medium text-foreground">
+                Planned this day
+              </h3>
+              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                {lines.map((line) => {
+                  const entry = entryOf(line.projectId);
+                  const isOnProject = personProjects.some(
+                    (project) => project.id === line.projectId,
+                  );
+                  const note = noteEdits[line.projectId] ?? entry?.note ?? "";
+                  const hasNoteProblem = !!noteProblem(line.projectId);
+                  const noteErrorId = `${FORM_ID}-note-${line.projectId}-error`;
 
-            {/* Always one line under both fields, so neither changes width. */}
-            {!hasNoOptions && (
-              <p
-                aria-live="polite"
-                className={cn(
-                  "-mt-4 text-xs",
-                  errors.hours
-                    ? "text-destructive-text"
-                    : "text-muted-foreground",
-                )}
-              >
-                {errors.hours?.message ?? fitsHint}
-              </p>
-            )}
-
-            {hasNoProjects && (
-              <p className="text-sm text-muted-foreground">
-                {row.user.firstName} is not on any active project. Add them to a
-                project before planning.
-              </p>
-            )}
-
-            <Field id="plan-note" label="Note" error={errors.note?.message}>
-              <TextareaAutosize
-                id="plan-note"
-                {...register("note")}
-                aria-invalid={!!errors.note}
-                aria-describedby={fieldMessageId("plan-note", {
-                  error: errors.note?.message,
+                  return (
+                    <PlannedRow
+                      key={line.projectId}
+                      line={line}
+                      hoursLabel="Hours"
+                      detail={
+                        isOnProject && !line.isArchived ? (
+                          <>
+                            <input
+                              aria-label={`Note for ${line.name}`}
+                              value={note}
+                              maxLength={NOTE_MAX_LENGTH}
+                              placeholder="Add a note"
+                              aria-invalid={hasNoteProblem}
+                              aria-describedby={
+                                hasNoteProblem ? noteErrorId : undefined
+                              }
+                              onChange={(event) =>
+                                setNoteEdits((current) => ({
+                                  ...current,
+                                  [line.projectId]: event.target.value,
+                                }))
+                              }
+                              className={cn(
+                                "min-w-0 flex-1 bg-transparent outline-none placeholder:text-input-placeholder focus:text-foreground",
+                                hasNoteProblem && "text-destructive-text",
+                              )}
+                            />
+                            {/* On the same line, so the row keeps its height. */}
+                            {hasNoteProblem && (
+                              <span
+                                id={noteErrorId}
+                                className="shrink-0 text-destructive-text"
+                              >
+                                {NOTE_TOO_SHORT}
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          note
+                        )
+                      }
+                      editedMinutes={editedMinutes.get(line.projectId)}
+                      isOnProject={isOnProject}
+                      maxMinutes={fitsBeside(rowMinutes(line.projectId))}
+                      formId={FORM_ID}
+                      onEdit={editLine(line.projectId)}
+                      onDelete={() => entry && setDeletingEntry(entry)}
+                    />
+                  );
                 })}
-                minRows={2}
-                maxRows={6}
-                placeholder="Optional context for this plan"
-                className={cn(
-                  fieldControlClassName(!!errors.note),
-                  "resize-none py-2.5 leading-relaxed",
-                )}
-              />
-            </Field>
-          </form>
-        </div>
-      </ResourceFormModal>
+              </ul>
+            </section>
+          )}
 
-      <DiscardChangesModal
-        isOpen={pendingAction !== null}
-        onDiscard={() => {
-          const action = pendingAction;
-          setPendingAction(null);
-          action?.();
-        }}
-        onKeepEditing={() => setPendingAction(null)}
-      />
+          {hasNoProjects ? (
+            <p className="text-sm text-muted-foreground">
+              {row.user.firstName} is not on any active project. Add them to a
+              project before planning.
+            </p>
+          ) : (
+            hasLinesToAdd && (
+              <PlanLines
+                lines={added}
+                keys={fields.map((field) => field.id)}
+                errors={
+                  errors.added as Parameters<typeof PlanLines>[0]["errors"]
+                }
+                hoursLabel="Hours"
+                projects={personProjects}
+                takenIds={takenIds}
+                maxMinutes={(index) =>
+                  fitsBeside(addedLineMinutes(added[index] ?? EMPTY_LINE))
+                }
+                hint={fitsHint}
+                formId={FORM_ID}
+                withNote
+                canAddLine={canAddLine}
+                onChange={setLine}
+                onRemove={removeLine}
+                onAppend={() => append(EMPTY_LINE)}
+              />
+            )
+          )}
+
+          <PlanSummary
+            heading={
+              dayMinutes > 0
+                ? `${formatDuration(dayMinutes)} planned`
+                : "Nothing planned"
+            }
+            dayLimitMinutes={dayLimitMinutes}
+            shares={shares}
+            changes={changes}
+          />
+        </form>
+      </ResourceFormModal>
 
       <ImpactDialog
         isOpen={deletingEntry !== null}

@@ -476,6 +476,11 @@ export interface SeedTeam {
 /** Leo moves from Mobile Squad to Data and Analytics on this day. */
 const LEO_MOVED_ON = '2026-10-14';
 
+/** The day an archived team's memberships close. */
+export const ARCHIVED_TEAM_LEFT_DAY = -14;
+// Henry moved into Customer Success when Legacy Support, his first team, was archived.
+const HENRY_MOVED_ON = dayOfWeek(ARCHIVED_TEAM_LEFT_DAY);
+
 export const TEAMS: SeedTeam[] = [
   {
     name: 'Core Development Team',
@@ -496,7 +501,6 @@ export const TEAMS: SeedTeam[] = [
       { email: ETHAN, roleInTeam: TeamRole.MEMBER },
       { email: MIA, roleInTeam: TeamRole.MEMBER },
       { email: LUCAS, roleInTeam: TeamRole.MEMBER },
-      { email: EMMA, roleInTeam: TeamRole.MEMBER },
     ],
   },
   {
@@ -514,7 +518,7 @@ export const TEAMS: SeedTeam[] = [
       { email: SECOND_MANAGER_EMAIL, roleInTeam: TeamRole.MANAGER },
       { email: BENJAMIN, roleInTeam: TeamRole.MEMBER },
       { email: AMELIA, roleInTeam: TeamRole.MEMBER },
-      { email: HENRY, roleInTeam: TeamRole.MEMBER },
+      { email: HENRY, roleInTeam: TeamRole.MEMBER, joinedOn: HENRY_MOVED_ON },
       { email: LONG_NAME_EMAIL, roleInTeam: TeamRole.MEMBER },
     ],
   },
@@ -566,7 +570,11 @@ export const TEAMS: SeedTeam[] = [
     status: TeamStatus.ARCHIVED,
     members: [
       { email: DEACTIVATED_EMAIL, roleInTeam: TeamRole.MEMBER },
-      { email: HENRY, roleInTeam: TeamRole.MEMBER },
+      {
+        email: HENRY,
+        roleInTeam: TeamRole.MEMBER,
+        joinedOn: ACCOUNTS_CREATED_AT.toISOString().slice(0, 10),
+      },
     ],
   },
 ];

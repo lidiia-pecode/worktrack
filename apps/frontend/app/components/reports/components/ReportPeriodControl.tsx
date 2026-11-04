@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   fromISODate,
@@ -20,10 +19,10 @@ import {
   switchUnit,
 } from "@/lib/utils/shown-period";
 
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 
 import { BackToNowButton } from "../../shared/buttons/BackToNowButton";
+import { StepArrows } from "../../shared/buttons/StepArrows";
 import { DateFieldTrigger, DateRangePicker } from "../../shared/inputs";
 import { calendarTabStop, MonthCalendar } from "../../shared/MonthCalendar";
 import { SegmentedControl } from "../../shared/SegmentedControl";
@@ -34,9 +33,6 @@ const UNITS: { value: PeriodUnit; label: string }[] = [
   { value: "year", label: "Year" },
   { value: "custom", label: "Custom" },
 ];
-
-/** Sized like Team time's week button, and taller on a phone like its arrows. */
-const PERIOD_BUTTON_CLASS = "h-9 w-auto max-sm:h-10";
 
 type PeriodPickerProps = {
   period: ShownPeriod;
@@ -71,7 +67,8 @@ const CalendarPeriodPicker = ({
     >
       <DateFieldTrigger
         label={periodLabel(period)}
-        className={PERIOD_BUTTON_CLASS}
+        size="sm"
+        className="w-auto"
       />
 
       <PopoverContent
@@ -137,28 +134,13 @@ export const ReportPeriodControl = ({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2">
-        <div className="flex items-center overflow-hidden rounded-lg border border-border">
-          <Button
-            variant="ghost"
-            size="iconSm"
-            className="w-9 rounded-none max-sm:size-10"
-            aria-label={`Previous ${unitName}`}
-            disabled={!!firstDay && previous.range.dateTo < firstDay}
-            onClick={() => onChange(previous)}
-          >
-            <ChevronLeft size={16} aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="iconSm"
-            className="w-9 rounded-none border-0 border-l border-border max-sm:size-10"
-            aria-label={`Next ${unitName}`}
-            disabled={next.range.dateFrom > today}
-            onClick={() => onChange(next)}
-          >
-            <ChevronRight size={16} aria-hidden />
-          </Button>
-        </div>
+        <StepArrows
+          unit={unitName}
+          previousDisabled={!!firstDay && previous.range.dateTo < firstDay}
+          nextDisabled={next.range.dateFrom > today}
+          onPrevious={() => onChange(previous)}
+          onNext={() => onChange(next)}
+        />
 
         {calendarUnit ? (
           <CalendarPeriodPicker
@@ -180,7 +162,8 @@ export const ReportPeriodControl = ({
             onChange={(dateFrom, dateTo) =>
               onChange({ unit: "custom", range: { dateFrom, dateTo } })
             }
-            className={PERIOD_BUTTON_CLASS}
+            size="sm"
+            className="w-auto"
           />
         )}
       </div>
@@ -190,6 +173,7 @@ export const ReportPeriodControl = ({
         options={UNITS}
         value={period.unit}
         onChange={changeUnit}
+        size="sm"
         className="max-sm:order-last max-sm:grid max-sm:w-full max-sm:grid-flow-col max-sm:auto-cols-fr"
       />
 

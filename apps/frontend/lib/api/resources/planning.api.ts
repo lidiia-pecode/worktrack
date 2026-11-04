@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  CreatePlanningEntryPayload,
   DeletePeriodPlansQuery,
   PaginatedResponse,
   PlanningEntry,
@@ -12,25 +11,16 @@ import {
   PeriodPreview,
   PlanPeriodPayload,
   PlannedPeriod,
-  UpdatePlanningEntryPayload,
 } from "@/types";
 
-import { buildQueryString, createClient, createCrudClient } from "../core";
-
-const crud = createCrudClient<
-  PlanningEntry,
-  CreatePlanningEntryPayload,
-  UpdatePlanningEntryPayload,
-  PaginatedResponse<PlanningEntry>,
-  PlanningQuery
->({
-  endpoint: "planning",
-});
+import { buildQueryString, createClient } from "../core";
 
 const client = createClient({ endpoint: "planning" });
 
 export const PlanningClientApi = {
-  ...crud,
+  getAll: (query: PlanningQuery) =>
+    client.get<PaginatedResponse<PlanningEntry>>(buildQueryString(query)),
+
   delete: (id: string) => client.delete(`/${id}`),
 
   planPeriod: (payload: PlanPeriodPayload) =>

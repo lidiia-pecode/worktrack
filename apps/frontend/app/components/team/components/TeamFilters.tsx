@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { X } from "lucide-react";
 
 import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useTeamOptions } from "@/hooks/useTeams";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
+
+import { Button } from "@/components/ui/button";
 
 import { FilterBar } from "../../shared/FilterBar";
 import { FormSelect } from "../../shared/FormSelect";
@@ -23,8 +26,12 @@ type TeamFiltersProps = {
   projectId?: string;
   onTeamChange: (teamId?: string) => void;
   onProjectChange?: (projectId?: string) => void;
+  /** Active projects only, for a grid where nothing can go on a past one. */
+  activeProjectsOnly?: boolean;
   search?: string;
   onSearchChange?: (search: string) => void;
+  /** Resets every filter and the search; offered only while one is set. */
+  onClear?: () => void;
 };
 
 export const TeamFilters = ({
@@ -32,8 +39,10 @@ export const TeamFilters = ({
   projectId,
   onTeamChange,
   onProjectChange,
+  activeProjectsOnly = false,
   search = "",
   onSearchChange,
+  onClear,
 }: TeamFiltersProps) => {
   const { options: activeTeamOptions } = useTeamOptions();
 
@@ -50,22 +59,27 @@ export const TeamFilters = ({
   const projectOptions = useMemo(() => {
     const isActive = (project: Project) =>
       project.status === ProjectStatus.ACTIVE;
-    const activeFirst = [
-      ...projects.filter(isActive),
-      ...projects.filter((project) => !isActive(project)),
-    ];
+    const listed = activeProjectsOnly
+      ? projects.filter(isActive)
+      : [
+          ...projects.filter(isActive),
+          ...projects.filter((project) => !isActive(project)),
+        ];
 
     return [
       { value: ALL_OPTION, label: "All projects" },
-      ...activeFirst.map((project) => ({
+      ...listed.map((project) => ({
         value: project.id,
         label: `${project.name}${STATUS_SUFFIX[project.status]}`,
       })),
     ];
-  }, [projects]);
+  }, [projects, activeProjectsOnly]);
 
   const toFilterValue = (value: string) =>
     value === ALL_OPTION ? undefined : value;
+
+  const hasActiveFilters =
+    Boolean(teamId ?? projectId) || Boolean(search.trim());
 
   return (
     <FilterBar className="px-3 py-3 sm:gap-6">
@@ -97,6 +111,18 @@ export const TeamFilters = ({
           />
         )}
       </div>
+
+      {onClear && hasActiveFilters && (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onClear}
+          className="animate-in fade-in self-start sm:ml-auto"
+        >
+          <X aria-hidden />
+          Clear filters
+        </Button>
+      )}
     </FilterBar>
   );
 };

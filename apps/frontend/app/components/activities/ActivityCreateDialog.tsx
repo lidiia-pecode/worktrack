@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useActivitiesMutations } from "@/hooks/useActivities";
 import { useActivityCategoriesAllPagesQuery } from "@/hooks/useActivityCategories";
 import { Activity } from "@/types";
@@ -34,6 +36,7 @@ export const ActivityCreateDialog = ({
     );
 
   const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
+  const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = (data: ActivityFormData) =>
     create.mutateAsync(data, { onSuccess: afterCreate });
@@ -47,6 +50,7 @@ export const ActivityCreateDialog = ({
       submitLabel="Create activity"
       isSubmitting={create.isPending}
       submitDisabled={!categoriesLoading && categories.length === 0}
+      hasUnsavedChanges={isDirty}
     >
       {!categoriesLoading && (
         <ActivityForm
@@ -56,6 +60,7 @@ export const ActivityCreateDialog = ({
           onSubmit={handleSubmit}
           isSubmitting={create.isPending}
           isOnboarding={isOnboarding}
+          onDirtyChange={setIsDirty}
         />
       )}
     </CreateDialog>

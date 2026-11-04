@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useActivityCategoriesMutations } from "@/hooks/useActivityCategories";
 import { ActivityCategory } from "@/types";
 
@@ -30,6 +32,7 @@ export const CategoryCreateDialog = ({
 }: CategoryCreateDialogProps) => {
   const { create } = useActivityCategoriesMutations();
   const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
+  const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = (data: NameFormData) =>
     create.mutateAsync(data, { onSuccess: afterCreate });
@@ -43,9 +46,11 @@ export const CategoryCreateDialog = ({
       formId={FORM_ID}
       submitLabel="Create category"
       isSubmitting={create.isPending}
+      hasUnsavedChanges={isDirty}
     >
       <NameForm
         formId={FORM_ID}
+        onDirtyChange={setIsDirty}
         {...CATEGORY_NAME_FIELD}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}

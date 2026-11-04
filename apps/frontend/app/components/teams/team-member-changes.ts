@@ -92,6 +92,7 @@ export const memberChangeCopy = (
     title: `Remove ${name} from ${team.name}?`,
     description: [...removal, leavesNoManager].filter(Boolean).join(" "),
     confirmText: "Remove",
+    confirmVariant: "warning" as const,
   };
 };
 

@@ -41,6 +41,8 @@ export interface AbsencesQuery extends PaginationParams {
   dateFrom?: string;
   dateTo?: string;
   userId?: string;
+  /** Only the absences of people in this team on the absence's days. */
+  teamId?: string;
 }
 
 export type AbsenceListResponse = PaginatedResponse<Absence>;

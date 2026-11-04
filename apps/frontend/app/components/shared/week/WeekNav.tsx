@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import {
   addWeeks,
   companyToday,
@@ -14,7 +14,9 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { BackToNowButton } from "../buttons/BackToNowButton";
-import { Button } from "@/components/ui/button";
+import { StepArrows } from "../buttons/StepArrows";
+import { cn } from "@/lib/utils/cn";
+import { dateFieldClassName } from "../inputs/DateRangePicker";
 
 type BackToThisWeekProps = {
   weekStart: Date;
@@ -53,26 +55,11 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center rounded-lg border border-border overflow-hidden">
-        <Button
-          variant="ghost"
-          size="iconSm"
-          className="rounded-none w-9 max-sm:size-10"
-          aria-label="Previous week"
-          onClick={() => onWeekChange(addWeeks(weekStart, -1))}
-        >
-          <ChevronLeft size={16} aria-hidden />
-        </Button>
-        <Button
-          variant="ghost"
-          size="iconSm"
-          className="rounded-none w-9 border-0 border-l border-border max-sm:size-10"
-          aria-label="Next week"
-          onClick={() => onWeekChange(addWeeks(weekStart, 1))}
-        >
-          <ChevronRight size={16} aria-hidden />
-        </Button>
-      </div>
+      <StepArrows
+        unit="week"
+        onPrevious={() => onWeekChange(addWeeks(weekStart, -1))}
+        onNext={() => onWeekChange(addWeeks(weekStart, 1))}
+      />
 
       <div className="relative">
         <button
@@ -81,7 +68,7 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
           aria-haspopup="dialog"
           aria-expanded={calendarOpen}
           onClick={() => setCalendarOpen((v) => !v)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition max-sm:h-10"
+          className={cn(dateFieldClassName("sm"), "w-auto")}
         >
           <CalendarDays
             size={15}

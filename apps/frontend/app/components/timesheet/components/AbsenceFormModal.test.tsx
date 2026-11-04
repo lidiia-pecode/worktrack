@@ -89,7 +89,11 @@ describe("LockedAbsenceModal", () => {
     render(<LockedAbsenceModal absence={absence} onClose={vi.fn()} />);
 
     expect(screen.getByText("Vacation")).toBeInTheDocument();
-    expect(screen.getByText(formatAbsenceRange(absence))).toBeInTheDocument();
+    // The days in the subtitle, as "Sep 28 – Oct 2", and in the body.
+    expect(
+      screen.getByRole("dialog", { name: "Absence" }),
+    ).toHaveAccessibleDescription(formatAbsenceRange(absence));
+    expect(screen.getAllByText(formatAbsenceRange(absence))).toHaveLength(2);
     expect(screen.getByText(/Family trip to the coast/)).toBeInTheDocument();
     expect(screen.getByText(/in a locked month/)).toBeInTheDocument();
     expect(

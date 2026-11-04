@@ -15,8 +15,9 @@ the current code and are authoritative. Sections 7–9 describe agreed direction
 and are the basis for planning work. Section 10 lists decisions that are still
 genuinely open.
 
-**Last verified against the code: 3 November 2026.** Phases 0 to 43 in §7 are
-delivered, and so is the permission model. The work ahead was re-planned on 28
+**Last verified against the code: 4 November 2026.** Phases 0 to 43 in §7 are
+delivered, and so is the permission model; Phase 44 is built and ready for its
+pull request. The work ahead was re-planned on 28
 September 2026 as a high-level improvement roadmap (§7); the production launch
 is a final stage that starts only once the product is judged ready.
 
@@ -690,8 +691,9 @@ A notification is deleted 60 days after it was read; unread ones are kept.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
 An invitation is valid for seven days, a product rule rather than a setting. Its
-email names the company, the sender, the role and the team. A failed invitation
-email leaves no invitation behind. Pending invitations can be listed, resent and
+email names the company, the sender, the role and the team. The invitation is
+saved before its email goes out, so a failed email leaves it pending, to be
+resent from the list, and the error says so. Pending invitations can be listed, resent and
 revoked — by the owner for the whole company, by a manager for those into the
 teams they lead; an expired one stays listed, marked expired, until it is resent
 or revoked. A resend issues a new link and a fresh seven days, the old link stops
@@ -855,14 +857,17 @@ see, and how a new company gets started. §7 plans that work.
   block opens that entry, the empty part of a day logs time for the person,
   and an icon by the name records an absence. A search by name or position,
   a sort by name or by how much of the expected time is logged, and filters by
-  team and project (archived projects included) narrow it; the
-  week and the filters are in the URL, so a reload keeps them. A deactivated
+  team and project (archived projects included) narrow it, with "Clear
+  filters" at the end of the row; the week, the filters, the search and the
+  sort are in the URL, so a reload or a shared link keeps them. The toolbar
+  totals the people shown against what was expected of them ("Logged 30h /
+  128h"). A deactivated
   person is marked and listed on every week before they left, logged time or
   not; their days before they left stay editable in an open month, and from
   their leave day on the row is read-only, and their week reads against what
   was expected up to the day they left. Filtered to
   a project, the rows and the team total show only that project's hours, with
-  no Expected, since that is about the whole week; the rows are the project's
+  no Expected, since that is about the whole week ("Logged 12h"); the rows are the project's
   members plus anyone who logged on it that week, so somebody removed from it
   since stays listed, marked "Former member", with their hours in the total
   and their entries correctable (Phase 41). Days follow the timesheet's look: a day over
@@ -879,11 +884,23 @@ see, and how a new company gets started. §7 plans that work.
   `/planning`, or a whole period for one person from their cell: a month at a
   time or any range, several projects with hours per working day, with a
   preview of the working days, the absences skipped, what is already planned
-  and anything that does not fit before saving, all-or-nothing. The grid
-  shows working days only; each person's week reads planned against available
-  hours ("30h of 32h") with a bar, and says which weeks no longer fit. A day
-  can be planned up to the person's own working day, in 15-minute steps, and the day dialog's
-  hours stop at what still fits. An absence day opens straight into its form, and
+  and anything that does not fit before saving, all-or-nothing. The period
+  dialog opens on the week shown, and a `Week | Month` control beside its
+  arrows sets what they step by, Month jumping to the month that holds most of
+  the shown days. The day dialog works the same way: the day's plans are edited
+  in place, new lines add projects, and one "Save plan" saves the day, notes
+  included. The grid shows working days only; each person's week reads planned
+  against available hours ("30h of 32h") with a bar, and says which weeks no
+  longer fit. It is narrowed as Team time is, by team, project (active ones
+  only, since nothing is planned on an archived one) and a search by name or
+  position, with the same "Clear filters", and kept in the URL the same way.
+  Under a project the
+  rows are the people on it or with a plan on it, each showing only its plans
+  and its hours ("on Acme redesign"). The toolbar totals the people shown
+  ("Planned 120h / 160h" against their available hours; the planned hours
+  alone under a project). A day can be planned up to the person's own working
+  day, in 15-minute steps, and the day dialog's hours stop at what still fits.
+  An absence day opens straight into its form, which names the person, and
   an absence can be added from a day or a period. Everyone sees their own plan on the
   timesheet until they log time that day, as faint blocks in the project's
   colour that open the time form on that project; recording an absence removes
@@ -985,6 +1002,16 @@ see, and how a new company gets started. §7 plans that work.
   pages grow. Only what a user sees changed (menu, headings, wording); routes
   and code keep `/timesheet`, `/my-time` and `/team`.
 
+- **One way to close a dialog** (4 November 2026, Phase 44). No dialog has a
+  close button in its header: it closes from its footer, "Cancel" in a form
+  and "Close" in a read-only one and in Notifications. Escape and a click
+  outside ask first while a form has unsaved changes, the management create
+  dialogs included, and do nothing while a save runs. The work dialogs (Log
+  time, an absence, Plan a day, Plan a period) share one frame: the action as
+  the title, who and when beneath, and Delete as a quiet button apart from
+  the one solid primary action. A confirmation's title is a question, and
+  "This can't be undone." is said once.
+
 - **Confirmations say what happens to the data** (29 October 2026, Phase 38).
   Delete means a record is gone for good (a time entry, an absence, a plan);
   Remove means a link ends and both sides stay (a person from a team or a
@@ -1037,7 +1064,7 @@ them, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 926 tests, covering the role-visibility filters and reach by team
+suites and 929 tests, covering the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, who added and changed a time entry or an absence, the lock
@@ -1047,17 +1074,19 @@ one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-five Vitest files and 456 tests: its date, month,
+The frontend has seventy-seven Vitest files and 469 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, the change from the previous period and its tip,
 a team's billable sum, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
-Manage lists, panel and confirmation dialogs, the form dialog's discard check,
+Manage lists, panel and confirmation dialogs, the work and create dialogs'
+discard check,
 the time entry form, the duration stepper, the timesheet day column and its
 list of days on a phone, the
-Team time view, its day cells, rows, filters and sort order, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
+Team time view, its day cells, rows, filters and sort order, the Planning week
+view and its day and period dialogs, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -1104,7 +1133,8 @@ itself started without help.
 
 Built from August to November 2026, one branch and one pull request per phase,
 except Phases 20 to 25, which shipped together, and Phase 38, which shipped as
-three pull requests (#56, #57, #58).
+three pull requests (#56, #57, #58). Three pull requests between Phases 43 and
+44 had no phase (#64 to #66).
 The rules each one settled are in §2 and §4–§6; the detail of how each was built
 is in its pull request.
 
@@ -1152,6 +1182,10 @@ is in its pull request.
 | 41 | History that keeps its people: Team time's project filter keeping the people removed from the project, marked "Former member", with their hours in its total; who added and last changed a time entry or an absence recorded and named to everyone who can see it; the period preview naming only the days a save changes, and adding a person to a project locking them before the project, as a plan save does; the daily planning limit as the person's own day, and working hours set as a day in 30-minute steps up to 12h, the company's standard day too; Planning on working days only, with a compact "Planned" column, hour pickers stopping at the person's day, a day dialog whose hours stop at what fits and that closes after a save, conflicts in a period summed up, and "Add absence" from a day or a period |
 | 42 | Reports beyond one month: a month, a quarter, a year or a custom range of up to 366 days, stepped by its unit, chosen in a calendar and kept in the address, with a way back to the current one; weeks up to 92 days and months beyond, from the company's first month; the People report and its timeline worked out once in one request; one team at a time for an owner and a manager of several, the export and its file name included; the three figures in a branded band with their shares as rings and the change in points from the period before; billable time striped on the chart and the rows, overruns ending a bar, teams showing their change; Needs attention for a single month, with links from a longer period; a light salmon warning colour across WorkTrack, a mauve Planned and a softer logged teal in report marks; Planning's last column and Getting started lighter |
 | 43 | A team keeps its history: a manager reaches a person's time, absences and plans, for reading and writing, only on the days the person was in a team the manager leads now, the day of a move belonging to the new team; Team time and Planning list someone who moved in both teams' weeks, the other days closed in the read-only tint with a tip, and "Moved out" or "Joined" and the date under the name; an absence across a move read-only for a manager of one team, and a planned period skipping the other team's days; Reports, the comparison and the export counting each team's own days, with someone who moved under each team for the owner; a leaver's days after they left closed the same way; the move and removal dialogs saying where the days go |
+| PR #64 | Security audit fixes: Next.js 16.4.5 and the non-breaking `npm audit fix`; HSTS, `nosniff`, `X-Frame-Options` and `Referrer-Policy` sent by both apps; a session's IP from `req.ip` rather than `X-Forwarded-For` as sent; linking Google refused for a deactivated person; `avatarUrl` validated; mail failures logged without the address; `AUTH_COOKIE_SAMESITE=none` refused |
+| PR #65 | Audit follow-ups: a session never created for someone being deactivated at the same moment; completing a Google link with a password limited as sign-in is; token lifetimes always with a unit; an invitation saved before its email goes out, so a failed send leaves it pending to be resent, and an acceptance share-locking its team, so an archive at the same moment waits and then refuses; Team time's entries asked for over a month at most; `multer` pinned to 2.5.0 |
+| PR #66 | Reports figures: the person panel's projects under the page's team filter, adding up to the row for someone who moved; a change from a period with hours expected and none logged saying so in its tip; teams folded or opened by hand starting by their size again when the period changes; the documentation synced through Phase 43 |
+| 44 | The manager's week, finished: Planning narrowed by team, active project and a search by name or position, as Team time is, with "Clear filters" on both grids and Team time's search and sort kept in the URL; a team filter on the absences and plans the grids fetch; toolbars reading `Logged 30h / 128h` and `Planned 120h / 160h`, only the logged or planned hours under a project; the period dialog opening on the shown week with a `Week | Month` control beside its arrows; Plan a day rebuilt on Plan a period's model, its plans edited in place and saved with their notes in one request; the work dialogs on one frame, closed from the footer only and asking before unsaved changes are lost, confirmations titled as questions; the week grids waiting for the month locks before showing a day; controls on one scale of heights, radii and one border; the demo seed with Emma Clarke in one team |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1193,7 +1227,7 @@ activities properly, clients and billable defaults included. The public landing
 and sign-in pages, the invitation email and the Google sign-in paths belong
 here, as do the basics of a person's own account settings.
 
-**Area 2 — Application shell and shared UI** *(done, Phases 18–19, 33 and 40)*. The frame
+**Area 2 — Application shell and shared UI** *(done, Phases 18–19, 33 and 40; dialogs and controls revisited in Phase 44)*. The frame
 every page sits in and the parts every page is built from: navigation per role,
 the sidebar, header and user menu, page layout and headers, and one version each
 of the table, card, form field, select, dialog, confirmation, loading, empty and
@@ -1209,7 +1243,7 @@ clearly when it is complete; the figures it shows — billable, internal, expect
 — should mean the same as everywhere else and start when the person started; and
 it should work on a phone.
 
-**Area 4 — Team oversight and planning** *(started, Phases 31–32, 37, 41 and 43)*. The
+**Area 4 — Team oversight and planning** *(started, Phases 31–32, 37, 41, 43 and 44)*. The
 manager's and owner's week views: the team grid and the planning grid. Finding who is behind and why, correcting somebody's week including their
 absences, planning more than one cell at a time, and grids that draw days,
 absences and locks the same way. Planning and Team time stay separate screens by
@@ -1250,8 +1284,9 @@ then fixed the defects open across areas, and Phase 37 rebuilt Team time
 around its cells. Phase 38 then made the entity lifecycle coherent, and
 Phase 39 put the timesheet on a phone, Phase 40 made the screens consistent,
 Phases 41 and 43 made history accurate across edits and team moves, and Phase
-42 took Reports beyond one month; the rest of Areas 3 and 4, Team time and
-Planning on a phone among it, follows. Area 8 closes the stage. A
+42 took Reports beyond one month; Phase 44 finished the manager's week on the
+desktop, and the rest of Areas 3 and 4, Team time and Planning on a phone among
+it, follows. Area 8 closes the stage. A
 defect that distorts figures can be pulled into whichever scope comes first.
 
 ---
@@ -1419,8 +1454,8 @@ their time logs, such as anonymising the person and keeping the hours.
   change from the period before; what needs attention while a month can still
   change; people by team; where the time went by project and kind of work,
   with a person or a project opened in a side panel; the export holds every
-  number (Phase 34). Whether a change from a period with nothing logged needs
-  explaining is open in `known-issues.md` Area 6.
+  number (Phase 34). A change from a period with hours expected and none
+  logged says so in its tip ("Nothing logged in Q2 2026"; PR #66).
 - **Q11** — Employees get their own month on the Review my time page, from the hours and
   people reports opened to them and pinned to themselves; the export and the
   timeline stay closed (Phase 35).

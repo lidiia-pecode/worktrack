@@ -109,7 +109,7 @@ export const WeekSummary = ({
       <PopoverTrigger
         aria-label={`${formatDuration(totalMinutes)} of ${formatDuration(expectedMinutes)} expected. Show the week's breakdown`}
         className={cn(
-          "flex h-8 min-w-0 items-center gap-3 rounded-md border border-transparent px-2 text-sm transition-colors hover:border-border hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:border-border data-popup-open:bg-card max-sm:h-10",
+          "flex h-8 min-w-0 items-center gap-3 rounded-md border border-transparent px-2 text-sm transition-colors hover:border-control-border hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:border-control-border data-popup-open:bg-card max-sm:h-10",
           className,
         )}
       >

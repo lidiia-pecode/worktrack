@@ -5,12 +5,12 @@ import { SearchX } from "lucide-react";
 
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAbsencesMutations, useAllAbsencesQuery } from "@/hooks/useAbsences";
+import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useTeamOptions } from "@/hooks/useTeams";
 import {
-  formatDuration,
   getWeekDates,
   getWeekEnd,
   isWeekend,
@@ -20,9 +20,10 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
+import { searchTeamRows } from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
-import { UserRole } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +33,7 @@ import { onlyViewerReason } from "../shared/week/only-viewer";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
@@ -51,7 +53,7 @@ type OpenedDay = {
 };
 
 type AbsenceFormState = {
-  userId: string;
+  user: PlanningRow["user"];
   date: string;
   /** The last day of a period's absence; a day's absence has none. */
   endDate?: string;
@@ -72,8 +74,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   } = useWorkSettings();
 
   const { weekStart, showWeekOf } = useShownWeek();
-  const { teamId, setFilters } = useTeamTimeFilters();
-  const setTeamId = (nextTeamId?: string) => setFilters({ teamId: nextTeamId });
+  const {
+    teamId,
+    projectId: projectInAddress,
+    search,
+    setFilters,
+    setSearch,
+    clearFilters,
+  } = useTeamTimeFilters();
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
@@ -108,6 +116,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
+    teamId,
   });
 
   const absencesByUser = useMemo(
@@ -125,14 +134,66 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const {
     isLocked,
     isEditable,
+    isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
 
   const absenceActions = useAbsencesMutations();
 
-  const totalPlanned = rows.reduce((sum, row) => sum + row.plannedMinutes, 0);
-  const totalAvailable = rows.reduce(
+  // The same list the project filter shows, so it comes from the cache.
+  const { items: projects } = useAllProjectsQuery();
+  // Planning offers active projects only, so a link to one archived since
+  // filters nothing here, rather than by a project the filter can't show.
+  const projectId = projects.some(
+    (project) =>
+      project.id === projectInAddress &&
+      project.status !== ProjectStatus.ACTIVE,
+  )
+    ? undefined
+    : projectInAddress;
+  // Set whenever a project filters the grid, even before its name has loaded.
+  const projectName = projectId
+    ? (projects.find((project) => project.id === projectId)?.name ??
+      "this project")
+    : undefined;
+
+  // Under a project filter: the people on it, or with a plan on it, each row
+  // holding that project's plans only, as Team time's rows do; then the
+  // search, as there. The dialogs keep opening on the full row.
+  const shownRows = useMemo(() => {
+    const onProject = projectId
+      ? rows
+          .filter(
+            (row) =>
+              row.projects.some((project) => project.id === projectId) ||
+              row.entries.some((entry) => entry.project.id === projectId),
+          )
+          .map((row) => {
+            const entries = row.entries.filter(
+              (entry) => entry.project.id === projectId,
+            );
+            const plannedMinutes = entries.reduce(
+              (sum, entry) => sum + entry.plannedMinutes,
+              0,
+            );
+            return { ...row, entries, plannedMinutes };
+          })
+      : rows;
+
+    return searchTeamRows(onProject, search);
+  }, [rows, projectId, search]);
+
+  const hasActiveFilters = Boolean(teamId ?? projectId);
+  const isSearching = Boolean(search.trim());
+  const matchesNobody =
+    (hasActiveFilters || isSearching) && shownRows.length === 0;
+
+  const totalPlanned = shownRows.reduce(
+    (sum, row) => sum + row.plannedMinutes,
+    0,
+  );
+  const totalAvailable = shownRows.reduce(
     (sum, row) => sum + row.availableMinutes,
     0,
   );
@@ -155,7 +216,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     if (absence && !isFrozen && absence.canChange === false) {
       setReadOnlyAbsence({ absence, row });
     } else if (absence && !isFrozen) {
-      setAbsenceForm({ userId: row.user.id, date: absence.startDate, absence });
+      setAbsenceForm({ user: row.user, date: absence.startDate, absence });
     } else {
       setOpenedDay({ userId: row.user.id, date });
     }
@@ -184,12 +245,18 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     role,
     viewerId,
     rowUserIds: rows.map((row) => row.user.id),
-    hasActiveFilters: Boolean(teamId),
+    hasActiveFilters,
     ledTeamCount: teamOptions.length,
   });
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
-  if (isLoadingSettings || isLoadingWeek || isLoadingAbsences) {
+  // The locks too, so no day shows before it is known whether it can change.
+  if (
+    isLoadingSettings ||
+    isLoadingWeek ||
+    isLoadingAbsences ||
+    isLoadingLocks
+  ) {
     return (
       <div className="flex flex-col">
         <LoadingState
@@ -212,24 +279,30 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           />
 
           {!hasError && (
-            <div className="flex items-center gap-2 text-sm">
-              <span>Team planned:</span>
-
-              <span className="font-medium text-foreground tabular-nums">
-                {formatDuration(totalPlanned)}
-              </span>
-
-              <span className="text-muted-foreground">/</span>
-
-              <span className="text-muted-foreground tabular-nums">
-                {formatDuration(totalAvailable)} available
-              </span>
-            </div>
+            <WeekTotal
+              label="Planned"
+              minutes={totalPlanned}
+              // A project's plans have no available figure of their own.
+              ofMinutes={projectId ? undefined : totalAvailable}
+            />
           )}
         </div>
       </div>
 
-      {!hasError && <TeamFilters teamId={teamId} onTeamChange={setTeamId} />}
+      {!hasError && (
+        <TeamFilters
+          teamId={teamId}
+          projectId={projectId}
+          onTeamChange={(nextTeamId) => setFilters({ teamId: nextTeamId })}
+          onProjectChange={(nextProjectId) =>
+            setFilters({ projectId: nextProjectId })
+          }
+          activeProjectsOnly
+          search={search}
+          onSearchChange={setSearch}
+          onClear={clearFilters}
+        />
+      )}
 
       {hasError && (
         <ErrorState
@@ -239,14 +312,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && rows.length === 0 && (
+      {!hasError && matchesNobody && (
         <div className="p-6">
           <EmptyState
             icon={<SearchX />}
             title="Nobody matches these filters"
-            description="Nobody you can plan for is in the team you picked."
+            description="Nobody you can plan for matches the team, project or search you picked."
             action={
-              <Button variant="secondary" onClick={() => setTeamId(undefined)}>
+              <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
               </Button>
             }
@@ -260,7 +333,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         </div>
       )}
 
-      {!hasError && rows.length > 0 && (
+      {!hasError && shownRows.length > 0 && (
         <div
           className={[
             "overflow-x-auto transition-opacity",
@@ -317,7 +390,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             </thead>
 
             <tbody>
-              {rows.map((row) => (
+              {shownRows.map((row) => (
                 <PlanningWeekRow
                   key={row.user.id}
                   row={row}
@@ -325,6 +398,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
                   isEditable={isEditable}
+                  projectName={projectName}
                   onOpenDay={openDay}
                   onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />
@@ -341,7 +415,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           date={openedDay.date}
           absence={openedAbsence}
           onAddAbsence={() =>
-            setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
+            setAbsenceForm({ user: openedRow.user, date: openedDay.date })
           }
           onClose={() => setOpenedDay(null)}
         />
@@ -360,7 +434,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <AbsenceFormModal
           open
           onClose={() => setAbsenceForm(null)}
-          userId={absenceForm.userId}
+          userId={absenceForm.user.id}
+          subjectName={fullName(absenceForm.user)}
           date={absenceForm.date}
           endDate={absenceForm.endDate}
           // A new absence from a day is for that day; one from the period
@@ -370,7 +445,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           onCreate={async (payload) => {
             await absenceActions.create.mutateAsync({
               ...payload,
-              userId: absenceForm.userId,
+              userId: absenceForm.user.id,
             });
             // The day dialog this came from is now an absence day's.
             setOpenedDay(null);
@@ -391,9 +466,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <PlanPeriodModal
           key={periodRow.user.id}
           row={periodRow}
+          weekDates={workingDates}
           onAddAbsence={(startDate, endDate) =>
             setAbsenceForm({
-              userId: periodRow.user.id,
+              user: periodRow.user,
               date: startDate,
               endDate,
             })

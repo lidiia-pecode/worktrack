@@ -1,10 +1,8 @@
 "use client";
 
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
 import { addMonthsToKey, formatMonthLabel } from "@/lib/utils/date";
 
-import { Button } from "@/components/ui/button";
+import { StepArrows } from "@/app/components/shared/buttons/StepArrows";
 
 type ReportMonthStepperProps = {
   /** YYYY-MM. */
@@ -24,28 +22,15 @@ export const ReportMonthStepper = ({
   onChange,
 }: ReportMonthStepperProps) => (
   <div className="flex items-center gap-3">
-    <div className="flex items-center overflow-hidden rounded-lg border border-border">
-      <Button
-        variant="ghost"
-        size="iconSm"
-        className="w-9 rounded-none max-sm:size-10"
-        aria-label="Previous month"
-        disabled={companyFirstMonth !== undefined && month <= companyFirstMonth}
-        onClick={() => onChange(addMonthsToKey(month, -1))}
-      >
-        <ChevronLeft size={16} aria-hidden />
-      </Button>
-      <Button
-        variant="ghost"
-        size="iconSm"
-        className="w-9 rounded-none border-0 border-l border-border max-sm:size-10"
-        aria-label="Next month"
-        disabled={month >= currentMonth}
-        onClick={() => onChange(addMonthsToKey(month, 1))}
-      >
-        <ChevronRight size={16} aria-hidden />
-      </Button>
-    </div>
+    <StepArrows
+      unit="month"
+      previousDisabled={
+        companyFirstMonth !== undefined && month <= companyFirstMonth
+      }
+      nextDisabled={month >= currentMonth}
+      onPrevious={() => onChange(addMonthsToKey(month, -1))}
+      onNext={() => onChange(addMonthsToKey(month, 1))}
+    />
     <p className="text-base font-semibold" aria-live="polite">
       {formatMonthLabel(month)}
     </p>

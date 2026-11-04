@@ -23,7 +23,6 @@ import {
 import { getErrorMessage } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import {
-  formatDuration,
   getWeekDates,
   getWeekEnd,
   isWeekend,
@@ -37,7 +36,6 @@ import {
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import {
-  DEFAULT_TEAM_SORT,
   nextTeamSort,
   searchTeamRows,
   sortTeamRows,
@@ -51,6 +49,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
@@ -103,9 +102,16 @@ export const TeamTimeView = ({
   } = useWorkSettings();
 
   const { weekStart, showWeekOf } = useShownWeek();
-  const { teamId, projectId, setFilters } = useTeamTimeFilters();
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState(DEFAULT_TEAM_SORT);
+  const {
+    teamId,
+    projectId,
+    search,
+    sort,
+    setFilters,
+    setSearch,
+    setSort,
+    clearFilters,
+  } = useTeamTimeFilters();
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -146,6 +152,7 @@ export const TeamTimeView = ({
   const { items: plannedEntries } = usePlanningEntries({
     dateFrom,
     dateTo,
+    teamId,
     projectId,
   });
 
@@ -175,6 +182,7 @@ export const TeamTimeView = ({
   } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
+    teamId,
   });
 
   const absencesByUser = useMemo(
@@ -189,6 +197,7 @@ export const TeamTimeView = ({
   const {
     isLocked,
     isEditable,
+    isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -224,6 +233,10 @@ export const TeamTimeView = ({
   const loggedMinutes = isSearching
     ? shownRows.reduce((sum, row) => sum + row.minutes, 0)
     : totals.minutes;
+  // What was expected of the people shown; a project's hours have none.
+  const expectedMinutes = projectId
+    ? undefined
+    : shownRows.reduce((sum, row) => sum + row.expectedMinutes, 0);
 
   const onlyViewer = onlyViewerReason({
     role,
@@ -306,11 +319,6 @@ export const TeamTimeView = ({
       ? absenceInAnotherTeam(fullName(absenceForm.user))
       : undefined;
 
-  const clearFilters = () => {
-    setFilters({ teamId: undefined, projectId: undefined });
-    setSearch("");
-  };
-
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
 
   const retry = () => {
@@ -320,7 +328,13 @@ export const TeamTimeView = ({
     void refetchLocks();
   };
 
-  if (isLoadingSettings || isLoadingSummary || isLoadingAbsences) {
+  // The locks too, so no day shows before it is known whether it can change.
+  if (
+    isLoadingSettings ||
+    isLoadingSummary ||
+    isLoadingAbsences ||
+    isLoadingLocks
+  ) {
     return (
       <div className="flex flex-col">
         <LoadingState
@@ -343,13 +357,11 @@ export const TeamTimeView = ({
           />
 
           {!hasError && (
-            <div className="flex items-center gap-2 text-sm">
-              <span>Team logged:</span>
-
-              <span className="font-medium text-foreground tabular-nums">
-                {formatDuration(loggedMinutes)}
-              </span>
-            </div>
+            <WeekTotal
+              label="Logged"
+              minutes={loggedMinutes}
+              ofMinutes={expectedMinutes}
+            />
           )}
         </div>
       </div>
@@ -364,6 +376,7 @@ export const TeamTimeView = ({
           }
           search={search}
           onSearchChange={setSearch}
+          onClear={clearFilters}
         />
       )}
 

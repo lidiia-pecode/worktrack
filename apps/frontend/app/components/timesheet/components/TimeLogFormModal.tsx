@@ -343,11 +343,12 @@ export const TimeLogFormModal = ({
         open={open}
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        isBusy={isSaving || isDeleting}
         size="lg"
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
-          DAY_LABEL.format(new Date(`${date}T00:00:00`)),
           subjectName,
+          DAY_LABEL.format(new Date(`${date}T00:00:00`)),
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -384,7 +385,7 @@ export const TimeLogFormModal = ({
               <Button
                 type="button"
                 className="mr-auto max-sm:px-2.5"
-                variant="destructive"
+                variant="ghostDestructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isSaving}
@@ -495,13 +496,13 @@ export const TimeLogFormModal = ({
 
           <Field
             id="timelog-note"
+            label="Note"
             error={errors.note?.message}
             description={noteCounter}
           >
             <TextareaAutosize
               id="timelog-note"
               {...register("note")}
-              aria-label="Note"
               aria-invalid={!!errors.note}
               aria-describedby={fieldMessageId("timelog-note", {
                 error: errors.note?.message,
@@ -535,7 +536,7 @@ export const TimeLogFormModal = ({
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
         title="Delete this time entry?"
-        description="This action cannot be undone."
+        description="The entry will be deleted. This can't be undone."
         confirmText="Delete"
         confirmVariant="destructive"
         loading={isDeleting}

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
+import { useReportDirty } from "@/hooks/useReportDirty";
+
 import { isConflictError, getErrorMessage } from "@/lib/api";
 
 import { UserRole } from "@/types/enums";
@@ -43,6 +45,7 @@ interface InviteUserFormProps {
   isSubmitting?: boolean;
   onSubmit: (data: InviteUserFormData) => void | Promise<unknown>;
   onCanSubmitChange: (canSubmit: boolean) => void;
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 export const InviteUserForm = ({
@@ -50,6 +53,7 @@ export const InviteUserForm = ({
   isSubmitting = false,
   onSubmit,
   onCanSubmitChange,
+  onDirtyChange,
 }: InviteUserFormProps) => {
   const { user } = useAuth();
   const isOwner = user?.role === UserRole.OWNER;
@@ -66,7 +70,7 @@ export const InviteUserForm = ({
     setError,
     getFieldState,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<InviteUserFormData>({
     resolver: zodResolver(inviteUserSchema),
     defaultValues: {
@@ -74,6 +78,8 @@ export const InviteUserForm = ({
       role: defaultRole,
     },
   });
+
+  useReportDirty(isDirty, onDirtyChange);
 
   const role = useWatch({ control, name: "role" });
 

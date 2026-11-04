@@ -750,6 +750,27 @@ describe('PlanningService', () => {
       ]);
     });
 
+    it('puts a note on the plans it creates and changes, and leaves the rest', async () => {
+      await existingEntry(member.id, MONDAY, 2 * HOUR);
+      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
+
+      const result = await service.planPeriod(
+        period(MONDAY, TUESDAY, [
+          { projectId, minutesPerDay: 2 * HOUR, note: 'Client review' },
+        ]),
+        manager,
+      );
+
+      expect(result).toEqual({ days: 2, created: 1, updated: 1 });
+      expect(
+        (await entriesFor(member.id)).map((e) => [e.date, e.projectId, e.note]),
+      ).toEqual([
+        [MONDAY, projectId, 'Client review'],
+        [TUESDAY, otherProjectId, null],
+        [TUESDAY, projectId, 'Client review'],
+      ]);
+    });
+
     it('checks the limits on the days a listed project changes', async () => {
       await existingEntry(member.id, MONDAY, 2 * HOUR);
       await existingEntry(member.id, MONDAY, 4 * HOUR, otherProjectId);
@@ -1382,6 +1403,7 @@ describe('PlanningService', () => {
     // Emma is in Alpha until Tuesday and in Beta from Wednesday.
     let betaManager: AuthUser;
     let mover: AuthUser;
+    let betaTeamId: string;
 
     const rowOf = async (caller: AuthUser) =>
       (await service.getWeek({ date: MONDAY }, caller)).rows.find(
@@ -1395,6 +1417,7 @@ describe('PlanningService', () => {
       const beta = await dataSource
         .getRepository(Team)
         .save({ companyId, name: `Beta ${RUN}` });
+      betaTeamId = beta.id;
       await dataSource.getRepository(TeamMembership).save([
         {
           companyId,
@@ -1508,6 +1531,35 @@ describe('PlanningService', () => {
         addDays(MONDAY, 3),
         FRIDAY,
       ]);
+    });
+
+    it("lists, under a team filter, the plans on that team's days", async () => {
+      await planFullWeek(mover.id);
+      const datesFor = async (teamId: string, caller: AuthUser) =>
+        [
+          ...new Set(
+            (
+              await service.list(
+                Object.assign(new PlanningQueryDto(), {
+                  userId: mover.id,
+                  dateFrom: MONDAY,
+                  dateTo: FRIDAY,
+                  teamId,
+                }),
+                caller,
+              )
+            ).results.map((entry) => entry.date),
+          ),
+        ].sort();
+
+      expect(await datesFor(alphaTeamId, owner)).toEqual([MONDAY, TUESDAY]);
+      expect(await datesFor(betaTeamId, owner)).toEqual([
+        WEDNESDAY,
+        addDays(MONDAY, 3),
+        FRIDAY,
+      ]);
+      // A team the caller doesn't reach narrows the list to nothing.
+      expect(await datesFor(betaTeamId, manager)).toEqual([]);
     });
   });
 });

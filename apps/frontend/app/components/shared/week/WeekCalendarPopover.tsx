@@ -49,7 +49,7 @@ export const WeekCalendarPopover = ({
       ref={ref}
       role="dialog"
       aria-label="Choose a week"
-      className="absolute z-40 top-full mt-2 left-0 w-72 bg-popover rounded-2xl border border-border shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
+      className="absolute z-40 top-full mt-2 left-0 w-72 bg-popover rounded-lg border border-border shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
     >
       <MonthCalendar
         initialMonth={weekStart}

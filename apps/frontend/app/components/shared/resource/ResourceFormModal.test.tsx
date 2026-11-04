@@ -4,58 +4,82 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ResourceFormModal } from "./ResourceFormModal";
 
-const renderModal = (hasUnsavedChanges: boolean) => {
-  const onClose = vi.fn();
-
+const renderModal = (
+  props: Partial<React.ComponentProps<typeof ResourceFormModal>> = {},
+) =>
   render(
     <ResourceFormModal
       open
-      onClose={onClose}
+      onClose={vi.fn()}
       title="Log time"
-      hasUnsavedChanges={hasUnsavedChanges}
+      description="Jane Smith · Wednesday, November 4"
+      footer={<button type="button">Cancel</button>}
+      {...props}
     >
-      <input aria-label="Note" />
+      <p>Body</p>
     </ResourceFormModal>,
   );
 
-  return { onClose };
-};
-
 describe("ResourceFormModal", () => {
-  it("closes at once when nothing has changed", async () => {
-    const user = userEvent.setup();
-    const { onClose } = renderModal(false);
+  it("names the dialog by its action, with who and when beneath, and no close button", () => {
+    renderModal();
 
-    await user.click(await screen.findByRole("button", { name: "Close" }));
-
-    expect(onClose).toHaveBeenCalledOnce();
+    const dialog = screen.getByRole("dialog", { name: "Log time" });
+    expect(dialog).toHaveAccessibleDescription(
+      "Jane Smith · Wednesday, November 4",
+    );
     expect(
-      screen.queryByRole("dialog", { name: "Discard your changes?" }),
+      screen.queryByRole("button", { name: "Close" }),
     ).not.toBeInTheDocument();
   });
 
-  it("asks before Escape discards a changed form", async () => {
-    const user = userEvent.setup();
-    const { onClose } = renderModal(true);
-
-    await user.click(await screen.findByRole("textbox", { name: "Note" }));
-    await user.keyboard("{Escape}");
+  it("keeps the header's end for a control", () => {
+    renderModal({ headerEnd: <input aria-label="Duration" /> });
 
     expect(
-      await screen.findByRole("dialog", { name: "Discard your changes?" }),
+      screen.getByRole("textbox", { name: "Duration" }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks before discarding unsaved changes on Escape, and closes at once otherwise", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { unmount } = renderModal({ onClose, hasUnsavedChanges: true });
+
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("heading", { name: "Discard your changes?" }),
     ).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Discard" }));
-
     expect(onClose).toHaveBeenCalledOnce();
+    unmount();
+
+    const onCloseClean = vi.fn();
+    renderModal({ onClose: onCloseClean });
+    await user.keyboard("{Escape}");
+    expect(onCloseClean).toHaveBeenCalledOnce();
+  });
+
+  it("ignores Escape while a save is in flight", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderModal({ onClose, isBusy: true });
+
+    await user.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "Log time" }),
+    ).toBeInTheDocument();
   });
 
   it("keeps the form open when the person keeps editing", async () => {
     const user = userEvent.setup();
-    const { onClose } = renderModal(true);
+    const onClose = vi.fn();
+    renderModal({ onClose, hasUnsavedChanges: true });
 
-    await user.click(await screen.findByRole("button", { name: "Close" }));
+    await user.keyboard("{Escape}");
     await user.click(
       await screen.findByRole("button", { name: "Keep editing" }),
     );

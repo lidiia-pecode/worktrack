@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Info, Lock, Trash2 } from "lucide-react";
+import { Info, Lock, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
@@ -15,10 +15,15 @@ import {
   formatLongDayLabel,
   fromISODate,
   isISODateRange,
+  formatDateRangeLabel,
 } from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
-import { Field, fieldControlClassName } from "@/components/ui/field";
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
@@ -55,7 +60,7 @@ const deletedAbsenceText = (absence: Absence) => {
       ? "that day becomes a working day"
       : "those days become working days";
 
-  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again.`;
+  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again. This can't be undone.`;
 };
 
 type Props = {
@@ -192,34 +197,39 @@ export const AbsenceFormModal = ({
     }
   };
 
+  // One day reads as its day, a range as its first and last.
+  const firstDay = absence?.startDate ?? date;
+  const lastDay = absence?.endDate ?? lastDate;
+  const absenceDaysLabel =
+    isSingleDay || firstDay === lastDay
+      ? formatLongDayLabel(fromISODate(firstDay))
+      : formatDateRangeLabel(firstDay, lastDay);
+
   return (
     <>
       <ResourceFormModal
         open={open}
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        isBusy={isSaving || isDeleting}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description={
-          isSingleDay
-            ? [subjectName, formatLongDayLabel(fromISODate(date))]
-                .filter(Boolean)
-                .join(" · ")
-            : subjectName
-        }
-        icon={<CalendarOff className="size-5" />}
+        description={[subjectName, absenceDaysLabel]
+          .filter(Boolean)
+          .join(" · ")}
         footer={
           <>
             {isEditMode && (
               <Button
                 type="button"
-                className="mr-auto"
-                variant="destructive"
+                className="mr-auto max-sm:px-2.5"
+                variant="ghostDestructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isSaving}
               >
                 <Trash2 className="size-4" />
-                Delete
+                {/* Icon only on a phone, so the footer stays on one row. */}
+                <span className="max-sm:sr-only">Delete</span>
               </Button>
             )}
 
@@ -297,11 +307,15 @@ export const AbsenceFormModal = ({
             <TextareaAutosize
               id="absence-note"
               {...register("note")}
+              aria-invalid={!!errors.note}
+              aria-describedby={fieldMessageId("absence-note", {
+                error: errors.note?.message,
+              })}
               minRows={3}
               maxRows={8}
               placeholder="Anything worth adding?"
               className={cn(
-                fieldControlClassName(),
+                fieldControlClassName(!!errors.note),
                 "resize-none py-2.5 leading-relaxed",
               )}
             />
@@ -350,8 +364,9 @@ export const LockedAbsenceModal = ({
     open
     onClose={onClose}
     title="Absence"
-    description={subjectName}
-    icon={<CalendarOff className="size-5" />}
+    description={[subjectName, formatAbsenceRange(absence)]
+      .filter(Boolean)
+      .join(" · ")}
     footer={
       <Button type="button" variant="outline" size="sm" onClick={onClose}>
         Close

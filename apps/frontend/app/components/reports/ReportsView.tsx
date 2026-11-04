@@ -318,8 +318,7 @@ export const ReportsView = () => {
               <FormSelect
                 aria-label="Team"
                 className="max-sm:w-full sm:w-56"
-                // As tall as the period's buttons beside it.
-                triggerClassName="h-9 max-sm:h-10"
+                size="sm"
                 value={teamId ?? ALL_TEAMS}
                 options={[
                   { value: ALL_TEAMS, label: "All teams" },

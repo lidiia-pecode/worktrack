@@ -14,23 +14,6 @@ export interface PlanningEntry {
   updatedAt: string;
 }
 
-// Payload (back CreatePlanningEntryDto)
-export interface CreatePlanningEntryPayload {
-  userId: string;
-  projectId: string;
-  date: string;
-  plannedMinutes: number;
-  note?: string;
-}
-
-// Payload (back UpdatePlanningEntryDto)
-export interface UpdatePlanningEntryPayload {
-  projectId?: string;
-  date?: string;
-  plannedMinutes?: number;
-  note?: string | null;
-}
-
 // Payload (back PlanPeriodPayload)
 export interface PlanPeriodPayload {
   userId: string;
@@ -41,6 +24,8 @@ export interface PlanPeriodPayload {
     minutesPerDay: number;
     /** Only the days that already have the project; otherwise every working day. */
     existingDaysOnly?: boolean;
+    /** Set on the plans created and changed; null clears it. */
+    note?: string | null;
   }[];
 }
 
@@ -88,6 +73,8 @@ export interface PeriodPreview {
 export type PlanningQuery = PaginationParams & {
   userId?: string;
   projectId?: string;
+  /** Only the plans of people in this team on the plan's day. */
+  teamId?: string;
   date?: string;
   dateFrom?: string;
   dateTo?: string;

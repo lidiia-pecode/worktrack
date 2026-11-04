@@ -4,6 +4,10 @@ import { useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 
 import Input from "@/components/ui/input";
+import {
+  FieldControlSize,
+  fieldControlSizeClassName,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 
 const MAX_SEARCH_LENGTH = 100;
@@ -15,6 +19,8 @@ interface SearchInputProps {
   placeholder?: string;
   autoFocus?: boolean;
   className?: string;
+  /** `sm` in a toolbar, `md` (the default) in a row of fields. */
+  size?: FieldControlSize;
   "aria-label"?: string;
 }
 
@@ -25,6 +31,7 @@ export const SearchInput = ({
   placeholder = "Search...",
   autoFocus = false,
   className,
+  size = "md",
   "aria-label": ariaLabel,
 }: SearchInputProps) => {
   const ref = useRef<HTMLInputElement>(null);
@@ -55,7 +62,7 @@ export const SearchInput = ({
         maxLength={MAX_SEARCH_LENGTH}
         placeholder={placeholder}
         aria-label={ariaLabel ?? placeholder}
-        className="pr-9 pl-9"
+        className={cn(fieldControlSizeClassName[size], "pr-9 pl-9")}
       />
 
       {value && (

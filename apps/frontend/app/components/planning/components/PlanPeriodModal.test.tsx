@@ -90,13 +90,27 @@ const OCTOBER_DAYS = Array.from({ length: 22 }, (_, i) => {
       `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
   );
 
+// Planning shows the week of Monday 19 October 2026, working days only.
+const WEEK_DATES = [19, 20, 21, 22, 23].map((day) => new Date(2026, 9, day));
+
 const renderModal = (row = ALICE) => {
   const onClose = vi.fn();
   render(
-    <PlanPeriodModal row={row} onAddAbsence={vi.fn()} onClose={onClose} />,
+    <PlanPeriodModal
+      row={row}
+      weekDates={WEEK_DATES}
+      onAddAbsence={vi.fn()}
+      onClose={onClose}
+    />,
   );
   return { onClose };
 };
+
+const weekLabel = (from: string, to: string) =>
+  `${formatDayMonthLabel(from)} – ${formatDayMonthYearLabel(to)}`;
+
+const isPressed = (name: string) =>
+  screen.getByRole("button", { name }).getAttribute("aria-pressed");
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -154,21 +168,43 @@ describe("PlanPeriodModal", () => {
     server.plans = [];
   });
 
-  it("starts on the whole current month and steps a month at a time", async () => {
+  it("opens on the shown week, steps by the chosen unit, and jumps to it on a press", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
     expect(
-      screen.getByRole("heading", { name: "Plan a period for Alice Cooper" }),
+      screen.getByRole("heading", { name: "Plan a period" }),
     ).toBeInTheDocument();
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
+    expect(isPressed("Week")).toBe("true");
+
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+    expect(periodLabel()).toBe(weekLabel("2026-10-26", "2026-10-30"));
+
+    await user.click(screen.getByRole("button", { name: "Month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-10"));
+    expect(isPressed("Month")).toBe("true");
 
     await user.click(screen.getByRole("button", { name: "Next month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-11"));
 
-    await user.click(screen.getByRole("button", { name: "Previous month" }));
-    await user.click(screen.getByRole("button", { name: "Previous month" }));
-    expect(periodLabel()).toBe(formatMonthLabel("2026-09"));
+    // Back to the shown week, whichever month the dates were on.
+    await user.click(screen.getByRole("button", { name: "Week" }));
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
+  });
+
+  it("jumps to the month holding most of a week that spans two", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderModal();
+
+    // From Mon 19 Oct to Mon 30 Nov – Fri 4 Dec, four of whose days are December's.
+    for (let week = 0; week < 6; week++) {
+      await user.click(screen.getByRole("button", { name: "Next week" }));
+    }
+    expect(periodLabel()).toBe(weekLabel("2026-11-30", "2026-12-04"));
+
+    await user.click(screen.getByRole("button", { name: "Month" }));
+    expect(periodLabel()).toBe(formatMonthLabel("2026-12"));
   });
 
   it("picks any range on the calendar, first day then last", async () => {
@@ -186,9 +222,13 @@ describe("PlanPeriodModal", () => {
 
     await pickDay(user, "2026-10-16");
     await waitFor(() =>
-      expect(periodLabel()).toBe(
-        `${formatDayMonthLabel("2026-10-05")} – ${formatDayMonthYearLabel("2026-10-16")}`,
-      ),
+      expect(periodLabel()).toBe(weekLabel("2026-10-05", "2026-10-16")),
+    );
+    // Any other range keeps the unit, so the arrows still step by a week.
+    expect(isPressed("Week")).toBe("true");
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+    await waitFor(() =>
+      expect(periodLabel()).toBe(weekLabel("2026-10-12", "2026-10-23")),
     );
   });
 
@@ -301,21 +341,18 @@ describe("PlanPeriodModal", () => {
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 
-  it("adds a line per project, totals the day and says when nothing is left to add", async () => {
+  it("adds a line per project, totals the day and offers no more once every project is taken", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
     await fillRow(user, 0, "Northwind", "4");
-    await user.click(screen.getByRole("button", { name: "Add a project" }));
+    await user.click(screen.getByRole("button", { name: "Add project" }));
     await fillRow(user, 1, "Internal", "2");
 
     expect(screen.getByText("6h a day")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Add a project" }),
+      screen.queryByRole("button", { name: "Add project" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText("Alice is on no other active project."),
-    ).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Drop the Internal line" }),
@@ -347,10 +384,39 @@ describe("PlanPeriodModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
     expect(server.planPeriod).toHaveBeenCalledWith({
       userId: "user-alice",
-      startDate: "2026-10-01",
-      endDate: "2026-10-31",
+      startDate: "2026-10-19",
+      endDate: "2026-10-23",
       projects: [{ projectId: "project-northwind", minutesPerDay: 240 }],
     });
+  });
+
+  it("keeps the unit and the dates while a changed row is kept", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = [
+      {
+        id: "p0",
+        userId: "user-alice",
+        project: { id: "project-internal", name: "Internal" },
+        plannedMinutes: 120,
+        date: "2026-10-20",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    const hours = within(
+      screen.getByRole("group", { name: "Hours a day for Internal" }),
+    ).getByRole("spinbutton", { name: "Hours" });
+    await user.click(hours);
+    await user.clear(hours);
+    await user.type(hours, "3");
+    await user.tab();
+
+    await user.click(screen.getByRole("button", { name: "Month" }));
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
+    expect(isPressed("Week")).toBe("true");
+    expect(screen.getByText(/was 2h/)).toBeInTheDocument();
   });
 
   it("changes a planned project only on its own days", async () => {
@@ -427,9 +493,7 @@ describe("PlanPeriodModal", () => {
     await user.tab();
 
     expect(
-      screen.getByText(
-        "Enter hours greater than 0, or delete it with the bin.",
-      ),
+      screen.getByText("Enter hours, or delete the plan"),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
@@ -469,6 +533,7 @@ describe("PlanPeriodModal", () => {
         date: "2026-11-03",
       } as PlanningEntry,
     ];
+    await user.click(screen.getByRole("button", { name: "Month" }));
     await user.click(screen.getByRole("button", { name: "Next month" }));
 
     expect(
@@ -502,8 +567,8 @@ describe("PlanPeriodModal", () => {
       {
         userId: "user-alice",
         projectId: "project-internal",
-        startDate: "2026-10-01",
-        endDate: "2026-10-31",
+        startDate: "2026-10-19",
+        endDate: "2026-10-23",
       },
       expect.anything(),
     );

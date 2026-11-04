@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { useTeamsMutations } from "@/hooks/useTeams";
 import { Team } from "@/types/Team";
 
@@ -30,6 +32,7 @@ export const TeamCreateDialog = ({
 }: TeamCreateDialogProps) => {
   const { create } = useTeamsMutations();
   const afterCreate = useAfterCreate({ onClose, onCreated, isOnboarding });
+  const [isDirty, setIsDirty] = useState(false);
 
   const handleSubmit = (data: NameFormData) =>
     create.mutateAsync(data, { onSuccess: afterCreate });
@@ -43,9 +46,11 @@ export const TeamCreateDialog = ({
       formId={FORM_ID}
       submitLabel="Create team"
       isSubmitting={create.isPending}
+      hasUnsavedChanges={isDirty}
     >
       <NameForm
         formId={FORM_ID}
+        onDirtyChange={setIsDirty}
         {...TEAM_NAME_FIELD}
         onSubmit={handleSubmit}
         isSubmitting={create.isPending}

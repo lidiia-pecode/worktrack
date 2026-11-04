@@ -77,8 +77,9 @@ describe("ImpactDialog", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("locks both choices while the action runs", async () => {
-    renderDialog({ loading: true });
+  it("locks both choices and Escape while the action runs", async () => {
+    const user = userEvent.setup();
+    const { onClose } = renderDialog({ loading: true });
 
     expect(
       await screen.findByRole("button", { name: "Cancel" }),
@@ -86,6 +87,9 @@ describe("ImpactDialog", () => {
     const confirm = screen.getByRole("button", { name: "Archive" });
     expect(confirm).toBeDisabled();
     expect(confirm).toHaveAttribute("aria-busy", "true");
+
+    await user.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it("holds the action until its impact has loaded", async () => {

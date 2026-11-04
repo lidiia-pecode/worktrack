@@ -104,10 +104,14 @@ export const ImpactDialog = ({
   const shownGroups = affected.filter((group) => group.entities.length > 0);
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+    <Dialog
+      open={isOpen}
+      // While the action runs, Escape and an outside click wait, as the buttons do.
+      onOpenChange={(open) => !open && !loading && onClose()}
+    >
+      <DialogContent className="sm:max-w-md">
         <div className="grid gap-4 p-6">
-          <DialogHeader className="pr-6">
+          <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>

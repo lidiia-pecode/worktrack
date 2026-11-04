@@ -173,6 +173,10 @@ const shownNames = () =>
     .getAllByRole("rowheader")
     .map((cell) => (cell.textContent?.includes("Alice") ? "Alice" : "Ben"));
 
+// The toolbar's figure; the sort header has a "Logged" button of its own.
+const weekTotal = () =>
+  screen.getAllByText("Logged", { selector: "span" }).at(-1)?.parentElement;
+
 describe("TeamTimeView", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/team");
@@ -327,6 +331,39 @@ describe("TeamTimeView", () => {
         projectId: "7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b",
       }),
     );
+    // A project's hours have no expected figure to be measured against.
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*5h$/);
+  });
+
+  it("totals the week against what was expected of everyone shown", () => {
+    showTeamTime();
+
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*5h \/ 80h$/);
+  });
+
+  it("reads the search and sort from the URL, and writes them back", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/team?search=develop&sort=logged");
+    showTeamTime();
+
+    expect(shownNames()).toEqual(["Ben"]);
+    expect(
+      screen.getByRole("button", { name: "Sort by logged time, most first" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.clear(
+      screen.getByRole("textbox", { name: "Search by name or position" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Sort by name, A to Z" }),
+    );
+    // Back at the defaults, the address holds neither.
+    expect(window.location.search).toBe("");
+
+    await user.click(
+      screen.getByRole("button", { name: "Sort by name, Z to A" }),
+    );
+    expect(window.location.search).toBe("?sort=name-desc");
   });
 
   it("searches people by name or position, and totals only them", async () => {
@@ -339,9 +376,7 @@ describe("TeamTimeView", () => {
     );
 
     expect(shownNames()).toEqual(["Ben"]);
-    expect(screen.getByText("Team logged:").parentElement).toHaveTextContent(
-      /Team logged:\s*0h/,
-    );
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*0h \/ 40h$/);
 
     await user.clear(
       screen.getByRole("textbox", { name: "Search by name or position" }),
@@ -352,7 +387,10 @@ describe("TeamTimeView", () => {
     );
     expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    // Both the filter row's and the empty state's button reset everything.
+    await user.click(
+      screen.getAllByRole("button", { name: "Clear filters" })[0],
+    );
     expect(shownNames()).toEqual(["Alice", "Ben"]);
   });
 

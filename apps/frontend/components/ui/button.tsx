@@ -29,13 +29,13 @@ const buttonVariants = cva(
         ],
 
         secondary: [
-          "border border-border",
+          "border border-control-border",
           "bg-secondary text-secondary-foreground",
           "hover:bg-secondary/80",
         ],
 
         outline: [
-          "border border-border",
+          "border border-control-border",
           "bg-transparent text-foreground",
           "hover:bg-accent hover:text-accent-foreground",
         ],
@@ -80,7 +80,7 @@ const buttonVariants = cva(
 
       size: {
         xs: "h-7 gap-1 rounded-md px-2 text-xs",
-        sm: "h-8 gap-1.5 rounded-md px-3 text-sm",
+        sm: "h-8 gap-1.5 rounded-md px-3 text-sm max-sm:h-10 max-sm:rounded-lg",
         md: "h-10 gap-2 px-4",
         lg: "h-11 gap-2 px-5 text-base",
         xl: "h-12 gap-2.5 px-6 text-base",

@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronUp, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
+
+import { NumberStepper } from "./inputs/NumberStepper";
 
 type TimePickerProps = {
   hours: number;
@@ -70,11 +70,11 @@ export const TimePicker = ({
       role={ariaLabel ? "group" : undefined}
       aria-label={ariaLabel}
       className={cn(
-        "inline-flex h-11 items-center rounded-lg border bg-input px-1.5 transition-colors",
+        "inline-flex h-10 items-center rounded-lg border bg-input px-1.5 transition-colors",
         "focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/20",
         error
           ? "border-destructive focus-within:border-destructive focus-within:ring-destructive/20"
-          : "border-input-border",
+          : "border-control-border",
         className,
       )}
     >
@@ -105,9 +105,6 @@ export const TimePicker = ({
     </div>
   );
 };
-
-const stepButtonClassName =
-  "h-4 w-5 rounded-sm p-0 text-muted-foreground disabled:opacity-30";
 
 type TimeFieldProps = {
   label: string;
@@ -222,31 +219,12 @@ const TimeField = ({
         )}
       />
 
-      <div className="flex flex-col">
-        <Button
-          type="button"
-          variant="ghost"
-          tabIndex={-1}
-          aria-label={`Increase: ${label}`}
-          disabled={!canIncrease}
-          className={stepButtonClassName}
-          onClick={() => step(1)}
-        >
-          <ChevronUp className="size-3" />
-        </Button>
-
-        <Button
-          type="button"
-          variant="ghost"
-          tabIndex={-1}
-          aria-label={`Decrease: ${label}`}
-          disabled={!canDecrease}
-          className={stepButtonClassName}
-          onClick={() => step(-1)}
-        >
-          <ChevronDown className="size-3" />
-        </Button>
-      </div>
+      <NumberStepper
+        label={label}
+        canIncrease={canIncrease}
+        canDecrease={canDecrease}
+        onStep={step}
+      />
     </div>
   );
 };
