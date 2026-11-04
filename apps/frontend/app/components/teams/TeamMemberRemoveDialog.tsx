@@ -60,7 +60,7 @@ export const TeamMemberRemoveDialog = ({
           : (copy?.description ?? "Checking their teams...")
       }
       confirmText="Remove"
-      confirmVariant={copy?.confirmVariant}
+      confirmVariant={copy?.confirmVariant ?? "warning"}
       onConfirm={() =>
         membership && removeMember.mutate(membership.id, { onSuccess: onClose })
       }

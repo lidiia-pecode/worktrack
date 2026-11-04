@@ -36,6 +36,8 @@ import { listedLines } from "./period-lines";
 import { EMPTY_LINE, addedLineMinutes, addedLineSchema } from "./plan-lines";
 
 const FORM_ID = "planning-form";
+// The one note problem a row can have: the field stops at the most allowed.
+const NOTE_TOO_SHORT = "At least 3 characters";
 
 const daySchema = z.object({ added: z.array(addedLineSchema) });
 
@@ -399,6 +401,8 @@ export const PlanningDayModal = ({
                     (project) => project.id === line.projectId,
                   );
                   const note = noteEdits[line.projectId] ?? entry?.note ?? "";
+                  const hasNoteProblem = !!noteProblem(line.projectId);
+                  const noteErrorId = `${FORM_ID}-note-${line.projectId}-error`;
 
                   return (
                     <PlannedRow
@@ -407,25 +411,37 @@ export const PlanningDayModal = ({
                       hoursLabel="Hours"
                       detail={
                         isOnProject && !line.isArchived ? (
-                          <input
-                            aria-label={`Note for ${line.name}`}
-                            value={note}
-                            maxLength={NOTE_MAX_LENGTH}
-                            placeholder="Add a note"
-                            aria-invalid={!!noteProblem(line.projectId)}
-                            title={noteProblem(line.projectId)}
-                            onChange={(event) =>
-                              setNoteEdits((current) => ({
-                                ...current,
-                                [line.projectId]: event.target.value,
-                              }))
-                            }
-                            className={cn(
-                              "min-w-0 flex-1 bg-transparent outline-none placeholder:text-input-placeholder focus:text-foreground",
-                              noteProblem(line.projectId) &&
-                                "text-destructive-text",
+                          <>
+                            <input
+                              aria-label={`Note for ${line.name}`}
+                              value={note}
+                              maxLength={NOTE_MAX_LENGTH}
+                              placeholder="Add a note"
+                              aria-invalid={hasNoteProblem}
+                              aria-describedby={
+                                hasNoteProblem ? noteErrorId : undefined
+                              }
+                              onChange={(event) =>
+                                setNoteEdits((current) => ({
+                                  ...current,
+                                  [line.projectId]: event.target.value,
+                                }))
+                              }
+                              className={cn(
+                                "min-w-0 flex-1 bg-transparent outline-none placeholder:text-input-placeholder focus:text-foreground",
+                                hasNoteProblem && "text-destructive-text",
+                              )}
+                            />
+                            {/* On the same line, so the row keeps its height. */}
+                            {hasNoteProblem && (
+                              <span
+                                id={noteErrorId}
+                                className="shrink-0 text-destructive-text"
+                              >
+                                {NOTE_TOO_SHORT}
+                              </span>
                             )}
-                          />
+                          </>
                         ) : (
                           note
                         )

@@ -25,6 +25,25 @@ const UNITS: { value: PeriodUnit; label: string }[] = [
   { value: "month", label: "Month" },
 ];
 
+/** The month holding most of the dates: December for Mon 30 Nov – Fri 4 Dec. */
+const mostDaysMonth = (startDate: string, endDate: string) => {
+  const daysByMonth = new Map<string, number>();
+  for (
+    let day = fromISODate(startDate);
+    toISODate(day) <= endDate;
+    day = addDays(day, 1)
+  ) {
+    const key = toMonthKey(toISODate(day));
+    daysByMonth.set(key, (daysByMonth.get(key) ?? 0) + 1);
+  }
+
+  let monthKey = toMonthKey(startDate);
+  for (const [key, days] of daysByMonth) {
+    if (days > (daysByMonth.get(monthKey) ?? 0)) monthKey = key;
+  }
+  return monthKey;
+};
+
 const isWholeMonth = (startDate: string, endDate: string) => {
   const { dateFrom, dateTo } = getMonthRange(toMonthKey(startDate));
   return startDate === dateFrom && endDate === dateTo;
@@ -41,7 +60,7 @@ type PeriodPickerProps = {
 /**
  * The dates with their arrows, and the unit the arrows step by, Week or
  * Month: pressing a unit also jumps to it, the shown week or the month that
- * holds the dates. A range picked in the calendar through the label keeps
+ * holds most of the dates. A range picked in the calendar through the label keeps
  * the unit, so the arrows still move it by a week or a month.
  */
 export const PeriodPicker = ({
@@ -51,10 +70,9 @@ export const PeriodPicker = ({
   invalid,
   onChange,
 }: PeriodPickerProps) => {
-  const [unit, setUnit] = useState<PeriodUnit>(() =>
-    isWholeMonth(startDate, endDate) ? "month" : "week",
-  );
-  const monthKey = toMonthKey(startDate);
+  // The dialog opens on the shown week.
+  const [unit, setUnit] = useState<PeriodUnit>("week");
+  const monthKey = mostDaysMonth(startDate, endDate);
 
   const pickMonth = (key: string) => {
     const { dateFrom, dateTo } = getMonthRange(key);

@@ -4,11 +4,10 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 
-import { TEAMS, dayOfWeek } from './seed-config';
+import { ARCHIVED_TEAM_LEFT_DAY, TEAMS, dayOfWeek } from './seed-config';
 
 // Archiving a team closes its memberships, so its former members left before it.
 const ARCHIVED_TEAM_JOINED_DAY = -56;
-const ARCHIVED_TEAM_LEFT_DAY = -14;
 
 export async function seedTeams(dataSource: DataSource, companyId: string) {
   const teamRepo = dataSource.getRepository(Team);

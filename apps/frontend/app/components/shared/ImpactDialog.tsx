@@ -111,7 +111,7 @@ export const ImpactDialog = ({
     >
       <DialogContent className="sm:max-w-md">
         <div className="grid gap-4 p-6">
-          <DialogHeader className="pr-6">
+          <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             <DialogDescription>{description}</DialogDescription>
           </DialogHeader>

@@ -316,9 +316,9 @@ export class InvitationsService {
   }
 
   /**
-   * Every send gets a fresh link, so only the latest email works. The email
-   * goes out before the save is committed, so a failed send changes nothing —
-   * including the expired invitation it replaces, which stays listed.
+   * Every send gets a fresh link, so only the latest email works. The save,
+   * with the revoke of an expired invitation it replaces, is committed before
+   * the email goes out, so a failed send leaves the new invitation pending.
    */
   private async saveWithNewLinkAndSend(
     invitation: Invitation,

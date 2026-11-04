@@ -171,8 +171,8 @@ member of another team to a team is a **move**: the Owner confirms it, and the
 old membership ends the day the new one starts, in one transaction
 (`addMember` with `leaveCurrentTeam`; without it the API answers 409 naming
 the current team). Answered 27 October 2026 (P1); the code enforced only "not
-twice in the same team" before. Reopening a membership or switching one to
-Member follows the same rule.
+twice in the same team" before. Switching a membership to Member follows the
+same rule.
 
 Reach comes only from leading a team: being a member of one grants nothing,
 and only decides who oversees the member's own time. A team may have several

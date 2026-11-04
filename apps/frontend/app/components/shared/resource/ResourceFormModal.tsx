@@ -29,7 +29,6 @@ interface ResourceFormModalProps {
   /** `md` for one column, `lg` for two columns or a wide row. */
   size?: "md" | "lg";
   footer?: ReactNode;
-  bodyPadding?: boolean;
   /**
    * Closing by Escape or an outside click asks first while this is true.
    * The form's own Cancel calls `onClose` directly and discards without asking.
@@ -59,7 +58,6 @@ export const ResourceFormModal = ({
   headerEnd,
   size = "md",
   footer,
-  bodyPadding = true,
   hasUnsavedChanges = false,
   isBusy = false,
   children,
@@ -97,12 +95,7 @@ export const ResourceFormModal = ({
             </div>
           </DialogHeader>
 
-          <div
-            className={cn(
-              "max-h-[65vh] overflow-y-auto",
-              bodyPadding && "px-6 py-6",
-            )}
-          >
+          <div className="max-h-[65vh] overflow-y-auto px-6 py-6">
             {children}
           </div>
 

@@ -23,7 +23,7 @@ import { fullName } from "@/lib/utils/user";
 import { searchTeamRows } from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
-import { UserRole } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
 
@@ -53,7 +53,7 @@ type OpenedDay = {
 };
 
 type AbsenceFormState = {
-  userId: string;
+  user: PlanningRow["user"];
   date: string;
   /** The last day of a period's absence; a day's absence has none. */
   endDate?: string;
@@ -76,20 +76,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const { weekStart, showWeekOf } = useShownWeek();
   const {
     teamId,
-    projectId,
-    search: searchInAddress,
+    projectId: projectInAddress,
+    search,
     setFilters,
+    setSearch,
+    clearFilters,
   } = useTeamTimeFilters();
-  // Kept here as typed and mirrored to the address, as on Team time.
-  const [search, setSearch] = useState(searchInAddress);
-  const changeSearch = (value: string) => {
-    setSearch(value);
-    setFilters({ search: value });
-  };
-  const clearFilters = () => {
-    setSearch("");
-    setFilters({ teamId: undefined, projectId: undefined, search: "" });
-  };
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
@@ -151,6 +143,15 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   // The same list the project filter shows, so it comes from the cache.
   const { items: projects } = useAllProjectsQuery();
+  // Planning offers active projects only, so a link to one archived since
+  // filters nothing here, rather than by a project the filter can't show.
+  const projectId = projects.some(
+    (project) =>
+      project.id === projectInAddress &&
+      project.status !== ProjectStatus.ACTIVE,
+  )
+    ? undefined
+    : projectInAddress;
   // Set whenever a project filters the grid, even before its name has loaded.
   const projectName = projectId
     ? (projects.find((project) => project.id === projectId)?.name ??
@@ -215,7 +216,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     if (absence && !isFrozen && absence.canChange === false) {
       setReadOnlyAbsence({ absence, row });
     } else if (absence && !isFrozen) {
-      setAbsenceForm({ userId: row.user.id, date: absence.startDate, absence });
+      setAbsenceForm({ user: row.user, date: absence.startDate, absence });
     } else {
       setOpenedDay({ userId: row.user.id, date });
     }
@@ -298,7 +299,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           }
           activeProjectsOnly
           search={search}
-          onSearchChange={changeSearch}
+          onSearchChange={setSearch}
           onClear={clearFilters}
         />
       )}
@@ -414,7 +415,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           date={openedDay.date}
           absence={openedAbsence}
           onAddAbsence={() =>
-            setAbsenceForm({ userId: openedDay.userId, date: openedDay.date })
+            setAbsenceForm({ user: openedRow.user, date: openedDay.date })
           }
           onClose={() => setOpenedDay(null)}
         />
@@ -433,10 +434,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <AbsenceFormModal
           open
           onClose={() => setAbsenceForm(null)}
-          userId={absenceForm.userId}
-          subjectName={fullName(
-            rows.find((row) => row.user.id === absenceForm.userId)!.user,
-          )}
+          userId={absenceForm.user.id}
+          subjectName={fullName(absenceForm.user)}
           date={absenceForm.date}
           endDate={absenceForm.endDate}
           // A new absence from a day is for that day; one from the period
@@ -446,7 +445,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           onCreate={async (payload) => {
             await absenceActions.create.mutateAsync({
               ...payload,
-              userId: absenceForm.userId,
+              userId: absenceForm.user.id,
             });
             // The day dialog this came from is now an absence day's.
             setOpenedDay(null);
@@ -470,7 +469,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           weekDates={workingDates}
           onAddAbsence={(startDate, endDate) =>
             setAbsenceForm({
-              userId: periodRow.user.id,
+              user: periodRow.user,
               date: startDate,
               endDate,
             })

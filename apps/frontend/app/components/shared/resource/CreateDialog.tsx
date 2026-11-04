@@ -80,7 +80,7 @@ export const CreateDialog = ({
     <>
       <Dialog open={open} onOpenChange={(value) => !value && dismiss()}>
         <DialogContent className="sm:max-w-lg">
-          <DialogTitle className="px-6 pt-6 pr-12 text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+          <DialogTitle className="px-6 pt-6 text-2xs font-medium tracking-wider text-muted-foreground uppercase">
             {title}
           </DialogTitle>
 

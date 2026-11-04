@@ -51,7 +51,6 @@ import { EMPTY_LINE, addedLineMinutes, addedLineSchema } from "./plan-lines";
 
 const FORM_ID = "plan-period-form";
 const PERIOD_FIELD_ID = "plan-period-days";
-const minutesOf = addedLineMinutes;
 
 const periodSchema = z
   .object({
@@ -167,7 +166,10 @@ export const PlanPeriodModal = ({
   // already list it above; such a line says so and isn't saved.
   const isListedAbove = (projectId: string) => listedIds.includes(projectId);
   const addedLines = added
-    .map((line) => ({ projectId: line.projectId, minutes: minutesOf(line) }))
+    .map((line) => ({
+      projectId: line.projectId,
+      minutes: addedLineMinutes(line),
+    }))
     .filter(
       (line) =>
         line.projectId && line.minutes > 0 && !isListedAbove(line.projectId),

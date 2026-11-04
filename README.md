@@ -162,8 +162,8 @@ Worth knowing:
 ## Contributing
 
 `main` is protected — direct pushes are rejected. Branch off `main`, open a pull
-request, and merge it with **Squash and merge** once the `Frontend` and
-`Backend` checks pass.
+request, and merge it with **Squash and merge** once the `Frontend`, `Backend`
+and `Vercel` checks pass.
 
 ```bash
 git checkout main && git pull

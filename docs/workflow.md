@@ -380,8 +380,9 @@ first migration this project ever deployed. Additive and uneventful: two
 nullable columns and two `ON DELETE SET NULL` foreign keys, applied in one
 transaction before the merge, with the schema checked against
 `information_schema` afterwards rather than trusted from the `migrations` table.
-The two pitfalls above — build first, do not `source` the env file — are the
-ones actually hit.
+It hit two pitfalls: the compiled migrations had to be built first, and
+`source` broke on the env file's `&`. `make migrate-neon` now avoids both, as
+above.
 
 **Phase 2 absences — two migrations in one pull request**, and the reason the
 additive/destructive split is written down here. `CreateAbsenceEntity` added the

@@ -105,14 +105,13 @@ export const TeamTimeView = ({
   const {
     teamId,
     projectId,
-    search: searchInAddress,
-    sort: sortInAddress,
+    search,
+    sort,
     setFilters,
+    setSearch,
+    setSort,
+    clearFilters,
   } = useTeamTimeFilters();
-  // Kept here as typed and mirrored to the address, so a reload or a shared
-  // link brings them back.
-  const [search, setSearch] = useState(searchInAddress);
-  const [sort, setSort] = useState(sortInAddress);
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -320,21 +319,7 @@ export const TeamTimeView = ({
       ? absenceInAnotherTeam(fullName(absenceForm.user))
       : undefined;
 
-  const changeSearch = (value: string) => {
-    setSearch(value);
-    setFilters({ search: value });
-  };
-
-  const clearFilters = () => {
-    setSearch("");
-    setFilters({ teamId: undefined, projectId: undefined, search: "" });
-  };
-
-  const sortBy = (key: TeamSortKey) => {
-    const next = nextTeamSort(sort, key);
-    setSort(next);
-    setFilters({ sort: next });
-  };
+  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
 
   const retry = () => {
     void refetchSummary();
@@ -390,7 +375,7 @@ export const TeamTimeView = ({
             setFilters({ projectId: nextProjectId })
           }
           search={search}
-          onSearchChange={changeSearch}
+          onSearchChange={setSearch}
           onClear={clearFilters}
         />
       )}

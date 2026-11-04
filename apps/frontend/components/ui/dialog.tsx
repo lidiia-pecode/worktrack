@@ -3,8 +3,6 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 
-import { Button } from "@/components/ui/button";
-import { XIcon } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -39,16 +37,13 @@ function DialogOverlay({
   );
 }
 
-// A dialog closes from its footer (Cancel, Close, Keep editing), so no header
-// close button by default; Escape and an outside click still close it.
+// A dialog closes from its footer (Cancel, Close, Keep editing), so it has no
+// header close button; Escape and an outside click still close it.
 function DialogContent({
   className,
   children,
-  showCloseButton = false,
   ...props
-}: DialogPrimitive.Popup.Props & {
-  showCloseButton?: boolean;
-}) {
+}: DialogPrimitive.Popup.Props) {
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -61,21 +56,6 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            render={
-              <Button
-                variant="ghost"
-                className="absolute top-2 right-2"
-                size="iconSm"
-              />
-            }
-          >
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
-        )}
       </DialogPrimitive.Popup>
     </DialogPortal>
   );

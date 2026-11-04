@@ -31,7 +31,7 @@ const renderDialog = (
 };
 
 describe("CreateDialog", () => {
-  it("closes at once from Cancel or Escape while nothing was typed", async () => {
+  it("closes at once on Escape while nothing was typed, with no close button", async () => {
     const user = userEvent.setup();
     const { onClose } = renderDialog();
 

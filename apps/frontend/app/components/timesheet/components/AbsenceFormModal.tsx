@@ -19,7 +19,11 @@ import {
 } from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
-import { Field, fieldControlClassName } from "@/components/ui/field";
+import {
+  Field,
+  fieldControlClassName,
+  fieldMessageId,
+} from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
 import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
@@ -304,6 +308,9 @@ export const AbsenceFormModal = ({
               id="absence-note"
               {...register("note")}
               aria-invalid={!!errors.note}
+              aria-describedby={fieldMessageId("absence-note", {
+                error: errors.note?.message,
+              })}
               minRows={3}
               maxRows={8}
               placeholder="Anything worth adding?"

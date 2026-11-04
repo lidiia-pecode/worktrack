@@ -34,8 +34,6 @@ const UNITS: { value: PeriodUnit; label: string }[] = [
   { value: "custom", label: "Custom" },
 ];
 
-/** Sized like Team time's week button, and taller on a phone like its arrows. */
-
 type PeriodPickerProps = {
   period: ShownPeriod;
   unit: CalendarUnit;

@@ -32,9 +32,12 @@ vi.mock("@/hooks/useShownWeek", () => ({
   useShownWeek: () => ({ weekStart: WEEK_START, showWeekOf: vi.fn() }),
 }));
 vi.mock("@/hooks/usePlanning", () => ({ usePlanningWeek: vi.fn() }));
+const projectList = vi.hoisted(() => ({ status: "ACTIVE" }));
 vi.mock("@/hooks/useProjects", () => ({
   useAllProjectsQuery: () => ({
-    items: [{ id: NORTHWIND_ID, name: "Northwind", status: "ACTIVE" }],
+    items: [
+      { id: NORTHWIND_ID, name: "Northwind", status: projectList.status },
+    ],
   }),
 }));
 vi.mock("@/hooks/useAbsences", () => ({
@@ -171,6 +174,7 @@ const shownNames = () =>
 describe("PlanningWeekView", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/planning");
+    projectList.status = "ACTIVE";
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     vi.mocked(usePlanningWeek).mockReturnValue({
       rows: [ALICE, BEN],
@@ -249,5 +253,16 @@ describe("PlanningWeekView", () => {
 
     await user.type(search, "develop");
     expect(shownNames()).toEqual(["Ben"]);
+  });
+
+  it("ignores a link's project once it is archived, as the filter can't offer it", () => {
+    projectList.status = "ARCHIVED";
+    window.history.replaceState(null, "", `/planning?project=${NORTHWIND_ID}`);
+    showPlanning();
+
+    expect(shownNames()).toEqual(["Alice", "Ben"]);
+    expect(
+      screen.queryByRole("button", { name: "Clear filters" }),
+    ).not.toBeInTheDocument();
   });
 });

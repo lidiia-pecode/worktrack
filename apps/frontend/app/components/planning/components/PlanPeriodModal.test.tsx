@@ -193,6 +193,20 @@ describe("PlanPeriodModal", () => {
     expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
   });
 
+  it("jumps to the month holding most of a week that spans two", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    renderModal();
+
+    // From Mon 19 Oct to Mon 30 Nov – Fri 4 Dec, four of whose days are December's.
+    for (let week = 0; week < 6; week++) {
+      await user.click(screen.getByRole("button", { name: "Next week" }));
+    }
+    expect(periodLabel()).toBe(weekLabel("2026-11-30", "2026-12-04"));
+
+    await user.click(screen.getByRole("button", { name: "Month" }));
+    expect(periodLabel()).toBe(formatMonthLabel("2026-12"));
+  });
+
   it("picks any range on the calendar, first day then last", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();

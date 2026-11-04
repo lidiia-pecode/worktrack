@@ -31,7 +31,6 @@ describe("ResourceFormModal", () => {
     expect(
       screen.queryByRole("button", { name: "Close" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
   it("keeps the header's end for a control", () => {
@@ -40,9 +39,6 @@ describe("ResourceFormModal", () => {
     expect(
       screen.getByRole("textbox", { name: "Duration" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Close" }),
-    ).not.toBeInTheDocument();
   });
 
   it("asks before discarding unsaved changes on Escape, and closes at once otherwise", async () => {

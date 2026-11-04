@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import {
+  keepPreviousData,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -25,17 +26,22 @@ import { queryKeys } from "./shared/queryKeys";
 
 export function useReportingPeriods(
   params: ReportingPeriodsQuery = {},
-  { enabled = true }: { enabled?: boolean } = {},
+  {
+    enabled = true,
+    keepPrevious = false,
+  }: { enabled?: boolean; keepPrevious?: boolean } = {},
 ) {
   const query = useQuery({
     queryKey: queryKeys.reporting.periods({ ...params }),
     queryFn: () => ReportingClientApi.getPeriods(params),
     enabled,
+    placeholderData: keepPrevious ? keepPreviousData : undefined,
   });
 
   return {
     months: query.data ?? [],
     isLoading: query.isLoading,
+    isPlaceholderData: query.isPlaceholderData,
     isError: query.isError,
     refetch: query.refetch,
   };
@@ -87,21 +93,23 @@ export function useReportingPeriodHistory() {
 /**
  * Which days between two dates are locked, and which can be edited. Until the
  * months load, or when they fail to, no day is editable, but none is shown as
- * locked either.
+ * locked either. Moving to other months keeps the last ones until the new
+ * arrive, so `isLoading` is only the first load, and no day is editable then.
  */
 export function useLockedDates(dateFrom: string, dateTo: string) {
-  const { months, isLoading, isError, refetch } = useReportingPeriods({
-    from: toMonthKey(dateFrom),
-    to: toMonthKey(dateTo),
-  });
+  const { months, isLoading, isPlaceholderData, isError, refetch } =
+    useReportingPeriods(
+      { from: toMonthKey(dateFrom), to: toMonthKey(dateTo) },
+      { keepPrevious: true },
+    );
 
   return useMemo(() => {
     const isLocked = lockedDateLookup(months);
     const isEditable = (date: string) =>
-      !isLoading && !isError && !isLocked(date);
+      !isLoading && !isPlaceholderData && !isError && !isLocked(date);
 
     return { isLocked, isEditable, isLoading, isError, refetch };
-  }, [months, isLoading, isError, refetch]);
+  }, [months, isLoading, isPlaceholderData, isError, refetch]);
 }
 
 /** The month that is past its end but still editable, if there is one. */

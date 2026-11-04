@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils/cn";
 export type FieldControlSize = "sm" | "md";
 
 export const fieldControlSizeClassName: Record<FieldControlSize, string> = {
-  sm: "h-8 rounded-md max-sm:rounded-lg",
+  sm: "h-8 rounded-md max-sm:h-10 max-sm:rounded-lg",
   md: "h-10 rounded-lg",
 };
 
