@@ -109,7 +109,7 @@ export const ImpactDialog = ({
       // While the action runs, Escape and an outside click wait, as the buttons do.
       onOpenChange={(open) => !open && !loading && onClose()}
     >
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <div className="grid gap-4 p-6">
           <DialogHeader className="pr-6">
             <DialogTitle>{title}</DialogTitle>

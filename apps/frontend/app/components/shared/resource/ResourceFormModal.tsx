@@ -73,9 +73,7 @@ export const ResourceFormModal = ({
   return (
     <>
       <Dialog open={open} onOpenChange={(value) => !value && dismiss()}>
-        <DialogContent
-          className={cn("gap-0 overflow-hidden p-0", sizeClass[size])}
-        >
+        <DialogContent className={sizeClass[size]}>
           <DialogHeader className="border-b border-border px-6 py-4">
             <div
               className={cn(

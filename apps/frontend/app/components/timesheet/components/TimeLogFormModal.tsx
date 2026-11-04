@@ -536,7 +536,7 @@ export const TimeLogFormModal = ({
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
         title="Delete this time entry?"
-        description="This action cannot be undone."
+        description="The entry will be deleted. This can't be undone."
         confirmText="Delete"
         confirmVariant="destructive"
         loading={isDeleting}

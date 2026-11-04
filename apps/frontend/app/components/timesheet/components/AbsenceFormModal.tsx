@@ -56,7 +56,7 @@ const deletedAbsenceText = (absence: Absence) => {
       ? "that day becomes a working day"
       : "those days become working days";
 
-  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again.`;
+  return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again. This can't be undone.`;
 };
 
 type Props = {

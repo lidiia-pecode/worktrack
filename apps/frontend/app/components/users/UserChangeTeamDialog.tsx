@@ -84,7 +84,7 @@ export const UserChangeTeamDialog = ({
   return (
     <ImpactDialog
       isOpen={Boolean(user)}
-      title={currentTeam ? `Change ${name}'s team` : `Add ${name} to a team`}
+      title={currentTeam ? `Change ${name}'s team?` : `Add ${name} to a team?`}
       description={description}
       choice={
         <FormSelect
