@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 
 import {
   Dialog,
@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 import { DiscardChangesModal } from "../DiscardChangesModal";
+import { useDiscardGuard } from "../useDiscardGuard";
 
 interface ResourceFormModalProps {
   open: boolean;
@@ -34,6 +35,8 @@ interface ResourceFormModalProps {
    * The form's own Cancel calls `onClose` directly and discards without asking.
    */
   hasUnsavedChanges?: boolean;
+  /** While a save is in flight, Escape and an outside click do nothing. */
+  isBusy?: boolean;
 
   children: ReactNode;
 }
@@ -58,26 +61,20 @@ export const ResourceFormModal = ({
   footer,
   bodyPadding = true,
   hasUnsavedChanges = false,
+  isBusy = false,
   children,
 }: ResourceFormModalProps) => {
-  const [isConfirmingDiscard, setIsConfirmingDiscard] = useState(false);
-
-  const dismiss = () => {
-    if (hasUnsavedChanges) setIsConfirmingDiscard(true);
-    else onClose();
-  };
-
-  const discard = () => {
-    setIsConfirmingDiscard(false);
-    onClose();
-  };
+  const { dismiss, discardDialog } = useDiscardGuard({
+    hasUnsavedChanges,
+    isBusy,
+    onClose,
+  });
 
   return (
     <>
       <Dialog open={open} onOpenChange={(value) => !value && dismiss()}>
         <DialogContent
           className={cn("gap-0 overflow-hidden p-0", sizeClass[size])}
-          showCloseButton={false}
         >
           <DialogHeader className="border-b border-border px-6 py-4">
             <div
@@ -115,11 +112,7 @@ export const ResourceFormModal = ({
         </DialogContent>
       </Dialog>
 
-      <DiscardChangesModal
-        isOpen={isConfirmingDiscard}
-        onDiscard={discard}
-        onKeepEditing={() => setIsConfirmingDiscard(false)}
-      />
+      <DiscardChangesModal {...discardDialog} />
     </>
   );
 };

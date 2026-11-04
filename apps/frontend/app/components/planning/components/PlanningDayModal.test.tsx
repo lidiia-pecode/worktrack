@@ -77,8 +77,7 @@ const renderModal = (props: {
 const makeDirty = (user: ReturnType<typeof userEvent.setup>) =>
   user.type(screen.getByLabelText("Note"), "x");
 
-// The dialog's × is also named "Close"; the footer's button comes first.
-const footerClose = () => screen.getAllByRole("button", { name: "Close" })[0];
+const footerCancel = () => screen.getByRole("button", { name: "Cancel" });
 
 describe("PlanningDayModal", () => {
   it("shows a frozen absence instead of the form", () => {
@@ -108,19 +107,18 @@ describe("PlanningDayModal", () => {
     expect(onAddAbsence).toHaveBeenCalledOnce();
   });
 
-  it("asks before Close drops unsaved changes", async () => {
+  it("asks before Escape drops unsaved changes, and Cancel never asks", async () => {
     const user = userEvent.setup();
     const { onClose } = renderModal({});
 
     await makeDirty(user);
-    await user.click(footerClose());
+    await user.keyboard("{Escape}");
     expect(screen.getByText("Discard your changes?")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(onClose).not.toHaveBeenCalled();
 
-    await user.click(footerClose());
-    await user.click(screen.getByRole("button", { name: "Discard" }));
+    await user.click(footerCancel());
     expect(onClose).toHaveBeenCalledOnce();
   });
 

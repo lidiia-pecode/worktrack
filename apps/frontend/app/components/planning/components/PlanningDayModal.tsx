@@ -148,8 +148,9 @@ export const PlanningDayModal = ({
       ? `Up to ${formatDuration(fitsMinutes)} fits ${fitsWhere}`
       : `Nothing more fits ${fitsWhere}`;
 
-  // Closing or switching to another plan asks first while the form has
-  // unsaved changes, as × and Escape do; the action waits for the answer.
+  // Switching to another plan asks first while the form has unsaved changes,
+  // as Escape does; the action waits for the answer. The footer's Cancel
+  // closes without asking, as in every form.
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
   const guardUnsaved = (action: () => void) => {
     if (isDirty) setPendingAction(() => action);
@@ -285,6 +286,7 @@ export const PlanningDayModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        isBusy={create.isPending || update.isPending || remove.isPending}
         title="Plan a day"
         description={`${fullName(row.user)} · ${formatLongDayLabel(fromISODate(date))} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
         footer={
@@ -320,10 +322,10 @@ export const PlanningDayModal = ({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => guardUnsaved(onClose)}
+              onClick={onClose}
               disabled={create.isPending || update.isPending}
             >
-              Close
+              Cancel
             </Button>
 
             <Button
@@ -413,7 +415,7 @@ export const PlanningDayModal = ({
                 name="projectId"
                 render={({ field }) => (
                   <FormSelect
-                    aria-label="Project"
+                    label="Project"
                     value={field.value}
                     leading={<ProjectColorDot projectId={field.value} />}
                     onValueChange={(projectId) =>
@@ -435,7 +437,7 @@ export const PlanningDayModal = ({
                   />
                 )}
               />
-              <Field id="plan-hours" group>
+              <Field id="plan-hours" label="Hours" group>
                 <TimePicker
                   aria-label="Hours"
                   hours={Number(hours)}

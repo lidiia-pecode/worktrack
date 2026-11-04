@@ -26,6 +26,7 @@ export const InviteUserModal = ({
   } = useInvitations();
 
   const [canSubmit, setCanSubmit] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
   const afterCreate = useAfterCreate({ onClose, isOnboarding });
 
   const handleSubmit = (data: InviteUserFormData) =>
@@ -41,9 +42,11 @@ export const InviteUserModal = ({
       submitLabel="Send invitation"
       isSubmitting={create.isPending}
       submitDisabled={!canSubmit}
+      hasUnsavedChanges={isDirty}
     >
       <InviteUserForm
         formId={FORM_ID}
+        onDirtyChange={setIsDirty}
         onSubmit={handleSubmit}
         onCanSubmitChange={setCanSubmit}
         isSubmitting={create.isPending}

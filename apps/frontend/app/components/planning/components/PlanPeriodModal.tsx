@@ -341,6 +341,7 @@ export const PlanPeriodModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty || editedMinutes.size > 0}
+        isBusy={planPeriod.isPending || deletePeriodPlans.isPending}
         size="lg"
         title="Plan a period"
         description={fullName(row.user)}
@@ -443,6 +444,17 @@ export const PlanPeriodModal = ({
               <legend className="mb-2 text-sm font-medium text-foreground">
                 Add to every working day
               </legend>
+
+              {/* The lines' labels, once above them; each line's controls
+                  carry their own accessible names. */}
+              <div
+                aria-hidden
+                className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 text-xs font-medium text-muted-foreground"
+              >
+                <span>Project</span>
+                <span>Hours a day</span>
+                <span className="w-8" />
+              </div>
 
               {fields.map((field, index) => {
                 const chosenId = added[index]?.projectId ?? "";

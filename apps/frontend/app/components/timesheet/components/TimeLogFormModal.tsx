@@ -343,6 +343,7 @@ export const TimeLogFormModal = ({
         open={open}
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        isBusy={isSaving || isDeleting}
         size="lg"
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
@@ -384,7 +385,7 @@ export const TimeLogFormModal = ({
               <Button
                 type="button"
                 className="mr-auto max-sm:px-2.5"
-                variant="destructive"
+                variant="ghostDestructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isSaving}
@@ -495,13 +496,13 @@ export const TimeLogFormModal = ({
 
           <Field
             id="timelog-note"
+            label="Note"
             error={errors.note?.message}
             description={noteCounter}
           >
             <TextareaAutosize
               id="timelog-note"
               {...register("note")}
-              aria-label="Note"
               aria-invalid={!!errors.note}
               aria-describedby={fieldMessageId("timelog-note", {
                 error: errors.note?.message,

@@ -13,6 +13,9 @@ import {
 } from "@/components/ui/dialog";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 
+import { DiscardChangesModal } from "../DiscardChangesModal";
+import { useDiscardGuard } from "../useDiscardGuard";
+
 interface AfterCreateOptions<T> {
   onClose: () => void;
   /** Opens the new entity; not called from setup, which goes back to Getting started. */
@@ -46,6 +49,8 @@ interface CreateDialogProps {
   submitLabel: string;
   isSubmitting: boolean;
   submitDisabled?: boolean;
+  /** Escape and an outside click ask first while the form has been typed in. */
+  hasUnsavedChanges?: boolean;
   children: ReactNode;
 }
 
@@ -62,45 +67,58 @@ export const CreateDialog = ({
   submitLabel,
   isSubmitting,
   submitDisabled = false,
+  hasUnsavedChanges = false,
   children,
-}: CreateDialogProps) => (
-  <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-    <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
-      <DialogTitle className="px-6 pt-6 pr-12 text-2xs font-medium tracking-wider text-muted-foreground uppercase">
-        {title}
-      </DialogTitle>
+}: CreateDialogProps) => {
+  const { dismiss, discardDialog } = useDiscardGuard({
+    hasUnsavedChanges,
+    isBusy: isSubmitting,
+    onClose,
+  });
 
-      <div className="max-h-[65vh] overflow-y-auto px-6 pt-3 pb-6">
-        {children}
-      </div>
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(value) => !value && dismiss()}>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-lg">
+          <DialogTitle className="px-6 pt-6 pr-12 text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+            {title}
+          </DialogTitle>
 
-      <DialogFooter>
-        {next && (
-          <DialogDescription className="mr-auto text-xs">
-            {next}
-          </DialogDescription>
-        )}
+          <div className="max-h-[65vh] overflow-y-auto px-6 pt-3 pb-6">
+            {children}
+          </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onClose}
-          disabled={isSubmitting}
-        >
-          Cancel
-        </Button>
+          <DialogFooter>
+            {next && (
+              <DialogDescription className="mr-auto text-xs">
+                {next}
+              </DialogDescription>
+            )}
 
-        <Button
-          type="submit"
-          form={formId}
-          size="sm"
-          isLoading={isSubmitting}
-          disabled={submitDisabled}
-        >
-          {submitLabel}
-        </Button>
-      </DialogFooter>
-    </DialogContent>
-  </Dialog>
-);
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="submit"
+              form={formId}
+              size="sm"
+              isLoading={isSubmitting}
+              disabled={submitDisabled}
+            >
+              {submitLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <DiscardChangesModal {...discardDialog} />
+    </>
+  );
+};

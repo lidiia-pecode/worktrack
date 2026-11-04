@@ -66,6 +66,18 @@ describe("ResourceFormModal", () => {
     expect(onCloseClean).toHaveBeenCalledOnce();
   });
 
+  it("ignores Escape while a save is in flight", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderModal({ onClose, isBusy: true });
+
+    await user.keyboard("{Escape}");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("dialog", { name: "Log time" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the form open when the person keeps editing", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

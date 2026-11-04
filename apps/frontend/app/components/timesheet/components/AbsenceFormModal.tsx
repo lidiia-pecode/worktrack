@@ -193,22 +193,23 @@ export const AbsenceFormModal = ({
     }
   };
 
+  // One day reads as its day, a range as its first and last.
+  const firstDay = absence?.startDate ?? date;
+  const lastDay = absence?.endDate ?? lastDate;
+  const absenceDaysLabel =
+    isSingleDay || firstDay === lastDay
+      ? formatLongDayLabel(fromISODate(firstDay))
+      : formatDateRangeLabel(firstDay, lastDay);
+
   return (
     <>
       <ResourceFormModal
         open={open}
         onClose={onClose}
         hasUnsavedChanges={isDirty}
+        isBusy={isSaving || isDeleting}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description={[
-          subjectName,
-          isSingleDay
-            ? formatLongDayLabel(fromISODate(date))
-            : formatDateRangeLabel(
-                absence?.startDate ?? date,
-                absence?.endDate ?? lastDate,
-              ),
-        ]
+        description={[subjectName, absenceDaysLabel]
           .filter(Boolean)
           .join(" · ")}
         footer={
@@ -216,14 +217,15 @@ export const AbsenceFormModal = ({
             {isEditMode && (
               <Button
                 type="button"
-                className="mr-auto"
-                variant="destructive"
+                className="mr-auto max-sm:px-2.5"
+                variant="ghostDestructive"
                 size="sm"
                 onClick={() => setConfirmDeleteOpen(true)}
                 disabled={isSaving}
               >
                 <Trash2 className="size-4" />
-                Delete
+                {/* Icon only on a phone, so the footer stays on one row. */}
+                <span className="max-sm:sr-only">Delete</span>
               </Button>
             )}
 
@@ -301,11 +303,12 @@ export const AbsenceFormModal = ({
             <TextareaAutosize
               id="absence-note"
               {...register("note")}
+              aria-invalid={!!errors.note}
               minRows={3}
               maxRows={8}
               placeholder="Anything worth adding?"
               className={cn(
-                fieldControlClassName(),
+                fieldControlClassName(!!errors.note),
                 "resize-none py-2.5 leading-relaxed",
               )}
             />

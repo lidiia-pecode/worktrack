@@ -39,10 +39,12 @@ function DialogOverlay({
   );
 }
 
+// A dialog closes from its footer (Cancel, Close, Keep editing), so no header
+// close button by default; Escape and an outside click still close it.
 function DialogContent({
   className,
   children,
-  showCloseButton = true,
+  showCloseButton = false,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean;
