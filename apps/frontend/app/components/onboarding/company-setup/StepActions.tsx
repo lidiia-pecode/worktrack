@@ -25,7 +25,6 @@ export const StepActions = ({
     <div className="space-y-3 pt-3">
       <Button
         type="submit"
-        size="lg"
         className="w-full"
         disabled={isPending}
         isLoading={isPending}
