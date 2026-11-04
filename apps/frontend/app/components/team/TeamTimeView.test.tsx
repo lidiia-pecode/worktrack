@@ -173,6 +173,10 @@ const shownNames = () =>
     .getAllByRole("rowheader")
     .map((cell) => (cell.textContent?.includes("Alice") ? "Alice" : "Ben"));
 
+// The toolbar's figure; the sort header has a "Logged" button of its own.
+const weekTotal = () =>
+  screen.getAllByText("Logged", { selector: "span" }).at(-1)?.parentElement;
+
 describe("TeamTimeView", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/team");
@@ -327,6 +331,14 @@ describe("TeamTimeView", () => {
         projectId: "7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b",
       }),
     );
+    // A project's hours have no expected figure to be measured against.
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*5h$/);
+  });
+
+  it("totals the week against what was expected of everyone shown", () => {
+    showTeamTime();
+
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*5h \/ 80h$/);
   });
 
   it("reads the search and sort from the URL, and writes them back", async () => {
@@ -364,9 +376,7 @@ describe("TeamTimeView", () => {
     );
 
     expect(shownNames()).toEqual(["Ben"]);
-    expect(screen.getByText("Team logged:").parentElement).toHaveTextContent(
-      /Team logged:\s*0h/,
-    );
+    expect(weekTotal()).toHaveTextContent(/^Logged\s*0h \/ 40h$/);
 
     await user.clear(
       screen.getByRole("textbox", { name: "Search by name or position" }),

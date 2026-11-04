@@ -11,7 +11,6 @@ import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useTeamOptions } from "@/hooks/useTeams";
 import {
-  formatDuration,
   getWeekDates,
   getWeekEnd,
   isWeekend,
@@ -34,6 +33,7 @@ import { onlyViewerReason } from "../shared/week/only-viewer";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
@@ -271,19 +271,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           />
 
           {!hasError && (
-            <div className="flex items-center gap-2 text-sm">
-              <span>Team planned:</span>
-
-              <span className="font-medium text-foreground tabular-nums">
-                {formatDuration(totalPlanned)}
-              </span>
-
-              <span className="text-muted-foreground">/</span>
-
-              <span className="text-muted-foreground tabular-nums">
-                {formatDuration(totalAvailable)} available
-              </span>
-            </div>
+            <WeekTotal
+              label="Planned"
+              minutes={totalPlanned}
+              // A project's plans have no available figure of their own.
+              ofMinutes={projectId ? undefined : totalAvailable}
+            />
           )}
         </div>
       </div>
