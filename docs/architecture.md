@@ -80,28 +80,7 @@ enforced in `TimeLogsService`.
 
 ## Current state
 
-The employee timesheet is complete: logging, editing and deleting time against
-assigned projects, driven by company work settings, with full loading, error and
-empty states. The Manage pages show people, teams, projects, activities and
-categories as searchable lists that open a shared side panel. Owners and managers have a team time view at `/team` — a week grid
-whose cells list each day's entries, edited in place, searchable, sortable and
-filtered by team and project.
-
-Absences are built: a person records days away as a date range with a type, an
-owner or manager can record them for somebody from the team view, and the
-timesheet and the team view mark those days, so a week with no logged time
-says why. A day is either worked or absent, never both.
-
-Expected hours are capacity minus absences, and owners and managers plan their
-people's week by project at `/planning`, against the hours each person has
-available. Each month locks by itself a week after it ends, and an owner can
-reopen one at `/admin/periods`. Owners and managers read an overview of
-logged, planned and expected hours at `/reports`, and download hours as an
-Excel file for invoicing. The authorization gaps are all closed. The work
-ahead is making it a better product; a production launch comes last, once it
-is ready.
-
-See [`business_architecture_docs.md`](./business_architecture_docs.md) §6 for a
-fuller assessment, test coverage and the engineering state, and §7 for the
-roadmap. The permission model, all of it
-enforced, is in [`permission-model.md`](./permission-model.md).
+What the product does today, its test coverage and engineering state are in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §6, and the
+roadmap in §7. The permission model, all of it enforced, is in
+[`permission-model.md`](./permission-model.md).

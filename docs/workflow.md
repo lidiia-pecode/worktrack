@@ -87,6 +87,19 @@ environment variables come into play.
 To reproduce a CI failure locally, run the same root scripts; they are the same
 commands CI calls.
 
+Worth knowing when changing CI or the `main` ruleset ("Protect main"):
+
+- The required checks match the job names exactly: `Frontend`, `Backend` and
+  `Vercel`, with no `ci /` prefix. A misspelt name waits for ever and blocks
+  every pull request.
+- Required approvals stay at 0 while one person works on the repository, since
+  nobody can approve their own pull request.
+- Migrations run before the backend tests: on an empty database every suite
+  fails with `relation "companies" does not exist`.
+- The frontend's `tsconfig.json` includes `.next/types`, so after a route is
+  deleted a local `tsc` fails until the next build. A clean CI run never sees
+  it.
+
 ## Database changes
 
 ### What a migration is, and when one appears
@@ -375,7 +388,7 @@ There is one environment and one person deploying to it, so "who" mostly means
 
 #### Runs worth learning from
 
-**Scope D — `AddInvitationTeamAndInviter1789830866330`**, September 2026, the
+**PR #16 — `AddInvitationTeamAndInviter1789830866330`**, September 2026, the
 first migration this project ever deployed. Additive and uneventful: two
 nullable columns and two `ON DELETE SET NULL` foreign keys, applied in one
 transaction before the merge, with the schema checked against
@@ -384,7 +397,7 @@ It hit two pitfalls: the compiled migrations had to be built first, and
 `source` broke on the env file's `&`. `make migrate-neon` now avoids both, as
 above.
 
-**Phase 2 absences — two migrations in one pull request**, and the reason the
+**PR #20, absences — two migrations in one pull request**, and the reason the
 additive/destructive split is written down here. `CreateAbsenceEntity` added the
 `absences` table; `RemoveActivityIsAbsence` dropped `activities.is_absence`,
 which the deployed code still selected. Running both before the merge would have
@@ -407,7 +420,7 @@ What was done instead:
    the twelve activity rows intact, and absences created, edited and deleted
    through the deployed UI with no `5xx` anywhere.
 
-**Phase 36 — `AddUserInactivePeriods`, never applied.** It merged (PR #53) without
+**PR #53 — `AddUserInactivePeriods`, never applied.** It merged without
 the migration being run on Neon, so every request that computes expected hours
 answered `500` until it was found after the next merge, on 27 October 2026. A
 dry run read before that merge would have listed it. That is why reading the

@@ -181,44 +181,18 @@ CI runs, and the rules for changes that touch the database.
 | :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)                                     | System shape, request flow, where to start a task      |
 | [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
-| [`docs/permission-model.md`](docs/permission-model.md)                             | The permission model and the scopes that delivered it  |
+| [`docs/permission-model.md`](docs/permission-model.md)                             | Who may do what, and why; open permission questions   |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
-
-A local checkout also carries working documents that are deliberately kept out
-of version control and so are not listed above: the active scope, the defects
-and debt no scope owns, a product assessment against comparable tools, context
-notes for the backend and the frontend, notes on authentication and on the
-deployment, and the repository's coding conventions.
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
 It is off in production unless `ENABLE_SWAGGER=true` is set.
 
 ## Current Status
 
-Under active development. The employee timesheet, the owner/manager team time
-view, absences, capacity and expected hours, planning, reporting with an Excel
-export of hours, each person's own month on Review my time, and the Manage pages
-for people, teams, projects, activities and categories are implemented, and a
-new company is guided from sign-up to somebody logging time.
-
-The original feature plan is complete. The work ahead improves the product
-itself, area by area: first run and onboarding, the application shell and shared
-UI, administration and settings, everyday time entry, team oversight and
-planning, reporting and the employee's own view have each had a pass, followed
-by fixes across them, the lifecycle of every entity, time entry on a phone,
-consistent screens (WorkTrack's own error and missing-page screens, a title per
-page, choices kept in the address), history that keeps its people, its edits
-and its team moves, Reports for quarters, years and custom ranges, and a
-security pass over the dependencies and the auth paths (through Phase 43); a
-whole-product review remains. A production launch comes last, once the product
-is ready. The roadmap, test coverage and engineering state are in
+Under active development, on a shared development stand with test data only;
+there is no production environment yet, by decision. The original feature plan
+is complete, and the work now improves the product area by area before a final
+production launch. What works today, the roadmap, the test coverage and the
+engineering state are in
 [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
-and §7.
-
-The backend has a production Docker image (`apps/backend/Dockerfile`).
-Migrations are run by hand, not as a deployment step; a real release step is
-part of the production launch. Pull requests are checked by GitHub Actions and
-by a Vercel preview build, and `main` is protected. A shared development stand
-is deployed — Vercel for the frontend, Render for the backend, Neon for the
-database; see [`docs/workflow.md`](docs/workflow.md). There is no production
-environment yet.
+and §7; how the stand is deployed is in [`docs/workflow.md`](docs/workflow.md).
