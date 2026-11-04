@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
   fromISODate,
@@ -20,10 +19,10 @@ import {
   switchUnit,
 } from "@/lib/utils/shown-period";
 
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent } from "@/components/ui/popover";
 
 import { BackToNowButton } from "../../shared/buttons/BackToNowButton";
+import { StepArrows } from "../../shared/buttons/StepArrows";
 import { DateFieldTrigger, DateRangePicker } from "../../shared/inputs";
 import { calendarTabStop, MonthCalendar } from "../../shared/MonthCalendar";
 import { SegmentedControl } from "../../shared/SegmentedControl";
@@ -137,28 +136,13 @@ export const ReportPeriodControl = ({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2">
-        <div className="flex items-center overflow-hidden rounded-md border border-control-border max-sm:rounded-lg">
-          <Button
-            variant="ghost"
-            size="iconSm"
-            className="w-9 rounded-none focus-visible:ring-inset max-sm:size-10"
-            aria-label={`Previous ${unitName}`}
-            disabled={!!firstDay && previous.range.dateTo < firstDay}
-            onClick={() => onChange(previous)}
-          >
-            <ChevronLeft size={16} aria-hidden />
-          </Button>
-          <Button
-            variant="ghost"
-            size="iconSm"
-            className="w-9 rounded-none border-0 border-l border-control-border focus-visible:ring-inset max-sm:size-10"
-            aria-label={`Next ${unitName}`}
-            disabled={next.range.dateFrom > today}
-            onClick={() => onChange(next)}
-          >
-            <ChevronRight size={16} aria-hidden />
-          </Button>
-        </div>
+        <StepArrows
+          unit={unitName}
+          previousDisabled={!!firstDay && previous.range.dateTo < firstDay}
+          nextDisabled={next.range.dateFrom > today}
+          onPrevious={() => onChange(previous)}
+          onNext={() => onChange(next)}
+        />
 
         {calendarUnit ? (
           <CalendarPeriodPicker

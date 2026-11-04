@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import {
   addWeeks,
   companyToday,
@@ -14,7 +14,7 @@ import { useWorkSettings } from "@/hooks/useWorkSettings";
 
 import { WeekCalendarPopover } from "./WeekCalendarPopover";
 import { BackToNowButton } from "../buttons/BackToNowButton";
-import { Button } from "@/components/ui/button";
+import { StepArrows } from "../buttons/StepArrows";
 import { cn } from "@/lib/utils/cn";
 import { dateFieldClassName } from "../inputs/DateRangePicker";
 
@@ -55,26 +55,11 @@ export const WeekNav = ({ weekStart, onWeekChange }: BackToThisWeekProps) => {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center overflow-hidden rounded-md border border-control-border max-sm:rounded-lg">
-        <Button
-          variant="ghost"
-          size="iconSm"
-          className="w-9 rounded-none focus-visible:ring-inset max-sm:size-10"
-          aria-label="Previous week"
-          onClick={() => onWeekChange(addWeeks(weekStart, -1))}
-        >
-          <ChevronLeft size={16} aria-hidden />
-        </Button>
-        <Button
-          variant="ghost"
-          size="iconSm"
-          className="w-9 rounded-none border-0 border-l border-control-border focus-visible:ring-inset max-sm:size-10"
-          aria-label="Next week"
-          onClick={() => onWeekChange(addWeeks(weekStart, 1))}
-        >
-          <ChevronRight size={16} aria-hidden />
-        </Button>
-      </div>
+      <StepArrows
+        unit="week"
+        onPrevious={() => onWeekChange(addWeeks(weekStart, -1))}
+        onNext={() => onWeekChange(addWeeks(weekStart, 1))}
+      />
 
       <div className="relative">
         <button

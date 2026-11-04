@@ -116,9 +116,8 @@ export const TeamFilters = ({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
           onClick={onClear}
-          className="animate-in fade-in self-start sm:ml-auto sm:h-10"
+          className="animate-in fade-in self-start sm:ml-auto"
         >
           <X aria-hidden />
           Clear filters
