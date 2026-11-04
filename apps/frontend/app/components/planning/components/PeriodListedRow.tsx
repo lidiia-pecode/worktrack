@@ -113,7 +113,6 @@ export const PeriodListedRow = ({
           <Button
             type="button"
             variant="outline"
-            size="sm"
             // The most common hours, on the step and within the person's day.
             onClick={() =>
               onEdit(() =>
@@ -125,7 +124,7 @@ export const PeriodListedRow = ({
             }
             aria-label={`Set the same hours for ${line.name} on all ${line.days.length} days`}
             title={`Give all ${line.days.length} days the same hours. To change one day, open it in the grid.`}
-            className="h-10 border-border bg-transparent text-brand"
+            className="text-brand"
           >
             <Clock className="size-3.5" />
             Set hours
@@ -142,12 +141,10 @@ export const PeriodListedRow = ({
             onMinutesChange={setPart("minutes")}
             error={hasNoHours || isOffStep}
             className={cn(
-              "h-10 bg-transparent",
               !hasNoHours &&
                 !isOffStep &&
-                (isEdited
-                  ? "border-brand/40 bg-brand-subtle"
-                  : "border-border"),
+                isEdited &&
+                "border-brand/40 bg-brand-subtle",
             )}
           />
         ))}
