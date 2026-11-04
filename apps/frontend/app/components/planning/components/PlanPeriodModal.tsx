@@ -15,17 +15,13 @@ import {
   usePlanningEntries,
 } from "@/hooks/usePlanning";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
-import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { getErrorMessages, isClientError } from "@/lib/api";
 import {
-  companyToday,
   formatDayMonthLabel,
   formatDayMonthYearLabel,
-  getMonthRange,
   isISODateRange,
   lastDayOfReportRange,
   toISODate,
-  toMonthKey,
 } from "@/lib/utils/date";
 import { fullName } from "@/lib/utils/user";
 
@@ -98,6 +94,8 @@ const EMPTY_LINE = { projectId: "", hours: 0, minutes: 0 };
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
   row: PlanningWeekRow;
+  /** The working days of the week shown on Planning, where the dialog opens. */
+  weekDates: Date[];
   /** Opens the absence form on the chosen days, to change before saving. */
   onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
@@ -110,10 +108,10 @@ type PlanPeriodModalProps = {
  */
 export const PlanPeriodModal = ({
   row,
+  weekDates,
   onAddAbsence,
   onClose,
 }: PlanPeriodModalProps) => {
-  const { timezone } = useWorkSettings();
   const planPeriod = usePlanPeriod();
   const deletePeriodPlans = useDeletePeriodPlans();
   const [problems, setProblems] = useState<string[] | null>(null);
@@ -126,10 +124,6 @@ export const PlanPeriodModal = ({
   } | null>(null);
   const [deleting, setDeleting] = useState<ListedLine | null>(null);
 
-  const thisMonth = getMonthRange(
-    toMonthKey(toISODate(companyToday(timezone))),
-  );
-
   const {
     handleSubmit,
     control,
@@ -139,8 +133,8 @@ export const PlanPeriodModal = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(periodSchema) as any,
     defaultValues: {
-      startDate: thisMonth.dateFrom,
-      endDate: thisMonth.dateTo,
+      startDate: toISODate(weekDates[0]),
+      endDate: toISODate(weekDates[weekDates.length - 1]),
       added: [EMPTY_LINE],
     },
   });
@@ -347,7 +341,8 @@ export const PlanPeriodModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty || editedMinutes.size > 0}
-        size="lg"
+        // The period row (toggle, arrows and a week's dates) needs the width.
+        size="xl"
         title={`Plan a period for ${fullName(row.user)}`}
         icon={<CalendarRange className="size-5" />}
         footer={
@@ -404,10 +399,11 @@ export const PlanPeriodModal = ({
             </div>
           )}
 
-          <Field id={PERIOD_FIELD_ID} label="Period" group error={periodError}>
+          <Field id={PERIOD_FIELD_ID} group error={periodError}>
             <PeriodPicker
               startDate={startDate}
               endDate={endDate}
+              weekDates={weekDates}
               invalid={!!periodError}
               onChange={setPeriod}
             />

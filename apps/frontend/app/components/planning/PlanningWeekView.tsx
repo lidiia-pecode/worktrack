@@ -463,6 +463,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <PlanPeriodModal
           key={periodRow.user.id}
           row={periodRow}
+          weekDates={workingDates}
           onAddAbsence={(startDate, endDate) =>
             setAbsenceForm({
               userId: periodRow.user.id,

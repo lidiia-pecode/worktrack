@@ -90,13 +90,27 @@ const OCTOBER_DAYS = Array.from({ length: 22 }, (_, i) => {
       `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`,
   );
 
+// Planning shows the week of Monday 19 October 2026, working days only.
+const WEEK_DATES = [19, 20, 21, 22, 23].map((day) => new Date(2026, 9, day));
+
 const renderModal = (row = ALICE) => {
   const onClose = vi.fn();
   render(
-    <PlanPeriodModal row={row} onAddAbsence={vi.fn()} onClose={onClose} />,
+    <PlanPeriodModal
+      row={row}
+      weekDates={WEEK_DATES}
+      onAddAbsence={vi.fn()}
+      onClose={onClose}
+    />,
   );
   return { onClose };
 };
+
+const weekLabel = (from: string, to: string) =>
+  `${formatDayMonthLabel(from)} – ${formatDayMonthYearLabel(to)}`;
+
+const isPressed = (name: string) =>
+  screen.getByRole("button", { name }).getAttribute("aria-pressed");
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -154,21 +168,31 @@ describe("PlanPeriodModal", () => {
     server.plans = [];
   });
 
-  it("starts on the whole current month and steps a month at a time", async () => {
+  it("opens on the shown week, with its month a click away, and steps by the shape", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
     expect(
       screen.getByRole("heading", { name: "Plan a period for Alice Cooper" }),
     ).toBeInTheDocument();
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
+    expect(isPressed("This week")).toBe("true");
+
+    // A week stepped on keeps stepping by weeks, but isn't "this" week.
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+    expect(periodLabel()).toBe(weekLabel("2026-10-26", "2026-10-30"));
+    expect(isPressed("This week")).toBe("false");
+
+    await user.click(screen.getByRole("button", { name: "Full month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-10"));
+    expect(isPressed("Full month")).toBe("true");
 
     await user.click(screen.getByRole("button", { name: "Next month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-11"));
+    expect(isPressed("Full month")).toBe("true");
 
-    await user.click(screen.getByRole("button", { name: "Previous month" }));
-    await user.click(screen.getByRole("button", { name: "Previous month" }));
-    expect(periodLabel()).toBe(formatMonthLabel("2026-09"));
+    await user.click(screen.getByRole("button", { name: "This week" }));
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
   });
 
   it("picks any range on the calendar, first day then last", async () => {
@@ -186,10 +210,11 @@ describe("PlanPeriodModal", () => {
 
     await pickDay(user, "2026-10-16");
     await waitFor(() =>
-      expect(periodLabel()).toBe(
-        `${formatDayMonthLabel("2026-10-05")} – ${formatDayMonthYearLabel("2026-10-16")}`,
-      ),
+      expect(periodLabel()).toBe(weekLabel("2026-10-05", "2026-10-16")),
     );
+    // Any other range leaves the toggle unpressed.
+    expect(isPressed("This week")).toBe("false");
+    expect(isPressed("Full month")).toBe("false");
   });
 
   it("lists what is already planned and the absences skipped, and saves nothing untouched", () => {
@@ -347,8 +372,8 @@ describe("PlanPeriodModal", () => {
     await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
     expect(server.planPeriod).toHaveBeenCalledWith({
       userId: "user-alice",
-      startDate: "2026-10-01",
-      endDate: "2026-10-31",
+      startDate: "2026-10-19",
+      endDate: "2026-10-23",
       projects: [{ projectId: "project-northwind", minutesPerDay: 240 }],
     });
   });
@@ -469,6 +494,7 @@ describe("PlanPeriodModal", () => {
         date: "2026-11-03",
       } as PlanningEntry,
     ];
+    await user.click(screen.getByRole("button", { name: "Full month" }));
     await user.click(screen.getByRole("button", { name: "Next month" }));
 
     expect(
@@ -502,8 +528,8 @@ describe("PlanPeriodModal", () => {
       {
         userId: "user-alice",
         projectId: "project-internal",
-        startDate: "2026-10-01",
-        endDate: "2026-10-31",
+        startDate: "2026-10-19",
+        endDate: "2026-10-23",
       },
       expect.anything(),
     );
