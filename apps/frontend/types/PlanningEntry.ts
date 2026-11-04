@@ -14,23 +14,6 @@ export interface PlanningEntry {
   updatedAt: string;
 }
 
-// Payload (back CreatePlanningEntryDto)
-export interface CreatePlanningEntryPayload {
-  userId: string;
-  projectId: string;
-  date: string;
-  plannedMinutes: number;
-  note?: string;
-}
-
-// Payload (back UpdatePlanningEntryDto)
-export interface UpdatePlanningEntryPayload {
-  projectId?: string;
-  date?: string;
-  plannedMinutes?: number;
-  note?: string | null;
-}
-
 // Payload (back PlanPeriodPayload)
 export interface PlanPeriodPayload {
   userId: string;

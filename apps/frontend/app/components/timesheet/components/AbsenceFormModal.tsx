@@ -364,10 +364,7 @@ export const LockedAbsenceModal = ({
     open
     onClose={onClose}
     title="Absence"
-    description={[
-      subjectName,
-      formatDateRangeLabel(absence.startDate, absence.endDate),
-    ]
+    description={[subjectName, formatAbsenceRange(absence)]
       .filter(Boolean)
       .join(" · ")}
     footer={

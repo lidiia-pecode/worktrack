@@ -9,18 +9,10 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import {
-  CreatePlanningEntryPayload,
-  PlanPeriodPayload,
-  PlanningEntry,
-  PlanningQuery,
-  PlanningWeekQuery,
-  UpdatePlanningEntryPayload,
-} from "@/types";
+import { PlanPeriodPayload, PlanningQuery, PlanningWeekQuery } from "@/types";
 import { PlanningClientApi } from "@/lib/api/resources";
 import { getErrorMessage, isClientError } from "@/lib/api";
 
-import { createEntityMutations } from "./shared/createEntityMutations";
 import { fetchAllPages } from "./shared/fetchAllPages";
 import { queryKeys } from "./shared/queryKeys";
 
@@ -141,24 +133,16 @@ export function useDeletePeriodPlans() {
   });
 }
 
-export const usePlanningMutations = createEntityMutations<
-  PlanningEntry,
-  CreatePlanningEntryPayload,
-  UpdatePlanningEntryPayload,
-  unknown
->({
-  queryKey: queryKeys.planning.all,
-  alsoInvalidate: [queryKeys.reporting.figures],
+/** Deletes one plan; a failure is reported by the global mutation handler. */
+export function useDeletePlan() {
+  const queryClient = useQueryClient();
 
-  api: {
-    create: PlanningClientApi.create,
-    update: PlanningClientApi.update,
-    delete: PlanningClientApi.delete,
-  },
-
-  messages: {
-    create: "Plan added",
-    update: "Plan updated",
-    delete: "Plan deleted",
-  },
-});
+  return useMutation({
+    mutationFn: (id: string) => PlanningClientApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
+      toast.success("Plan deleted");
+    },
+  });
+}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
@@ -18,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { SegmentedControl } from "../../shared/SegmentedControl";
 import { DateRangePicker } from "../../shared/inputs";
 
-type PeriodUnit = "week" | "month";
+export type PeriodUnit = "week" | "month";
 
 const UNITS: { value: PeriodUnit; label: string }[] = [
   { value: "week", label: "Week" },
@@ -53,8 +52,11 @@ type PeriodPickerProps = {
   startDate: string;
   endDate: string;
   weekDates: Date[];
+  /** What the arrows step by; the dialog changes it with the dates it jumps to. */
+  unit: PeriodUnit;
   invalid: boolean;
-  onChange: (startDate: string, endDate: string) => void;
+  /** With a unit when a press of Week or Month asked for these dates. */
+  onChange: (startDate: string, endDate: string, unit?: PeriodUnit) => void;
 };
 
 /**
@@ -67,27 +69,26 @@ export const PeriodPicker = ({
   startDate,
   endDate,
   weekDates,
+  unit,
   invalid,
   onChange,
 }: PeriodPickerProps) => {
-  // The dialog opens on the shown week.
-  const [unit, setUnit] = useState<PeriodUnit>("week");
   const monthKey = mostDaysMonth(startDate, endDate);
 
-  const pickMonth = (key: string) => {
+  const monthDates = (key: string) => {
     const { dateFrom, dateTo } = getMonthRange(key);
-    onChange(dateFrom, dateTo);
+    return [dateFrom, dateTo] as const;
   };
 
   const pickUnit = (next: PeriodUnit) => {
-    setUnit(next);
     if (next === "week") {
       onChange(
         toISODate(weekDates[0]),
         toISODate(weekDates[weekDates.length - 1]),
+        next,
       );
     } else {
-      pickMonth(monthKey);
+      onChange(...monthDates(monthKey), next);
     }
   };
 
@@ -98,7 +99,7 @@ export const PeriodPicker = ({
         toISODate(addDays(fromISODate(endDate), 7 * direction)),
       );
     } else {
-      pickMonth(addMonthsToKey(monthKey, direction));
+      onChange(...monthDates(addMonthsToKey(monthKey, direction)));
     }
   };
 

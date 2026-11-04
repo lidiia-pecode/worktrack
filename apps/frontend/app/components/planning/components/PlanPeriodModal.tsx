@@ -36,7 +36,7 @@ import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
 import { isOnPlanStep, toPlanStep } from "../plan-minutes";
 import { PlannedRow } from "./PlannedRow";
 import { PlanLines } from "./PlanLines";
-import { PeriodPicker } from "./PeriodPicker";
+import { PeriodPicker, PeriodUnit } from "./PeriodPicker";
 import { PeriodPreview } from "./PeriodPreview";
 import {
   ListedLine,
@@ -96,9 +96,12 @@ export const PlanPeriodModal = ({
   const problemsRef = useRef<HTMLDivElement>(null);
   // Unsaved hours for the projects already planned, by project.
   const [edits, setEdits] = useState<Record<string, number>>({});
+  // The dialog opens on the shown week.
+  const [unit, setUnit] = useState<PeriodUnit>("week");
   const [pendingPeriod, setPendingPeriod] = useState<{
     first: string;
     last: string;
+    unit?: PeriodUnit;
   } | null>(null);
   const [deleting, setDeleting] = useState<ListedLine | null>(null);
 
@@ -266,16 +269,23 @@ export const PlanPeriodModal = ({
         return next === undefined ? others : { ...others, [projectId]: next };
       });
 
-  const applyPeriod = (first: string, last: string) => {
+  // A unit pressed changes only with the dates it asked for.
+  const applyPeriod = (first: string, last: string, nextUnit?: PeriodUnit) => {
+    if (nextUnit) setUnit(nextUnit);
+    if (first === startDate && last === endDate) return;
     setEdits({});
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
     setValue("endDate", last, { shouldDirty: true, shouldValidate: true });
   };
 
   // The rows belong to the period, so their changed hours would be lost.
-  const setPeriod = (first: string, last: string) => {
-    if (editedMinutes.size > 0) setPendingPeriod({ first, last });
-    else applyPeriod(first, last);
+  const setPeriod = (first: string, last: string, nextUnit?: PeriodUnit) => {
+    const isNewPeriod = first !== startDate || last !== endDate;
+    if (isNewPeriod && editedMinutes.size > 0) {
+      setPendingPeriod({ first, last, unit: nextUnit });
+    } else {
+      applyPeriod(first, last, nextUnit);
+    }
   };
 
   const confirmDelete = () => {
@@ -394,6 +404,7 @@ export const PlanPeriodModal = ({
               startDate={startDate}
               endDate={endDate}
               weekDates={weekDates}
+              unit={unit}
               invalid={!!periodError}
               onChange={setPeriod}
             />
@@ -498,7 +509,11 @@ export const PlanPeriodModal = ({
         isOpen={pendingPeriod !== null}
         onDiscard={() => {
           if (pendingPeriod)
-            applyPeriod(pendingPeriod.first, pendingPeriod.last);
+            applyPeriod(
+              pendingPeriod.first,
+              pendingPeriod.last,
+              pendingPeriod.unit,
+            );
           setPendingPeriod(null);
         }}
         onKeepEditing={() => setPendingPeriod(null)}

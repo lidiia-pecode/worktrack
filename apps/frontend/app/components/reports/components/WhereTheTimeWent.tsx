@@ -68,7 +68,7 @@ const ProjectList = ({
           type="button"
           variant="link"
           size="sm"
-          className="mt-1 h-auto px-0"
+          className="mt-1 h-auto px-0 max-sm:h-auto"
           aria-expanded={showsAll}
           onClick={() => setShowsAll(!showsAll)}
         >

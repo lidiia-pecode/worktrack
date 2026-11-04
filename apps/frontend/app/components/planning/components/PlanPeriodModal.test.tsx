@@ -390,6 +390,35 @@ describe("PlanPeriodModal", () => {
     });
   });
 
+  it("keeps the unit and the dates while a changed row is kept", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    server.plans = [
+      {
+        id: "p0",
+        userId: "user-alice",
+        project: { id: "project-internal", name: "Internal" },
+        plannedMinutes: 120,
+        date: "2026-10-20",
+      } as PlanningEntry,
+    ];
+    renderModal();
+
+    const hours = within(
+      screen.getByRole("group", { name: "Hours a day for Internal" }),
+    ).getByRole("spinbutton", { name: "Hours" });
+    await user.click(hours);
+    await user.clear(hours);
+    await user.type(hours, "3");
+    await user.tab();
+
+    await user.click(screen.getByRole("button", { name: "Month" }));
+    await user.click(screen.getByRole("button", { name: "Keep editing" }));
+
+    expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
+    expect(isPressed("Week")).toBe("true");
+    expect(screen.getByText(/was 2h/)).toBeInTheDocument();
+  });
+
   it("changes a planned project only on its own days", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     server.plans = ["2026-10-06", "2026-10-07"].map(

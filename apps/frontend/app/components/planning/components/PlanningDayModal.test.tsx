@@ -11,9 +11,7 @@ const server = vi.hoisted(() => ({ planPeriod: vi.fn() }));
 
 vi.mock("@/hooks/usePlanning", () => ({
   usePlanPeriod: () => ({ mutateAsync: server.planPeriod, isPending: false }),
-  usePlanningMutations: () => ({
-    delete: { mutateAsync: vi.fn(), isPending: false },
-  }),
+  useDeletePlan: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 const NORTHWIND = {

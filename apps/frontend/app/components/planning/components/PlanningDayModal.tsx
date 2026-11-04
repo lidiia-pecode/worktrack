@@ -5,11 +5,13 @@ import { useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { CalendarOff } from "lucide-react";
+import { toast } from "sonner";
 
 import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
-import { usePlanPeriod, usePlanningMutations } from "@/hooks/usePlanning";
+import { useDeletePlan, usePlanPeriod } from "@/hooks/usePlanning";
 import { getErrorMessages, isClientError } from "@/lib/api";
 import {
+  formatDayMonthLabel,
   formatDuration,
   formatLongDayLabel,
   fromISODate,
@@ -69,7 +71,7 @@ export const PlanningDayModal = ({
   onClose,
 }: PlanningDayModalProps) => {
   const planPeriod = usePlanPeriod();
-  const { delete: remove } = usePlanningMutations();
+  const remove = useDeletePlan();
   const [problems, setProblems] = useState<string[] | null>(null);
   const problemsRef = useRef<HTMLDivElement>(null);
   // Unsaved hours and notes of the plans already made, by project.
@@ -261,7 +263,10 @@ export const PlanningDayModal = ({
         projects: payloadProjects,
       });
 
-      // Like the time form, a saved day closes.
+      // As the period does: a saved day says so and closes.
+      toast.success(
+        `Plan saved for ${fullName(row.user)}, ${formatDayMonthLabel(date)}`,
+      );
       onClose();
     } catch (error) {
       // Anything but a refusal has already been toasted by the hook.
