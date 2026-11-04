@@ -427,6 +427,9 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           open
           onClose={() => setAbsenceForm(null)}
           userId={absenceForm.userId}
+          subjectName={fullName(
+            rows.find((row) => row.user.id === absenceForm.userId)!.user,
+          )}
           date={absenceForm.date}
           endDate={absenceForm.endDate}
           // A new absence from a day is for that day; one from the period

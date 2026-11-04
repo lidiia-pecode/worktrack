@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarClock, CalendarOff, Pencil, Trash2 } from "lucide-react";
+import { CalendarOff, Pencil, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
@@ -251,9 +251,8 @@ export const PlanningDayModal = ({
       <ResourceFormModal
         open
         onClose={onClose}
-        title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · away, nothing to plan`}
-        icon={<CalendarOff className="size-5" />}
+        title="Plan a day"
+        description={`${fullName(row.user)} · ${formatLongDayLabel(fromISODate(date))} · away, nothing to plan`}
         footer={
           <Button type="button" variant="outline" size="sm" onClick={onClose}>
             Close
@@ -286,9 +285,8 @@ export const PlanningDayModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty}
-        title={formatLongDayLabel(fromISODate(date))}
-        description={`${fullName(row.user)} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
-        icon={<CalendarClock className="size-5" />}
+        title="Plan a day"
+        description={`${fullName(row.user)} · ${formatLongDayLabel(fromISODate(date))} · ${formatDuration(plannedMinutes)} of ${withArticle(formatDuration(dayLimitMinutes))} day planned`}
         footer={
           <>
             {!editing && (

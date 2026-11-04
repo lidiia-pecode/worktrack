@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, Info, Lock, Trash2 } from "lucide-react";
+import { Info, Lock, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
@@ -15,6 +15,7 @@ import {
   formatLongDayLabel,
   fromISODate,
   isISODateRange,
+  formatDateRangeLabel,
 } from "@/lib/utils/date";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
@@ -199,14 +200,17 @@ export const AbsenceFormModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty}
         title={isEditMode ? "Edit absence" : "Add absence"}
-        description={
+        description={[
+          subjectName,
           isSingleDay
-            ? [subjectName, formatLongDayLabel(fromISODate(date))]
-                .filter(Boolean)
-                .join(" · ")
-            : subjectName
-        }
-        icon={<CalendarOff className="size-5" />}
+            ? formatLongDayLabel(fromISODate(date))
+            : formatDateRangeLabel(
+                absence?.startDate ?? date,
+                absence?.endDate ?? lastDate,
+              ),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
         footer={
           <>
             {isEditMode && (
@@ -350,8 +354,12 @@ export const LockedAbsenceModal = ({
     open
     onClose={onClose}
     title="Absence"
-    description={subjectName}
-    icon={<CalendarOff className="size-5" />}
+    description={[
+      subjectName,
+      formatDateRangeLabel(absence.startDate, absence.endDate),
+    ]
+      .filter(Boolean)
+      .join(" · ")}
     footer={
       <Button type="button" variant="outline" size="sm" onClick={onClose}>
         Close

@@ -173,7 +173,7 @@ describe("PlanPeriodModal", () => {
     renderModal();
 
     expect(
-      screen.getByRole("heading", { name: "Plan a period for Alice Cooper" }),
+      screen.getByRole("heading", { name: "Plan a period" }),
     ).toBeInTheDocument();
     expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
     expect(isPressed("Week")).toBe("true");

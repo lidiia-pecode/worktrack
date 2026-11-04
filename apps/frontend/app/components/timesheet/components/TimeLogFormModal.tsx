@@ -346,8 +346,8 @@ export const TimeLogFormModal = ({
         size="lg"
         title={isEditMode ? "Edit time entry" : "Log time"}
         description={[
-          DAY_LABEL.format(new Date(`${date}T00:00:00`)),
           subjectName,
+          DAY_LABEL.format(new Date(`${date}T00:00:00`)),
         ]
           .filter(Boolean)
           .join(" · ")}

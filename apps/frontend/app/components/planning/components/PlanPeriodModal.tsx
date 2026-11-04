@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { CalendarOff, CalendarRange, Plus, X } from "lucide-react";
+import { CalendarOff, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { PlanningWeekRow } from "@/types";
@@ -342,8 +342,8 @@ export const PlanPeriodModal = ({
         onClose={onClose}
         hasUnsavedChanges={isDirty || editedMinutes.size > 0}
         size="lg"
-        title={`Plan a period for ${fullName(row.user)}`}
-        icon={<CalendarRange className="size-5" />}
+        title="Plan a period"
+        description={fullName(row.user)}
         footer={
           <>
             <Button
