@@ -100,7 +100,7 @@ export function useLockedDates(dateFrom: string, dateTo: string) {
     const isEditable = (date: string) =>
       !isLoading && !isError && !isLocked(date);
 
-    return { isLocked, isEditable, isError, refetch };
+    return { isLocked, isEditable, isLoading, isError, refetch };
   }, [months, isLoading, isError, refetch]);
 }
 

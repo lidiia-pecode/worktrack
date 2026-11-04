@@ -142,6 +142,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const {
     isLocked,
     isEditable,
+    isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -248,7 +249,13 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   });
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
-  if (isLoadingSettings || isLoadingWeek || isLoadingAbsences) {
+  // The locks too, so no day shows before it is known whether it can change.
+  if (
+    isLoadingSettings ||
+    isLoadingWeek ||
+    isLoadingAbsences ||
+    isLoadingLocks
+  ) {
     return (
       <div className="flex flex-col">
         <LoadingState

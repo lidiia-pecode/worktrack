@@ -198,6 +198,7 @@ export const TeamTimeView = ({
   const {
     isLocked,
     isEditable,
+    isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -342,7 +343,13 @@ export const TeamTimeView = ({
     void refetchLocks();
   };
 
-  if (isLoadingSettings || isLoadingSummary || isLoadingAbsences) {
+  // The locks too, so no day shows before it is known whether it can change.
+  if (
+    isLoadingSettings ||
+    isLoadingSummary ||
+    isLoadingAbsences ||
+    isLoadingLocks
+  ) {
     return (
       <div className="flex flex-col">
         <LoadingState

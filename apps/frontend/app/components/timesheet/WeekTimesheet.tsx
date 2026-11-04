@@ -154,6 +154,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const {
     isLocked,
     isEditable,
+    isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
@@ -396,7 +397,9 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isLoadingPicker ||
     isLoadingAbsences ||
     isLoadingExpected ||
-    isLoadingOwnProjects
+    isLoadingOwnProjects ||
+    // The locks too, so a day never shows without its "+" and then gains it.
+    isLoadingLocks
   ) {
     return (
       <>
