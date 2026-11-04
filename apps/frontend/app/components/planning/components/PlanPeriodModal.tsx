@@ -341,8 +341,7 @@ export const PlanPeriodModal = ({
         open
         onClose={onClose}
         hasUnsavedChanges={isDirty || editedMinutes.size > 0}
-        // The period row (toggle, arrows and a week's dates) needs the width.
-        size="xl"
+        size="lg"
         title={`Plan a period for ${fullName(row.user)}`}
         icon={<CalendarRange className="size-5" />}
         footer={

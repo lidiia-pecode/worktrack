@@ -292,6 +292,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           activeProjectsOnly
           search={search}
           onSearchChange={changeSearch}
+          onClear={clearFilters}
         />
       )}
 

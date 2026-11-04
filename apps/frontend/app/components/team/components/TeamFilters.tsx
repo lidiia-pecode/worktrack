@@ -1,11 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
+import { X } from "lucide-react";
 
 import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useTeamOptions } from "@/hooks/useTeams";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
+
+import { Button } from "@/components/ui/button";
 
 import { FilterBar } from "../../shared/FilterBar";
 import { FormSelect } from "../../shared/FormSelect";
@@ -27,6 +30,8 @@ type TeamFiltersProps = {
   activeProjectsOnly?: boolean;
   search?: string;
   onSearchChange?: (search: string) => void;
+  /** Resets every filter and the search; offered only while one is set. */
+  onClear?: () => void;
 };
 
 export const TeamFilters = ({
@@ -37,6 +42,7 @@ export const TeamFilters = ({
   activeProjectsOnly = false,
   search = "",
   onSearchChange,
+  onClear,
 }: TeamFiltersProps) => {
   const { options: activeTeamOptions } = useTeamOptions();
 
@@ -72,6 +78,9 @@ export const TeamFilters = ({
   const toFilterValue = (value: string) =>
     value === ALL_OPTION ? undefined : value;
 
+  const hasActiveFilters =
+    Boolean(teamId ?? projectId) || Boolean(search.trim());
+
   return (
     <FilterBar className="px-3 py-3 sm:gap-6">
       {onSearchChange && (
@@ -102,6 +111,19 @@ export const TeamFilters = ({
           />
         )}
       </div>
+
+      {onClear && hasActiveFilters && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          className="animate-in fade-in self-start sm:ml-auto sm:h-10"
+        >
+          <X aria-hidden />
+          Clear filters
+        </Button>
+      )}
     </FilterBar>
   );
 };

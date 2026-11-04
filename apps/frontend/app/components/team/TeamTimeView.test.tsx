@@ -387,7 +387,10 @@ describe("TeamTimeView", () => {
     );
     expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    // Both the filter row's and the empty state's button reset everything.
+    await user.click(
+      screen.getAllByRole("button", { name: "Clear filters" })[0],
+    );
     expect(shownNames()).toEqual(["Alice", "Ben"]);
   });
 

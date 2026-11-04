@@ -34,10 +34,10 @@ export const SegmentedControl = <T extends string>({
         aria-pressed={value === option.value}
         onClick={() => onChange(option.value)}
         className={cn(
-          "border-l border-border px-3 text-sm transition first:border-l-0",
+          "border-l border-border px-3 text-xs tracking-wider lowercase transition first:border-l-0",
           "focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none focus-visible:ring-inset",
           value === option.value
-            ? "bg-accent font-semibold text-accent-foreground"
+            ? "bg-accent text-accent-foreground"
             : "text-foreground hover:bg-accent hover:text-accent-foreground",
         )}
       >

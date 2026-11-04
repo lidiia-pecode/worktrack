@@ -168,7 +168,7 @@ describe("PlanPeriodModal", () => {
     server.plans = [];
   });
 
-  it("opens on the shown week, with its month a click away, and steps by the shape", async () => {
+  it("opens on the shown week, steps by the chosen unit, and jumps to it on a press", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
@@ -176,22 +176,20 @@ describe("PlanPeriodModal", () => {
       screen.getByRole("heading", { name: "Plan a period for Alice Cooper" }),
     ).toBeInTheDocument();
     expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
-    expect(isPressed("This week")).toBe("true");
+    expect(isPressed("Week")).toBe("true");
 
-    // A week stepped on keeps stepping by weeks, but isn't "this" week.
     await user.click(screen.getByRole("button", { name: "Next week" }));
     expect(periodLabel()).toBe(weekLabel("2026-10-26", "2026-10-30"));
-    expect(isPressed("This week")).toBe("false");
 
-    await user.click(screen.getByRole("button", { name: "Full month" }));
+    await user.click(screen.getByRole("button", { name: "Month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-10"));
-    expect(isPressed("Full month")).toBe("true");
+    expect(isPressed("Month")).toBe("true");
 
     await user.click(screen.getByRole("button", { name: "Next month" }));
     expect(periodLabel()).toBe(formatMonthLabel("2026-11"));
-    expect(isPressed("Full month")).toBe("true");
 
-    await user.click(screen.getByRole("button", { name: "This week" }));
+    // Back to the shown week, whichever month the dates were on.
+    await user.click(screen.getByRole("button", { name: "Week" }));
     expect(periodLabel()).toBe(weekLabel("2026-10-19", "2026-10-23"));
   });
 
@@ -212,9 +210,12 @@ describe("PlanPeriodModal", () => {
     await waitFor(() =>
       expect(periodLabel()).toBe(weekLabel("2026-10-05", "2026-10-16")),
     );
-    // Any other range leaves the toggle unpressed.
-    expect(isPressed("This week")).toBe("false");
-    expect(isPressed("Full month")).toBe("false");
+    // Any other range keeps the unit, so the arrows still step by a week.
+    expect(isPressed("Week")).toBe("true");
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+    await waitFor(() =>
+      expect(periodLabel()).toBe(weekLabel("2026-10-12", "2026-10-23")),
+    );
   });
 
   it("lists what is already planned and the absences skipped, and saves nothing untouched", () => {
@@ -494,7 +495,7 @@ describe("PlanPeriodModal", () => {
         date: "2026-11-03",
       } as PlanningEntry,
     ];
-    await user.click(screen.getByRole("button", { name: "Full month" }));
+    await user.click(screen.getByRole("button", { name: "Month" }));
     await user.click(screen.getByRole("button", { name: "Next month" }));
 
     expect(

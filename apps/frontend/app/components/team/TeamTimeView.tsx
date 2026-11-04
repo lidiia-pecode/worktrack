@@ -384,6 +384,7 @@ export const TeamTimeView = ({
           }
           search={search}
           onSearchChange={changeSearch}
+          onClear={clearFilters}
         />
       )}
 

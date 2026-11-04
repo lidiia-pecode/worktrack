@@ -45,6 +45,24 @@ describe("TeamFilters", () => {
     expect(onProjectChange).toHaveBeenCalledWith("p-legacy");
   });
 
+  it("offers Clear filters only while a filter or a search is set", async () => {
+    const onClear = vi.fn();
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <TeamFilters onTeamChange={vi.fn()} onClear={onClear} />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Clear filters" }),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <TeamFilters onTeamChange={vi.fn()} search="reed" onClear={onClear} />,
+    );
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(onClear).toHaveBeenCalledOnce();
+  });
+
   it("lists active projects only when asked", async () => {
     const user = userEvent.setup();
     render(
