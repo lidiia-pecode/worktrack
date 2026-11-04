@@ -327,21 +327,18 @@ describe("PlanPeriodModal", () => {
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });
 
-  it("adds a line per project, totals the day and says when nothing is left to add", async () => {
+  it("adds a line per project, totals the day and offers no more once every project is taken", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     renderModal();
 
     await fillRow(user, 0, "Northwind", "4");
-    await user.click(screen.getByRole("button", { name: "Add a project" }));
+    await user.click(screen.getByRole("button", { name: "Add project" }));
     await fillRow(user, 1, "Internal", "2");
 
     expect(screen.getByText("6h a day")).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Add a project" }),
+      screen.queryByRole("button", { name: "Add project" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByText("Alice is on no other active project."),
-    ).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: "Drop the Internal line" }),

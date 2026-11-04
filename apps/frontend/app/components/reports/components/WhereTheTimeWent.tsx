@@ -122,6 +122,7 @@ export const WhereTheTimeWent = ({
           options={VIEWS}
           value={view}
           onChange={setView}
+          size="sm"
         />
       </div>
 

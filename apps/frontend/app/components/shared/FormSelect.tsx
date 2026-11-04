@@ -11,6 +11,8 @@ import {
 import {
   Field,
   fieldControlClassName,
+  fieldControlSizeClassName,
+  FieldControlSize,
   fieldMessageId,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
@@ -33,6 +35,8 @@ type FormSelectProps = {
   disabled?: boolean;
   className?: string;
   triggerClassName?: string;
+  /** `sm` in a toolbar, `md` (the default) in a row of fields. */
+  size?: FieldControlSize;
   /** Shown before the chosen value, such as a project's colour dot. */
   leading?: ReactNode;
   onValueChange: (value: string) => void;
@@ -50,6 +54,7 @@ export const FormSelect = ({
   disabled,
   className,
   triggerClassName,
+  size = "md",
   leading,
   onValueChange,
 }: FormSelectProps) => {
@@ -83,7 +88,7 @@ export const FormSelect = ({
           aria-describedby={fieldMessageId(selectId, { error, description })}
           className={cn(
             fieldControlClassName(!!error),
-            "h-11",
+            fieldControlSizeClassName[size],
             triggerClassName,
           )}
         >

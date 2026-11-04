@@ -22,6 +22,9 @@ const MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
 });
 
+const MONTH_ARROW_CLASS =
+  "rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+
 const ARROW_STEP_DAYS: Record<string, number> = {
   ArrowLeft: -1,
   ArrowRight: 1,
@@ -119,7 +122,7 @@ export const MonthCalendar = ({
           type="button"
           aria-label="Previous month"
           onClick={() => setViewMonth(firstOfMonth(viewMonth, -1))}
-          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          className={MONTH_ARROW_CLASS}
         >
           <ChevronLeft size={16} aria-hidden />
         </button>
@@ -130,7 +133,7 @@ export const MonthCalendar = ({
           type="button"
           aria-label="Next month"
           onClick={() => setViewMonth(firstOfMonth(viewMonth, 1))}
-          className="rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+          className={MONTH_ARROW_CLASS}
         >
           <ChevronRight size={16} aria-hidden />
         </button>
@@ -185,7 +188,7 @@ export const MonthCalendar = ({
               }}
               onMouseEnter={() => onHoverDay?.(day)}
               className={`
-                relative mx-auto h-8 w-8 rounded-md text-xs transition
+                relative mx-auto h-8 w-8 rounded-md text-xs transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none
                 ${inCurrentMonth && !isUnavailable ? "text-foreground" : "text-muted-foreground"}
                 ${isUnavailable ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-accent"}
                 ${isEnd ? "font-semibold text-brand" : ""}

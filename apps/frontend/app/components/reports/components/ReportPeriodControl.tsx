@@ -36,7 +36,6 @@ const UNITS: { value: PeriodUnit; label: string }[] = [
 ];
 
 /** Sized like Team time's week button, and taller on a phone like its arrows. */
-const PERIOD_BUTTON_CLASS = "h-9 w-auto max-sm:h-10";
 
 type PeriodPickerProps = {
   period: ShownPeriod;
@@ -71,7 +70,8 @@ const CalendarPeriodPicker = ({
     >
       <DateFieldTrigger
         label={periodLabel(period)}
-        className={PERIOD_BUTTON_CLASS}
+        size="sm"
+        className="w-auto"
       />
 
       <PopoverContent
@@ -137,11 +137,11 @@ export const ReportPeriodControl = ({
   return (
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-2">
-        <div className="flex items-center overflow-hidden rounded-lg border border-border">
+        <div className="flex items-center overflow-hidden rounded-md border border-control-border max-sm:rounded-lg">
           <Button
             variant="ghost"
             size="iconSm"
-            className="w-9 rounded-none max-sm:size-10"
+            className="w-9 rounded-none focus-visible:ring-inset max-sm:size-10"
             aria-label={`Previous ${unitName}`}
             disabled={!!firstDay && previous.range.dateTo < firstDay}
             onClick={() => onChange(previous)}
@@ -151,7 +151,7 @@ export const ReportPeriodControl = ({
           <Button
             variant="ghost"
             size="iconSm"
-            className="w-9 rounded-none border-0 border-l border-border max-sm:size-10"
+            className="w-9 rounded-none border-0 border-l border-control-border focus-visible:ring-inset max-sm:size-10"
             aria-label={`Next ${unitName}`}
             disabled={next.range.dateFrom > today}
             onClick={() => onChange(next)}
@@ -180,7 +180,8 @@ export const ReportPeriodControl = ({
             onChange={(dateFrom, dateTo) =>
               onChange({ unit: "custom", range: { dateFrom, dateTo } })
             }
-            className={PERIOD_BUTTON_CLASS}
+            size="sm"
+            className="w-auto"
           />
         )}
       </div>
@@ -190,6 +191,7 @@ export const ReportPeriodControl = ({
         options={UNITS}
         value={period.unit}
         onChange={changeUnit}
+        size="sm"
         className="max-sm:order-last max-sm:grid max-sm:w-full max-sm:grid-flow-col max-sm:auto-cols-fr"
       />
 

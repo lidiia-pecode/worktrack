@@ -175,6 +175,9 @@ export const PlanPeriodModal = ({
   // Each blank line holds a place for one of the projects still free.
   const canAddLine =
     freeProjectCount > added.filter((line) => !line.projectId).length;
+  // With every project listed above and no line begun, there is nothing to show.
+  const hasLinesToAdd =
+    freeProjectCount > 0 || added.some((line) => line.projectId);
   // A line keeps its project when the dates change, though the new period may
   // already list it above; such a line says so and isn't saved.
   const isListedAbove = (projectId: string) => listedIds.includes(projectId);
@@ -440,121 +443,118 @@ export const PlanPeriodModal = ({
               project before planning.
             </p>
           ) : (
-            <fieldset className="space-y-2">
-              <legend className="mb-2 text-sm font-medium text-foreground">
-                Add to every working day
-              </legend>
+            hasLinesToAdd && (
+              <fieldset className="space-y-2">
+                <legend className="sr-only">Projects to add</legend>
 
-              {/* The lines' labels, once above them; each line's controls
+                {/* The lines' labels, once above them; each line's controls
                   carry their own accessible names. */}
-              <div
-                aria-hidden
-                className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 text-xs font-medium text-muted-foreground"
-              >
-                <span>Project</span>
-                <span>Hours a day</span>
-                <span className="w-8" />
-              </div>
-
-              {fields.map((field, index) => {
-                const chosenId = added[index]?.projectId ?? "";
-                // A blank line with nothing left to choose would only be in the way.
-                if (!chosenId && freeProjectCount === 0) return null;
-                const options = personProjects
-                  .filter(
-                    (project) =>
-                      project.id === chosenId || !takenIds.includes(project.id),
-                  )
-                  .map((project) => ({
-                    value: project.id,
-                    label: project.name,
-                  }));
-                const lineErrors = errors.added?.[index];
-
-                return (
-                  <div
-                    key={field.id}
-                    className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2"
-                  >
-                    <Controller
-                      control={control}
-                      name={`added.${index}.projectId`}
-                      render={({ field: select }) => (
-                        <FormSelect
-                          aria-label={`Project ${index + 1}`}
-                          value={select.value}
-                          onValueChange={select.onChange}
-                          options={options}
-                          placeholder="Select project"
-                          leading={<ProjectColorDot projectId={select.value} />}
-                          error={
-                            isListedAbove(select.value)
-                              ? "Already planned in this period. Change it above."
-                              : lineErrors?.projectId?.message
-                          }
-                        />
-                      )}
-                    />
-
-                    <Field
-                      id={`period-hours-${field.id}`}
-                      error={lineErrors?.hours?.message}
-                    >
-                      <TimePicker
-                        aria-label={`Hours a day for project ${index + 1}`}
-                        hours={Number(added[index]?.hours ?? 0)}
-                        minutes={Number(added[index]?.minutes ?? 0)}
-                        minuteStep={PLAN_MINUTE_STEP}
-                        maxMinutes={maxPlanMinutes}
-                        formId={FORM_ID}
-                        onHoursChange={(value) =>
-                          setValue(`added.${index}.hours`, value, {
-                            shouldDirty: true,
-                          })
-                        }
-                        onMinutesChange={(value) =>
-                          setValue(`added.${index}.minutes`, value, {
-                            shouldDirty: true,
-                          })
-                        }
-                        error={!!lineErrors?.hours}
-                      />
-                    </Field>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="iconSm"
-                      aria-label={`Drop the ${projectName(chosenId) ?? `project ${index + 1}`} line`}
-                      title="Drop this line"
-                      onClick={() => remove(index)}
-                      className="mt-1.5 text-muted-foreground"
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-
-              {canAddLine ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => append(EMPTY_LINE)}
-                  className="text-brand"
+                <div
+                  aria-hidden
+                  className="grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 text-xs font-medium text-muted-foreground"
                 >
-                  <Plus className="size-4" />
-                  Add a project
-                </Button>
-              ) : (
-                freeProjectCount === 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    {row.user.firstName} is on no other active project.
-                  </p>
-                )
-              )}
-            </fieldset>
+                  <span>Project</span>
+                  <span>Hours a day</span>
+                  <span className="w-8" />
+                </div>
+
+                {fields.map((field, index) => {
+                  const chosenId = added[index]?.projectId ?? "";
+                  // A blank line with nothing left to choose would only be in the way.
+                  if (!chosenId && freeProjectCount === 0) return null;
+                  const options = personProjects
+                    .filter(
+                      (project) =>
+                        project.id === chosenId ||
+                        !takenIds.includes(project.id),
+                    )
+                    .map((project) => ({
+                      value: project.id,
+                      label: project.name,
+                    }));
+                  const lineErrors = errors.added?.[index];
+
+                  return (
+                    <div
+                      key={field.id}
+                      className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-start gap-2"
+                    >
+                      <Controller
+                        control={control}
+                        name={`added.${index}.projectId`}
+                        render={({ field: select }) => (
+                          <FormSelect
+                            aria-label={`Project ${index + 1}`}
+                            value={select.value}
+                            onValueChange={select.onChange}
+                            options={options}
+                            placeholder="Select project"
+                            leading={
+                              <ProjectColorDot projectId={select.value} />
+                            }
+                            error={
+                              isListedAbove(select.value)
+                                ? "Already planned in this period. Change it above."
+                                : lineErrors?.projectId?.message
+                            }
+                          />
+                        )}
+                      />
+
+                      <Field
+                        id={`period-hours-${field.id}`}
+                        error={lineErrors?.hours?.message}
+                      >
+                        <TimePicker
+                          aria-label={`Hours a day for project ${index + 1}`}
+                          hours={Number(added[index]?.hours ?? 0)}
+                          minutes={Number(added[index]?.minutes ?? 0)}
+                          minuteStep={PLAN_MINUTE_STEP}
+                          maxMinutes={maxPlanMinutes}
+                          formId={FORM_ID}
+                          onHoursChange={(value) =>
+                            setValue(`added.${index}.hours`, value, {
+                              shouldDirty: true,
+                            })
+                          }
+                          onMinutesChange={(value) =>
+                            setValue(`added.${index}.minutes`, value, {
+                              shouldDirty: true,
+                            })
+                          }
+                          error={!!lineErrors?.hours}
+                        />
+                      </Field>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="iconSm"
+                        aria-label={`Drop the ${projectName(chosenId) ?? `project ${index + 1}`} line`}
+                        title="Drop this line"
+                        onClick={() => remove(index)}
+                        className="mt-1.5 text-muted-foreground"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
+
+                {canAddLine && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => append(EMPTY_LINE)}
+                    className="text-brand"
+                  >
+                    <Plus className="size-4" />
+                    Add project
+                  </Button>
+                )}
+              </fieldset>
+            )
           )}
 
           {hasPeriod && (

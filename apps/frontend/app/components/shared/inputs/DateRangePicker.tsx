@@ -11,6 +11,10 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
+import {
+  FieldControlSize,
+  fieldControlSizeClassName,
+} from "@/components/ui/field";
 
 import {
   Popover,
@@ -29,23 +33,30 @@ const formatDateRange = (startDate: string, endDate: string) =>
 type DateFieldTriggerProps = ComponentProps<typeof PopoverTrigger> & {
   label: string;
   invalid?: boolean;
+  /** `sm` in a toolbar, `md` (the default) in a row of fields. */
+  size?: FieldControlSize;
 };
+
+/** The look of a button that opens a date picker, shared with the week nav. */
+export const dateFieldClassName = (size: FieldControlSize, invalid = false) =>
+  cn(
+    "flex w-full min-w-0 items-center gap-2 border border-control-border px-3 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
+    fieldControlSizeClassName[size],
+    invalid && "border-destructive",
+  );
 
 /** The field a date picker opens from: the chosen date with a calendar icon. */
 export const DateFieldTrigger = ({
   label,
   invalid = false,
+  size = "md",
   className,
   ...props
 }: DateFieldTriggerProps) => (
   <PopoverTrigger
     {...props}
     aria-invalid={invalid}
-    className={cn(
-      "flex h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
-      invalid && "border-destructive",
-      className,
-    )}
+    className={cn(dateFieldClassName(size, invalid), className)}
   >
     <CalendarDays
       className="size-4 shrink-0 text-muted-foreground"
@@ -75,6 +86,7 @@ type DateRangePickerProps = {
   onChange: (startDate: string, endDate: string) => void;
   /** Shortcuts under the calendar. */
   children?: ReactNode;
+  size?: FieldControlSize;
   className?: string;
 };
 
@@ -95,6 +107,7 @@ export const DateRangePicker = ({
   defaultOpen = false,
   onChange,
   children,
+  size = "md",
   className,
 }: DateRangePickerProps) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -142,6 +155,7 @@ export const DateRangePicker = ({
       <DateFieldTrigger
         label={label ?? formatDateRange(startDate, endDate)}
         invalid={invalid}
+        size={size}
         className={className}
       />
 

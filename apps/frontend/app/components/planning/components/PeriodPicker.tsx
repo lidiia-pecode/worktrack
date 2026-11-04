@@ -85,48 +85,48 @@ export const PeriodPicker = ({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="size-11"
-        aria-label={`Previous ${unit}`}
-        onClick={() => step(-1)}
-      >
-        <ChevronLeft className="size-4" />
-      </Button>
+    <div className="flex items-center gap-4">
+      <div className="flex flex-1 items-center gap-1">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Previous ${unit}`}
+          onClick={() => step(-1)}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
 
-      <DateRangePicker
-        startDate={startDate}
-        endDate={endDate}
-        label={
-          isWholeMonth(startDate, endDate)
-            ? formatMonthLabel(monthKey)
-            : undefined
-        }
-        invalid={invalid}
-        onChange={onChange}
-        className="flex-1"
-      />
+        <DateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          label={
+            isWholeMonth(startDate, endDate)
+              ? formatMonthLabel(monthKey)
+              : undefined
+          }
+          invalid={invalid}
+          onChange={onChange}
+          className="flex-1"
+        />
 
-      <Button
-        type="button"
-        variant="outline"
-        size="icon"
-        className="size-11"
-        aria-label={`Next ${unit}`}
-        onClick={() => step(1)}
-      >
-        <ChevronRight className="size-4" />
-      </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Next ${unit}`}
+          onClick={() => step(1)}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
 
       <SegmentedControl
         label="Step by"
         options={UNITS}
         value={unit}
         onChange={pickUnit}
-        className="h-11 shrink-0"
+        className="shrink-0"
       />
     </div>
   );

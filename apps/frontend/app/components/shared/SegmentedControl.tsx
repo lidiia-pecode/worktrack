@@ -1,6 +1,10 @@
 "use client";
 
 import { cn } from "@/lib/utils/cn";
+import {
+  FieldControlSize,
+  fieldControlSizeClassName,
+} from "@/components/ui/field";
 
 type SegmentedControlProps<T extends string> = {
   /** Names the group for screen readers. */
@@ -8,6 +12,8 @@ type SegmentedControlProps<T extends string> = {
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** `sm` in a toolbar, `md` (the default) in a row of fields. */
+  size?: FieldControlSize;
   className?: string;
 };
 
@@ -17,13 +23,15 @@ export const SegmentedControl = <T extends string>({
   options,
   value,
   onChange,
+  size = "md",
   className,
 }: SegmentedControlProps<T>) => (
   <div
     role="group"
     aria-label={label}
     className={cn(
-      "flex h-8 overflow-hidden rounded-lg border border-border",
+      "flex overflow-hidden border border-control-border",
+      fieldControlSizeClassName[size],
       className,
     )}
   >
@@ -34,11 +42,11 @@ export const SegmentedControl = <T extends string>({
         aria-pressed={value === option.value}
         onClick={() => onChange(option.value)}
         className={cn(
-          "border-l border-border px-3 text-xs tracking-wider lowercase transition first:border-l-0",
-          "focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none focus-visible:ring-inset",
+          "border-l border-control-border px-3 text-xs transition first:border-l-0",
+          "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
           value === option.value
             ? "bg-accent text-accent-foreground"
-            : "text-foreground hover:bg-accent hover:text-accent-foreground",
+            : "text-foreground hover:bg-accent",
         )}
       >
         {option.label}

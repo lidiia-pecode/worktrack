@@ -29,13 +29,13 @@ const buttonVariants = cva(
         ],
 
         secondary: [
-          "border border-border",
+          "border border-control-border",
           "bg-secondary text-secondary-foreground",
           "hover:bg-secondary/80",
         ],
 
         outline: [
-          "border border-border",
+          "border border-control-border",
           "bg-transparent text-foreground",
           "hover:bg-accent hover:text-accent-foreground",
         ],

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardFooter, CardHeader } from "@/components/ui/card";
@@ -21,8 +21,7 @@ import { Company } from "@/types/Company";
 import { WeekDay } from "@/types/enums";
 import { WEEK_DAY_LABELS, WEEK_START_OPTIONS } from "@/lib/constants";
 import { findTimeZoneOption, toListedTimeZone } from "@/lib/utils/time-zones";
-import { settingsNumberInputClassName } from "../styles/settings-styles";
-import { NumberInputControls } from "../components/NumberInputControls";
+import { NumberStepper } from "@/app/components/shared/inputs/NumberStepper";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import {
@@ -104,7 +103,6 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
     control,
     reset,
     handleSubmit,
-    getValues,
     setValue,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<CompanyFormValues>({
@@ -125,10 +123,11 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
     reset(toFormValues(company));
   }, [company, reset]);
 
-  const updateWorkHours = (delta: number) => {
-    const current = Number(getValues("standardWorkHoursPerDay")) || 0;
+  const workHours =
+    Number(useWatch({ control, name: "standardWorkHoursPerDay" })) || 0;
 
-    const next = Math.min(MAX_WORK_DAY_HOURS, Math.max(1, current + delta));
+  const updateWorkHours = (delta: number) => {
+    const next = Math.min(MAX_WORK_DAY_HOURS, Math.max(1, workHours + delta));
 
     setValue("standardWorkHoursPerDay", next, {
       shouldDirty: true,
@@ -221,26 +220,30 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
               />
 
               <div>
-                <div className="relative">
-                  <Input
-                    label="Standard work hours / day"
-                    type="number"
-                    min={1}
-                    max={MAX_WORK_DAY_HOURS}
-                    step={WORK_DAY_STEP_HOURS}
-                    placeholder="8"
-                    {...register("standardWorkHoursPerDay", {
-                      valueAsNumber: true,
-                    })}
-                    error={errors.standardWorkHoursPerDay?.message}
-                    className={settingsNumberInputClassName}
-                  />
-
-                  <NumberInputControls
-                    onIncrement={() => updateWorkHours(WORK_DAY_STEP_HOURS)}
-                    onDecrement={() => updateWorkHours(-WORK_DAY_STEP_HOURS)}
-                  />
-                </div>
+                <Input
+                  label="Standard work hours / day"
+                  type="number"
+                  min={1}
+                  max={MAX_WORK_DAY_HOURS}
+                  step={WORK_DAY_STEP_HOURS}
+                  placeholder="8"
+                  {...register("standardWorkHoursPerDay", {
+                    valueAsNumber: true,
+                  })}
+                  error={errors.standardWorkHoursPerDay?.message}
+                  // The stepper stands in for the browser's own spin buttons.
+                  className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  endAdornment={
+                    <NumberStepper
+                      label="Standard work hours / day"
+                      canIncrease={workHours < MAX_WORK_DAY_HOURS}
+                      canDecrease={workHours > 1}
+                      onStep={(direction) =>
+                        updateWorkHours(direction * WORK_DAY_STEP_HOURS)
+                      }
+                    />
+                  }
+                />
 
                 {!errors.standardWorkHoursPerDay && (
                   <p className="mt-1.5 text-xs text-muted-foreground">

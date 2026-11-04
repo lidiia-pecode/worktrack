@@ -7,6 +7,7 @@ import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import {
   Field,
   fieldControlClassName,
+  fieldControlSizeClassName,
   fieldMessageId,
 } from "@/components/ui/field";
 import { cn } from "@/lib/utils/cn";
@@ -81,7 +82,11 @@ export const TimeZoneSelect = ({
             placeholder="Search by country or city"
             aria-invalid={!!error}
             aria-describedby={fieldMessageId(inputId, { error, description })}
-            className={cn(fieldControlClassName(!!error), "h-11 pr-10")}
+            className={cn(
+              fieldControlClassName(!!error),
+              fieldControlSizeClassName.md,
+              "pr-10",
+            )}
           />
           <Combobox.Trigger
             aria-label="Show time zones"

@@ -131,11 +131,15 @@
     var(--muted-foreground) 80%,
     var(--input)
   );
-  --input-border: color-mix(in oklab, var(--muted-foreground) 50%, transparent);
+  /* Every bordered interactive control: fields, selects, steppers, date
+     buttons, segmented controls. Dividers, tables and cards keep --border. */
+  --control-border: color-mix(
+    in oklab,
+    var(--muted-foreground) 30%,
+    transparent
+  );
 
   --ring: var(--brand);
-
-  --radius: 0.75rem;
 
   /* ------------------------------------------------------------------------
      Sidebar
@@ -313,7 +317,7 @@
   --color-input: var(--input);
   --color-input-foreground: var(--input-foreground);
   --color-input-placeholder: var(--input-placeholder);
-  --color-input-border: var(--input-border);
+  --color-control-border: var(--control-border);
   --color-ring: var(--ring);
 
   --color-glow-primary: var(--glow-primary);
