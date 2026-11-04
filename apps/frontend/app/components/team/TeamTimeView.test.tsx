@@ -329,6 +329,31 @@ describe("TeamTimeView", () => {
     );
   });
 
+  it("reads the search and sort from the URL, and writes them back", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/team?search=develop&sort=logged");
+    showTeamTime();
+
+    expect(shownNames()).toEqual(["Ben"]);
+    expect(
+      screen.getByRole("button", { name: "Sort by logged time, most first" }),
+    ).toHaveAttribute("aria-pressed", "true");
+
+    await user.clear(
+      screen.getByRole("textbox", { name: "Search by name or position" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Sort by name, A to Z" }),
+    );
+    // Back at the defaults, the address holds neither.
+    expect(window.location.search).toBe("");
+
+    await user.click(
+      screen.getByRole("button", { name: "Sort by name, Z to A" }),
+    );
+    expect(window.location.search).toBe("?sort=name-desc");
+  });
+
   it("searches people by name or position, and totals only them", async () => {
     const user = userEvent.setup();
     showTeamTime();

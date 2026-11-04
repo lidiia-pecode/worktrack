@@ -11,6 +11,11 @@ export class PlanningQueryDto extends PaginationQuery {
   @IsUUID()
   projectId?: string;
 
+  /** Only the plans of people in this team on the plan's day. */
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
+
   @IsOptional()
   @IsDateWithoutTimeString()
   date?: string;

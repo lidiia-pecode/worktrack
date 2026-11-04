@@ -8,9 +8,11 @@ export const teamTimeHref = (personId: string, week?: string) => {
   return `/team?${params}`;
 };
 
-/** Team time's filters, kept in the URL so a reload returns to them. */
+/** The week grids' filters, kept in the URL so a reload returns to them. */
 export const TEAM_PARAM = "team";
 export const PROJECT_PARAM = "project";
+export const SEARCH_PARAM = "search";
+export const SORT_PARAM = "sort";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

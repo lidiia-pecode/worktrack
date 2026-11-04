@@ -2,28 +2,52 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { PROJECT_PARAM, readIdParam, TEAM_PARAM } from "./team-links";
+import { readTeamSort, TeamSort, teamSortParam } from "@/lib/utils/team-rows";
 
-type TeamTimeFilters = { teamId?: string; projectId?: string };
+import {
+  PROJECT_PARAM,
+  readIdParam,
+  SEARCH_PARAM,
+  SORT_PARAM,
+  TEAM_PARAM,
+} from "./team-links";
 
-/** Team time's team and project, read from and written to the URL. */
+type TeamTimeFilters = {
+  teamId?: string;
+  projectId?: string;
+  search?: string;
+  sort?: TeamSort;
+};
+
+/**
+ * The week grids' team, project, search and sort, read from and written to
+ * the URL; Planning uses the first three. Defaults stay out of the address.
+ */
 export const useTeamTimeFilters = () => {
   const searchParams = useSearchParams();
   const pathname = usePathname();
 
   const teamId = readIdParam(searchParams.get(TEAM_PARAM));
   const projectId = readIdParam(searchParams.get(PROJECT_PARAM));
+  const search = searchParams.get(SEARCH_PARAM) ?? "";
+  const sort = readTeamSort(searchParams.get(SORT_PARAM));
 
   // Through the history API, so the page isn't rendered again from the server;
   // the week and the highlighted person stay.
   const setFilters = (filters: TeamTimeFilters) => {
     const params = new URLSearchParams(window.location.search);
-    const values = { teamId, projectId, ...filters };
+    const values = { teamId, projectId, search, sort, ...filters };
+    const written: [string, string | undefined][] = [
+      [TEAM_PARAM, values.teamId],
+      [PROJECT_PARAM, values.projectId],
+      [SEARCH_PARAM, values.search?.trim() || undefined],
+      [SORT_PARAM, teamSortParam(values.sort)],
+    ];
 
-    if (values.teamId) params.set(TEAM_PARAM, values.teamId);
-    else params.delete(TEAM_PARAM);
-    if (values.projectId) params.set(PROJECT_PARAM, values.projectId);
-    else params.delete(PROJECT_PARAM);
+    written.forEach(([name, value]) => {
+      if (value) params.set(name, value);
+      else params.delete(name);
+    });
 
     window.history.replaceState(
       null,
@@ -32,5 +56,5 @@ export const useTeamTimeFilters = () => {
     );
   };
 
-  return { teamId, projectId, setFilters };
+  return { teamId, projectId, search, sort, setFilters };
 };

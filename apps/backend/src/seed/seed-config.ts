@@ -496,7 +496,6 @@ export const TEAMS: SeedTeam[] = [
       { email: ETHAN, roleInTeam: TeamRole.MEMBER },
       { email: MIA, roleInTeam: TeamRole.MEMBER },
       { email: LUCAS, roleInTeam: TeamRole.MEMBER },
-      { email: EMMA, roleInTeam: TeamRole.MEMBER },
     ],
   },
   {

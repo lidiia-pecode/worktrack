@@ -88,6 +88,8 @@ export interface PeriodPreview {
 export type PlanningQuery = PaginationParams & {
   userId?: string;
   projectId?: string;
+  /** Only the plans of people in this team on the plan's day. */
+  teamId?: string;
   date?: string;
   dateFrom?: string;
   dateTo?: string;

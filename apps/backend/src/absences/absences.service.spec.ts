@@ -835,6 +835,8 @@ describe('AbsencesService', () => {
 
     let betaManager: AuthUser;
     let mover: AuthUser;
+    let alphaTeamId: string;
+    let betaTeamId: string;
 
     const listedFor = async (caller: AuthUser) =>
       (await service.list(query({ userId: mover.id }), caller)).count;
@@ -849,6 +851,8 @@ describe('AbsencesService', () => {
       const beta = await dataSource
         .getRepository(Team)
         .save({ companyId, name: `Beta ${RUN}` });
+      alphaTeamId = alpha.id;
+      betaTeamId = beta.id;
       await dataSource.getRepository(TeamMembership).save([
         {
           companyId,
@@ -952,6 +956,32 @@ describe('AbsencesService', () => {
       await expect(
         service.update(id, { endDate: MOVE_DAY }, manager),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("keeps, under a team filter, the absences on that team's days", async () => {
+      await existingAbsence(mover.id, '2026-02-02', '2026-02-04');
+      await existingAbsence(mover.id, '2026-02-09', '2026-02-13');
+      await existingAbsence(mover.id, '2026-02-16', '2026-02-17');
+      const startsFor = async (teamId: string, caller: AuthUser) =>
+        (
+          await service.list(query({ userId: mover.id, teamId }), caller)
+        ).results
+          .map((absence) => absence.startDate)
+          .sort();
+
+      // The absence across the move has days in both teams.
+      expect(await startsFor(alphaTeamId, owner)).toEqual([
+        '2026-02-02',
+        '2026-02-09',
+      ]);
+      expect(await startsFor(betaTeamId, owner)).toEqual([
+        '2026-02-09',
+        '2026-02-16',
+      ]);
+      // The filter never widens the caller's reach: Alpha's manager still
+      // sees only what overlaps their own days, here the absence across the
+      // move, and never Beta's own.
+      expect(await startsFor(betaTeamId, manager)).toEqual(['2026-02-09']);
     });
   });
 });

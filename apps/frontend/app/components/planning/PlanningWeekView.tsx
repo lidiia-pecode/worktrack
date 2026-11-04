@@ -5,6 +5,7 @@ import { SearchX } from "lucide-react";
 
 import { usePlanningWeek } from "@/hooks/usePlanning";
 import { useAbsencesMutations, useAllAbsencesQuery } from "@/hooks/useAbsences";
+import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import { useLockedDates } from "@/hooks/useReportingPeriods";
@@ -20,6 +21,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
+import { searchTeamRows } from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { UserRole } from "@/types/enums";
@@ -72,8 +74,22 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   } = useWorkSettings();
 
   const { weekStart, showWeekOf } = useShownWeek();
-  const { teamId, setFilters } = useTeamTimeFilters();
-  const setTeamId = (nextTeamId?: string) => setFilters({ teamId: nextTeamId });
+  const {
+    teamId,
+    projectId,
+    search: searchInAddress,
+    setFilters,
+  } = useTeamTimeFilters();
+  // Kept here as typed and mirrored to the address, as on Team time.
+  const [search, setSearch] = useState(searchInAddress);
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setFilters({ search: value });
+  };
+  const clearFilters = () => {
+    setSearch("");
+    setFilters({ teamId: undefined, projectId: undefined, search: "" });
+  };
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
@@ -108,6 +124,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
+    teamId,
   });
 
   const absencesByUser = useMemo(
@@ -131,8 +148,50 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
   const absenceActions = useAbsencesMutations();
 
-  const totalPlanned = rows.reduce((sum, row) => sum + row.plannedMinutes, 0);
-  const totalAvailable = rows.reduce(
+  // The same list the project filter shows, so it comes from the cache.
+  const { items: projects } = useAllProjectsQuery();
+  // Set whenever a project filters the grid, even before its name has loaded.
+  const projectName = projectId
+    ? (projects.find((project) => project.id === projectId)?.name ??
+      "this project")
+    : undefined;
+
+  // Under a project filter: the people on it, or with a plan on it, each row
+  // holding that project's plans only, as Team time's rows do; then the
+  // search, as there. The dialogs keep opening on the full row.
+  const shownRows = useMemo(() => {
+    const onProject = projectId
+      ? rows
+          .filter(
+            (row) =>
+              row.projects.some((project) => project.id === projectId) ||
+              row.entries.some((entry) => entry.project.id === projectId),
+          )
+          .map((row) => {
+            const entries = row.entries.filter(
+              (entry) => entry.project.id === projectId,
+            );
+            const plannedMinutes = entries.reduce(
+              (sum, entry) => sum + entry.plannedMinutes,
+              0,
+            );
+            return { ...row, entries, plannedMinutes };
+          })
+      : rows;
+
+    return searchTeamRows(onProject, search);
+  }, [rows, projectId, search]);
+
+  const hasActiveFilters = Boolean(teamId ?? projectId);
+  const isSearching = Boolean(search.trim());
+  const matchesNobody =
+    (hasActiveFilters || isSearching) && shownRows.length === 0;
+
+  const totalPlanned = shownRows.reduce(
+    (sum, row) => sum + row.plannedMinutes,
+    0,
+  );
+  const totalAvailable = shownRows.reduce(
     (sum, row) => sum + row.availableMinutes,
     0,
   );
@@ -184,7 +243,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     role,
     viewerId,
     rowUserIds: rows.map((row) => row.user.id),
-    hasActiveFilters: Boolean(teamId),
+    hasActiveFilters,
     ledTeamCount: teamOptions.length,
   });
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
@@ -229,7 +288,19 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         </div>
       </div>
 
-      {!hasError && <TeamFilters teamId={teamId} onTeamChange={setTeamId} />}
+      {!hasError && (
+        <TeamFilters
+          teamId={teamId}
+          projectId={projectId}
+          onTeamChange={(nextTeamId) => setFilters({ teamId: nextTeamId })}
+          onProjectChange={(nextProjectId) =>
+            setFilters({ projectId: nextProjectId })
+          }
+          activeProjectsOnly
+          search={search}
+          onSearchChange={changeSearch}
+        />
+      )}
 
       {hasError && (
         <ErrorState
@@ -239,14 +310,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && rows.length === 0 && (
+      {!hasError && matchesNobody && (
         <div className="p-6">
           <EmptyState
             icon={<SearchX />}
             title="Nobody matches these filters"
-            description="Nobody you can plan for is in the team you picked."
+            description="Nobody you can plan for matches the team, project or search you picked."
             action={
-              <Button variant="secondary" onClick={() => setTeamId(undefined)}>
+              <Button variant="secondary" onClick={clearFilters}>
                 Clear filters
               </Button>
             }
@@ -260,7 +331,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         </div>
       )}
 
-      {!hasError && rows.length > 0 && (
+      {!hasError && shownRows.length > 0 && (
         <div
           className={[
             "overflow-x-auto transition-opacity",
@@ -317,7 +388,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             </thead>
 
             <tbody>
-              {rows.map((row) => (
+              {shownRows.map((row) => (
                 <PlanningWeekRow
                   key={row.user.id}
                   row={row}
@@ -325,6 +396,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
                   isEditable={isEditable}
+                  projectName={projectName}
                   onOpenDay={openDay}
                   onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />

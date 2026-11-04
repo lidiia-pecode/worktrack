@@ -23,6 +23,8 @@ type TeamFiltersProps = {
   projectId?: string;
   onTeamChange: (teamId?: string) => void;
   onProjectChange?: (projectId?: string) => void;
+  /** Active projects only, for a grid where nothing can go on a past one. */
+  activeProjectsOnly?: boolean;
   search?: string;
   onSearchChange?: (search: string) => void;
 };
@@ -32,6 +34,7 @@ export const TeamFilters = ({
   projectId,
   onTeamChange,
   onProjectChange,
+  activeProjectsOnly = false,
   search = "",
   onSearchChange,
 }: TeamFiltersProps) => {
@@ -50,19 +53,21 @@ export const TeamFilters = ({
   const projectOptions = useMemo(() => {
     const isActive = (project: Project) =>
       project.status === ProjectStatus.ACTIVE;
-    const activeFirst = [
-      ...projects.filter(isActive),
-      ...projects.filter((project) => !isActive(project)),
-    ];
+    const listed = activeProjectsOnly
+      ? projects.filter(isActive)
+      : [
+          ...projects.filter(isActive),
+          ...projects.filter((project) => !isActive(project)),
+        ];
 
     return [
       { value: ALL_OPTION, label: "All projects" },
-      ...activeFirst.map((project) => ({
+      ...listed.map((project) => ({
         value: project.id,
         label: `${project.name}${STATUS_SUFFIX[project.status]}`,
       })),
     ];
-  }, [projects]);
+  }, [projects, activeProjectsOnly]);
 
   const toFilterValue = (value: string) =>
     value === ALL_OPTION ? undefined : value;

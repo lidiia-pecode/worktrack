@@ -8,6 +8,26 @@ export type TeamSort = { key: TeamSortKey; direction: SortDirection };
 
 export const DEFAULT_TEAM_SORT: TeamSort = { key: "name", direction: "asc" };
 
+const SORT_PARAM_VALUES: Record<string, TeamSort> = {
+  name: DEFAULT_TEAM_SORT,
+  "name-desc": { key: "name", direction: "desc" },
+  logged: { key: "logged", direction: "asc" },
+  "logged-desc": { key: "logged", direction: "desc" },
+};
+
+/** The sort a `?sort=` value names; the default for anything else. */
+export const readTeamSort = (value: string | null): TeamSort =>
+  (value && SORT_PARAM_VALUES[value]) || DEFAULT_TEAM_SORT;
+
+/** The `?sort=` value for a sort; none for the default, which stays out of the address. */
+export const teamSortParam = (sort: TeamSort): string | undefined => {
+  if (sort.key === DEFAULT_TEAM_SORT.key && sort.direction === "asc") {
+    return undefined;
+  }
+
+  return sort.direction === "asc" ? sort.key : `${sort.key}-desc`;
+};
+
 /** Pressing the sorted button reverses it; another button starts ascending. */
 export const nextTeamSort = (sort: TeamSort, key: TeamSortKey): TeamSort =>
   sort.key === key
@@ -54,8 +74,13 @@ export const sortTeamRows = (
   );
 };
 
-/** By name or position, ignoring case. */
-export const searchTeamRows = (rows: TeamSummaryRow[], search: string) => {
+type PersonRow = Pick<TeamSummaryRow, "user">;
+
+/** By name or position, ignoring case; for any grid with a person per row. */
+export const searchTeamRows = <Row extends PersonRow>(
+  rows: Row[],
+  search: string,
+): Row[] => {
   const query = search.trim().toLowerCase();
   if (!query) return rows;
 

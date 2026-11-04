@@ -221,6 +221,13 @@ export class PlanningService {
 
     const qb = this.buildBaseQuery();
     this.applyVisibilityFilter(qb, user);
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      'p.user_id',
+      query.teamId,
+      user,
+      { startColumn: 'p.date' },
+    );
 
     if (query.userId) {
       await this.teamVisibility.assertCanReadUser(query.userId, user, {

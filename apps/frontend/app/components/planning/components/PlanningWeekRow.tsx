@@ -27,6 +27,8 @@ type PlanningWeekRowProps = {
   absencesByDate: Record<string, Absence>;
   isLocked: (date: string) => boolean;
   isEditable: (date: string) => boolean;
+  /** Set under a project filter: the row holds that project's plans only. */
+  projectName?: string;
   onOpenDay: (row: Row, date: string) => void;
   onPlanPeriod: (row: Row) => void;
 };
@@ -87,6 +89,7 @@ export const PlanningWeekRow = ({
   absencesByDate,
   isLocked,
   isEditable,
+  projectName,
   onOpenDay,
   onPlanPeriod,
 }: PlanningWeekRowProps) => {
@@ -102,7 +105,9 @@ export const PlanningWeekRow = ({
   // Someone who left the team in view this week has no period to plan here;
   // their days before the move still open one by one.
   const hasMovedOut = row.moves.some((move) => move.direction === "out");
-  const overMinutes = Math.max(0, row.plannedMinutes - row.availableMinutes);
+  const overMinutes = projectName
+    ? 0
+    : Math.max(0, row.plannedMinutes - row.availableMinutes);
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -215,7 +220,8 @@ export const PlanningWeekRow = ({
         );
       })}
 
-      {/* The week against what is available, read as Team time reads a person's week. */}
+      {/* The week against what is available, read as Team time reads a person's
+          week; under a project filter only the project's hours, as there. */}
       <td className="p-3 align-top">
         <div className="flex flex-col items-end gap-1.5">
           <span className="text-xs whitespace-nowrap tabular-nums">
@@ -229,18 +235,22 @@ export const PlanningWeekRow = ({
             </span>
             <span className="text-muted-foreground">
               {" "}
-              of {formatDuration(row.availableMinutes)}
+              {projectName
+                ? `on ${projectName}`
+                : `of ${formatDuration(row.availableMinutes)}`}
             </span>
           </span>
 
-          <ReportBar
-            value={row.plannedMinutes}
-            reference={row.availableMinutes}
-            label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-            className="h-[5px] w-full max-w-32"
-          />
+          {!projectName && (
+            <ReportBar
+              value={row.plannedMinutes}
+              reference={row.availableMinutes}
+              label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
+              className="h-[5px] w-full max-w-32"
+            />
+          )}
 
-          {overMinutes > 0 && (
+          {!projectName && overMinutes > 0 && (
             <span
               title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
               className="text-2xs font-medium whitespace-nowrap text-warning-text"

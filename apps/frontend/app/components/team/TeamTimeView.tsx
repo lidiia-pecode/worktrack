@@ -37,7 +37,6 @@ import {
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import {
-  DEFAULT_TEAM_SORT,
   nextTeamSort,
   searchTeamRows,
   sortTeamRows,
@@ -103,9 +102,17 @@ export const TeamTimeView = ({
   } = useWorkSettings();
 
   const { weekStart, showWeekOf } = useShownWeek();
-  const { teamId, projectId, setFilters } = useTeamTimeFilters();
-  const [search, setSearch] = useState("");
-  const [sort, setSort] = useState(DEFAULT_TEAM_SORT);
+  const {
+    teamId,
+    projectId,
+    search: searchInAddress,
+    sort: sortInAddress,
+    setFilters,
+  } = useTeamTimeFilters();
+  // Kept here as typed and mirrored to the address, so a reload or a shared
+  // link brings them back.
+  const [search, setSearch] = useState(searchInAddress);
+  const [sort, setSort] = useState(sortInAddress);
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -146,6 +153,7 @@ export const TeamTimeView = ({
   const { items: plannedEntries } = usePlanningEntries({
     dateFrom,
     dateTo,
+    teamId,
     projectId,
   });
 
@@ -175,6 +183,7 @@ export const TeamTimeView = ({
   } = useAllAbsencesQuery({
     dateFrom,
     dateTo,
+    teamId,
   });
 
   const absencesByUser = useMemo(
@@ -306,12 +315,21 @@ export const TeamTimeView = ({
       ? absenceInAnotherTeam(fullName(absenceForm.user))
       : undefined;
 
-  const clearFilters = () => {
-    setFilters({ teamId: undefined, projectId: undefined });
-    setSearch("");
+  const changeSearch = (value: string) => {
+    setSearch(value);
+    setFilters({ search: value });
   };
 
-  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
+  const clearFilters = () => {
+    setSearch("");
+    setFilters({ teamId: undefined, projectId: undefined, search: "" });
+  };
+
+  const sortBy = (key: TeamSortKey) => {
+    const next = nextTeamSort(sort, key);
+    setSort(next);
+    setFilters({ sort: next });
+  };
 
   const retry = () => {
     void refetchSummary();
@@ -363,7 +381,7 @@ export const TeamTimeView = ({
             setFilters({ projectId: nextProjectId })
           }
           search={search}
-          onSearchChange={setSearch}
+          onSearchChange={changeSearch}
         />
       )}
 

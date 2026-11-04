@@ -14,4 +14,9 @@ export class AbsencesQuery extends PaginationQuery {
   @IsOptional()
   @IsUUID()
   userId?: string;
+
+  /** Only the absences of people in this team on the absence's days. */
+  @IsOptional()
+  @IsUUID()
+  teamId?: string;
 }

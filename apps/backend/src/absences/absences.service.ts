@@ -63,6 +63,13 @@ export class AbsencesService {
       .leftJoin('a.updatedBy', 'updatedBy')
       .addSelect(['updatedBy.id', 'updatedBy.firstName', 'updatedBy.lastName']);
     this.applyVisibilityFilter(qb, user);
+    this.teamVisibility.applyTeamMembershipFilter(
+      qb,
+      'a.user_id',
+      query.teamId,
+      user,
+      { startColumn: 'a.start_date', endColumn: 'a.end_date' },
+    );
 
     if (query.userId) {
       await this.teamVisibility.assertCanReadUser(query.userId, user, {

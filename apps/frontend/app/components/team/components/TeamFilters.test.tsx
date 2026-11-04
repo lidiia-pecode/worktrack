@@ -44,4 +44,23 @@ describe("TeamFilters", () => {
     );
     expect(onProjectChange).toHaveBeenCalledWith("p-legacy");
   });
+
+  it("lists active projects only when asked", async () => {
+    const user = userEvent.setup();
+    render(
+      <TeamFilters
+        onTeamChange={vi.fn()}
+        onProjectChange={vi.fn()}
+        activeProjectsOnly
+      />,
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "Project" }));
+
+    const options = await screen.findAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "All projects",
+      "Northwind",
+    ]);
+  });
 });
