@@ -1,3 +1,4 @@
+import { formatDayMonthLabel } from "@/lib/utils/date";
 import { nameOrCount } from "@/lib/utils/text";
 import { fullName, isDeactivatedUser } from "@/lib/utils/user";
 import { Team } from "@/types/Team";
@@ -14,12 +15,34 @@ export type MemberChange =
   | { kind: "role"; membership: MembershipWithUser; roleInTeam: TeamRole }
   | { kind: "remove"; membership: MembershipWithUser };
 
+/** How a team change's first day reads in a sentence. */
+export interface ChangeDayWords {
+  on: string;
+  before: string;
+  from: string;
+}
+
+const TODAY_WORDS: ChangeDayWords = {
+  on: "today",
+  before: "before today",
+  from: "From today",
+};
+
+export const changeDayWords = (date: string, today: string): ChangeDayWords => {
+  if (date === today) return TODAY_WORDS;
+
+  const day = formatDayMonthLabel(date);
+  return { on: `on ${day}`, before: `before ${day}`, from: `From ${day}` };
+};
+
 interface ChangeContext {
   isOwner: boolean;
   /** The person's other teams the viewer can see. */
   otherTeamsCount: number;
   /** The other team they are a member of, which making them a member here leaves. */
   otherMemberTeam?: UserTeam | null;
+  /** The day a removal takes effect, today by default. */
+  day?: ChangeDayWords;
 }
 
 // A deactivated manager already leaves the team without an active one.
@@ -32,7 +55,12 @@ const isOnlyActiveManager = (team: Team, membership: MembershipWithUser) =>
 export const memberChangeCopy = (
   change: MemberChange,
   team: Team,
-  { isOwner, otherTeamsCount, otherMemberTeam }: ChangeContext,
+  {
+    isOwner,
+    otherTeamsCount,
+    otherMemberTeam,
+    day = TODAY_WORDS,
+  }: ChangeContext,
 ) => {
   const name = fullName(change.membership.user);
   const leavesNoManager = isOnlyActiveManager(team, change.membership)
@@ -75,17 +103,17 @@ export const memberChangeCopy = (
     };
   }
 
-  // A team keeps its history: the days before today stay with it.
+  // A team keeps its history: the days before the removal stay with it.
   const removal = isOwner
     ? [
-        `${name} leaves ${team.name} today. Their records from before today stay with the team.`,
+        `${name} leaves ${team.name} ${day.on}. Their records from ${day.before} stay with the team.`,
         otherTeamsCount === 0 &&
-          "From today, only you can access their new records.",
+          `${day.from}, only you can access their new records.`,
       ]
     : [
-        `${name} leaves the team today. You can still access their records from before today.`,
+        `${name} leaves the team ${day.on}. You can still access their records from ${day.before}.`,
         otherTeamsCount === 0 &&
-          "From today, only the owner can access their new records.",
+          `${day.from}, only the owner can access their new records.`,
       ];
 
   return {

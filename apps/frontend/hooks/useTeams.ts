@@ -98,12 +98,16 @@ export const useTeamsMutations = createEntityMutations<
 export function useTeamMembers(teamId: string) {
   const queryClient = useQueryClient();
 
-  // A person's row, panel and picker entry name their team.
+  // A person's row, panel and picker entry name their team, and the team
+  // decides whose days a manager's Team time, Planning and Reports show.
   const invalidate = () =>
     [
       queryKeys.teams.all,
       queryKeys.users.all,
       queryKeys.users.assignable.all,
+      queryKeys.timelogs.all,
+      queryKeys.planning.all,
+      queryKeys.reporting.figures,
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
 
   const addMember = useMutation({
@@ -126,8 +130,13 @@ export function useTeamMembers(teamId: string) {
   });
 
   const removeMember = useMutation({
-    mutationFn: (membershipId: string) =>
-      TeamsClientApi.removeMember(teamId, membershipId),
+    mutationFn: ({
+      membershipId,
+      date,
+    }: {
+      membershipId: string;
+      date?: string;
+    }) => TeamsClientApi.removeMember(teamId, membershipId, date),
 
     onSuccess: invalidate,
   });

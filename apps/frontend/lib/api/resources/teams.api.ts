@@ -12,7 +12,7 @@ import {
   UpdateTeamPayload,
 } from "@/types/Team";
 
-import { createClient, createCrudClient } from "../core";
+import { buildQueryString, createClient, createCrudClient } from "../core";
 
 const crud = createCrudClient<
   Team,
@@ -40,8 +40,11 @@ export const TeamsClientApi = {
     data: UpdateTeamMemberPayload,
   ) => client.patch<TeamMembership>(`/${teamId}/members/${membershipId}`, data),
 
-  removeMember: (teamId: string, membershipId: string) =>
-    client.delete<void>(`/${teamId}/members/${membershipId}`),
+  /** `date` is the first day off the team, today unless given. */
+  removeMember: (teamId: string, membershipId: string, date?: string) =>
+    client.delete<void>(
+      `/${teamId}/members/${membershipId}${buildQueryString({ date })}`,
+    ),
 
   getArchiveImpact: (id: string) =>
     client.get<TeamArchiveImpact>(`/${id}/archive-impact`),

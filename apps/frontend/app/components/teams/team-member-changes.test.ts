@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 
-import { memberChangeCopy, pickerChangesCopy } from "./team-member-changes";
+import {
+  changeDayWords,
+  memberChangeCopy,
+  pickerChangesCopy,
+} from "./team-member-changes";
 import { MembershipWithUser } from "./team-memberships";
 
 const membership = (
@@ -128,6 +132,22 @@ describe("memberChangeCopy", () => {
 
     expect(copy.description).toBe(
       "John Clarke leaves the team today. You can still access their records from before today. From today, only the owner can access their new records.",
+    );
+  });
+
+  it("names the day a removal is dated back to", () => {
+    const copy = memberChangeCopy(
+      { kind: "remove", membership: john },
+      teamOf([emma, john]),
+      {
+        isOwner: true,
+        otherTeamsCount: 0,
+        day: changeDayWords("2026-11-03", "2026-11-05"),
+      },
+    );
+
+    expect(copy.description).toBe(
+      "John Clarke leaves Design on Nov 3. Their records from before Nov 3 stay with the team. From Nov 3, only you can access their new records.",
     );
   });
 

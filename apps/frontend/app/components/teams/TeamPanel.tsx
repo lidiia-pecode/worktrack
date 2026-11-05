@@ -273,7 +273,14 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       {changes.dialogs}
       <UserChangeTeamDialog
         user={movingMembership?.user ?? null}
-        currentTeam={{ id: team.id, name: team.name }}
+        currentTeam={
+          movingMembership && {
+            id: team.id,
+            name: team.name,
+            roleInTeam: movingMembership.roleInTeam,
+            joinedAt: movingMembership.joinedAt,
+          }
+        }
         onClose={() => setMovingMembership(null)}
       />
     </>
