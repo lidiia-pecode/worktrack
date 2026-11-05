@@ -32,6 +32,7 @@ import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { formatDay } from 'src/lib/utils/format-day.util';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
@@ -205,6 +206,7 @@ describe('PlanningService', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
     expectedHours = new ExpectedHoursService(

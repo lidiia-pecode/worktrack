@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ArrowRightLeft, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import {
   useCancelCapacityChange,
@@ -38,6 +37,7 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { Avatar } from "../shared/Avatar";
 import { ImpactDialog } from "../shared/ImpactDialog";
+import { ScheduledChange } from "../shared/ScheduledChange";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
@@ -117,25 +117,19 @@ const WorkingHours = ({
       </div>
 
       {upcoming && (
-        <div className="grid gap-0.5 rounded-md border border-border px-3 py-2">
-          <div className="flex min-h-6 items-center justify-between gap-2">
-            <span className="text-xs text-muted-foreground">
-              From {formatDayMonthYearLabel(upcoming.validFrom)}
-            </span>
-            {canCancelChanges && (
-              <Button
-                type="button"
-                variant="outline"
-                size="xs"
-                onClick={() => setIsCancelling(true)}
-                aria-label={`Cancel the change to ${hoursPerDay(upcoming.minutesPerWeek)} from ${formatDayMonthYearLabel(upcoming.validFrom)}`}
-              >
-                Cancel
-              </Button>
-            )}
-          </div>
-          <span>{dayAndWeek(upcoming.minutesPerWeek)}</span>
-        </div>
+        <ScheduledChange
+          validFrom={upcoming.validFrom}
+          cancel={
+            canCancelChanges
+              ? {
+                  label: `Cancel the change to ${hoursPerDay(upcoming.minutesPerWeek)} from ${formatDayMonthYearLabel(upcoming.validFrom)}`,
+                  onClick: () => setIsCancelling(true),
+                }
+              : undefined
+          }
+        >
+          {dayAndWeek(upcoming.minutesPerWeek)}
+        </ScheduledChange>
       )}
 
       {upcoming && (

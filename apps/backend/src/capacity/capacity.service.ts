@@ -16,21 +16,23 @@ import { ReportingService } from 'src/reporting/reporting.service';
 import { DaySpan } from 'src/teams/days-in-view.util';
 
 import { UserCapacity } from './entities/user-capacity.entity';
+import { CompanyStandardDay } from './entities/company-standard-day.entity';
 import { WORKING_DAYS_PER_WEEK, addDays, isoDateIn } from './working-days.util';
 
 export interface CapacityTimeline {
-  minutesPerWeekOn(date: string): number;
+  minutesPerWeekOn: (date: string) => number;
   /**
    * The person's working day on the date: a fifth of their week, the day both
    * expected hours and the planning limit count.
    */
-  minutesPerDayOn(date: string): number;
+  minutesPerDayOn: (date: string) => number;
 }
 
-/** What a day-by-day walk needs from the company, read in one query. */
+/** What a day-by-day walk needs from the company. */
 export interface CompanyCalendar {
   timezone: string;
-  defaultMinutesPerWeek: number;
+  /** The standard day on each date, for people without hours of their own. */
+  defaultTimeline: CapacityTimeline;
 }
 
 /** Deactivated from `from` up to the day before `until`; `until` is null while they still are. */
@@ -45,6 +47,17 @@ export interface ActiveDates {
 export interface CapacityChange {
   validFrom: string;
   minutesPerWeek: number;
+}
+
+export interface StandardDayChange {
+  validFrom: string;
+  hoursPerDay: number;
+}
+
+/** The company's standard day today, and the change scheduled after it. */
+export interface StandardDay {
+  hoursPerDay: number;
+  upcoming: StandardDayChange | null;
 }
 
 export interface CurrentCapacity {
@@ -67,27 +80,33 @@ export class CapacityService {
     private readonly userRepo: Repository<User>,
     @InjectRepository(UserInactivePeriod)
     private readonly inactivePeriodRepo: Repository<UserInactivePeriod>,
+    @InjectRepository(CompanyStandardDay)
+    private readonly standardDayRepo: Repository<CompanyStandardDay>,
     private readonly reportingService: ReportingService,
   ) {}
 
   async calendarFor(companyId: string): Promise<CompanyCalendar> {
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-      select: ['id', 'timezone', 'standardWorkHoursPerDay'],
-    });
+    const [company, changes] = await Promise.all([
+      this.companyRepo.findOne({
+        where: { id: companyId },
+        select: ['id', 'timezone', 'standardWorkHoursPerDay'],
+      }),
+      this.standardDayRepo.find({
+        where: { companyId },
+        order: { validFrom: 'ASC' },
+        select: ['validFrom', 'hoursPerDay'],
+      }),
+    ]);
 
     if (!company) throw new NotFoundException('Company not found');
 
     return {
       timezone: company.timezone,
-      defaultMinutesPerWeek:
-        Math.round(company.standardWorkHoursPerDay * 60) *
-        WORKING_DAYS_PER_WEEK,
+      defaultTimeline: standardDayTimeline(
+        company.standardWorkHoursPerDay,
+        changes,
+      ),
     };
-  }
-
-  async defaultMinutesPerWeek(companyId: string): Promise<number> {
-    return (await this.calendarFor(companyId)).defaultMinutesPerWeek;
   }
 
   /**
@@ -98,10 +117,10 @@ export class CapacityService {
     companyId: string,
     userIds: string[],
     until: string,
-    defaultMinutesPerWeek?: number,
+    defaultTimeline?: CapacityTimeline,
   ): Promise<Map<string, CapacityTimeline>> {
     const fallback =
-      defaultMinutesPerWeek ?? (await this.defaultMinutesPerWeek(companyId));
+      defaultTimeline ?? (await this.calendarFor(companyId)).defaultTimeline;
     const timelines = new Map<string, CapacityTimeline>();
 
     if (userIds.length === 0) return timelines;
@@ -124,7 +143,10 @@ export class CapacityService {
     }
 
     for (const userId of userIds) {
-      timelines.set(userId, buildTimeline(byUser.get(userId) ?? [], fallback));
+      timelines.set(
+        userId,
+        buildTimeline(byUser.get(userId) ?? [], fallback.minutesPerWeekOn),
+      );
     }
 
     return timelines;
@@ -272,9 +294,11 @@ export class CapacityService {
       };
     }
 
+    const { defaultTimeline } = await this.calendarFor(companyId);
+
     return {
       userId,
-      minutesPerWeek: await this.defaultMinutesPerWeek(companyId),
+      minutesPerWeek: defaultTimeline.minutesPerWeekOn(date),
       validFrom: null,
       isCompanyDefault: true,
       upcoming,
@@ -302,9 +326,9 @@ export class CapacityService {
       );
     }
 
-    const [today, defaultMinutesPerWeek] = await Promise.all([
+    const [today, { defaultTimeline }] = await Promise.all([
       this.today(companyId),
-      this.defaultMinutesPerWeek(companyId),
+      this.calendarFor(companyId),
     ]);
 
     // The lock check runs inside the write's transaction, so a Close at the
@@ -346,7 +370,7 @@ export class CapacityService {
       const next = rows.find((row) => row.validFrom > validFrom);
       const hoursBefore = buildTimeline(
         rows,
-        defaultMinutesPerWeek,
+        defaultTimeline.minutesPerWeekOn,
       ).minutesPerWeekOn(addDays(validFrom, -1));
 
       // Hours equal to the day before's are no change at all: nothing is
@@ -411,6 +435,149 @@ export class CapacityService {
     return this.currentFor(companyId, userId);
   }
 
+  async standardDayFor(companyId: string): Promise<StandardDay> {
+    const today = await this.today(companyId);
+    const [company, current, upcoming] = await Promise.all([
+      this.companyRepo.findOne({
+        where: { id: companyId },
+        select: ['id', 'standardWorkHoursPerDay'],
+      }),
+      this.standardDayRepo.findOne({
+        where: { companyId, validFrom: LessThanOrEqual(today) },
+        order: { validFrom: 'DESC' },
+      }),
+      this.standardDayRepo.findOne({
+        where: { companyId, validFrom: MoreThan(today) },
+        order: { validFrom: 'ASC' },
+      }),
+    ]);
+
+    if (!company) throw new NotFoundException('Company not found');
+
+    return {
+      hoursPerDay: current?.hoursPerDay ?? company.standardWorkHoursPerDay,
+      upcoming: upcoming
+        ? { validFrom: upcoming.validFrom, hoursPerDay: upcoming.hoursPerDay }
+        : null,
+    };
+  }
+
+  /**
+   * Sets the company's standard day from a date, the way a person's hours are
+   * set: earlier days keep theirs, a locked month can't change, and a date
+   * after today replaces the change already scheduled. Without a date it
+   * applies from the company's start, as the setup guide sets it.
+   */
+  async setStandardDay(
+    companyId: string,
+    hoursPerDay: number,
+    validFrom: string | null,
+    actorId: string,
+  ): Promise<StandardDay> {
+    const today = await this.today(companyId);
+
+    await this.repo.manager.transaction(async (manager) => {
+      // Saves queue on the company's row, so two can't both stay scheduled.
+      const company = await manager.findOne(Company, {
+        where: { id: companyId },
+        select: ['id', 'timezone', 'createdAt', 'standardWorkHoursPerDay'],
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!company) throw new NotFoundException('Company not found');
+
+      // Months before the company existed lock too, but expected nothing.
+      const from = validFrom ?? isoDateIn(company.createdAt, company.timezone);
+      const lockedUntil = await this.reportingService.latestLockedDate(
+        companyId,
+        manager,
+      );
+      if (from <= lockedUntil) {
+        throw new ForbiddenException(
+          `The standard day can't change from ${from}: months up to ${lockedUntil} are locked, and their expected hours would change.`,
+        );
+      }
+
+      if (validFrom !== null && validFrom > today) {
+        await manager.delete(CompanyStandardDay, {
+          companyId,
+          validFrom: MoreThan(today),
+        });
+      }
+
+      const changes = await manager.find(CompanyStandardDay, {
+        where: { companyId },
+        order: { validFrom: 'ASC' },
+      });
+      const next =
+        validFrom === null
+          ? changes[0]
+          : changes.find((change) => change.validFrom > validFrom);
+      const minutesPerWeek = minutesPerWeekOfDay(hoursPerDay);
+
+      if (validFrom === null) {
+        await manager.update(Company, companyId, {
+          standardWorkHoursPerDay: hoursPerDay,
+        });
+      } else {
+        const existing = changes.find(
+          (change) => change.validFrom === validFrom,
+        );
+        const before = standardDayTimeline(
+          company.standardWorkHoursPerDay,
+          changes,
+        ).minutesPerWeekOn(addDays(validFrom, -1));
+
+        // The same day as the one before is no change: nothing is saved, and
+        // a change already on that day is removed.
+        if (before === minutesPerWeek) {
+          if (existing) await manager.remove(existing);
+        } else if (existing) {
+          existing.hoursPerDay = hoursPerDay;
+          existing.createdById = actorId;
+          await manager.save(existing);
+        } else {
+          await manager.save(
+            manager.create(CompanyStandardDay, {
+              companyId,
+              validFrom,
+              hoursPerDay,
+              createdById: actorId,
+            }),
+          );
+        }
+      }
+
+      // A later change to this same day no longer changes anything.
+      if (next && minutesPerWeekOfDay(next.hoursPerDay) === minutesPerWeek) {
+        await manager.remove(next);
+      }
+    });
+
+    return this.standardDayFor(companyId);
+  }
+
+  /** Cancels the standard day's scheduled change; the day before it carries on. */
+  async cancelStandardDayChange(
+    companyId: string,
+    validFrom: string,
+  ): Promise<StandardDay> {
+    if (validFrom <= (await this.today(companyId))) {
+      throw new BadRequestException(
+        'Only a change that starts after today can be cancelled; set the standard day again to correct one in force.',
+      );
+    }
+
+    const { affected } = await this.standardDayRepo.delete({
+      companyId,
+      validFrom,
+    });
+    if (!affected) {
+      throw new NotFoundException('No standard-day change starts that day');
+    }
+
+    return this.standardDayFor(companyId);
+  }
+
   private async findUserInCompany(
     companyId: string,
     userId: string,
@@ -428,14 +595,14 @@ export class CapacityService {
 
 /**
  * The latest capacity change effective on the given date is used.
- * If there is no change yet, the company default is used.
+ * If there is no change yet, the fallback for that date is used.
  */
 function buildTimeline(
   rows: Pick<UserCapacity, 'validFrom' | 'minutesPerWeek'>[],
-  fallback: number,
+  fallback: (date: string) => number,
 ): CapacityTimeline {
   const minutesPerWeekOn = (date: string): number => {
-    let minutes = fallback;
+    let minutes = fallback(date);
 
     for (const row of rows) {
       if (row.validFrom > date) break;
@@ -449,4 +616,21 @@ function buildTimeline(
     minutesPerWeekOn,
     minutesPerDayOn: (date) => minutesPerWeekOn(date) / WORKING_DAYS_PER_WEEK,
   };
+}
+
+const minutesPerWeekOfDay = (hoursPerDay: number) =>
+  Math.round(hoursPerDay * 60) * WORKING_DAYS_PER_WEEK;
+
+/** The company's standard day as a week's minutes on each date. */
+function standardDayTimeline(
+  hoursFromStart: number,
+  changes: Pick<CompanyStandardDay, 'validFrom' | 'hoursPerDay'>[],
+): CapacityTimeline {
+  return buildTimeline(
+    changes.map(({ validFrom, hoursPerDay }) => ({
+      validFrom,
+      minutesPerWeek: minutesPerWeekOfDay(hoursPerDay),
+    })),
+    () => minutesPerWeekOfDay(hoursFromStart),
+  );
 }

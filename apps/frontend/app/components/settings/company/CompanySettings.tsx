@@ -13,17 +13,29 @@ import {
 } from "@/lib/forms/schemas/company.schema";
 
 import Input from "../../../../components/ui/input";
+import { ErrorState } from "../../shared/ErrorState";
 import { ImpactDialog } from "../../shared/ImpactDialog";
+import { LoadingState } from "../../shared/LoadingState";
+import { ScheduledChange } from "../../shared/ScheduledChange";
+import { DatePicker } from "../../shared/inputs";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 
-import { Company } from "@/types/Company";
+import { Company, StandardDayChange } from "@/types/Company";
 import { WeekDay } from "@/types/enums";
 import { WEEK_DAY_LABELS, WEEK_START_OPTIONS } from "@/lib/constants";
 import { findTimeZoneOption, toListedTimeZone } from "@/lib/utils/time-zones";
 import { NumberStepper } from "@/app/components/shared/inputs/NumberStepper";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useReportDirty } from "@/hooks/useReportDirty";
+import { useReportingPeriods } from "@/hooks/useReportingPeriods";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
+import {
+  formatDayMonthYearLabel,
+  formatDuration,
+  todayISODate,
+} from "@/lib/utils/date";
+import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
 import {
   MAX_WORK_DAY_HOURS,
   WORK_DAY_STEP_HOURS,
@@ -35,12 +47,18 @@ interface CompanySettingsProps {
 
 // The stored zone may be an old alias, so the form shows the listed one; a save
 // is compared with these values, so an untouched alias never counts as a change.
-const toFormValues = (company: Company): CompanyFormValues => ({
+const toFormValues = (company: Company, today: string): CompanyFormValues => ({
   companyName: company.companyName ?? "",
   timezone: toListedTimeZone(company.timezone) ?? company.timezone ?? "",
   weekStartDay: company.weekStartDay ?? WeekDay.MONDAY,
   standardWorkHoursPerDay: company.standardWorkHoursPerDay ?? 0,
+  standardWorkHoursFrom: today,
 });
+
+const hoursLabel = (hoursPerDay: number) => formatDuration(hoursPerDay * 60);
+
+const replacesNote = (change: StandardDayChange) =>
+  `Replaces the change to ${hoursLabel(change.hoursPerDay)} a day from ${formatDayMonthYearLabel(change.validFrom)}.`;
 
 interface SettingChange {
   title: string;
@@ -53,6 +71,7 @@ interface SettingChange {
 const changesToConfirm = (
   next: CompanyFormValues,
   saved: CompanyFormValues,
+  scheduled: StandardDayChange | null,
 ): SettingChange[] => {
   const changes: SettingChange[] = [];
 
@@ -77,22 +96,73 @@ const changesToConfirm = (
   }
 
   if (next.standardWorkHoursPerDay !== saved.standardWorkHoursPerDay) {
+    const hours = hoursLabel(next.standardWorkHoursPerDay);
+    const from = formatDayMonthYearLabel(next.standardWorkHoursFrom);
+    const replaces =
+      scheduled && next.standardWorkHoursFrom > saved.standardWorkHoursFrom
+        ? ` ${replacesNote(scheduled)}`
+        : "";
     changes.push({
-      title: `Change the standard day to ${next.standardWorkHoursPerDay}h?`,
-      label: `Standard day to ${next.standardWorkHoursPerDay}h`,
-      consequence:
-        "Expected hours are recalculated for everyone on the company's default hours, past and locked months included. Reports and the week views change with them.",
+      title: `Change the standard day to ${hours} from ${from}?`,
+      label: `Standard day to ${hours} from ${from}`,
+      consequence: `From ${from}, expected hours change for everyone on the company default; earlier days keep theirs.${replaces}`,
     });
   }
 
   return changes;
 };
 
+const SETTINGS_HEADER = (
+  <CardHeader
+    icon={Building2}
+    title="Company settings"
+    description="Manage your company's preferences."
+  />
+);
+
+/** The form waits for the company, so it never shows or saves empty values. */
 export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
-  const { company, actions } = useCompany();
+  const { company, query } = useCompany();
+
+  if (!company) {
+    return (
+      <Card>
+        {SETTINGS_HEADER}
+        <CardBody>
+          {query.isLoading ? (
+            <LoadingState size="compact" title="Loading company settings..." />
+          ) : (
+            <ErrorState
+              size="compact"
+              title="Could not load company settings"
+              onRetry={() => query.refetch()}
+            />
+          )}
+        </CardBody>
+      </Card>
+    );
+  }
+
+  return (
+    <CompanySettingsForm company={company} onDirtyChange={onDirtyChange} />
+  );
+};
+
+const CompanySettingsForm = ({
+  company,
+  onDirtyChange,
+}: CompanySettingsProps & { company: Company }) => {
+  const { actions } = useCompany();
+  const { timezone } = useWorkSettings();
+  const today = todayISODate(timezone);
+  // A change reaching into a locked month would rewrite what was expected then.
+  const { months } = useReportingPeriods();
+  const firstChangeableDay = firstDayAfterLockedMonths(months);
+  const scheduled = company.standardDayChange;
+  const [isCancellingScheduled, setIsCancellingScheduled] = useState(false);
 
   // A save that changes how days, weeks or hours count is held here until the
-  // owner confirms it, since it reaches everybody, locked months included.
+  // owner confirms it, since it reaches everybody.
   const [pendingSave, setPendingSave] = useState<{
     values: CompanyFormValues;
     changes: SettingChange[];
@@ -107,21 +177,14 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
     formState: { errors, isDirty, isSubmitting },
   } = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
-    defaultValues: {
-      companyName: "",
-      timezone: "",
-      weekStartDay: WeekDay.MONDAY,
-      standardWorkHoursPerDay: 0,
-    },
+    defaultValues: toFormValues(company, today),
   });
 
   useReportDirty(isDirty, onDirtyChange);
 
   useEffect(() => {
-    if (!company) return;
-
-    reset(toFormValues(company));
-  }, [company, reset]);
+    reset(toFormValues(company, today));
+  }, [company, today, reset]);
 
   const workHours =
     Number(useWatch({ control, name: "standardWorkHoursPerDay" })) || 0;
@@ -135,36 +198,78 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
     });
   };
 
+  const validFrom = useWatch({ control, name: "standardWorkHoursFrom" });
+  const replacesScheduled = scheduled && validFrom > today;
+
+  /** The company's own settings, then the standard day from its date. */
+  const save = async (data: CompanyFormValues) => {
+    const saved = toFormValues(company, today);
+    const { standardWorkHoursPerDay, standardWorkHoursFrom, ...settings } =
+      data;
+    const settingsChanged =
+      settings.companyName !== saved.companyName ||
+      settings.timezone !== saved.timezone ||
+      settings.weekStartDay !== saved.weekStartDay;
+    // A new date alone is a change too: it can replace or set back a scheduled change.
+    const standardDayChanged =
+      standardWorkHoursPerDay !== saved.standardWorkHoursPerDay ||
+      standardWorkHoursFrom !== today;
+
+    if (settingsChanged) await actions.update.mutateAsync(settings);
+    if (standardDayChanged) {
+      await actions.setStandardDay.mutateAsync({
+        hoursPerDay: standardWorkHoursPerDay,
+        validFrom: standardWorkHoursFrom,
+      });
+    }
+  };
+
   const onSubmit = async (data: CompanyFormValues) => {
-    const changes = company
-      ? changesToConfirm(data, toFormValues(company))
-      : [];
+    const changes = changesToConfirm(
+      data,
+      toFormValues(company, today),
+      scheduled,
+    );
     if (changes.length > 0) {
       setPendingSave({ values: data, changes });
       return;
     }
 
-    await actions.update.mutateAsync(data);
+    await save(data).catch(() => {
+      // Reported by the global mutation handler; the form keeps the edits.
+    });
   };
 
   // A failed save keeps the dialog open; the global handler shows the error.
-  const confirmPendingSave = () => {
+  const confirmPendingSave = async () => {
     if (!pendingSave) return;
 
-    actions.update.mutate(pendingSave.values, {
-      onSuccess: () => setPendingSave(null),
+    try {
+      await save(pendingSave.values);
+      setPendingSave(null);
+    } catch {
+      // Reported by the global mutation handler.
+    }
+  };
+
+  const confirmCancelScheduled = () => {
+    if (!scheduled) return;
+
+    actions.cancelStandardDayChange.mutate(scheduled.validFrom, {
+      onSuccess: () => setIsCancellingScheduled(false),
     });
   };
+
+  const isSaving =
+    isSubmitting ||
+    actions.update.isPending ||
+    actions.setStandardDay.isPending;
 
   const changes = pendingSave?.changes ?? [];
 
   return (
     <Card>
-      <CardHeader
-        icon={Building2}
-        title="Company settings"
-        description="Manage your company's preferences."
-      />
+      {SETTINGS_HEADER}
 
       <form onSubmit={handleSubmit(onSubmit)}>
         <CardBody className="space-y-8">
@@ -244,15 +349,45 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
                     />
                   }
                 />
-
-                {!errors.standardWorkHoursPerDay && (
-                  <p className="mt-1.5 text-xs text-muted-foreground">
-                    Changing it recalculates Expected hours for everyone on the
-                    company&apos;s default hours, past and locked months
-                    included.
-                  </p>
-                )}
               </div>
+
+              <Controller
+                control={control}
+                name="standardWorkHoursFrom"
+                render={({ field, fieldState }) => (
+                  <DatePicker
+                    value={field.value}
+                    onChange={field.onChange}
+                    minDate={firstChangeableDay}
+                    label="Applies from"
+                    description={
+                      replacesScheduled
+                        ? replacesNote(scheduled)
+                        : "Earlier days keep their hours."
+                    }
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
+
+              {scheduled && (
+                <div className="sm:col-span-2">
+                  <ScheduledChange
+                    validFrom={scheduled.validFrom}
+                    cancel={{
+                      label: `Cancel the change to ${hoursLabel(scheduled.hoursPerDay)} a day from ${formatDayMonthYearLabel(scheduled.validFrom)}`,
+                      onClick: () => setIsCancellingScheduled(true),
+                      // Cancelling reloads the form, so it waits for a save or discard.
+                      disabled: isDirty,
+                      title: isDirty
+                        ? "Save or discard your changes first"
+                        : undefined,
+                    }}
+                  >
+                    {hoursLabel(scheduled.hoursPerDay)} a day
+                  </ScheduledChange>
+                </div>
+              )}
             </div>
           </section>
         </CardBody>
@@ -262,7 +397,7 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
             type="submit"
             variant="primary"
             disabled={!isDirty}
-            isLoading={isSubmitting || actions.update.isPending}
+            isLoading={isSaving}
           >
             Save changes
           </Button>
@@ -292,8 +427,22 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
         confirmVariant="warning"
         onConfirm={confirmPendingSave}
         onClose={() => setPendingSave(null)}
-        loading={actions.update.isPending}
+        loading={isSaving}
       />
+
+      {scheduled && (
+        <ImpactDialog
+          isOpen={isCancellingScheduled}
+          title={`Cancel the change to ${hoursLabel(scheduled.hoursPerDay)} a day?`}
+          description={`From ${formatDayMonthYearLabel(scheduled.validFrom)} the standard day stays ${hoursLabel(company.standardWorkHoursPerDay)}.`}
+          cancelText="Keep it"
+          confirmText="Cancel change"
+          confirmVariant="warning"
+          onConfirm={confirmCancelScheduled}
+          onClose={() => setIsCancellingScheduled(false)}
+          loading={actions.cancelStandardDayChange.isPending}
+        />
+      )}
     </Card>
   );
 };

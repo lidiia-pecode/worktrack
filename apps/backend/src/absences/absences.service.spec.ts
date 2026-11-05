@@ -26,6 +26,7 @@ import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -153,6 +154,7 @@ describe('AbsencesService', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
 

@@ -17,6 +17,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TeamsService } from 'src/teams/teams.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -109,6 +110,7 @@ describe('UsersService scope', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
     service = new UsersService(
@@ -282,8 +284,10 @@ describe('UsersService scope', () => {
     it("gives an owner today's weekly capacity", async () => {
       const row = await rowOf(owner, member.id);
 
+      const { defaultTimeline } = await capacity.calendarFor(companyId);
+
       expect(row.weeklyMinutes).toBe(
-        await capacity.defaultMinutesPerWeek(companyId),
+        defaultTimeline.minutesPerWeekOn(todayISODate(TIME_ZONE)),
       );
     });
 

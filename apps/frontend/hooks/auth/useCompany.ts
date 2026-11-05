@@ -4,7 +4,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { CompaniesClientApi } from "@/lib/api/resources";
+import { Company } from "@/types/Company";
 import { queryKeys } from "../shared/queryKeys";
+import { useRefreshAfterCapacityChange } from "../useCapacity";
 
 interface UseCompanyOptions {
   /** For a form that shows a failed save itself, instead of the global toast. */
@@ -34,6 +36,26 @@ export function useCompany({
     ...(showsSaveErrorInline && { onError: () => {} }),
   });
 
+  // The standard day feeds everyone's Expected on the company default.
+  const refreshCapacity = useRefreshAfterCapacityChange();
+  const afterStandardDayChange = (company: Company, message: string) => {
+    queryClient.setQueryData(queryKeys.company.current, company);
+    refreshCapacity();
+    toast.success(message);
+  };
+
+  const setStandardDay = useMutation({
+    mutationFn: CompaniesClientApi.setStandardDay,
+    onSuccess: (company) =>
+      afterStandardDayChange(company, "Standard work day updated"),
+  });
+
+  const cancelStandardDayChange = useMutation({
+    mutationFn: CompaniesClientApi.cancelStandardDayChange,
+    onSuccess: (company) =>
+      afterStandardDayChange(company, "Standard work day change cancelled"),
+  });
+
   return {
     company: query.data ?? null,
 
@@ -48,6 +70,8 @@ export function useCompany({
 
     actions: {
       update,
+      setStandardDay,
+      cancelStandardDayChange,
     },
   };
 }

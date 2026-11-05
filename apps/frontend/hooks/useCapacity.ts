@@ -24,7 +24,7 @@ export function useUserCapacity(userId: string, enabled = true) {
 }
 
 /** Working hours feed Expected, Planning's limits and the Manage list's weekly hours. */
-const useRefreshAfterCapacityChange = () => {
+export const useRefreshAfterCapacityChange = () => {
   const queryClient = useQueryClient();
 
   return () =>

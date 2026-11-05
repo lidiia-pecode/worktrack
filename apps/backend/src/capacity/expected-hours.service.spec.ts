@@ -31,9 +31,10 @@ import {
 import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 
 import { UserCapacity } from './entities/user-capacity.entity';
+import { CompanyStandardDay } from './entities/company-standard-day.entity';
 import { CapacityService } from './capacity.service';
 import { ExpectedHoursService } from './expected-hours.service';
-import { todayISODate } from './working-days.util';
+import { addDays, todayISODate } from './working-days.util';
 
 /**
  * Runs against the development database, so it needs the Docker stack.
@@ -133,6 +134,7 @@ describe('ExpectedHoursService', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
 
@@ -745,6 +747,89 @@ describe('ExpectedHoursService', () => {
       await expect(
         capacity.setCapacity(companyId, stranger, 32 * 60, MONDAY, owner.id),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('the standard day changes from a date', () => {
+    const LOCKED_WEEK = ['2026-01-12', '2026-01-18'] as const;
+
+    afterEach(async () => {
+      await dataSource.getRepository(CompanyStandardDay).delete({ companyId });
+    });
+
+    it('applies from its date to people on the default, and leaves earlier days and own hours alone', async () => {
+      // 6h from the Wednesday: Monday and Tuesday keep 8h.
+      await capacity.setStandardDay(companyId, 6, '2026-02-11', owner.id);
+
+      await expect(expectedFor(fullTimer)).resolves.toBe(
+        2 * 8 * 60 + 3 * 6 * 60,
+      );
+      await expect(expectedFor(partTimer)).resolves.toBe(PART_WEEK);
+      await expect(expectedFor(fullTimer, ...LOCKED_WEEK)).resolves.toBe(
+        FULL_WEEK,
+      );
+    });
+
+    it('refuses a date in a locked month, and changes nothing', async () => {
+      await expect(
+        capacity.setStandardDay(companyId, 6, LOCKED_DATE, owner.id),
+      ).rejects.toThrow(ForbiddenException);
+
+      await expect(expectedFor(fullTimer, ...LOCKED_WEEK)).resolves.toBe(
+        FULL_WEEK,
+      );
+    });
+
+    // The setup guide sets the day from the company's start.
+    it("sets a new company's day from its start, but not once its months are locked", async () => {
+      const companies = dataSource.getRepository(Company);
+      const { createdAt } = await companies.findOneByOrFail({ id: companyId });
+
+      try {
+        await companies.update(companyId, {
+          createdAt: new Date(`${MONDAY}T09:00:00Z`),
+        });
+        await capacity.setStandardDay(companyId, 7, null, owner.id);
+        await expect(expectedFor(fullTimer)).resolves.toBe(5 * 7 * 60);
+
+        await companies.update(companyId, {
+          createdAt: LONG_STANDING_ACCOUNT_CREATED_AT,
+        });
+        await expect(
+          capacity.setStandardDay(companyId, 6, null, owner.id),
+        ).rejects.toThrow(ForbiddenException);
+      } finally {
+        await companies.update(companyId, {
+          createdAt,
+          standardWorkHoursPerDay: 8,
+        });
+      }
+    });
+
+    it('keeps one scheduled change, and cancels it back to the day before', async () => {
+      const today = todayISODate();
+      const inTenDays = addDays(today, 10);
+      const inTwentyDays = addDays(today, 20);
+      await capacity.setStandardDay(companyId, 6, inTenDays, owner.id);
+      await capacity.setStandardDay(companyId, 7, inTwentyDays, owner.id);
+
+      await expect(capacity.standardDayFor(companyId)).resolves.toEqual({
+        hoursPerDay: 8,
+        upcoming: { validFrom: inTwentyDays, hoursPerDay: 7 },
+      });
+      await expect(
+        capacity.cancelStandardDayChange(companyId, today),
+      ).rejects.toThrow(BadRequestException);
+
+      const after = await capacity.cancelStandardDayChange(
+        companyId,
+        inTwentyDays,
+      );
+
+      expect(after.upcoming).toBeNull();
+      await expect(
+        capacity.minutesPerWeekOn(companyId, fullTimer, inTwentyDays),
+      ).resolves.toBe(FULL_WEEK);
     });
   });
 

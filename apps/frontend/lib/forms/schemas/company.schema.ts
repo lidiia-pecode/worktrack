@@ -12,6 +12,10 @@ export const companySchema = z.object({
   weekStartDay: z.enum(WeekDay),
 
   standardWorkHoursPerDay: workDayHoursSchema(1),
+
+  standardWorkHoursFrom: z
+    .string()
+    .min(1, "Pick the day the change applies from"),
 });
 
 export type CompanyFormValues = z.infer<typeof companySchema>;

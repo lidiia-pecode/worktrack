@@ -8,6 +8,7 @@ import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.enti
 import { ReportingModule } from 'src/reporting/reporting.module';
 
 import { UserCapacity } from './entities/user-capacity.entity';
+import { CompanyStandardDay } from './entities/company-standard-day.entity';
 import { CapacityService } from './capacity.service';
 import { CapacityController } from './capacity.controller';
 import { ExpectedHoursService } from './expected-hours.service';
@@ -16,6 +17,7 @@ import { ExpectedHoursService } from './expected-hours.service';
   imports: [
     TypeOrmModule.forFeature([
       UserCapacity,
+      CompanyStandardDay,
       Company,
       Absence,
       User,
