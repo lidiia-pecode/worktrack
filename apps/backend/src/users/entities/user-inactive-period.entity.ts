@@ -11,9 +11,13 @@ import {
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from './user.entity';
 
-/** A finished deactivation spell; one still running is `User.deactivatedAt`. */
+/**
+ * A finished spell away: the days after `lastWorkingDay` and before
+ * `firstDayBack`. One still running is `User.lastWorkingDay`.
+ */
 @Entity('user_inactive_periods')
 @Check(`"reactivated_at" >= "deactivated_at"`)
+@Check(`"first_day_back" > "last_working_day"`)
 @Index('IDX_user_inactive_periods_company_user', ['companyId', 'userId'])
 export class UserInactivePeriod {
   @PrimaryGeneratedColumn('uuid')
@@ -38,6 +42,12 @@ export class UserInactivePeriod {
     nullable: false,
   })
   reactivatedAt!: Date;
+
+  @Column({ type: 'date', name: 'last_working_day', nullable: false })
+  lastWorkingDay!: string;
+
+  @Column({ type: 'date', name: 'first_day_back', nullable: false })
+  firstDayBack!: string;
 
   // ==========================================
   // RELATIONS

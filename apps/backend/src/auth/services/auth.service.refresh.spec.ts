@@ -11,6 +11,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { CapacityService } from 'src/capacity/capacity.service';
+import { ReportingService } from 'src/reporting/reporting.service';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
 import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 
@@ -136,6 +137,7 @@ describe('AuthService refresh', () => {
       teamVisibility,
       dataSource,
       stub<CapacityService>({}),
+      stub<ReportingService>({}),
     );
 
     jwt = new JwtService();

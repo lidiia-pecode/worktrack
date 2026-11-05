@@ -1,7 +1,7 @@
 import { Absence } from "@/types";
 import { AbsenceType } from "@/types/enums";
 
-import { addDays, formatDayMonthLabel, isWeekend, toISODate } from "./date";
+import { addDays, formatDayRangeLabel, isWeekend, toISODate } from "./date";
 
 export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",
@@ -16,11 +16,7 @@ export const ABSENCE_TYPE_SHORT_LABELS: Record<AbsenceType, string> = {
 };
 
 export function formatAbsenceRange(absence: Absence): string {
-  const start = formatDayMonthLabel(absence.startDate);
-
-  return absence.startDate === absence.endDate
-    ? start
-    : `${start} – ${formatDayMonthLabel(absence.endDate)}`;
+  return formatDayRangeLabel(absence.startDate, absence.endDate);
 }
 
 /**

@@ -53,8 +53,9 @@ const OTHER_SLUG = `timelog-write-other-${RUN}`;
 
 const DATE = '2026-02-10';
 const LOCKED_DATE = '2026-03-10';
-/** The day the deactivated person left; nothing can be recorded from it on. */
-const LEAVE_DAY = '2026-02-20';
+/** The deactivated person's last working day; nothing can be recorded after it. */
+const LAST_WORKING_DAY = '2026-02-19';
+const DAY_AFTER_LEAVING = '2026-02-20';
 
 describe('TimeLogsService write scope', () => {
   let dataSource: DataSource;
@@ -165,7 +166,7 @@ describe('TimeLogsService write scope', () => {
       UserStatus.DEACTIVATED,
     );
     await dataSource.getRepository(User).update(deactivated.id, {
-      deactivatedAt: new Date(`${LEAVE_DAY}T12:00:00Z`),
+      lastWorkingDay: LAST_WORKING_DAY,
     });
 
     const otherCompany = await dataSource
@@ -330,10 +331,10 @@ describe('TimeLogsService write scope', () => {
       expect(byManager.userId).toBe(deactivated.id);
     });
 
-    it('refuses time from the day a deactivated person left', async () => {
+    it("refuses time after a deactivated person's last working day", async () => {
       await expect(
-        service.create(logFor(deactivated.id, LEAVE_DAY), owner),
-      ).rejects.toThrow('had left by then');
+        service.create(logFor(deactivated.id, DAY_AFTER_LEAVING), owner),
+      ).rejects.toThrow(`last working day was ${LAST_WORKING_DAY}`);
       await expect(
         service.create(logFor(deactivated.id, '2026-02-25'), manager),
       ).rejects.toThrow(BadRequestException);
@@ -345,6 +346,8 @@ describe('TimeLogsService write scope', () => {
         userId: member.id,
         deactivatedAt: new Date('2026-02-02T12:00:00Z'),
         reactivatedAt: new Date('2026-02-05T12:00:00Z'),
+        lastWorkingDay: '2026-02-01',
+        firstDayBack: '2026-02-05',
       });
 
       try {
@@ -463,7 +466,7 @@ describe('TimeLogsService write scope', () => {
       ).resolves.toMatchObject({ minutes: 90 });
       // It can't be moved onto a day they were gone.
       await expect(
-        service.update(id, { date: LEAVE_DAY }, manager),
+        service.update(id, { date: DAY_AFTER_LEAVING }, manager),
       ).rejects.toThrow(BadRequestException);
       await expect(service.delete(id, manager)).resolves.toEqual({
         success: true,
@@ -1140,7 +1143,7 @@ describe('TimeLogsService write scope', () => {
       );
 
       expect(rowOf({ rows }, deactivated.id).closedSpells).toEqual([
-        { from: LEAVE_DAY, until: null, reason: 'inactive' },
+        { from: DAY_AFTER_LEAVING, until: null, reason: 'inactive' },
       ]);
     });
 

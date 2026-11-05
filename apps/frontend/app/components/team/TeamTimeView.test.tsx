@@ -105,7 +105,7 @@ const ALICE: TeamSummaryRow = {
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
-    deactivatedAt: null,
+    lastWorkingDay: null,
   },
   minutes: 300,
   billableMinutes: 300,

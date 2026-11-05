@@ -57,7 +57,7 @@ export type VisibleUser = Pick<
   | 'position'
   | 'avatarUrl'
   | 'status'
-  | 'deactivatedAt'
+  | 'lastWorkingDay'
   | 'role'
 >;
 
@@ -70,11 +70,8 @@ export interface VisibleUsersFilter {
    * on the filtered project.
    */
   includeUserIds?: string[];
-  /**
-   * Also the deactivated people who still had days to work in the view: they
-   * left after its first day, where the company is.
-   */
-  leftAfter?: { date: string; timezone: string };
+  /** Also the deactivated people still employed on this day: the view's first. */
+  stillEmployedOn?: string;
   /**
    * The view's days: a manager, and a team filter, keep the people in the
    * team on any of them. Without it, the people in it today.
@@ -338,7 +335,7 @@ export class TeamVisibilityService {
         'u.position',
         'u.avatarUrl',
         'u.status',
-        'u.deactivatedAt',
+        'u.lastWorkingDay',
         'u.role',
       ])
       .where('u.company_id = :companyId', { companyId: user.companyId });
@@ -391,14 +388,9 @@ export class TeamVisibilityService {
     if (hasIncludedUsers) {
       alsoListed.push('u.id IN (:...includeUserIds)');
     }
-    if (filter.leftAfter) {
-      alsoListed.push(
-        '(u.deactivated_at AT TIME ZONE :leftAfterTimezone)::date > :leftAfter',
-      );
-      qb.setParameters({
-        leftAfter: filter.leftAfter.date,
-        leftAfterTimezone: filter.leftAfter.timezone,
-      });
+    if (filter.stillEmployedOn) {
+      alsoListed.push('u.last_working_day >= :stillEmployedOn');
+      qb.setParameter('stillEmployedOn', filter.stillEmployedOn);
     }
     qb.andWhere(
       alsoListed.length

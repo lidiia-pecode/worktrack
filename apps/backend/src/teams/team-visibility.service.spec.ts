@@ -537,7 +537,7 @@ describe('TeamVisibilityService', () => {
 
     it('lists a deactivated person only when named or still employed on the first day', async () => {
       await dataSource.getRepository(User).update(deactivated.id, {
-        deactivatedAt: new Date('2026-02-20T12:00:00Z'),
+        lastWorkingDay: '2026-02-19',
       });
       const idsOf = async (filter: VisibleUsersFilter = {}) =>
         (await service.findVisibleUsers(owner, filter)).map((user) => user.id);
@@ -546,12 +546,12 @@ describe('TeamVisibilityService', () => {
       expect(await idsOf({ includeUserIds: [deactivated.id] })).toContain(
         deactivated.id,
       );
-      expect(
-        await idsOf({ leftAfter: { date: '2026-02-16', timezone: 'UTC' } }),
-      ).toContain(deactivated.id);
-      expect(
-        await idsOf({ leftAfter: { date: '2026-02-20', timezone: 'UTC' } }),
-      ).not.toContain(deactivated.id);
+      expect(await idsOf({ stillEmployedOn: '2026-02-19' })).toContain(
+        deactivated.id,
+      );
+      expect(await idsOf({ stillEmployedOn: '2026-02-20' })).not.toContain(
+        deactivated.id,
+      );
     });
   });
 

@@ -292,69 +292,58 @@ describe('ExpectedHoursService', () => {
     });
   });
 
-  describe('the day an account was deactivated', () => {
+  describe('the last working day', () => {
     const WEDNESDAY = '2026-02-11';
-    const TWO_WORKING_DAYS = (2 * FULL_WEEK) / 5;
+    const THREE_WORKING_DAYS = (3 * FULL_WEEK) / 5;
 
-    const deactivateOn = async (name: string, deactivatedAt: string | null) => {
+    const leaveAfter = async (name: string, lastWorkingDay: string | null) => {
       const userId = await createUser(name);
       await dataSource.getRepository(User).update(userId, {
         status: UserStatus.DEACTIVATED,
-        deactivatedAt: deactivatedAt ? new Date(deactivatedAt) : null,
+        lastWorkingDay,
       });
 
       return userId;
     };
 
-    it('expects nothing from the day somebody was deactivated', async () => {
-      const leaver = await deactivateOn('leaver', `${WEDNESDAY}T17:00:00Z`);
+    it('expects the last working day, and nothing after it', async () => {
+      const leaver = await leaveAfter('leaver', WEDNESDAY);
 
-      await expect(expectedFor(leaver)).resolves.toBe(TWO_WORKING_DAYS);
+      await expect(expectedFor(leaver)).resolves.toBe(THREE_WORKING_DAYS);
     });
 
-    it('expects the whole week of somebody deactivated the weekend after', async () => {
-      const leaver = await deactivateOn(
-        'weekend-leaver',
-        '2026-02-14T10:00:00Z',
-      );
+    it('expects the whole week of somebody whose last day was Friday', async () => {
+      const leaver = await leaveAfter('friday-leaver', FRIDAY);
 
       await expect(expectedFor(leaver)).resolves.toBe(FULL_WEEK);
     });
 
-    it("takes the deactivation day in the company's time zone", async () => {
-      // Late on Tuesday in UTC is already Wednesday in Kyiv.
-      const leaver = await deactivateOn('kyiv-leaver', '2026-02-10T23:30:00Z');
-      const companies = dataSource.getRepository(Company);
-
-      await companies.update(companyId, { timezone: 'Europe/Kyiv' });
-
-      try {
-        await expect(expectedFor(leaver)).resolves.toBe(TWO_WORKING_DAYS);
-      } finally {
-        await companies.update(companyId, { timezone: 'UTC' });
-      }
-    });
-
     it('still expects a person deactivated before the day was recorded', async () => {
-      const leaver = await deactivateOn('undated-leaver', null);
+      const leaver = await leaveAfter('undated-leaver', null);
 
       await expect(expectedFor(leaver)).resolves.toBe(FULL_WEEK);
     });
   });
 
-  describe('a spell somebody was deactivated for and came back from', () => {
-    const awayFor = (userId: string, from: string, until: string) =>
+  describe('a spell somebody was away for and came back from', () => {
+    const awayBetween = (
+      userId: string,
+      lastWorkingDay: string,
+      firstDayBack: string,
+    ) =>
       dataSource.getRepository(UserInactivePeriod).save({
         companyId,
         userId,
-        deactivatedAt: new Date(from),
-        reactivatedAt: new Date(until),
+        deactivatedAt: new Date(`${lastWorkingDay}T17:00:00Z`),
+        reactivatedAt: new Date(`${firstDayBack}T09:00:00Z`),
+        lastWorkingDay,
+        firstDayBack,
       });
 
-    it('expects nothing while they were away, and again from the day they came back', async () => {
+    it('expects nothing while they were away, and again from the first day back', async () => {
       const returner = await createUser('returner');
       // Away Tuesday and Wednesday, back on Thursday.
-      await awayFor(returner, '2026-02-10T09:00:00Z', '2026-02-12T08:00:00Z');
+      await awayBetween(returner, MONDAY, '2026-02-12');
 
       const expected = await service.expectedForUser(
         companyId,
@@ -370,10 +359,10 @@ describe('ExpectedHoursService', () => {
 
     it('skips a finished spell and the one still running after it', async () => {
       const leaver = await createUser('leaver-again');
-      await awayFor(leaver, '2026-02-09T09:00:00Z', '2026-02-10T09:00:00Z');
+      await awayBetween(leaver, '2026-02-08', '2026-02-10');
       await dataSource.getRepository(User).update(leaver, {
         status: UserStatus.DEACTIVATED,
-        deactivatedAt: new Date('2026-02-12T09:00:00Z'),
+        lastWorkingDay: '2026-02-11',
       });
 
       const expected = await service.expectedForUser(
@@ -390,7 +379,7 @@ describe('ExpectedHoursService', () => {
 
     it('counts no time off while they were away', async () => {
       const returner = await createUser('away-on-leave');
-      await awayFor(returner, '2026-02-10T09:00:00Z', '2026-02-12T09:00:00Z');
+      await awayBetween(returner, MONDAY, '2026-02-12');
       await setAbsence(returner, '2026-02-10', '2026-02-12');
 
       const availability = await service.availabilityToDateFor(
@@ -409,8 +398,8 @@ describe('ExpectedHoursService', () => {
 
     it('skips every spell, however many', async () => {
       const returner = await createUser('twice-returner');
-      await awayFor(returner, '2026-02-09T09:00:00Z', '2026-02-10T09:00:00Z');
-      await awayFor(returner, '2026-02-12T09:00:00Z', '2026-02-13T09:00:00Z');
+      await awayBetween(returner, '2026-02-08', '2026-02-10');
+      await awayBetween(returner, '2026-02-11', '2026-02-13');
 
       await expect(expectedFor(returner)).resolves.toBe((3 * FULL_WEEK) / 5);
     });

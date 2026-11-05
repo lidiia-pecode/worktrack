@@ -16,6 +16,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { UsersService } from 'src/users/users.service';
 import { CapacityService } from 'src/capacity/capacity.service';
+import { ReportingService } from 'src/reporting/reporting.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { InvitationEmailParams } from 'src/mail/templates/invitation.template';
 
@@ -151,6 +152,7 @@ describe('InvitationsService pending invitations', () => {
         teamVisibility,
         dataSource,
         stub<CapacityService>({}),
+        stub<ReportingService>({}),
       ),
       stub({ sendInvitationEmail }),
       stub({}),

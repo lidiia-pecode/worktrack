@@ -16,7 +16,7 @@ import { ReportingService } from 'src/reporting/reporting.service';
 import { DaySpan } from 'src/teams/days-in-view.util';
 
 import { UserCapacity } from './entities/user-capacity.entity';
-import { WORKING_DAYS_PER_WEEK, isoDateIn } from './working-days.util';
+import { WORKING_DAYS_PER_WEEK, addDays, isoDateIn } from './working-days.util';
 
 export interface CapacityTimeline {
   minutesPerWeekOn(date: string): number;
@@ -144,7 +144,8 @@ export class CapacityService {
   /**
    * The days each person can be expected to work, where the company is: from
    * the day their account was created, so someone who joins on a Wednesday is
-   * not behind for Monday and Tuesday, except while they were deactivated.
+   * not behind for Monday and Tuesday, except after a last working day until
+   * they came back.
    */
   async activeDatesFor(
     companyId: string,
@@ -158,11 +159,11 @@ export class CapacityService {
     const [users, inactivePeriods] = await Promise.all([
       this.userRepo.find({
         where: { companyId, id: In(userIds) },
-        select: ['id', 'createdAt', 'deactivatedAt'],
+        select: ['id', 'createdAt', 'status', 'lastWorkingDay'],
       }),
       this.inactivePeriodRepo.find({
         where: { companyId, userId: In(userIds) },
-        select: ['userId', 'deactivatedAt', 'reactivatedAt'],
+        select: ['userId', 'lastWorkingDay', 'firstDayBack'],
       }),
     ]);
 
@@ -170,12 +171,12 @@ export class CapacityService {
       const inactiveSpells: InactiveSpell[] = inactivePeriods
         .filter((period) => period.userId === user.id)
         .map((period) => ({
-          from: isoDateIn(period.deactivatedAt, timezone),
-          until: isoDateIn(period.reactivatedAt, timezone),
+          from: addDays(period.lastWorkingDay, 1),
+          until: period.firstDayBack,
         }));
-      if (user.deactivatedAt) {
+      if (user.status === UserStatus.DEACTIVATED && user.lastWorkingDay) {
         inactiveSpells.push({
-          from: isoDateIn(user.deactivatedAt, timezone),
+          from: addDays(user.lastWorkingDay, 1),
           until: null,
         });
       }
@@ -190,9 +191,9 @@ export class CapacityService {
   }
 
   /**
-   * Refuses time or an absence dated when the person was not employed: from
-   * the day they were deactivated on, or inside a spell they were deactivated
-   * for and came back from. Nothing is expected of those days, so a record
+   * Refuses time or an absence dated when the person was not employed: after
+   * their last working day, or inside a spell they were away for and came
+   * back from. Nothing is expected of those days, so a record
    * there is always a mistake. Days before they left stay open to correction.
    */
   async assertEmployedOn(
@@ -218,7 +219,7 @@ export class CapacityService {
 
     throw new BadRequestException(
       overlapping.until === null
-        ? `This person had left by then; nothing can be recorded from ${overlapping.from} on`
+        ? `This person's last working day was ${addDays(overlapping.from, -1)}; nothing can be recorded after it`
         : `This person was deactivated from ${overlapping.from} and back on ${overlapping.until}; nothing can be recorded in between`,
     );
   }

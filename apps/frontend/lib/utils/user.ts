@@ -1,11 +1,7 @@
 import { AvatarUser, ClosedSpell, TeamMove, User, UserName } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
-import {
-  formatDayMonthLabel,
-  formatDayMonthYearLabel,
-  isoDateInTimeZone,
-} from "./date";
+import { formatDayMonthLabel, formatDayMonthYearLabel } from "./date";
 
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
@@ -55,16 +51,9 @@ export const canArchiveProjects = (role?: string) => role === UserRole.OWNER;
 export const isDeactivatedUser = (user: { status?: UserStatus }) =>
   user.status === UserStatus.DEACTIVATED;
 
-/** The day they were deactivated in the company's time zone, such as "12 Oct 2026". */
-export const deactivatedOnLabel = (
-  user: Pick<User, "deactivatedAt">,
-  timeZone?: string,
-) =>
-  user.deactivatedAt
-    ? formatDayMonthYearLabel(
-        isoDateInTimeZone(new Date(user.deactivatedAt), timeZone),
-      )
-    : null;
+/** A deactivated person's last working day, such as "28 Aug 2026". */
+export const lastWorkingDayLabel = (user: Pick<User, "lastWorkingDay">) =>
+  user.lastWorkingDay ? formatDayMonthYearLabel(user.lastWorkingDay) : null;
 
 /** The closed spell a day falls in, as the API refuses it, if any. */
 export const closedSpellOn = (spells: ClosedSpell[], date: string) =>

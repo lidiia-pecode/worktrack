@@ -19,6 +19,8 @@ type DatePickerProps = {
   onChange: (date: string) => void;
   /** The earliest day that can be chosen, YYYY-MM-DD. */
   minDate?: string | null;
+  /** The latest day that can be chosen, YYYY-MM-DD. */
+  maxDate?: string | null;
   label?: string;
   description?: string;
   error?: string;
@@ -30,6 +32,7 @@ export const DatePicker = ({
   value,
   onChange,
   minDate,
+  maxDate,
   label,
   description,
   error,
@@ -70,6 +73,7 @@ export const DatePicker = ({
               selectionLabel="selected"
               autoFocusDate={day}
               minDate={minDate ? fromISODate(minDate) : undefined}
+              maxDate={maxDate ? fromISODate(maxDate) : undefined}
               onSelectDay={(picked) => {
                 onChange(toISODate(picked));
                 setOpen(false);

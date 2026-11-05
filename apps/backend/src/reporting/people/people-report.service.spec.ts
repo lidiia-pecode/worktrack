@@ -342,15 +342,15 @@ describe('PeopleReportService', () => {
     });
   });
 
-  it('lists a deactivated person only with logged time, expected up to the day they left, and never with missing days', async () => {
+  it('lists a deactivated person only with logged time, expected up to their last working day, and never with missing days', async () => {
     const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
     const plannedOnly = await createUser('Plannedonly', UserRole.EMPLOYEE);
     await dataSource
       .getRepository(User)
       .update([leaver.id, plannedOnly.id], { status: UserStatus.DEACTIVATED });
-    // Deactivated on Tuesday 10 March: six working days before it.
+    // Last working day Monday 9 March: six working days up to it.
     await dataSource.getRepository(User).update(leaver.id, {
-      deactivatedAt: new Date('2026-03-10T09:00:00Z'),
+      lastWorkingDay: '2026-03-09',
     });
     await dataSource.getRepository(TimeLog).save({
       companyId,
@@ -392,8 +392,10 @@ describe('PeopleReportService', () => {
     await dataSource.getRepository(UserInactivePeriod).save({
       companyId,
       userId: returner.id,
-      deactivatedAt: new Date('2026-03-10T09:00:00Z'),
+      deactivatedAt: new Date('2026-03-09T17:00:00Z'),
       reactivatedAt: new Date('2026-03-16T09:00:00Z'),
+      lastWorkingDay: '2026-03-09',
+      firstDayBack: '2026-03-16',
     });
     await dataSource.getRepository(TimeLog).save({
       companyId,

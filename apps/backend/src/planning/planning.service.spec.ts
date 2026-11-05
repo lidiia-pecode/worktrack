@@ -235,6 +235,7 @@ describe('PlanningService', () => {
         teamVisibility,
         dataSource,
         stub<CapacityService>({}),
+        stub<ReportingService>({}),
       ),
       teamVisibility,
       service,

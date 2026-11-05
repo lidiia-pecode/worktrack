@@ -6,7 +6,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, IsNull, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  MoreThan,
+  Repository,
+} from 'typeorm';
 import { UpdateUserPayload } from './dtos/user-payload.dto';
 import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { User } from './entities/user.entity';
@@ -26,8 +33,33 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { Absence } from 'src/absences/entities/absence.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
+import { ReportingService } from 'src/reporting/reporting.service';
+import {
+  addDays,
+  isoDateIn,
+  todayISODate,
+} from 'src/capacity/working-days.util';
+import { DeactivationImpactResponse } from './dtos/user-dates.dto';
 
 type UserTeam = Pick<Team, 'id' | 'name'>;
+
+interface RemovedTimeRaw {
+  entryCount: string;
+  minutes: string;
+  firstDate: string | null;
+  lastDate: string | null;
+}
+
+interface RemovedPlansRaw {
+  projectId: string;
+  projectName: string;
+  planCount: string;
+  firstDate: string;
+  lastDate: string;
+}
 
 type UserTeamMembership = UserTeam &
   Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
@@ -47,6 +79,7 @@ export class UsersService {
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
     private readonly capacity: CapacityService,
+    private readonly reporting: ReportingService,
   ) {}
 
   private getRepository(manager?: EntityManager): Repository<User> {
@@ -576,10 +609,16 @@ export class UsersService {
     }
   }
 
+  /**
+   * Deactivates someone after their last working day. Everything recorded
+   * after that day goes in the same transaction: time, plans, absences that
+   * start later, and the part of one that runs past it.
+   */
   async archive(
     id: string,
     currentUserId: string,
     companyId: string,
+    lastWorkingDay: string,
     manager?: EntityManager,
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
@@ -588,6 +627,9 @@ export class UsersService {
       }
 
       const repo = this.getRepository(man);
+      // The person first, as every write for them locks, so time saved for
+      // them at the same moment waits and is then refused or removed.
+      await this.lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.role === UserRole.OWNER) {
@@ -600,8 +642,14 @@ export class UsersService {
         throw new BadRequestException('User is already archived');
       }
 
+      await this.assertLastWorkingDay(man, user, lastWorkingDay);
+      await this.removeRecordsAfter(man, user.id, companyId, lastWorkingDay, {
+        actorId: currentUserId,
+      });
+
       user.status = UserStatus.DEACTIVATED;
       user.deactivatedAt = new Date();
+      user.lastWorkingDay = lastWorkingDay;
       const deactivated = await repo.save(user);
 
       // So a reactivated person signs in again rather than resuming an old session.
@@ -613,40 +661,243 @@ export class UsersService {
     return manager ? execute(manager) : this.dataSource.transaction(execute);
   }
 
+  /** What deactivating someone with this last working day would remove. */
+  async deactivationImpact(
+    id: string,
+    companyId: string,
+    lastWorkingDay: string,
+  ): Promise<DeactivationImpactResponse> {
+    await this.getUserById(id, companyId);
+    const after = { companyId, userId: id, lastWorkingDay };
+
+    const [time, absences, plans] = await Promise.all([
+      this.dataSource
+        .createQueryBuilder()
+        .select('COUNT(*)', 'entryCount')
+        .addSelect('COALESCE(SUM(t.minutes), 0)', 'minutes')
+        .addSelect(`TO_CHAR(MIN(t.date), 'YYYY-MM-DD')`, 'firstDate')
+        .addSelect(`TO_CHAR(MAX(t.date), 'YYYY-MM-DD')`, 'lastDate')
+        .from(TimeLog, 't')
+        .where('t.company_id = :companyId AND t.user_id = :userId', after)
+        .andWhere('t.date > :lastWorkingDay', after)
+        .getRawOne<RemovedTimeRaw>(),
+      this.dataSource.getRepository(Absence).find({
+        where: {
+          companyId,
+          userId: id,
+          endDate: MoreThan(lastWorkingDay),
+        },
+        order: { startDate: 'ASC' },
+      }),
+      this.dataSource
+        .createQueryBuilder()
+        .select('p.id', 'projectId')
+        .addSelect('p.name', 'projectName')
+        .addSelect('COUNT(*)', 'planCount')
+        .addSelect(`TO_CHAR(MIN(e.date), 'YYYY-MM-DD')`, 'firstDate')
+        .addSelect(`TO_CHAR(MAX(e.date), 'YYYY-MM-DD')`, 'lastDate')
+        .from(PlanningEntry, 'e')
+        .innerJoin('e.project', 'p')
+        .where('e.company_id = :companyId AND e.user_id = :userId', after)
+        .andWhere('e.date > :lastWorkingDay', after)
+        .groupBy('p.id')
+        .addGroupBy('p.name')
+        .orderBy('p.name', 'ASC')
+        .getRawMany<RemovedPlansRaw>(),
+    ]);
+
+    return {
+      time: {
+        entryCount: Number(time?.entryCount ?? 0),
+        minutes: Number(time?.minutes ?? 0),
+        firstDate: time?.firstDate ?? null,
+        lastDate: time?.lastDate ?? null,
+      },
+      absences: absences.map((absence) => ({
+        id: absence.id,
+        type: absence.type,
+        startDate: absence.startDate,
+        endDate: absence.endDate,
+        isCut: absence.startDate <= lastWorkingDay,
+      })),
+      plans: plans.map((row) => ({ ...row, planCount: Number(row.planCount) })),
+    };
+  }
+
+  /** Reactivates someone from their first day back; the days in between stay closed. */
   async unarchive(
     id: string,
     companyId: string,
+    firstDayBack: string,
     manager?: EntityManager,
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
       // So two reactivations at once can't both record the spell.
-      await repo.findOne({
-        where: { id, companyId },
-        lock: { mode: 'pessimistic_write' },
-      });
+      await this.lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.ACTIVE) {
         throw new BadRequestException('User is already active');
       }
 
-      if (user.deactivatedAt) {
+      await this.assertFirstDayBack(man, user, firstDayBack);
+
+      // Back the day after their last working day: no days were missed.
+      const missedDays =
+        user.lastWorkingDay && firstDayBack > addDays(user.lastWorkingDay, 1);
+      if (missedDays) {
         await man.save(
           man.create(UserInactivePeriod, {
             companyId,
             userId: user.id,
-            deactivatedAt: user.deactivatedAt,
+            deactivatedAt: user.deactivatedAt ?? new Date(),
             reactivatedAt: new Date(),
+            lastWorkingDay: user.lastWorkingDay!,
+            firstDayBack,
           }),
         );
       }
 
       user.status = UserStatus.ACTIVE;
       user.deactivatedAt = null;
+      user.lastWorkingDay = null;
       return repo.save(user);
     };
 
     return manager ? execute(manager) : this.dataSource.transaction(execute);
+  }
+
+  private async lockUser(
+    man: EntityManager,
+    id: string,
+    companyId: string,
+  ): Promise<void> {
+    await this.getRepository(man).findOne({
+      where: { id, companyId },
+      lock: { mode: 'pessimistic_write' },
+    });
+  }
+
+  /**
+   * Today or earlier, not before they joined or last came back, and the day
+   * after it in an open month, so nothing in a locked month changes.
+   */
+  private async assertLastWorkingDay(
+    man: EntityManager,
+    user: User,
+    lastWorkingDay: string,
+  ): Promise<void> {
+    const { timezone } = await this.capacity.calendarFor(user.companyId);
+    const today = todayISODate(timezone);
+    const joinedOn = isoDateIn(user.createdAt, timezone);
+
+    if (lastWorkingDay > today) {
+      throw new BadRequestException(
+        'The last working day cannot be after today.',
+      );
+    }
+    if (lastWorkingDay < joinedOn) {
+      throw new BadRequestException(
+        `The last working day cannot be before they joined, on ${joinedOn}.`,
+      );
+    }
+
+    const lastSpell = await man.getRepository(UserInactivePeriod).findOne({
+      where: { companyId: user.companyId, userId: user.id },
+      order: { firstDayBack: 'DESC' },
+    });
+    if (lastSpell && lastWorkingDay < lastSpell.firstDayBack) {
+      throw new BadRequestException(
+        `The last working day cannot be before they came back, on ${lastSpell.firstDayBack}.`,
+      );
+    }
+
+    await this.assertAfterLockedMonths(
+      man,
+      user.companyId,
+      addDays(lastWorkingDay, 1),
+      'The day after the last working day',
+    );
+  }
+
+  /** Today or earlier, after their last working day, in an open month. */
+  private async assertFirstDayBack(
+    man: EntityManager,
+    user: User,
+    firstDayBack: string,
+  ): Promise<void> {
+    const { timezone } = await this.capacity.calendarFor(user.companyId);
+
+    if (firstDayBack > todayISODate(timezone)) {
+      throw new BadRequestException(
+        'The first day back cannot be after today.',
+      );
+    }
+    if (user.lastWorkingDay && firstDayBack <= user.lastWorkingDay) {
+      throw new BadRequestException(
+        `The first day back must be after their last working day, ${user.lastWorkingDay}.`,
+      );
+    }
+
+    await this.assertAfterLockedMonths(
+      man,
+      user.companyId,
+      firstDayBack,
+      'The first day back',
+    );
+  }
+
+  /** The first day a change affects must be in an open month. */
+  private async assertAfterLockedMonths(
+    man: EntityManager,
+    companyId: string,
+    firstAffectedDay: string,
+    subject: string,
+  ): Promise<void> {
+    const lockedUntil = await this.reporting.latestLockedDate(companyId, man);
+
+    if (firstAffectedDay <= lockedUntil) {
+      throw new ForbiddenException(
+        `${subject} is in a locked month: periods are LOCKED up to ${lockedUntil}.`,
+      );
+    }
+  }
+
+  /** Nothing stays recorded after the last working day. */
+  private async removeRecordsAfter(
+    man: EntityManager,
+    userId: string,
+    companyId: string,
+    lastWorkingDay: string,
+    { actorId }: { actorId: string },
+  ): Promise<void> {
+    const after = { companyId, userId, lastWorkingDay };
+    const forThePerson = 'company_id = :companyId AND user_id = :userId';
+
+    for (const entity of [TimeLog, PlanningEntry]) {
+      await man
+        .createQueryBuilder()
+        .delete()
+        .from(entity)
+        .where(forThePerson, after)
+        .andWhere('date > :lastWorkingDay', after)
+        .execute();
+    }
+
+    await man
+      .createQueryBuilder()
+      .delete()
+      .from(Absence)
+      .where(forThePerson, after)
+      .andWhere('start_date > :lastWorkingDay', after)
+      .execute();
+    await man
+      .createQueryBuilder()
+      .update(Absence)
+      .set({ endDate: lastWorkingDay, updatedById: actorId })
+      .where(forThePerson, after)
+      .andWhere('end_date > :lastWorkingDay', after)
+      .execute();
   }
 }

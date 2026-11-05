@@ -20,7 +20,7 @@ const emma: User = {
   email: "emma@example.test",
   googleLinked: false,
   hasPassword: true,
-  deactivatedAt: null,
+  lastWorkingDay: null,
   createdAt: "2026-01-01",
   updatedAt: "2026-01-01",
 };
@@ -68,9 +68,30 @@ const teams: Record<string, Team> = {
   ]),
 };
 
+const NOTHING_AFTER = {
+  time: { entryCount: 0, minutes: 0, firstDate: null, lastDate: null },
+  absences: [],
+  plans: [],
+};
+
+const impact = vi.hoisted(() => ({
+  current: { data: undefined as unknown, isError: false },
+}));
+
 vi.mock("@/hooks/useUsers", () => ({
   useUserDetails: () => ({ data: details, isError: false }),
-  useUsersMutations: () => ({ archive: { mutate: vi.fn(), isPending: false } }),
+  useUserStatusMutations: () => ({
+    deactivate: { mutate: vi.fn(), isPending: false },
+  }),
+  useDeactivationImpact: () => impact.current,
+}));
+
+vi.mock("@/hooks/useWorkSettings", () => ({
+  useWorkSettings: () => ({ timezone: "UTC" }),
+}));
+
+vi.mock("@/hooks/useReportingPeriods", () => ({
+  useReportingPeriods: () => ({ months: [] }),
 }));
 
 vi.mock("@/hooks/useTeams", () => ({
@@ -82,15 +103,19 @@ vi.mock("@/hooks/useTeams", () => ({
 
 const panel = mockEntityPanel();
 
+const renderDialog = () =>
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <EntityPanelContext.Provider value={panel}>
+        <UserDeactivateDialog user={emma} onClose={vi.fn()} />
+      </EntityPanelContext.Provider>
+    </QueryClientProvider>,
+  );
+
 describe("UserDeactivateDialog", () => {
   it("names only the teams they manage alone, once those have loaded", async () => {
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <EntityPanelContext.Provider value={panel}>
-          <UserDeactivateDialog user={emma} onClose={vi.fn()} />
-        </EntityPanelContext.Provider>
-      </QueryClientProvider>,
-    );
+    impact.current = { data: NOTHING_AFTER, isError: false };
+    renderDialog();
 
     expect(await screen.findByRole("link", { name: "Design" })).toBeVisible();
     expect(
@@ -100,5 +125,15 @@ describe("UserDeactivateDialog", () => {
       screen.queryByRole("link", { name: "Research" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deactivate" })).toBeEnabled();
+  });
+
+  // Deactivating deletes what comes after the last day, so it waits until the
+  // dialog can say what that is.
+  it("can't deactivate until it knows what will be deleted", async () => {
+    impact.current = { data: undefined, isError: false };
+    renderDialog();
+
+    expect(await screen.findByRole("link", { name: "Design" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Deactivate" })).toBeDisabled();
   });
 });

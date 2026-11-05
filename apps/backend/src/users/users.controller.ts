@@ -25,6 +25,11 @@ import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UsersQuery } from './dtos/users-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { UserRole } from './enums/user-role.enum';
+import {
+  DeactivationImpactResponse,
+  FirstDayBackPayload,
+  LastWorkingDayPayload,
+} from './dtos/user-dates.dto';
 
 @Controller('users')
 @UseGuards(AccessGuard, RolesGuard)
@@ -101,13 +106,34 @@ export class UsersController {
   }
 
   @Role(UserRole.OWNER)
+  @Get(':id/deactivation-impact')
+  @Serialize(DeactivationImpactResponse)
+  async getDeactivationImpact(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query() query: LastWorkingDayPayload,
+  ): Promise<DeactivationImpactResponse> {
+    return this.usersService.deactivationImpact(
+      id,
+      authUser.companyId,
+      query.lastWorkingDay,
+    );
+  }
+
+  @Role(UserRole.OWNER)
   @Patch(':id/archive')
   @Serialize(UserResponse)
   async archive(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: LastWorkingDayPayload,
   ): Promise<User> {
-    return this.usersService.archive(id, authUser.id, authUser.companyId);
+    return this.usersService.archive(
+      id,
+      authUser.id,
+      authUser.companyId,
+      body.lastWorkingDay,
+    );
   }
 
   @Role(UserRole.OWNER)
@@ -116,7 +142,12 @@ export class UsersController {
   async unarchive(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: FirstDayBackPayload,
   ): Promise<User> {
-    return this.usersService.unarchive(id, authUser.companyId);
+    return this.usersService.unarchive(
+      id,
+      authUser.companyId,
+      body.firstDayBack,
+    );
   }
 }

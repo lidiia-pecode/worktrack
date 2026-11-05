@@ -30,7 +30,7 @@ const ALICE: PlanningWeekRow = {
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
-    deactivatedAt: null,
+    lastWorkingDay: null,
   },
   plannedMinutes: 0,
   availableMinutes: 2400,

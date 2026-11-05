@@ -27,9 +27,9 @@ export class TeamSummaryUserResponse {
   @Expose()
   status!: UserStatus;
 
-  /** When they were deactivated, so the grid knows which days came before. */
+  /** While deactivated, their last working day. */
   @Expose()
-  deactivatedAt!: Date | null;
+  lastWorkingDay!: string | null;
 }
 
 @Exclude()
