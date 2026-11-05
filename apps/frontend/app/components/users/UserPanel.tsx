@@ -136,7 +136,12 @@ const WorkingHours = ({
         <ImpactDialog
           isOpen={isCancelling}
           title={`Cancel the change to ${hoursPerDay(upcoming.minutesPerWeek)}?`}
-          description={`From ${formatDayMonthYearLabel(upcoming.validFrom)} ${user.firstName} keeps ${hoursPerDay(capacity.minutesPerWeek)}.`}
+          description={
+            // On the company default, the standard day may change by then.
+            capacity.isCompanyDefault
+              ? `From ${formatDayMonthYearLabel(upcoming.validFrom)} ${user.firstName} stays on the company's standard day.`
+              : `From ${formatDayMonthYearLabel(upcoming.validFrom)} ${user.firstName} keeps ${hoursPerDay(capacity.minutesPerWeek)}.`
+          }
           cancelText="Keep it"
           confirmText="Cancel change"
           confirmVariant="warning"

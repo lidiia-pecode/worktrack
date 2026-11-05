@@ -18,7 +18,6 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
-    lastWorkingDay: null,
   },
   minutes: 1920,
   billableMinutes: 1920,
@@ -128,7 +127,6 @@ describe("TeamWeekRow", () => {
         user: {
           ...row().user,
           status: UserStatus.DEACTIVATED,
-          lastWorkingDay: "2026-11-04",
         },
         closedSpells: [{ from: "2026-11-05", until: null, reason: "inactive" }],
       }),

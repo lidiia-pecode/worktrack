@@ -45,7 +45,9 @@ export const UserChangeTeamDialog = ({
   const { months } = useReportingPeriods();
   const today = todayISODate(timezone);
   const [selectedTeamId, setSelectedTeamId] = useState("");
-  const [date, setDate] = useState(today);
+  // Unset until picked, so the default is today when the dialog is used.
+  const [pickedDate, setPickedDate] = useState<string | null>(null);
+  const date = pickedDate ?? today;
 
   // In an open month, and not before they joined the company or the team they leave.
   const joinedCompanyOn = details.data
@@ -75,7 +77,7 @@ export const UserChangeTeamDialog = ({
 
   const close = () => {
     setSelectedTeamId("");
-    setDate(today);
+    setPickedDate(null);
     onClose();
   };
 
@@ -125,7 +127,7 @@ export const UserChangeTeamDialog = ({
           <DatePicker
             label={currentTeam ? "Moves on" : "Joins on"}
             value={date}
-            onChange={setDate}
+            onChange={setPickedDate}
             minDate={earliestDay}
             maxDate={today}
           />

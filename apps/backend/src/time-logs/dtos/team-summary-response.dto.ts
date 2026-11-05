@@ -26,10 +26,6 @@ export class TeamSummaryUserResponse {
 
   @Expose()
   status!: UserStatus;
-
-  /** While deactivated, their last working day. */
-  @Expose()
-  lastWorkingDay!: string | null;
 }
 
 @Exclude()

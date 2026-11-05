@@ -23,7 +23,6 @@ const row = (
     email: `${firstName.toLowerCase()}@example.com`,
     position,
     status: UserStatus.ACTIVE,
-    lastWorkingDay: null,
   },
   minutes,
   billableMinutes: minutes,

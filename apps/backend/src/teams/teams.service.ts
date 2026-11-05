@@ -11,7 +11,6 @@ import {
   EntityManager,
   In,
   IsNull,
-  MoreThan,
   Not,
   Repository,
 } from 'typeorm';
@@ -498,16 +497,19 @@ export class TeamsService {
           day,
         );
 
-        // One team at a time, back in time too.
-        const overlapping = await trxMembershipRepo.findOne({
-          where: {
-            companyId,
-            userId: dto.userId,
-            roleInTeam: TeamRole.MEMBER,
-            leftAt: MoreThan(day),
-          },
-          relations: ['team'],
-        });
+        // One team at a time, back in time too. A membership ended the day
+        // it began covers no day, so it overlaps nothing.
+        const overlapping = await trxMembershipRepo
+          .createQueryBuilder('membership')
+          .innerJoinAndSelect('membership.team', 'team')
+          .where('membership.company_id = :companyId', { companyId })
+          .andWhere('membership.user_id = :userId', { userId: dto.userId })
+          .andWhere('membership.role_in_team = :role', {
+            role: TeamRole.MEMBER,
+          })
+          .andWhere('membership.left_at > :day', { day })
+          .andWhere('membership.joined_at < membership.left_at')
+          .getOne();
         if (overlapping?.leftAt) {
           throw new ConflictException(
             `They were a member of "${overlapping.team.name}" until ${addDays(overlapping.leftAt, -1)}; pick a day after it`,
@@ -557,6 +559,12 @@ export class TeamsService {
       );
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
+      // Locked first, so a removal at the same moment can't be undone by the
+      // save below writing its row back open.
+      await trxMembershipRepo.findOne({
+        where: { id: membershipId, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const membership = await trxMembershipRepo.findOne({
         where: {
           id: membershipId,
@@ -645,6 +653,16 @@ export class TeamsService {
       }
 
       const day = await this.changeDay(manager, companyId, date);
+      // Dating a removal back also takes those days from the team's other
+      // managers, so it is the owner's; a manager removes from today.
+      if (
+        user.role !== UserRole.OWNER &&
+        day !== (await findCompanyToday(manager, companyId))
+      ) {
+        throw new ForbiddenException(
+          'Only the owner can date a removal before today',
+        );
+      }
       if (day < membership.joinedAt) {
         throw new BadRequestException(
           `They joined the team on ${membership.joinedAt}; the removal can't be dated before it`,

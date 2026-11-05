@@ -28,9 +28,9 @@ interface TeamMemberRemoveDialogProps {
 }
 
 /**
- * Removes someone from a team from a day up to today, from the team's panel
- * or the person's: it says whether the team is left without a manager and
- * whether the viewer stops seeing them.
+ * Removes someone from a team, from the team's panel or the person's: it says
+ * whether the team is left without a manager and whether the viewer stops
+ * seeing them. The owner may date it back; a manager removes from today.
  */
 export const TeamMemberRemoveDialog = ({
   removal,
@@ -43,7 +43,10 @@ export const TeamMemberRemoveDialog = ({
   const { timezone } = useWorkSettings();
   const { months } = useReportingPeriods();
   const today = todayISODate(timezone);
-  const [date, setDate] = useState(today);
+  const isOwner = viewer?.role === UserRole.OWNER;
+  // Unset until picked, so the default is today when the dialog is used.
+  const [pickedDate, setPickedDate] = useState<string | null>(null);
+  const date = pickedDate ?? today;
 
   const membership =
     team.data &&
@@ -55,7 +58,7 @@ export const TeamMemberRemoveDialog = ({
     membership &&
     person.data &&
     memberChangeCopy({ kind: "remove", membership }, team.data, {
-      isOwner: viewer?.role === UserRole.OWNER,
+      isOwner,
       otherTeamsCount: person.data.teams.filter(
         ({ id }) => id !== removal?.teamId,
       ).length,
@@ -63,7 +66,7 @@ export const TeamMemberRemoveDialog = ({
     });
 
   const close = () => {
-    setDate(today);
+    setPickedDate(null);
     onClose();
   };
 
@@ -77,24 +80,26 @@ export const TeamMemberRemoveDialog = ({
           : (copy?.description ?? "Checking their teams...")
       }
       choice={
-        <DatePicker
-          label="Leaves the team on"
-          value={date}
-          onChange={setDate}
-          // In an open month, and not before they joined the team.
-          minDate={laterISODate(
-            firstDayAfterLockedMonths(months),
-            membership?.joinedAt ?? null,
-          )}
-          maxDate={today}
-        />
+        isOwner && (
+          <DatePicker
+            label="Leaves the team on"
+            value={date}
+            onChange={setPickedDate}
+            // In an open month, and not before they joined the team.
+            minDate={laterISODate(
+              firstDayAfterLockedMonths(months),
+              membership?.joinedAt ?? null,
+            )}
+            maxDate={today}
+          />
+        )
       }
       confirmText="Remove"
       confirmVariant={copy?.confirmVariant ?? "warning"}
       onConfirm={() =>
         membership &&
         removeMember.mutate(
-          { membershipId: membership.id, date },
+          { membershipId: membership.id, date: isOwner ? date : undefined },
           { onSuccess: close },
         )
       }

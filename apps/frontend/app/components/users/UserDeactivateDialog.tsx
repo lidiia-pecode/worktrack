@@ -139,7 +139,9 @@ export const UserDeactivateDialog = ({
   const { timezone } = useWorkSettings();
   const { months } = useReportingPeriods();
   const today = todayISODate(timezone);
-  const [lastWorkingDay, setLastWorkingDay] = useState(today);
+  // Unset until picked, so the default is today when the dialog is used.
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const lastWorkingDay = pickedDay ?? today;
   const impact = useDeactivationImpact(user?.id ?? "", lastWorkingDay);
 
   // Not before they joined, and the day after it in an open month.
@@ -170,7 +172,7 @@ export const UserDeactivateDialog = ({
     Boolean(impact.data);
 
   const close = () => {
-    setLastWorkingDay(today);
+    setPickedDay(null);
     onClose();
   };
 
@@ -217,7 +219,7 @@ export const UserDeactivateDialog = ({
           <DatePicker
             label="Last working day"
             value={lastWorkingDay}
-            onChange={setLastWorkingDay}
+            onChange={setPickedDay}
             minDate={earliestDay}
             maxDate={today}
           />

@@ -468,8 +468,7 @@ export class PeopleReportService {
 
   /**
    * The same people the team grid lists, plus deactivated people with logged
-   * time in the range. A plan alone, often left over from before they left,
-   * doesn't list them. An owner is listed only with logged or planned time:
+   * time in the range; a plan alone doesn't list them. An owner is listed only with logged or planned time:
    * owners often don't track their own, but a plan made for them is part of
    * the month's plan (Decision 27, refined by Decision 44).
    */

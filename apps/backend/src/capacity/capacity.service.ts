@@ -326,10 +326,7 @@ export class CapacityService {
       );
     }
 
-    const [today, { defaultTimeline }] = await Promise.all([
-      this.today(companyId),
-      this.calendarFor(companyId),
-    ]);
+    const today = await this.today(companyId);
 
     // The lock check runs inside the write's transaction, so a Close at the
     // same moment waits for it (see ReportingService.isRangeLocked).
@@ -341,7 +338,7 @@ export class CapacityService {
         manager,
       );
 
-      if (lockedUntil && validFrom <= lockedUntil) {
+      if (validFrom <= lockedUntil) {
         throw new ForbiddenException(
           `Cannot change capacity from ${validFrom}: periods are LOCKED up to ${lockedUntil}, and the change would alter what was expected then.`,
         );
@@ -368,14 +365,13 @@ export class CapacityService {
       });
       const existing = rows.find((row) => row.validFrom === validFrom);
       const next = rows.find((row) => row.validFrom > validFrom);
-      const hoursBefore = buildTimeline(
-        rows,
-        defaultTimeline.minutesPerWeekOn,
-      ).minutesPerWeekOn(addDays(validFrom, -1));
+      const ownBefore = rows.findLast((row) => row.validFrom < validFrom);
 
-      // Hours equal to the day before's are no change at all: nothing is
-      // saved, and a change already on that day is removed.
-      if (hoursBefore === minutesPerWeek) {
+      // The same hours as their own before are no change: nothing is saved,
+      // and a change already on that day is removed. Someone on the company's
+      // standard day always gets their own row, since the standard day can
+      // change from a date of its own.
+      if (ownBefore?.minutesPerWeek === minutesPerWeek) {
         if (existing) await manager.remove(existing);
       } else if (existing) {
         existing.minutesPerWeek = minutesPerWeek;
@@ -481,7 +477,9 @@ export class CapacityService {
       const company = await manager.findOne(Company, {
         where: { id: companyId },
         select: ['id', 'timezone', 'createdAt', 'standardWorkHoursPerDay'],
-        lock: { mode: 'pessimistic_write' },
+        // Not FOR UPDATE, which would also hold up every time log or plan
+        // that points at the company until this save ends.
+        lock: { mode: 'for_no_key_update' },
       });
       if (!company) throw new NotFoundException('Company not found');
 

@@ -662,7 +662,7 @@ export class ReportingService {
    * Planned minutes over the same days and people as the Hours report, summed
    * by its grouping, which uses only projects and people. A deactivated
    * person's plan counts only when they logged time in the range, as in the
-   * People report: a plan alone is usually left over from before they left.
+   * People report.
    */
   private plannedRows(
     user: AuthUser,

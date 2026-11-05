@@ -20,19 +20,27 @@ export interface ChangeDayWords {
   on: string;
   before: string;
   from: string;
+  /** From today only records still to come move; from an earlier day, those already made too. */
+  records: string;
 }
 
 const TODAY_WORDS: ChangeDayWords = {
   on: "today",
   before: "before today",
   from: "From today",
+  records: "their new records",
 };
 
 export const changeDayWords = (date: string, today: string): ChangeDayWords => {
   if (date === today) return TODAY_WORDS;
 
   const day = formatDayMonthLabel(date);
-  return { on: `on ${day}`, before: `before ${day}`, from: `From ${day}` };
+  return {
+    on: `on ${day}`,
+    before: `before ${day}`,
+    from: `From ${day}`,
+    records: "their records",
+  };
 };
 
 interface ChangeContext {
@@ -108,12 +116,12 @@ export const memberChangeCopy = (
     ? [
         `${name} leaves ${team.name} ${day.on}. Their records from ${day.before} stay with the team.`,
         otherTeamsCount === 0 &&
-          `${day.from}, only you can access their new records.`,
+          `${day.from}, only you can access ${day.records}.`,
       ]
     : [
         `${name} leaves the team ${day.on}. You can still access their records from ${day.before}.`,
         otherTeamsCount === 0 &&
-          `${day.from}, only the owner can access their new records.`,
+          `${day.from}, only the owner can access ${day.records}.`,
       ];
 
   return {

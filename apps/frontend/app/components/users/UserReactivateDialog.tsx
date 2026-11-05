@@ -52,7 +52,9 @@ export const UserReactivateDialog = ({
   const { timezone } = useWorkSettings();
   const { months } = useReportingPeriods();
   const today = todayISODate(timezone);
-  const [firstDayBack, setFirstDayBack] = useState(today);
+  // Unset until picked, so the default is today when the dialog is used.
+  const [pickedDay, setPickedDay] = useState<string | null>(null);
+  const firstDayBack = pickedDay ?? today;
 
   const lastWorkingDay = user?.lastWorkingDay ?? null;
   // The first day back comes after the last working day, so not before tomorrow.
@@ -70,7 +72,7 @@ export const UserReactivateDialog = ({
   );
 
   const close = () => {
-    setFirstDayBack(today);
+    setPickedDay(null);
     onClose();
   };
 
@@ -112,7 +114,7 @@ export const UserReactivateDialog = ({
           <DatePicker
             label="First day back"
             value={firstDayBack}
-            onChange={setFirstDayBack}
+            onChange={setPickedDay}
             minDate={earliestDay}
             maxDate={today}
             description={

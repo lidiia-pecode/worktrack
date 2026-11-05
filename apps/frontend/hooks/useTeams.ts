@@ -106,6 +106,7 @@ export function useTeamMembers(teamId: string) {
       queryKeys.users.all,
       queryKeys.users.assignable.all,
       queryKeys.timelogs.all,
+      queryKeys.absences.all,
       queryKeys.planning.all,
       queryKeys.reporting.figures,
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));

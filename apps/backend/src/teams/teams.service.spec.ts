@@ -611,17 +611,35 @@ describe('TeamsService', () => {
       );
     });
 
-    it("lets a manager date a member's removal back", async () => {
+    it('ignores a membership that ended the day it began', async () => {
+      // Added by mistake and removed the same day: no day was spent there.
+      await membershipOf(alpha, TODAY, TODAY);
+
+      await expect(
+        addAsMember(beta, { date: THREE_DAYS_AGO }),
+      ).resolves.toMatchObject({ joinedAt: THREE_DAYS_AGO });
+    });
+
+    it('lets only the owner date a removal back', async () => {
       const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.removeMember(
+          membershipId,
+          companyId,
+          alpha,
+          alphaManager,
+          THREE_DAYS_AGO,
+        ),
+      ).rejects.toThrow(ForbiddenException);
 
       await service.removeMember(
         membershipId,
         companyId,
         alpha,
-        alphaManager,
+        owner,
         THREE_DAYS_AGO,
       );
-
       await expect(
         dataSource
           .getRepository(TeamMembership)

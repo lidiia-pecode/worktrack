@@ -80,6 +80,7 @@ const JACK = 'jack.wilson@worktrack.test';
 const ELLA = 'ella.bailey@worktrack.test';
 const NATHAN = 'nathan.cole@worktrack.test';
 const ISLA = 'isla.robinson@worktrack.test';
+const ISLA_LAST_WORKING_DAY = '2026-08-28';
 const RACHEL = 'rachel.dawson@worktrack.test';
 const LEO = 'leo.harrison@worktrack.test';
 const ZOE = 'zoe.palmer@worktrack.test';
@@ -379,7 +380,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Robinson',
     role: UserRole.EMPLOYEE,
     status: UserStatus.DEACTIVATED,
-    lastWorkingDay: '2026-08-28',
+    lastWorkingDay: ISLA_LAST_WORKING_DAY,
     position: 'Compliance Analyst',
     capacityHoursPerWeek: 40,
     note: 'Left at the end of August: time in July and August only.',
@@ -1701,7 +1702,7 @@ export const REPORT_HISTORY: SeedHistory[] = [
       },
     ],
     plan: [{ project: 'Security Audit 2026', minutes: 480 }],
-    leftOn: '2026-08-28',
+    leftOn: ISLA_LAST_WORKING_DAY,
   },
   {
     email: RACHEL,

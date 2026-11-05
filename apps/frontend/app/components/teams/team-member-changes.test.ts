@@ -147,7 +147,7 @@ describe("memberChangeCopy", () => {
     );
 
     expect(copy.description).toBe(
-      "John Clarke leaves Design on Nov 3. Their records from before Nov 3 stay with the team. From Nov 3, only you can access their new records.",
+      "John Clarke leaves Design on Nov 3. Their records from before Nov 3 stay with the team. From Nov 3, only you can access their records.",
     );
   });
 

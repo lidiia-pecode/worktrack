@@ -806,6 +806,24 @@ describe('ExpectedHoursService', () => {
       }
     });
 
+    // Their hours would otherwise follow the standard day's own change.
+    it('keeps someone on the standard day at the hours they are given', async () => {
+      const inTenDays = addDays(todayISODate(), 10);
+      await capacity.setStandardDay(companyId, 7, inTenDays, owner.id);
+
+      await capacity.setCapacity(
+        companyId,
+        fullTimer,
+        FULL_WEEK,
+        inTenDays,
+        owner.id,
+      );
+
+      await expect(
+        capacity.minutesPerWeekOn(companyId, fullTimer, inTenDays),
+      ).resolves.toBe(FULL_WEEK);
+    });
+
     it('keeps one scheduled change, and cancels it back to the day before', async () => {
       const today = todayISODate();
       const inTenDays = addDays(today, 10);

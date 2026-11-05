@@ -1023,12 +1023,14 @@ describe('UsersService scope', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('removes a scheduled change when its day is set back to the hours before', async () => {
+    it('removes a scheduled change when its day is set back to their own hours before', async () => {
       const person = await createUser('setback', UserRole.EMPLOYEE);
-      const before = await capacity.minutesPerWeekOn(
+      await capacity.setCapacity(
         companyId,
         person.id,
-        inTenDays,
+        DAY_OF_SEVEN_HOURS,
+        today,
+        owner.id,
       );
       await capacity.setCapacity(
         companyId,
@@ -1041,26 +1043,7 @@ describe('UsersService scope', () => {
       const result = await capacity.setCapacity(
         companyId,
         person.id,
-        before,
-        inTenDays,
-        owner.id,
-      );
-
-      expect(result.upcoming).toBeNull();
-    });
-
-    it('saves nothing when the hours are already in force on that day', async () => {
-      const person = await createUser('unchanged', UserRole.EMPLOYEE);
-      const inForce = await capacity.minutesPerWeekOn(
-        companyId,
-        person.id,
-        inTenDays,
-      );
-
-      const result = await capacity.setCapacity(
-        companyId,
-        person.id,
-        inForce,
+        DAY_OF_SEVEN_HOURS,
         inTenDays,
         owner.id,
       );

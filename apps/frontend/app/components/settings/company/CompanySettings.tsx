@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Building2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -95,7 +95,11 @@ const changesToConfirm = (
     });
   }
 
-  if (next.standardWorkHoursPerDay !== saved.standardWorkHoursPerDay) {
+  // A new date alone moves the standard day too, or replaces a scheduled change.
+  if (
+    next.standardWorkHoursPerDay !== saved.standardWorkHoursPerDay ||
+    next.standardWorkHoursFrom !== saved.standardWorkHoursFrom
+  ) {
     const hours = hoursLabel(next.standardWorkHoursPerDay);
     const from = formatDayMonthYearLabel(next.standardWorkHoursFrom);
     const replaces =
@@ -182,10 +186,6 @@ const CompanySettingsForm = ({
 
   useReportDirty(isDirty, onDirtyChange);
 
-  useEffect(() => {
-    reset(toFormValues(company, today));
-  }, [company, today, reset]);
-
   const workHours =
     Number(useWatch({ control, name: "standardWorkHoursPerDay" })) || 0;
 
@@ -201,7 +201,10 @@ const CompanySettingsForm = ({
   const validFrom = useWatch({ control, name: "standardWorkHoursFrom" });
   const replacesScheduled = scheduled && validFrom > today;
 
-  /** The company's own settings, then the standard day from its date. */
+  /**
+   * The company's own settings, then the standard day from its date. The form
+   * resets once both are saved, so a failure in between keeps the edits.
+   */
   const save = async (data: CompanyFormValues) => {
     const saved = toFormValues(company, today);
     const { standardWorkHoursPerDay, standardWorkHoursFrom, ...settings } =
@@ -215,13 +218,15 @@ const CompanySettingsForm = ({
       standardWorkHoursPerDay !== saved.standardWorkHoursPerDay ||
       standardWorkHoursFrom !== today;
 
-    if (settingsChanged) await actions.update.mutateAsync(settings);
+    let latest = company;
+    if (settingsChanged) latest = await actions.update.mutateAsync(settings);
     if (standardDayChanged) {
-      await actions.setStandardDay.mutateAsync({
+      latest = await actions.setStandardDay.mutateAsync({
         hoursPerDay: standardWorkHoursPerDay,
         validFrom: standardWorkHoursFrom,
       });
     }
+    reset(toFormValues(latest, today));
   };
 
   const onSubmit = async (data: CompanyFormValues) => {

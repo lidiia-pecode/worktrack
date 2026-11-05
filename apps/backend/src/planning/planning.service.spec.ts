@@ -616,6 +616,25 @@ describe('PlanningService', () => {
       ).rejects.toThrow(/This person is away on/);
     });
 
+    it('refuses a plan on a day they were away from the company', async () => {
+      const spell = await dataSource.getRepository(UserInactivePeriod).save({
+        companyId,
+        userId: member.id,
+        deactivatedAt: new Date(`${TUESDAY}T09:00:00Z`),
+        reactivatedAt: new Date(`${WEDNESDAY}T09:00:00Z`),
+        lastWorkingDay: MONDAY,
+        firstDayBack: WEDNESDAY,
+      });
+
+      try {
+        await expect(
+          service.create(plan(member.id, TUESDAY, HOUR), manager),
+        ).rejects.toThrow(BadRequestException);
+      } finally {
+        await dataSource.getRepository(UserInactivePeriod).delete(spell.id);
+      }
+    });
+
     it('lets an over-budget week be reduced, but not raised', async () => {
       await planFullWeek(member.id);
       await absentOn(member.id, MONDAY);
