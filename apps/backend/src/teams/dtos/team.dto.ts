@@ -77,7 +77,7 @@ export class UpdateTeamMemberDto {
 
   /**
    * Switching a membership to Member while the person is a member of another
-   * team: they leave it today, as on an add.
+   * team: they leave it today, as an undated add does.
    */
   @OptionalNotNull()
   @IsBoolean()

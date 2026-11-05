@@ -274,12 +274,18 @@ Company  (tenant root — everything below carries companyId)
 │
 ├── User            role: OWNER | MANAGER | EMPLOYEE
 │                   status: ACTIVE | DEACTIVATED
-│                   deactivatedAt: set by Deactivate, cleared by Reactivate
-│                   (each spell kept in user_inactive_periods once they return)
+│                   lastWorkingDay: set by Deactivate, cleared by Reactivate
+│                   deactivatedAt: when the owner confirmed Deactivate
+│                   (each spell kept in user_inactive_periods once they
+│                   return: last working day and first day back)
 │
 ├── UserCapacity    user + validFrom + minutesPerWeek + createdBy
 │                   working hours, effective from a date: set as a
 │                   working day, stored as the week of five of them
+│
+├── CompanyStandardDay  validFrom + hoursPerDay + createdBy
+│                   the company's standard day from a date; before the
+│                   first row, Company.standardWorkHoursPerDay applies
 │
 ├── Team ──< TeamMembership >── User
 │                   roleInTeam: MEMBER | MANAGER
@@ -345,9 +351,15 @@ your own time.
 `leftAt` rather than deleted, so "who was on this team in March" remains
 answerable. `leftAt` is the day a membership ended, not its last day, so somebody
 can leave a team and rejoin it on the same day, and membership dates are the
-company's dates, from its time zone. The server sets them: a membership starts
-the day someone is added and ends the day they are removed or moved; nothing is
-scheduled, and someone coming back gets a new membership. Managership is derived from membership: a manager sees people who
+company's dates, from its time zone. A membership starts the day someone is
+added and ends the day they are removed or moved: today, unless the owner gives
+an earlier day on the person's Change team or Add to a team dialog, or on
+Remove from the team (a manager removes a member from today; the members picker,
+a team's archive and a role switch always act today). An earlier day must be in
+an open month, not before the person's account or the membership being ended,
+and never makes someone a member of two teams at once. Nothing is scheduled
+ahead, a membership's dates can't be changed once saved, and someone coming back
+gets a new membership. Managership is derived from membership: a manager sees people who
 share an active team with an active `roleInTeam = MANAGER` membership of theirs.
 
 ---
@@ -374,9 +386,10 @@ Every write passes five checks, in this order (`time-logs.service.ts`):
    after the company's today is rejected (400), for every role, on create and
    on update. An entry already in the future can be moved back or deleted.
    Absences may be booked ahead (PR #51).
-4. **Employed on that day** — a day on or after the owner's deactivation, or
-   inside an earlier inactive spell, is rejected (400, saying why), on create
-   and when an entry moves to a new date (`assertEmployedOn`).
+4. **Employed on that day** — a day after the person's last working day, or
+   inside an earlier spell between a last working day and the first day back,
+   is rejected (400, saying why), on create and when an entry moves to a new
+   date (`assertEmployedOn`). The last working day itself stays open.
 5. **Project activity and membership** — the `ProjectActivity` must belong to
    the caller's company (404); the owner must be on its project, a
    `project_users` row for `(projectId, userId)` (403), so a valid
@@ -491,6 +504,8 @@ Every write is checked on the server:
    minus absences). Both refuse only a write that *raises* a total, so a day
    or week left over by a later absence or a lowered capacity is kept (a week
    over is flagged "Over by", below) and can always be reduced.
+6. Nothing can be planned on a day the person wasn't employed, as for time
+   entries (rule 4 there).
 
 An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
 minutes. A day an absence covers cannot be planned: a new plan, or one moved
@@ -521,8 +536,9 @@ only once everything fits.
 The planning grid shows managers one figure of its own: **no longer fits**
 (planned above available, flagged as "Over by" and never fixed automatically).
 It is not shown to an employee, who sees only their own plan, and it does not
-affect whether somebody is behind. A deactivated person's plans stay visible in
-the grid, read-only. The grid shows working days only, since nothing can be
+affect whether somebody is behind. A deactivated person's plans up to their
+last working day stay visible in the grid, read-only; deactivating removes the
+ones after it. The grid shows working days only, since nothing can be
 planned on a weekend, and its hour pickers stop at the person's own day; the
 day dialog's hours stop at what still fits on the day and in the week, and
 say so. "Add
@@ -550,7 +566,7 @@ and this document:
 
 | Word | What it means | How it is worked out |
 | :--- | :--- | :--- |
-| **Expected** | How much somebody was supposed to work | capacity from the day their account was created to the day before it was deactivated, minus the days they were away |
+| **Expected** | How much somebody was supposed to work | capacity from the day their account was created up to and including their last working day, minus the days they were away |
 | **Planned** | What a manager committed them to, by project | the planning entries for those days |
 | **Logged** | What actually happened | the time logs for those days |
 | **Behind** | They logged less than expected | logged < expected, over finished days only; Reports' People card shows it as each person's logged time against expected, and since PR #46 nothing else marks it |
@@ -563,20 +579,33 @@ day times five (PR #61), so the API accepts only multiples of
 changed. The day is what is expected of the person on every working day and
 the most they can be planned on one; an uneven week is set as its usual day,
 and logged time is never limited by it. The row in force on
-a date is the last one starting on or before it; with no row at all, the company
-default `standardWorkHoursPerDay × 5` applies, so an ordinary full-time company
-keeps an empty table. A change is a new row rather than an edit, which is what
-stops a contract change rewriting weeks somebody has already worked.
+a date is the last one starting on or before it; with no row at all, the
+company's standard day on that date, times five, applies, so an ordinary
+full-time company keeps an empty table. A change is a row from its date, which
+is what stops a contract change rewriting weeks somebody has already worked:
+it can't start in a locked month, saving the same date again corrects that
+row, and hours equal to the person's own hours before it save nothing. Someone
+on the standard day who is given hours gets a row of their own, even at the
+standard day's value, and stops following its later changes. At most one
+change waits after today: scheduling another replaces it, and the person's
+panel shows it with Cancel.
+
+The **company's standard day** is dated the same way: `standardWorkHoursPerDay`
+is the day from the company's start, and each `CompanyStandardDay` row changes
+it from its date. Settings sets it with an "Applies from" date, today by
+default and never in a locked month, keeps at most one change waiting after
+today, and lets the owner cancel it. The setup guide's answer sets the day from
+the company's start, refused once a month from the start is locked. Earlier
+days keep the day they had, so changing it never rewrites a locked month.
 
 **Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
 Friday day in the range that no absence covers, from the day the person's
 account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
-for the days before they joined, and nothing is expected from the day they were
-deactivated (`deactivatedAt`, recorded since PR #49; a person deactivated before that
-existed has none and is expected as before), nor, once they are reactivated,
-for the spell they were away (kept in `user_inactive_periods`, PR #53); there
-is no separate start date
+for the days before they joined, and nothing is expected after their last
+working day, nor, once they are reactivated, for the spell they were away, from
+the day after their last working day to the day before their first day back
+(kept in `user_inactive_periods`); there is no separate start date
 (§10 Q14). Rounding once is
 what keeps a full week away at exactly zero and a full week present at exactly
 that person's capacity, for a part-timer as well as a full-timer. It returns
@@ -626,7 +655,9 @@ The company holds `timezone`, `currency`, `weekStartDay` and
 hardcoding calendar assumptions. Currency is neither asked for nor shown (D7).
 The time zone is any valid IANA zone except Russia's; the old name `Europe/Kiev`
 is saved as `Europe/Kyiv`. The standard working day is 1h to 12h in 30-minute
-steps, as a person's working day is. Slugs are
+steps, as a person's working day is, and changes from a date (see capacity
+above); `standardWorkHoursPerDay` in the API is the day in force today, with
+the change waiting after it. Slugs are
 unique and regenerated on rename. Changing the time zone, the week start or the
 standard working day asks first and says what each one moves; several changed
 at once are confirmed together in one dialog.
@@ -721,19 +752,28 @@ backend's host. A team with pending invitations can't be archived; the owner
 revokes them on its panel first (§5).
 
 Users are deactivated, never deleted (`ACTIVE | DEACTIVATED`); the screens say
-Deactivate and Reactivate. Deactivate stamps the moment (`deactivatedAt`) and
-Reactivate clears it, keeping the spell they were away; nothing is expected of a
-person from the day they were deactivated until the day they come back (§4,
-capacity). Deactivating someone also ends their sessions, so after Reactivate
-they sign in again. A user cannot deactivate themselves, an OWNER account
+Deactivate and Reactivate. Deactivate asks for the **last working day**: today
+or earlier, not before the account was created or the person last came back,
+and with the day after it in an open month. That day stays expected and can
+still be completed by the owner or the person's manager. In one transaction,
+Deactivate deletes the person's time, absences and plans after it and cuts an
+absence that crosses it to end on it; the dialog lists what goes, updated with
+the date, can't be confirmed until that list has loaded, and says it can't be
+undone. Reactivate asks for the **first day back**, after the last working day,
+today or earlier and in an open month, and keeps the spell in between, when
+there is one; nothing is expected of the person, and nothing can be recorded,
+from the day after the last working day to the day before they come back (§4,
+capacity). Deactivating someone also ends their sessions at once, so after
+Reactivate they sign in again. A user cannot deactivate themselves, an OWNER account
 cannot be deactivated, nobody changes their own role, and nobody can be made
 an OWNER, so a company has exactly one owner (handing ownership over is not
 built yet). A deactivated person keeps their teams and projects but cannot be
 added to a team or a project, and their details and working hours change only
 once they are reactivated. Reactivate asks first and names the teams and
-active projects they come back to. The Deactivated tab and the person's panel
-show the day they were deactivated, and Reports' People card marks them
-"Deactivated" like every other screen.
+active projects they come back to; someone whose last working day is today
+can be reactivated from tomorrow. The Deactivated tab and the person's panel
+show the last working day, and Reports' People card marks them "Deactivated"
+like every other screen.
 
 ---
 
@@ -748,7 +788,7 @@ show the day they were deactivated, and Reports' People card marks them
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
 | Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel | — |
+| Teams | full CRUD, including a member's move, addition or removal dated back to an open day; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel, from today | — |
 | Projects | full CRUD; archive and restore are theirs alone | create, edit, staff their own people, choose activities from the catalogue | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | read | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
@@ -780,15 +820,17 @@ D9 is implemented: `TimeLogsService` shares one scope check between reads and
 writes, so the two cannot drift apart, and the Team time grid is where an
 owner or manager acts on it. A deactivated person's time and absences can
 still be corrected in open months by the same people, so their last month
-can be finished without reactivating them; nothing can be dated on or after
-the day they left, or inside a spell they were deactivated for
-(`permission-model.md` §3.7).
+can be finished without reactivating them; nothing can be dated after their
+last working day, or inside a spell between a last working day and the first
+day back (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
 team, adds a member, moves one between teams or changes a `roleInTeam`. A manager may remove a member
-from a team they lead, because removal only narrows their own reach; taking a
-team's manager off it, themselves included, is the owner's (PR #53), since
-that would narrow someone else's reach or leave the team without its lead.
+from a team they lead, from today, because removal only narrows their own reach
+from then on; dating a removal back is the owner's, since it would also take
+past days from the team's other managers. Taking a team's manager off it,
+themselves included, is the owner's (PR #53), since that would narrow someone
+else's reach or leave the team without its lead.
 
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
 acts for everyone, cannot. To give an employee a team, the Owner first makes them
@@ -859,10 +901,10 @@ see, and how a new company gets started. §7 plans that work.
   sort are in the URL, so a reload or a shared link keeps them. The toolbar
   totals the people shown against what was expected of them ("Logged 30h /
   128h"). A deactivated
-  person is marked and listed on every week before they left, logged time or
-  not; their days before they left stay editable in an open month, and from
-  their leave day on the row is read-only, and their week reads against what
-  was expected up to the day they left. Filtered to
+  person is marked and listed on every week up to their last working day,
+  logged time or not; those days stay editable in an open month, the days after
+  it are closed, and their week reads against what was expected up to their
+  last working day. Filtered to
   a project, the rows and the team total show only that project's hours, with
   no Expected, since that is about the whole week ("Logged 12h"); the rows are the project's
   members plus anyone who logged on it that week, so somebody removed from it
@@ -874,7 +916,8 @@ see, and how a new company gets started. §7 plans that work.
   from Team time; the timesheet and the team grid mark those days, so an empty
   week explains itself. A day is either worked or absent, never both.
 - **Capacity and expected hours** — an owner sets somebody's working hours a
-  day from a date, the week shown beside it; both week views read one backend figure for what was expected,
+  day from a date, the week shown beside it, and the company's standard day the
+  same way in Settings; a change waiting to start shows with Cancel. Both week views read one backend figure for what was expected,
   absences reduce it, and each shows logged time against it; no screen marks a
   person behind (PR #46, by decision).
 - **Planning** — owners and managers plan their people's week by project on
@@ -934,7 +977,7 @@ see, and how a new company gets started. §7 plans that work.
   for reference and marks nothing. A deactivated person has no missing days,
   and Needs attention never names an owner, though an owner's own days without
   time show on the Review my time page and in their panel (PR #53); a deactivated person is listed only if they logged time in the
-  period, with expected hours up to the day they left, and an owner only if
+  period, with expected hours up to their last working day, and an owner only if
   they logged or planned time: owners often don't track their own, but a plan
   made for them is part of the month's plan. Below, People lists everyone by team (somebody in
   two teams under both; one plain list when one team is chosen), each with one
@@ -1338,7 +1381,7 @@ timing), which is a business decision rather than code.*
 **Deferred on purpose.** Not scheduled, each waiting for a decision or a real
 need: a `Client` entity (D8); reminders for incomplete weeks (§10 Q5); a dark
 theme, which Area 2's shared tokens have unblocked; per-person working patterns,
-a configurable working week, a versioned company default capacity, a
+a configurable working week, a
 configurable grace period and closing a month early; your own list of sessions
 and two-factor sign-in; and the open permission questions in
 [`permission-model.md`](./permission-model.md) §5. By the

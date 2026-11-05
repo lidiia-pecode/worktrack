@@ -37,6 +37,12 @@ const DESTRUCTIVE_RULES: RiskRule[] = [
     pattern: /\bSET\s+NOT\s+NULL\b/i,
     reason: 'makes an existing column NOT NULL',
   },
+  {
+    // The running code's inserts leave the column out, so they fail.
+    pattern:
+      /\bADD\s+(?:COLUMN\s+)?"[^"]+"\s(?![^]*\bDEFAULT\b)[^]*\bNOT\s+NULL\b/i,
+    reason: 'adds a NOT NULL column with no default',
+  },
   { pattern: /\bTRUNCATE\b/i, reason: 'empties a table' },
 ];
 
