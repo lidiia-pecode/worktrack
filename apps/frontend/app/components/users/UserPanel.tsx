@@ -5,7 +5,11 @@ import { ArrowRightLeft, Plus } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useSetCapacity, useUserCapacity } from "@/hooks/useCapacity";
+import {
+  useCancelCapacityChange,
+  useSetCapacity,
+  useUserCapacity,
+} from "@/hooks/useCapacity";
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
@@ -15,7 +19,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import {
-  deactivatedOnLabel,
+  lastWorkingDayLabel,
   fullName,
   isDeactivatedUser,
 } from "@/lib/utils/user";
@@ -33,6 +37,8 @@ import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { Avatar } from "../shared/Avatar";
 import { ImpactDialog } from "../shared/ImpactDialog";
+import { ScheduledChange } from "../shared/ScheduledChange";
+import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
@@ -53,31 +59,104 @@ import {
 
 const EDIT_FORM_ID = "user-edit-form";
 
-const WorkingHours = ({ capacity }: { capacity: Capacity | null }) => {
+/** Wraps between its parts, never inside one. */
+const dayAndWeek = (minutesPerWeek: number) => (
+  <>
+    <span className="whitespace-nowrap">
+      {formatDuration(minutesPerDayOf(minutesPerWeek))} a day
+    </span>{" "}
+    <span className="whitespace-nowrap text-muted-foreground">
+      · {formatDuration(minutesPerWeek)} a week
+    </span>
+  </>
+);
+
+interface WorkingHoursProps {
+  user: UserDetails;
+  capacity: Capacity | null;
+  canCancelChanges: boolean;
+}
+
+/** Today's hours, and the change scheduled after them with a way to cancel it. */
+const WorkingHours = ({
+  user,
+  capacity,
+  canCancelChanges,
+}: WorkingHoursProps) => {
+  const cancelChange = useCancelCapacityChange();
+  const [isCancelling, setIsCancelling] = useState(false);
+
   if (!capacity) {
     return <span className="text-muted-foreground">Not set</span>;
   }
 
   const source = capacity.isCompanyDefault
-    ? "company default"
+    ? "Company default"
     : capacity.validFrom &&
-      `since ${formatDayMonthYearLabel(capacity.validFrom)}`;
+      `Since ${formatDayMonthYearLabel(capacity.validFrom)}`;
+  const { upcoming } = capacity;
+  const hoursPerDay = (minutesPerWeek: number) =>
+    `${formatDuration(minutesPerDayOf(minutesPerWeek))} a day`;
+
+  const confirmCancel = () => {
+    if (!upcoming) return;
+
+    cancelChange.mutate(
+      { userId: user.id, validFrom: upcoming.validFrom },
+      { onSuccess: () => setIsCancelling(false) },
+    );
+  };
 
   return (
-    <>
-      {formatDuration(minutesPerDayOf(capacity.minutesPerWeek))} a day
-      <span className="text-muted-foreground">
-        {" "}
-        · {formatDuration(capacity.minutesPerWeek)} a week
-        {source && ` · ${source}`}
-      </span>
-    </>
+    <div className="grid gap-2">
+      <div className="grid gap-0.5">
+        <span>{dayAndWeek(capacity.minutesPerWeek)}</span>
+        {source && (
+          <span className="text-xs text-muted-foreground">{source}</span>
+        )}
+      </div>
+
+      {upcoming && (
+        <ScheduledChange
+          validFrom={upcoming.validFrom}
+          cancel={
+            canCancelChanges
+              ? {
+                  label: `Cancel the change to ${hoursPerDay(upcoming.minutesPerWeek)} from ${formatDayMonthYearLabel(upcoming.validFrom)}`,
+                  onClick: () => setIsCancelling(true),
+                }
+              : undefined
+          }
+        >
+          {dayAndWeek(upcoming.minutesPerWeek)}
+        </ScheduledChange>
+      )}
+
+      {upcoming && (
+        <ImpactDialog
+          isOpen={isCancelling}
+          title={`Cancel the change to ${hoursPerDay(upcoming.minutesPerWeek)}?`}
+          description={
+            // On the company default, the standard day may change by then.
+            capacity.isCompanyDefault
+              ? `From ${formatDayMonthYearLabel(upcoming.validFrom)} ${user.firstName} stays on the company's standard day.`
+              : `From ${formatDayMonthYearLabel(upcoming.validFrom)} ${user.firstName} keeps ${hoursPerDay(capacity.minutesPerWeek)}.`
+          }
+          cancelText="Keep it"
+          confirmText="Cancel change"
+          confirmVariant="warning"
+          onConfirm={confirmCancel}
+          onClose={() => setIsCancelling(false)}
+          loading={cancelChange.isPending}
+        />
+      )}
+    </div>
   );
 };
 
 interface UserEditFormProps {
   user: UserDetails;
-  capacity: Capacity | null;
+  capacity: Capacity;
 }
 
 const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
@@ -85,6 +164,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const { update } = useUsersMutations();
   const setCapacity = useSetCapacity();
   const { timezone } = useWorkSettings();
+  const today = todayISODate(timezone);
   const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
   // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the teams.
@@ -103,8 +183,9 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
     }
 
     const minutesPerWeek = minutesPerWeekOf(capacityHoursPerDay);
+    // A new date alone is a change too: it can set back hours scheduled for that day.
     const hoursChanged =
-      capacity !== null && minutesPerWeek !== capacity.minutesPerWeek;
+      minutesPerWeek !== capacity.minutesPerWeek || capacityValidFrom !== today;
 
     try {
       await update.mutateAsync({ id: user.id, data: userData });
@@ -137,9 +218,10 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
             position: user.position ?? "",
             role: user.role,
             capacityHoursPerDay:
-              (capacity?.minutesPerWeek ?? 0) / WORK_DAYS_PER_WEEK / 60,
-            capacityValidFrom: todayISODate(timezone),
+              capacity.minutesPerWeek / WORK_DAYS_PER_WEEK / 60,
+            capacityValidFrom: today,
           }}
+          scheduledChange={capacity.upcoming}
           onSubmit={save}
           onDirtyChange={panel.setHasUnsavedChanges}
         />
@@ -167,17 +249,18 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const { user: viewer } = useAuth();
   const isOwner = viewer?.role === UserRole.OWNER;
   // Working hours are the owner's to read.
-  const { capacity, isLoading: isLoadingCapacity } = useUserCapacity(
-    user.id,
-    isOwner,
-  );
-  const { timezone } = useWorkSettings();
+  const {
+    capacity,
+    isLoading: isLoadingCapacity,
+    isError: isCapacityError,
+    refetch: refetchCapacity,
+  } = useUserCapacity(user.id, isOwner);
   const panel = useEntityPanel();
   const userActions = useUserActions();
   const projectChanges = useProjectLinkChanges();
 
   const isDeactivated = isDeactivatedUser(user);
-  const deactivatedOn = deactivatedOnLabel(user, timezone);
+  const lastDay = lastWorkingDayLabel(user);
   // Deactivating them from their row ends an open edit.
   const isEditing = panel.isEditing && userActions.canEdit(user);
   const canChangeProjects = !isDeactivated && !isEditing;
@@ -191,6 +274,19 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
     !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
   const memberTeam = user.teams.find(
     (team) => team.roleInTeam === TeamRole.MEMBER,
+  );
+
+  // Without their hours, a save could neither show nor keep them.
+  const editForm = isLoadingCapacity ? (
+    <LoadingState size="compact" />
+  ) : isCapacityError || !capacity ? (
+    <ErrorState
+      size="compact"
+      title="Could not load their working hours"
+      onRetry={() => refetchCapacity()}
+    />
+  ) : (
+    <UserEditForm user={user} capacity={capacity} />
   );
 
   if (canChangeProjects && panel.view === PROJECTS_PICKER) {
@@ -208,7 +304,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           isDeactivated && (
             <PanelStatus
               label={
-                deactivatedOn ? `Deactivated ${deactivatedOn}` : "Deactivated"
+                lastDay ? `Deactivated · last day ${lastDay}` : "Deactivated"
               }
             />
           )
@@ -222,7 +318,13 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
             ? [
                 {
                   label: "Working hours",
-                  value: <WorkingHours capacity={capacity} />,
+                  value: (
+                    <WorkingHours
+                      user={user}
+                      capacity={capacity}
+                      canCancelChanges={!isDeactivated && !isEditing}
+                    />
+                  ),
                 },
               ]
             : []),
@@ -230,14 +332,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         ]}
         actions={userActions.actionsFor(user)}
         // Only the person changes their own name, in their profile.
-        editForm={
-          isEditing &&
-          (isLoadingCapacity ? (
-            <LoadingState size="compact" />
-          ) : (
-            <UserEditForm user={user} capacity={capacity} />
-          ))
-        }
+        editForm={isEditing && editForm}
       >
         <PanelList
           title="Team"

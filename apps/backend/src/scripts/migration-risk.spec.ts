@@ -37,7 +37,8 @@ describe('reviewMigrationSource', () => {
     const review = reviewMigrationSource(
       migration(
         'await queryRunner.query(`CREATE TABLE "absences" ("id" uuid NOT NULL)`);\n' +
-          'await queryRunner.query(`ALTER TYPE "absence_type_enum" ADD VALUE \'UNPAID\'`);',
+          'await queryRunner.query(`ALTER TYPE "absence_type_enum" ADD VALUE \'UNPAID\'`);\n' +
+          'await queryRunner.query(`ALTER TABLE "users" ADD "is_admin" boolean NOT NULL DEFAULT false`);',
       ),
     );
 
@@ -64,6 +65,10 @@ describe('reviewMigrationSource', () => {
     [
       'ALTER TABLE "absences" ALTER COLUMN "user_id" SET NOT NULL',
       'makes an existing column NOT NULL',
+    ],
+    [
+      'ALTER TABLE "user_inactive_periods" ADD "first_day_back" date NOT NULL',
+      'adds a NOT NULL column with no default',
     ],
     ['TRUNCATE "notifications"', 'empties a table'],
   ])('calls %s destructive', (sql, reason) => {

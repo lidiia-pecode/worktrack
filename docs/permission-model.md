@@ -75,10 +75,16 @@ decision and a restore never hands reach back by itself.
 ### 3.3 Team membership and reach
 
 A manager gains people by inviting them into a team they lead, and may remove
-a member from it; the Owner adds and moves everyone else, and alone removes a
-team's manager. **A manager may not add an existing company user to their
-team**: that would let them take someone who belongs elsewhere (principle 3).
-Moving someone between teams is the Owner's (P2).
+a member from it from today; the Owner adds and moves everyone else, and alone
+removes a team's manager. **A manager may not add an existing company user to
+their team**: that would let them take someone who belongs elsewhere
+(principle 3). Moving someone between teams is the Owner's (P2).
+
+**Only the Owner dates a team change back.** A move, an addition or a removal
+can start on an earlier day in an open month, which hands those past days to
+another team, or to none. That changes what other managers reach, including a
+removing manager's co-managers, so it is the Owner's; a manager's removal
+always takes effect today.
 
 **A team keeps its history.** A manager reaches a person's records only on the
 days that person was in a team the manager leads now, for reading and, in an
@@ -164,9 +170,12 @@ changes what it takes to *become* someone's manager, which is what makes that
 rule trustworthy.
 
 - **A leaver's last month can be corrected** in open months by the same people
-  as an active person's, but nothing can be dated on or after the day they left
-  or inside a spell they were deactivated for. No new or changed plan for a
-  deactivated person; deleting plans is allowed.
+  as an active person's, up to and including their last working day; nothing
+  can be dated after it, or inside a spell between a last working day and the
+  first day back. Deactivating deletes what was recorded after the last
+  working day, which the Owner or the person's manager could already delete
+  one record at a time. No new or changed plan for a deactivated person;
+  deleting plans is allowed.
 - **Planning follows the same people**, except that an employee plans for
   nobody, not even themselves. Recording an absence deletes the absence owner's
   plans on its days, which opens no planning route to employees. A manager's
@@ -198,11 +207,11 @@ project staffed from both teams.
 | Mary hires Sophie | Mary invites Sophie as an EMPLOYEE **into Alpha**. On acceptance Sophie joins Alpha and Mary manages her. No Owner involvement |
 | Mary tries to invite a new MANAGER | Refused. Appointing managers is Olivia's |
 | Mary tries to add Peter to Alpha | Refused. Peter already belongs to Beta; only Olivia moves people |
-| Mary removes Irene from Alpha | Allowed. `leftAt` is closed; the row and the history stay, and Mary still reaches Irene's days before today (§3.3) |
+| Mary removes Irene from Alpha | Allowed, from today. `leftAt` is closed; the row and the history stay, and Mary still reaches Irene's days before today. Only Olivia could date the removal back (§3.3) |
 | Mary opens *Retail Redesign* | Allowed — projects are company-wide. She sees Daniel, Irene and Sophie on it, and a count telling her others are there. She does **not** see Peter, not even his name |
 | Mary staffs *Retail Redesign* | She may add Daniel, Irene, Sophie and **herself**. She may not add Peter — Mark or Olivia adds him |
 | Mary saves *Retail Redesign* without Peter in her list | Peter stays. Her save only touches the people she was shown |
-| Olivia deactivates Daniel | He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Mary and Olivia can still correct his time and absences for the open month, on the days before he left (§3.7). Reactivating him changes nothing back, because nothing was removed |
+| Olivia deactivates Daniel | She picks his last working day; anything recorded after it is deleted, after the dialog lists it. He stays on *Retail Redesign* and in Team Alpha. He cannot log time, because he cannot sign in. Mary and Olivia can still correct his time and absences for the open month, up to his last working day (§3.7). Reactivating him from a first day back restores none of what was deleted |
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |

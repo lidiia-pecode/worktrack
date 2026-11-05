@@ -26,6 +26,7 @@ import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { TimeLogsService } from 'src/time-logs/time-logs.service';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -53,8 +54,9 @@ const OTHER_SLUG = `absence-other-${RUN}`;
 const START = '2026-02-10';
 const END = '2026-02-12';
 const LOCKED_DATE = '2026-03-10';
-/** The day the deactivated person left; nothing can be recorded from it on. */
-const LEAVE_DAY = '2026-02-20';
+/** The deactivated person's last working day; nothing can be recorded after it. */
+const LAST_WORKING_DAY = '2026-02-19';
+const DAY_AFTER_LEAVING = '2026-02-20';
 
 describe('AbsencesService', () => {
   let dataSource: DataSource;
@@ -152,6 +154,7 @@ describe('AbsencesService', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
 
@@ -190,7 +193,7 @@ describe('AbsencesService', () => {
       UserStatus.DEACTIVATED,
     );
     await dataSource.getRepository(User).update(deactivated.id, {
-      deactivatedAt: new Date(`${LEAVE_DAY}T12:00:00Z`),
+      lastWorkingDay: LAST_WORKING_DAY,
     });
 
     const otherCompany = await dataSource
@@ -341,19 +344,19 @@ describe('AbsencesService', () => {
       });
     });
 
-    it('refuses an absence reaching the day a deactivated person left', async () => {
+    it("refuses an absence reaching past a deactivated person's last working day", async () => {
       await expect(
         service.create(
-          absenceFor(deactivated.id, '2026-02-18', LEAVE_DAY),
+          absenceFor(deactivated.id, '2026-02-18', DAY_AFTER_LEAVING),
           owner,
         ),
-      ).rejects.toThrow('had left by then');
+      ).rejects.toThrow(`last working day was ${LAST_WORKING_DAY}`);
 
       const id = await existingAbsence(deactivated.id);
 
       try {
         await expect(
-          service.update(id, { endDate: LEAVE_DAY }, owner),
+          service.update(id, { endDate: DAY_AFTER_LEAVING }, owner),
         ).rejects.toThrow(BadRequestException);
       } finally {
         await dataSource.getRepository(Absence).delete(id);

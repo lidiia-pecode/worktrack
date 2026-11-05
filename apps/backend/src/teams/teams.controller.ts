@@ -15,6 +15,7 @@ import {
 import { TeamsService } from './teams.service';
 import {
   AddTeamMemberDto,
+  RemoveTeamMemberQuery,
   CreateTeamDto,
   TeamsQuery,
   UpdateTeamDto,
@@ -145,12 +146,14 @@ export class TeamsController {
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) teamId: string,
     @Param('membershipId', ParseUUIDPipe) membershipId: string,
+    @Query() query: RemoveTeamMemberQuery,
   ): Promise<void> {
     await this.teamsService.removeMember(
       membershipId,
       authUser.companyId,
       teamId,
       authUser,
+      query.date,
     );
   }
 }

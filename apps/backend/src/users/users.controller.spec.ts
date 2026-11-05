@@ -25,6 +25,9 @@ const RETURNS_USER_LIST: Handler[] = [
   'getAssignableUsers',
 ];
 
+// Serialized too, but returns no user to check.
+const RETURNS_NO_USER: Handler[] = ['getDeactivationImpact'];
+
 const storedUser = {
   id: 'user-1',
   firstName: 'Ada',
@@ -59,7 +62,7 @@ describe('UsersController responses', () => {
     ).filter((name) => name !== 'constructor');
 
     expect(handlers.sort()).toEqual(
-      [...RETURNS_USER, ...RETURNS_USER_LIST].sort(),
+      [...RETURNS_USER, ...RETURNS_USER_LIST, ...RETURNS_NO_USER].sort(),
     );
   });
 

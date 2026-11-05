@@ -1,5 +1,5 @@
 import { PaginatedResponse, ProjectRef, SearchablePaginationParams } from ".";
-import { TeamRole, UserRole, UserStatus } from "./enums";
+import { AbsenceType, TeamRole, UserRole, UserStatus } from "./enums";
 
 export interface User {
   id: string;
@@ -13,10 +13,35 @@ export interface User {
   email: string;
   googleLinked: boolean;
   hasPassword: boolean;
-  /** When they were deactivated; null while active. */
-  deactivatedAt: string | null;
+  /** While deactivated, their last working day. */
+  lastWorkingDay: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** What deactivating someone with a given last working day deletes. */
+export interface DeactivationImpact {
+  time: {
+    entryCount: number;
+    minutes: number;
+    firstDate: string | null;
+    lastDate: string | null;
+  };
+  absences: {
+    id: string;
+    type: AbsenceType;
+    startDate: string;
+    endDate: string;
+    /** It starts on or before the last working day, so it is shortened. */
+    isCut: boolean;
+  }[];
+  plans: {
+    projectId: string;
+    projectName: string;
+    planCount: number;
+    firstDate: string;
+    lastDate: string;
+  }[];
 }
 
 export interface UpdateUserPayload {

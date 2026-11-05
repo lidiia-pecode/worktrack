@@ -69,10 +69,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
-type PlanningCompany = Pick<
-  Company,
-  'id' | 'timezone' | 'weekStartDay' | 'standardWorkHoursPerDay'
->;
+type PlanningCompany = Pick<Company, 'id' | 'timezone' | 'weekStartDay'>;
 
 interface PlannedSlot {
   date: string;
@@ -433,6 +430,12 @@ export class PlanningService {
 
       this.assertWorkingDay(payload.date);
       await this.assertDateNotLocked(manager, user.companyId, payload.date);
+      // As time and absences: nothing on a day they weren't employed.
+      await this.capacity.assertEmployedOn(
+        user.companyId,
+        payload.userId,
+        payload.date,
+      );
       await this.assertNotAbsent(
         manager,
         payload.userId,
@@ -522,6 +525,11 @@ export class PlanningService {
       if (movesDate) {
         entry.date = payload.date!;
         await this.assertDateNotLocked(manager, user.companyId, entry.date);
+        await this.capacity.assertEmployedOn(
+          user.companyId,
+          entry.userId,
+          entry.date,
+        );
         await this.assertNotAbsent(
           manager,
           entry.userId,
@@ -967,7 +975,7 @@ export class PlanningService {
     const repo = (manager ?? this.dataSource.manager).getRepository(Company);
     const company = await repo.findOne({
       where: { id: companyId },
-      select: ['id', 'timezone', 'weekStartDay', 'standardWorkHoursPerDay'],
+      select: ['id', 'timezone', 'weekStartDay'],
     });
 
     if (!company) throw new NotFoundException('Company not found');

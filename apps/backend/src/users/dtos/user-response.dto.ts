@@ -38,9 +38,9 @@ export class UserResponse {
   @Expose()
   hasPassword!: boolean;
 
-  /** When they were deactivated; null while active. */
+  /** While deactivated, their last working day. */
   @Expose()
-  deactivatedAt!: Date | null;
+  lastWorkingDay!: string | null;
 
   @Expose()
   updatedAt!: Date;

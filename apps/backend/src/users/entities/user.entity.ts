@@ -52,13 +52,17 @@ export class User {
   })
   status!: UserStatus;
 
-  /** When the account was deactivated; null while it is active. Nothing is expected of them from that day. */
+  /** When the owner deactivated them; null while active. Their days follow `lastWorkingDay`. */
   @Column({
     type: 'timestamp with time zone',
     name: 'deactivated_at',
     nullable: true,
   })
   deactivatedAt!: Date | null;
+
+  /** While deactivated, their last working day: nothing is expected or recorded after it. */
+  @Column({ type: 'date', name: 'last_working_day', nullable: true })
+  lastWorkingDay!: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   position?: string;

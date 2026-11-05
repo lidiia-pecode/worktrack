@@ -54,12 +54,13 @@ export interface TeamsQuery extends SearchablePaginationParams {
   status?: TeamStatus;
 }
 
-// A membership's dates are the server's: it starts today and ends when ended.
 export interface AddTeamMemberPayload {
   userId: string;
   roleInTeam?: TeamRole;
-  /** A member of another team leaves it today, the day they join this one. */
+  /** A member of another team leaves it the day they join this one. */
   leaveCurrentTeam?: boolean;
+  /** The first day on the team: today unless given, and never after it. */
+  date?: string;
 }
 
 export interface UpdateTeamMemberPayload {

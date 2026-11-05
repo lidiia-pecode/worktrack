@@ -80,6 +80,7 @@ const JACK = 'jack.wilson@worktrack.test';
 const ELLA = 'ella.bailey@worktrack.test';
 const NATHAN = 'nathan.cole@worktrack.test';
 const ISLA = 'isla.robinson@worktrack.test';
+const ISLA_LAST_WORKING_DAY = '2026-08-28';
 const RACHEL = 'rachel.dawson@worktrack.test';
 const LEO = 'leo.harrison@worktrack.test';
 const ZOE = 'zoe.palmer@worktrack.test';
@@ -104,8 +105,8 @@ export interface SeedUser {
   joinedOn?: string;
   /** A later contract: the weekly hours from a date on. */
   capacityFrom?: { validFrom: string; hoursPerWeek: number };
-  /** The day a deactivated account was deactivated; nothing is expected from it. */
-  deactivatedOn?: string;
+  /** A deactivated account's last working day; nothing is expected or recorded after it. */
+  lastWorkingDay?: string;
 }
 
 export const USERS: SeedUser[] = [
@@ -169,6 +170,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Hughes',
     role: UserRole.MANAGER,
     status: UserStatus.DEACTIVATED,
+    lastWorkingDay: '2026-06-30',
     position: 'QA Lead',
     capacityHoursPerWeek: 40,
     note: 'Deactivated, so Quality Assurance has no active manager.',
@@ -179,6 +181,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Adams',
     role: UserRole.EMPLOYEE,
     status: UserStatus.DEACTIVATED,
+    lastWorkingDay: '2026-06-30',
     position: 'Visual Designer',
     capacityHoursPerWeek: 40,
     note: 'Deactivated, kept on two projects and in the archived team.',
@@ -377,7 +380,7 @@ export const USERS: SeedUser[] = [
     lastName: 'Robinson',
     role: UserRole.EMPLOYEE,
     status: UserStatus.DEACTIVATED,
-    deactivatedOn: '2026-08-29',
+    lastWorkingDay: ISLA_LAST_WORKING_DAY,
     position: 'Compliance Analyst',
     capacityHoursPerWeek: 40,
     note: 'Left at the end of August: time in July and August only.',
@@ -1097,8 +1100,7 @@ export const ABSENCES = [
  * Dashboard), time with no plan (Support Desk, Internal Training), a plan
  * beyond expected hours (Ethan from September), more than expected (Emma),
  * days with no time (Liam's Fridays, Noah, Samuel, the owner), a joiner
- * (Ruby), a leaver with time (Isla) and one with only a plan left (Chloe),
- * absences, a public holiday, weekend work and thirteen categories.
+ * (Ruby), a leaver with time (Isla), absences, a public holiday, weekend work and thirteen categories.
  */
 export const HISTORY_START = '2026-07-01';
 
@@ -1182,19 +1184,6 @@ export const REPORT_HISTORY: SeedHistory[] = [
       { project: 'Team Management', activity: 'Documentation', minutes: 180 },
     ],
     plan: [{ project: 'Team Management', minutes: 360 }],
-  },
-  {
-    // Planned only for September, after leaving: a plan left behind.
-    email: DEACTIVATED_EMAIL,
-    work: [],
-    plan: [
-      {
-        project: 'Support Desk',
-        minutes: 240,
-        from: '2026-09-01',
-        to: '2026-09-30',
-      },
-    ],
   },
   {
     email: LONG_NAME_EMAIL,
@@ -1713,7 +1702,7 @@ export const REPORT_HISTORY: SeedHistory[] = [
       },
     ],
     plan: [{ project: 'Security Audit 2026', minutes: 480 }],
-    leftOn: '2026-08-28',
+    leftOn: ISLA_LAST_WORKING_DAY,
   },
   {
     email: RACHEL,

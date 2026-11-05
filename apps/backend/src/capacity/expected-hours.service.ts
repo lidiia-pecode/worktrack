@@ -209,7 +209,7 @@ export class ExpectedHoursService {
         companyId,
         userIds,
         to,
-        calendar.defaultMinutesPerWeek,
+        calendar.defaultTimeline,
       ),
       this.capacity.activeDatesFor(companyId, userIds, calendar.timezone),
       this.absenceRangesFor(companyId, userIds, from, to),

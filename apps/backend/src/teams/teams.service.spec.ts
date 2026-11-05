@@ -7,7 +7,7 @@ import {
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
-import { todayISODate } from 'src/capacity/working-days.util';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -522,6 +522,129 @@ describe('TeamsService', () => {
           loneManager.id,
         );
       });
+    });
+  });
+
+  describe('a team change on an earlier day', () => {
+    // Three days back is never in a locked month: one locks a week after it ends.
+    const THREE_DAYS_AGO = addDays(TODAY, -3);
+    const wording = { action: 'change', subject: 'their time' };
+    let visibility: TeamVisibilityService;
+
+    const addAsMember = (teamId: string, extra = {}) =>
+      service.addMember(teamId, companyId, {
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        ...extra,
+      });
+    const membershipOf = (
+      teamId: string,
+      joinedAt: string,
+      leftAt: string | null = null,
+    ) =>
+      dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId,
+        userId: employee.id,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt,
+        leftAt,
+      });
+    const canWriteOn = (manager: AuthUser, day: string) =>
+      visibility.assertCanWriteUser(employee.id, manager, wording, {
+        from: day,
+        to: day,
+      });
+
+    beforeAll(async () => {
+      visibility = new TeamVisibilityService(
+        dataSource.getRepository(TeamMembership),
+        dataSource.getRepository(User),
+      );
+      await dataSource
+        .getRepository(User)
+        .update(employee.id, { createdAt: new Date(`${JOINED_AT}T12:00:00Z`) });
+    });
+
+    it("splits a backdated move's days between the teams at the date", async () => {
+      const oldId = await addToTeam(alpha, employee);
+
+      await addAsMember(beta, { leaveCurrentTeam: true, date: THREE_DAYS_AGO });
+      const old = await dataSource
+        .getRepository(TeamMembership)
+        .findOneByOrFail({ id: oldId });
+
+      expect(old.leftAt).toBe(THREE_DAYS_AGO);
+      await expect(
+        canWriteOn(alphaManager, addDays(THREE_DAYS_AGO, -1)),
+      ).resolves.toBeUndefined();
+      await expect(canWriteOn(alphaManager, THREE_DAYS_AGO)).rejects.toThrow(
+        ForbiddenException,
+      );
+      await expect(
+        canWriteOn(betaManager, THREE_DAYS_AGO),
+      ).resolves.toBeUndefined();
+    });
+
+    it('refuses a day after today or in a locked month', async () => {
+      await expect(
+        addAsMember(beta, { date: addDays(TODAY, 1) }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(addAsMember(beta, { date: '2025-06-02' })).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('refuses a move dated before they joined the team they leave', async () => {
+      await membershipOf(alpha, addDays(TODAY, -1));
+
+      await expect(
+        addAsMember(beta, { leaveCurrentTeam: true, date: THREE_DAYS_AGO }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('refuses a day that would make them a member of two teams at once', async () => {
+      await membershipOf(alpha, JOINED_AT, addDays(TODAY, -1));
+
+      await expect(addAsMember(beta, { date: THREE_DAYS_AGO })).rejects.toThrow(
+        ConflictException,
+      );
+    });
+
+    it('ignores a membership that ended the day it began', async () => {
+      // Added by mistake and removed the same day: no day was spent there.
+      await membershipOf(alpha, TODAY, TODAY);
+
+      await expect(
+        addAsMember(beta, { date: THREE_DAYS_AGO }),
+      ).resolves.toMatchObject({ joinedAt: THREE_DAYS_AGO });
+    });
+
+    it('lets only the owner date a removal back', async () => {
+      const membershipId = await addToTeam(alpha, employee);
+
+      await expect(
+        service.removeMember(
+          membershipId,
+          companyId,
+          alpha,
+          alphaManager,
+          THREE_DAYS_AGO,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+
+      await service.removeMember(
+        membershipId,
+        companyId,
+        alpha,
+        owner,
+        THREE_DAYS_AGO,
+      );
+      await expect(
+        dataSource
+          .getRepository(TeamMembership)
+          .findOneByOrFail({ id: membershipId }),
+      ).resolves.toMatchObject({ leftAt: THREE_DAYS_AGO });
     });
   });
 

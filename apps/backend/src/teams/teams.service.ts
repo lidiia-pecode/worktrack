@@ -32,6 +32,9 @@ import { TeamVisibilityService } from './team-visibility.service';
 import { findActiveTeam } from './find-active-team.util';
 import { TeamRole } from './enums/team-role.enum';
 import { findCompanyToday } from 'src/companies/company-today.util';
+import { Company } from 'src/companies/entities/company.entity';
+import { findLatestLockedDate } from 'src/reporting/latest-locked-date.util';
+import { addDays, isoDateIn } from 'src/capacity/working-days.util';
 import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -127,14 +130,43 @@ export class TeamsService {
   }
 
   /**
-   * Ends the membership being left today, the day the new one starts, under a
-   * row lock so a concurrent change to it waits. Nothing to do if it was
-   * closed meanwhile.
+   * The first day a membership change applies: today unless given. A given
+   * day is today or earlier and in an open month, so a locked month's teams
+   * never change.
+   */
+  private async changeDay(
+    manager: EntityManager,
+    companyId: string,
+    date?: string,
+  ): Promise<string> {
+    const today = await findCompanyToday(manager, companyId);
+    if (date === undefined || date === today) return today;
+
+    if (date > today) {
+      throw new BadRequestException(
+        'A team change can be dated today or earlier, not later',
+      );
+    }
+
+    const lockedUntil = await findLatestLockedDate(manager, companyId, true);
+    if (date <= lockedUntil) {
+      throw new ForbiddenException(
+        `A team change can't be dated ${date}: months up to ${lockedUntil} are locked`,
+      );
+    }
+
+    return date;
+  }
+
+  /**
+   * Ends the membership being left the day the new one starts, under a row
+   * lock so a concurrent change to it waits. Nothing to do if it was closed
+   * meanwhile.
    */
   private async closeMembershipForMove(
     membershipRepo: Repository<TeamMembership>,
     current: TeamMembership,
-    today: string,
+    day: string,
   ): Promise<void> {
     const locked = await membershipRepo.findOne({
       where: { id: current.id, leftAt: IsNull() },
@@ -142,7 +174,7 @@ export class TeamsService {
     });
     if (!locked) return;
 
-    locked.leftAt = today;
+    locked.leftAt = day;
     await membershipRepo.save(locked);
   }
 
@@ -156,7 +188,7 @@ export class TeamsService {
     userId: string,
     teamId: string,
     leaveCurrentTeam: boolean | undefined,
-    today: string,
+    day: string,
   ): Promise<void> {
     await this.lockPerson(manager, companyId, userId);
     const membershipRepo = manager.getRepository(TeamMembership);
@@ -174,7 +206,13 @@ export class TeamsService {
       );
     }
 
-    await this.closeMembershipForMove(membershipRepo, currentTeam, today);
+    if (day < currentTeam.joinedAt) {
+      throw new BadRequestException(
+        `They joined "${currentTeam.team.name}" on ${currentTeam.joinedAt}; the move can't be dated before it`,
+      );
+    }
+
+    await this.closeMembershipForMove(membershipRepo, currentTeam, day);
   }
 
   /** Joining a team takes an active person who is not the owner; staying in one only the first. */
@@ -418,7 +456,7 @@ export class TeamsService {
     this.assertCanJoinTeam(user);
     this.assertCanLeadTeam(user, dto.roleInTeam);
 
-    // A membership starts the day someone is added; nothing is scheduled.
+    // A membership starts the day given, today by default; nothing is scheduled.
     return this.dataSource.transaction(async (manager) => {
       await findActiveTeam(
         manager.getRepository(Team),
@@ -429,7 +467,17 @@ export class TeamsService {
       );
 
       const trxMembershipRepo = manager.getRepository(TeamMembership);
-      const today = await findCompanyToday(manager, companyId);
+      const day = await this.changeDay(manager, companyId, dto.date);
+      const { timezone } = await manager.findOneOrFail(Company, {
+        where: { id: companyId },
+        select: ['id', 'timezone'],
+      });
+      const joinedCompanyOn = isoDateIn(user.createdAt, timezone);
+      if (day < joinedCompanyOn) {
+        throw new BadRequestException(
+          `They joined the company on ${joinedCompanyOn}; a team change can't be dated before it`,
+        );
+      }
 
       const isOnTeam = await trxMembershipRepo.exists({
         where: { teamId, userId: dto.userId, leftAt: IsNull() },
@@ -446,8 +494,27 @@ export class TeamsService {
           dto.userId,
           teamId,
           dto.leaveCurrentTeam,
-          today,
+          day,
         );
+
+        // One team at a time, back in time too. A membership ended the day
+        // it began covers no day, so it overlaps nothing.
+        const overlapping = await trxMembershipRepo
+          .createQueryBuilder('membership')
+          .innerJoinAndSelect('membership.team', 'team')
+          .where('membership.company_id = :companyId', { companyId })
+          .andWhere('membership.user_id = :userId', { userId: dto.userId })
+          .andWhere('membership.role_in_team = :role', {
+            role: TeamRole.MEMBER,
+          })
+          .andWhere('membership.left_at > :day', { day })
+          .andWhere('membership.joined_at < membership.left_at')
+          .getOne();
+        if (overlapping?.leftAt) {
+          throw new ConflictException(
+            `They were a member of "${overlapping.team.name}" until ${addDays(overlapping.leftAt, -1)}; pick a day after it`,
+          );
+        }
       }
 
       const membership = trxMembershipRepo.create({
@@ -455,7 +522,7 @@ export class TeamsService {
         teamId,
         userId: dto.userId,
         roleInTeam,
-        joinedAt: today,
+        joinedAt: day,
         leftAt: null,
       });
 
@@ -492,6 +559,12 @@ export class TeamsService {
       );
       const trxMembershipRepo = manager.getRepository(TeamMembership);
 
+      // Locked first, so a removal at the same moment can't be undone by the
+      // save below writing its row back open.
+      await trxMembershipRepo.findOne({
+        where: { id: membershipId, companyId },
+        lock: { mode: 'pessimistic_write' },
+      });
       const membership = await trxMembershipRepo.findOne({
         where: {
           id: membershipId,
@@ -544,42 +617,60 @@ export class TeamsService {
     companyId: string,
     teamId: string,
     user: AuthUser,
+    date?: string,
   ): Promise<void> {
     await this.assertTeamInScope(teamId, user);
     await this.assertTeamIsActive(teamId, companyId);
 
-    const membership = await this.membershipRepo.findOne({
-      where: {
-        id: membershipId,
-        companyId,
-        ...(teamId ? { teamId } : {}),
-      },
+    await this.dataSource.transaction(async (manager) => {
+      const membershipRepo = manager.getRepository(TeamMembership);
+      const membership = await membershipRepo.findOne({
+        where: {
+          id: membershipId,
+          companyId,
+          ...(teamId ? { teamId } : {}),
+        },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (!membership) {
+        throw new NotFoundException(
+          `Team membership with id ${membershipId} not found in this team`,
+        );
+      }
+
+      if (membership.leftAt) {
+        throw new BadRequestException('This membership is already closed');
+      }
+
+      // A manager's removal may only narrow their own reach, so taking a
+      // manager off a team, themselves included, is the owner's.
+      if (
+        user.role !== UserRole.OWNER &&
+        membership.roleInTeam === TeamRole.MANAGER
+      ) {
+        throw new ForbiddenException('Only an owner can remove a team manager');
+      }
+
+      const day = await this.changeDay(manager, companyId, date);
+      // Dating a removal back also takes those days from the team's other
+      // managers, so it is the owner's; a manager removes from today.
+      if (
+        user.role !== UserRole.OWNER &&
+        day !== (await findCompanyToday(manager, companyId))
+      ) {
+        throw new ForbiddenException(
+          'Only the owner can date a removal before today',
+        );
+      }
+      if (day < membership.joinedAt) {
+        throw new BadRequestException(
+          `They joined the team on ${membership.joinedAt}; the removal can't be dated before it`,
+        );
+      }
+
+      membership.leftAt = day;
+      await membershipRepo.save(membership);
     });
-
-    if (!membership) {
-      throw new NotFoundException(
-        `Team membership with id ${membershipId} not found in this team`,
-      );
-    }
-
-    if (membership.leftAt) {
-      throw new BadRequestException('This membership is already closed');
-    }
-
-    // A manager's removal may only narrow their own reach, so taking a manager
-    // off a team, themselves included, is the owner's.
-    if (
-      user.role !== UserRole.OWNER &&
-      membership.roleInTeam === TeamRole.MANAGER
-    ) {
-      throw new ForbiddenException('Only an owner can remove a team manager');
-    }
-
-    membership.leftAt = await findCompanyToday(
-      this.dataSource.manager,
-      companyId,
-    );
-
-    await this.membershipRepo.save(membership);
   }
 }

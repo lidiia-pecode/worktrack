@@ -117,7 +117,6 @@ const row = (
     email: `${firstName.toLowerCase()}@example.com`,
     position,
     status: UserStatus.ACTIVE,
-    deactivatedAt: null,
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,

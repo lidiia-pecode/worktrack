@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -15,6 +16,7 @@ import { ExpectedHoursQuery } from './dtos/expected-hours-query.dto';
 import { ExpectedHoursResponse } from './dtos/expected-hours-response.dto';
 import { SetCapacityPayload } from './dtos/set-capacity-payload.dto';
 import { CapacityResponse } from './dtos/capacity-response.dto';
+import { CapacityChangeParams } from './dtos/capacity-change-params.dto';
 
 import { Serialize } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -79,6 +81,21 @@ export class CapacityController {
       payload.minutesPerWeek,
       payload.validFrom,
       user.id,
+    );
+  }
+
+  @UseGuards(RolesGuard)
+  @Role(UserRole.OWNER)
+  @Delete('users/:userId/changes/:validFrom')
+  @Serialize(CapacityResponse)
+  cancelUpcoming(
+    @Param() params: CapacityChangeParams,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.capacity.cancelUpcoming(
+      user.companyId,
+      params.userId,
+      params.validFrom,
     );
   }
 }

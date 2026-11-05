@@ -17,6 +17,7 @@ import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { TeamsService } from 'src/teams/teams.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { Project } from 'src/projects/entities/project.entity';
@@ -24,6 +25,14 @@ import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { AuthSession } from 'src/auth/entities/auth-session.entity';
+import { ActCategory } from 'src/activity-categories/entities/activities-category.entity';
+import { Activity } from 'src/activities/entities/activity.entity';
+import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
+import { Absence } from 'src/absences/entities/absence.entity';
+import { AbsenceType } from 'src/absences/enums/absence-type.enum';
+import { addDays, todayISODate } from 'src/capacity/working-days.util';
 
 import { User } from './entities/user.entity';
 import { UserInactivePeriod } from './entities/user-inactive-period.entity';
@@ -49,6 +58,7 @@ describe('UsersService scope', () => {
   let dataSource: DataSource;
   let service: UsersService;
   let capacity: CapacityService;
+  let reporting: ReportingService;
 
   let companyId: string;
   let owner: AuthUser;
@@ -90,22 +100,25 @@ describe('UsersService scope', () => {
       dataSource.getRepository(TeamMembership),
       dataSource.getRepository(User),
     );
+    reporting = new ReportingService(
+      dataSource.getRepository(ReportingPeriod),
+      dataSource.getRepository(Company),
+      teamVisibility,
+    );
     capacity = new CapacityService(
       dataSource.getRepository(UserCapacity),
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
-      new ReportingService(
-        dataSource.getRepository(ReportingPeriod),
-        dataSource.getRepository(Company),
-        teamVisibility,
-      ),
+      dataSource.getRepository(CompanyStandardDay),
+      reporting,
     );
     service = new UsersService(
       dataSource.getRepository(User),
       teamVisibility,
       dataSource,
       capacity,
+      reporting,
     );
 
     const company = await dataSource
@@ -142,6 +155,8 @@ describe('UsersService scope', () => {
     if (!dataSource?.isInitialized) return;
 
     // A project's members go with it, and would otherwise hold on to the users.
+    await dataSource.getRepository(TimeLog).delete({ companyId });
+    await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(Project).delete({ companyId });
     await dataSource.getRepository(Company).delete({ slug: In([SLUG]) });
     await dataSource.destroy();
@@ -269,8 +284,10 @@ describe('UsersService scope', () => {
     it("gives an owner today's weekly capacity", async () => {
       const row = await rowOf(owner, member.id);
 
+      const { defaultTimeline } = await capacity.calendarFor(companyId);
+
       expect(row.weeklyMinutes).toBe(
-        await capacity.defaultMinutesPerWeek(companyId),
+        defaultTimeline.minutesPerWeekOn(todayISODate(TIME_ZONE)),
       );
     });
 
@@ -647,32 +664,199 @@ describe('UsersService scope', () => {
   });
 
   describe('deactivating and reactivating', () => {
-    it('stamps the day somebody was deactivated, and clears it when they come back', async () => {
-      const leaver = await createUser('stamped', UserRole.EMPLOYEE);
+    const today = todayISODate(TIME_ZONE);
+    const yesterday = addDays(today, -1);
+    const tomorrow = addDays(today, 1);
 
-      const archived = await service.archive(leaver.id, owner.id, companyId);
-      const restored = await service.unarchive(leaver.id, companyId);
+    /** Someone who joined long ago, so any recent day can be their last. */
+    const createLongServing = async (name: string) => {
+      const person = await createUser(name, UserRole.EMPLOYEE);
+      await dataSource
+        .getRepository(User)
+        .update(person.id, { createdAt: new Date('2026-01-01T12:00:00Z') });
+      return person;
+    };
+
+    const spellsOf = (userId: string) =>
+      dataSource
+        .getRepository(UserInactivePeriod)
+        .findBy({ companyId, userId });
+
+    it('keeps the last working day open and closes the days after it', async () => {
+      const leaver = await createLongServing('lastday');
+
+      const archived = await service.archive(
+        leaver.id,
+        owner.id,
+        companyId,
+        yesterday,
+      );
 
       expect(archived.status).toBe(UserStatus.DEACTIVATED);
-      expect(archived.deactivatedAt).toBeInstanceOf(Date);
-      expect(restored.status).toBe(UserStatus.ACTIVE);
-      expect(restored.deactivatedAt).toBeNull();
+      expect(archived.lastWorkingDay).toBe(yesterday);
+      await expect(
+        capacity.assertEmployedOn(companyId, leaver.id, yesterday),
+      ).resolves.toBeUndefined();
+      await expect(
+        capacity.assertEmployedOn(companyId, leaver.id, today),
+      ).rejects.toThrow(BadRequestException);
     });
 
-    it('keeps the spell somebody was away for once they come back', async () => {
-      const returner = await createUser('returner', UserRole.EMPLOYEE);
+    it('removes what is recorded after the last working day, and cuts an absence across it', async () => {
+      const leaver = await createLongServing('cleanup');
+      const category = await dataSource
+        .getRepository(ActCategory)
+        .save({ companyId, name: `Category ${RUN}` });
+      const activity = await dataSource
+        .getRepository(Activity)
+        .save({ companyId, name: `Activity ${RUN}`, categoryId: category.id });
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `Cleanup ${RUN}` });
+      const projectActivity = await dataSource
+        .getRepository(ProjectActivity)
+        .save({ companyId, projectId: project.id, activityId: activity.id });
+      const forLeaver = { companyId, userId: leaver.id };
 
-      const archived = await service.archive(returner.id, owner.id, companyId);
-      await service.unarchive(returner.id, companyId);
-
-      const spells = await dataSource
-        .getRepository(UserInactivePeriod)
-        .findBy({ companyId, userId: returner.id });
-      expect(spells).toHaveLength(1);
-      expect(spells[0].deactivatedAt).toEqual(archived.deactivatedAt);
-      expect(spells[0].reactivatedAt.getTime()).toBeGreaterThanOrEqual(
-        spells[0].deactivatedAt.getTime(),
+      await dataSource.getRepository(TimeLog).save(
+        [yesterday, today].map((date) => ({
+          ...forLeaver,
+          projectActivityId: projectActivity.id,
+          minutes: 60,
+          date,
+        })),
       );
+      await dataSource.getRepository(PlanningEntry).save(
+        [yesterday, today, tomorrow].map((date) => ({
+          ...forLeaver,
+          projectId: project.id,
+          plannedMinutes: 120,
+          date,
+        })),
+      );
+      const [across, later] = await dataSource.getRepository(Absence).save([
+        {
+          ...forLeaver,
+          type: AbsenceType.SICK_LEAVE,
+          startDate: yesterday,
+          endDate: tomorrow,
+        },
+        {
+          ...forLeaver,
+          type: AbsenceType.VACATION,
+          startDate: addDays(tomorrow, 7),
+          endDate: addDays(tomorrow, 9),
+        },
+      ]);
+
+      const impact = await service.deactivationImpact(
+        leaver.id,
+        companyId,
+        yesterday,
+      );
+      expect(impact.time).toEqual({
+        entryCount: 1,
+        minutes: 60,
+        firstDate: today,
+        lastDate: today,
+      });
+      expect(impact.absences.map(({ id, isCut }) => ({ id, isCut }))).toEqual([
+        { id: across.id, isCut: true },
+        { id: later.id, isCut: false },
+      ]);
+      expect(impact.plans).toEqual([
+        {
+          projectId: project.id,
+          projectName: project.name,
+          planCount: 2,
+          firstDate: today,
+          lastDate: tomorrow,
+        },
+      ]);
+
+      await service.archive(leaver.id, owner.id, companyId, yesterday);
+
+      const datesOf = async (entity: typeof TimeLog | typeof PlanningEntry) =>
+        (await dataSource.getRepository(entity).findBy(forLeaver)).map(
+          (record) => record.date,
+        );
+      await expect(datesOf(TimeLog)).resolves.toEqual([yesterday]);
+      await expect(datesOf(PlanningEntry)).resolves.toEqual([yesterday]);
+      const absences = await dataSource
+        .getRepository(Absence)
+        .findBy(forLeaver);
+      expect(absences).toHaveLength(1);
+      expect(absences[0]).toMatchObject({
+        id: across.id,
+        endDate: yesterday,
+        updatedById: owner.id,
+      });
+    });
+
+    it('refuses a last working day after today or before they joined', async () => {
+      const joinedToday = await createUser('newcomer', UserRole.EMPLOYEE);
+
+      await expect(
+        service.archive(joinedToday.id, owner.id, companyId, tomorrow),
+      ).rejects.toThrow('after today');
+      await expect(
+        service.archive(joinedToday.id, owner.id, companyId, yesterday),
+      ).rejects.toThrow('before they joined');
+    });
+
+    it('takes the last day of a locked month, since only the days after it change', async () => {
+      const leaver = await createLongServing('lockedmonth');
+      const lockedUntil = await reporting.latestLockedDate(companyId);
+
+      await expect(
+        service.archive(
+          leaver.id,
+          owner.id,
+          companyId,
+          addDays(lockedUntil, -1),
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      await expect(
+        service.archive(leaver.id, owner.id, companyId, lockedUntil),
+      ).resolves.toMatchObject({ lastWorkingDay: lockedUntil });
+    });
+
+    it('closes only the days between the last working day and the first day back', async () => {
+      const returner = await createLongServing('returner');
+      const lastWorkingDay = addDays(today, -3);
+      await service.archive(returner.id, owner.id, companyId, lastWorkingDay);
+
+      await expect(
+        service.unarchive(returner.id, companyId, lastWorkingDay),
+      ).rejects.toThrow('after their last working day');
+
+      const back = await service.unarchive(returner.id, companyId, yesterday);
+
+      expect(back).toMatchObject({
+        status: UserStatus.ACTIVE,
+        lastWorkingDay: null,
+      });
+      expect(await spellsOf(returner.id)).toMatchObject([
+        { lastWorkingDay, firstDayBack: yesterday },
+      ]);
+      await expect(
+        capacity.assertEmployedOn(companyId, returner.id, lastWorkingDay),
+      ).resolves.toBeUndefined();
+      await expect(
+        capacity.assertEmployedOn(companyId, returner.id, addDays(today, -2)),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        capacity.assertEmployedOn(companyId, returner.id, yesterday),
+      ).resolves.toBeUndefined();
+    });
+
+    it('records no spell for someone back the day after their last working day', async () => {
+      const mistake = await createLongServing('mistake');
+      await service.archive(mistake.id, owner.id, companyId, yesterday);
+
+      await service.unarchive(mistake.id, companyId, today);
+
+      expect(await spellsOf(mistake.id)).toHaveLength(0);
     });
 
     it('ends their sessions', async () => {
@@ -684,7 +868,7 @@ describe('UsersService scope', () => {
         expiresAt: new Date(Date.now() + 3_600_000),
       });
 
-      await service.archive(leaver.id, owner.id, companyId);
+      await service.archive(leaver.id, owner.id, companyId, today);
 
       await expect(
         dataSource.getRepository(AuthSession).countBy({ userId: leaver.id }),
@@ -693,7 +877,7 @@ describe('UsersService scope', () => {
 
     it('refuses changing their details or working hours until they are back', async () => {
       const leaver = await createUser('readonly', UserRole.EMPLOYEE);
-      await service.archive(leaver.id, owner.id, companyId);
+      await service.archive(leaver.id, owner.id, companyId, today);
 
       await expect(
         service.updateUser(
@@ -720,13 +904,151 @@ describe('UsersService scope', () => {
         .getRepository(User)
         .update(undated.id, { status: UserStatus.DEACTIVATED });
 
-      await service.unarchive(undated.id, companyId);
+      await service.unarchive(undated.id, companyId, today);
+
+      expect(await spellsOf(undated.id)).toHaveLength(0);
+    });
+  });
+  describe('working hours scheduled ahead', () => {
+    const today = todayISODate(TIME_ZONE);
+    const inTenDays = addDays(today, 10);
+    const DAY_OF_SIX_HOURS = 30 * 60;
+    const DAY_OF_SEVEN_HOURS = 35 * 60;
+
+    it('lists a change that has not started, and cancels it back to the hours before', async () => {
+      const person = await createUser('scheduled', UserRole.EMPLOYEE);
+      const before = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
 
       await expect(
-        dataSource
-          .getRepository(UserInactivePeriod)
-          .countBy({ companyId, userId: undated.id }),
-      ).resolves.toBe(0);
+        capacity.currentFor(companyId, person.id),
+      ).resolves.toMatchObject({
+        upcoming: { validFrom: inTenDays, minutesPerWeek: DAY_OF_SIX_HOURS },
+      });
+
+      const after = await capacity.cancelUpcoming(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+
+      expect(after.upcoming).toBeNull();
+      await expect(
+        capacity.minutesPerWeekOn(companyId, person.id, inTenDays),
+      ).resolves.toBe(before);
+    });
+
+    it('keeps one scheduled change: a later one replaces it', async () => {
+      const person = await createUser('replaced', UserRole.EMPLOYEE);
+      const before = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+      const inTwentyDays = addDays(today, 20);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SEVEN_HOURS,
+        inTwentyDays,
+        owner.id,
+      );
+
+      expect(result.upcoming).toEqual({
+        validFrom: inTwentyDays,
+        minutesPerWeek: DAY_OF_SEVEN_HOURS,
+      });
+      await expect(
+        capacity.minutesPerWeekOn(companyId, person.id, inTenDays),
+      ).resolves.toBe(before);
+    });
+
+    it('drops a scheduled change that a change from today makes the same', async () => {
+      const person = await createUser('overtaken', UserRole.EMPLOYEE);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      expect(result).toMatchObject({
+        minutesPerWeek: DAY_OF_SIX_HOURS,
+        upcoming: null,
+      });
+    });
+
+    it('refuses to cancel a change already in force, or one that does not exist', async () => {
+      const person = await createUser('inforce', UserRole.EMPLOYEE);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      await expect(
+        capacity.cancelUpcoming(companyId, person.id, today),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        capacity.cancelUpcoming(companyId, person.id, inTenDays),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('removes a scheduled change when its day is set back to their own hours before', async () => {
+      const person = await createUser('setback', UserRole.EMPLOYEE);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SEVEN_HOURS,
+        today,
+        owner.id,
+      );
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SEVEN_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      expect(result.upcoming).toBeNull();
     });
   });
 });

@@ -2,7 +2,7 @@
 
 import { CircleCheck, KeyRound, Link2 } from "lucide-react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -37,10 +37,11 @@ export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     setError,
-    formState: { errors, isDirty },
+    formState: { errors },
   } = useForm<SecurityFormValues>({
     resolver: zodResolver(createSecuritySchema(!!hasPassword)),
     mode: "onTouched",
@@ -50,7 +51,11 @@ export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
     },
   });
 
-  useReportDirty(isDirty, onDirtyChange);
+  // The browser may fill in the current password by itself; nothing is
+  // changed until a new password is typed.
+  const hasNewPassword = useWatch({ control, name: "newPassword" }) !== "";
+
+  useReportDirty(hasNewPassword, onDirtyChange);
 
   const onSubmit = async (data: SecurityFormValues) => {
     try {
@@ -162,7 +167,7 @@ export const SecuritySettings = ({ onDirtyChange }: SecuritySettingsProps) => {
             <Button
               type="submit"
               variant="primary"
-              disabled={!isDirty}
+              disabled={!hasNewPassword}
               isLoading={actions.changePassword.isPending}
             >
               {hasPassword ? "Change password" : "Set password"}

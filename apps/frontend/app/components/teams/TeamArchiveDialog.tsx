@@ -59,7 +59,7 @@ export const TeamArchiveDialog = ({
     setIsRemovingDeactivated(true);
     try {
       for (const membership of deactivated) {
-        await removeMember.mutateAsync(membership.id);
+        await removeMember.mutateAsync({ membershipId: membership.id });
       }
     } catch {
       // The failure has its toast already; the refetch shows who is left.

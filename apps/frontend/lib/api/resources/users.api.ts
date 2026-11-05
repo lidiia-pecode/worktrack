@@ -3,6 +3,7 @@
 import {
   AssignableUserListResponse,
   AssignableUsersQuery,
+  DeactivationImpact,
   User,
   UserListResponse,
   UsersQuery,
@@ -34,8 +35,15 @@ export const UsersClientApi = {
       `/assignable${buildQueryString(params)}`,
     ),
 
-  archive: (id: string) => client.archive<User>(`/${id}/archive`),
-  unarchive: (id: string) => client.patch<User>(`/${id}/unarchive`),
+  getDeactivationImpact: (id: string, lastWorkingDay: string) =>
+    client.get<DeactivationImpact>(
+      `/${id}/deactivation-impact${buildQueryString({ lastWorkingDay })}`,
+    ),
+
+  deactivate: (id: string, lastWorkingDay: string) =>
+    client.patch<User>(`/${id}/archive`, { lastWorkingDay }),
+  reactivate: (id: string, firstDayBack: string) =>
+    client.patch<User>(`/${id}/unarchive`, { firstDayBack }),
 
   updateProfile: (data: UpdateProfilePayload) =>
     client.patch<User>("/me/profile", data),

@@ -16,6 +16,7 @@ import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { ReportingPeriod } from './entities/reporting-period.entity';
+import { findLatestLockedDate } from './latest-locked-date.util';
 import { ReportingPeriodStatus } from './enums/reporting-period-status.enum';
 import { ReportingMonthState } from './enums/reporting-month-state.enum';
 import {
@@ -24,7 +25,6 @@ import {
   firstDayOfMonth,
   isAutoLocked,
   lastDayOfMonth,
-  latestAutoLockedMonth,
   monthsBetween,
   toMonthKey,
 } from './reporting-months.util';
@@ -397,22 +397,11 @@ export class ReportingService {
     companyId: string,
     manager?: EntityManager,
   ): Promise<string> {
-    const today = await findCompanyToday(
+    return findLatestLockedDate(
       manager ?? this.companyRepo.manager,
       companyId,
+      Boolean(manager),
     );
-    const reopened = await this.findReopenedMonths(
-      companyId,
-      undefined,
-      manager,
-    );
-
-    let month = latestAutoLockedMonth(today);
-    while (reopened.has(month)) {
-      month = addMonths(month, -1);
-    }
-
-    return lastDayOfMonth(month);
   }
 
   private stateOf(
@@ -673,7 +662,7 @@ export class ReportingService {
    * Planned minutes over the same days and people as the Hours report, summed
    * by its grouping, which uses only projects and people. A deactivated
    * person's plan counts only when they logged time in the range, as in the
-   * People report: a plan alone is usually left over from before they left.
+   * People report.
    */
   private plannedRows(
     user: AuthUser,

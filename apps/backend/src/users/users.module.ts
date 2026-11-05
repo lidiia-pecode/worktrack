@@ -6,6 +6,7 @@ import { UserInactivePeriod } from './entities/user-inactive-period.entity';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { TeamsModule } from 'src/teams/teams.module';
 import { CapacityModule } from 'src/capacity/capacity.module';
+import { ReportingModule } from 'src/reporting/reporting.module';
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import { CapacityModule } from 'src/capacity/capacity.module';
     TypeOrmModule.forFeature([User, UserInactivePeriod]),
     TeamsModule,
     CapacityModule,
+    ReportingModule,
   ],
   controllers: [UsersController],
   providers: [UsersService],

@@ -7,11 +7,10 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
 import { useSetupLinkParams } from "@/hooks/useSetupLink";
 import { useUsersInfiniteQuery } from "@/hooks/useUsers";
-import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS } from "@/lib/constants";
 import { formatDuration } from "@/lib/utils/date";
 import {
-  deactivatedOnLabel,
+  lastWorkingDayLabel,
   fullName,
   hasManagerAccess,
 } from "@/lib/utils/user";
@@ -81,16 +80,16 @@ const WEEKLY_HOURS_COLUMN: ManageColumn<UserListItem> = {
   summary: (user) => `${weeklyHours(user)} a week`,
 };
 
-// On the Deactivated tab the day they left takes the place of their projects.
-const deactivatedColumn = (timeZone?: string): ManageColumn<UserListItem> => ({
-  header: "Deactivated",
-  width: "w-32",
-  cell: (user) => deactivatedOnLabel(user, timeZone),
+// On the Deactivated tab their last working day takes the place of their projects.
+const LAST_WORKING_DAY_COLUMN: ManageColumn<UserListItem> = {
+  header: "Last working day",
+  width: "w-36",
+  cell: lastWorkingDayLabel,
   summary: (user) => {
-    const deactivatedOn = deactivatedOnLabel(user, timeZone);
-    return deactivatedOn && `Deactivated ${deactivatedOn}`;
+    const lastDay = lastWorkingDayLabel(user);
+    return lastDay && `Last working day ${lastDay}`;
   },
-});
+};
 
 export const UsersContent = () => {
   const { isOnboarding, opensCreateForm } = useSetupLinkParams();
@@ -98,14 +97,13 @@ export const UsersContent = () => {
   const listState = useManageListState();
   const userActions = useUserActions();
   const { user } = useAuth();
-  const { timezone } = useWorkSettings();
   const canManage = hasManagerAccess(user?.role);
   const isActiveTab = listState.tab === "active";
   const status = isActiveTab ? UserStatus.ACTIVE : UserStatus.DEACTIVATED;
   const columns = [
     ROLE_COLUMN,
     TEAM_COLUMN,
-    isActiveTab ? PROJECTS_COLUMN : deactivatedColumn(timezone),
+    isActiveTab ? PROJECTS_COLUMN : LAST_WORKING_DAY_COLUMN,
     ...(user?.role === UserRole.OWNER ? [WEEKLY_HOURS_COLUMN] : []),
   ];
 

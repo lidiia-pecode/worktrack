@@ -32,6 +32,7 @@ import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
+import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { formatDay } from 'src/lib/utils/format-day.util';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
@@ -205,6 +206,7 @@ describe('PlanningService', () => {
       dataSource.getRepository(Company),
       dataSource.getRepository(User),
       dataSource.getRepository(UserInactivePeriod),
+      dataSource.getRepository(CompanyStandardDay),
       reporting,
     );
     expectedHours = new ExpectedHoursService(
@@ -235,6 +237,7 @@ describe('PlanningService', () => {
         teamVisibility,
         dataSource,
         stub<CapacityService>({}),
+        stub<ReportingService>({}),
       ),
       teamVisibility,
       service,
@@ -611,6 +614,25 @@ describe('PlanningService', () => {
       await expect(
         service.update(id, { date: TUESDAY }, manager),
       ).rejects.toThrow(/This person is away on/);
+    });
+
+    it('refuses a plan on a day they were away from the company', async () => {
+      const spell = await dataSource.getRepository(UserInactivePeriod).save({
+        companyId,
+        userId: member.id,
+        deactivatedAt: new Date(`${TUESDAY}T09:00:00Z`),
+        reactivatedAt: new Date(`${WEDNESDAY}T09:00:00Z`),
+        lastWorkingDay: MONDAY,
+        firstDayBack: WEDNESDAY,
+      });
+
+      try {
+        await expect(
+          service.create(plan(member.id, TUESDAY, HOUR), manager),
+        ).rejects.toThrow(BadRequestException);
+      } finally {
+        await dataSource.getRepository(UserInactivePeriod).delete(spell.id);
+      }
     });
 
     it('lets an over-budget week be reduced, but not raised', async () => {

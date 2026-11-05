@@ -242,6 +242,32 @@ export function formatDayMonthLabel(date: string): string {
   return DAY_MONTH_LABEL.format(new Date(`${date}T00:00:00`));
 }
 
+/** The YYYY-MM-DD date `days` days from `date`. */
+export function shiftISODate(date: string, days: number): string {
+  return toISODate(addDays(fromISODate(date), days));
+}
+
+/** The later of two YYYY-MM-DD dates, either of which may be missing. */
+export function laterISODate(
+  a: string | null,
+  b: string | null,
+): string | null {
+  if (!a || !b) return a ?? b;
+  return a > b ? a : b;
+}
+
+/** "3 Nov", or "3 Nov – 4 Nov". */
+export function formatDayRangeLabel(
+  startDate: string,
+  endDate: string,
+): string {
+  const start = formatDayMonthLabel(startDate);
+
+  return startDate === endDate
+    ? start
+    : `${start} - ${formatDayMonthLabel(endDate)}`;
+}
+
 /** The 1st of the month `monthsAhead` months from `date`'s month. */
 export function firstOfMonth(date: Date, monthsAhead = 0): Date {
   return new Date(date.getFullYear(), date.getMonth() + monthsAhead, 1);

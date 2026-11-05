@@ -96,7 +96,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
         }),
       ),
       ...staged.toRemove.map((choice) =>
-        removeMember.mutateAsync(choice.membershipId!),
+        removeMember.mutateAsync({ membershipId: choice.membershipId! }),
       ),
     ]);
 

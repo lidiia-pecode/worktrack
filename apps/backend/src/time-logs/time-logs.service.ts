@@ -232,7 +232,7 @@ export class TimeLogsService {
         projectId: query.projectId,
         userId: query.userId,
         includeUserIds: loggedUserIds,
-        leftAfter: { date: query.dateFrom, timezone },
+        stillEmployedOn: query.dateFrom,
         during: { from: query.dateFrom, to: query.dateTo },
       },
       { includeSelf: true },

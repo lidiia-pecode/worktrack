@@ -3,6 +3,7 @@ import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { hashPassword } from 'src/lib/utils/hash-password.util';
+import { addDays } from 'src/capacity/working-days.util';
 
 import {
   ACCOUNTS_CREATED_AT,
@@ -34,9 +35,10 @@ export async function seedUsers(dataSource: DataSource, companyId: string) {
         position: data.position,
         passwordHash,
         status: data.status ?? UserStatus.ACTIVE,
-        deactivatedAt: data.deactivatedOn
-          ? new Date(`${data.deactivatedOn}T00:00:00Z`)
+        deactivatedAt: data.lastWorkingDay
+          ? new Date(`${addDays(data.lastWorkingDay, 1)}T09:00:00Z`)
           : null,
+        lastWorkingDay: data.lastWorkingDay ?? null,
         createdAt: data.joinedOn
           ? new Date(`${data.joinedOn}T00:00:00Z`)
           : ACCOUNTS_CREATED_AT,
