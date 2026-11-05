@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThanOrEqual, Repository } from 'typeorm';
+import { In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
@@ -42,11 +42,18 @@ export interface ActiveDates {
   inactiveSpells: InactiveSpell[];
 }
 
+export interface CapacityChange {
+  validFrom: string;
+  minutesPerWeek: number;
+}
+
 export interface CurrentCapacity {
   userId: string;
   minutesPerWeek: number;
   validFrom: string | null;
   isCompanyDefault: boolean;
+  /** The change that starts after today; there is at most one. */
+  upcoming: CapacityChange | null;
 }
 
 @Injectable()
@@ -229,7 +236,7 @@ export class CapacityService {
     return findCompanyToday(this.companyRepo.manager, companyId);
   }
 
-  /** What the form shows: the row in force today, or the company default. */
+  /** What the panel shows: the row in force today, or the company default, and what comes after it. */
   async currentFor(
     companyId: string,
     userId: string,
@@ -237,12 +244,23 @@ export class CapacityService {
   ): Promise<CurrentCapacity> {
     await this.findUserInCompany(companyId, userId);
 
-    const date = onDate ?? (await this.today(companyId));
+    const today = await this.today(companyId);
+    const date = onDate ?? today;
 
-    const row = await this.repo.findOne({
-      where: { companyId, userId, validFrom: LessThanOrEqual(date) },
-      order: { validFrom: 'DESC' },
-    });
+    const [row, next] = await Promise.all([
+      this.repo.findOne({
+        where: { companyId, userId, validFrom: LessThanOrEqual(date) },
+        order: { validFrom: 'DESC' },
+      }),
+      this.repo.findOne({
+        where: { companyId, userId, validFrom: MoreThan(today) },
+        order: { validFrom: 'ASC' },
+        select: ['validFrom', 'minutesPerWeek'],
+      }),
+    ]);
+    const upcoming = next
+      ? { validFrom: next.validFrom, minutesPerWeek: next.minutesPerWeek }
+      : null;
 
     if (row) {
       return {
@@ -250,6 +268,7 @@ export class CapacityService {
         minutesPerWeek: row.minutesPerWeek,
         validFrom: row.validFrom,
         isCompanyDefault: false,
+        upcoming,
       };
     }
 
@@ -258,12 +277,14 @@ export class CapacityService {
       minutesPerWeek: await this.defaultMinutesPerWeek(companyId),
       validFrom: null,
       isCompanyDefault: true,
+      upcoming,
     };
   }
 
   /**
    * Sets somebody's capacity from a date. Setting the same date twice replaces
    * that row rather than failing, so a typo can be corrected the same day.
+   * A date after today replaces the change already scheduled, if any.
    */
   async setCapacity(
     companyId: string,
@@ -281,6 +302,11 @@ export class CapacityService {
       );
     }
 
+    const [today, defaultMinutesPerWeek] = await Promise.all([
+      this.today(companyId),
+      this.defaultMinutesPerWeek(companyId),
+    ]);
+
     // The lock check runs inside the write's transaction, so a Close at the
     // same moment waits for it (see ReportingService.isRangeLocked).
     await this.repo.manager.transaction(async (manager) => {
@@ -297,11 +323,37 @@ export class CapacityService {
         );
       }
 
-      const existing = await manager.findOne(UserCapacity, {
-        where: { companyId, userId, validFrom },
+      // One change waits ahead at a time: scheduling another replaces it.
+      // Saves for the same person queue on their row, so two can't both stay.
+      await manager.findOne(User, {
+        where: { id: userId, companyId },
+        select: ['id'],
+        lock: { mode: 'pessimistic_write' },
       });
+      if (validFrom > today) {
+        await manager.delete(UserCapacity, {
+          companyId,
+          userId,
+          validFrom: MoreThan(today),
+        });
+      }
 
-      if (existing) {
+      const rows = await manager.find(UserCapacity, {
+        where: { companyId, userId },
+        order: { validFrom: 'ASC' },
+      });
+      const existing = rows.find((row) => row.validFrom === validFrom);
+      const next = rows.find((row) => row.validFrom > validFrom);
+      const hoursBefore = buildTimeline(
+        rows,
+        defaultMinutesPerWeek,
+      ).minutesPerWeekOn(addDays(validFrom, -1));
+
+      // Hours equal to the day before's are no change at all: nothing is
+      // saved, and a change already on that day is removed.
+      if (hoursBefore === minutesPerWeek) {
+        if (existing) await manager.remove(existing);
+      } else if (existing) {
         existing.minutesPerWeek = minutesPerWeek;
         existing.createdById = actorId;
         await manager.save(existing);
@@ -316,9 +368,47 @@ export class CapacityService {
           }),
         );
       }
+
+      // A later change to these same hours no longer changes anything.
+      if (next?.minutesPerWeek === minutesPerWeek) await manager.remove(next);
     });
 
     return this.currentFor(companyId, userId, validFrom);
+  }
+
+  /**
+   * Cancels a change that hasn't started yet; the hours before it carry on.
+   * One already in force is corrected by saving hours on its date instead.
+   */
+  async cancelUpcoming(
+    companyId: string,
+    userId: string,
+    validFrom: string,
+  ): Promise<CurrentCapacity> {
+    const user = await this.findUserInCompany(companyId, userId);
+
+    if (user.status === UserStatus.DEACTIVATED) {
+      throw new BadRequestException(
+        'Reactivate this person before changing their working hours.',
+      );
+    }
+
+    if (validFrom <= (await this.today(companyId))) {
+      throw new BadRequestException(
+        'Only a change that starts after today can be cancelled; set the hours again to correct one in force.',
+      );
+    }
+
+    const { affected } = await this.repo.delete({
+      companyId,
+      userId,
+      validFrom,
+    });
+    if (!affected) {
+      throw new NotFoundException('No working-hours change starts that day');
+    }
+
+    return this.currentFor(companyId, userId);
   }
 
   private async findUserInCompany(

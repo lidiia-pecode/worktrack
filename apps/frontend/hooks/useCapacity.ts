@@ -19,28 +19,53 @@ export function useUserCapacity(userId: string, enabled = true) {
     capacity: query.data ?? null,
     isLoading: query.isLoading,
     isError: query.isError,
+    refetch: query.refetch,
   };
 }
 
-export function useSetCapacity() {
+/** Working hours feed Expected, Planning's limits and the Manage list's weekly hours. */
+const useRefreshAfterCapacityChange = () => {
   const queryClient = useQueryClient();
+
+  return () =>
+    [
+      queryKeys.capacity.all,
+      queryKeys.timelogs.all,
+      queryKeys.planning.all,
+      queryKeys.reporting.figures,
+      queryKeys.users.all,
+    ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
+};
+
+export function useSetCapacity() {
+  const refresh = useRefreshAfterCapacityChange();
 
   return useMutation({
     mutationFn: (data: SetCapacityPayload) =>
       CapacityClientApi.setForUser(data),
 
-    onSuccess: (_result, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.capacity.forUser(variables.userId),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.capacity.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.timelogs.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
-      // The Manage list shows each person's weekly hours.
-      queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
-
+    onSuccess: () => {
+      refresh();
       toast.success("Working hours updated");
+    },
+  });
+}
+
+export function useCancelCapacityChange() {
+  const refresh = useRefreshAfterCapacityChange();
+
+  return useMutation({
+    mutationFn: ({
+      userId,
+      validFrom,
+    }: {
+      userId: string;
+      validFrom: string;
+    }) => CapacityClientApi.cancelChange(userId, validFrom),
+
+    onSuccess: () => {
+      refresh();
+      toast.success("Working hours change cancelled");
     },
   });
 }

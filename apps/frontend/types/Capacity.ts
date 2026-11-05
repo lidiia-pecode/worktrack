@@ -18,12 +18,19 @@ export type ExpectedHoursQuery = {
   dateTo: string;
 };
 
+export interface CapacityChange {
+  validFrom: string;
+  minutesPerWeek: number;
+}
+
 /** Mirrors the backend `CapacityResponse` DTO. */
 export interface Capacity {
   userId: string;
   minutesPerWeek: number;
   validFrom: string | null;
   isCompanyDefault: boolean;
+  /** The change that starts after today; there is at most one. */
+  upcoming: CapacityChange | null;
 }
 
 export interface SetCapacityPayload {

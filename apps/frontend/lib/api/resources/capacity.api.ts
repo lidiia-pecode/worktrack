@@ -18,4 +18,7 @@ export const CapacityClientApi = {
   getForUser: (userId: string) => client.get<Capacity>(`/users/${userId}`),
 
   setForUser: (data: SetCapacityPayload) => client.post<Capacity>("", data),
+
+  cancelChange: (userId: string, validFrom: string) =>
+    client.delete<Capacity>(`/users/${userId}/changes/${validFrom}`),
 };

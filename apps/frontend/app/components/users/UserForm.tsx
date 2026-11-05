@@ -9,10 +9,17 @@ import { ROLE_LABELS } from "@/lib/constants";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
 import { useReportDirty } from "@/hooks/useReportDirty";
-import { formatDuration } from "@/lib/utils/date";
+import { useWorkSettings } from "@/hooks/useWorkSettings";
+import {
+  formatDayMonthYearLabel,
+  formatDuration,
+  todayISODate,
+} from "@/lib/utils/date";
+import { CapacityChange } from "@/types";
 import {
   MAX_WORK_DAY_HOURS,
   WORK_DAY_STEP_HOURS,
+  minutesPerDayOf,
   minutesPerWeekOf,
   workDayHoursSchema,
 } from "@/lib/forms/schemas/work-day.schema";
@@ -42,6 +49,8 @@ export type UserFormData = z.infer<ReturnType<typeof userSchema>>;
 type UserFormProps = {
   formId: string;
   defaultValues: UserFormData;
+  /** The hours change already waiting to start; a later date replaces it. */
+  scheduledChange?: CapacityChange | null;
   onSubmit: (data: UserFormData) => void | Promise<unknown>;
   onDirtyChange?: (isDirty: boolean) => void;
 };
@@ -54,6 +63,7 @@ const roleOptions = [
 export const UserForm = ({
   formId,
   defaultValues,
+  scheduledChange,
   onSubmit,
   onDirtyChange,
 }: UserFormProps) => {
@@ -69,6 +79,10 @@ export const UserForm = ({
   const hoursPerDay = useWatch({ control, name: "capacityHoursPerDay" });
   const minutesPerWeek = minutesPerWeekOf(hoursPerDay);
   const role = useWatch({ control, name: "role" });
+  const validFrom = useWatch({ control, name: "capacityValidFrom" });
+  const { timezone } = useWorkSettings();
+  const replacesScheduledChange =
+    scheduledChange && validFrom > todayISODate(timezone);
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
   // The API refuses a change that would reach back into a locked month.
@@ -137,7 +151,11 @@ export const UserForm = ({
                 onChange={field.onChange}
                 minDate={firstChangeableDay}
                 label="Applies from"
-                description="Earlier weeks keep their hours."
+                description={
+                  replacesScheduledChange
+                    ? `Replaces the change to ${formatDuration(minutesPerDayOf(scheduledChange.minutesPerWeek))} a day from ${formatDayMonthYearLabel(scheduledChange.validFrom)}.`
+                    : "Earlier weeks keep their hours."
+                }
                 error={fieldState.error?.message}
               />
             )}

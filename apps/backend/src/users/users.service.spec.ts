@@ -905,4 +905,163 @@ describe('UsersService scope', () => {
       expect(await spellsOf(undated.id)).toHaveLength(0);
     });
   });
+  describe('working hours scheduled ahead', () => {
+    const today = todayISODate(TIME_ZONE);
+    const inTenDays = addDays(today, 10);
+    const DAY_OF_SIX_HOURS = 30 * 60;
+    const DAY_OF_SEVEN_HOURS = 35 * 60;
+
+    it('lists a change that has not started, and cancels it back to the hours before', async () => {
+      const person = await createUser('scheduled', UserRole.EMPLOYEE);
+      const before = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      await expect(
+        capacity.currentFor(companyId, person.id),
+      ).resolves.toMatchObject({
+        upcoming: { validFrom: inTenDays, minutesPerWeek: DAY_OF_SIX_HOURS },
+      });
+
+      const after = await capacity.cancelUpcoming(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+
+      expect(after.upcoming).toBeNull();
+      await expect(
+        capacity.minutesPerWeekOn(companyId, person.id, inTenDays),
+      ).resolves.toBe(before);
+    });
+
+    it('keeps one scheduled change: a later one replaces it', async () => {
+      const person = await createUser('replaced', UserRole.EMPLOYEE);
+      const before = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+      const inTwentyDays = addDays(today, 20);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SEVEN_HOURS,
+        inTwentyDays,
+        owner.id,
+      );
+
+      expect(result.upcoming).toEqual({
+        validFrom: inTwentyDays,
+        minutesPerWeek: DAY_OF_SEVEN_HOURS,
+      });
+      await expect(
+        capacity.minutesPerWeekOn(companyId, person.id, inTenDays),
+      ).resolves.toBe(before);
+    });
+
+    it('drops a scheduled change that a change from today makes the same', async () => {
+      const person = await createUser('overtaken', UserRole.EMPLOYEE);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      expect(result).toMatchObject({
+        minutesPerWeek: DAY_OF_SIX_HOURS,
+        upcoming: null,
+      });
+    });
+
+    it('refuses to cancel a change already in force, or one that does not exist', async () => {
+      const person = await createUser('inforce', UserRole.EMPLOYEE);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      await expect(
+        capacity.cancelUpcoming(companyId, person.id, today),
+      ).rejects.toThrow(BadRequestException);
+      await expect(
+        capacity.cancelUpcoming(companyId, person.id, inTenDays),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('removes a scheduled change when its day is set back to the hours before', async () => {
+      const person = await createUser('setback', UserRole.EMPLOYEE);
+      const before = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        inTenDays,
+        owner.id,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        before,
+        inTenDays,
+        owner.id,
+      );
+
+      expect(result.upcoming).toBeNull();
+    });
+
+    it('saves nothing when the hours are already in force on that day', async () => {
+      const person = await createUser('unchanged', UserRole.EMPLOYEE);
+      const inForce = await capacity.minutesPerWeekOn(
+        companyId,
+        person.id,
+        inTenDays,
+      );
+
+      const result = await capacity.setCapacity(
+        companyId,
+        person.id,
+        inForce,
+        inTenDays,
+        owner.id,
+      );
+
+      expect(result.upcoming).toBeNull();
+    });
+  });
 });
