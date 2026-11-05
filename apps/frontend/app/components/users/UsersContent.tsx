@@ -24,15 +24,17 @@ import {
   ManageList,
   ManageWarning,
 } from "../shared/resource/ManageList";
-import { EntityLinks, linkedEntities } from "../entity-panel/EntityLink";
+import { EntityLink } from "../entity-panel/EntityLink";
 import { Avatar } from "../shared/Avatar";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import { InviteUserModal } from "./InviteUserModal";
 import { PendingInvitations } from "./PendingInvitations";
 import { useUserActions } from "./useUserActions";
 
-const UserTeams = ({ user }: { user: UserListItem }) => (
-  <EntityLinks tone="plain" entities={linkedEntities("team", user.teams)} />
+const UserTeam = ({ team }: { team: { id: string; name: string } }) => (
+  <EntityLink tone="plain" entity={{ type: "team", id: team.id }}>
+    {team.name}
+  </EntityLink>
 );
 
 const NO_TEAM = "No team";
@@ -50,14 +52,14 @@ const TEAM_COLUMN: ManageColumn<UserListItem> = {
   header: "Team",
   width: "w-48",
   cell: (user) =>
-    user.teams.length > 0 ? (
-      <UserTeams user={user} />
+    user.team ? (
+      <UserTeam team={user.team} />
     ) : (
       <ManageWarning>{NO_TEAM}</ManageWarning>
     ),
   summary: (user) =>
-    user.teams.length > 0 ? (
-      <UserTeams user={user} />
+    user.team ? (
+      <UserTeam team={user.team} />
     ) : (
       <ManageWarning inline>{NO_TEAM}</ManageWarning>
     ),

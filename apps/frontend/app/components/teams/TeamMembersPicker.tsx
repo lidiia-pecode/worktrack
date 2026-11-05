@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
-import { fieldLabelClassName } from "@/components/ui/field";
 import { useServerSearch } from "@/hooks/useManageListState";
 import { useTeamMembers } from "@/hooks/useTeams";
 import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
@@ -23,36 +21,26 @@ import { activeManagers, currentMemberships } from "./team-memberships";
 
 export const MEMBERS_PICKER = "add-members";
 
-const TEAM_ROLES = [TeamRole.MANAGER, TeamRole.MEMBER];
-
-// Only someone with the Manager role can lead a team; anyone but the owner
-// can be a member of one, a Manager included.
-const USER_ROLES_FOR: Record<TeamRole, UserRole[]> = {
-  [TeamRole.MANAGER]: [UserRole.MANAGER],
-  [TeamRole.MEMBER]: [UserRole.EMPLOYEE, UserRole.MANAGER],
-};
+// Anyone but the owner can be a member, a Manager included; a team's manager
+// is chosen separately.
+const MEMBER_ROLES = [UserRole.EMPLOYEE, UserRole.MANAGER];
 
 /**
- * A current member carries their membership; a new one, the role they join in
- * and, for a member of another team, the team they leave for this one.
+ * A current member carries their membership; a new one, for someone in
+ * another team, the team they leave for this one.
  */
 interface MemberChoice extends Choice {
   membershipId?: string;
-  roleInTeam?: TeamRole;
   fromTeam?: UserTeam;
 }
 
 export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const { addMember, removeMember } = useTeamMembers(team.id);
   const [isConfirming, setIsConfirming] = useState(false);
-  // A team without a manager most likely needs one first.
-  const [roleInTeam, setRoleInTeam] = useState(
-    activeManagers(team).length === 0 ? TeamRole.MANAGER : TeamRole.MEMBER,
-  );
   const { searchQuery, setSearch } = useServerSearch();
   const { items, isLoading, pagination } = useAssignableUsersInfiniteQuery({
     status: UserStatus.ACTIVE,
-    roles: USER_ROLES_FOR[roleInTeam],
+    roles: MEMBER_ROLES,
     search: searchQuery,
   });
 
@@ -67,12 +55,8 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const staging = (userId: string) =>
     staged.toAdd.find((choice) => choice.id === userId);
 
-  // Only a member joins as a member; a manager leads this team on top of
-  // whatever else they do.
-  const leavesFor = (person: { memberTeam: UserTeam | null }) =>
-    roleInTeam === TeamRole.MEMBER && person.memberTeam?.id !== team.id
-      ? (person.memberTeam ?? undefined)
-      : undefined;
+  const leavesFor = ({ team: personTeam }: { team: UserTeam | null }) =>
+    personTeam && personTeam.id !== team.id ? personTeam : undefined;
 
   const moves = staged.toAdd.flatMap((choice) =>
     choice.fromTeam ? [{ name: choice.name, fromTeam: choice.fromTeam }] : [],
@@ -83,15 +67,13 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
     managerIds.length > 0 &&
     managerIds.every((id) =>
       staged.toRemove.some((choice) => choice.id === id),
-    ) &&
-    !staged.toAdd.some((choice) => choice.roleInTeam === TeamRole.MANAGER);
+    );
 
   const applyAll = () =>
     staged.apply([
       ...staged.toAdd.map((choice) =>
         addMember.mutateAsync({
           userId: choice.id,
-          roleInTeam: choice.roleInTeam ?? TeamRole.MEMBER,
           leaveCurrentTeam: Boolean(choice.fromTeam),
         }),
       ),
@@ -127,36 +109,13 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
         onDone={done}
         onCancel={staged.cancel}
       >
-        <div role="group" aria-labelledby="team-picker-role">
-          <p id="team-picker-role" className={fieldLabelClassName}>
-            Add as
-          </p>
-
-          <div className="flex gap-2">
-            {TEAM_ROLES.map((role) => (
-              <Button
-                key={role}
-                type="button"
-                size="sm"
-                variant={role === roleInTeam ? "primary" : "outline"}
-                aria-pressed={role === roleInTeam}
-                onClick={() => setRoleInTeam(role)}
-              >
-                {TEAM_ROLE_LABELS[role]}
-              </Button>
-            ))}
-          </div>
-        </div>
-
         <EntityPicker
-          className="mt-4"
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>
             staged.toggle({
               id: person.id,
               name: fullName(person),
-              roleInTeam,
               fromTeam: leavesFor(person),
             })
           }
@@ -164,12 +123,12 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           getLabel={fullName}
           getSubtitle={(person) => {
             const choice = staging(person.id);
-            if (choice?.roleInTeam) {
+            if (choice) {
               return choice.fromTeam
-                ? `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}, leaving ${choice.fromTeam.name}`
-                : `Joins as ${TEAM_ROLE_LABELS[choice.roleInTeam]}`;
+                ? `Joins as ${TEAM_ROLE_LABELS[TeamRole.MEMBER]}, leaving ${choice.fromTeam.name}`
+                : `Joins as ${TEAM_ROLE_LABELS[TeamRole.MEMBER]}`;
             }
-            // Managers show in the Member view too; unchoosing one removes them.
+            // Unchoosing the manager removes them.
             if (managerIds.includes(person.id)) return "Manages this team";
             const fromTeam = leavesFor(person);
             return fromTeam ? `In ${fromTeam.name}` : person.email;
@@ -180,11 +139,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           hasNextPage={pagination.hasNextPage}
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
-          emptyMessage={
-            roleInTeam === TeamRole.MANAGER
-              ? "Nobody has the Manager role yet. Change someone's role in their panel first."
-              : "Nobody to add yet."
-          }
+          emptyMessage="Nobody to add yet."
           searchPlaceholder="Search people..."
         />
       </PanelView>

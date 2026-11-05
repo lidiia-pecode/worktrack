@@ -48,7 +48,7 @@ interface ChangeContext {
   /** The person's other teams the viewer can see. */
   otherTeamsCount: number;
   /** The other team they are a member of, which making them a member here leaves. */
-  otherMemberTeam?: UserTeam | null;
+  otherMemberTeam?: Pick<UserTeam, "id" | "name"> | null;
   /** The day a removal takes effect, today by default. */
   day?: ChangeDayWords;
 }
@@ -135,7 +135,7 @@ export const memberChangeCopy = (
 /** Someone the picker adds who is a member of another team, which they leave. */
 export interface PickerMove {
   name: string;
-  fromTeam: UserTeam;
+  fromTeam: Pick<UserTeam, "id" | "name">;
 }
 
 interface PickerChanges {

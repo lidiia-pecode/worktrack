@@ -66,7 +66,7 @@ export const UserReactivateDialog = ({
     : null;
   const earliestDay = laterISODate(dayAfterLeaving, firstOpenDay);
 
-  const teams = details.data?.teams ?? [];
+  const teams = details.data?.team ? [details.data.team] : [];
   const activeProjects = (details.data?.projects ?? []).filter(
     (project) => project.status === ProjectStatus.ACTIVE,
   );

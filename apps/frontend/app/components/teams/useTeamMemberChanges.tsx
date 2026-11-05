@@ -30,11 +30,10 @@ export const useTeamMemberChanges = (team: Team) => {
   const changedPerson = useUserDetails(
     needsPersonDetails ? change.membership.userId : "",
   );
+  const personTeam = changedPerson.data?.team ?? null;
+  const otherTeam = personTeam?.id !== team.id ? personTeam : null;
   const otherMemberTeam =
-    changedPerson.data?.teams.find(
-      (personTeam) =>
-        personTeam.roleInTeam === TeamRole.MEMBER && personTeam.id !== team.id,
-    ) ?? null;
+    otherTeam?.roleInTeam === TeamRole.MEMBER ? otherTeam : null;
 
   // A second click while one change saves would act on stale details.
   const isBusy = updateMember.isPending;
@@ -59,9 +58,7 @@ export const useTeamMemberChanges = (team: Team) => {
     change &&
     memberChangeCopy(change, team, {
       isOwner: viewer?.role === UserRole.OWNER,
-      otherTeamsCount: (changedPerson.data?.teams ?? []).filter(
-        (personTeam) => personTeam.id !== team.id,
-      ).length,
+      otherTeamsCount: otherTeam ? 1 : 0,
       otherMemberTeam,
     });
 

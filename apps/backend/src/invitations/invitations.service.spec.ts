@@ -8,6 +8,7 @@ import {
 
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { Team } from 'src/teams/entities/team.entity';
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
@@ -83,6 +84,8 @@ describe('InvitationsService.create', () => {
         Promise.resolve(TEAMS[where.id] ?? null),
     );
     const teamRepository = { findOne: findTeam };
+    // No team here has a manager yet.
+    const membershipRepository = { exists: jest.fn().mockResolvedValue(false) };
 
     service = new InvitationsService(
       stub(invitationRepository),
@@ -94,8 +97,11 @@ describe('InvitationsService.create', () => {
       stub({
         transaction: (work: (manager: unknown) => Promise<unknown>) =>
           work({
-            getRepository: (entity: unknown) =>
-              entity === Team ? teamRepository : invitationRepository,
+            getRepository: (entity: unknown) => {
+              if (entity === Team) return teamRepository;
+              if (entity === TeamMembership) return membershipRepository;
+              return invitationRepository;
+            },
           }),
       }),
       stub({

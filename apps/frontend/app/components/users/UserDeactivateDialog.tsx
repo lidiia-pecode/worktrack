@@ -154,9 +154,9 @@ export const UserDeactivateDialog = ({
     firstOpenDay ? shiftISODate(firstOpenDay, -1) : null,
   );
 
-  const managedTeams = (details.data?.teams ?? []).filter(
-    (team) => team.roleInTeam === TeamRole.MANAGER,
-  );
+  const personTeam = details.data?.team;
+  const managedTeams =
+    personTeam?.roleInTeam === TeamRole.MANAGER ? [personTeam] : [];
   // A team keeps an active manager only if someone else also manages it.
   const managedTeamDetails = useQueries({
     queries: managedTeams.map((team) => teamDetailsQuery(team.id)),

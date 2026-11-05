@@ -59,9 +59,8 @@ export const TeamMemberRemoveDialog = ({
     person.data &&
     memberChangeCopy({ kind: "remove", membership }, team.data, {
       isOwner,
-      otherTeamsCount: person.data.teams.filter(
-        ({ id }) => id !== removal?.teamId,
-      ).length,
+      otherTeamsCount:
+        person.data.team && person.data.team.id !== removal?.teamId ? 1 : 0,
       day: changeDayWords(date, today),
     });
 

@@ -69,7 +69,7 @@ Deactivated accounts cannot sign in.
 
 ${teams}
 
-A manager sees only the people in the teams they lead: anyone else is invisible
+A manager sees only the people in the team they lead: anyone else is invisible
 to them — that is deliberate, and it is how you check the role-visibility rules
 by hand.
 
@@ -82,7 +82,7 @@ ${projects}
 Time, plans and absences from ${HISTORY_START} up to yesterday, so Reports have
 July to the current month to show; the company starts in June, which is empty.
 What each person logs and plans is \`REPORT_HISTORY\` in the seed config. Sign
-in as the owner for the whole company, or as Sarah Manager for her two teams.
+in as the owner for the whole company, or as Sarah Manager for her team.
 
 > This file contains a password, so it is not committed: the repository ignores
 > \`*.md\` by default. Re-run \`make seed\` to recreate it.

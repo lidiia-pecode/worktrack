@@ -126,7 +126,7 @@ export const USERS: SeedUser[] = [
     role: UserRole.MANAGER,
     position: 'Engineering Lead',
     capacityHoursPerWeek: 40,
-    note: 'Leads Core Development and Platform, so sees their people — but not the unassigned employee or the other teams.',
+    note: 'Leads Core Development, so sees its people — but not the unassigned employee or the other teams.',
   },
   {
     email: DEV_EMAIL,
@@ -162,7 +162,7 @@ export const USERS: SeedUser[] = [
     role: UserRole.MANAGER,
     position: 'Head of Design and Customer Success',
     capacityHoursPerWeek: 40,
-    note: "Leads Design Studio and Customer Success, so sees none of Sarah's people.",
+    note: "Leads Design Studio, so sees none of Sarah's people.",
   },
   {
     email: DEACTIVATED_MANAGER_EMAIL,
@@ -231,11 +231,11 @@ export const USERS: SeedUser[] = [
     email: ETHAN,
     firstName: 'Ethan',
     lastName: 'Brooks',
-    role: UserRole.EMPLOYEE,
+    role: UserRole.MANAGER,
     position: 'DevOps Engineer',
     capacityHoursPerWeek: 40,
     capacityFrom: { validFrom: '2026-09-01', hoursPerWeek: 32.5 },
-    note: 'Down to 32h 30m a week from 1 September, with his 40h plan left as it was.',
+    note: 'Leads Platform and Infrastructure. Down to 32h 30m a week from 1 September, with his 40h plan left as it was.',
   },
   {
     email: MIA,
@@ -281,9 +281,10 @@ export const USERS: SeedUser[] = [
     email: BENJAMIN,
     firstName: 'Benjamin',
     lastName: 'Ward',
-    role: UserRole.EMPLOYEE,
+    role: UserRole.MANAGER,
     position: 'Implementation Consultant',
     capacityHoursPerWeek: 40,
+    note: 'Leads Customer Success and Implementation Services, EMEA Region.',
   },
   {
     email: AMELIA,
@@ -432,9 +433,10 @@ export const USERS: SeedUser[] = [
     email: LILY,
     firstName: 'Lily',
     lastName: 'Spencer',
-    role: UserRole.EMPLOYEE,
+    role: UserRole.MANAGER,
     position: 'Marketing Manager',
     capacityHoursPerWeek: 40,
+    note: 'Leads Growth and Marketing.',
   },
   {
     email: TOBY,
@@ -500,8 +502,7 @@ export const TEAMS: SeedTeam[] = [
   {
     name: 'Platform and Infrastructure',
     members: [
-      { email: MANAGER_EMAIL, roleInTeam: TeamRole.MANAGER },
-      { email: ETHAN, roleInTeam: TeamRole.MEMBER },
+      { email: ETHAN, roleInTeam: TeamRole.MANAGER },
       { email: MIA, roleInTeam: TeamRole.MEMBER },
       { email: LUCAS, roleInTeam: TeamRole.MEMBER },
     ],
@@ -518,8 +519,7 @@ export const TEAMS: SeedTeam[] = [
   {
     name: 'Customer Success and Implementation Services, EMEA Region',
     members: [
-      { email: SECOND_MANAGER_EMAIL, roleInTeam: TeamRole.MANAGER },
-      { email: BENJAMIN, roleInTeam: TeamRole.MEMBER },
+      { email: BENJAMIN, roleInTeam: TeamRole.MANAGER },
       { email: AMELIA, roleInTeam: TeamRole.MEMBER },
       { email: HENRY, roleInTeam: TeamRole.MEMBER, joinedOn: HENRY_MOVED_ON },
       { email: LONG_NAME_EMAIL, roleInTeam: TeamRole.MEMBER },
@@ -561,8 +561,7 @@ export const TEAMS: SeedTeam[] = [
   {
     name: 'Growth and Marketing',
     members: [
-      { email: SECOND_MANAGER_EMAIL, roleInTeam: TeamRole.MANAGER },
-      { email: LILY, roleInTeam: TeamRole.MEMBER },
+      { email: LILY, roleInTeam: TeamRole.MANAGER },
       { email: TOBY, roleInTeam: TeamRole.MEMBER },
       { email: FREYA, roleInTeam: TeamRole.MEMBER },
       { email: OSCAR, roleInTeam: TeamRole.MEMBER },

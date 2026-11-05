@@ -9,12 +9,14 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import {
   AddTeamMemberDto,
+  ChangeTeamManagerDto,
   RemoveTeamMemberQuery,
   CreateTeamDto,
   TeamsQuery,
@@ -120,6 +122,17 @@ export class TeamsController {
     @Body() dto: AddTeamMemberDto,
   ): Promise<TeamMembership> {
     return this.teamsService.addMember(teamId, authUser.companyId, dto);
+  }
+
+  @Role(UserRole.OWNER)
+  @Put(':id/manager')
+  @Serialize(TeamMembershipResponse)
+  async changeManager(
+    @CurrentUser() authUser: AuthUser,
+    @Param('id', ParseUUIDPipe) teamId: string,
+    @Body() dto: ChangeTeamManagerDto,
+  ): Promise<TeamMembership> {
+    return this.teamsService.changeManager(teamId, authUser.companyId, dto);
   }
 
   @Role(UserRole.OWNER)

@@ -25,21 +25,15 @@ const emma: User = {
   updatedAt: "2026-01-01",
 };
 
-const membershipTeam = (id: string, name: string, roleInTeam: TeamRole) => ({
-  id,
-  name,
-  roleInTeam,
-  joinedAt: "2026-01-05",
-});
-
 const details: UserDetails = {
   ...emma,
   projects: [],
-  teams: [
-    membershipTeam("t-1", "Design", TeamRole.MANAGER),
-    membershipTeam("t-2", "Support", TeamRole.MANAGER),
-    membershipTeam("t-3", "Research", TeamRole.MEMBER),
-  ],
+  team: {
+    id: "t-1",
+    name: "Design",
+    roleInTeam: TeamRole.MANAGER,
+    joinedAt: "2026-01-05",
+  },
 };
 
 const managerOf = (teamId: string, user: User): TeamMembership => ({
@@ -62,10 +56,6 @@ const teamWithManagers = (id: string, name: string, managers: User[]) =>
 
 const teams: Record<string, Team> = {
   "t-1": teamWithManagers("t-1", "Design", [emma]),
-  "t-2": teamWithManagers("t-2", "Support", [
-    emma,
-    { ...emma, id: "u-2", firstName: "John" },
-  ]),
 };
 
 const NOTHING_AFTER = {
@@ -113,17 +103,11 @@ const renderDialog = () =>
   );
 
 describe("UserDeactivateDialog", () => {
-  it("names only the teams they manage alone, once those have loaded", async () => {
+  it("names the team they lead, once it has loaded", async () => {
     impact.current = { data: NOTHING_AFTER, isError: false };
     renderDialog();
 
     expect(await screen.findByRole("link", { name: "Design" })).toBeVisible();
-    expect(
-      screen.queryByRole("link", { name: "Support" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Research" }),
-    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deactivate" })).toBeEnabled();
   });
 

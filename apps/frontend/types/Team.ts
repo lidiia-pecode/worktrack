@@ -54,10 +54,10 @@ export interface TeamsQuery extends SearchablePaginationParams {
   status?: TeamStatus;
 }
 
+/** Adds a member; a team's manager is appointed separately. */
 export interface AddTeamMemberPayload {
   userId: string;
-  roleInTeam?: TeamRole;
-  /** A member of another team leaves it the day they join this one. */
+  /** Someone in another team leaves it the day they join this one. */
   leaveCurrentTeam?: boolean;
   /** The first day on the team: today unless given, and never after it. */
   date?: string;

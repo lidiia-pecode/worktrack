@@ -9,7 +9,14 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, In, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -339,13 +346,22 @@ export class InvitationsService {
       // Checked again under a lock, so a team archive at the same moment either
       // waits and then finds this invitation pending, or finishes first and this is refused.
       if (invitation.teamId) {
+        const leadsTeam = invitation.role === UserRole.MANAGER;
         await findActiveTeam(
           manager.getRepository(Team),
           invitation.teamId,
           invitation.companyId,
           ARCHIVED_TEAM_MESSAGE,
-          { lock: true },
+          { lock: leadsTeam ? 'exclusive' : 'share' },
         );
+        if (leadsTeam) {
+          await this.assertTeamLeadIsFree(
+            manager,
+            invitation.teamId,
+            invitation,
+            replaces,
+          );
+        }
       }
 
       if (replaces) {
@@ -525,6 +541,53 @@ export class InvitationsService {
     );
 
     return teamId;
+  }
+
+  /**
+   * A pending manager invitation holds the team's lead, so a team takes one
+   * only while it has no manager and no other one pending, expired included
+   * until revoked. The invitation itself, resent, and the one it replaces
+   * don't count.
+   */
+  private async assertTeamLeadIsFree(
+    manager: EntityManager,
+    teamId: string,
+    invitation: Invitation,
+    replaces?: Invitation | null,
+  ): Promise<void> {
+    const { companyId } = invitation;
+    const ownIds = [invitation.id, replaces?.id].filter((id): id is string =>
+      Boolean(id),
+    );
+
+    const [hasManager, otherInvitation] = await Promise.all([
+      manager.getRepository(TeamMembership).exists({
+        where: {
+          companyId,
+          teamId,
+          roleInTeam: TeamRole.MANAGER,
+          leftAt: IsNull(),
+        },
+      }),
+      manager.getRepository(Invitation).findOne({
+        where: {
+          companyId,
+          teamId,
+          role: UserRole.MANAGER,
+          status: InvitationStatus.PENDING,
+          ...(ownIds.length ? { id: Not(In(ownIds)) } : {}),
+        },
+      }),
+    ]);
+
+    if (hasManager) {
+      throw new ConflictException('This team already has a manager');
+    }
+    if (otherInvitation) {
+      throw new ConflictException(
+        `${otherInvitation.email} is already invited to lead this team`,
+      );
+    }
   }
 
   /**

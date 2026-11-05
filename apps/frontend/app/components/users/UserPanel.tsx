@@ -23,7 +23,7 @@ import {
   fullName,
   isDeactivatedUser,
 } from "@/lib/utils/user";
-import { Capacity, UserDetails, UserTeamMembership } from "@/types";
+import { Capacity, UserDetails, UserTeam } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
 import { linkedEntities } from "../entity-panel/EntityLink";
@@ -168,9 +168,8 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
   // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the teams.
-  const managedTeams = user.teams.filter(
-    (team) => team.roleInTeam === TeamRole.MANAGER,
-  );
+  const managedTeams =
+    user.team?.roleInTeam === TeamRole.MANAGER ? [user.team] : [];
 
   const save = async (data: UserFormData) => {
     const { capacityHoursPerDay, capacityValidFrom, ...userData } = data;
@@ -270,11 +269,10 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const [isChangingTeam, setIsChangingTeam] = useState(false);
   const [removal, setRemoval] = useState<TeamRemoval | null>(null);
   // As on the team's panel: a manager removes members; managers are the owner's to remove.
-  const canRemoveFromTeam = (team: UserTeamMembership) =>
+  const canRemoveFromTeam = (team: UserTeam) =>
     !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
-  const memberTeam = user.teams.find(
-    (team) => team.roleInTeam === TeamRole.MEMBER,
-  );
+  const memberTeam =
+    user.team?.roleInTeam === TeamRole.MEMBER ? user.team : undefined;
 
   // Without their hours, a save could neither show nor keep them.
   const editForm = isLoadingCapacity ? (
@@ -336,7 +334,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
       >
         <PanelList
           title="Team"
-          items={user.teams}
+          items={user.team ? [user.team] : []}
           getKey={(team) => team.id}
           renderRow={(team) => ({
             entity: { type: "team", id: team.id },

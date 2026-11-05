@@ -33,8 +33,7 @@ export class AssignableUserResponse {
   @Expose()
   avatarUrl?: string;
 
-  /** The team they are a member of, among those the caller can see. */
   @Expose()
   @Type(() => UserTeamResponse)
-  memberTeam!: UserTeamResponse | null;
+  team!: UserTeamResponse | null;
 }
