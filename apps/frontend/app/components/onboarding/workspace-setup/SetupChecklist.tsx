@@ -154,7 +154,7 @@ const managerSteps = (
   {
     id: "assignManager",
     title: "Make them a team's manager",
-    description: "Open a team and add them to it as its manager.",
+    description: "Open a team and choose Add a manager.",
     icon: UsersRound,
     completed: managerSteps.assignManager,
     locked: !managerSteps.managerJoined || !steps.createTeam,

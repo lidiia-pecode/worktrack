@@ -12,7 +12,6 @@ import { OptionalNotNull, TrimString } from 'src/lib/decorators';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
 import { SearchablePaginationQuery } from 'src/lib/dtos/searchable-pagination-query.dto';
 import { TeamStatus } from '../enums/team-status.enum';
-import { TeamRole } from '../enums/team-role.enum';
 
 export class CreateTeamDto {
   @TrimString()
@@ -82,19 +81,4 @@ export class ChangeTeamManagerDto {
   @IsOptional()
   @IsEnum(PreviousManager)
   previousManager?: PreviousManager;
-}
-
-/** A membership's dates are the server's, so only its role changes. */
-export class UpdateTeamMemberDto {
-  @OptionalNotNull()
-  @IsEnum(TeamRole)
-  roleInTeam?: TeamRole;
-
-  /**
-   * Switching a membership to Member while the person is a member of another
-   * team: they leave it today, as an undated add does.
-   */
-  @OptionalNotNull()
-  @IsBoolean()
-  leaveCurrentTeam?: boolean;
 }

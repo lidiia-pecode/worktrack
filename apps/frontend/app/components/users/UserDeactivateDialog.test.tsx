@@ -1,10 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { User, UserDetails } from "@/types";
-import { Team, TeamMembership } from "@/types/Team";
-import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
+import { TeamRole, UserRole, UserStatus } from "@/types/enums";
 
 import { EntityPanelContext } from "../entity-panel/entity-panel-context";
 import { mockEntityPanel } from "../entity-panel/mock-entity-panel";
@@ -36,28 +34,6 @@ const details: UserDetails = {
   },
 };
 
-const managerOf = (teamId: string, user: User): TeamMembership => ({
-  id: `${teamId}-${user.id}`,
-  teamId,
-  userId: user.id,
-  roleInTeam: TeamRole.MANAGER,
-  joinedAt: "2026-01-05",
-  leftAt: null,
-  user,
-});
-
-const teamWithManagers = (id: string, name: string, managers: User[]) =>
-  ({
-    id,
-    name,
-    status: TeamStatus.ACTIVE,
-    memberships: managers.map((manager) => managerOf(id, manager)),
-  }) as Team;
-
-const teams: Record<string, Team> = {
-  "t-1": teamWithManagers("t-1", "Design", [emma]),
-};
-
 const NOTHING_AFTER = {
   time: { entryCount: 0, minutes: 0, firstDate: null, lastDate: null },
   absences: [],
@@ -84,22 +60,13 @@ vi.mock("@/hooks/useReportingPeriods", () => ({
   useReportingPeriods: () => ({ months: [] }),
 }));
 
-vi.mock("@/hooks/useTeams", () => ({
-  teamDetailsQuery: (teamId: string) => ({
-    queryKey: ["teams", "detail", teamId],
-    queryFn: async () => teams[teamId],
-  }),
-}));
-
 const panel = mockEntityPanel();
 
 const renderDialog = () =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <EntityPanelContext.Provider value={panel}>
-        <UserDeactivateDialog user={emma} onClose={vi.fn()} />
-      </EntityPanelContext.Provider>
-    </QueryClientProvider>,
+    <EntityPanelContext.Provider value={panel}>
+      <UserDeactivateDialog user={emma} onClose={vi.fn()} />
+    </EntityPanelContext.Provider>,
   );
 
 describe("UserDeactivateDialog", () => {

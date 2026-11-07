@@ -1,9 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, UserCog, UserPlus, UserRound } from "lucide-react";
+import {
+  ArrowRightLeft,
+  ChevronsUpDown,
+  Mail,
+  Plus,
+  UserPlus,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePendingInvitations } from "@/hooks/auth/useInvitation";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
@@ -31,14 +38,16 @@ import { UserChangeTeamDialog } from "../users/UserChangeTeamDialog";
 import { TEAM_NAME_FIELD } from "./TeamCreateDialog";
 import { MEMBERS_PICKER, TeamMembersPicker } from "./TeamMembersPicker";
 import {
-  activeManagers,
+  activeManager,
   currentMemberships,
   formerMemberships,
+  managerMembership,
   MembershipWithUser,
   NO_ACTIVE_MANAGER,
 } from "./team-memberships";
+import { TeamManagerDialog } from "./TeamManagerDialog";
+import { TeamMemberRemoveDialog, TeamRemoval } from "./TeamMemberRemoveDialog";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
-import { useTeamMemberChanges } from "./useTeamMemberChanges";
 
 const EDIT_FORM_ID = "team-edit-form";
 
@@ -134,31 +143,110 @@ const TeamInvitations = ({ team }: { team: Team }) => {
   );
 };
 
+/** The team's manager as a link, for anyone who can't change them. */
+const ManagerLink = ({ team }: { team: Team }) => {
+  const manager = activeManager(team);
+
+  return manager ? (
+    <EntityLink entity={{ type: "user", id: manager.id }} tone="chip">
+      <Avatar user={manager} size="xs" className="size-5 ring-0" />
+      {fullName(manager)}
+    </EntityLink>
+  ) : (
+    <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
+  );
+};
+
+/**
+ * The owner's Manager line: one button that shows the manager and changes
+ * them. A pending manager invitation holds the lead until it is accepted or
+ * revoked.
+ */
+const ManagerPicker = ({ team }: { team: Team }) => {
+  const { data: invitations = [] } = usePendingInvitations();
+  const [isChanging, setIsChanging] = useState(false);
+  const lead = managerMembership(team)?.user;
+  const invitedLead = invitations.find(
+    (invitation) =>
+      invitation.team?.id === team.id && invitation.role === UserRole.MANAGER,
+  );
+
+  if (invitedLead) {
+    return (
+      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <Mail aria-hidden="true" className="size-4 shrink-0" />
+        Invited: {invitedLead.email}. Revoke the invitation below to choose
+        someone else.
+      </span>
+    );
+  }
+
+  return (
+    <>
+      {lead ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="pl-1.5"
+          aria-label={`Change manager, now ${fullName(lead)}`}
+          onClick={() => setIsChanging(true)}
+        >
+          <Avatar user={lead} size="xs" className="size-5 ring-0" />
+          {fullName(lead)}
+          {isDeactivatedUser(lead) && (
+            <Badge variant="neutral">Deactivated</Badge>
+          )}
+          <ChevronsUpDown
+            aria-hidden="true"
+            className="text-muted-foreground"
+          />
+        </Button>
+      ) : (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={() => setIsChanging(true)}
+        >
+          <Plus />
+          Add a manager
+        </Button>
+      )}
+
+      <TeamManagerDialog
+        team={team}
+        isOpen={isChanging}
+        onClose={() => setIsChanging(false)}
+      />
+    </>
+  );
+};
+
 const ActiveTeamView = ({ team }: { team: Team }) => {
   const { user: viewer } = useAuth();
   const isOwner = viewer?.role === UserRole.OWNER;
   const panel = useEntityPanel();
   const teamActions = useTeamActions();
-  const changes = useTeamMemberChanges(team);
+  const [removal, setRemoval] = useState<TeamRemoval | null>(null);
   const [movingMembership, setMovingMembership] =
     useState<MembershipWithUser | null>(null);
 
   const isEditing = panel.isEditing && teamActions.canEdit(team);
-  const managers = activeManagers(team);
 
   if (isOwner && panel.view === MEMBERS_PICKER) {
     return <TeamMembersPicker team={team} />;
   }
 
-  // Only the owner changes roles, and not for a deactivated member.
-  const canChangeRole = (membership: MembershipWithUser) =>
-    isOwner && !isEditing && !isDeactivatedUser(membership.user);
-
-  // A deactivated person can't join a team, so there is nowhere to move them.
+  // The owner moves members; the manager moves once the team has another one,
+  // and a deactivated person can't join a team, so there is nowhere to move them.
   const canMove = (membership: MembershipWithUser) =>
-    canChangeRole(membership) && membership.roleInTeam === TeamRole.MEMBER;
+    isOwner &&
+    !isEditing &&
+    !isDeactivatedUser(membership.user) &&
+    membership.roleInTeam === TeamRole.MEMBER;
 
-  // A manager removes members; a team's managers are the owner's to remove.
+  // A manager removes members; the team's manager is the owner's to remove.
   const canRemove = (membership: MembershipWithUser) =>
     !isEditing && (isOwner || membership.roleInTeam === TeamRole.MEMBER);
 
@@ -173,27 +261,12 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
         actions={teamActions.actionsFor(team)}
         details={[
           {
-            label: managers.length === 1 ? "Manager" : "Managers",
+            label: "Manager",
             value:
-              managers.length > 0 ? (
-                <span className="flex flex-wrap gap-1.5">
-                  {managers.map((manager) => (
-                    <EntityLink
-                      key={manager.id}
-                      entity={{ type: "user", id: manager.id }}
-                      tone="chip"
-                    >
-                      <Avatar
-                        user={manager}
-                        size="xs"
-                        className="size-5 ring-0"
-                      />
-                      {fullName(manager)}
-                    </EntityLink>
-                  ))}
-                </span>
+              isOwner && !isEditing ? (
+                <ManagerPicker team={team} />
               ) : (
-                <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
+                <ManagerLink team={team} />
               ),
             wide: true,
           },
@@ -213,36 +286,20 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
             status: isDeactivatedUser(membership.user) && (
               <Badge variant="neutral">Deactivated</Badge>
             ),
-            actions: canChangeRole(membership)
+            actions: canMove(membership)
               ? [
-                  membership.roleInTeam === TeamRole.MANAGER
-                    ? {
-                        label: "Make member",
-                        icon: UserRound,
-                        onSelect: () =>
-                          changes.changeRole(membership, TeamRole.MEMBER),
-                      }
-                    : {
-                        label: "Make manager",
-                        icon: UserCog,
-                        onSelect: () =>
-                          changes.changeRole(membership, TeamRole.MANAGER),
-                      },
-                  ...(canMove(membership)
-                    ? [
-                        {
-                          label: "Move to…",
-                          icon: ArrowRightLeft,
-                          onSelect: () => setMovingMembership(membership),
-                        },
-                      ]
-                    : []),
+                  {
+                    label: "Move to…",
+                    icon: ArrowRightLeft,
+                    onSelect: () => setMovingMembership(membership),
+                  },
                 ]
               : undefined,
             remove: canRemove(membership)
               ? {
                   label: `Remove ${fullName(membership.user)} from ${team.name}`,
-                  onClick: () => changes.remove(membership),
+                  onClick: () =>
+                    setRemoval({ teamId: team.id, userId: membership.userId }),
                 }
               : undefined,
           })}
@@ -270,7 +327,10 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       </EntityPanelLayout>
 
       {teamActions.dialogs}
-      {changes.dialogs}
+      <TeamMemberRemoveDialog
+        removal={removal}
+        onClose={() => setRemoval(null)}
+      />
       <UserChangeTeamDialog
         user={movingMembership?.user ?? null}
         currentTeam={

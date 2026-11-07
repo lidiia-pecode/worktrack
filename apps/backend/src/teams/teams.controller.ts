@@ -9,7 +9,6 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -21,7 +20,6 @@ import {
   CreateTeamDto,
   TeamsQuery,
   UpdateTeamDto,
-  UpdateTeamMemberDto,
 } from './dtos/team.dto';
 import {
   TeamArchiveImpactResponse,
@@ -125,7 +123,7 @@ export class TeamsController {
   }
 
   @Role(UserRole.OWNER)
-  @Put(':id/manager')
+  @Patch(':id/manager')
   @Serialize(TeamMembershipResponse)
   async changeManager(
     @CurrentUser() authUser: AuthUser,
@@ -133,23 +131,6 @@ export class TeamsController {
     @Body() dto: ChangeTeamManagerDto,
   ): Promise<TeamMembership> {
     return this.teamsService.changeManager(teamId, authUser.companyId, dto);
-  }
-
-  @Role(UserRole.OWNER)
-  @Patch(':id/members/:membershipId')
-  @Serialize(TeamMembershipResponse)
-  async updateMember(
-    @CurrentUser() authUser: AuthUser,
-    @Param('id', ParseUUIDPipe) teamId: string,
-    @Param('membershipId', ParseUUIDPipe) membershipId: string,
-    @Body() dto: UpdateTeamMemberDto,
-  ): Promise<TeamMembership> {
-    return this.teamsService.updateMember(
-      membershipId,
-      authUser.companyId,
-      dto,
-      teamId,
-    );
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

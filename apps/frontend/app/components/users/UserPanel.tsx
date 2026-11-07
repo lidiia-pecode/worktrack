@@ -167,16 +167,15 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const today = todayISODate(timezone);
   const [isRoleChangeBlocked, setIsRoleChangeBlocked] = useState(false);
 
-  // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the teams.
-  const managedTeams =
-    user.team?.roleInTeam === TeamRole.MANAGER ? [user.team] : [];
+  // A team's manager can't become an Employee. The API refuses too, but checking here lets the dialog name the team.
+  const ledTeam = user.team?.roleInTeam === TeamRole.MANAGER ? user.team : null;
 
   const save = async (data: UserFormData) => {
     const { capacityHoursPerDay, capacityValidFrom, ...userData } = data;
 
     const becomesEmployee =
       user.role === UserRole.MANAGER && userData.role === UserRole.EMPLOYEE;
-    if (becomesEmployee && managedTeams.length > 0) {
+    if (becomesEmployee && ledTeam) {
       setIsRoleChangeBlocked(true);
       return;
     }
@@ -228,15 +227,15 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
 
       <ImpactDialog
         isOpen={isRoleChangeBlocked}
-        title={`${fullName(user)} still manages ${managedTeams.length === 1 ? "a team" : "teams"}`}
+        title={`${fullName(user)} still leads a team`}
         description="A Manager who leads a team can't become an Employee."
         affected={[
           {
-            label: "Manages",
-            entities: linkedEntities("team", managedTeams),
+            label: "Leads",
+            entities: linkedEntities("team", ledTeam ? [ledTeam] : []),
           },
         ]}
-        blocker="Make someone else the manager of these teams first, or make them a member."
+        blocker="Give the team another manager first, on the team's panel."
         onConfirm={() => setIsRoleChangeBlocked(false)}
         onClose={() => setIsRoleChangeBlocked(false)}
       />
@@ -271,8 +270,8 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   // As on the team's panel: a manager removes members; managers are the owner's to remove.
   const canRemoveFromTeam = (team: UserTeam) =>
     !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
-  const memberTeam =
-    user.team?.roleInTeam === TeamRole.MEMBER ? user.team : undefined;
+  // Someone who leads their team moves once it has another manager.
+  const ledTeam = user.team?.roleInTeam === TeamRole.MANAGER ? user.team : null;
 
   // Without their hours, a save could neither show nor keep them.
   const editForm = isLoadingCapacity ? (
@@ -354,11 +353,16 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
               sees them.
             </>
           }
+          note={
+            canChangeTeam && ledTeam
+              ? `Leads ${ledTeam.name}: give it another manager first to move them.`
+              : undefined
+          }
           add={
-            canChangeTeam
+            canChangeTeam && !ledTeam
               ? {
-                  label: memberTeam ? "Change team" : "Add to a team",
-                  icon: memberTeam ? ArrowRightLeft : Plus,
+                  label: user.team ? "Change team" : "Add to a team",
+                  icon: user.team ? ArrowRightLeft : Plus,
                   onClick: () => setIsChangingTeam(true),
                 }
               : undefined
@@ -409,7 +413,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
       {projectChanges.dialogs}
       <UserChangeTeamDialog
         user={isChangingTeam ? user : null}
-        currentTeam={memberTeam ?? null}
+        currentTeam={user.team}
         onClose={() => setIsChangingTeam(false)}
       />
       <TeamMemberRemoveDialog

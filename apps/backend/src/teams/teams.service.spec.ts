@@ -370,14 +370,27 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(teamId)).resolves.toEqual([]);
     });
 
-    it('refuses anyone but an active Manager', async () => {
+    it('makes an Employee of the team a Manager in the same change', async () => {
+      const teamId = await createTeam('employee promoted');
+      const member = await newPerson(UserRole.EMPLOYEE);
+      await addToTeam(teamId, member);
+
+      await service.changeManager(teamId, companyId, { userId: member.id });
+
+      await expect(
+        dataSource.getRepository(User).findOneByOrFail({ id: member.id }),
+      ).resolves.toMatchObject({ role: UserRole.MANAGER });
+    });
+
+    it('refuses an Employee from outside the team, the owner and a deactivated Manager', async () => {
       const teamId = await createTeam('who leads');
+      const outsider = await newPerson(UserRole.EMPLOYEE);
       const gone = await newManager();
       await dataSource
         .getRepository(User)
         .update(gone.id, { status: UserStatus.DEACTIVATED });
 
-      for (const user of [employee, owner, gone]) {
+      for (const user of [outsider, owner, gone]) {
         await expect(
           service.changeManager(teamId, companyId, { userId: user.id }),
         ).rejects.toThrow(BadRequestException);
@@ -403,20 +416,6 @@ describe('TeamsService', () => {
           userId: (await newManager()).id,
         }),
       ).rejects.toThrow('revoke the invitation first');
-    });
-
-    it('is the only way to a second manager: the role switch refuses one', async () => {
-      const member = await newManager();
-      const memberId = await addToTeam(alpha, member);
-
-      await expect(
-        service.updateMember(
-          memberId,
-          companyId,
-          { roleInTeam: TeamRole.MANAGER },
-          alpha,
-        ),
-      ).rejects.toThrow('This team already has a manager');
     });
   });
 

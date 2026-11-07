@@ -23,7 +23,11 @@ import {
   InviteUserFormData,
 } from "@/lib/forms/schemas/invite-user.schema";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { usePendingInvitations } from "@/hooks/auth/useInvitation";
 import { useTeamOptions } from "@/hooks/useTeams";
+import { fullName } from "@/lib/utils/user";
+
+import { managerMembership } from "../teams/team-memberships";
 
 const NO_TEAM = "none";
 
@@ -31,7 +35,7 @@ const ROLE_OPTIONS: OptionCard<UserRole>[] = [
   {
     value: UserRole.MANAGER,
     label: ROLE_LABELS[UserRole.MANAGER],
-    description: "Leads teams, and sees and corrects their people's time.",
+    description: "Leads a team, and sees and corrects its people's time.",
   },
   {
     value: UserRole.EMPLOYEE,
@@ -58,7 +62,33 @@ export const InviteUserForm = ({
   const { user } = useAuth();
   const isOwner = user?.role === UserRole.OWNER;
 
-  const { options: teamOptions, isLoading: isLoadingTeams } = useTeamOptions();
+  const {
+    options: teamOptions,
+    teams,
+    isLoading: isLoadingTeams,
+  } = useTeamOptions();
+  const { data: invitations = [] } = usePendingInvitations();
+  // A team has one manager, and a pending manager invitation holds the lead,
+  // so those teams are listed but can't be chosen, with the reason.
+  const teamToLeadOptions = teams.map((team) => {
+    const lead = managerMembership(team)?.user;
+    const isLeadInvited = invitations.some(
+      (invitation) =>
+        invitation.team?.id === team.id && invitation.role === UserRole.MANAGER,
+    );
+    const takenBy = lead
+      ? `led by ${fullName(lead)}`
+      : isLeadInvited
+        ? "manager invited"
+        : null;
+
+    return {
+      value: team.id,
+      label: takenBy ? `${team.name} · ${takenBy}` : team.name,
+      disabled: Boolean(takenBy),
+    };
+  });
+  const hasTakenTeams = teamToLeadOptions.some((option) => option.disabled);
 
   // Only an owner invites a Manager; a manager invites employees only.
   const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
@@ -197,8 +227,15 @@ export const InviteUserForm = ({
               onValueChange={(value) =>
                 field.onChange(value === NO_TEAM ? undefined : value)
               }
-              options={[{ value: NO_TEAM, label: "No team" }, ...teamOptions]}
-              description="They become this team's manager when they accept."
+              options={[
+                { value: NO_TEAM, label: "No team" },
+                ...teamToLeadOptions,
+              ]}
+              description={
+                hasTakenTeams
+                  ? "They become this team's manager when they accept. To replace a team's manager, invite them with no team, then use Change manager once they join."
+                  : "They become this team's manager when they accept."
+              }
               error={fieldState.error?.message}
               disabled={isSubmitting || isLoadingTeams}
             />

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,6 +17,10 @@ export interface EntityPickerProps<T> {
   getLabel: (item: T) => string;
   getSubtitle?: (item: T) => string | null | undefined;
   getAvatarText?: (item: T) => string;
+  /** Shown but not choosable; the subtitle says why. */
+  isDisabled?: (item: T) => boolean;
+  /** A heading above each run of items in the same group; `items` come grouped. */
+  getGroup?: (item: T) => string;
 
   emptyMessage: ReactNode;
   searchPlaceholder?: string;
@@ -39,6 +43,8 @@ export const EntityPicker = <T,>({
   getLabel,
   getSubtitle,
   getAvatarText,
+  isDisabled,
+  getGroup,
   emptyMessage,
   searchPlaceholder = "Search...",
   onSearchChange,
@@ -110,18 +116,31 @@ export const EntityPicker = <T,>({
           />
         ) : (
           <div className="space-y-0.5">
-            {items.map((item) => {
+            {items.map((item, index) => {
               const id = getId(item);
+              const group = getGroup?.(item);
+              const startsGroup =
+                group !== undefined &&
+                (index === 0 || getGroup?.(items[index - 1]) !== group);
 
               return (
-                <PickerRow
-                  key={id}
-                  label={getLabel(item)}
-                  subtitle={getSubtitle?.(item)}
-                  avatarText={getAvatarText?.(item) ?? getLabel(item).charAt(0)}
-                  selected={selectedIds.includes(id)}
-                  onToggle={() => onToggle(item)}
-                />
+                <Fragment key={id}>
+                  {startsGroup && (
+                    <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground">
+                      {group}
+                    </p>
+                  )}
+                  <PickerRow
+                    label={getLabel(item)}
+                    subtitle={getSubtitle?.(item)}
+                    avatarText={
+                      getAvatarText?.(item) ?? getLabel(item).charAt(0)
+                    }
+                    selected={selectedIds.includes(id)}
+                    disabled={isDisabled?.(item)}
+                    onToggle={() => onToggle(item)}
+                  />
+                </Fragment>
               );
             })}
           </div>

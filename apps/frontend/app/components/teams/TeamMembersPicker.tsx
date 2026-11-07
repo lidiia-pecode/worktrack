@@ -17,7 +17,7 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { EntityPicker } from "../shared/resource/EntityPicker";
 import { InviteHint } from "../users/InviteHint";
 import { pickerChangesCopy } from "./team-member-changes";
-import { activeManagers, currentMemberships } from "./team-memberships";
+import { activeManager, currentMemberships } from "./team-memberships";
 
 export const MEMBERS_PICKER = "add-members";
 
@@ -58,16 +58,20 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
   const leavesFor = ({ team: personTeam }: { team: UserTeam | null }) =>
     personTeam && personTeam.id !== team.id ? personTeam : undefined;
 
+  // Someone who leads another team moves only once it has another manager.
+  const leadsElsewhere = (person: { team: UserTeam | null }) => {
+    const personTeam = leavesFor(person);
+    return personTeam?.roleInTeam === TeamRole.MANAGER ? personTeam : undefined;
+  };
+
   const moves = staged.toAdd.flatMap((choice) =>
     choice.fromTeam ? [{ name: choice.name, fromTeam: choice.fromTeam }] : [],
   );
 
-  const managerIds = activeManagers(team).map((manager) => manager.id);
-  const leavesNoManager =
-    managerIds.length > 0 &&
-    managerIds.every((id) =>
-      staged.toRemove.some((choice) => choice.id === id),
-    );
+  const managerId = activeManager(team)?.id;
+  const leavesNoManager = staged.toRemove.some(
+    (choice) => choice.id === managerId,
+  );
 
   const applyAll = () =>
     staged.apply([
@@ -129,11 +133,14 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
                 : `Joins as ${TEAM_ROLE_LABELS[TeamRole.MEMBER]}`;
             }
             // Unchoosing the manager removes them.
-            if (managerIds.includes(person.id)) return "Manages this team";
+            if (person.id === managerId) return "Manages this team";
+            const ledTeam = leadsElsewhere(person);
+            if (ledTeam) return `Leads ${ledTeam.name}`;
             const fromTeam = leavesFor(person);
             return fromTeam ? `In ${fromTeam.name}` : person.email;
           }}
           getAvatarText={initials}
+          isDisabled={(person) => Boolean(leadsElsewhere(person))}
           onSearchChange={setSearch}
           isLoading={isLoading}
           hasNextPage={pagination.hasNextPage}

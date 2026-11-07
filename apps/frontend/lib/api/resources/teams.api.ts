@@ -2,13 +2,13 @@
 
 import {
   AddTeamMemberPayload,
+  ChangeTeamManagerPayload,
   CreateTeamPayload,
   Team,
   TeamArchiveImpact,
   TeamListResponse,
   TeamMembership,
   TeamsQuery,
-  UpdateTeamMemberPayload,
   UpdateTeamPayload,
 } from "@/types/Team";
 
@@ -34,11 +34,8 @@ export const TeamsClientApi = {
   addMember: (teamId: string, data: AddTeamMemberPayload) =>
     client.post<TeamMembership>(`/${teamId}/members`, data),
 
-  updateMember: (
-    teamId: string,
-    membershipId: string,
-    data: UpdateTeamMemberPayload,
-  ) => client.patch<TeamMembership>(`/${teamId}/members/${membershipId}`, data),
+  changeManager: (teamId: string, data: ChangeTeamManagerPayload) =>
+    client.patch<TeamMembership>(`/${teamId}/manager`, data),
 
   /** `date` is the first day off the team, today unless given. */
   removeMember: (teamId: string, membershipId: string, date?: string) =>

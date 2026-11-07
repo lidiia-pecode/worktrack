@@ -13,7 +13,6 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
-import { byCount } from "@/lib/utils/text";
 import { fullName } from "@/lib/utils/user";
 import { User } from "@/types";
 import { ProjectStatus } from "@/types/enums";
@@ -93,11 +92,7 @@ export const UserReactivateDialog = ({
       }
       affected={[
         {
-          label: byCount(
-            teams.length,
-            "Back in their team",
-            "Back in their teams",
-          ),
+          label: "Back in their team",
           entities: linkedEntities("team", teams),
         },
         {

@@ -25,7 +25,6 @@ import {
   PreviousManager,
   TeamsQuery,
   UpdateTeamDto,
-  UpdateTeamMemberDto,
 } from './dtos/team.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { containsText } from 'src/lib/utils/contains-text.util';
@@ -531,9 +530,10 @@ export class TeamsService {
   }
 
   /**
-   * The one way a team gets its manager, from today: one of its members, or a
-   * Manager in no team. The current manager, if any, stays as a member or
-   * leaves the team; nobody else and no other team changes.
+   * The one way a team gets its manager, from today: one of its members (an
+   * Employee is made a Manager), or a Manager in no team. The current manager,
+   * if any, stays as a member or leaves the team; nobody else and no other
+   * team changes.
    */
   async changeManager(
     teamId: string,
@@ -571,12 +571,6 @@ export class TeamsService {
           'A deactivated person cannot lead a team',
         );
       }
-      if (newManager.role !== UserRole.MANAGER) {
-        throw new BadRequestException(
-          'Only a user with the Manager role can lead a team',
-        );
-      }
-
       const membershipRepo = manager.getRepository(TeamMembership);
       const [currentLead, ownMembership] = await Promise.all([
         membershipRepo.findOne({
@@ -604,6 +598,20 @@ export class TeamsService {
         throw new ConflictException(
           `${personName(newManager)} is in ${name}; move them to this team first`,
         );
+      }
+
+      // An Employee of this team is made a Manager in the same change, so a
+      // failure never leaves a Manager who leads nothing.
+      const isTeamEmployee =
+        newManager.role === UserRole.EMPLOYEE && Boolean(ownMembership);
+      if (newManager.role !== UserRole.MANAGER && !isTeamEmployee) {
+        throw new BadRequestException(
+          'Only a Manager, or an Employee in this team, can lead it',
+        );
+      }
+      if (isTeamEmployee) {
+        newManager.role = UserRole.MANAGER;
+        await manager.getRepository(User).save(newManager);
       }
 
       const today = await findCompanyToday(manager, companyId);
@@ -649,79 +657,6 @@ export class TeamsService {
         }
         throw error;
       }
-    });
-  }
-
-  /** Switches a membership's role; replaced by `changeManager`. */
-  async updateMember(
-    membershipId: string,
-    companyId: string,
-    dto: UpdateTeamMemberDto,
-    teamId: string,
-  ): Promise<TeamMembership> {
-    return this.dataSource.transaction(async (manager) => {
-      // Locked, so an archive under way finishes first and this is refused.
-      await findActiveTeam(
-        manager.getRepository(Team),
-        teamId,
-        companyId,
-        'An archived team cannot be changed',
-        { lock: 'exclusive' },
-      );
-      const trxMembershipRepo = manager.getRepository(TeamMembership);
-
-      // Locked first, so a removal at the same moment can't be undone by the
-      // save below writing its row back open.
-      await trxMembershipRepo.findOne({
-        where: { id: membershipId, companyId },
-        lock: { mode: 'pessimistic_write' },
-      });
-      const membership = await trxMembershipRepo.findOne({
-        where: {
-          id: membershipId,
-          companyId,
-          ...(teamId ? { teamId } : {}),
-        },
-        relations: ['user'],
-      });
-
-      if (!membership) {
-        throw new NotFoundException(
-          `Team membership with id ${membershipId} not found in this team`,
-        );
-      }
-
-      // A closed membership is history; someone coming back is added anew.
-      if (membership.leftAt) {
-        throw new BadRequestException('This membership is already closed');
-      }
-
-      const roleInTeam = dto.roleInTeam ?? membership.roleInTeam;
-      if (
-        roleInTeam === TeamRole.MANAGER &&
-        membership.user.role !== UserRole.MANAGER
-      ) {
-        throw new BadRequestException(
-          'Only a user with the Manager role can lead a team',
-        );
-      }
-      if (
-        roleInTeam === TeamRole.MANAGER &&
-        membership.roleInTeam !== TeamRole.MANAGER &&
-        (await trxMembershipRepo.exists({
-          where: { teamId, roleInTeam: TeamRole.MANAGER, leftAt: IsNull() },
-        }))
-      ) {
-        throw new ConflictException('This team already has a manager');
-      }
-
-      membership.roleInTeam = roleInTeam;
-      await trxMembershipRepo.save(membership);
-
-      return trxMembershipRepo.findOneOrFail({
-        where: { id: membershipId },
-        relations: ['user'],
-      });
     });
   }
 

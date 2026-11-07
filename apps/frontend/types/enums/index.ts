@@ -45,6 +45,12 @@ export enum TeamRole {
   MANAGER = "MANAGER",
 }
 
+/** What happens to a team's current manager when it gets a new one. */
+export enum PreviousManager {
+  STAYS_AS_MEMBER = "MEMBER",
+  LEAVES = "LEAVE",
+}
+
 export enum UserRole {
   OWNER = "OWNER",
   MANAGER = "MANAGER",
