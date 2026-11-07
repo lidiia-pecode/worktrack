@@ -1,10 +1,8 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { User, UserDetails } from "@/types";
-import { Team, TeamMembership } from "@/types/Team";
-import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
+import { TeamRole, UserRole, UserStatus } from "@/types/enums";
 
 import { EntityPanelContext } from "../entity-panel/entity-panel-context";
 import { mockEntityPanel } from "../entity-panel/mock-entity-panel";
@@ -25,47 +23,15 @@ const emma: User = {
   updatedAt: "2026-01-01",
 };
 
-const membershipTeam = (id: string, name: string, roleInTeam: TeamRole) => ({
-  id,
-  name,
-  roleInTeam,
-  joinedAt: "2026-01-05",
-});
-
 const details: UserDetails = {
   ...emma,
   projects: [],
-  teams: [
-    membershipTeam("t-1", "Design", TeamRole.MANAGER),
-    membershipTeam("t-2", "Support", TeamRole.MANAGER),
-    membershipTeam("t-3", "Research", TeamRole.MEMBER),
-  ],
-};
-
-const managerOf = (teamId: string, user: User): TeamMembership => ({
-  id: `${teamId}-${user.id}`,
-  teamId,
-  userId: user.id,
-  roleInTeam: TeamRole.MANAGER,
-  joinedAt: "2026-01-05",
-  leftAt: null,
-  user,
-});
-
-const teamWithManagers = (id: string, name: string, managers: User[]) =>
-  ({
-    id,
-    name,
-    status: TeamStatus.ACTIVE,
-    memberships: managers.map((manager) => managerOf(id, manager)),
-  }) as Team;
-
-const teams: Record<string, Team> = {
-  "t-1": teamWithManagers("t-1", "Design", [emma]),
-  "t-2": teamWithManagers("t-2", "Support", [
-    emma,
-    { ...emma, id: "u-2", firstName: "John" },
-  ]),
+  team: {
+    id: "t-1",
+    name: "Design",
+    roleInTeam: TeamRole.MANAGER,
+    joinedAt: "2026-01-05",
+  },
 };
 
 const NOTHING_AFTER = {
@@ -94,36 +60,21 @@ vi.mock("@/hooks/useReportingPeriods", () => ({
   useReportingPeriods: () => ({ months: [] }),
 }));
 
-vi.mock("@/hooks/useTeams", () => ({
-  teamDetailsQuery: (teamId: string) => ({
-    queryKey: ["teams", "detail", teamId],
-    queryFn: async () => teams[teamId],
-  }),
-}));
-
 const panel = mockEntityPanel();
 
 const renderDialog = () =>
   render(
-    <QueryClientProvider client={new QueryClient()}>
-      <EntityPanelContext.Provider value={panel}>
-        <UserDeactivateDialog user={emma} onClose={vi.fn()} />
-      </EntityPanelContext.Provider>
-    </QueryClientProvider>,
+    <EntityPanelContext.Provider value={panel}>
+      <UserDeactivateDialog user={emma} onClose={vi.fn()} />
+    </EntityPanelContext.Provider>,
   );
 
 describe("UserDeactivateDialog", () => {
-  it("names only the teams they manage alone, once those have loaded", async () => {
+  it("names the team they lead, once it has loaded", async () => {
     impact.current = { data: NOTHING_AFTER, isError: false };
     renderDialog();
 
     expect(await screen.findByRole("link", { name: "Design" })).toBeVisible();
-    expect(
-      screen.queryByRole("link", { name: "Support" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Research" }),
-    ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Deactivate" })).toBeEnabled();
   });
 

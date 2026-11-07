@@ -13,8 +13,7 @@ import {
 } from "@/lib/utils/date";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
 import { fullName } from "@/lib/utils/user";
-import { UserTeamMembership } from "@/types";
-import { TeamRole } from "@/types/enums";
+import { UserTeam } from "@/types";
 
 import { FormSelect } from "../shared/FormSelect";
 import { ImpactDialog } from "../shared/ImpactDialog";
@@ -24,8 +23,8 @@ import { changeDayWords } from "../teams/team-member-changes";
 interface UserChangeTeamDialogProps {
   /** The dialog is open while this is set. */
   user: { id: string; firstName: string; lastName: string } | null;
-  /** The team they are a member of, which a move leaves. */
-  currentTeam: UserTeamMembership | null;
+  /** The team they are in, which a move leaves. */
+  currentTeam: UserTeam | null;
   onClose: () => void;
 }
 
@@ -59,13 +58,8 @@ export const UserChangeTeamDialog = ({
   );
   const day = changeDayWords(date, today);
 
-  // Not a team they are already on, such as one a Manager leads.
-  const teamsTheyAreOn = new Set(
-    (details.data?.teams ?? []).map((team) => team.id),
-  );
   const options = teamOptions.filter(
-    (option) =>
-      option.value !== currentTeam?.id && !teamsTheyAreOn.has(option.value),
+    (option) => option.value !== currentTeam?.id,
   );
   const selectedTeam = options.find(
     (option) => option.value === selectedTeamId,
@@ -87,7 +81,6 @@ export const UserChangeTeamDialog = ({
     addMember.mutate(
       {
         userId: user.id,
-        roleInTeam: TeamRole.MEMBER,
         leaveCurrentTeam: Boolean(currentTeam),
         date,
       },

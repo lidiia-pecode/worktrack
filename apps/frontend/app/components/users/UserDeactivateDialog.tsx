@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useQueries } from "@tanstack/react-query";
 
-import { teamDetailsQuery } from "@/hooks/useTeams";
 import {
   useDeactivationImpact,
   useUserDetails,
@@ -34,7 +32,6 @@ import { ErrorState } from "../shared/ErrorState";
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { LoadingState } from "../shared/LoadingState";
 import { DatePicker } from "../shared/inputs";
-import { activeManagers } from "../teams/team-memberships";
 
 /** Both lists share one label column, so their values line up. */
 const DETAIL_LIST = "grid grid-cols-[6rem_1fr] gap-x-4 gap-y-1 text-sm";
@@ -128,7 +125,7 @@ const DeletedAfter = ({
 
 /**
  * Deactivates someone after their last working day. The dialog names what is
- * deleted after it and the teams it leaves without an active manager.
+ * deleted after it and the team it leaves without an active manager.
  */
 export const UserDeactivateDialog = ({
   user,
@@ -154,22 +151,12 @@ export const UserDeactivateDialog = ({
     firstOpenDay ? shiftISODate(firstOpenDay, -1) : null,
   );
 
-  const managedTeams = (details.data?.teams ?? []).filter(
-    (team) => team.roleInTeam === TeamRole.MANAGER,
-  );
-  // A team keeps an active manager only if someone else also manages it.
-  const managedTeamDetails = useQueries({
-    queries: managedTeams.map((team) => teamDetailsQuery(team.id)),
-  });
-  const teamsLeftWithoutManager = managedTeams.filter((_, index) => {
-    const team = managedTeamDetails[index]?.data;
-    return team && activeManagers(team).every(({ id }) => id === user?.id);
-  });
+  // A team has one manager, so the team they lead is left without one.
+  const personTeam = details.data?.team;
+  const ledTeams =
+    personTeam?.roleInTeam === TeamRole.MANAGER ? [personTeam] : [];
 
-  const isReady =
-    Boolean(details.data) &&
-    managedTeamDetails.every((query) => query.data !== undefined) &&
-    Boolean(impact.data);
+  const isReady = Boolean(details.data) && Boolean(impact.data);
 
   const close = () => {
     setPickedDay(null);
@@ -204,14 +191,14 @@ export const UserDeactivateDialog = ({
       isOpen={Boolean(user)}
       title={user ? `Deactivate ${fullName(user)}?` : ""}
       description={
-        details.isError || managedTeamDetails.some((query) => query.isError)
-          ? "Could not check which teams they manage. Close this and try again."
+        details.isError
+          ? "Could not check which team they lead. Close this and try again."
           : "They stay in their team and on their projects."
       }
       affected={[
         {
           label: "Left without an active manager",
-          entities: linkedEntities("team", teamsLeftWithoutManager),
+          entities: linkedEntities("team", ledTeams),
         },
       ]}
       choice={

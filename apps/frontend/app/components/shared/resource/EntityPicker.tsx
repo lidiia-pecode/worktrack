@@ -8,6 +8,16 @@ import { EmptyState } from "../EmptyState";
 import { SearchInput } from "../inputs/SearchInput";
 import { PickerRow } from "./PickerRow";
 
+/** Consecutive items of the same group, in order; one run when ungrouped. */
+const groupRuns = <T,>(items: T[], getGroup?: (item: T) => string) =>
+  items.reduce<{ name?: string; items: T[] }[]>((runs, item) => {
+    const name = getGroup?.(item);
+    const last = runs.at(-1);
+    if (last && last.name === name) last.items.push(item);
+    else runs.push({ name, items: [item] });
+    return runs;
+  }, []);
+
 export interface EntityPickerProps<T> {
   items: T[];
   selectedIds: string[];
@@ -17,6 +27,10 @@ export interface EntityPickerProps<T> {
   getLabel: (item: T) => string;
   getSubtitle?: (item: T) => string | null | undefined;
   getAvatarText?: (item: T) => string;
+  /** Shown but not choosable; the subtitle says why. */
+  isDisabled?: (item: T) => boolean;
+  /** A heading above each run of items in the same group; `items` come grouped. */
+  getGroup?: (item: T) => string;
 
   emptyMessage: ReactNode;
   searchPlaceholder?: string;
@@ -39,6 +53,8 @@ export const EntityPicker = <T,>({
   getLabel,
   getSubtitle,
   getAvatarText,
+  isDisabled,
+  getGroup,
   emptyMessage,
   searchPlaceholder = "Search...",
   onSearchChange,
@@ -110,20 +126,41 @@ export const EntityPicker = <T,>({
           />
         ) : (
           <div className="space-y-0.5">
-            {items.map((item) => {
-              const id = getId(item);
+            {groupRuns(items, getGroup).map(({ name, items: run }) => (
+              // A named group is announced with each row a screen reader enters.
+              <div
+                key={name ?? "all"}
+                role={name ? "group" : undefined}
+                aria-label={name}
+                className="space-y-0.5"
+              >
+                {name && (
+                  <p
+                    aria-hidden="true"
+                    className="px-3 pt-2 pb-1 text-xs text-muted-foreground"
+                  >
+                    {name}
+                  </p>
+                )}
+                {run.map((item) => {
+                  const id = getId(item);
 
-              return (
-                <PickerRow
-                  key={id}
-                  label={getLabel(item)}
-                  subtitle={getSubtitle?.(item)}
-                  avatarText={getAvatarText?.(item) ?? getLabel(item).charAt(0)}
-                  selected={selectedIds.includes(id)}
-                  onToggle={() => onToggle(item)}
-                />
-              );
-            })}
+                  return (
+                    <PickerRow
+                      key={id}
+                      label={getLabel(item)}
+                      subtitle={getSubtitle?.(item)}
+                      avatarText={
+                        getAvatarText?.(item) ?? getLabel(item).charAt(0)
+                      }
+                      selected={selectedIds.includes(id)}
+                      disabled={isDisabled?.(item)}
+                      onToggle={() => onToggle(item)}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
 

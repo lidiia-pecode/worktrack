@@ -538,19 +538,7 @@ describe("ReportsView", () => {
     ).toHaveAttribute("aria-busy", "true");
   });
 
-  it("tells only a manager that projects show their teams' time", () => {
-    showReports(peopleReport(team), projectsReport(projects));
-    const card = () =>
-      screen.getByRole("region", { name: "Where the time went" });
-    expect(card()).toHaveTextContent("Your teams’ time only");
-    cleanup();
-
-    auth.isOwner = true;
-    showReports(peopleReport(team), projectsReport(projects));
-    expect(card()).not.toHaveTextContent("Your teams’ time only");
-  });
-
-  it("offers one team to an owner and to a manager of several teams, not to a manager of one", () => {
+  it("offers a team to the owner and to anyone who sees several teams, not to someone who sees one", () => {
     const teamSelect = () => screen.queryByRole("combobox", { name: "Team" });
 
     showReports(peopleReport(team), projectsReport(projects));
@@ -738,9 +726,7 @@ describe("ReportsView", () => {
       const rows = within(card).getAllByRole("listitem");
       expect(rows.map((row) => row.textContent)).toEqual([
         expect.stringContaining("Ethan Brooks has 1 day with no time logged"),
-        expect.stringContaining(
-          "3 projects are off plan or not planned · your teams' share",
-        ),
+        expect.stringContaining("3 projects are off plan or not planned"),
       ]);
       expect(rows[1]).toHaveTextContent(
         "Data Warehouse · −27h, WorkTrack · +20h, CRM System · 10h with no plan",
@@ -863,6 +849,24 @@ describe("ReportsView", () => {
 
       expect(screen.queryByRole("complementary")).not.toBeInTheDocument();
       expect(navigation.search).toBe("");
+    });
+
+    it("drops a team link that isn't one of the viewer's teams", () => {
+      // Another team's id, and one mistyped with a leading colon.
+      for (const linkedTeam of [
+        "e942e902-d86f-442e-807b-7a71d93cdfe9",
+        "%3Ae942e902-d86f-442e-807b-7a71d93cdfe9",
+      ]) {
+        navigation.history.splice(
+          0,
+          navigation.history.length,
+          `?team=${linkedTeam}`,
+        );
+        showReports(peopleReport(team), projectsReport(projects));
+
+        expect(navigation.search).toBe("");
+        cleanup();
+      }
     });
 
     it("closes the panel, URL included, when another month leaves the person out", async () => {

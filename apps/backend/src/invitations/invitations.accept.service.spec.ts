@@ -204,8 +204,9 @@ describe('InvitationsService acceptance', () => {
     });
 
     it('makes an invited manager the manager of their team', async () => {
+      const leaderless = await createTeam('Leaderless');
       const email = `lead-${RUN}@invitations-accept.test`;
-      const token = await createInvitation(email, alpha, UserRole.MANAGER);
+      const token = await createInvitation(email, leaderless, UserRole.MANAGER);
 
       await service.completeWithPassword(token, 'password123', 'New', 'Lead');
 
@@ -214,7 +215,7 @@ describe('InvitationsService acceptance', () => {
 
       expect(user!.role).toBe(UserRole.MANAGER);
       expect(memberships).toHaveLength(1);
-      expect(memberships[0].teamId).toBe(alpha);
+      expect(memberships[0].teamId).toBe(leaderless);
       expect(memberships[0].roleInTeam).toBe(TeamRole.MANAGER);
     });
 

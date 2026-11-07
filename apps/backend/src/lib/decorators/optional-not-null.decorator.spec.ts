@@ -7,7 +7,7 @@ import { UpdateActivityPayload } from 'src/activities/dtos/activity-payload.dto'
 import { UpdateCompanyDto } from 'src/companies/dtos/update-company.dto';
 import { UpdatePlanningEntryDto } from 'src/planning/dtos/planning-entry-payload.dto';
 import { UpdateProjectPayload } from 'src/projects/dtos/project-payload.dto';
-import { UpdateTeamDto, UpdateTeamMemberDto } from 'src/teams/dtos/team.dto';
+import { UpdateTeamDto } from 'src/teams/dtos/team.dto';
 import { UpdateTimeLogPayload } from 'src/time-logs/dtos/time-log-payload.dto';
 import { UpdateProfilePayload } from 'src/users/dtos/update-profile-payload.dto';
 import { UpdateUserPayload } from 'src/users/dtos/user-payload.dto';
@@ -65,11 +65,6 @@ const UPDATE_PAYLOADS: {
   {
     dto: UpdateTeamDto,
     required: ['name'],
-    nullable: [],
-  },
-  {
-    dto: UpdateTeamMemberDto,
-    required: ['roleInTeam', 'leaveCurrentTeam'],
     nullable: [],
   },
   {

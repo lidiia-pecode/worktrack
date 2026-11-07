@@ -11,7 +11,7 @@ import { Team, TeamUser } from "@/types/Team";
 import { TeamStatus } from "@/types/enums";
 import { countLabel } from "@/lib/utils/text";
 
-import { EntityLink, EntityLinks } from "../entity-panel/EntityLink";
+import { EntityLink } from "../entity-panel/EntityLink";
 import { Avatar } from "../shared/Avatar";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import {
@@ -22,7 +22,7 @@ import {
 } from "../shared/resource/ManageList";
 import { ResourcePage } from "../shared/resource/ResourcePage";
 import {
-  activeManagers,
+  activeManager,
   currentMemberships,
   deactivatedMembersCount,
   NO_ACTIVE_MANAGER,
@@ -30,33 +30,14 @@ import {
 import { TeamCreateDialog } from "./TeamCreateDialog";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
 
-const PeopleLinks = ({ people }: { people: TeamUser[] }) => (
-  <EntityLinks
+const ManagerLink = ({ person }: { person: TeamUser }) => (
+  <EntityLink
+    entity={{ type: "user", id: person.id }}
     tone="plain"
-    entities={people.map((person) => ({
-      entity: { type: "user", id: person.id },
-      name: fullName(person),
-    }))}
-  />
-);
-
-const ManagerList = ({ people }: { people: TeamUser[] }) => (
-  <div className="flex min-w-0 flex-col gap-1">
-    {people.map((person) => (
-      <span key={person.id} className="flex min-w-0 items-center gap-2">
-        <span aria-hidden="true" className="shrink-0">
-          <Avatar user={person} size="xs" />
-        </span>
-        <EntityLink
-          entity={{ type: "user", id: person.id }}
-          tone="plain"
-          className="truncate"
-        >
-          {fullName(person)}
-        </EntityLink>
-      </span>
-    ))}
-  </div>
+    className="truncate"
+  >
+    {fullName(person)}
+  </EntityLink>
 );
 
 // Only an empty team is archived, so an archived one has no manager to flag.
@@ -67,9 +48,14 @@ const COLUMNS: ManageColumn<Team>[] = [
     cell: (team) => {
       if (!isActiveTeam(team)) return null;
 
-      const managers = activeManagers(team);
-      return managers.length > 0 ? (
-        <ManagerList people={managers} />
+      const manager = activeManager(team);
+      return manager ? (
+        <span className="flex min-w-0 items-center gap-2">
+          <span aria-hidden="true" className="shrink-0">
+            <Avatar user={manager} size="xs" />
+          </span>
+          <ManagerLink person={manager} />
+        </span>
       ) : (
         <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
       );
@@ -77,10 +63,10 @@ const COLUMNS: ManageColumn<Team>[] = [
     summary: (team) => {
       if (!isActiveTeam(team)) return null;
 
-      const managers = activeManagers(team);
-      return managers.length > 0 ? (
+      const manager = activeManager(team);
+      return manager ? (
         <>
-          Managed by <PeopleLinks people={managers} />
+          Managed by <ManagerLink person={manager} />
         </>
       ) : (
         <ManageWarning inline>{NO_ACTIVE_MANAGER}</ManageWarning>

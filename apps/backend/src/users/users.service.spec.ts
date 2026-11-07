@@ -227,27 +227,12 @@ describe('UsersService scope', () => {
   });
 
   describe('list rows', () => {
-    let betaId: string;
-
     const rowOf = async (caller: AuthUser, userId: string) => {
       const { results } = await service.list(companyId, PAGE, caller);
       return results.find((user) => user.id === userId)!;
     };
 
     beforeAll(async () => {
-      const beta = await dataSource
-        .getRepository(Team)
-        .save({ companyId, name: `Beta ${RUN}` });
-      betaId = beta.id;
-
-      await dataSource.getRepository(TeamMembership).save({
-        companyId,
-        teamId: betaId,
-        userId: member.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: '2026-01-01',
-      });
-
       for (const status of [ProjectStatus.ACTIVE, ProjectStatus.ARCHIVED]) {
         await dataSource.getRepository(Project).save({
           companyId,
@@ -258,22 +243,17 @@ describe('UsersService scope', () => {
       }
     });
 
-    it('names every open team for an owner', async () => {
-      const row = await rowOf(owner, member.id);
-
-      expect(row.teams.map((team) => team.id).sort()).toEqual(
-        [alphaId, betaId].sort(),
-      );
+    it('names their one team and their role in it', async () => {
+      expect((await rowOf(owner, member.id)).team).toEqual({
+        id: alphaId,
+        name: `Alpha ${RUN}`,
+        roleInTeam: TeamRole.MEMBER,
+        joinedAt: '2026-01-01',
+      });
     });
 
-    it('names only the teams a manager leads', async () => {
-      const row = await rowOf(manager, member.id);
-
-      expect(row.teams).toEqual([{ id: alphaId, name: `Alpha ${RUN}` }]);
-    });
-
-    it('gives a person on no team an empty list', async () => {
-      expect((await rowOf(owner, outsider.id)).teams).toEqual([]);
+    it('gives a person in no team none', async () => {
+      expect((await rowOf(owner, outsider.id)).team).toBeNull();
     });
 
     it('counts active projects only', async () => {
@@ -324,7 +304,7 @@ describe('UsersService scope', () => {
       expect(await assignableIds(leadNothing)).toEqual([leadNothing.id]);
     });
 
-    it('says which team each person is a member of', async () => {
+    it("names each person's team and their role in it", async () => {
       const solo = await createUser('solo', UserRole.EMPLOYEE);
       await dataSource.getRepository(TeamMembership).save({
         companyId,
@@ -335,12 +315,36 @@ describe('UsersService scope', () => {
       });
 
       const { results } = await service.listAssignable(companyId, PAGE, owner);
-      const memberTeamOf = (id: string) =>
-        results.find((user) => user.id === id)?.memberTeam;
+      const teamOf = (id: string) =>
+        results.find((user) => user.id === id)?.team;
 
-      expect(memberTeamOf(solo.id)?.id).toBe(alphaId);
-      // Leading a team is not being a member of it.
-      expect(memberTeamOf(manager.id)).toBeNull();
+      expect(teamOf(solo.id)).toMatchObject({
+        id: alphaId,
+        roleInTeam: TeamRole.MEMBER,
+      });
+      expect(teamOf(manager.id)).toMatchObject({
+        id: alphaId,
+        roleInTeam: TeamRole.MANAGER,
+      });
+      expect(teamOf(outsider.id)).toBeNull();
+    });
+
+    it('narrows to people in no team when asked', async () => {
+      const { results } = await service.listAssignable(
+        companyId,
+        Object.assign(new AssignableUsersQuery(), {
+          ...PAGE,
+          noTeam: true,
+        }),
+        owner,
+      );
+      const ids = results.map((user) => user.id);
+
+      expect(ids).toEqual(
+        expect.arrayContaining([outsider.id, leadNothing.id]),
+      );
+      expect(ids).not.toContain(member.id);
+      expect(ids).not.toContain(manager.id);
     });
 
     const rolesListed = async (roles: UserRole[]) => {
@@ -399,30 +403,19 @@ describe('UsersService scope', () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it('names their teams with the role and joining date', async () => {
-      const { teams } = await service.getUserDetailsById(
+    it('names their team with the role and joining date', async () => {
+      const { team } = await service.getUserDetailsById(
         member.id,
         companyId,
         owner,
       );
 
-      expect(teams).toContainEqual({
+      expect(team).toEqual({
         id: alphaId,
         name: `Alpha ${RUN}`,
         roleInTeam: TeamRole.MEMBER,
         joinedAt: '2026-01-01',
       });
-    });
-
-    it('names only the teams a manager leads', async () => {
-      // The member is also in "Beta", which the list rows above put them in.
-      const { teams } = await service.getUserDetailsById(
-        member.id,
-        companyId,
-        manager,
-      );
-
-      expect(teams.map((team) => team.id)).toEqual([alphaId]);
     });
   });
 
@@ -437,8 +430,6 @@ describe('UsersService scope', () => {
       );
       teams = new TeamsService(
         dataSource.getRepository(Team),
-        dataSource.getRepository(TeamMembership),
-        dataSource.getRepository(User),
         teamVisibility,
         dataSource,
       );
@@ -471,10 +462,7 @@ describe('UsersService scope', () => {
     });
 
     it('can be placed again by the owner the same day', async () => {
-      await teams.addMember(alphaId, companyId, {
-        userId: leaver.id,
-        roleInTeam: TeamRole.MEMBER,
-      });
+      await teams.addMember(alphaId, companyId, { userId: leaver.id });
 
       await expect(listedIds(manager)).resolves.toContain(leaver.id);
     });
@@ -516,24 +504,13 @@ describe('UsersService scope', () => {
       expect(updated.role).toBe(UserRole.EMPLOYEE);
     });
 
-    it('is refused while they manage a team, naming every team', async () => {
-      const leader = await createUser('twoteamleader', UserRole.MANAGER);
-      await leadTeam(leader, 'Gamma');
-      await leadTeam(leader, 'Delta');
-
-      const refusal = demote(leader);
-
-      await expect(refusal).rejects.toThrow(BadRequestException);
-      await expect(refusal).rejects.toThrow(
-        new RegExp(`Delta ${RUN}, Gamma ${RUN}`),
-      );
-    });
-
-    it('leaves the role and memberships untouched when refused', async () => {
+    it('is refused while they lead a team, naming it; nothing changes', async () => {
       const leader = await createUser('keptleader', UserRole.MANAGER);
       const membership = await leadTeam(leader, 'Epsilon');
 
-      await expect(demote(leader)).rejects.toThrow(BadRequestException);
+      await expect(demote(leader)).rejects.toThrow(
+        `This person leads Epsilon ${RUN}`,
+      );
 
       await expect(
         dataSource.getRepository(User).findOneByOrFail({ id: leader.id }),

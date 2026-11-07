@@ -23,7 +23,7 @@ const OWNER_ONLY: Handler[] = [
   'archiveTeam',
   'unarchiveTeam',
   'addMember',
-  'updateMember',
+  'changeManager',
 ];
 
 const OPEN_TO_MANAGER: Handler[] = ['list', 'getTeamById', 'removeMember'];

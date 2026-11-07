@@ -4,7 +4,7 @@ import {
   ConflictException,
   ForbiddenException,
 } from '@nestjs/common';
-import { DataSource, IsNull } from 'typeorm';
+import { DataSource, IsNull, QueryFailedError } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { addDays, todayISODate } from 'src/capacity/working-days.util';
@@ -22,7 +22,7 @@ import { Invitation } from 'src/invitations/entities/invitation.entity';
 import { InvitationStatus } from 'src/invitations/enums/invitation-status.enum';
 
 import { TeamVisibilityService } from './team-visibility.service';
-import { TeamsQuery } from './dtos/team.dto';
+import { PreviousManager, TeamsQuery } from './dtos/team.dto';
 import { TeamsService } from './teams.service';
 
 /**
@@ -68,6 +68,11 @@ describe('TeamsService', () => {
 
     return { id: user.id, email, companyId, role };
   };
+
+  let people = 0;
+  // A fresh person each time, so a case owns everything it changes.
+  const newPerson = (role: UserRole) =>
+    createUser(`person-${(people += 1)}`, role);
 
   const createTeam = async (name: string): Promise<string> => {
     const team = await dataSource
@@ -117,8 +122,6 @@ describe('TeamsService', () => {
 
     service = new TeamsService(
       dataSource.getRepository(Team),
-      dataSource.getRepository(TeamMembership),
-      dataSource.getRepository(User),
       new TeamVisibilityService(
         dataSource.getRepository(TeamMembership),
         dataSource.getRepository(User),
@@ -183,29 +186,29 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(alpha)).resolves.toContain(employee.id);
     });
 
-    it('refuses a manager removing themselves or another manager', async () => {
+    it('refuses a manager removing themselves', async () => {
       const own = await dataSource
         .getRepository(TeamMembership)
         .findOneByOrFail({ teamId: alpha, userId: alphaManager.id });
-      const coManager = await addToTeam(alpha, employee, TeamRole.MANAGER);
 
-      for (const membershipId of [own.id, coManager]) {
-        await expect(
-          service.removeMember(membershipId, companyId, alpha, alphaManager),
-        ).rejects.toThrow(ForbiddenException);
-      }
+      await expect(
+        service.removeMember(own.id, companyId, alpha, alphaManager),
+      ).rejects.toThrow(ForbiddenException);
 
-      await expect(activeMemberIds(alpha)).resolves.toEqual(
-        [alphaManager.id, employee.id].sort(),
-      );
+      await expect(activeMemberIds(alpha)).resolves.toContain(alphaManager.id);
     });
 
-    it('lets an owner remove a team manager', async () => {
-      const coManager = await addToTeam(alpha, employee, TeamRole.MANAGER);
+    it("lets an owner remove a team's manager, leaving it without one", async () => {
+      const teamId = await createTeam('lead removed');
+      const lead = await addToTeam(
+        teamId,
+        await createUser('removed-lead', UserRole.MANAGER),
+        TeamRole.MANAGER,
+      );
 
-      await service.removeMember(coManager, companyId, alpha, owner);
+      await service.removeMember(lead, companyId, teamId, owner);
 
-      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+      await expect(activeMemberIds(teamId)).resolves.toEqual([]);
     });
 
     it('lets an owner remove from any team', async () => {
@@ -245,7 +248,6 @@ describe('TeamsService', () => {
 
       const readded = await service.addMember(alpha, companyId, {
         userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
       });
 
       expect(readded.id).not.toBe(membershipId);
@@ -260,94 +262,182 @@ describe('TeamsService', () => {
       await expect(
         service.addMember(alpha, companyId, {
           userId: employee.id,
-          roleInTeam: TeamRole.MEMBER,
         }),
       ).rejects.toThrow(ConflictException);
     });
   });
 
-  describe('who can manage a team', () => {
-    afterEach(async () => {
-      await dataSource
+  describe("changing a team's manager", () => {
+    const newManager = () => newPerson(UserRole.MANAGER);
+    const roleOf = (membershipId: string) =>
+      dataSource
         .getRepository(TeamMembership)
-        .delete({ userId: loneManager.id });
-    });
+        .findOneByOrFail({ id: membershipId });
 
-    const addAs = (user: AuthUser, roleInTeam: TeamRole) =>
-      service.addMember(alpha, companyId, {
-        userId: user.id,
-        roleInTeam,
+    it('promotes one of its members in place; the old manager stays as a member', async () => {
+      const teamId = await createTeam('promoted');
+      const oldLead = await addToTeam(
+        teamId,
+        await newManager(),
+        TeamRole.MANAGER,
+      );
+      const member = await newManager();
+      const memberId = await addToTeam(teamId, member);
+
+      const lead = await service.changeManager(teamId, companyId, {
+        userId: member.id,
+        previousManager: PreviousManager.STAYS_AS_MEMBER,
       });
 
-    it('lets a Manager be added as the team manager', async () => {
-      const membership = await addAs(loneManager, TeamRole.MANAGER);
-
-      expect(membership.roleInTeam).toBe(TeamRole.MANAGER);
+      expect(lead).toMatchObject({
+        id: memberId,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: JOINED_AT,
+      });
+      await expect(roleOf(oldLead)).resolves.toMatchObject({
+        roleInTeam: TeamRole.MEMBER,
+        leftAt: null,
+      });
     });
 
-    it('refuses adding an employee as the team manager', async () => {
-      await expect(addAs(employee, TeamRole.MANAGER)).rejects.toThrow(
-        BadRequestException,
+    it('brings in a Manager in no team from today; the old manager leaves today', async () => {
+      const teamId = await createTeam('replaced');
+      const oldLead = await addToTeam(
+        teamId,
+        await newManager(),
+        TeamRole.MANAGER,
       );
-      await expect(activeMemberIds(alpha)).resolves.not.toContain(employee.id);
+      const outsider = await newManager();
+
+      const lead = await service.changeManager(teamId, companyId, {
+        userId: outsider.id,
+        previousManager: PreviousManager.LEAVES,
+      });
+
+      expect(lead).toMatchObject({
+        userId: outsider.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: TODAY,
+      });
+      await expect(roleOf(oldLead)).resolves.toMatchObject({
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: TODAY,
+      });
     });
 
-    it('refuses adding the owner as the team manager', async () => {
-      await expect(addAs(owner, TeamRole.MANAGER)).rejects.toThrow(
-        BadRequestException,
-      );
+    it('gives a team without a manager one, and replaces a deactivated one', async () => {
+      const empty = await createTeam('leaderless');
+      await expect(
+        service.changeManager(empty, companyId, {
+          userId: (await newManager()).id,
+        }),
+      ).resolves.toMatchObject({ roleInTeam: TeamRole.MANAGER });
+
+      const teamId = await createTeam('lead gone');
+      const gone = await newManager();
+      await addToTeam(teamId, gone, TeamRole.MANAGER);
+      await dataSource
+        .getRepository(User)
+        .update(gone.id, { status: UserStatus.DEACTIVATED });
+      await expect(
+        service.changeManager(teamId, companyId, {
+          userId: (await newManager()).id,
+          previousManager: PreviousManager.STAYS_AS_MEMBER,
+        }),
+      ).resolves.toMatchObject({ roleInTeam: TeamRole.MANAGER });
     });
 
-    it('still adds an employee as a member', async () => {
-      const membership = await addAs(employee, TeamRole.MEMBER);
-
-      expect(membership.roleInTeam).toBe(TeamRole.MEMBER);
-    });
-
-    it('refuses making an employee the team manager', async () => {
-      const membershipId = await addToTeam(alpha, employee);
+    it('asks what happens to the current manager', async () => {
+      const teamId = await createTeam('unsaid');
+      await addToTeam(teamId, await newManager(), TeamRole.MANAGER);
 
       await expect(
-        service.updateMember(
-          membershipId,
-          companyId,
-          { roleInTeam: TeamRole.MANAGER },
-          alpha,
-        ),
+        service.changeManager(teamId, companyId, {
+          userId: (await newManager()).id,
+        }),
       ).rejects.toThrow(BadRequestException);
     });
 
-    it('refuses changing a closed membership: someone coming back is added anew', async () => {
-      const closed = await dataSource.getRepository(TeamMembership).save({
+    it('refuses someone in another team: they move first', async () => {
+      const teamId = await createTeam('poaching');
+      const elsewhere = await newManager();
+      await addToTeam(beta, elsewhere);
+
+      await expect(
+        service.changeManager(teamId, companyId, { userId: elsewhere.id }),
+      ).rejects.toThrow(`is in Beta ${RUN}; move them to this team first`);
+      await expect(activeMemberIds(teamId)).resolves.toEqual([]);
+    });
+
+    it('makes an Employee of the team a Manager in the same change, or not at all', async () => {
+      const roleOf = async (userId: string) =>
+        (await dataSource.getRepository(User).findOneByOrFail({ id: userId }))
+          .role;
+
+      const teamId = await createTeam('employee promoted');
+      const member = await newPerson(UserRole.EMPLOYEE);
+      await addToTeam(teamId, member);
+
+      await expect(
+        service.changeManager(teamId, companyId, { userId: member.id }),
+      ).resolves.toMatchObject({ roleInTeam: TeamRole.MANAGER });
+      await expect(roleOf(member.id)).resolves.toBe(UserRole.MANAGER);
+
+      // Refused once the role is set: the role change is rolled back with it.
+      const next = await newPerson(UserRole.EMPLOYEE);
+      await addToTeam(teamId, next);
+      await expect(
+        service.changeManager(teamId, companyId, { userId: next.id }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(roleOf(next.id)).resolves.toBe(UserRole.EMPLOYEE);
+    });
+
+    it('refuses an Employee from outside the team, the owner and a deactivated Manager', async () => {
+      const teamId = await createTeam('who leads');
+      const outsider = await newPerson(UserRole.EMPLOYEE);
+      const gone = await newManager();
+      await dataSource
+        .getRepository(User)
+        .update(gone.id, { status: UserStatus.DEACTIVATED });
+
+      for (const user of [outsider, owner, gone]) {
+        await expect(
+          service.changeManager(teamId, companyId, { userId: user.id }),
+        ).rejects.toThrow(BadRequestException);
+      }
+      await expect(activeMemberIds(teamId)).resolves.toEqual([]);
+    });
+
+    it('refuses while a manager invitation is pending', async () => {
+      const teamId = await createTeam('invited lead');
+      await dataSource.getRepository(Invitation).save({
         companyId,
-        teamId: alpha,
-        userId: loneManager.id,
-        roleInTeam: TeamRole.MEMBER,
-        joinedAt: '2026-01-01',
-        leftAt: '2026-02-01',
+        teamId,
+        invitedById: owner.id,
+        email: `invited-lead-${RUN}@teams-service.test`,
+        role: UserRole.MANAGER,
+        status: InvitationStatus.PENDING,
+        tokenHash: `invited-lead-${RUN}`,
+        expiresAt: new Date(Date.now() + 3_600_000),
       });
 
       await expect(
-        service.updateMember(
-          closed.id,
-          companyId,
-          { roleInTeam: TeamRole.MANAGER },
-          alpha,
-        ),
-      ).rejects.toThrow('This membership is already closed');
+        service.changeManager(teamId, companyId, {
+          userId: (await newManager()).id,
+        }),
+      ).rejects.toThrow('revoke the invitation first');
     });
+  });
 
-    it('lets a Manager member be made the team manager', async () => {
-      const membershipId = await addToTeam(alpha, loneManager);
+  describe('the database', () => {
+    it('holds one open membership per person and one manager per team', async () => {
+      const lead = await newPerson(UserRole.MANAGER);
+      await addToTeam(alpha, lead);
 
-      const updated = await service.updateMember(
-        membershipId,
-        companyId,
-        { roleInTeam: TeamRole.MANAGER },
-        alpha,
-      );
-
-      expect(updated.roleInTeam).toBe(TeamRole.MANAGER);
+      await expect(addToTeam(beta, lead)).rejects.toThrow(QueryFailedError);
+      await expect(
+        addToTeam(alpha, await newPerson(UserRole.MANAGER), TeamRole.MANAGER),
+      ).rejects.toThrow(QueryFailedError);
     });
   });
 
@@ -365,7 +455,6 @@ describe('TeamsService', () => {
       await expect(
         service.addMember(alpha, companyId, {
           userId: gone.id,
-          roleInTeam: TeamRole.MEMBER,
         }),
       ).rejects.toThrow(BadRequestException);
       await expect(activeMemberIds(alpha)).resolves.not.toContain(gone.id);
@@ -397,24 +486,18 @@ describe('TeamsService', () => {
   });
 
   describe('the owner', () => {
-    it('is never added to a team, as a member or its manager', async () => {
-      for (const roleInTeam of [TeamRole.MEMBER, TeamRole.MANAGER]) {
-        await expect(
-          service.addMember(alpha, companyId, {
-            userId: owner.id,
-            roleInTeam,
-          }),
-        ).rejects.toThrow(BadRequestException);
-      }
+    it('is never added to a team', async () => {
+      await expect(
+        service.addMember(alpha, companyId, { userId: owner.id }),
+      ).rejects.toThrow(BadRequestException);
       await expect(activeMemberIds(alpha)).resolves.not.toContain(owner.id);
     });
   });
 
-  describe('one member team per person', () => {
+  describe('one team per person', () => {
     const addAsMember = (teamId: string, user: AuthUser, extra = {}) =>
       service.addMember(teamId, companyId, {
         userId: user.id,
-        roleInTeam: TeamRole.MEMBER,
         ...extra,
       });
 
@@ -473,55 +556,20 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(beta)).resolves.toContain(employee.id);
     });
 
-    describe('for a Manager', () => {
-      afterEach(async () => {
-        await dataSource
-          .getRepository(TeamMembership)
-          .delete({ userId: loneManager.id });
+    it('adds a Manager as a member, and refuses moving one who leads their team', async () => {
+      const manager = await newPerson(UserRole.MANAGER);
+      await expect(addAsMember(alpha, manager)).resolves.toMatchObject({
+        roleInTeam: TeamRole.MEMBER,
       });
 
-      it('lets them lead several teams and be a member of one', async () => {
-        await addToTeam(alpha, loneManager);
-
-        const leads = await service.addMember(beta, companyId, {
-          userId: loneManager.id,
-          roleInTeam: TeamRole.MANAGER,
-        });
-
-        expect(leads.leftAt).toBeNull();
-        await expect(activeMemberIds(alpha)).resolves.toContain(loneManager.id);
-      });
-
-      it('refuses switching a team they lead to Member while they are a member elsewhere', async () => {
-        await addToTeam(alpha, loneManager);
-        const leads = await addToTeam(beta, loneManager, TeamRole.MANAGER);
-
-        await expect(
-          service.updateMember(
-            leads,
-            companyId,
-            { roleInTeam: TeamRole.MEMBER },
-            beta,
-          ),
-        ).rejects.toThrow(`already a member of "Alpha ${RUN}"`);
-      });
-
-      it('moves them when the switch says they leave their member team', async () => {
-        await addToTeam(alpha, loneManager);
-        const leads = await addToTeam(beta, loneManager, TeamRole.MANAGER);
-
-        const switched = await service.updateMember(
-          leads,
-          companyId,
-          { roleInTeam: TeamRole.MEMBER, leaveCurrentTeam: true },
-          beta,
-        );
-
-        expect(switched.roleInTeam).toBe(TeamRole.MEMBER);
-        await expect(activeMemberIds(alpha)).resolves.not.toContain(
-          loneManager.id,
-        );
-      });
+      const teamId = await createTeam('led elsewhere');
+      const lead = await newPerson(UserRole.MANAGER);
+      await addToTeam(teamId, lead, TeamRole.MANAGER);
+      await expect(
+        addAsMember(alpha, lead, { leaveCurrentTeam: true }),
+      ).rejects.toThrow(
+        `leads led elsewhere ${RUN}; give it another manager first`,
+      );
     });
   });
 
@@ -534,7 +582,6 @@ describe('TeamsService', () => {
     const addAsMember = (teamId: string, extra = {}) =>
       service.addMember(teamId, companyId, {
         userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
         ...extra,
       });
     const membershipOf = (
@@ -746,7 +793,6 @@ describe('TeamsService', () => {
       await expect(
         service.addMember(teamId, companyId, {
           userId: employee.id,
-          roleInTeam: TeamRole.MEMBER,
         }),
       ).rejects.toThrow(BadRequestException);
     });
@@ -763,7 +809,6 @@ describe('TeamsService', () => {
 
       const addition = service.addMember(teamId, companyId, {
         userId: employee.id,
-        roleInTeam: TeamRole.MEMBER,
       });
       // Attached now, so a refusal before the commit below is still this
       // expectation's, not an unhandled rejection.

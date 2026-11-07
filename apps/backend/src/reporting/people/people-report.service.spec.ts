@@ -420,24 +420,33 @@ describe('PeopleReportService', () => {
   });
 
   describe('teams', () => {
-    it("names each person's teams, an archived one marked for the owner", async () => {
+    it('names each team a person was in during the period, an archived one marked for the owner', async () => {
+      // One team at a time: an archived team, then Design, then the manager's.
+      const hopper = await createUser('Hopper', UserRole.EMPLOYEE);
       const [design, archived] = await dataSource.getRepository(Team).save([
         { companyId, name: `Design ${RUN}` },
         { companyId, name: `Archived ${RUN}`, status: TeamStatus.ARCHIVED },
       ]);
-      await dataSource.getRepository(TeamMembership).save(
-        [design, archived].map((team) => ({
+      const memberships = await dataSource.getRepository(TeamMembership).save(
+        [
+          [archived.id, '2020-01-01', '2026-03-05'],
+          [design.id, '2026-03-05', '2026-03-20'],
+          [teamId, '2026-03-20', null],
+        ].map(([team, joinedAt, leftAt]) => ({
           companyId,
-          teamId: team.id,
-          userId: member,
+          teamId: team!,
+          userId: hopper.id,
           roleInTeam: TeamRole.MEMBER,
-          joinedAt: '2020-01-01',
+          joinedAt: joinedAt!,
+          leftAt,
         })),
       );
 
-      const forOwner = await rowFor(owner, member);
-      const forManager = await rowFor(manager, member);
+      const forOwner = await rowFor(owner, hopper.id);
+      const forManager = await rowFor(manager, hopper.id);
       const nobody = await rowFor(owner, partTimer);
+      const managerOwnRow = await rowFor(owner, manager.id);
+      await dataSource.getRepository(TeamMembership).remove(memberships);
       await dataSource.getRepository(Team).delete([design.id, archived.id]);
 
       const named = (row: typeof forOwner) =>
@@ -456,6 +465,10 @@ describe('PeopleReportService', () => {
         { id: teamId, name: `Team ${RUN}`, isArchived: false },
       ]);
       expect(nobody?.teams).toEqual([]);
+      // A manager is in the one team they lead, so they count once.
+      expect(named(managerOwnRow)).toEqual([
+        { id: teamId, name: `Team ${RUN}`, isArchived: false },
+      ]);
     });
   });
 

@@ -3,26 +3,18 @@
 import { useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useTeamOptions } from "@/hooks/useTeams";
-
-import { readIdParam, TEAM_PARAM } from "../team/team-links";
+import { TEAM_PARAM } from "../team/team-links";
+import { useTeamChoice } from "../team/useTeamChoice";
 
 /**
- * The one team Reports shows, kept in `?team=`. A linked team outside the ones
- * the caller can choose is dropped once they've loaded, rather than showing
- * an empty report.
+ * The one team Reports shows, kept in `?team=`. A linked team that isn't the
+ * caller's is dropped from the address once their teams have loaded.
  */
-export const useShownTeam = (isOwner: boolean) => {
+export const useShownTeam = () => {
   const searchParams = useSearchParams();
-  // Every active team for an owner, the ones they lead for a manager.
-  const { options, isLoading } = useTeamOptions();
+  const { options, choosesTeam, readLinkedTeam } = useTeamChoice();
 
-  const linked = readIdParam(searchParams.get(TEAM_PARAM));
-  const isUnknown =
-    !isLoading &&
-    Boolean(linked) &&
-    !options.some((team) => team.value === linked);
-  const teamId = isUnknown ? undefined : linked;
+  const { teamId, isDropped } = readLinkedTeam(searchParams.get(TEAM_PARAM));
 
   const showTeam = useCallback((nextTeamId?: string) => {
     const url = new URL(window.location.href);
@@ -32,17 +24,14 @@ export const useShownTeam = (isOwner: boolean) => {
   }, []);
 
   useEffect(() => {
-    if (isUnknown) showTeam(undefined);
-  }, [isUnknown, showTeam]);
+    if (isDropped) showTeam(undefined);
+  }, [isDropped, showTeam]);
 
   return {
     teamId,
     teamName: options.find((team) => team.value === teamId)?.label,
     teamOptions: options,
-    // For an owner, and a manager who leads more than one team (decision 7).
-    // Only once the teams have loaded, so the server and the browser's first
-    // pass render the same.
-    choosesTeam: !isLoading && (isOwner || options.length > 1),
+    choosesTeam,
     showTeam,
   };
 };

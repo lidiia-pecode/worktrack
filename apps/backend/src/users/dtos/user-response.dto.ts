@@ -49,6 +49,7 @@ export class UserResponse {
   createdAt!: Date;
 }
 
+/** The person's one team now, among those the caller can see, and their role in it. */
 @Exclude()
 export class UserTeamResponse {
   @Expose()
@@ -56,14 +57,19 @@ export class UserTeamResponse {
 
   @Expose()
   name!: string;
+
+  @Expose()
+  roleInTeam!: TeamRole;
+
+  @Expose()
+  joinedAt!: string;
 }
 
 @Exclude()
 export class UserListItemResponse extends UserResponse {
-  /** Open memberships in active teams the caller can see. */
   @Expose()
   @Type(() => UserTeamResponse)
-  teams!: UserTeamResponse[];
+  team!: UserTeamResponse | null;
 
   /** Active projects only. */
   @Expose()
@@ -87,22 +93,12 @@ export class UserProjectResponse {
 }
 
 @Exclude()
-export class UserTeamMembershipResponse extends UserTeamResponse {
-  @Expose()
-  roleInTeam!: TeamRole;
-
-  @Expose()
-  joinedAt!: string;
-}
-
-@Exclude()
 export class UserDetailsResponse extends UserResponse {
   @Expose()
   @Type(() => UserProjectResponse)
   projects!: UserProjectResponse[];
 
-  /** Open memberships in active teams the caller can see. */
   @Expose()
-  @Type(() => UserTeamMembershipResponse)
-  teams!: UserTeamMembershipResponse[];
+  @Type(() => UserTeamResponse)
+  team!: UserTeamResponse | null;
 }

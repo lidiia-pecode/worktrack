@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import { X } from "lucide-react";
 
 import { useAllProjectsQuery } from "@/hooks/useProjects";
-import { useTeamOptions } from "@/hooks/useTeams";
 import { Project } from "@/types";
 import { ProjectStatus } from "@/types/enums";
 
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { FilterBar } from "../../shared/FilterBar";
 import { FormSelect } from "../../shared/FormSelect";
 import { SearchInput } from "../../shared/inputs/SearchInput";
+import { useTeamChoice } from "../useTeamChoice";
 
 export const ALL_OPTION = "all";
 
@@ -44,7 +44,7 @@ export const TeamFilters = ({
   onSearchChange,
   onClear,
 }: TeamFiltersProps) => {
-  const { options: activeTeamOptions } = useTeamOptions();
+  const { options: activeTeamOptions, choosesTeam } = useTeamChoice();
 
   // Every status, so a past project's time can still be looked at.
   const { items: projects } = useAllProjectsQuery(undefined, {
@@ -93,13 +93,15 @@ export const TeamFilters = ({
       )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <FormSelect
-          aria-label="Team"
-          className="sm:w-56"
-          value={teamId ?? ALL_OPTION}
-          options={teamOptions}
-          onValueChange={(value) => onTeamChange(toFilterValue(value))}
-        />
+        {choosesTeam && (
+          <FormSelect
+            aria-label="Team"
+            className="sm:w-56"
+            value={teamId ?? ALL_OPTION}
+            options={teamOptions}
+            onValueChange={(value) => onTeamChange(toFilterValue(value))}
+          />
+        )}
 
         {onProjectChange && (
           <FormSelect

@@ -44,7 +44,9 @@ import {
 } from 'src/capacity/working-days.util';
 import { DeactivationImpactResponse } from './dtos/user-dates.dto';
 
-type UserTeam = Pick<Team, 'id' | 'name'>;
+/** The person's one team now, and their role in it. */
+type UserTeam = Pick<Team, 'id' | 'name'> &
+  Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
 
 interface RemovedTimeRaw {
   entryCount: string;
@@ -60,9 +62,6 @@ interface RemovedPlansRaw {
   firstDate: string;
   lastDate: string;
 }
-
-type UserTeamMembership = UserTeam &
-  Pick<TeamMembership, 'roleInTeam' | 'joinedAt'>;
 
 const PERSON_SEARCH_COLUMNS = [
   'u.first_name',
@@ -222,20 +221,24 @@ export class UsersService {
         : null,
     ]);
 
-    const teamsByUser = new Map<string, UserTeam[]>();
-    for (const { userId, team } of memberships) {
-      const teams = teamsByUser.get(userId) ?? [];
-      teams.push({ id: team.id, name: team.name });
-      teamsByUser.set(userId, teams);
-    }
-
+    const teamByUser = this.teamByUser(memberships);
     const results = users.map((listed) => ({
       ...listed,
-      teams: teamsByUser.get(listed.id) ?? [],
+      team: teamByUser.get(listed.id) ?? null,
       weeklyMinutes: weeklyMinutesByUser?.get(listed.id),
     }));
 
     return { results, count };
+  }
+
+  /** Each person's one team now, as the lists and the person panel show it. */
+  private teamByUser(memberships: TeamMembership[]): Map<string, UserTeam> {
+    return new Map(
+      memberships.map(({ userId, team, roleInTeam, joinedAt }) => [
+        userId,
+        { id: team.id, name: team.name, roleInTeam, joinedAt },
+      ]),
+    );
   }
 
   // Only teams the caller can see, so a manager learns no other team's name.
@@ -260,7 +263,6 @@ export class UsersService {
         },
       },
       relations: { team: true },
-      order: { team: { name: 'ASC' } },
     });
   }
 
@@ -307,6 +309,12 @@ export class UsersService {
       andWhereAnyContains(qb, PERSON_SEARCH_COLUMNS, query.search);
     }
 
+    if (query.noTeam) {
+      qb.andWhere(
+        `NOT EXISTS (SELECT 1 FROM team_memberships m WHERE m.user_id = u.id AND m.left_at IS NULL)`,
+      );
+    }
+
     // Who can be picked now.
     this.teamVisibility.applyUserVisibility(qb, 'u.id', user, {
       includeSelf: true,
@@ -321,22 +329,19 @@ export class UsersService {
       .take(query.pageSize)
       .getManyAndCount();
 
-    // The team each person is a member of, so a picker can say where a move
-    // takes them from.
-    const memberships = await this.openMembershipsFor(
-      companyId,
-      users.map((listed) => listed.id),
-      user,
-    );
-    const memberTeamByUser = new Map<string, UserTeam>(
-      memberships
-        .filter((membership) => membership.roleInTeam === TeamRole.MEMBER)
-        .map(({ userId, team }) => [userId, { id: team.id, name: team.name }]),
+    // Each person's team, so a picker can say where a move takes them from
+    // and who leads a team.
+    const teamByUser = this.teamByUser(
+      await this.openMembershipsFor(
+        companyId,
+        users.map((listed) => listed.id),
+        user,
+      ),
     );
 
     const results = users.map((listed) => ({
       ...listed,
-      memberTeam: memberTeamByUser.get(listed.id) ?? null,
+      team: teamByUser.get(listed.id) ?? null,
     }));
 
     return { results, count };
@@ -382,7 +387,7 @@ export class UsersService {
     User & {
       hasPassword: boolean;
       googleLinked: boolean;
-      teams: UserTeamMembership[];
+      team: UserTeam | null;
     }
   > {
     const user = await this.getRepository(manager).findOne({
@@ -410,18 +415,15 @@ export class UsersService {
       );
     }
 
-    const memberships = await this.openMembershipsFor(companyId, [id], caller);
+    const teamByUser = this.teamByUser(
+      await this.openMembershipsFor(companyId, [id], caller),
+    );
 
     return {
       ...user,
       hasPassword: Boolean(user.passwordHash),
       googleLinked: Boolean(user.googleId),
-      teams: memberships.map(({ team, roleInTeam, joinedAt }) => ({
-        id: team.id,
-        name: team.name,
-        roleInTeam,
-        joinedAt,
-      })),
+      team: teamByUser.get(id) ?? null,
     };
   }
 
@@ -501,6 +503,9 @@ export class UsersService {
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
+      // Locked, so a role change and Change manager on the same person run
+      // one after the other and neither writes back a stale role.
+      await this.lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.DEACTIVATED) {
@@ -547,7 +552,7 @@ export class UsersService {
     user: User,
     manager: EntityManager,
   ): Promise<void> {
-    const managedTeams = await manager.getRepository(TeamMembership).find({
+    const lead = await manager.getRepository(TeamMembership).findOne({
       where: {
         userId: user.id,
         companyId: user.companyId,
@@ -556,15 +561,11 @@ export class UsersService {
         team: { status: TeamStatus.ACTIVE },
       },
       relations: ['team'],
-      order: { team: { name: 'ASC' } },
     });
 
-    if (managedTeams.length > 0) {
-      const teamNames = managedTeams
-        .map((membership) => membership.team.name)
-        .join(', ');
+    if (lead) {
       throw new BadRequestException(
-        `This person manages ${teamNames}. Remove them as manager before changing their role.`,
+        `This person leads ${lead.team.name}. Give it another manager before changing their role.`,
       );
     }
   }

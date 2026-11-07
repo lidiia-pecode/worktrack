@@ -51,6 +51,9 @@ const assignableUsersQueries = createEntityQuery<
 export const useAssignableUsersInfiniteQuery =
   assignableUsersQueries.useInfiniteQuery;
 
+export const useAssignableUsersAllPagesQuery =
+  assignableUsersQueries.useAllPagesQuery;
+
 export const useUsersMutations = createEntityMutations<
   User,
   never,

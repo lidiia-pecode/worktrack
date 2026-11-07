@@ -13,7 +13,6 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
-import { byCount } from "@/lib/utils/text";
 import { fullName } from "@/lib/utils/user";
 import { User } from "@/types";
 import { ProjectStatus } from "@/types/enums";
@@ -66,7 +65,7 @@ export const UserReactivateDialog = ({
     : null;
   const earliestDay = laterISODate(dayAfterLeaving, firstOpenDay);
 
-  const teams = details.data?.teams ?? [];
+  const teams = details.data?.team ? [details.data.team] : [];
   const activeProjects = (details.data?.projects ?? []).filter(
     (project) => project.status === ProjectStatus.ACTIVE,
   );
@@ -93,11 +92,7 @@ export const UserReactivateDialog = ({
       }
       affected={[
         {
-          label: byCount(
-            teams.length,
-            "Back in their team",
-            "Back in their teams",
-          ),
+          label: "Back in their team",
           entities: linkedEntities("team", teams),
         },
         {

@@ -1,6 +1,12 @@
 import { PaginatedResponse, SearchablePaginationParams } from ".";
 import { Company } from "./Company";
-import { TeamRole, TeamStatus, UserRole, UserStatus } from "./enums";
+import {
+  PreviousManager,
+  TeamRole,
+  TeamStatus,
+  UserRole,
+  UserStatus,
+} from "./enums";
 
 // TeamUserResponse
 export interface TeamUser {
@@ -54,19 +60,20 @@ export interface TeamsQuery extends SearchablePaginationParams {
   status?: TeamStatus;
 }
 
+/** Adds a member; a team's manager is appointed separately. */
 export interface AddTeamMemberPayload {
   userId: string;
-  roleInTeam?: TeamRole;
-  /** A member of another team leaves it the day they join this one. */
+  /** Someone in another team leaves it the day they join this one. */
   leaveCurrentTeam?: boolean;
   /** The first day on the team: today unless given, and never after it. */
   date?: string;
 }
 
-export interface UpdateTeamMemberPayload {
-  roleInTeam?: TeamRole;
-  /** Made a member here, they leave the team they are a member of today. */
-  leaveCurrentTeam?: boolean;
+export interface ChangeTeamManagerPayload {
+  /** One of the team's members, or a Manager in no team. */
+  userId: string;
+  /** Required when the team has a manager. */
+  previousManager?: PreviousManager;
 }
 
 export type TeamListResponse = PaginatedResponse<Team>;

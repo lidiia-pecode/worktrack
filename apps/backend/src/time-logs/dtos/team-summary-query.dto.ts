@@ -1,14 +1,7 @@
 import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsUUID } from 'class-validator';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
-
-// A query value arrives as text; anything but "true" or "false" is left for
-// IsBoolean to refuse.
-const toBoolean = ({ value }: { value: unknown }): unknown => {
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  return value;
-};
+import { toBoolean } from 'src/lib/dtos/to-boolean.transform';
 
 export class TeamSummaryQuery {
   @IsDateWithoutTimeString()

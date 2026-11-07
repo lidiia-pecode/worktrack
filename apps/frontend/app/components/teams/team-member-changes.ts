@@ -5,15 +5,7 @@ import { Team } from "@/types/Team";
 import { UserTeam } from "@/types/User";
 import { TeamRole } from "@/types/enums";
 
-import {
-  activeManagers,
-  leftWithoutManagerText,
-  MembershipWithUser,
-} from "./team-memberships";
-
-export type MemberChange =
-  | { kind: "role"; membership: MembershipWithUser; roleInTeam: TeamRole }
-  | { kind: "remove"; membership: MembershipWithUser };
+import { leftWithoutManagerText, MembershipWithUser } from "./team-memberships";
 
 /** How a team change's first day reads in a sentence. */
 export interface ChangeDayWords {
@@ -43,85 +35,38 @@ export const changeDayWords = (date: string, today: string): ChangeDayWords => {
   };
 };
 
-interface ChangeContext {
+interface RemovalContext {
   isOwner: boolean;
-  /** The person's other teams the viewer can see. */
-  otherTeamsCount: number;
-  /** The other team they are a member of, which making them a member here leaves. */
-  otherMemberTeam?: UserTeam | null;
   /** The day a removal takes effect, today by default. */
   day?: ChangeDayWords;
 }
 
-// A deactivated manager already leaves the team without an active one.
-const isOnlyActiveManager = (team: Team, membership: MembershipWithUser) =>
-  membership.roleInTeam === TeamRole.MANAGER &&
-  !isDeactivatedUser(membership.user) &&
-  activeManagers(team).every((manager) => manager.id === membership.user.id);
-
-/** The confirmation's wording for a role change or a removal. */
-export const memberChangeCopy = (
-  change: MemberChange,
+/**
+ * The confirmation for taking someone off a team. A person is in one team, so
+ * they are then in none: only the owner reaches what they record next.
+ */
+export const removalCopy = (
+  membership: MembershipWithUser,
   team: Team,
-  {
-    isOwner,
-    otherTeamsCount,
-    otherMemberTeam,
-    day = TODAY_WORDS,
-  }: ChangeContext,
+  { isOwner, day = TODAY_WORDS }: RemovalContext,
 ) => {
-  const name = fullName(change.membership.user);
-  const leavesNoManager = isOnlyActiveManager(team, change.membership)
-    ? leftWithoutManagerText(team)
-    : null;
-
-  if (change.kind === "role" && change.roleInTeam === TeamRole.MANAGER) {
-    return {
-      title: `Make ${name} the manager of ${team.name}?`,
-      description: `${name} can manage the team and access its time, absences and plans, including former members' records from their time in the team.`,
-      confirmText: "Make manager",
-    };
-  }
-
-  // A person is a member of one team, so this is a move.
-  if (change.kind === "role" && otherMemberTeam) {
-    return {
-      title: `Move ${name} to ${team.name} as a member?`,
-      description: [
-        `${name} leaves ${otherMemberTeam.name} today and no longer sees ${team.name}'s members or their records. Their own records before today stay with ${otherMemberTeam.name}.`,
-        leavesNoManager,
-      ]
-        .filter(Boolean)
-        .join(" "),
-      confirmText: "Move",
-      confirmVariant: "warning" as const,
-    };
-  }
-
-  if (change.kind === "role") {
-    return {
-      title: `Make ${name} a member of ${team.name}?`,
-      description: [
-        `They no longer see ${team.name}'s members.`,
-        leavesNoManager,
-      ]
-        .filter(Boolean)
-        .join(" "),
-      confirmText: "Make member",
-    };
-  }
+  const name = fullName(membership.user);
+  // A deactivated manager already leaves the team without an active one.
+  const leavesNoManager =
+    membership.roleInTeam === TeamRole.MANAGER &&
+    !isDeactivatedUser(membership.user)
+      ? leftWithoutManagerText(team)
+      : null;
 
   // A team keeps its history: the days before the removal stay with it.
   const removal = isOwner
     ? [
         `${name} leaves ${team.name} ${day.on}. Their records from ${day.before} stay with the team.`,
-        otherTeamsCount === 0 &&
-          `${day.from}, only you can access ${day.records}.`,
+        `${day.from}, only you can access ${day.records}.`,
       ]
     : [
         `${name} leaves the team ${day.on}. You can still access their records from ${day.before}.`,
-        otherTeamsCount === 0 &&
-          `${day.from}, only the owner can access ${day.records}.`,
+        `${day.from}, only the owner can access ${day.records}.`,
       ];
 
   return {
@@ -132,10 +77,10 @@ export const memberChangeCopy = (
   };
 };
 
-/** Someone the picker adds who is a member of another team, which they leave. */
+/** Someone the picker adds who is in another team, which they leave. */
 export interface PickerMove {
   name: string;
-  fromTeam: UserTeam;
+  fromTeam: Pick<UserTeam, "id" | "name">;
 }
 
 interface PickerChanges {

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -62,8 +62,12 @@ vi.mock("@/hooks/useReportingPeriods", () => ({
     refetch: vi.fn(),
   }),
 }));
+// The teams the viewer sees; none unless a test gives them.
+const teams = vi.hoisted(() => ({
+  options: [] as { value: string; label: string }[],
+}));
 vi.mock("@/hooks/useTeams", () => ({
-  useTeamOptions: () => ({ options: [], isLoading: false, isError: false }),
+  useTeamOptions: () => ({ ...teams, isLoading: false, isError: false }),
 }));
 vi.mock("@/hooks/useDismissible", () => ({
   useDismissible: () => ({ isDismissed: true }),
@@ -179,6 +183,7 @@ const weekTotal = () =>
 describe("TeamTimeView", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/team");
+    teams.options = [];
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
     Element.prototype.scrollIntoView = vi.fn();
     summary({});
@@ -303,18 +308,17 @@ describe("TeamTimeView", () => {
   });
 
   it("reads the team and project from the URL, ignoring one that isn't an id", () => {
+    const teamId = "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c";
+    teams.options = [{ value: teamId, label: "Core Development" }];
     window.history.replaceState(
       null,
       "",
-      "/team?team=3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c&project=not-an-id",
+      `/team?team=${teamId}&project=not-an-id`,
     );
     showTeamTime();
 
     expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        teamId: "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c",
-        projectId: undefined,
-      }),
+      expect.objectContaining({ teamId, projectId: undefined }),
     );
 
     vi.mocked(useTeamTimeSummary).mockClear();
@@ -332,6 +336,30 @@ describe("TeamTimeView", () => {
     );
     // A project's hours have no expected figure to be measured against.
     expect(weekTotal()).toHaveTextContent(/^Logged\s*5h$/);
+  });
+
+  it("drops a team link that isn't one of the viewer's teams from the address", () => {
+    teams.options = [
+      {
+        value: "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c",
+        label: "Core Development",
+      },
+    ];
+
+    // Another team's id, and one mistyped with a leading colon.
+    for (const team of [
+      "e942e902-d86f-442e-807b-7a71d93cdfe9",
+      "%3Ae942e902-d86f-442e-807b-7a71d93cdfe9",
+    ]) {
+      window.history.replaceState(null, "", `/team?team=${team}`);
+      showTeamTime();
+
+      expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
+        expect.objectContaining({ teamId: undefined }),
+      );
+      expect(window.location.pathname + window.location.search).toBe("/team");
+      cleanup();
+    }
   });
 
   it("totals the week against what was expected of everyone shown", () => {

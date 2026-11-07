@@ -19,9 +19,14 @@ import { TeamRole } from '../enums/team-role.enum';
 @Index('IDX_team_memberships_company_id', ['companyId'])
 @Index('IDX_team_memberships_user_lookup', ['userId', 'joinedAt', 'leftAt'])
 @Index('IDX_team_memberships_team_lookup', ['teamId', 'joinedAt', 'leftAt'])
-@Index('UQ_team_memberships_active_user', ['teamId', 'userId'], {
+// One team per person and one manager per team, at any moment.
+@Index('UQ_team_memberships_open_per_user', ['userId'], {
   unique: true,
   where: '"left_at" IS NULL',
+})
+@Index('UQ_team_memberships_open_manager_per_team', ['teamId'], {
+  unique: true,
+  where: `"role_in_team" = 'MANAGER' AND "left_at" IS NULL`,
 })
 export class TeamMembership {
   @PrimaryGeneratedColumn('uuid')

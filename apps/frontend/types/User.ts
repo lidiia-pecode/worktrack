@@ -57,14 +57,16 @@ export interface UpdateProfilePayload {
   avatarUrl?: string;
 }
 
+/** The person's one team now, among those the viewer can see, and their role in it. */
 export interface UserTeam {
   id: string;
   name: string;
+  roleInTeam: TeamRole;
+  joinedAt: string;
 }
 
 export interface UserListItem extends User {
-  /** Open memberships in active teams the viewer can see. */
-  teams: UserTeam[];
+  team: UserTeam | null;
   /** Active projects only. */
   projectsCount: number;
   /** Today's capacity; sent to an owner only. */
@@ -87,8 +89,8 @@ export interface AssignableUser {
   status: UserStatus;
   position?: string | null;
   avatarUrl?: string | null;
-  /** The team they are a member of, so a picker can say where a move takes them from. */
-  memberTeam: UserTeam | null;
+  /** So a picker can say where a move takes them from, and who leads a team. */
+  team: UserTeam | null;
 }
 
 export type AssignableUserListResponse = PaginatedResponse<AssignableUser>;
@@ -99,17 +101,13 @@ export interface UsersQuery extends SearchablePaginationParams {
 
 export interface AssignableUsersQuery extends UsersQuery {
   roles?: UserRole[];
-}
-
-export interface UserTeamMembership extends UserTeam {
-  roleInTeam: TeamRole;
-  joinedAt: string;
+  /** Only people in no team now. */
+  noTeam?: boolean;
 }
 
 export interface UserDetails extends User {
   projects: ProjectRef[];
-  /** Open memberships in active teams the viewer can see. */
-  teams: UserTeamMembership[];
+  team: UserTeam | null;
 }
 
 /** Just enough to name someone, such as who added or changed a record. */

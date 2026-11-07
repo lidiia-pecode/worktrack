@@ -11,7 +11,7 @@ import {
   CreateTeamPayload,
   Team,
   TeamsQuery,
-  UpdateTeamMemberPayload,
+  ChangeTeamManagerPayload,
   UpdateTeamPayload,
 } from "@/types/Team";
 
@@ -47,7 +47,7 @@ export function useTeamOptions() {
     [items],
   );
 
-  return { options, isLoading, isError };
+  return { options, teams: items, isLoading, isError };
 }
 
 export const teamDetailsQuery = (teamId: string) => ({
@@ -118,14 +118,9 @@ export function useTeamMembers(teamId: string) {
     onSuccess: invalidate,
   });
 
-  const updateMember = useMutation({
-    mutationFn: ({
-      membershipId,
-      data,
-    }: {
-      membershipId: string;
-      data: UpdateTeamMemberPayload;
-    }) => TeamsClientApi.updateMember(teamId, membershipId, data),
+  const changeManager = useMutation({
+    mutationFn: (data: ChangeTeamManagerPayload) =>
+      TeamsClientApi.changeManager(teamId, data),
 
     onSuccess: invalidate,
   });
@@ -144,7 +139,7 @@ export function useTeamMembers(teamId: string) {
 
   return {
     addMember,
-    updateMember,
+    changeManager,
     removeMember,
   };
 }

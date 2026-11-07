@@ -15,11 +15,11 @@ import {
 import { TeamsService } from './teams.service';
 import {
   AddTeamMemberDto,
+  ChangeTeamManagerDto,
   RemoveTeamMemberQuery,
   CreateTeamDto,
   TeamsQuery,
   UpdateTeamDto,
-  UpdateTeamMemberDto,
 } from './dtos/team.dto';
 import {
   TeamArchiveImpactResponse,
@@ -123,20 +123,14 @@ export class TeamsController {
   }
 
   @Role(UserRole.OWNER)
-  @Patch(':id/members/:membershipId')
+  @Patch(':id/manager')
   @Serialize(TeamMembershipResponse)
-  async updateMember(
+  async changeManager(
     @CurrentUser() authUser: AuthUser,
     @Param('id', ParseUUIDPipe) teamId: string,
-    @Param('membershipId', ParseUUIDPipe) membershipId: string,
-    @Body() dto: UpdateTeamMemberDto,
+    @Body() dto: ChangeTeamManagerDto,
   ): Promise<TeamMembership> {
-    return this.teamsService.updateMember(
-      membershipId,
-      authUser.companyId,
-      dto,
-      teamId,
-    );
+    return this.teamsService.changeManager(teamId, authUser.companyId, dto);
   }
 
   @Role(UserRole.OWNER, UserRole.MANAGER)

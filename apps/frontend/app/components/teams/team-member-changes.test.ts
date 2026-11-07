@@ -5,8 +5,8 @@ import { TeamRole, TeamStatus, UserRole, UserStatus } from "@/types/enums";
 
 import {
   changeDayWords,
-  memberChangeCopy,
   pickerChangesCopy,
+  removalCopy,
 } from "./team-member-changes";
 import { MembershipWithUser } from "./team-memberships";
 
@@ -45,122 +45,47 @@ const teamOf = (memberships: TeamMembership[]): Team => ({
   company: {} as Team["company"],
 });
 
-const asOwner = { isOwner: true, otherTeamsCount: 1 };
-
-describe("memberChangeCopy", () => {
-  it("says a new manager sees the team's records, its former members' included", () => {
-    const copy = memberChangeCopy(
-      { kind: "role", membership: john, roleInTeam: TeamRole.MANAGER },
-      teamOf([emma, john]),
-      asOwner,
-    );
-
-    expect(copy.title).toBe("Make John Clarke the manager of Design?");
-    expect(copy.description).toBe(
-      "John Clarke can manage the team and access its time, absences and plans, including former members' records from their time in the team.",
-    );
-  });
-
-  it("warns when the only active manager steps down", () => {
-    const team = teamOf([emma, john]);
-    const stepDown = {
-      kind: "role",
-      membership: emma,
-      roleInTeam: TeamRole.MEMBER,
-    } as const;
-
-    expect(memberChangeCopy(stepDown, team, asOwner).description).toContain(
-      "Design is then left without an active manager.",
-    );
-
-    const secondManager = membership("u-3", "Lucy", TeamRole.MANAGER);
-    expect(
-      memberChangeCopy(stepDown, teamOf([emma, secondManager]), asOwner)
-        .description,
-    ).not.toContain("without an active manager");
-  });
-
-  it("makes a step down a move when they are a member of another team", () => {
-    const copy = memberChangeCopy(
-      { kind: "role", membership: emma, roleInTeam: TeamRole.MEMBER },
-      teamOf([emma, john]),
-      { ...asOwner, otherMemberTeam: { id: "t-9", name: "Platform" } },
-    );
-
-    expect(copy.title).toBe("Move Emma Clarke to Design as a member?");
-    expect(copy.description).toBe(
-      "Emma Clarke leaves Platform today and no longer sees Design's members or their records. Their own records before today stay with Platform. Design is then left without an active manager.",
-    );
-    expect(copy.confirmText).toBe("Move");
-  });
-
-  it("does not warn when the manager removed was already deactivated", () => {
-    const deactivated = {
-      ...emma,
-      user: { ...emma.user, status: UserStatus.DEACTIVATED },
-    };
-
-    expect(
-      memberChangeCopy(
-        { kind: "remove", membership: deactivated },
-        teamOf([deactivated, john]),
-        asOwner,
-      ).description,
-    ).toBe(
-      "Emma Clarke leaves Design today. Their records from before today stay with the team.",
-    );
-  });
-
+describe("removalCopy", () => {
   it("tells the owner the team keeps the past and a person in no team is theirs alone", () => {
-    const copy = memberChangeCopy(
-      { kind: "remove", membership: john },
-      teamOf([emma, john]),
-      { isOwner: true, otherTeamsCount: 0 },
-    );
-
-    expect(copy.description).toBe(
+    expect(
+      removalCopy(john, teamOf([emma, john]), { isOwner: true }).description,
+    ).toBe(
       "John Clarke leaves Design today. Their records from before today stay with the team. From today, only you can access their new records.",
     );
   });
 
   it("tells a manager they keep the past and lose what comes next", () => {
-    const copy = memberChangeCopy(
-      { kind: "remove", membership: john },
-      teamOf([emma, john]),
-      { isOwner: false, otherTeamsCount: 0 },
-    );
-
-    expect(copy.description).toBe(
+    expect(
+      removalCopy(john, teamOf([emma, john]), { isOwner: false }).description,
+    ).toBe(
       "John Clarke leaves the team today. You can still access their records from before today. From today, only the owner can access their new records.",
     );
   });
 
   it("names the day a removal is dated back to", () => {
-    const copy = memberChangeCopy(
-      { kind: "remove", membership: john },
-      teamOf([emma, john]),
-      {
-        isOwner: true,
-        otherTeamsCount: 0,
-        day: changeDayWords("2026-11-03", "2026-11-05"),
-      },
-    );
+    const copy = removalCopy(john, teamOf([emma, john]), {
+      isOwner: true,
+      day: changeDayWords("2026-11-03", "2026-11-05"),
+    });
 
     expect(copy.description).toBe(
       "John Clarke leaves Design on Nov 3. Their records from before Nov 3 stay with the team. From Nov 3, only you can access their records.",
     );
   });
 
-  it("says nothing about visibility while they stay in another team", () => {
-    const copy = memberChangeCopy(
-      { kind: "remove", membership: emma },
-      teamOf([emma, john]),
-      asOwner,
-    );
+  it("warns that removing the manager leaves the team without one, unless already deactivated", () => {
+    expect(
+      removalCopy(emma, teamOf([emma, john]), { isOwner: true }).description,
+    ).toContain("Design is then left without an active manager.");
 
-    expect(copy.description).toBe(
-      "Emma Clarke leaves Design today. Their records from before today stay with the team. Design is then left without an active manager.",
-    );
+    const deactivated = {
+      ...emma,
+      user: { ...emma.user, status: UserStatus.DEACTIVATED },
+    };
+    expect(
+      removalCopy(deactivated, teamOf([deactivated, john]), { isOwner: true })
+        .description,
+    ).not.toContain("without an active manager");
   });
 });
 

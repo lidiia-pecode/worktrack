@@ -36,7 +36,7 @@ export interface AttentionFact {
   subject?: AttentionItem;
   /** The sentence, after the subject's name when there is one. */
   headline: string;
-  /** What the sentence covers: "up to Oct 16", "your teams' share". */
+  /** What the sentence covers, such as "up to Oct 16". */
   note?: string;
   /** About the one subject: their days or their hours. */
   detail?: string;
@@ -56,7 +56,6 @@ type AttentionInput = {
   projects: HoursReportRow[];
   /** The last day counted when the month is still running, else null. */
   countedUntil: string | null;
-  isManager: boolean;
 };
 
 const isBigGap = (gap: number, reference: number) =>
@@ -161,11 +160,8 @@ const signedHours = (minutes: number) =>
 
 const projectsOffPlanFact = (
   offPlan: { project: HoursReportRow; gap: number }[],
-  isManager: boolean,
 ): AttentionFact | null => {
   if (offPlan.length === 0) return null;
-
-  const note = isManager ? "your teams' share" : undefined;
 
   if (offPlan.length === 1) {
     const [{ project }] = offPlan;
@@ -175,7 +171,6 @@ const projectsOffPlanFact = (
           kind: "projectsOffPlan",
           subject,
           headline: "is more than 10% off plan",
-          note,
           detail: `${formatReportHours(project.totalMinutes)} logged of ${formatReportHours(project.plannedMinutes)} planned`,
           items: [],
         }
@@ -183,7 +178,6 @@ const projectsOffPlanFact = (
           kind: "projectsOffPlan",
           subject,
           headline: `has ${formatReportHours(project.totalMinutes)} logged with no plan`,
-          note,
           detail: "Nothing was planned on it this month",
           items: [],
         };
@@ -196,7 +190,6 @@ const projectsOffPlanFact = (
     headline: hasUnplanned
       ? `${offPlan.length} projects are off plan or not planned`
       : `${offPlan.length} projects are more than 10% off plan`,
-    note,
     items: offPlan.map(({ project, gap }) => ({
       id: project.id,
       label: project.plannedMinutes
@@ -217,7 +210,6 @@ export const reportAttention = ({
   people,
   projects,
   countedUntil,
-  isManager,
 }: AttentionInput): ReportAttention => {
   const checkedUntil = countedUntil && lastCheckedDay(countedUntil);
   const missing = missingDaysOf(people, checkedUntil);
@@ -232,7 +224,7 @@ export const reportAttention = ({
   return {
     facts: [
       daysWithoutTimeFact(missing, checkedUntil),
-      projectsOffPlanFact(offPlan, isManager),
+      projectsOffPlanFact(offPlan),
     ].filter((fact): fact is AttentionFact => fact !== null),
     people: new Map(
       missing.map(({ person, days }) => [

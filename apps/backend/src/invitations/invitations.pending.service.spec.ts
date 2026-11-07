@@ -180,6 +180,37 @@ describe('InvitationsService pending invitations', () => {
     await dataSource.destroy();
   });
 
+  describe("a manager invitation holds the team's lead", () => {
+    it('is refused for a team with a manager or another one pending', async () => {
+      await expect(
+        invite(owner, nextEmail(), alpha, UserRole.MANAGER),
+      ).rejects.toThrow('This team already has a manager');
+
+      const team = await dataSource
+        .getRepository(Team)
+        .save({ companyId, name: `Leaderless ${RUN}` });
+      const first = nextEmail();
+      await invite(owner, first, team.id, UserRole.MANAGER);
+
+      await expect(
+        invite(owner, nextEmail(), team.id, UserRole.MANAGER),
+      ).rejects.toThrow(`${first} is already invited to lead this team`);
+      // An employee invitation is not a lead.
+      await expect(
+        invite(owner, nextEmail(), team.id),
+      ).resolves.toBeUndefined();
+
+      // Replacing it once expired, and resending it, still work.
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email: first }, { expiresAt: new Date(Date.now() - 1000) });
+      await invite(owner, first, team.id, UserRole.MANAGER);
+      await expect(
+        service.resend((await findPending(first)).id, owner),
+      ).resolves.toBeUndefined();
+    });
+  });
+
   // The email goes out after the save is committed, so a failed send leaves a
   // pending invitation to resend rather than nothing.
   describe('a failed email', () => {
@@ -244,7 +275,7 @@ describe('InvitationsService pending invitations', () => {
 
     it("refuses a manager replacing the owner's invitation for a manager", async () => {
       const email = nextEmail();
-      await invite(owner, email, alpha, UserRole.MANAGER);
+      await invite(owner, email, undefined, UserRole.MANAGER);
 
       await dataSource
         .getRepository(Invitation)
@@ -299,21 +330,6 @@ describe('InvitationsService pending invitations', () => {
       await invite(owner, email, beta);
 
       await expect(listedEmails(betaManager)).resolves.toContain(email);
-    });
-
-    it("keeps the owner's invitation for a manager to lead their team out of reach", async () => {
-      const email = nextEmail();
-      await invite(owner, email, alpha, UserRole.MANAGER);
-      const { id } = await findPending(email);
-
-      await expect(listedEmails(alphaManager)).resolves.not.toContain(email);
-      await expect(service.resend(id, alphaManager)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(service.revoke(id, alphaManager)).rejects.toThrow(
-        NotFoundException,
-      );
-      await expect(listedEmails(owner)).resolves.toContain(email);
     });
 
     it('keeps an expired invitation, marked expired', async () => {

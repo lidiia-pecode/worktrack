@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useTeamDetails, useTeamMembers } from "@/hooks/useTeams";
-import { useUserDetails } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { laterISODate, todayISODate } from "@/lib/utils/date";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
@@ -13,7 +12,7 @@ import { UserRole } from "@/types/enums";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { DatePicker } from "../shared/inputs";
-import { changeDayWords, memberChangeCopy } from "./team-member-changes";
+import { changeDayWords, removalCopy } from "./team-member-changes";
 import { currentMemberships } from "./team-memberships";
 
 export interface TeamRemoval {
@@ -29,8 +28,9 @@ interface TeamMemberRemoveDialogProps {
 
 /**
  * Removes someone from a team, from the team's panel or the person's: it says
- * whether the team is left without a manager and whether the viewer stops
- * seeing them. The owner may date it back; a manager removes from today.
+ * whether the team is left without a manager and that the viewer stops seeing
+ * what they record next. The owner may date it back; a manager removes from
+ * today.
  */
 export const TeamMemberRemoveDialog = ({
   removal,
@@ -38,7 +38,6 @@ export const TeamMemberRemoveDialog = ({
 }: TeamMemberRemoveDialogProps) => {
   const { user: viewer } = useAuth();
   const team = useTeamDetails(removal?.teamId ?? null);
-  const person = useUserDetails(removal?.userId ?? "");
   const { removeMember } = useTeamMembers(removal?.teamId ?? "");
   const { timezone } = useWorkSettings();
   const { months } = useReportingPeriods();
@@ -56,12 +55,8 @@ export const TeamMemberRemoveDialog = ({
   const copy =
     team.data &&
     membership &&
-    person.data &&
-    memberChangeCopy({ kind: "remove", membership }, team.data, {
+    removalCopy(membership, team.data, {
       isOwner,
-      otherTeamsCount: person.data.teams.filter(
-        ({ id }) => id !== removal?.teamId,
-      ).length,
       day: changeDayWords(date, today),
     });
 
@@ -75,9 +70,9 @@ export const TeamMemberRemoveDialog = ({
       isOpen={Boolean(removal)}
       title={copy ? copy.title : "Remove from the team?"}
       description={
-        team.isError || person.isError
-          ? "Could not check their teams. Close this and try again."
-          : (copy?.description ?? "Checking their teams...")
+        team.isError
+          ? "Could not load the team. Close this and try again."
+          : (copy?.description ?? "Loading the team...")
       }
       choice={
         isOwner && (
