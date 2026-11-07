@@ -340,12 +340,23 @@ unique. The same person working at two companies would need two accounts with
 different email addresses. There is no shared identity spanning companies —
 consistent with §1's position on multi-company.
 
-**A person is a member of one team at a time; a Manager may lead any number.**
-Adding a member of another team is a move: the old membership ends the day
-the new one starts, in one transaction, after the owner confirms it. A Manager
-may also be a member of one team, and a team may have several managers.
-Leading a team is what grants reach; being a member only decides who oversees
-your own time.
+**A person is in one team at a time, and a team has at most one manager.**
+The database holds both rules. Leading a team is that team's membership
+(`roleInTeam = MANAGER`), so a manager's own hours count there; a Manager who
+leads no team may be a plain member of another. Adding someone from another
+team is a move: the old membership ends the day the new one starts, in one
+transaction, after the owner confirms it. Someone who leads their team is moved
+only once it has another manager. A team may have no manager, and the owner
+then covers it. Leading a team is what grants reach; being a member only
+decides who oversees your own time.
+
+**Change manager is the one way a team gets its manager.** The owner picks,
+from today, one of the team's members (an Employee is made a Manager in the
+same change) or a Manager in no team, never someone in another team, so nobody
+moves and no other team changes. The current manager stays in the team as a
+member or leaves it; a deactivated one is replaced the same way. Moving a
+manager to another team is three plain steps: Change manager on the old team,
+keeping them as a member; Change team; Change manager on the new team.
 
 **Team membership is historical, not current-state.** Rows are closed with
 `leftAt` rather than deleted, so "who was on this team in March" remains
@@ -355,7 +366,7 @@ company's dates, from its time zone. A membership starts the day someone is
 added and ends the day they are removed or moved: today, unless the owner gives
 an earlier day on the person's Change team or Add to a team dialog, or on
 Remove from the team (a manager removes a member from today; the members picker,
-a team's archive and a role switch always act today). An earlier day must be in
+a team's archive and Change manager always act today). An earlier day must be in
 an open month, not before the person's account or the membership being ended,
 and never makes someone a member of two teams at once. Nothing is scheduled
 ahead, a membership's dates can't be changed once saved, and someone coming back
@@ -708,7 +719,9 @@ manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
 lead. An employee invitation always names a team; an owner may also name a team
-for a manager to lead. There is no other way in: nobody is created directly.
+for a manager to lead, one with no manager and no other pending manager
+invitation. That invitation holds the team's lead: Change manager waits until
+it is accepted or revoked. There is no other way in: nobody is created directly.
 Accepting an invitation that carries a team creates the team membership in the
 same transaction that creates the user — a `MEMBER` for an employee, the team's
 `MANAGER` for a manager. Only the owner invites managers and only the owner
@@ -786,9 +799,9 @@ like every other screen.
 | Company settings | read + update | read | read |
 | Users — roster | full CRUD | list + read, within their teams | own profile only |
 | Users — assignment list | whole company | the people in teams they lead, plus themselves | — |
-| Invitations | create, any role, an employee always into a team, a manager optionally to lead one; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
+| Invitations | create, any role, an employee always into a team, a manager optionally to lead a team that has no manager or pending manager invitation; list, resend and revoke any pending one | create, EMPLOYEE only, always into a team they lead; list, resend and revoke the employee ones into teams they lead | — |
 | Notifications | own only: read, mark read | own only: read, mark read | own only: read, mark read |
-| Teams | full CRUD, including a member's move, addition or removal dated back to an open day; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel, from today | — |
+| Teams | full CRUD, including a member's move, addition or removal dated back to an open day, and each team's one manager through Change manager; the Teams page is theirs alone | read, within their teams (filters and team links); remove a member (not a team manager) from the person's panel, from today | — |
 | Projects | full CRUD; archive and restore are theirs alone | create, edit, staff their own people, choose activities from the catalogue | only their own, through `GET /projects/me` and `GET /projects/me/activities`, with the client name; the client name also on their own time entries |
 | Activities, Categories | full CRUD | read | read |
 | Time logs — read | whole company | own, plus users in teams they manage | own only |
@@ -825,17 +838,18 @@ last working day, or inside a spell between a last working day and the first
 day back (`permission-model.md` §3.7).
 
 Team structure is the Owner's: only an owner creates, renames or archives a
-team, adds a member, moves one between teams or changes a `roleInTeam`. A manager may remove a member
+team, adds a member, moves one between teams or changes a team's manager. A manager may remove a member
 from a team they lead, from today, because removal only narrows their own reach
-from then on; dating a removal back is the owner's, since it would also take
-past days from the team's other managers. Taking a team's manager off it,
+from then on; dating a removal back is the owner's, since it would take past
+days from the team's history. Taking a team's manager off it,
 themselves included, is the owner's (PR #53), since that would narrow someone
 else's reach or leave the team without its lead.
 
 Only a user with the MANAGER role can be a team's manager; the Owner, who already
-acts for everyone, cannot. To give an employee a team, the Owner first makes them
-a Manager. A Manager who leads a team cannot be changed to another role until
-they no longer lead it, and the refusal names the teams. A team is archived only once
+acts for everyone, cannot. Change manager makes an Employee of the team a Manager
+in the same change, so nobody becomes a Manager who leads nothing by accident. A
+Manager who leads a team cannot be changed to another role until they no longer
+lead it, and the refusal names the team. A team is archived only once
 it is empty (no open membership, no pending invitation), which the owner does on
 its panel; archiving then changes only its status, an archived team is
 read-only, and restoring it brings it back as it was.
@@ -897,7 +911,9 @@ see, and how a new company gets started. §7 plans that work.
   and an icon by the name records an absence. A search by name or position,
   a sort by name or by how much of the expected time is logged, and filters by
   team and project (archived projects included) narrow it, with "Clear
-  filters" at the end of the row; the week, the filters, the search and the
+  filters" at the end of the row; the team filter is offered to the owner and
+  to anyone who sees more than one team, and a linked team the viewer doesn't
+  see is dropped from the address. The week, the filters, the search and the
   sort are in the URL, so a reload or a shared link keeps them. The toolbar
   totals the people shown against what was expected of them ("Logged 30h /
   128h"). A deactivated
@@ -979,8 +995,8 @@ see, and how a new company gets started. §7 plans that work.
   time show on the Review my time page and in their panel (PR #53); a deactivated person is listed only if they logged time in the
   period, with expected hours up to their last working day, and an owner only if
   they logged or planned time: owners often don't track their own, but a plan
-  made for them is part of the month's plan. Below, People lists everyone by team (somebody in
-  two teams under both; one plain list when one team is chosen), each with one
+  made for them is part of the month's plan. Below, People lists everyone by team (somebody who
+  moved between teams in the period under each; one plain list when one team is chosen), each with one
   bar of their logged time against their expected hours, its billable part
   striped, and their days off; time past what was expected ends the bar in the
   warning colour; a long list starts folded to its teams, each with its
@@ -1002,7 +1018,7 @@ see, and how a new company gets started. §7 plans that work.
   counted, whether it is open for edits or locked, and the team when one is
   chosen. Everything counts
   finished days only (§4, capacity and expected hours). Managers see only the
-  teams they lead, and are told that projects show their teams' time only. A
+  team they lead, and choose a team only if they see more than one. A
   person counts on the days the view holds them: someone who moved during the
   period appears under each team they were in, with that team's part and
   "Moved out" or "Joined" and the date beside the name, a team archived since
@@ -1235,6 +1251,7 @@ tooling, documentation and small fixes are left out.
 | #65 | Audit follow-ups: a session never created for someone being deactivated at the same moment; completing a Google link with a password limited as sign-in is; token lifetimes always with a unit; an invitation saved before its email goes out, so a failed send leaves it pending to be resent, and an acceptance share-locking its team, so an archive at the same moment waits and then refuses; Team time's entries asked for over a month at most; `multer` pinned to 2.5.0 |
 | #66 | Reports figures: the person panel's projects under the page's team filter, adding up to the row for someone who moved; a change from a period with hours expected and none logged saying so in its tip; teams folded or opened by hand starting by their size again when the period changes; the documentation synced through PR #63 |
 | #67 | The manager's week, finished: Planning narrowed by team, active project and a search by name or position, as Team time is, with "Clear filters" on both grids and Team time's search and sort kept in the URL; a team filter on the absences and plans the grids fetch; toolbars reading `Logged 30h / 128h` and `Planned 120h / 160h`, only the logged or planned hours under a project; the period dialog opening on the shown week with a `Week | Month` control beside its arrows; Plan a day rebuilt on Plan a period's model, its plans edited in place and saved with their notes in one request; the work dialogs on one frame, closed from the footer only and asking before unsaved changes are lost, confirmations titled as questions; the week grids waiting for the month locks before showing a day; controls on one scale of heights, radii and one border; the demo seed with Emma Clarke in one team |
+| #69 | Dates for people and hours: deactivating asks for the last working day, which stays open, and removes what was recorded after it, and reactivating for the first day back; a person's working hours and the company's standard day changed from a chosen date, with the one change waiting to start shown and cancellable; a team move, addition or removal dated back to an open day by the owner |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1520,8 +1537,8 @@ and design it then.
   sign-in path and pointed to the invitation (Area 1).
 - **Q13** — The owner does not lead teams; setup accepts an owner who manages
   everyone directly, with the manager steps optional (Area 1). Only a user with
-  the Manager role can be a team's manager; the owner changes an employee's
-  role to Manager first. Recorded in
+  the Manager role can be a team's manager; Change manager makes an Employee
+  of the team a Manager in the same change. Recorded in
   [`permission-model.md`](./permission-model.md) §3.2 and enforced since PR #33;
   §5 describes it.
 - **Q14** — Expected starts on the day the person's account was created, in the

@@ -57,14 +57,16 @@ Owner can't be deactivated. Handing ownership over is an open product decision
 
 ### 3.2 Team structure
 
-Creating, renaming or archiving a team and setting anyone's `roleInTeam` are
-the Owner's: a manager cannot create the structure they operate in.
+Creating, renaming or archiving a team and choosing its manager are the
+Owner's: a manager cannot create the structure they operate in. `roleInTeam`
+changes only through Change manager on the team's panel.
 
 **Only a Manager leads a team.** A team's manager must have the company role
-MANAGER; the Owner, who already acts for everyone, cannot be one. Making an
-employee a team's manager is two visible changes, the role first. A Manager who
-leads a team can't be changed to another role until they no longer lead it, so
-memberships never change as a side effect of a role change.
+MANAGER; the Owner, who already acts for everyone, cannot be one. Change
+manager makes an Employee of the team a Manager in the same change, so a failed
+step never leaves a Manager who leads nothing. A Manager who leads a team can't
+be changed to another role until they no longer lead it, so memberships never
+change as a side effect of a role change.
 
 **Only an empty team is archived.** No open membership and no pending
 invitation, or the API answers 409; archiving then changes only the status,
@@ -82,9 +84,9 @@ their team**: that would let them take someone who belongs elsewhere
 
 **Only the Owner dates a team change back.** A move, an addition or a removal
 can start on an earlier day in an open month, which hands those past days to
-another team, or to none. That changes what other managers reach, including a
-removing manager's co-managers, so it is the Owner's; a manager's removal
-always takes effect today.
+another team, or to none. That changes what other managers reach and takes
+days from the team's history, so it is the Owner's; a manager's removal always
+takes effect today.
 
 **A team keeps its history.** A manager reaches a person's records only on the
 days that person was in a team the manager leads now, for reading and, in an
@@ -97,11 +99,23 @@ read on any day reached and changed only by someone who reaches all of them.
 Lists about now (People, pickers, project rosters, invitations, the Teams page)
 read current membership.
 
-**A person is a member of at most one team**; a Manager may lead several and be
-a member of one team led by somebody else. Adding a member of another team is
-a move, confirmed by the Owner. Being a member grants nothing: reach comes only
-from leading. **The Owner is in no team**: membership would give the Owner
+**A person is in one team at a time, and a team has at most one manager**, both
+held by the database. Leading a team is that team's membership, so a manager's
+own hours count there; a Manager who leads no team may be a plain member of
+another team, whose manager then reaches them. The Owner chooses a team's
+manager with Change manager, from its members or from Managers in no team,
+never from another team, so appointing one moves nobody and changes no other
+team; someone who leads their team is moved only once it has another manager,
+and a manager invitation holds a team's lead until it is accepted or revoked. A
+team may have no manager, and the Owner covers it. Adding a member of another
+team is a move, confirmed by the Owner. Being a member grants nothing: reach
+comes only from leading. **The Owner is in no team**: membership would give the Owner
 nothing and would give that team's managers reach over the Owner's records.
+
+**Membership and reach are separate.** Membership says where a person's hours
+count and who leads a team; reach says whose records someone may read or
+change. Today reach comes only from leading, and a later grant of access would
+add reach without changing anyone's membership (P4).
 
 ### 3.4 People visibility
 
@@ -215,6 +229,7 @@ project staffed from both teams.
 | Mary wants to know who else is on *Retail Redesign* | She sees her own people and a true count. For anything on Peter's side of the work she asks Olivia — nobody is responsible for the project itself (§3.6) |
 | Mary logs her own time on *Retail Redesign* | Allowed once she is a project member — managers are ordinary members |
 | Mark opens *Retail Redesign* | Same rights as Mary. Projects are not owned by a team |
+| Olivia replaces Mary with Sophie | Change manager on Alpha: Sophie, an Employee in Alpha, becomes a Manager and leads it from today; Mary stays as a member or leaves. Sophie reaches Alpha's whole history, Mary none of it |
 | Olivia does any of the above | Allowed, always |
 
 ---
@@ -225,16 +240,17 @@ Visible and deliberately unanswered; each waits for a real need.
 
 - **P2 — Delegating moves to managers.** Moving a person between teams is an
   Owner action. Whether a manager may ever do it, or request it, is open.
-- **P7 — What happens to a team when its only manager leaves?** Open. Only the
-  neighbouring case is settled: an invitation sent by a manager who has since
-  stopped leading the team still creates the membership.
+- **P7 — What happens to a team when its only manager leaves?** Open. A team
+  may be without a manager, which the Owner covers, and nothing happens
+  automatically. The neighbouring case is settled: an invitation sent by a
+  manager who has since stopped leading the team still creates the membership.
 - **P8 — Should project visibility ever narrow?** Not at this company size. The
   **project** is visible to every owner and manager; its **roster** is not.
 
 Answered:
 
-- **P1 — Multi-team membership:** no (27 October 2026); a person is a member of
-  one team, a Manager may lead several (§3.3).
+- **P1 — Multi-team membership:** no (27 October 2026), and since 5 November
+  2026 managers included: one team per person, one manager per team (§3.3).
 - **P4 — Does reach follow the dates a person was in a team?** Yes (3 November
   2026, PR #63; §3.3). Reach is one set of dated rows built in
   `TeamVisibilityService`, so a later grant (business §7, "Configurable
