@@ -163,13 +163,16 @@ const ManagerLink = ({ team }: { team: Team }) => {
  * revoked.
  */
 const ManagerPicker = ({ team }: { team: Team }) => {
-  const { data: invitations = [] } = usePendingInvitations();
+  const { data: invitations = [], isLoading } = usePendingInvitations();
   const [isChanging, setIsChanging] = useState(false);
   const lead = managerMembership(team)?.user;
   const invitedLead = invitations.find(
     (invitation) =>
       invitation.team?.id === team.id && invitation.role === UserRole.MANAGER,
   );
+
+  // Until the invitations load, it isn't known whether one holds the lead.
+  if (isLoading) return <ManagerLink team={team} />;
 
   if (invitedLead) {
     return (
@@ -189,7 +192,7 @@ const ManagerPicker = ({ team }: { team: Team }) => {
           size="sm"
           variant="outline"
           className="pl-1.5"
-          aria-label={`Change manager, now ${fullName(lead)}`}
+          aria-label={`Change manager, now ${fullName(lead)}${isDeactivatedUser(lead) ? ", deactivated" : ""}`}
           onClick={() => setIsChanging(true)}
         >
           <Avatar user={lead} size="xs" className="size-5 ring-0" />

@@ -67,7 +67,8 @@ export const InviteUserForm = ({
     teams,
     isLoading: isLoadingTeams,
   } = useTeamOptions();
-  const { data: invitations = [] } = usePendingInvitations();
+  const { data: invitations = [], isLoading: isLoadingInvitations } =
+    usePendingInvitations();
   // A team has one manager, and a pending manager invitation holds the lead,
   // so those teams are listed but can't be chosen, with the reason.
   const teamToLeadOptions = teams.map((team) => {
@@ -237,7 +238,7 @@ export const InviteUserForm = ({
                   : "They become this team's manager when they accept."
               }
               error={fieldState.error?.message}
-              disabled={isSubmitting || isLoadingTeams}
+              disabled={isSubmitting || isLoadingTeams || isLoadingInvitations}
             />
           )}
         />

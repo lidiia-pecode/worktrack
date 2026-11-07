@@ -122,7 +122,6 @@ describe('TeamsService', () => {
 
     service = new TeamsService(
       dataSource.getRepository(Team),
-      dataSource.getRepository(TeamMembership),
       new TeamVisibilityService(
         dataSource.getRepository(TeamMembership),
         dataSource.getRepository(User),
@@ -370,16 +369,27 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(teamId)).resolves.toEqual([]);
     });
 
-    it('makes an Employee of the team a Manager in the same change', async () => {
+    it('makes an Employee of the team a Manager in the same change, or not at all', async () => {
+      const roleOf = async (userId: string) =>
+        (await dataSource.getRepository(User).findOneByOrFail({ id: userId }))
+          .role;
+
       const teamId = await createTeam('employee promoted');
       const member = await newPerson(UserRole.EMPLOYEE);
       await addToTeam(teamId, member);
 
-      await service.changeManager(teamId, companyId, { userId: member.id });
-
       await expect(
-        dataSource.getRepository(User).findOneByOrFail({ id: member.id }),
-      ).resolves.toMatchObject({ role: UserRole.MANAGER });
+        service.changeManager(teamId, companyId, { userId: member.id }),
+      ).resolves.toMatchObject({ roleInTeam: TeamRole.MANAGER });
+      await expect(roleOf(member.id)).resolves.toBe(UserRole.MANAGER);
+
+      // Refused once the role is set: the role change is rolled back with it.
+      const next = await newPerson(UserRole.EMPLOYEE);
+      await addToTeam(teamId, next);
+      await expect(
+        service.changeManager(teamId, companyId, { userId: next.id }),
+      ).rejects.toThrow(BadRequestException);
+      await expect(roleOf(next.id)).resolves.toBe(UserRole.EMPLOYEE);
     });
 
     it('refuses an Employee from outside the team, the owner and a deactivated Manager', async () => {
@@ -398,7 +408,7 @@ describe('TeamsService', () => {
       await expect(activeMemberIds(teamId)).resolves.toEqual([]);
     });
 
-    it('waits while a manager invitation is pending', async () => {
+    it('refuses while a manager invitation is pending', async () => {
       const teamId = await createTeam('invited lead');
       await dataSource.getRepository(Invitation).save({
         companyId,

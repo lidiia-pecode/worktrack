@@ -430,7 +430,6 @@ describe('UsersService scope', () => {
       );
       teams = new TeamsService(
         dataSource.getRepository(Team),
-        dataSource.getRepository(TeamMembership),
         teamVisibility,
         dataSource,
       );

@@ -54,8 +54,6 @@ export class TeamsService {
   constructor(
     @InjectRepository(Team)
     private readonly teamRepo: Repository<Team>,
-    @InjectRepository(TeamMembership)
-    private readonly membershipRepo: Repository<TeamMembership>,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly dataSource: DataSource,
   ) {}

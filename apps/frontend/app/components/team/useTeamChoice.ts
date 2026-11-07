@@ -24,7 +24,8 @@ export const useTeamChoice = () => {
   const readLinkedTeam = (param: string | null) => {
     const linked = readIdParam(param);
     const isKnown = options.some((team) => team.value === linked);
-    const isDropped = param !== null && !isLoading && !isKnown;
+    // Only against a loaded list: a failed one would drop every link.
+    const isDropped = param !== null && !isLoading && !isError && !isKnown;
 
     return { teamId: isDropped ? undefined : linked, isDropped };
   };

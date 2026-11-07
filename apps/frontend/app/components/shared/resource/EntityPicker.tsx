@@ -1,12 +1,22 @@
 "use client";
 
-import { Fragment, ReactNode, useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { EmptyState } from "../EmptyState";
 import { SearchInput } from "../inputs/SearchInput";
 import { PickerRow } from "./PickerRow";
+
+/** Consecutive items of the same group, in order; one run when ungrouped. */
+const groupRuns = <T,>(items: T[], getGroup?: (item: T) => string) =>
+  items.reduce<{ name?: string; items: T[] }[]>((runs, item) => {
+    const name = getGroup?.(item);
+    const last = runs.at(-1);
+    if (last && last.name === name) last.items.push(item);
+    else runs.push({ name, items: [item] });
+    return runs;
+  }, []);
 
 export interface EntityPickerProps<T> {
   items: T[];
@@ -116,33 +126,41 @@ export const EntityPicker = <T,>({
           />
         ) : (
           <div className="space-y-0.5">
-            {items.map((item, index) => {
-              const id = getId(item);
-              const group = getGroup?.(item);
-              const startsGroup =
-                group !== undefined &&
-                (index === 0 || getGroup?.(items[index - 1]) !== group);
+            {groupRuns(items, getGroup).map(({ name, items: run }) => (
+              // A named group is announced with each row a screen reader enters.
+              <div
+                key={name ?? "all"}
+                role={name ? "group" : undefined}
+                aria-label={name}
+                className="space-y-0.5"
+              >
+                {name && (
+                  <p
+                    aria-hidden="true"
+                    className="px-3 pt-2 pb-1 text-xs text-muted-foreground"
+                  >
+                    {name}
+                  </p>
+                )}
+                {run.map((item) => {
+                  const id = getId(item);
 
-              return (
-                <Fragment key={id}>
-                  {startsGroup && (
-                    <p className="px-3 pt-2 pb-1 text-xs text-muted-foreground">
-                      {group}
-                    </p>
-                  )}
-                  <PickerRow
-                    label={getLabel(item)}
-                    subtitle={getSubtitle?.(item)}
-                    avatarText={
-                      getAvatarText?.(item) ?? getLabel(item).charAt(0)
-                    }
-                    selected={selectedIds.includes(id)}
-                    disabled={isDisabled?.(item)}
-                    onToggle={() => onToggle(item)}
-                  />
-                </Fragment>
-              );
-            })}
+                  return (
+                    <PickerRow
+                      key={id}
+                      label={getLabel(item)}
+                      subtitle={getSubtitle?.(item)}
+                      avatarText={
+                        getAvatarText?.(item) ?? getLabel(item).charAt(0)
+                      }
+                      selected={selectedIds.includes(id)}
+                      disabled={isDisabled?.(item)}
+                      onToggle={() => onToggle(item)}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
         )}
 

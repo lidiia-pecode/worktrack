@@ -503,6 +503,9 @@ export class UsersService {
   ): Promise<User> {
     const execute = async (man: EntityManager): Promise<User> => {
       const repo = this.getRepository(man);
+      // Locked, so a role change and Change manager on the same person run
+      // one after the other and neither writes back a stale role.
+      await this.lockUser(man, id, companyId);
       const user = await this.getUserById(id, companyId, man);
 
       if (user.status === UserStatus.DEACTIVATED) {

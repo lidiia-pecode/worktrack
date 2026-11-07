@@ -272,6 +272,25 @@ describe('InvitationsService pending invitations', () => {
         InvitationStatus.REVOKED,
       ]);
     });
+
+    it("refuses a manager replacing the owner's invitation for a manager", async () => {
+      const email = nextEmail();
+      await invite(owner, email, undefined, UserRole.MANAGER);
+
+      await dataSource
+        .getRepository(Invitation)
+        .update({ email }, { expiresAt: new Date(Date.now() - 1000) });
+
+      await expect(invite(alphaManager, email, alpha)).rejects.toThrow(
+        ConflictException,
+      );
+
+      const [kept] = await findInvitations(email);
+      expect(kept).toMatchObject({
+        status: InvitationStatus.PENDING,
+        role: UserRole.MANAGER,
+      });
+    });
   });
 
   describe('listPending', () => {
