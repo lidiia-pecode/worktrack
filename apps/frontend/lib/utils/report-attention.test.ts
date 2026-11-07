@@ -45,13 +45,12 @@ const person = (
 
 type Input = Partial<Parameters<typeof reportAttention>[0]>;
 
-/** A finished month by default: every day counts, no manager wording. */
+/** A finished month by default: every day counts. */
 const attention = (input: Input) =>
   reportAttention({
     people: [],
     projects: [],
     countedUntil: null,
-    isManager: false,
     ...input,
   });
 
@@ -267,15 +266,6 @@ describe("reportAttention", () => {
       });
 
       expect(fact?.headline).toBe("2 projects are more than 10% off plan");
-    });
-
-    it("tells a manager the figures are their teams' share", () => {
-      expect(
-        factOf("projectsOffPlan", {
-          projects: [project("CRM System", 139, 88)],
-          isManager: true,
-        })?.note,
-      ).toBe("your teams' share");
     });
   });
 

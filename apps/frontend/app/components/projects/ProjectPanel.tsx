@@ -37,12 +37,6 @@ import { useProjectLinkChanges } from "./useProjectLinkChanges";
 
 const EDIT_FORM_ID = "project-edit-form";
 
-// A manager sees only the people in teams they manage, while the count includes everyone.
-const hiddenMembersNote = (hiddenCount: number) =>
-  hiddenCount > 0
-    ? `${countLabel(hiddenCount, "more person", "more people")} in teams you do not manage.`
-    : undefined;
-
 const ProjectEditForm = ({ project }: { project: Project }) => {
   const panel = useEntityPanel();
   const { update } = useProjectsMutations();
@@ -143,7 +137,12 @@ const ProjectDetails = ({ project }: { project: Project }) => {
           title="People"
           items={members}
           getKey={(member) => member.id}
-          note={hiddenMembersNote(hiddenCount)}
+          // A manager sees only the people they manage; the count is everyone.
+          note={
+            members.length > 0 && hiddenCount > 0
+              ? `${countLabel(hiddenCount, "more person", "more people")} you don't manage.`
+              : undefined
+          }
           renderRow={(member) => ({
             entity: { type: "user", id: member.id },
             name: fullName(member),
@@ -165,7 +164,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
           })}
           emptyText={
             hiddenCount > 0
-              ? "Nobody from your teams is on it."
+              ? `${countLabel(hiddenCount, "person you don't manage is", "people you don't manage are")} on it.`
               : "Nobody is on this project yet."
           }
           add={

@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
 import { ReportQuery } from "@/types";
-import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
@@ -22,11 +21,7 @@ import {
   stepPeriod,
 } from "@/lib/utils/shown-period";
 import { toMonthKey } from "@/lib/utils/date";
-import {
-  HoursReportGroupBy,
-  ReportingMonthState,
-  UserRole,
-} from "@/types/enums";
+import { HoursReportGroupBy, ReportingMonthState } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
 
@@ -50,19 +45,15 @@ const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 const ALL_TEAMS = "all";
 
 export const ReportsView = () => {
-  const { user } = useAuth();
-
   const { period, today, firstDay, showPeriod } = useShownPeriod();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
   const openProject = (projectId: string) => open(PROJECT_PARAM, projectId);
 
   const { range } = period;
-  const isOwner = user?.role === UserRole.OWNER;
-  const isManager = user?.role === UserRole.MANAGER;
 
   const { teamId, teamName, teamOptions, choosesTeam, showTeam } =
-    useShownTeam(isOwner);
+    useShownTeam();
   const query: ReportQuery = { ...range, teamId };
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
@@ -177,7 +168,6 @@ export const ReportsView = () => {
           people: people.rows,
           projects: projects.report.rows,
           countedUntil,
-          isManager,
         })
       : NO_ATTENTION;
 
@@ -235,13 +225,7 @@ export const ReportsView = () => {
             query={query}
             projects={projects.report.rows}
             marked={attention.projects}
-            scopeNote={
-              teamName
-                ? `${teamName}’s time only`
-                : isManager
-                  ? "Your teams’ time only"
-                  : undefined
-            }
+            scopeNote={teamName && `${teamName}’s time only`}
             onOpenProject={openProject}
           />
         </div>

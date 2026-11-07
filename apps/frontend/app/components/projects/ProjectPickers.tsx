@@ -13,7 +13,7 @@ import { useAssignableUsersInfiniteQuery } from "@/hooks/useUsers";
 import { GETTING_STARTED_PATH } from "@/lib/constants";
 import { canManageCatalogue, initials, fullName } from "@/lib/utils/user";
 import { Activity, Project } from "@/types";
-import { ActivityStatus, UserRole, UserStatus } from "@/types/enums";
+import { ActivityStatus, UserStatus } from "@/types/enums";
 import { nameOrCount } from "@/lib/utils/text";
 
 import { ActivityCreateDialog } from "../activities/ActivityCreateDialog";
@@ -51,7 +51,6 @@ export const offeredActivities = (project: Project): Activity[] =>
     .filter((activity): activity is Activity => Boolean(activity));
 
 export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
-  const { user } = useAuth();
   const setupDone = useSetupDone();
   const links = useProjectLinks();
   const { confirmRemoval, isChecking, confirmProps } =
@@ -102,10 +101,8 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
         title={`Add people to ${project.name}`}
         description={
           <>
-            {user?.role === UserRole.OWNER
-              ? "Choose who works on it, then Done. Choose someone again to take them off."
-              : "You can add yourself and people in teams you manage. Choose who works on it, then Done."}{" "}
-            <InviteHint />
+            Choose who works on it, then Done. Choose someone again to take them
+            off. <InviteHint />
           </>
         }
         pendingCount={staged.pendingCount}

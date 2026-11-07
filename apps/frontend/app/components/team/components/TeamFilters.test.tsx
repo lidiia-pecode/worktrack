@@ -3,13 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { Project } from "@/types";
-import { ProjectStatus } from "@/types/enums";
+import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { TeamFilters } from "./TeamFilters";
 
 const project = (id: string, name: string, status: ProjectStatus) =>
   ({ id, name, status }) as Project;
 
+vi.mock("@/hooks/auth/useAuth", () => ({
+  useAuth: () => ({ user: { role: UserRole.OWNER } }),
+}));
 vi.mock("@/hooks/useTeams", () => ({
   useTeamOptions: () => ({ options: [] }),
 }));

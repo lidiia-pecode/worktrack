@@ -87,9 +87,8 @@ type WhereTheTimeWentProps = {
   /** The projects Needs attention names, with why. */
   marked: Map<string, string>;
   /**
-   * Whose time a project's figures are, which they don't say themselves:
-   * "Mobile Squad's time only" for one team, "Your teams' time only" for a
-   * manager.
+   * Whose time a project's figures are under a team filter, which they don't
+   * say themselves: "Mobile Squad's time only".
    */
   scopeNote?: string;
   onOpenProject: (projectId: string) => void;
