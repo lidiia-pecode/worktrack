@@ -1,111 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { PeopleReportRow } from "@/types";
-import { UserRole, UserStatus } from "@/types/enums";
-
 import {
   changeLabel,
   changeTipLines,
-  groupPeopleByTeam,
   periodChange,
   personDays,
 } from "./report-overview";
 
 const HOUR = 60;
-
-const person = (
-  name: string,
-  loggedHours: number,
-  plannedHours: number,
-  expectedHours: number,
-): PeopleReportRow => ({
-  userId: name,
-  name,
-  position: null,
-  role: UserRole.EMPLOYEE,
-  status: UserStatus.ACTIVE,
-  teams: [],
-  outsideTeams: null,
-  loggedMinutes: loggedHours * HOUR,
-  billableMinutes: 0,
-  nonBillableMinutes: loggedHours * HOUR,
-  plannedMinutes: plannedHours * HOUR,
-  expectedMinutes: expectedHours * HOUR,
-  timeOffDays: 0,
-  daysWithoutTime: [],
-});
-
-describe("groupPeopleByTeam", () => {
-  const withTeams = (name: string, ...teams: string[]) => {
-    const row = person(name, 10, 0, 20);
-    return {
-      ...row,
-      teams: teams.map((id) => ({
-        id,
-        name: `${id} team`,
-        isArchived: false,
-        figures: row,
-        moves: [],
-        spans: [],
-      })),
-    };
-  };
-
-  it("puts people under each of their teams, by team name, with no team last", () => {
-    const groups = groupPeopleByTeam([
-      withTeams("Emma Clarke", "Platform", "Core"),
-      withTeams("Mark Nobody"),
-      withTeams("Liam Carter", "Core"),
-    ]);
-
-    expect(
-      groups.map((group) => [group.name, group.people.map((row) => row.name)]),
-    ).toEqual([
-      ["Core team", ["Emma Clarke", "Liam Carter"]],
-      ["Platform team", ["Emma Clarke"]],
-      ["No team", ["Mark Nobody"]],
-    ]);
-  });
-
-  it("adds up each team's people on that team's days, so a mover counts once in each part", () => {
-    const moved = {
-      ...person("Emma Clarke", 10, 0, 20),
-      teams: [
-        {
-          id: "Core",
-          name: "Core team",
-          isArchived: false,
-          figures: { ...person("", 4, 0, 8), billableMinutes: 2 * HOUR },
-          moves: [{ date: "2026-10-14", direction: "out" as const }],
-          spans: [],
-        },
-        {
-          id: "Platform",
-          name: "Platform team",
-          isArchived: false,
-          figures: person("", 6, 0, 12),
-          moves: [{ date: "2026-10-14", direction: "in" as const }],
-          spans: [],
-        },
-      ],
-    };
-    const [core, platform] = groupPeopleByTeam([
-      moved,
-      withTeams("Liam Carter", "Core"),
-    ]);
-
-    expect(core).toMatchObject({
-      loggedMinutes: 14 * HOUR,
-      billableMinutes: 2 * HOUR,
-      expectedMinutes: 28 * HOUR,
-    });
-    expect(core.people[0]).toMatchObject({
-      loggedMinutes: 4 * HOUR,
-      moves: [{ date: "2026-10-14", direction: "out" }],
-    });
-    expect(platform.loggedMinutes).toBe(6 * HOUR);
-  });
-});
 
 describe("personDays", () => {
   // 5–9 October 2026 is Monday to Friday; the 10th and 11th are a weekend.

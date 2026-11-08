@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
 import { ReportQuery } from "@/types";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
@@ -18,6 +19,7 @@ import {
   lastShownDay,
   periodLabel,
   periodOf,
+  PeriodUnit,
   stepPeriod,
 } from "@/lib/utils/shown-period";
 import { toMonthKey } from "@/lib/utils/date";
@@ -41,10 +43,17 @@ import { PeopleCard } from "./components/PeopleCard";
 import { useShownTeam } from "./useShownTeam";
 
 const PROJECT_PARAM = "project";
+const WHOLE_PERIOD_NOTES: Record<PeriodUnit, string> = {
+  month: "Whole month",
+  quarter: "Whole quarter",
+  year: "Whole year",
+  custom: "Whole period",
+};
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 const ALL_TEAMS = "all";
 
 export const ReportsView = () => {
+  const { user: viewer } = useAuth();
   const { period, today, firstDay, showPeriod } = useShownPeriod();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
@@ -209,16 +218,13 @@ export const ReportsView = () => {
             />
           </div>
         )}
-        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
+        <div className="mt-4 flex flex-col gap-4">
           <PeopleCard
-            // A new period starts with every team open or folded by its size
-            // again, not as the last period left them.
+            // A new period starts with its first people shown again.
             key={`${range.dateFrom}:${range.dateTo}`}
             people={people.rows}
-            previousPeople={previousReport?.rows}
-            previousName={previousName}
             marked={attention.people}
-            isOneTeam={Boolean(teamId)}
+            isTeamFiltered={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
@@ -264,9 +270,11 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
+          periodName={periodName}
+          wholePeriodNote={WHOLE_PERIOD_NOTES[period.unit]}
           teamId={teamId}
+          viewerId={viewer?.id}
           countedUntil={people.countedUntil}
-          showsDays={timeline?.bucketSize === "week"}
           isUpdating={isUpdating}
           onClose={close}
         />

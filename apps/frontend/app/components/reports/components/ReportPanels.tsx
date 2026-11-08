@@ -12,14 +12,22 @@ import {
 } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
+import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
-import { formatReportHours } from "@/lib/utils/date";
-import { percentOf } from "@/lib/utils/report-overview";
+import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
+import { listOf } from "@/lib/utils/report-attention";
+import {
+  againstExpected,
+  partDaysLabel,
+  PersonPart,
+  personParts,
+  percentOf,
+} from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
-import { isDeactivatedUser } from "@/lib/utils/user";
 
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 
 import { CloseButton } from "../../shared/buttons/CloseButton";
@@ -28,7 +36,6 @@ import { LoadingState } from "../../shared/LoadingState";
 import { SidePanel } from "../../shared/SidePanel";
 import { teamTimeHref } from "../../team/team-links";
 import { AgainstPlanRow } from "./AgainstPlanRow";
-import { PersonDayGrid } from "./PersonDayGrid";
 
 const ReportPanel = ({
   focusKey,
@@ -184,16 +191,12 @@ export const PersonFacts = ({
 export const PersonProjects = ({
   person,
   range,
-  teamId,
 }: {
   person: PeopleReportRow;
   range: ReportRange;
-  /** Reports' team filter, so the projects add up to the row's hours. */
-  teamId?: string;
 }) => {
   const projects = useHoursReport({
     ...range,
-    teamId,
     groupBy: HoursReportGroupBy.PROJECT,
     userId: person.userId,
   });
@@ -216,77 +219,201 @@ export const PersonProjects = ({
   );
 };
 
+// A part outside the report, such as another team's days under a filter.
+const OTHER_PART_FILL = "bg-muted-foreground/40";
+
+/**
+ * The person's whole period: logged against expected, a bar in parts by the
+ * hours expected in each, and a row per part with its days and figures.
+ */
+const PeriodParts = ({
+  person,
+  parts,
+  range,
+  isFiltered,
+}: {
+  person: PeopleReportRow;
+  parts: PersonPart[];
+  range: ReportRange;
+  isFiltered: boolean;
+}) => (
+  <>
+    <p className="text-xl font-semibold tabular-nums">
+      {formatReportHours(person.loggedMinutes)}
+      {person.expectedMinutes > 0 && (
+        <span className="text-sm font-normal text-muted-foreground">
+          {" "}
+          of {formatReportHours(person.expectedMinutes)} expected
+        </span>
+      )}
+    </p>
+
+    {parts.length > 1 && person.expectedMinutes > 0 && (
+      <div
+        className="mt-2.5 flex h-3 gap-0.5 overflow-hidden rounded-full"
+        aria-hidden
+      >
+        {parts.map((part) => (
+          <span
+            key={part.id}
+            className={part.isInReport ? "bg-report-logged" : OTHER_PART_FILL}
+            style={{ flexGrow: part.figures.expectedMinutes }}
+          />
+        ))}
+      </div>
+    )}
+
+    {(isFiltered || parts.length > 1) && (
+      <ul className="mt-3 flex flex-col gap-1.5">
+        {parts.map((part) => (
+          <li
+            key={part.id}
+            className={cn(
+              "grid grid-cols-[0.75rem_1fr_auto] items-center gap-2.5 rounded-lg border px-2.5 py-2",
+              isFiltered && part.isInReport
+                ? "border-brand/25 bg-brand-subtle"
+                : "border-border",
+            )}
+          >
+            <span
+              className={cn(
+                "size-3 rounded-sm",
+                part.isInReport ? "bg-report-logged" : OTHER_PART_FILL,
+              )}
+              aria-hidden
+            />
+            <span className="min-w-0">
+              <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
+                {part.name}
+                {isFiltered && part.kind === "team" && (
+                  <Badge
+                    variant={part.isInReport ? "default" : "neutral"}
+                    size="sm"
+                  >
+                    {part.isInReport ? "In this report" : "Other team"}
+                  </Badge>
+                )}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                {partDaysLabel(part, range)}
+              </span>
+            </span>
+            <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
+              {againstExpected(
+                part.figures.loggedMinutes,
+                part.figures.expectedMinutes,
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+    )}
+  </>
+);
+
 type PersonPanelProps = {
+  /** Their row in the list, which a team filter narrows to the team's days. */
   person: PeopleReportRow;
   range: ReportRange;
-  /** Reports' team filter, so the days match the figures above them. */
+  /** "October 2026", heading the whole period. */
+  periodName: string;
+  /** "Whole month", "Whole quarter": says the panel isn't narrowed by a filter. */
+  wholePeriodNote: string;
+  /** Reports' team filter: its part is the one in the report. */
   teamId?: string;
+  viewerId?: string;
   countedUntil: string | null;
-  /** Day by day for a range read week by week; past it, a grid of days would run to fifty rows. */
-  showsDays: boolean;
   isUpdating: boolean;
   onClose: () => void;
 };
 
-/** One person's period: what the row doesn't say, their days and their projects. */
+/**
+ * One person's whole period, under a team filter too: their parts, what the
+ * row doesn't say, the days they logged nothing and their projects. Their
+ * days themselves are in Team time.
+ */
 export const PersonPanel = ({
   person,
   range,
+  periodName,
+  wholePeriodNote,
   teamId,
+  viewerId,
   countedUntil,
-  showsDays,
   isUpdating,
   onClose,
 }: PersonPanelProps) => {
-  const withoutTime = person.daysWithoutTime.length;
+  // Their row over every day the viewer sees of theirs, not just the filter's.
+  const whole = usePeopleReport({ ...range, userId: person.userId });
+  const row = whole.report?.rows[0];
+
+  const renderBody = () => {
+    if (whole.isLoading) {
+      return <LoadingState size="compact" title="Loading their period…" />;
+    }
+    if (whole.isError || !row) {
+      return (
+        <ErrorState
+          size="compact"
+          title="We couldn't load their period"
+          onRetry={() => void whole.refetch()}
+        />
+      );
+    }
+
+    const parts = personParts(row, { teamId, viewerId });
+    const withoutTime = row.daysWithoutTime.length;
+    const showsParts = Boolean(teamId) || parts.length > 1;
+
+    return (
+      <>
+        {showsParts && (
+          <PanelSection title={periodName} note={wholePeriodNote}>
+            <PeriodParts
+              person={row}
+              parts={parts}
+              range={range}
+              isFiltered={Boolean(teamId)}
+            />
+          </PanelSection>
+        )}
+
+        <PersonFacts person={row} range={range} countedUntil={countedUntil} />
+
+        {withoutTime > 0 ? (
+          <p className="text-sm">
+            {`${countLabel(withoutTime, "day", "days")} with no time logged: ${listOf(row.daysWithoutTime.map(formatDayMonthLabel))}`}
+          </p>
+        ) : (
+          row.expectedMinutes > 0 && (
+            <p className="text-sm">Time logged on every expected day</p>
+          )
+        )}
+
+        <PanelSection
+          title="Projects"
+          note={`${wholePeriodNote} · logged against planned`}
+        >
+          <PersonProjects person={row} range={range} />
+        </PanelSection>
+      </>
+    );
+  };
 
   return (
     <ReportPanel
       focusKey={person.userId}
       title={person.name}
       detail={person.position ?? "No position"}
-      isUpdating={isUpdating}
+      isUpdating={isUpdating || whole.isPlaceholderData}
       onClose={onClose}
     >
-      <PersonFacts person={person} range={range} countedUntil={countedUntil} />
-
-      {showsDays ? (
-        <PanelSection
-          title="Day by day"
-          note={
-            withoutTime > 0
-              ? `${countLabel(withoutTime, "day", "days")} with no time logged · each opens its week`
-              : undefined
-          }
-        >
-          <PersonDayGrid
-            person={person}
-            range={range}
-            teamId={teamId}
-            countedUntil={countedUntil}
-            dayWithoutTimeHref={(date) => teamTimeHref(person.userId, date)}
-          />
-        </PanelSection>
-      ) : withoutTime > 0 ? (
-        <p className="text-sm">
-          {countLabel(withoutTime, "day", "days")} with no time logged
-        </p>
-      ) : (
-        // Days without time are counted only for someone who can still log,
-        // so a deactivated person, or one expected nowhere, gets no claim.
-        !isDeactivatedUser(person) &&
-        person.expectedMinutes > 0 && (
-          <p className="text-sm">Time logged on every expected day</p>
-        )
-      )}
-
-      <PanelSection title="Projects" note="Logged against planned">
-        <PersonProjects person={person} range={range} teamId={teamId} />
-      </PanelSection>
+      {renderBody()}
 
       <div className="mt-auto border-t border-border pt-4">
         <Link
-          href={teamTimeHref(person.userId)}
+          // The week of the first day with no time, when there is one.
+          href={teamTimeHref(person.userId, row?.daysWithoutTime[0])}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Open in Team time

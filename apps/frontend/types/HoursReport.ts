@@ -48,6 +48,11 @@ export interface ReportQuery extends ReportRange {
   teamId?: string;
 }
 
+export interface PeopleReportQuery extends ReportQuery {
+  /** Only this person's row, over every day the caller sees of theirs. */
+  userId?: string;
+}
+
 export interface HoursReportQuery extends ReportQuery {
   groupBy: HoursReportGroupBy;
   /** Only this project's time and plans. */

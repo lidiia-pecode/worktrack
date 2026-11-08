@@ -64,8 +64,6 @@ const dayLabel = (date: string) =>
 type PersonDayGridProps = {
   person: PeopleReportRow;
   range: ReportRange;
-  /** A team filter closes the person's days outside the team. */
-  teamId?: string;
   countedUntil: string | null;
   dayWithoutTimeHref?: (date: string) => string;
 };
@@ -78,16 +76,11 @@ type PersonDayGridProps = {
 export const PersonDayGrid = ({
   person,
   range,
-  teamId,
   countedUntil,
   dayWithoutTimeHref,
 }: PersonDayGridProps) => {
   // Only this person's days, not the whole team's.
-  const summary = useTeamTimeSummary({
-    ...range,
-    userId: person.userId,
-    teamId,
-  });
+  const summary = useTeamTimeSummary({ ...range, userId: person.userId });
   const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
   const row = summary.rows.find((entry) => entry.user.id === person.userId);
   const closedSpells = row?.closedSpells ?? NO_CLOSED_SPELLS;

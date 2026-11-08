@@ -63,7 +63,7 @@ const isBigGap = (gap: number, reference: number) =>
   Math.abs(gap) > reference * ATTENTION_MIN_SHARE;
 
 /** "a, b and c", or "a, b, c and 2 more". */
-const listOf = (names: string[]) => {
+export const listOf = (names: string[]) => {
   const named = names.slice(0, DAYS_NAMED);
   const rest = names.length - named.length;
 

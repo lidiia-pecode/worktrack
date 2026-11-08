@@ -3,6 +3,7 @@
 import {
   HoursReport,
   HoursReportQuery,
+  PeopleReportQuery,
   PeopleReport,
   ReportQuery,
   ReportingMonth,
@@ -30,7 +31,7 @@ export const ReportingClientApi = {
   exportHours: (params: ReportQuery) =>
     client.download(`/hours/export${buildQueryString(params)}`),
 
-  getPeopleReport: (params: ReportQuery) =>
+  getPeopleReport: (params: PeopleReportQuery) =>
     client.get<PeopleReport>(`/people${buildQueryString(params)}`),
 
   /** The People report and its timeline, for owners and managers. */

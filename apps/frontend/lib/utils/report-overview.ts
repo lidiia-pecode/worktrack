@@ -2,13 +2,14 @@ import {
   PeopleReportFigures,
   PeopleReportRow,
   ReportCoverage,
+  ReportPart,
   ReportRange,
-  TeamMove,
 } from "@/types";
 
 import {
   addDays,
   formatDayMonthLabel,
+  formatDayRangeLabel,
   formatReportHours,
   fromISODate,
   isWeekend,
@@ -152,73 +153,64 @@ export const changeTipLines = (
   return lines;
 };
 
-/** Up to this many people, every team starts open; past it, folded. */
-export const PEOPLE_SHOWN_OPEN = 15;
+/** A team, the days in no team, or the viewer's own days outside the teams shown. */
+export type PartKind = "team" | "noTeam" | "myTime";
 
-/** A person under one team: their figures on that team's days. */
-export type TeamMember = PeopleReportRow & { moves: TeamMove[] };
+/** The days a row has outside its teams: the viewer's own, or nobody's team. */
+const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
+  const isOwn = row.userId === viewerId;
+  return {
+    id: isOwn ? "my-time" : "no-team",
+    name: isOwn ? "My time" : "No team",
+    kind: (isOwn ? "myTime" : "noTeam") as PartKind,
+  };
+};
 
-export interface TeamGroup {
-  /** The team's id, or "" for the people in no team. */
+/** One part of a person's period, as their panel shows it. */
+export interface PersonPart extends ReportPart {
   id: string;
   name: string;
-  isArchived: boolean;
-  people: TeamMember[];
-  loggedMinutes: number;
-  billableMinutes: number;
-  expectedMinutes: number;
+  kind: PartKind;
+  /** In the report's view: the team filtered to, or every part without one. */
+  isInReport: boolean;
 }
 
-const NO_TEAM = "No team";
-
-/**
- * People under each team they were in during the period, so somebody in two
- * teams is in both, each time with their figures on that team's days, and
- * those in no team last under "No team". Teams run by name, people keep their
- * order; each team's figures add up its people.
- */
-export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
-  const groups = new Map<string, TeamGroup>();
-  const add = (
-    id: string,
-    name: string,
-    isArchived: boolean,
-    person: TeamMember,
-  ) => {
-    const group = groups.get(id) ?? {
-      id,
-      name,
-      isArchived,
-      people: [],
-      loggedMinutes: 0,
-      billableMinutes: 0,
-      expectedMinutes: 0,
-    };
-    group.people.push(person);
-    group.loggedMinutes += person.loggedMinutes;
-    group.billableMinutes += person.billableMinutes;
-    group.expectedMinutes += person.expectedMinutes;
-    groups.set(id, group);
-  };
-
-  for (const person of people) {
-    if (person.teams.length === 0) {
-      add("", NO_TEAM, false, { ...person, moves: [] });
-    }
-    for (const team of person.teams) {
-      add(team.id, team.name, team.isArchived, {
-        ...person,
-        ...team.figures,
-        moves: team.moves,
-      });
-    }
+/** A person's parts of the period in date order: their teams, then any days outside them. */
+export const personParts = (
+  row: PeopleReportRow,
+  { teamId, viewerId }: { teamId?: string; viewerId?: string },
+): PersonPart[] => {
+  const parts: PersonPart[] = row.teams.map((team) => ({
+    ...team,
+    kind: "team",
+    isInReport: !teamId || team.id === teamId,
+  }));
+  if (row.outsideTeams) {
+    parts.push({
+      ...row.outsideTeams,
+      ...outsidePartOf(row, viewerId),
+      isInReport: !teamId,
+    });
   }
 
-  return [...groups.values()].sort(
-    (a, b) =>
-      Number(a.id === "") - Number(b.id === "") || a.name.localeCompare(b.name),
-  );
+  const firstDay = (part: PersonPart) => part.spans[0]?.from ?? "";
+  return parts.sort((a, b) => firstDay(a).localeCompare(firstDay(b)));
 };
+
+/** A part's days within the period: "Oct 1 - Oct 13", "From Oct 14". */
+export const partDaysLabel = (part: PersonPart, range: ReportRange) =>
+  part.spans
+    .map((span) => {
+      const from = span.from > range.dateFrom ? span.from : range.dateFrom;
+      const lastDay = toISODate(addDays(fromISODate(span.until), -1));
+      return lastDay >= range.dateTo && from > range.dateFrom
+        ? `From ${formatDayMonthLabel(from)}`
+        : formatDayRangeLabel(
+            from,
+            lastDay < range.dateTo ? lastDay : range.dateTo,
+          );
+    })
+    .join(", ");
 
 export type ReportDayKind =
   | "logged"
