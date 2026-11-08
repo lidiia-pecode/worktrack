@@ -13,11 +13,8 @@ import {
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
-import { useAllAbsencesQuery } from "@/hooks/useAbsences";
-import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
-import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
-import { listOf } from "@/lib/utils/report-attention";
+import { formatReportHours } from "@/lib/utils/date";
 import {
   againstExpected,
   partDaysLabel,
@@ -91,80 +88,60 @@ const Facts = ({ facts }: { facts: { label: string; value: string }[] }) => (
   </dl>
 );
 
-const PanelSection = ({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  note?: string;
-  children: ReactNode;
-}) => (
-  <section aria-label={title}>
-    <div className="flex items-baseline justify-between gap-3 pb-2">
-      <h3 className="text-sm font-semibold">{title}</h3>
-      {note && <p className="text-xs text-muted-foreground">{note}</p>}
-    </div>
-    {children}
-  </section>
-);
-
-/** A list loaded for the panel, with its own loading, error and empty notes. */
+/**
+ * A list loaded for the panel under its heading, with its own loading and
+ * error notes. An empty list is one line of text, without the heading.
+ */
 const PanelList = ({
+  title,
   report,
   empty,
   children,
 }: {
+  /** The heading; none where the list sits in a titled card already. */
+  title?: string;
   report: ReturnType<typeof useHoursReport>;
   empty: string;
   children: (rows: HoursReportRow[]) => ReactNode;
 }) => {
-  if (report.isLoading) return <LoadingState size="compact" title="Loading…" />;
-  if (report.isError) {
-    return (
-      <ErrorState
-        size="compact"
-        title="We couldn't load this list"
-        onRetry={() => void report.refetch()}
-      />
-    );
+  const rows = report.report?.rows ?? [];
+  if (!report.isLoading && !report.isError && rows.length === 0) {
+    return <p className="text-sm text-muted-foreground">{empty}</p>;
   }
-  if (!report.report?.rows.length) {
-    return <p className="py-3 text-sm text-muted-foreground">{empty}</p>;
-  }
-  return <ul className="@container">{children(report.report.rows)}</ul>;
+
+  const list = report.isLoading ? (
+    <LoadingState size="compact" title="Loading…" />
+  ) : report.isError ? (
+    <ErrorState
+      size="compact"
+      title="We couldn't load this list"
+      onRetry={() => void report.refetch()}
+    />
+  ) : (
+    <ul className="@container">{children(rows)}</ul>
+  );
+
+  if (!title) return list;
+  return (
+    <section aria-label={title}>
+      <h3 className="pb-2 text-sm font-semibold">{title}</h3>
+      {list}
+    </section>
+  );
 };
 
 type PersonFactsProps = {
   person: PeopleReportRow;
-  range: ReportRange;
-  /** The last finished day; time off after it isn't counted yet. */
-  countedUntil: string | null;
-  /** Adds how many days off to their kinds, where no row above says it. */
-  withDaysOff?: boolean;
+  /** Adds how many expected days they logged nothing on, when there are any. */
+  withDaysWithoutTime?: boolean;
 };
 
-/** What the person's row doesn't say: planned, billable and the kinds of time off. */
+/** Their plan, billable time, and days off, each a figure with no list behind it. */
 export const PersonFacts = ({
   person,
-  range,
-  countedUntil,
-  withDaysOff = false,
+  withDaysWithoutTime = false,
 }: PersonFactsProps) => {
-  const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
-  const lastCountedDay = countedUntil ?? range.dateTo;
-  // Only the kinds behind the counted days, so a vacation still to come isn't
-  // named beside days off that don't include it.
-  const absenceTypes = [
-    ...new Set(
-      absences.items
-        .filter((absence) => absence.startDate <= lastCountedDay)
-        .map((absence) => ABSENCE_TYPE_LABELS[absence.type]),
-    ),
-  ].join(", ");
-  const timeOff = withDaysOff
-    ? `${countLabel(person.timeOffDays, "day", "days")} · ${absenceTypes}`
-    : absenceTypes;
+  const daysWithoutTime = person.daysWithoutTime.length;
 
   return (
     <Facts
@@ -180,8 +157,21 @@ export const PersonFacts = ({
           label: "Billable",
           value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
         },
-        ...(person.timeOffDays > 0 && absenceTypes
-          ? [{ label: "Time off", value: timeOff }]
+        ...(person.timeOffDays > 0
+          ? [
+              {
+                label: "Time off",
+                value: countLabel(person.timeOffDays, "day", "days"),
+              },
+            ]
+          : []),
+        ...(withDaysWithoutTime && daysWithoutTime > 0
+          ? [
+              {
+                label: "No time logged",
+                value: countLabel(daysWithoutTime, "day", "days"),
+              },
+            ]
           : []),
       ]}
     />
@@ -191,9 +181,12 @@ export const PersonFacts = ({
 export const PersonProjects = ({
   person,
   range,
+  title,
 }: {
   person: PeopleReportRow;
   range: ReportRange;
+  /** The list's heading, inside a panel. */
+  title?: string;
 }) => {
   const projects = useHoursReport({
     ...range,
@@ -203,6 +196,7 @@ export const PersonProjects = ({
 
   return (
     <PanelList
+      title={title}
       report={projects}
       empty="No time or plans on any project in this period."
     >
@@ -223,21 +217,25 @@ export const PersonProjects = ({
 const OTHER_PART_FILL = "bg-muted-foreground/40";
 
 /**
- * The person's whole period: logged against expected, a bar in parts by the
- * hours expected in each, and a row per part with its days and figures.
+ * The person's whole period: what it covers, logged against expected, and
+ * with more than one part or a team filter, a bar in parts by the hours
+ * expected in each and a row per part with its days and figures.
  */
-const PeriodParts = ({
+const PersonPeriod = ({
   person,
   parts,
   range,
+  periodLabel,
   isFiltered,
 }: {
   person: PeopleReportRow;
   parts: PersonPart[];
   range: ReportRange;
+  periodLabel: string;
   isFiltered: boolean;
 }) => (
-  <>
+  <section aria-label={periodLabel}>
+    <Badge className="mb-2">{periodLabel}</Badge>
     <p className="text-xl font-semibold tabular-nums">
       {formatReportHours(person.loggedMinutes)}
       {person.expectedMinutes > 0 && (
@@ -285,14 +283,6 @@ const PeriodParts = ({
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
                 {part.name}
-                {isFiltered && part.kind === "team" && (
-                  <Badge
-                    variant={part.isInReport ? "default" : "neutral"}
-                    size="sm"
-                  >
-                    {part.isInReport ? "In this report" : "Other team"}
-                  </Badge>
-                )}
               </span>
               <span className="block text-xs text-muted-foreground">
                 {partDaysLabel(part, range)}
@@ -308,38 +298,33 @@ const PeriodParts = ({
         ))}
       </ul>
     )}
-  </>
+  </section>
 );
 
 type PersonPanelProps = {
   /** Their row in the list, which a team filter narrows to the team's days. */
   person: PeopleReportRow;
   range: ReportRange;
-  /** "October 2026", heading the whole period. */
-  periodName: string;
-  /** "Whole month", "Whole quarter": says the panel isn't narrowed by a filter. */
-  wholePeriodNote: string;
+  /** What the figures cover: "October 2026", "Nov 1 - Nov 7 so far". */
+  periodLabel: string;
   /** Reports' team filter: its part is the one in the report. */
   teamId?: string;
   viewerId?: string;
-  countedUntil: string | null;
   isUpdating: boolean;
   onClose: () => void;
 };
 
 /**
- * One person's whole period, under a team filter too: their parts, what the
- * row doesn't say, the days they logged nothing and their projects. Their
- * days themselves are in Team time.
+ * One person's whole period, under a team filter too: what it covers, their
+ * parts, their plan, billable time and days, and their projects. Their days
+ * themselves are in Team time.
  */
 export const PersonPanel = ({
   person,
   range,
-  periodName,
-  wholePeriodNote,
+  periodLabel,
   teamId,
   viewerId,
-  countedUntil,
   isUpdating,
   onClose,
 }: PersonPanelProps) => {
@@ -362,40 +347,20 @@ export const PersonPanel = ({
     }
 
     const parts = personParts(row, { teamId, viewerId });
-    const withoutTime = row.daysWithoutTime.length;
-    const showsParts = Boolean(teamId) || parts.length > 1;
 
     return (
       <>
-        {showsParts && (
-          <PanelSection title={periodName} note={wholePeriodNote}>
-            <PeriodParts
-              person={row}
-              parts={parts}
-              range={range}
-              isFiltered={Boolean(teamId)}
-            />
-          </PanelSection>
-        )}
+        <PersonPeriod
+          person={row}
+          parts={parts}
+          range={range}
+          periodLabel={periodLabel}
+          isFiltered={Boolean(teamId)}
+        />
 
-        <PersonFacts person={row} range={range} countedUntil={countedUntil} />
+        <PersonFacts person={row} withDaysWithoutTime />
 
-        {withoutTime > 0 ? (
-          <p className="text-sm">
-            {`${countLabel(withoutTime, "day", "days")} with no time logged: ${listOf(row.daysWithoutTime.map(formatDayMonthLabel))}`}
-          </p>
-        ) : (
-          row.expectedMinutes > 0 && (
-            <p className="text-sm">Time logged on every expected day</p>
-          )
-        )}
-
-        <PanelSection
-          title="Projects"
-          note={`${wholePeriodNote} · logged against planned`}
-        >
-          <PersonProjects person={row} range={range} />
-        </PanelSection>
+        <PersonProjects person={row} range={range} title="Projects" />
       </>
     );
   };
@@ -462,15 +427,17 @@ export const ProjectPanel = ({
         ]}
       />
 
-      <PanelSection title="People" note="Logged against planned">
-        <PanelList report={people} empty="Nobody logged or planned time here.">
-          {(rows) =>
-            rows.map((row) => (
-              <AgainstPlanRow key={row.id} row={row} detail={row.detail} />
-            ))
-          }
-        </PanelList>
-      </PanelSection>
+      <PanelList
+        title="People"
+        report={people}
+        empty="Nobody logged or planned time here."
+      >
+        {(rows) =>
+          rows.map((row) => (
+            <AgainstPlanRow key={row.id} row={row} detail={row.detail} />
+          ))
+        }
+      </PanelList>
     </ReportPanel>
   );
 };

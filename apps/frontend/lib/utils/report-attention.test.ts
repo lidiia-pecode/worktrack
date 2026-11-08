@@ -110,7 +110,7 @@ describe("reportAttention", () => {
       });
     });
 
-    it("never names an owner, though their own month counts their days", () => {
+    it("names an owner with days to miss like anyone", () => {
       const fact = factOf("daysWithoutTime", {
         people: [
           person("Olivia Owner", {
@@ -120,7 +120,7 @@ describe("reportAttention", () => {
         ],
       });
 
-      expect(fact).toBeUndefined();
+      expect(fact?.headline).toBe("has 1 day with no time logged");
     });
 
     it("lists several people, most days first", () => {

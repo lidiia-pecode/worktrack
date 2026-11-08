@@ -48,9 +48,6 @@ const ProjectList = ({
 
   return (
     <>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Hours logged against the plan
-      </p>
       {marked.size > 0 && <AttentionLegend />}
       <ul className="mt-3 @container">
         {shown.map((project) => (
@@ -86,11 +83,6 @@ type WhereTheTimeWentProps = {
   projects: HoursReportRow[];
   /** The projects Needs attention names, with why. */
   marked: Map<string, string>;
-  /**
-   * Whose time a project's figures are under a team filter, which they don't
-   * say themselves: "Mobile Squad's time only".
-   */
-  scopeNote?: string;
   onOpenProject: (projectId: string) => void;
 };
 
@@ -99,7 +91,6 @@ export const WhereTheTimeWent = ({
   query,
   projects,
   marked,
-  scopeNote,
   onOpenProject,
 }: WhereTheTimeWentProps) => {
   const [view, setView] = useState<WhereView>("projects");
@@ -111,11 +102,7 @@ export const WhereTheTimeWent = ({
           id="report-where"
           title="Where the time went"
           icon={FolderKanban}
-        >
-          {scopeNote && (
-            <p className="text-sm text-muted-foreground">{scopeNote}</p>
-          )}
-        </ReportCardTitle>
+        />
         <SegmentedControl
           label="Show"
           options={VIEWS}

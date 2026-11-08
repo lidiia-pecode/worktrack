@@ -1,5 +1,4 @@
 import { HoursReportRow, PeopleReportRow } from "@/types";
-import { UserRole } from "@/types/enums";
 
 import {
   addDays,
@@ -63,7 +62,7 @@ const isBigGap = (gap: number, reference: number) =>
   Math.abs(gap) > reference * ATTENTION_MIN_SHARE;
 
 /** "a, b and c", or "a, b, c and 2 more". */
-export const listOf = (names: string[]) => {
+const listOf = (names: string[]) => {
   const named = names.slice(0, DAYS_NAMED);
   const rest = names.length - named.length;
 
@@ -83,13 +82,12 @@ export const lastCheckedDay = (countedUntil: string) => {
   return toISODate(day);
 };
 
-// Owners see their own days on My time, but are never named here (Decision 27).
+// Anyone with working hours is named, owners included: 0h has no days to miss.
 const missingDaysOf = (
   people: PeopleReportRow[],
   checkedUntil: string | null,
 ) =>
   people
-    .filter((person) => person.role !== UserRole.OWNER)
     .map((person) => ({
       person,
       days: checkedUntil

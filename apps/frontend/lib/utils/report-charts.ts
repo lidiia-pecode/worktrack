@@ -42,6 +42,16 @@ export const bucketsSinceCompanyStart = (
     : buckets;
 
 /**
+ * Whether a week or month has anything to draw: a working day, or time or a
+ * plan on it. A month that starts on a Sunday would otherwise open on an
+ * empty one-day week.
+ */
+export const hasSomethingToShow = (bucket: TimelineBucket) =>
+  bucket.workingDays > 0 ||
+  bucket.loggedMinutes > 0 ||
+  bucket.plannedMinutes > 0;
+
+/**
  * How much of a bucket counts, said in its tip: "5 days", or "2 days so
  * far" when the counting stopped at yesterday inside it.
  */

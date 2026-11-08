@@ -6,20 +6,18 @@ import { FileBarChart } from "lucide-react";
 import { ReportQuery } from "@/types";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
-import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import { periodChange, reportScope } from "@/lib/utils/report-overview";
+import { shownPeriodLabel } from "@/lib/utils/report-overview";
 import {
   containsDate,
   isShowablePeriod,
   lastShownDay,
   periodLabel,
   periodOf,
-  PeriodUnit,
   stepPeriod,
 } from "@/lib/utils/shown-period";
 import { toMonthKey } from "@/lib/utils/date";
@@ -43,12 +41,6 @@ import { PeopleCard } from "./components/PeopleCard";
 import { useShownTeam } from "./useShownTeam";
 
 const PROJECT_PARAM = "project";
-const WHOLE_PERIOD_NOTES: Record<PeriodUnit, string> = {
-  month: "Whole month",
-  quarter: "Whole quarter",
-  year: "Whole year",
-  custom: "Whole period",
-};
 const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 const ALL_TEAMS = "all";
 
@@ -61,8 +53,7 @@ export const ReportsView = () => {
 
   const { range } = period;
 
-  const { teamId, teamName, teamOptions, choosesTeam, showTeam } =
-    useShownTeam();
+  const { teamId, teamOptions, choosesTeam, showTeam } = useShownTeam();
   const query: ReportQuery = { ...range, teamId };
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
@@ -78,15 +69,9 @@ export const ReportsView = () => {
   const overview = useReportOverview(query);
   const people = overview.report?.people ?? null;
   const timeline = overview.report?.timeline ?? null;
-  // The period before, of the same kind, for each figure's change; none
-  // before the company's first month.
+  // The period before, offered by an empty current period; none before the
+  // company's first month.
   const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
-  const previous = usePeopleReport(
-    { ...previousPeriod.range, teamId },
-    { enabled: isPreviousShowable },
-  );
-  const previousReport =
-    isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
   const projects = useHoursReport({
     ...query,
     groupBy: HoursReportGroupBy.PROJECT,
@@ -158,11 +143,16 @@ export const ReportsView = () => {
     }
 
     const { totals, isProvisional, countedUntil } = people;
-    if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
+    // Expected hours alone still make a period worth reading: nobody logged.
+    const isEmpty =
+      totals.expectedMinutes === 0 &&
+      totals.loggedMinutes === 0 &&
+      totals.plannedMinutes === 0;
+    if (isEmpty) {
       return (
         <EmptyState
           title={`Nothing logged or planned in ${periodName}`}
-          description="Pick another period, or check that people have logged their time."
+          description="No working hours, time or plans in this period."
           icon={<FileBarChart />}
           action={showPrevious}
         />
@@ -193,9 +183,11 @@ export const ReportsView = () => {
           timeline={timeline}
           totals={totals}
           firstDay={firstDay}
-          periodName={periodName}
-          previousName={previousName}
-          change={previousReport && periodChange(totals, previousReport.totals)}
+          periodLabel={shownPeriodLabel(
+            periodName,
+            rangeSinceCompanyStart,
+            countedUntil,
+          )}
         />
         {showsAttention && (
           <div className="mt-4">
@@ -231,7 +223,6 @@ export const ReportsView = () => {
             query={query}
             projects={projects.report.rows}
             marked={attention.projects}
-            scopeNote={teamName && `${teamName}’s time only`}
             onOpenProject={openProject}
           />
         </div>
@@ -270,11 +261,13 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
-          periodName={periodName}
-          wholePeriodNote={WHOLE_PERIOD_NOTES[period.unit]}
+          periodLabel={shownPeriodLabel(
+            periodName,
+            rangeSinceCompanyStart,
+            people.countedUntil,
+          )}
           teamId={teamId}
           viewerId={viewer?.id}
-          countedUntil={people.countedUntil}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -298,40 +291,28 @@ export const ReportsView = () => {
     // Fills the page, so an empty state stretches to the bottom as on Log my time.
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <ReportPeriodControl
-              period={period}
-              today={today}
-              firstDay={firstDay}
-              onChange={showPeriod}
+        <div className="flex flex-wrap items-center gap-3">
+          <ReportPeriodControl
+            period={period}
+            today={today}
+            firstDay={firstDay}
+            onChange={showPeriod}
+          />
+          {choosesTeam && (
+            <FormSelect
+              aria-label="Team"
+              className="max-sm:w-full sm:w-56"
+              size="sm"
+              value={teamId ?? ALL_TEAMS}
+              options={[
+                { value: ALL_TEAMS, label: "All teams" },
+                ...teamOptions,
+              ]}
+              onValueChange={(value) =>
+                showTeam(value === ALL_TEAMS ? undefined : value)
+              }
             />
-            {choosesTeam && (
-              <FormSelect
-                aria-label="Team"
-                className="max-sm:w-full sm:w-56"
-                size="sm"
-                value={teamId ?? ALL_TEAMS}
-                options={[
-                  { value: ALL_TEAMS, label: "All teams" },
-                  ...teamOptions,
-                ]}
-                onValueChange={(value) =>
-                  showTeam(value === ALL_TEAMS ? undefined : value)
-                }
-              />
-            )}
-          </div>
-          {/* One line high even while a period loads, so the header holds still and
-              says nothing about the period before. */}
-          <p className="min-h-5 text-sm text-muted-foreground">
-            {settledPeople &&
-              !isNothingCounted &&
-              reportScope(settledPeople, {
-                periodRange: isMonth ? undefined : rangeSinceCompanyStart,
-                teamName,
-              })}
-          </p>
+          )}
         </div>
 
         {/* The last figures keep the button in place while a period loads. */}

@@ -192,10 +192,14 @@ describe("durations", () => {
     expect(formatDuration(61)).toBe("1h 1m");
   });
 
-  it("rounds report figures to whole hours, keeping minutes under an hour", () => {
-    expect(formatReportHours(693 * 60 + 54)).toBe("694h");
-    expect(formatReportHours(1203 * 60 + 20)).toBe("1,203h");
-    expect(formatReportHours(45)).toBe("45m");
+  it("reads report figures in decimal hours, up to two decimals, in English", () => {
+    expect(formatReportHours(24 * 60)).toBe("24h");
+    expect(formatReportHours(24 * 60 + 30)).toBe("24.5h");
+    expect(formatReportHours(24 * 60 + 15)).toBe("24.25h");
+    expect(formatReportHours(1412 * 60 + 30)).toBe("1,412.5h");
+    expect(formatReportHours(45)).toBe("0.75h");
+    // Time is logged in 5-minute steps, so a third of an hour rounds.
+    expect(formatReportHours(5)).toBe("0.08h");
     expect(formatReportHours(0)).toBe("0h");
   });
 });

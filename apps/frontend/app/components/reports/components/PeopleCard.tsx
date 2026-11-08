@@ -4,15 +4,14 @@ import { useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
+import { formatDayMonthLabel } from "@/lib/utils/date";
 import { isDeactivatedUser } from "@/lib/utils/user";
 import { againstExpected, daysOffLabel } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
-import { MoveBadges } from "../../shared/week/MoveBadges";
 import { ReportBar } from "./ReportBar";
 import { ReportCardTitle } from "./ReportCardTitle";
 import { AttentionLegend, ReportRow } from "./ReportRow";
@@ -20,11 +19,32 @@ import { AttentionLegend, ReportRow } from "./ReportRow";
 /** People shown at first; the rest open on request. */
 const PEOPLE_SHOWN = 10;
 
-/** Their position and the teams they were in during the period. */
-const detailOf = (person: PeopleReportRow) =>
-  [person.position, person.teams.map((team) => team.name).join(", ")]
+/**
+ * The line under a name, in muted text so the name never wraps for it: their
+ * position, their teams, where they joined or left the team filtered to, and
+ * whether they left the company. "Support Engineer · Legacy Support ·
+ * deactivated".
+ */
+const detailOf = (person: PeopleReportRow, isTeamFiltered: boolean) => {
+  const moves = isTeamFiltered
+    ? (person.teams[0]?.moves ?? []).map(
+        ({ direction, date }) =>
+          `${direction === "in" ? "joined" : "moved out"} ${formatDayMonthLabel(date)}`,
+      )
+    : [];
+  const teams = isTeamFiltered
+    ? []
+    : [person.teams.map((team) => team.name).join(", ")];
+
+  return [
+    person.position,
+    ...teams,
+    ...moves,
+    isDeactivatedUser(person) && "deactivated",
+  ]
     .filter(Boolean)
     .join(" · ");
+};
 
 const PersonRow = ({
   person,
@@ -45,21 +65,11 @@ const PersonRow = ({
     <ReportRow
       name={person.name}
       onOpen={() => onOpen(person.userId)}
-      detail={detailOf(person)}
+      detail={detailOf(person, isTeamFiltered)}
       note={
         person.timeOffDays > 0 ? daysOffLabel(person.timeOffDays) : undefined
       }
       flag={flag}
-      status={
-        <>
-          {isDeactivatedUser(person) && (
-            <Badge variant="neutral">Deactivated</Badge>
-          )}
-          {isTeamFiltered && (
-            <MoveBadges moves={person.teams[0]?.moves ?? []} />
-          )}
-        </>
-      }
       bar={
         <ReportBar
           value={person.loggedMinutes}
@@ -99,9 +109,6 @@ export const PeopleCard = ({
   return (
     <Card as="section" aria-labelledby="report-people" className="p-6">
       <ReportCardTitle id="report-people" title="People" icon={UsersRound}>
-        <p className="text-sm text-muted-foreground">
-          Hours logged against what each person was expected to work
-        </p>
         {marked.size > 0 && <AttentionLegend />}
       </ReportCardTitle>
 

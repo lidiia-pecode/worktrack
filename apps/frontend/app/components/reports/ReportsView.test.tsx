@@ -25,7 +25,6 @@ import {
   toISODate,
   toMonthKey,
 } from "@/lib/utils/date";
-import { AbsenceType } from "@/types/enums";
 
 import { ReportsView } from "./ReportsView";
 
@@ -445,15 +444,25 @@ describe("ReportsView", () => {
     expect(screen.getByText("Nothing counted yet")).toBeInTheDocument();
   });
 
-  it("says when nothing was logged or planned", () => {
+  it("says when nothing was expected, logged or planned", () => {
     showReports(
-      peopleReport([person("Ava Mitchell", 0, 0, 112)]),
+      peopleReport([person("Ava Mitchell", 0, 0, 0)]),
       projectsReport([]),
     );
 
     expect(
       screen.getByText(/^Nothing logged or planned in /),
     ).toBeInTheDocument();
+  });
+
+  it("shows the period when people were expected to work and logged nothing", () => {
+    showReports(
+      peopleReport([person("Ava Mitchell", 0, 0, 112)]),
+      projectsReport([]),
+    );
+
+    expect(screen.queryByText(/^Nothing logged or planned in /)).toBeNull();
+    expect(peopleRow("Ava Mitchell")).toBeInTheDocument();
   });
 
   it("offers to try again when the report fails", () => {
@@ -470,24 +479,23 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says how far the month is counted and whether it can change", () => {
+  it("names the period, and while it runs the days counted so far", () => {
     const report = peopleReport(team);
 
     showReports({ ...report, countedUntil }, projectsReport(projects));
     expect(
-      screen.getByText(
-        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits`,
-      ),
+      screen.getByRole("heading", {
+        name: `${formatDayMonthLabel(countedUntil)} so far`,
+      }),
     ).toBeInTheDocument();
     cleanup();
 
     showReports(report, projectsReport(projects));
-    expect(screen.getByText("Open for edits")).toBeInTheDocument();
-    cleanup();
-
-    auth.isOwner = true;
-    showReports({ ...report, isProvisional: false }, projectsReport(projects));
-    expect(screen.getByText("Locked")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+      }),
+    ).toBeInTheDocument();
   });
 
   it("says nothing about the month while the next one loads", () => {
@@ -538,7 +546,7 @@ describe("ReportsView", () => {
     ) {
       if (!isWeekend(day)) weekdays.push(toISODate(day));
     }
-    const [, offDay, dayWithoutTime] = weekdays;
+    const dayWithoutTime = weekdays[2];
 
     beforeEach(() => {
       vi.spyOn(window.history, "pushState").mockImplementation(
@@ -569,21 +577,7 @@ describe("ReportsView", () => {
       daysWithoutTime: [dayWithoutTime],
     };
 
-    it("opens a person with their figures, the days they logged nothing and projects, and closes back to the row", async () => {
-      vi.mocked(useAllAbsencesQuery).mockReturnValue({
-        items: [
-          {
-            id: "a",
-            userId: ethan.userId,
-            type: AbsenceType.VACATION,
-            startDate: offDay,
-            endDate: offDay,
-          },
-        ],
-        isLoading: false,
-        isError: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useAllAbsencesQuery>);
+    it("opens a person with their whole period, its figures and projects, and closes back to the row", async () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
 
@@ -592,14 +586,11 @@ describe("ReportsView", () => {
 
       expect(navigation.search).toBe("?person=ethan-brooks");
       const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
-      // Only what the row doesn't say: the plan, billable time and time off.
+      expect(panel).toHaveTextContent("79h of 72h expected");
       expect(panel).toHaveTextContent("Planned96h");
-      expect(panel).toHaveTextContent("Billable40h · 50%");
-      expect(panel).not.toHaveTextContent("of 72h expected");
-      expect(panel).toHaveTextContent(
-        `1 day with no time logged: ${formatDayMonthLabel(dayWithoutTime)}`,
-      );
-      expect(panel).toHaveTextContent("Vacation");
+      expect(panel).toHaveTextContent("Billable39.5h · 50%");
+      expect(panel).toHaveTextContent("Time off5 days");
+      expect(panel).toHaveTextContent("No time logged1 day");
 
       const projectsSection = within(panel).getByRole("region", {
         name: "Projects",

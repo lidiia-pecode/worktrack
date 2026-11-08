@@ -65,18 +65,18 @@ export function formatDuration(minutes: number): string {
   return `${hours}h ${mins}m`;
 }
 
-const HOURS_LABEL = new Intl.NumberFormat(undefined, {
-  maximumFractionDigits: 0,
+// Reports read in English whatever the browser's language, so 1,412.5h.
+const REPORT_HOURS = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
 });
 
 /**
- * Whole hours for report figures, e.g. "1,203h", where minutes are noise;
- * under an hour stays in minutes ("45m").
+ * Report figures in decimal hours, up to two decimals with trailing zeros
+ * dropped: "24h", "24.5h", "1,412.25h", "0.75h". Where time is entered it
+ * stays in hours and minutes.
  */
 export function formatReportHours(minutes: number): string {
-  if (minutes < 60) return formatDuration(minutes);
-
-  return `${HOURS_LABEL.format(Math.round(minutes / 60))}h`;
+  return `${REPORT_HOURS.format(minutes / 60)}h`;
 }
 
 export function getWeekStart(

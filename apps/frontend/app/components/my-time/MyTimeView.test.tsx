@@ -170,7 +170,7 @@ describe("MyTimeView", () => {
     expect(screen.getByText("of 136h expected")).toBeInTheDocument();
     expect(screen.getByText("16h still to log")).toBeInTheDocument();
     expect(screen.getByText("140h")).toBeInTheDocument();
-    expect(screen.getByText("2 days · Vacation")).toBeInTheDocument();
+    expect(screen.getByText("2 days")).toBeInTheDocument();
     expect(screen.getByText("CRM System")).toBeInTheDocument();
     expect(screen.queryByText("Liam Hayes")).not.toBeInTheDocument();
     expect(screen.queryByText("Open in Team time")).not.toBeInTheDocument();

@@ -14,7 +14,7 @@ import { TeamStatus } from 'src/teams/enums/team-status.enum';
  * One company only. Every other seed hangs off it. Beyond the accounts used
  * to check the roles, it holds enough demo people, teams, projects and
  * categories to judge the Manage lists: archived and deactivated ones, an
- * empty category and long names, and enough history since July 2026 to
+ * empty category and long names, and enough history since June 2026 to
  * judge Reports (see REPORT_HISTORY). The seed writes straight to the tables,
  * so this data keeps the app's rules itself.
  */
@@ -22,9 +22,8 @@ import { TeamStatus } from 'src/teams/enums/team-status.enum';
 export const SEED_PASSWORD = 'Password123!';
 
 /**
- * The company's first month is the first one Reports and Periods offer, so it
- * starts a month before the history: June is there, and empty. Everyone joined
- * that day, so their expected hours start there too.
+ * The company's first day, the first one Reports and Periods offer. Everyone
+ * joined that day, so their expected hours and the history start there too.
  */
 export const CAPACITY_VALID_FROM = '2026-06-01';
 
@@ -1093,7 +1092,7 @@ export const ABSENCES = [
  * this week above stop the Sunday before it). Each person logs `work` and is
  * planned for `plan` on every working day, in minutes, except the days the
  * exceptions name; plans run to the end of the current month. Fixed dates
- * keep July to September the same on every reset.
+ * keep June to September the same on every reset.
  *
  * What it shows: projects over and under plan (CRM System, Data Warehouse
  * Migration, Brand Refresh / Customer Portal Redesign, Energy Usage
@@ -1102,7 +1101,7 @@ export const ABSENCES = [
  * days with no time (Liam's Fridays, Noah, Samuel, the owner), a joiner
  * (Ruby), a leaver with time (Isla), absences, a public holiday, weekend work and thirteen categories.
  */
-export const HISTORY_START = '2026-07-01';
+export const HISTORY_START = CAPACITY_VALID_FROM;
 
 /** Everybody's day off, except whoever works it. */
 export const PUBLIC_HOLIDAYS = ['2026-08-31'];

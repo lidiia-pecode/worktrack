@@ -10,7 +10,7 @@ import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
 import { CLOSED_DAY_TEXT, closedSpellOn, isClosedOn } from "@/lib/utils/user";
 import {
-  formatDuration,
+  formatReportHours,
   formatWeekdayLabel,
   fromISODate,
   isWeekend,
@@ -128,7 +128,7 @@ export const PersonDayGrid = ({
   const dayValue = (day: ReportDay) => {
     switch (day.kind) {
       case "logged":
-        return formatDuration(day.minutes);
+        return formatReportHours(day.minutes);
       case "closed":
         // Said on hover and to a screen reader; the day itself stays quiet.
         return <span className="sr-only">{closedText(day.date)}</span>;
@@ -266,7 +266,8 @@ export const PersonDayGrid = ({
           Also logged at the weekend:{" "}
           {weekendDays
             .map(
-              (day) => `${dayLabel(day.date)} · ${formatDuration(day.minutes)}`,
+              (day) =>
+                `${dayLabel(day.date)} · ${formatReportHours(day.minutes)}`,
             )
             .join(", ")}
         </p>

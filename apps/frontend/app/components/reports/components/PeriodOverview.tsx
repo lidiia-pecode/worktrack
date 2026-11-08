@@ -1,7 +1,5 @@
 "use client";
 
-import { ChartColumnBig } from "lucide-react";
-
 import {
   PeopleReport,
   Timeline,
@@ -14,18 +12,14 @@ import {
   bucketLabel,
   bucketNote,
   bucketsSinceCompanyStart,
+  hasSomethingToShow,
   hourScale,
 } from "@/lib/utils/report-charts";
-import {
-  FigureChange,
-  PeriodChange,
-  percentOf,
-} from "@/lib/utils/report-overview";
+import { percentOf } from "@/lib/utils/report-overview";
 
+import { Badge } from "@/components/ui/badge";
 import { BrandPattern } from "@/components/ui/brand-pattern";
 import { Card } from "@/components/ui/card";
-
-import { ChangeTip } from "./ChangeTip";
 
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
@@ -91,22 +85,9 @@ type FigureCardProps = {
   /** The ring's colour, as a text-colour class. */
   tone: string;
   note: string;
-  change: FigureChange | null;
-  previousName: string;
-  /** What the figure counts, for the tip's "Nothing … in" line. */
-  subject?: string;
 };
 
-const FigureCard = ({
-  label,
-  value,
-  percent,
-  tone,
-  note,
-  change,
-  previousName,
-  subject,
-}: FigureCardProps) => (
+const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
   <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5">
     {percent !== null && <ShareRing percent={percent} tone={tone} />}
     <div className="min-w-0">
@@ -117,16 +98,6 @@ const FigureCard = ({
       <p className="text-xs text-muted-foreground">
         {percent !== null && <span className="sr-only">{percent}% </span>}
         {note}
-        {change && (
-          <>
-            {" · "}
-            <ChangeTip
-              change={change}
-              previousName={previousName}
-              subject={subject}
-            />
-          </>
-        )}
       </p>
     </div>
   </li>
@@ -207,34 +178,28 @@ type PeriodOverviewProps = {
   totals: PeopleReport["totals"];
   /** The company's first day; the chart starts there. */
   firstDay?: string;
-  /** "October 2026", "Q3 2026": the band's heading. */
-  periodName: string;
-  /** The period compared with, for the caption and the changes' tips. */
-  previousName: string;
-  change: PeriodChange | null;
+  /** What the figures cover: "October 2026", "Nov 1 - Nov 7 so far". */
+  periodLabel: string;
 };
 
 /**
- * The period's summary band, three figures with their share and change, above
+ * The period's summary band, three figures with their share, above
  * a chart of each week or month: expected behind, logged and planned inside.
  */
 export const PeriodOverview = ({
   timeline,
   totals,
   firstDay,
-  periodName,
-  previousName,
-  change,
+  periodLabel,
 }: PeriodOverviewProps) => {
   const { loggedMinutes, plannedMinutes, billableMinutes, expectedMinutes } =
     totals;
   const isExpected = expectedMinutes > 0;
-  const hasChange = Boolean(
-    change && (change.logged || change.planned || change.billable),
-  );
 
   const { countedUntil, bucketSize } = timeline;
-  const buckets = bucketsSinceCompanyStart(timeline.buckets, firstDay);
+  const buckets = bucketsSinceCompanyStart(timeline.buckets, firstDay).filter(
+    hasSomethingToShow,
+  );
   const scale = hourScale(
     Math.max(
       0,
@@ -254,21 +219,11 @@ export const PeriodOverview = ({
       <div className="relative overflow-hidden border-b border-brand-strong bg-brand-muted px-6 pt-5 pb-6">
         <BrandPattern className="opacity-50" />
 
-        <div className="relative flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-card text-brand">
-              <ChartColumnBig className="size-4" aria-hidden />
-            </span>
-            <h2 id="report-period" className="text-base font-semibold">
-              {periodName}
-            </h2>
-          </div>
-          {hasChange && (
-            <p className="text-xs text-muted-foreground">
-              Change from {previousName}
-            </p>
-          )}
-        </div>
+        <h2 id="report-period" className="relative">
+          <Badge variant="solid" className="px-3 py-1 text-sm font-semibold">
+            {periodLabel}
+          </Badge>
+        </h2>
 
         <ul className="relative mt-4 grid gap-4 @3xl:grid-cols-3">
           <FigureCard
@@ -283,8 +238,6 @@ export const PeriodOverview = ({
                 ? `of ${formatReportHours(expectedMinutes)} expected`
                 : "Nobody was expected to work"
             }
-            change={change?.logged ?? null}
-            previousName={previousName}
           />
           <FigureCard
             label="Planned"
@@ -296,9 +249,6 @@ export const PeriodOverview = ({
             note={
               isExpected ? "of expected" : "Nothing expected to plan against"
             }
-            change={change?.planned ?? null}
-            subject="planned"
-            previousName={previousName}
           />
           <FigureCard
             label="Billable"
@@ -310,9 +260,6 @@ export const PeriodOverview = ({
             }
             tone="text-brand"
             note={loggedMinutes > 0 ? "of logged" : "Nothing logged yet"}
-            change={change?.billable ?? null}
-            subject="billable"
-            previousName={previousName}
           />
         </ul>
       </div>

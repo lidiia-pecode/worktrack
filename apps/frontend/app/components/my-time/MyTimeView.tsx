@@ -37,7 +37,7 @@ const MonthCard = ({
   children,
 }: {
   title: string;
-  note: string;
+  note?: string;
   children: ReactNode;
 }) => {
   const titleId = useId();
@@ -47,7 +47,7 @@ const MonthCard = ({
       <h2 id={titleId} className="text-base font-semibold">
         {title}
       </h2>
-      <p className="mt-0.5 text-sm text-muted-foreground">{note}</p>
+      {note && <p className="mt-0.5 text-sm text-muted-foreground">{note}</p>}
       <div className="mt-4">{children}</div>
     </Card>
   );
@@ -170,12 +170,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
         <Card as="section" aria-label="Your month" className="p-6">
           <MonthTotal person={ownRow} isOpen={isOpen} />
           <div className="mt-5 border-t border-border pt-4">
-            <PersonFacts
-              person={ownRow}
-              range={range}
-              countedUntil={people.report.countedUntil}
-              withDaysOff
-            />
+            <PersonFacts person={ownRow} />
           </div>
         </Card>
 
@@ -196,7 +191,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
             />
           </MonthCard>
 
-          <MonthCard title="Projects" note="Logged against your plan">
+          <MonthCard title="Projects">
             <PersonProjects person={ownRow} range={range} />
           </MonthCard>
         </div>
