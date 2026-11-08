@@ -48,21 +48,20 @@ const ROLE_COLUMN: ManageColumn<UserListItem> = {
   cell: (user) => ROLE_LABELS[user.role],
 };
 
+// The owner is in no team and sees them all, so that is no warning.
+const teamOf = (user: UserListItem, inline: boolean) => {
+  if (user.team) return <UserTeam team={user.team} />;
+  if (user.role === UserRole.OWNER) {
+    return <span className="text-muted-foreground">All teams</span>;
+  }
+  return <ManageWarning inline={inline}>{NO_TEAM}</ManageWarning>;
+};
+
 const TEAM_COLUMN: ManageColumn<UserListItem> = {
   header: "Team",
   width: "w-48",
-  cell: (user) =>
-    user.team ? (
-      <UserTeam team={user.team} />
-    ) : (
-      <ManageWarning>{NO_TEAM}</ManageWarning>
-    ),
-  summary: (user) =>
-    user.team ? (
-      <UserTeam team={user.team} />
-    ) : (
-      <ManageWarning inline>{NO_TEAM}</ManageWarning>
-    ),
+  cell: (user) => teamOf(user, false),
+  summary: (user) => teamOf(user, true),
 };
 
 const PROJECTS_COLUMN: ManageColumn<UserListItem> = {

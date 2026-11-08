@@ -141,23 +141,26 @@ export const UserForm = ({
         error={errors.position?.message}
       />
 
-      <Controller
-        control={control}
-        name="role"
-        render={({ field, fieldState }) => (
-          <FormSelect
-            label="Role"
-            value={field.value}
-            onValueChange={field.onChange}
-            options={roleOptions}
-            description={
-              losesManagerAccess &&
-              "As an Employee they lose Team time, Planning, Reports and Manage."
-            }
-            error={fieldState.error?.message}
-          />
-        )}
-      />
+      {/* An owner's role doesn't change here. */}
+      {defaultValues.role !== UserRole.OWNER && (
+        <Controller
+          control={control}
+          name="role"
+          render={({ field, fieldState }) => (
+            <FormSelect
+              label="Role"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={roleOptions}
+              description={
+                losesManagerAccess &&
+                "As an Employee they lose Team time, Planning, Reports and Manage."
+              }
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+      )}
 
       <Field id="user-working-hours" group>
         <div className="grid gap-4 sm:grid-cols-2">

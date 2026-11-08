@@ -336,7 +336,7 @@ export const TeamTimeView = ({
     isLoadingLocks
   ) {
     return (
-      <div className="flex flex-col">
+      <div className="flex flex-1 flex-col">
         <LoadingState
           title="Loading the team's week"
           description="Fetching logged time and company settings."
@@ -346,7 +346,8 @@ export const TeamTimeView = ({
   }
 
   return (
-    <div className="flex flex-col">
+    // Fills the page, so an empty state stretches to the bottom.
+    <div className="flex flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pr-3 pb-3">
         <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
 
@@ -389,18 +390,17 @@ export const TeamTimeView = ({
       )}
 
       {!hasError && matchesNobody && (
-        <div className="p-6">
-          <EmptyState
-            icon={<SearchX />}
-            title="Nobody matches"
-            description="Nobody you can see matches the search, team or project you picked."
-            action={
-              <Button variant="secondary" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            }
-          />
-        </div>
+        <EmptyState
+          className="mt-3"
+          icon={<SearchX />}
+          title="Nobody matches"
+          description="Nobody you can see matches the search, team or project you picked."
+          action={
+            <Button variant="secondary" onClick={clearFilters}>
+              Clear filters
+            </Button>
+          }
+        />
       )}
 
       {!hasError && notice && (

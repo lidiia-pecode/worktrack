@@ -181,8 +181,12 @@ export class UsersService {
     const qb = this.getRepository(manager)
       .createQueryBuilder('u')
       .where('u.company_id = :companyId', { companyId })
-      // Nobody manages the owner's account from this list.
-      .andWhere('u.role != :owner', { owner: UserRole.OWNER })
+      // The owner's account is listed only to the owner, as a manager sees
+      // themselves; nobody else manages it from this list.
+      .andWhere('(u.role != :owner OR u.id = :viewerId)', {
+        owner: UserRole.OWNER,
+        viewerId: user.id,
+      })
       .loadRelationCountAndMap(
         'u.projectsCount',
         'u.projects',

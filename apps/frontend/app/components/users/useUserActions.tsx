@@ -22,11 +22,14 @@ export const useUserActions = () => {
   const [deactivatingUser, setDeactivatingUser] = useState<User | null>(null);
   const [reactivatingUser, setReactivatingUser] = useState<User | null>(null);
 
-  // An owner can't be edited or deactivated here: the form has no Owner role and the API refuses.
+  // An owner isn't deactivated here, as the API refuses; they edit only
+  // their own position and working hours.
   const managesPerson = (user: User) => isOwner && user.role !== UserRole.OWNER;
+  const isViewer = (user: User) => user.id === viewer?.id;
 
   const canEdit = (user: User) =>
-    managesPerson(user) && !isDeactivatedUser(user);
+    (managesPerson(user) || (isOwner && isViewer(user))) &&
+    !isDeactivatedUser(user);
 
   const actionsFor = (user: User): ManageRowAction[] => {
     if (!managesPerson(user)) return [];
