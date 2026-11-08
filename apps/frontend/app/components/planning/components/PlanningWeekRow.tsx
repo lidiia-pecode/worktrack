@@ -266,8 +266,10 @@ export const PlanningWeekRow = ({
             <ReportBar
               value={row.plannedMinutes}
               reference={row.availableMinutes}
+              fill="planned"
               label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-              className="h-[5px] w-full max-w-32"
+              // As Team time's bar: the same height and width.
+              className="h-1.5 w-full max-w-28"
             />
           )}
 

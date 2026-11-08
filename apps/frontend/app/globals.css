@@ -167,24 +167,34 @@
   --chart-4: var(--destructive);
   --chart-5: var(--success);
 
-  /* Reports: the track behind a row's bar. In Week by week, what was expected
-     is a pale block behind each week and what was planned a soft bar beside
-     the logged one, so all three read as one kind of mark. Logged is a softer
-     teal than the brand in every report mark; planned is a mauve, apart from
-     the warning, so a plan never reads as a problem. */
+  /* Hours, one language on every page: logged is a softer teal than the brand,
+     its billable part striped; planned is a mauve, apart from the warning, so
+     a plan never reads as a problem; expected is a pale teal; time past what
+     it is measured against is the warning. In Week by week, expected is a
+     pale block behind each week and planned a bar beside the logged one. A
+     row's track says what it measures against: pale teal for expected, pale
+     mauve for planned. Logged and planned reach 3:1 against the card. */
   --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
   --report-logged: color-mix(in oklch, var(--brand) 75%, var(--card));
   --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
   --report-planned-base: oklch(0.56 0.106 307);
   --report-planned: color-mix(
     in oklch,
-    var(--report-planned-base) 50%,
+    var(--report-planned-base) 75%,
+    var(--card)
+  );
+  --report-planned-track: color-mix(
+    in oklch,
+    var(--report-planned-base) 20%,
     var(--card)
   );
   /* The planned share's ring in the summary band, at full strength. */
   --report-planned-strong: var(--report-planned-base);
   /* Logged time with no plan to measure it against: the logged teal, lighter. */
-  --report-unplanned: color-mix(in oklch, var(--brand) 35%, var(--card));
+  --report-unplanned: color-mix(in oklch, var(--brand) 50%, var(--card));
+  /* The ground between the billable stripes, light enough that a striped
+     (billable) part reads apart from a solid (non-billable) one. */
+  --report-billable-ground: color-mix(in oklch, var(--brand) 45%, var(--card));
 
   /* Day states on the week views (see DAY STATES below). */
   --stripe-weekend: color-mix(
@@ -347,6 +357,7 @@
   --color-excess: var(--excess);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
+  --color-report-planned-track: var(--report-planned-track);
   --color-report-planned-strong: var(--report-planned-strong);
   --color-report-unplanned: var(--report-unplanned);
 
@@ -407,16 +418,16 @@
   --stripe-ground: var(--stripe-extra-ground);
 }
 
-/* Billable time in Reports: the brand's lines on the softer logged teal, so
-   the billable part of a logged bar reads without colour too. Denser than the
-   day stripes, since it fills narrow bars. */
+/* Billable time: the brand's lines on a lighter teal, so the billable part
+   of a bar reads apart from the solid non-billable teal without colour too.
+   Denser than the day stripes, since it fills narrow bars. */
 .bg-stripes-billable {
   background-image: repeating-linear-gradient(
     -45deg,
     var(--brand) 0px,
     var(--brand) 3px,
-    var(--report-logged) 3px,
-    var(--report-logged) 6px
+    var(--report-billable-ground) 3px,
+    var(--report-billable-ground) 6px
   );
 }
 

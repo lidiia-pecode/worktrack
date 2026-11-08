@@ -113,6 +113,12 @@ const SCROLL_LABELS: Record<TimelineBucketSize, string> = {
   month: "Months, scrolls sideways when narrow",
 };
 
+/** Time logged past what was expected, ending the logged bar as on a row. */
+const overExpected = ({ loggedMinutes, expectedMinutes }: TimelineBucket) =>
+  expectedMinutes > 0 ? Math.max(0, loggedMinutes - expectedMinutes) : 0;
+
+const OVER_LEGEND = { label: "Over expected", className: "bg-warning" };
+
 /** A week's or a month's figures in words, for its tip and for screen readers. */
 const bucketSummary = (bucket: TimelineBucket, countedUntil: string | null) =>
   [
@@ -125,7 +131,11 @@ const bucketSummary = (bucket: TimelineBucket, countedUntil: string | null) =>
     bucket.expectedMinutes > 0
       ? `${formatReportHours(bucket.expectedMinutes)} expected`
       : "nothing expected",
-  ].join(" · ");
+    overExpected(bucket) > 0 &&
+      `${formatReportHours(overExpected(bucket))} over expected`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
 const BucketColumn = ({
   bucket,
@@ -160,6 +170,14 @@ const BucketColumn = ({
             height: `${percentOf(bucket.billableMinutes, bucket.loggedMinutes)}%`,
           }}
         />
+        {overExpected(bucket) > 0 && (
+          <span
+            className="absolute inset-x-0 top-0 bg-warning"
+            style={{
+              height: `${(overExpected(bucket) / bucket.loggedMinutes) * 100}%`,
+            }}
+          />
+        )}
       </span>
       <span
         className="flex-1 rounded-t-md bg-report-planned"
@@ -273,7 +291,12 @@ export const PeriodOverview = ({
             {TITLES[bucketSize]}
           </h3>
           <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
-            {LEGEND.map(({ label, className }) => (
+            {[
+              ...LEGEND,
+              ...(buckets.some((bucket) => overExpected(bucket) > 0)
+                ? [OVER_LEGEND]
+                : []),
+            ].map(({ label, className }) => (
               <li key={label} className="inline-flex items-center gap-2">
                 <span
                   className={cn("size-3.5 rounded-sm", className)}

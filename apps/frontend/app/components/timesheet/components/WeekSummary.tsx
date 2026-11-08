@@ -7,6 +7,8 @@ import { formatDuration } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 
 import { Badge } from "@/components/ui/badge";
+
+import { ReportBar } from "../../reports/components/ReportBar";
 import {
   Popover,
   PopoverContent,
@@ -24,6 +26,7 @@ type WeekSummaryProps = {
   className?: string;
 };
 
+/** The week's logged time against what was expected, as Reports draw it. */
 export const WeekBar = ({
   billableMinutes,
   nonBillableMinutes,
@@ -31,36 +34,14 @@ export const WeekBar = ({
 }: Pick<
   WeekSummaryProps,
   "billableMinutes" | "nonBillableMinutes" | "expectedMinutes"
->) => {
-  const totalMinutes = billableMinutes + nonBillableMinutes;
-  const scale = Math.max(totalMinutes, expectedMinutes, 1);
-  const percent = (minutes: number) => (minutes / scale) * 100;
-
-  return (
-    <span
-      aria-hidden
-      className="relative block h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-report-track"
-    >
-      <span
-        className="absolute inset-y-0 left-0 bg-brand/70"
-        style={{ width: `${percent(billableMinutes)}%` }}
-      />
-      <span
-        className="absolute inset-y-0 bg-brand/25"
-        style={{
-          left: `${percent(billableMinutes)}%`,
-          width: `${percent(nonBillableMinutes)}%`,
-        }}
-      />
-      {expectedMinutes > 0 && totalMinutes > expectedMinutes && (
-        <span
-          className="absolute inset-y-0 right-0 bg-warning/60"
-          style={{ left: `${percent(expectedMinutes)}%` }}
-        />
-      )}
-    </span>
-  );
-};
+>) => (
+  <ReportBar
+    value={billableMinutes + nonBillableMinutes}
+    reference={expectedMinutes}
+    billable={billableMinutes}
+    className="h-1.5 min-w-20 flex-1"
+  />
+);
 
 const Fact = ({
   label,

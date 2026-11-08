@@ -36,6 +36,7 @@ export const AgainstPlanRow = ({
         <ReportBar
           value={row.totalMinutes}
           reference={planned}
+          measuredAgainst="planned"
           billable={row.billableMinutes}
           label={
             planned > 0
