@@ -24,6 +24,8 @@ type PlannedRowProps = {
   editedMinutes?: number;
   /** Whether the person is still on the project, so its hours can change. */
   isOnProject: boolean;
+  /** A day that takes no plans, as at 0h: the hours show, only the bin acts. */
+  isReadOnly?: boolean;
   /** The person's own day: the most a project's plan can take. */
   maxMinutes: number;
   formId: string;
@@ -43,6 +45,7 @@ export const PlannedRow = ({
   hoursLabel,
   editedMinutes,
   isOnProject,
+  isReadOnly = false,
   maxMinutes,
   formId,
   onEdit,
@@ -105,7 +108,14 @@ export const PlannedRow = ({
         </div>
       </div>
 
+      {isReadOnly && line.sameMinutes !== null && (
+        <span className="text-sm text-muted-foreground tabular-nums">
+          {formatDuration(line.sameMinutes)}
+        </span>
+      )}
+
       {canChangeHours &&
+        !isReadOnly &&
         (line.sameMinutes === null && !isEdited ? (
           <Button
             type="button"

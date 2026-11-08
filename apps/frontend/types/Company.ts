@@ -27,6 +27,4 @@ export interface UpdateCompanyPayload {
   timezone?: string;
   currency?: CompanyCurrency;
   weekStartDay?: WeekDay;
-  /** From the company's start, as the setup guide sets it. */
-  standardWorkHoursPerDay?: number;
 }

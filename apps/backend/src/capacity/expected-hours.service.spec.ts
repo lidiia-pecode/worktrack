@@ -780,30 +780,23 @@ describe('ExpectedHoursService', () => {
       );
     });
 
-    // The setup guide sets the day from the company's start.
-    it("sets a new company's day from its start, but not once its months are locked", async () => {
-      const companies = dataSource.getRepository(Company);
-      const { createdAt } = await companies.findOneByOrFail({ id: companyId });
+    // The company setup saves as Settings does, so opening it again later
+    // can't rewrite the days before.
+    it('changes nothing before today when saved from today, and saves nothing for the same day', async () => {
+      const today = await capacity.today(companyId);
+      const days = dataSource.getRepository(CompanyStandardDay);
 
-      try {
-        await companies.update(companyId, {
-          createdAt: new Date(`${MONDAY}T09:00:00Z`),
-        });
-        await capacity.setStandardDay(companyId, 7, null, owner.id);
-        await expect(expectedFor(fullTimer)).resolves.toBe(5 * 7 * 60);
+      await capacity.setStandardDay(companyId, 8, today, owner.id);
+      await expect(days.countBy({ companyId })).resolves.toBe(0);
 
-        await companies.update(companyId, {
-          createdAt: LONG_STANDING_ACCOUNT_CREATED_AT,
-        });
-        await expect(
-          capacity.setStandardDay(companyId, 6, null, owner.id),
-        ).rejects.toThrow(ForbiddenException);
-      } finally {
-        await companies.update(companyId, {
-          createdAt,
-          standardWorkHoursPerDay: 8,
-        });
-      }
+      await capacity.setStandardDay(companyId, 7, today, owner.id);
+      await expect(expectedFor(fullTimer)).resolves.toBe(FULL_WEEK);
+      await expect(
+        dataSource.getRepository(Company).findOneByOrFail({ id: companyId }),
+      ).resolves.toMatchObject({ standardWorkHoursPerDay: 8 });
+      await expect(capacity.standardDayFor(companyId)).resolves.toMatchObject({
+        hoursPerDay: 7,
+      });
     });
 
     // Their hours would otherwise follow the standard day's own change.
@@ -891,6 +884,48 @@ describe('ExpectedHoursService', () => {
 
       // The part-timer has nothing planned; their expectation is their own.
       await expect(expectedFor(partTimer)).resolves.toBe(PART_WEEK);
+    });
+  });
+
+  describe('0h takes the plans from its date', () => {
+    const NEXT_MONDAY = addDays(MONDAY, 7);
+    let projectId: string;
+
+    beforeAll(async () => {
+      const project = await dataSource
+        .getRepository(Project)
+        .save({ companyId, name: `No hours ${RUN}` });
+
+      projectId = project.id;
+    });
+
+    afterEach(async () => {
+      await dataSource.getRepository(PlanningEntry).delete({ companyId });
+    });
+
+    it('deletes plans from that day until hours come back, and keeps the rest', async () => {
+      const planned = [addDays(MONDAY, -3), MONDAY, FRIDAY, NEXT_MONDAY];
+      await dataSource.getRepository(PlanningEntry).save(
+        planned.map((date) => ({
+          companyId,
+          userId: fullTimer,
+          projectId,
+          date,
+          plannedMinutes: 240,
+        })),
+      );
+      await setCapacity(fullTimer, FULL_WEEK, NEXT_MONDAY);
+
+      await capacity.setCapacity(companyId, fullTimer, 0, MONDAY, owner.id);
+
+      const left = await dataSource.getRepository(PlanningEntry).find({
+        where: { companyId, userId: fullTimer },
+        order: { date: 'ASC' },
+      });
+      expect(left.map((plan) => plan.date)).toEqual([
+        addDays(MONDAY, -3),
+        NEXT_MONDAY,
+      ]);
     });
   });
 

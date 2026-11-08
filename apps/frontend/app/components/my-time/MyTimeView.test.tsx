@@ -217,18 +217,6 @@ describe("MyTimeView", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says so when the person has nothing in the month, with the way to the timesheet", () => {
-    showMyTime(peopleReport([]));
-
-    expect(
-      screen.getByText("Nothing logged in October 2026"),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Log my time" })).toHaveAttribute(
-      "href",
-      "/timesheet",
-    );
-  });
-
   it("says nothing is counted yet when no day of the month has finished", () => {
     showMyTime({ ...peopleReport([myRow]), countedUntil: "2026-09-30" });
 

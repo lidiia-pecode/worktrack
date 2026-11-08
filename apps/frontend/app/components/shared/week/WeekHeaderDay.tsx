@@ -1,6 +1,10 @@
 import { Lock } from "lucide-react";
 
-import { formatDuration, formatWeekdayLabel } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatWeekdayLabel,
+  isWeekend,
+} from "@/lib/utils/date";
 
 type WeekHeaderDayProps = {
   date: Date;
@@ -18,11 +22,12 @@ export const WeekHeaderDay = ({
   targetMinutes,
   isLocked = false,
 }: WeekHeaderDayProps) => {
-  // A weekend expects nothing, so any time on it is over.
+  // A weekend expects nothing, so any time on it is over; a working day
+  // expecting nothing, as at 0h, has no figure to go past.
+  const hasTarget =
+    targetMinutes !== undefined && (targetMinutes > 0 || isWeekend(date));
   const isOverTarget =
-    targetMinutes !== undefined &&
-    totalMinutes !== undefined &&
-    totalMinutes > targetMinutes;
+    hasTarget && totalMinutes !== undefined && totalMinutes > targetMinutes;
 
   return (
     <div

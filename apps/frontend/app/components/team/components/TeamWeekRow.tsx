@@ -179,7 +179,8 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
   const isFormerMember = row.isOnProject === false;
   // A leaver is expected time up to the day they left, as on Reports.
   const expectsTime = row.expectedMinutes > 0;
-  const isOver = !projectName && row.minutes > row.expectedMinutes;
+  const isOver =
+    !projectName && expectsTime && row.minutes > row.expectedMinutes;
   const showsBar = !projectName && expectsTime;
 
   // Someone expected nothing shows their hours alone.

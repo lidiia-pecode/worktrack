@@ -52,7 +52,7 @@ export const WeekBar = ({
           width: `${percent(nonBillableMinutes)}%`,
         }}
       />
-      {totalMinutes > expectedMinutes && (
+      {expectedMinutes > 0 && totalMinutes > expectedMinutes && (
         <span
           className="absolute inset-y-0 right-0 bg-warning/60"
           style={{ left: `${percent(expectedMinutes)}%` }}
@@ -101,13 +101,15 @@ export const WeekSummary = ({
   className,
 }: WeekSummaryProps) => {
   const totalMinutes = billableMinutes + nonBillableMinutes;
-  const overMinutes = totalMinutes - expectedMinutes;
-  const isComplete = expectedMinutes > 0 && overMinutes === 0;
+  // A week expecting nothing, as at 0h, shows its hours alone.
+  const expectsTime = expectedMinutes > 0;
+  const overMinutes = expectsTime ? totalMinutes - expectedMinutes : 0;
+  const isComplete = expectsTime && overMinutes === 0;
 
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`${formatDuration(totalMinutes)} of ${formatDuration(expectedMinutes)} expected. Show the week's breakdown`}
+        aria-label={`${formatDuration(totalMinutes)}${expectsTime ? ` of ${formatDuration(expectedMinutes)} expected` : " logged"}. Show the week's breakdown`}
         className={cn(
           "flex h-8 min-w-0 items-center gap-3 rounded-md border border-transparent px-2 text-sm transition-colors hover:border-control-border hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:border-control-border data-popup-open:bg-card max-sm:h-10",
           className,
@@ -115,10 +117,12 @@ export const WeekSummary = ({
       >
         <span className="whitespace-nowrap tabular-nums">
           <span className="font-semibold">{formatDuration(totalMinutes)}</span>
-          <span className="text-muted-foreground">
-            {" "}
-            / {formatDuration(expectedMinutes)}
-          </span>
+          {expectsTime && (
+            <span className="text-muted-foreground">
+              {" "}
+              / {formatDuration(expectedMinutes)}
+            </span>
+          )}
         </span>
         <WeekBar
           billableMinutes={billableMinutes}

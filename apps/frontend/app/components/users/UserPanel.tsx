@@ -19,6 +19,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import {
+  NO_FIXED_HOURS,
   lastWorkingDayLabel,
   fullName,
   isDeactivatedUser,
@@ -60,16 +61,19 @@ import {
 const EDIT_FORM_ID = "user-edit-form";
 
 /** Wraps between its parts, never inside one. */
-const dayAndWeek = (minutesPerWeek: number) => (
-  <>
-    <span className="whitespace-nowrap">
-      {formatDuration(minutesPerDayOf(minutesPerWeek))} a day
-    </span>{" "}
-    <span className="whitespace-nowrap text-muted-foreground">
-      · {formatDuration(minutesPerWeek)} a week
-    </span>
-  </>
-);
+const dayAndWeek = (minutesPerWeek: number) =>
+  minutesPerWeek === 0 ? (
+    NO_FIXED_HOURS
+  ) : (
+    <>
+      <span className="whitespace-nowrap">
+        {formatDuration(minutesPerDayOf(minutesPerWeek))} a day
+      </span>{" "}
+      <span className="whitespace-nowrap text-muted-foreground">
+        · {formatDuration(minutesPerWeek)} a week
+      </span>
+    </>
+  );
 
 interface WorkingHoursProps {
   user: UserDetails;
@@ -212,6 +216,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
       >
         <UserForm
           formId={EDIT_FORM_ID}
+          userId={user.id}
           defaultValues={{
             position: user.position ?? "",
             role: user.role,

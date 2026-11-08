@@ -16,7 +16,8 @@ type DayFillInput = {
 /**
  * How a whole day is filled: a day off's stripes, a weekend's (amber once it
  * has time, all of it extra), or on a working day solid amber when its time is
- * past the person's figure.
+ * past the person's figure. A day expecting nothing, as at 0h, has no figure
+ * to go past.
  */
 export const dayFill = ({
   isAbsent,
@@ -26,9 +27,8 @@ export const dayFill = ({
 }: DayFillInput) => {
   if (isAbsent) return ABSENCE_PATTERN;
   if (isWeekend) return minutes > 0 ? WEEKEND_EXTRA_PATTERN : WEEKEND_PATTERN;
-  if (expectedMinutes !== undefined && minutes > expectedMinutes) {
-    return EXCESS_FILL;
-  }
+  const hasFigure = expectedMinutes !== undefined && expectedMinutes > 0;
+  if (hasFigure && minutes > expectedMinutes) return EXCESS_FILL;
   return undefined;
 };
 

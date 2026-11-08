@@ -3,18 +3,25 @@
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Info } from "lucide-react";
 
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
+import { usePlanningEntries } from "@/hooks/usePlanning";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import {
+  addDays,
+  formatDayMonthLabel,
   formatDayMonthYearLabel,
   formatDuration,
+  fromISODate,
+  toISODate,
   todayISODate,
 } from "@/lib/utils/date";
+import { countLabel } from "@/lib/utils/text";
 import { CapacityChange } from "@/types";
 import {
   MAX_WORK_DAY_HOURS,
@@ -25,6 +32,7 @@ import {
 } from "@/lib/forms/schemas/work-day.schema";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
+import { NO_FIXED_HOURS } from "@/lib/utils/user";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DatePicker } from "../shared/inputs";
@@ -48,6 +56,7 @@ export type UserFormData = z.infer<ReturnType<typeof userSchema>>;
 
 type UserFormProps = {
   formId: string;
+  userId: string;
   defaultValues: UserFormData;
   /** The hours change already waiting to start; a later date replaces it. */
   scheduledChange?: CapacityChange | null;
@@ -62,6 +71,7 @@ const roleOptions = [
 
 export const UserForm = ({
   formId,
+  userId,
   defaultValues,
   scheduledChange,
   onSubmit,
@@ -81,8 +91,31 @@ export const UserForm = ({
   const role = useWatch({ control, name: "role" });
   const validFrom = useWatch({ control, name: "capacityValidFrom" });
   const { timezone } = useWorkSettings();
-  const replacesScheduledChange =
-    scheduledChange && validFrom > todayISODate(timezone);
+  const today = todayISODate(timezone);
+  const replacesScheduledChange = scheduledChange && validFrom > today;
+  // Saving 0h deletes the person's plans from that day, up to hours already
+  // scheduled to come back.
+  const hasNoHours = minutesPerWeek === 0;
+  const hoursBackOn =
+    scheduledChange &&
+    !replacesScheduledChange &&
+    scheduledChange.minutesPerWeek > 0
+      ? scheduledChange.validFrom
+      : null;
+  const { items: removedPlans } = usePlanningEntries(
+    {
+      userId,
+      dateFrom: validFrom,
+      dateTo: hoursBackOn
+        ? toISODate(addDays(fromISODate(hoursBackOn), -1))
+        : undefined,
+    },
+    { enabled: hasNoHours && Boolean(validFrom) },
+  );
+  const removedMinutes = removedPlans.reduce(
+    (total, plan) => total + plan.plannedMinutes,
+    0,
+  );
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
   // The API refuses a change that would reach back into a locked month.
@@ -136,8 +169,10 @@ export const UserForm = ({
             step={WORK_DAY_STEP_HOURS}
             label="Working hours a day"
             description={
-              Number.isFinite(minutesPerWeek) &&
-              `${formatDuration(minutesPerWeek)} a week`
+              minutesPerWeek === 0
+                ? `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
+                : Number.isFinite(minutesPerWeek) &&
+                  `${formatDuration(minutesPerWeek)} a week`
             }
             error={errors.capacityHoursPerDay?.message}
           />
@@ -161,6 +196,15 @@ export const UserForm = ({
             )}
           />
         </div>
+
+        {hasNoHours && removedPlans.length > 0 && (
+          <p className="flex gap-2 text-sm text-muted-foreground">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              {`Deletes ${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
+            </span>
+          </p>
+        )}
       </Field>
     </form>
   );

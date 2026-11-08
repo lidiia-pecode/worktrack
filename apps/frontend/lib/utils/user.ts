@@ -56,6 +56,9 @@ export const lastWorkingDayLabel = (user: Pick<User, "lastWorkingDay">) =>
   user.lastWorkingDay ? formatDayMonthYearLabel(user.lastWorkingDay) : null;
 
 /** The closed spell a day falls in, as the API refuses it, if any. */
+/** Working hours of 0: nothing expected, no missing days, never planned. */
+export const NO_FIXED_HOURS = "No fixed hours";
+
 export const closedSpellOn = (spells: ClosedSpell[], date: string) =>
   spells.find(
     (spell) =>

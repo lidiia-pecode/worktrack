@@ -247,9 +247,11 @@ const DayFigure = ({
   const expectsTime = expectedMinutes !== undefined && expectedMinutes > 0;
 
   if (totalMinutes > 0) {
-    // A weekend expects nothing, so all of its time is over.
-    const overMinutes =
-      expectedMinutes === undefined ? 0 : totalMinutes - expectedMinutes;
+    // A weekend expects nothing, so all of its time is over; a working day
+    // expecting nothing, as at 0h, has no figure to go past.
+    const hasFigure =
+      expectedMinutes !== undefined && (expectsTime || isWeekend(day.date));
+    const overMinutes = hasFigure ? totalMinutes - expectedMinutes : 0;
 
     return (
       <span className="ml-auto flex shrink-0 items-center gap-1.5 text-sm tabular-nums">

@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useId } from "react";
-import Link from "next/link";
 import { CalendarCheck } from "lucide-react";
 
 import { PeopleReportRow, ReportRange } from "@/types";
@@ -16,7 +15,6 @@ import {
 import { againstExpected, reportScope } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
-import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -147,20 +145,13 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
       );
     }
 
+    // Without a row of their own, nothing was expected, logged or planned.
     if (!ownRow) {
       return (
         <EmptyState
-          title={`Nothing logged in ${formatMonthLabel(month)}`}
-          description="Time logged during the week appears here once the day is over."
+          title={`Nothing expected or logged in ${formatMonthLabel(month)}`}
+          description="No working hours, time or plans this month."
           icon={<CalendarCheck />}
-          action={
-            <Link
-              href="/timesheet"
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Log my time
-            </Link>
-          }
         />
       );
     }
