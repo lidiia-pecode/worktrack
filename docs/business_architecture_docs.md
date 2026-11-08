@@ -599,15 +599,19 @@ row, and hours equal to the person's own hours before it save nothing. Someone
 on the standard day who is given hours gets a row of their own, even at the
 standard day's value, and stops following its later changes. At most one
 change waits after today: scheduling another replaces it, and the person's
-panel shows it with Cancel.
+panel shows it with Cancel. **0h** means no fixed hours: nothing is expected,
+no day misses time, nobody can plan the person, and time they log reads as
+neutral rather than over. Saving 0h deletes their plans from that date until
+hours come back, and the person form says how many first.
 
 The **company's standard day** is dated the same way: `standardWorkHoursPerDay`
 is the day from the company's start, and each `CompanyStandardDay` row changes
 it from its date. Settings sets it with an "Applies from" date, today by
 default and never in a locked month, keeps at most one change waiting after
-today, and lets the owner cancel it. The setup guide's answer sets the day from
-the company's start, refused once a month from the start is locked. Earlier
-days keep the day they had, so changing it never rewrites a locked month.
+today, and lets the owner cancel it. The setup guide saves it the same way,
+from today where the company is: at sign-up that is the company's first day,
+and a guide opened again later changes nothing before today. Earlier days keep
+the day they had, so changing it never rewrites a locked month.
 
 **Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
 Friday day in the range that no absence covers, from the day the person's
@@ -634,7 +638,9 @@ Somebody with no plan at all has the same expectation as anybody else.
 hours and people reports and the hours export stop at
 yesterday in the company's time zone, for logged and planned time alike, and
 the reports say which day they counted to. Today's entries show in the reports
-and the export the next day.
+and the export the next day. Finished weeks match between Team time and
+Reports; in a running week Team time shows the week's target and the time
+logged so far, today included, while Reports count finished days only.
 
 An OWNER sets capacity from the user form. A change may not take effect on or
 before the last locked day — both dating one inside a LOCKED period and
@@ -673,9 +679,11 @@ unique and regenerated on rename. Changing the time zone, the week start or the
 standard working day asks first and says what each one moves; several changed
 at once are confirmed together in one dialog.
 
-A new company's owner answers three questions in the setup wizard — time zone,
-week start and working day — then follows a checklist whose steps end with
-somebody able to log time: a team, a category and activities, a project with
+A new company's owner answers four questions in the setup wizard — time zone,
+week start, working day and whether they log their own time (Yes keeps them on
+the standard day, or gives an owner at 0h its hours; No gives them 0h) — or
+skips them all, keeping the settings as they are — then follows a checklist
+whose steps end with somebody able to log time: a team, a category and activities, a project with
 activities, and at least one person on it, the owner included. Inviting a
 manager is optional, so an owner who manages everyone can finish. Setup is a
 one-time flow: once it is completed, or the owner skips it, it never starts
@@ -785,8 +793,8 @@ added to a team or a project, and their details and working hours change only
 once they are reactivated. Reactivate asks first and names the teams and
 active projects they come back to; someone whose last working day is today
 can be reactivated from tomorrow. The Deactivated tab and the person's panel
-show the last working day, and Reports' People card marks them "Deactivated"
-like every other screen.
+show the last working day, and Reports' People table says "deactivated" in
+the muted line under their name.
 
 ---
 
@@ -935,7 +943,10 @@ see, and how a new company gets started. §7 plans that work.
   day from a date, the week shown beside it, and the company's standard day the
   same way in Settings; a change waiting to start shows with Cancel. Both week views read one backend figure for what was expected,
   absences reduce it, and each shows logged time against it; no screen marks a
-  person behind (PR #46, by decision).
+  person behind (PR #46, by decision). At 0h a person's panel says "No fixed
+  hours", and the week views show their hours alone, never over. The owner is
+  listed in People to themselves only, and edits their own position and working
+  hours on their panel; nobody else manages the owner's account there.
 - **Planning** — owners and managers plan their people's week by project on
   `/planning`, or a whole period for one person from their cell: a month at a
   time or any range, several projects with hours per working day, with a
@@ -954,8 +965,12 @@ see, and how a new company gets started. §7 plans that work.
   rows are the people on it or with a plan on it, each showing only its plans
   and its hours ("on Acme redesign"). The toolbar totals the people shown
   ("Planned 120h / 160h" against their available hours; the planned hours
-  alone under a project). A day can be planned up to the person's own working
-  day, in 15-minute steps, and the day dialog's hours stop at what still fits.
+  alone under a project). A week lists the people with working hours in it or
+  plans on it: someone at 0h shows only with plans left from before, marked
+  "No fixed hours", those plans deletable but not changed; a leaver shows in
+  the weeks they still had days in, the days after their last closed. A day
+  can be planned up to the person's own working day, in 15-minute steps, and
+  the day dialog's hours stop at what still fits.
   An absence day opens straight into its form, which names the person, and
   an absence can be added from a day or a period. Everyone sees their own plan on the
   timesheet until they log time that day, as faint blocks in the project's
@@ -971,70 +986,69 @@ see, and how a new company gets started. §7 plans that work.
   month, a quarter, a year or a custom range of up to 366 days, stepped with
   arrows from the company's first month and kept in the address, and for one
   team at a time: an owner any team, a manager who leads several any of
-  theirs, the export included (PR #62).
-  It opens with the period's three figures in a band in the brand colours:
-  time logged against what the team was expected to work (capacity minus time
-  off), what was planned against it, and billable time against logged (by each
-  entry's flag, D2), each with its share and its change in points from the
-  period before of the same kind, the hours behind the change on hover. Shares,
-  not hours, are compared, since periods differ in working days and people.
-  Below, week by week (month by month past 92 days, from the company's first
-  month): each column a pale block of what was expected with what was logged,
-  its billable part striped, and planned standing inside it, named under it
-  and with its figures on hover. A longer period links to the months in it
-  still open. While a month is open, "Needs attention" says each kind of
-  problem once, in at most two cards, each name opening its panel: people with
-  working days with no time logged (in a month still running, only for weeks
-  that have ended, since many log their week on Friday), and projects at least
-  8h and over a tenth off their plan, or client projects with 8h or more and no
-  plan (in a month still running, only over plan, since late logging only
-  lowers logged time). None is about somebody logging less than expected; a
-  plan beyond someone's hours is Planning's to warn about. A locked month is
-  for reference and marks nothing. A deactivated person has no missing days,
-  and Needs attention never names an owner, though an owner's own days without
-  time show on the Review my time page and in their panel (PR #53); a deactivated person is listed only if they logged time in the
-  period, with expected hours up to their last working day, and an owner only if
-  they logged or planned time: owners often don't track their own, but a plan
-  made for them is part of the month's plan. Below, People lists everyone by team (somebody who
-  moved between teams in the period under each; one plain list when one team is chosen), each with one
-  bar of their logged time against their expected hours, its billable part
-  striped, and their days off; time past what was expected ends the bar in the
-  warning colour; a long list starts folded to its teams, each with its
-  people's total and the change of its share from the period before. The one mark is a dot beside somebody Needs
-  attention names, with a legend saying so. Figures are whole hours ("694h of
-  819h"); the export and a person's days keep exact time. It is a fact, not a score (D3): nothing is red or green, and
-  people are listed by name. Beside it, "Where the time went" switches between
-  projects and the kind of work: each project, most logged first with its
-  client, as one bar of its time against its plan, striped for its billable
-  part and saying how far over when past it (a full, lighter bar and "no plan"
-  without one), or logged time by activity category, the five largest each in
-  a colour of its own and named with its hours, the rest in an "Other" that
-  opens. A person's name opens a panel with what the row doesn't say (their
-  plan, billable time and kinds of time off), each day of the month (logged, a
-  day off, or a working day with no time logged, which Reports alone shows,
-  for checking before invoicing) and their projects against plan, with a link
-  to their week on Team time; a project's name opens its billable time and its
-  people against their plans. One line under the period says how far it is
-  counted, whether it is open for edits or locked, and the team when one is
-  chosen. Everything counts
-  finished days only (§4, capacity and expected hours). Managers see only the
-  team they lead, and choose a team only if they see more than one. A
-  person counts on the days the view holds them: someone who moved during the
-  period appears under each team they were in, with that team's part and
-  "Moved out" or "Joined" and the date beside the name, a team archived since
-  marked "Archived" (the owner's view, as nobody leads an archived team), and
-  the headline counts them once. A person's day grid closes the days the
-  view doesn't hold, as Team time does.
+  theirs, the export included (PR #62). A badge names what the figures cover:
+  the period once it has ended ("October 2026", "Q3 2026"), and while it runs
+  the days counted so far ("Nov 1 - Nov 7 so far"). The band's three figures
+  are time logged against what was expected (capacity minus time off), what was
+  planned against it, and billable time against logged (by each entry's flag,
+  D2), each with its share; nothing is compared with the period before, since
+  part of a running period against a whole one says nothing. Below, week by
+  week (month by month past 92 days, from the company's first month, a week
+  with no working day and nothing on it left out): each column a pale block of
+  what was expected with what was logged, its billable part striped, planned
+  standing beside it, time past what was expected ending the column in the
+  warning colour, with its figures on hover. A longer period links to the
+  months in it still open. While a month is open, "Needs attention" says each
+  kind of problem once, in at most two cards, each name opening its panel:
+  people with working days with no time logged (in a month still running,
+  only for weeks that have ended, since many log their week on Friday), owners
+  included, and projects at least 8h and over a tenth off their plan, or client
+  projects with 8h or more and no plan (in a month still running, only over
+  plan, since late logging only lowers logged time). None is about somebody
+  logging less than expected; a plan beyond someone's hours is Planning's to
+  warn about. A locked month is for reference and marks nothing.
+  Reports report working time, not absences: a person is listed when, on the
+  days the view holds them while employed, they had working hours (before time
+  off) or logged or planned time, whatever their role or status; time off
+  lowers what is expected and counts as days off only on days with working
+  hours. People is one table, each person once with their figures on the days
+  the view holds, so the rows add up to the band: Logged, Expected, the share of
+  expected with a bar (billable striped, time past expected in the warning
+  colour) and Billable as a share of logged, the team, days off, a move under a
+  team filter and "deactivated" in a muted line under the name. It opens on the
+  people furthest from what was expected, either way, those expected to work
+  nothing last; any column sorts from its header, and the first ten show until
+  the rest are asked for. Where the time went switches between projects and the
+  kind of work: projects as a table of Logged, Planned, the difference with a
+  bar ("+71.5h", "0h", "no plan") and Billable, most logged first, or logged
+  time by activity category, the five largest each in a colour of its own and
+  named with its hours, the rest in an "Other" that opens. Where a card is too
+  narrow for the columns, beside an open panel or on a phone, each row is the
+  name with its main figure, a short note and the bar. The one mark is a dot
+  beside what Needs attention names. Figures are in decimal hours, up to two
+  decimals ("1,412.5h"); the export keeps exact time. It is a fact, not a score
+  (D3): nothing is red or green. A person's name opens their whole period, under
+  a team filter too: logged against expected, the parts of the period by team
+  (a team, "No team", or "My time" for the viewer's own days outside the teams
+  shown) with their days and figures when there is more than one or a filter,
+  their plan, billable time, days off and days with no time logged, and their
+  projects against plan, with a link to Team time; a project's name opens its
+  billable time and its people against their plans. Everything counts finished
+  days only (§4, capacity and expected hours). Managers see only the team they
+  lead, and choose a team only if they see more than one; in another person's
+  panel they see only their team's part.
 - **Review my time** — every role has `/my-time`, their own month, one at a time,
   back to the company's first: logged against expected with their days off,
   planned, billable and its share, every working day of the month (a past day
   with no time opens that week on the timesheet while the month is open, today
   is ringed, and the days to come are dashed, showing any day off already on
   them), and their
-  projects against plan. The figures are the ones a manager sees in their
-  panel on Reports, through the
-  same routes pinned to the person (§5), and count finished days only, with the
-  same line under the month. Nothing about anybody else is shown.
+  projects against plan, in decimal hours. The figures are the ones a manager
+  sees in their panel on Reports, through the same routes pinned to the person
+  (§5), and count finished days only, with a line under the month saying how
+  far it is counted and whether it can still be edited. A month with nothing
+  expected, logged or planned for them says so. Nothing about anybody else is
+  shown.
 - **Hours export** — from Reports, owners and managers download the
   selected range as an Excel file for invoicing (D7): one row per person (with
   their email after the name), day, project, activity and billing (Billable or
@@ -1527,12 +1541,12 @@ and design it then.
 - **Q10** — Reports are one overview page for owners and managers, a month at a
   time at first (PR #49) and any period up to a year since PR #62, for the
   whole company or one team, built around the questions they bring: logged
-  against expected and planned, and billable, week by week or month by month, with the
-  change from the period before; what needs attention while a month can still
-  change; people by team; where the time went by project and kind of work,
-  with a person or a project opened in a side panel; the export holds every
-  number (PR #49). A change from a period with hours expected and none
-  logged says so in its tip ("Nothing logged in Q2 2026"; PR #66).
+  against expected and planned, and billable, week by week or month by month;
+  what needs attention while a month can still change; people and projects as
+  tables of their figures; the kind of work; a person or a project opened in a
+  side panel; the export holds every number (PR #49). The change from the
+  period before, added in PR #62, was dropped again, since part of a running
+  period against a whole one says nothing.
 - **Q11** — Employees get their own month on the Review my time page, from the hours and
   people reports opened to them and pinned to themselves; the export and the
   timeline stay closed (PR #51).
