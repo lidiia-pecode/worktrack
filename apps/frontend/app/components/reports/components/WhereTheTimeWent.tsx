@@ -4,17 +4,19 @@ import { useState } from "react";
 import { FolderKanban } from "lucide-react";
 
 import { HoursReportRow, ReportQuery } from "@/types";
-import { countLabel } from "@/lib/utils/text";
+import { cn } from "@/lib/utils/cn";
+import { formatReportHours } from "@/lib/utils/date";
+import { percentOf } from "@/lib/utils/report-overview";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { SegmentedControl } from "../../shared/SegmentedControl";
 
-import { AgainstPlanRow } from "./AgainstPlanRow";
 import { KindOfWork } from "./KindOfWork";
 import { ReportCardTitle } from "./ReportCardTitle";
+import { ReportBar } from "./ReportBar";
 import { AttentionLegend } from "./ReportRow";
+import { CompactRow, ReportColumn, ReportTable } from "./ReportTable";
 
 type WhereView = "projects" | "work";
 
@@ -23,8 +25,102 @@ const VIEWS: { value: WhereView; label: string }[] = [
   { value: "work", label: "Kind of work" },
 ];
 
-/** Projects shown at first; the rest open on request. */
-const PROJECTS_SHOWN = 8;
+const NO_FIGURE = "—";
+
+/** Logged time past the plan, or short of it; none without a plan. */
+const differenceOf = ({ totalMinutes, plannedMinutes }: HoursReportRow) =>
+  plannedMinutes ? totalMinutes - plannedMinutes : null;
+
+/** "+71.5h", "−49.5h", "0h" when logged matches the plan, "no plan". */
+const DifferenceLabel = ({ project }: { project: HoursReportRow }) => {
+  const difference = differenceOf(project);
+  return (
+    <span
+      className={cn(
+        "whitespace-nowrap",
+        difference !== null && difference > 0 && "text-warning-text",
+        difference === null && "text-muted-foreground",
+      )}
+    >
+      {difference === null
+        ? "no plan"
+        : `${difference > 0 ? "+" : difference < 0 ? "−" : ""}${formatReportHours(Math.abs(difference))}`}
+    </span>
+  );
+};
+
+const billableLabel = (project: HoursReportRow) =>
+  project.totalMinutes > 0
+    ? `${percentOf(project.billableMinutes, project.totalMinutes)}%`
+    : NO_FIGURE;
+
+const barOf = (project: HoursReportRow) => (
+  <ReportBar
+    value={project.totalMinutes}
+    reference={project.plannedMinutes ?? 0}
+    measuredAgainst="planned"
+    billable={project.billableMinutes}
+    className="flex-1"
+  />
+);
+
+/** Where the columns don't fit: "731.5h of 660h", then the difference and billable share. */
+const compactOf = (project: HoursReportRow): CompactRow => ({
+  figure: project.plannedMinutes
+    ? `${formatReportHours(project.totalMinutes)} of ${formatReportHours(project.plannedMinutes)}`
+    : formatReportHours(project.totalMinutes),
+  note: (
+    <>
+      <DifferenceLabel project={project} />
+      {project.totalMinutes > 0 && ` · ${billableLabel(project)} billable`}
+    </>
+  ),
+  bar: barOf(project),
+});
+
+const COLUMNS: ReportColumn<HoursReportRow>[] = [
+  {
+    header: "Logged",
+    numeric: true,
+    width: "w-24",
+    cell: (project) => formatReportHours(project.totalMinutes),
+    sortValue: (project) => project.totalMinutes,
+  },
+  {
+    header: "Planned",
+    numeric: true,
+    width: "w-24",
+    cell: (project) =>
+      project.plannedMinutes
+        ? formatReportHours(project.plannedMinutes)
+        : NO_FIGURE,
+    sortValue: (project) => project.plannedMinutes ?? 0,
+  },
+  {
+    header: "Against plan",
+    numeric: true,
+    width: "w-60",
+    cell: (project) => (
+      <span className="flex items-center gap-3">
+        {barOf(project)}
+        <span className="w-16">
+          <DifferenceLabel project={project} />
+        </span>
+      </span>
+    ),
+    sortValue: differenceOf,
+  },
+  {
+    header: "Billable",
+    numeric: true,
+    width: "w-24",
+    cell: billableLabel,
+    sortValue: (project) =>
+      project.totalMinutes > 0
+        ? project.billableMinutes / project.totalMinutes
+        : null,
+  },
+];
 
 const ProjectList = ({
   projects,
@@ -35,9 +131,6 @@ const ProjectList = ({
   marked: Map<string, string>;
   onOpenProject: (projectId: string) => void;
 }) => {
-  const [showsAll, setShowsAll] = useState(false);
-  const shown = showsAll ? projects : projects.slice(0, PROJECTS_SHOWN);
-
   if (projects.length === 0) {
     return (
       <p className="mt-4 text-sm text-muted-foreground">
@@ -49,31 +142,21 @@ const ProjectList = ({
   return (
     <>
       {marked.size > 0 && <AttentionLegend />}
-      <ul className="mt-3 @container">
-        {shown.map((project) => (
-          <AgainstPlanRow
-            key={project.id}
-            row={project}
-            detail={project.detail ?? "Internal work"}
-            flag={marked.get(project.id)}
-            onOpen={() => onOpenProject(project.id)}
-          />
-        ))}
-      </ul>
-      {projects.length > PROJECTS_SHOWN && (
-        <Button
-          type="button"
-          variant="link"
-          size="sm"
-          className="mt-1 h-auto px-0 max-sm:h-auto"
-          aria-expanded={showsAll}
-          onClick={() => setShowsAll(!showsAll)}
-        >
-          {showsAll
-            ? "Show fewer"
-            : `Show all ${countLabel(projects.length, "project", "projects")}`}
-        </Button>
-      )}
+      <div className="mt-3">
+        <ReportTable
+          label="Projects"
+          rows={projects}
+          getKey={(project) => project.id}
+          getName={(project) => project.name}
+          getDetail={(project) => project.detail ?? "Internal work"}
+          getFlag={(project) => marked.get(project.id)}
+          onOpen={(project) => onOpenProject(project.id)}
+          nameHeader="Project"
+          columns={COLUMNS}
+          noun={["project", "projects"]}
+          compact={compactOf}
+        />
+      </div>
     </>
   );
 };

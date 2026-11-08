@@ -420,14 +420,15 @@
 
 /* Billable time: the brand's lines on a lighter teal, so the billable part
    of a bar reads apart from the solid non-billable teal without colour too.
-   Denser than the day stripes, since it fills narrow bars. */
+   Leaning the other way from the day stripes, and finer, so a bar's billable
+   part never reads as a day off. */
 .bg-stripes-billable {
   background-image: repeating-linear-gradient(
-    -45deg,
+    45deg,
     var(--brand) 0px,
-    var(--brand) 3px,
-    var(--report-billable-ground) 3px,
-    var(--report-billable-ground) 6px
+    var(--brand) 2px,
+    var(--report-billable-ground) 2px,
+    var(--report-billable-ground) 4px
   );
 }
 

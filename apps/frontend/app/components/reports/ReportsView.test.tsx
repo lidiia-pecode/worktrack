@@ -278,8 +278,15 @@ const activityRows: HoursReportRow[] = [
 ];
 
 /** A person's name in the People card, which opens their panel. */
+/** A row of one of Reports' tables, by the name that opens its panel. */
+const tableRow = (table: string, name: string) =>
+  within(screen.getByRole("table", { name: table }))
+    .getByRole("button", { name })
+    .closest("tr")!;
+
+/** A person's name in the People table, which opens their panel. */
 const peopleRow = (name: string) =>
-  within(screen.getByRole("region", { name: "People" })).getByRole("button", {
+  within(screen.getByRole("table", { name: "People" })).getByRole("button", {
     name,
   });
 
@@ -350,52 +357,42 @@ describe("ReportsView", () => {
       projectsReport(projects),
     );
 
-    const people = screen.getByRole("region", { name: "People" });
-    const ethan = within(people).getByText("Ethan Brooks").closest("li")!;
-    expect(ethan).toHaveTextContent("Developer · Core Development");
-    expect(ethan).toHaveTextContent("5 days off");
-    expect(ethan).toHaveTextContent("79h of 72h");
-    expect(
-      within(ethan).getByRole("img", {
-        name: "Ethan Brooks: 79h of 72h expected",
-      }),
-    ).toBeInTheDocument();
+    const ethan = tableRow("People", "Ethan Brooks");
+    expect(ethan).toHaveTextContent("Core Development · 5 days off");
+    expect(ethan).toHaveTextContent("79h");
+    expect(ethan).toHaveTextContent("72h");
+    expect(ethan).toHaveTextContent("110%");
+    expect(ethan).toHaveTextContent("50%");
     // A day with no time, so marked as in Needs attention.
     expect(
       within(ethan).getByRole("img", { name: "1 day with no time logged" }),
     ).toBeInTheDocument();
 
-    const grace = within(people).getByText("Grace Morgan").closest("li")!;
-    expect(grace).toHaveTextContent("nothing expected");
+    // Nothing expected: no expected hours and no share of them.
+    const grace = tableRow("People", "Grace Morgan");
+    expect(grace).toHaveTextContent("10h——");
   });
 
   it("lists projects with their client, against the plan, marking those off it", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const card = screen.getByRole("region", { name: "Where the time went" });
-    const row = (name: string) => within(card).getByText(name).closest("li")!;
+    const row = (name: string) => tableRow("Projects", name);
 
     expect(row("WorkTrack")).toHaveTextContent("Internal work");
-    expect(row("WorkTrack")).toHaveTextContent("120h of 100h");
+    expect(row("WorkTrack")).toHaveTextContent("120h100h+20h");
     expect(
       within(row("WorkTrack")).getByRole("img", {
         name: "More than 10% off plan",
       }),
     ).toBeInTheDocument();
     expect(row("CRM System")).toHaveTextContent("no plan");
-    // Logged with nothing to measure it against: a full, lighter bar.
-    expect(
-      within(row("CRM System"))
-        .getByRole("img", { name: "CRM System: 10h logged, no plan" })
-        .querySelector(".bg-report-unplanned"),
-    ).toHaveStyle({ width: "100%" });
     expect(
       within(row("CRM System")).getByRole("img", {
         name: "Logged with no plan",
       }),
     ).toBeInTheDocument();
     // Mobile App is within 10% of its plan, so it has no mark.
-    expect(row("Mobile App")).toHaveTextContent("54h of 50h");
+    expect(row("Mobile App")).toHaveTextContent("54h50h+4h");
     expect(
       within(row("Mobile App")).queryByRole("img", {
         name: /off plan|no plan/,
@@ -643,7 +640,12 @@ describe("ReportsView", () => {
       showReports(peopleReport([ethan]), projectsReport(projects));
 
       await user.click(peopleRow("Ethan Brooks"));
-      await user.click(screen.getByRole("button", { name: "Mobile App" }));
+      await user.click(
+        within(screen.getByRole("table", { name: "Projects" })).getByRole(
+          "button",
+          { name: "Mobile App" },
+        ),
+      );
 
       expect(navigation.history).toEqual(["", "?project=Mobile+App"]);
       expect(

@@ -1,29 +1,26 @@
 "use client";
 
-import { useState } from "react";
 import { UsersRound } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
-import { formatDayMonthLabel } from "@/lib/utils/date";
+import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
+import { cn } from "@/lib/utils/cn";
 import { isDeactivatedUser } from "@/lib/utils/user";
-import { againstExpected, daysOffLabel } from "@/lib/utils/report-overview";
-import { countLabel } from "@/lib/utils/text";
+import { daysOffLabel, percentOf } from "@/lib/utils/report-overview";
 
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { ReportBar } from "./ReportBar";
 import { ReportCardTitle } from "./ReportCardTitle";
-import { AttentionLegend, ReportRow } from "./ReportRow";
+import { AttentionLegend } from "./ReportRow";
+import { CompactRow, ReportColumn, ReportTable } from "./ReportTable";
 
-/** People shown at first; the rest open on request. */
-const PEOPLE_SHOWN = 10;
+const NO_FIGURE = "—";
 
 /**
  * The line under a name, in muted text so the name never wraps for it: their
- * position, their teams, where they joined or left the team filtered to, and
- * whether they left the company. "Support Engineer · Legacy Support ·
- * deactivated".
+ * teams, where they joined or left the team filtered to, whether they left
+ * the company, and their days off. "Legacy Support · deactivated · 2 days off".
  */
 const detailOf = (person: PeopleReportRow, isTeamFiltered: boolean) => {
   const moves = isTeamFiltered
@@ -37,52 +34,119 @@ const detailOf = (person: PeopleReportRow, isTeamFiltered: boolean) => {
     : [person.teams.map((team) => team.name).join(", ")];
 
   return [
-    person.position,
     ...teams,
     ...moves,
     isDeactivatedUser(person) && "deactivated",
+    person.timeOffDays > 0 && daysOffLabel(person.timeOffDays),
   ]
     .filter(Boolean)
     .join(" · ");
 };
 
-const PersonRow = ({
-  person,
-  isTeamFiltered,
-  flag,
-  onOpen,
-}: {
-  person: PeopleReportRow;
-  /** Under a team filter the row says where they joined or left the team. */
-  isTeamFiltered: boolean;
-  /** Why Needs attention names them, when it does. */
-  flag?: string;
-  onOpen: (userId: string) => void;
-}) => {
-  const figure = againstExpected(person.loggedMinutes, person.expectedMinutes);
+/** How far logged time is from what was expected, either way. */
+const gapOf = (person: PeopleReportRow) =>
+  Math.abs(person.loggedMinutes - person.expectedMinutes);
 
-  return (
-    <ReportRow
-      name={person.name}
-      onOpen={() => onOpen(person.userId)}
-      detail={detailOf(person, isTeamFiltered)}
-      note={
-        person.timeOffDays > 0 ? daysOffLabel(person.timeOffDays) : undefined
-      }
-      flag={flag}
-      bar={
-        <ReportBar
-          value={person.loggedMinutes}
-          reference={person.expectedMinutes}
-          billable={person.billableMinutes}
-          label={`${person.name}: ${figure} expected`}
-        />
-      }
-      figure={figure}
-      subFigure={person.expectedMinutes > 0 ? undefined : "nothing expected"}
-    />
+/**
+ * The table opens on the people furthest from what was expected, under or
+ * over, so they stand out; those expected to work nothing come last.
+ */
+const byGap = (people: PeopleReportRow[]) =>
+  [...people].sort(
+    (a, b) =>
+      Number(a.expectedMinutes === 0) - Number(b.expectedMinutes === 0) ||
+      gapOf(b) - gapOf(a),
   );
+
+const shareOfExpected = (person: PeopleReportRow) =>
+  person.expectedMinutes > 0
+    ? person.loggedMinutes / person.expectedMinutes
+    : null;
+
+const shareLabel = (person: PeopleReportRow) => {
+  const share = shareOfExpected(person);
+  return share === null ? NO_FIGURE : `${Math.round(share * 100)}%`;
 };
+
+const isOverExpected = (person: PeopleReportRow) =>
+  (shareOfExpected(person) ?? 0) > 1;
+
+const billableLabel = (person: PeopleReportRow) =>
+  person.loggedMinutes > 0
+    ? `${percentOf(person.billableMinutes, person.loggedMinutes)}%`
+    : NO_FIGURE;
+
+const barOf = (person: PeopleReportRow) => (
+  <ReportBar
+    value={person.loggedMinutes}
+    reference={person.expectedMinutes}
+    billable={person.billableMinutes}
+    className="flex-1"
+  />
+);
+
+/** Where the columns don't fit: "56h of 176h", then the shares. */
+const compactOf = (person: PeopleReportRow): CompactRow => ({
+  figure:
+    person.expectedMinutes > 0
+      ? `${formatReportHours(person.loggedMinutes)} of ${formatReportHours(person.expectedMinutes)}`
+      : formatReportHours(person.loggedMinutes),
+  note: (
+    <>
+      <span className={cn(isOverExpected(person) && "text-warning-text")}>
+        {person.expectedMinutes > 0 ? shareLabel(person) : "nothing expected"}
+      </span>
+      {person.loggedMinutes > 0 && ` · ${billableLabel(person)} billable`}
+    </>
+  ),
+  bar: barOf(person),
+});
+
+const COLUMNS: ReportColumn<PeopleReportRow>[] = [
+  {
+    header: "Logged",
+    numeric: true,
+    width: "w-24",
+    cell: (person) => formatReportHours(person.loggedMinutes),
+    sortValue: (person) => person.loggedMinutes,
+  },
+  {
+    header: "Expected",
+    numeric: true,
+    width: "w-24",
+    cell: (person) =>
+      person.expectedMinutes > 0
+        ? formatReportHours(person.expectedMinutes)
+        : NO_FIGURE,
+    sortValue: (person) => person.expectedMinutes,
+  },
+  {
+    header: "Of expected",
+    numeric: true,
+    width: "w-56",
+    cell: (person) => (
+      <span className="flex items-center gap-3">
+        {barOf(person)}
+        <span
+          className={cn("w-12", isOverExpected(person) && "text-warning-text")}
+        >
+          {shareLabel(person)}
+        </span>
+      </span>
+    ),
+    sortValue: shareOfExpected,
+  },
+  {
+    header: "Billable",
+    numeric: true,
+    width: "w-24",
+    cell: billableLabel,
+    sortValue: (person) =>
+      person.loggedMinutes > 0
+        ? person.billableMinutes / person.loggedMinutes
+        : null,
+  },
+];
 
 type PeopleCardProps = {
   people: PeopleReportRow[];
@@ -94,49 +158,35 @@ type PeopleCardProps = {
 };
 
 /**
- * Everyone in the period once, each with one bar of what they logged against
- * what they were expected to work, so the rows add up to the period.
+ * Everyone in the period once: what they logged, what they were expected to
+ * work, how much of it they logged and how much of that is billable. The rows
+ * add up to the period.
  */
 export const PeopleCard = ({
   people,
   marked,
   isTeamFiltered = false,
   onOpenPerson,
-}: PeopleCardProps) => {
-  const [showsAll, setShowsAll] = useState(false);
-  const shown = showsAll ? people : people.slice(0, PEOPLE_SHOWN);
+}: PeopleCardProps) => (
+  <Card as="section" aria-labelledby="report-people" className="p-6">
+    <ReportCardTitle id="report-people" title="People" icon={UsersRound}>
+      {marked.size > 0 && <AttentionLegend />}
+    </ReportCardTitle>
 
-  return (
-    <Card as="section" aria-labelledby="report-people" className="p-6">
-      <ReportCardTitle id="report-people" title="People" icon={UsersRound}>
-        {marked.size > 0 && <AttentionLegend />}
-      </ReportCardTitle>
-
-      <ul className="mt-3 @container">
-        {shown.map((person) => (
-          <PersonRow
-            key={person.userId}
-            person={person}
-            isTeamFiltered={isTeamFiltered}
-            flag={marked.get(person.userId)}
-            onOpen={onOpenPerson}
-          />
-        ))}
-      </ul>
-      {people.length > PEOPLE_SHOWN && (
-        <Button
-          type="button"
-          variant="link"
-          size="sm"
-          className="mt-1 h-auto px-0 max-sm:h-auto"
-          aria-expanded={showsAll}
-          onClick={() => setShowsAll(!showsAll)}
-        >
-          {showsAll
-            ? "Show fewer"
-            : `Show all ${countLabel(people.length, "person", "people")}`}
-        </Button>
-      )}
-    </Card>
-  );
-};
+    <div className="mt-3">
+      <ReportTable
+        label="People"
+        rows={byGap(people)}
+        getKey={(person) => person.userId}
+        getName={(person) => person.name}
+        getDetail={(person) => detailOf(person, isTeamFiltered)}
+        getFlag={(person) => marked.get(person.userId)}
+        onOpen={(person) => onOpenPerson(person.userId)}
+        nameHeader="Person"
+        columns={COLUMNS}
+        noun={["person", "people"]}
+        compact={compactOf}
+      />
+    </div>
+  </Card>
+);
