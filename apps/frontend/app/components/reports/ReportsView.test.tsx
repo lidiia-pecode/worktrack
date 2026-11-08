@@ -127,6 +127,7 @@ const person = (
   role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: (loggedHours / 2) * HOUR,
   nonBillableMinutes: (loggedHours / 2) * HOUR,
@@ -162,6 +163,7 @@ const inTeams = (
     isArchived: false,
     figures: row,
     moves: [],
+    spans: [],
   })),
 });
 

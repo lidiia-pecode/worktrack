@@ -25,6 +25,7 @@ import {
   DateRange,
   DaySpan,
   TeamMove,
+  daysOutside,
   isWithinSpan,
   movesIn,
 } from 'src/teams/days-in-view.util';
@@ -32,6 +33,7 @@ import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
 import { assertDateRange } from '../date-range.util';
+import { ReportRangeQuery } from '../dtos/report-range-query.dto';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
 import { firstDayOfMonth, lastDayOfMonth } from '../reporting-months.util';
 import {
@@ -50,22 +52,28 @@ export interface PeopleReportFigures {
   plannedMinutes: number;
   /** Capacity minus time off, over the same finished days. */
   expectedMinutes: number;
-  /** Working days an absence covered among those days. */
+  /** Working days with working hours an absence covered among those days. */
   timeOffDays: number;
+}
+
+/** Some of a person's days in the period, with their figures on those days. */
+export interface ReportPart {
+  figures: PeopleReportFigures;
+  /** The days of the period it covers, each up to the day before `until`. */
+  spans: DaySpan[];
+  /** Where its days start or stop inside the period. */
+  moves: TeamMove[];
 }
 
 /**
  * A team the person was in during the period, with their figures on the days
  * they were in it, so a team's rows add up to what the team did.
  */
-export interface ReportTeam {
+export interface ReportTeam extends ReportPart {
   id: string;
   name: string;
   /** Archived since; only the owner sees one, as nobody leads it. */
   isArchived: boolean;
-  figures: PeopleReportFigures;
-  /** Where they joined or left the team inside the period. */
-  moves: TeamMove[];
 }
 
 export interface PeopleReportRow extends PeopleReportFigures {
@@ -73,13 +81,19 @@ export interface PeopleReportRow extends PeopleReportFigures {
   name: string;
   position: string | null;
   role: UserRole;
-  /** A deactivated person is listed while their time counts in the range. */
+  /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
   /**
    * The teams they were in during the period, by name, archived ones
    * included; for a manager, only the teams they lead.
    */
   teams: ReportTeam[];
+  /**
+   * The days the view holds that none of `teams` covers: days in no team, or
+   * for a manager's own row days outside the team they lead. Null under a
+   * team filter, and when no such day has anything on it.
+   */
+  outsideTeams: ReportPart | null;
   /** Finished days they were expected to work and logged nothing, in date order. */
   daysWithoutTime: string[];
 }
@@ -135,7 +149,12 @@ interface ReportBasis {
   loggedDates: Map<string, Set<string>>;
   /** Each person's minutes per day, over the days counted. */
   days: DayMinutes[];
-  teams: Map<string, ReportTeam[]>;
+  parts: Map<string, PersonParts>;
+}
+
+interface PersonParts {
+  teams: ReportTeam[];
+  outsideTeams: ReportPart | null;
 }
 
 /** A team and the days a person was in it. */
@@ -143,10 +162,6 @@ interface TeamSpans {
   team: Pick<ReportTeam, 'id' | 'name' | 'isArchived'>;
   spans: DaySpan[];
 }
-
-/** An owner's days count too; Needs attention leaves owners out by `role`. */
-const canStillLog = (person: VisibleUser) =>
-  person.status === UserStatus.ACTIVE;
 
 const NO_FIGURES: PeopleReportFigures = {
   loggedMinutes: 0,
@@ -168,6 +183,9 @@ const addFigures = (
   return sum;
 };
 
+const hasFigures = (figures: PeopleReportFigures) =>
+  Object.values(figures).some((value) => value > 0);
+
 const coverageOf = ({
   isProvisional,
   countedUntil,
@@ -176,24 +194,37 @@ const coverageOf = ({
 const bucketSizeFor = (dateFrom: string, dateTo: string): TimelineBucketSize =>
   dateTo <= addDays(dateFrom, WEEKLY_TIMELINE_MAX_DAYS - 1) ? 'week' : 'month';
 
+/** A span cut to the range, so it reads as the days of the period it covers. */
+const withinRange = ({ from, until }: DaySpan, range: DateRange): DaySpan => {
+  const dayAfterRange = addDays(range.to, 1);
+  return {
+    from: from > range.from ? from : range.from,
+    until: until === null || until > dayAfterRange ? dayAfterRange : until,
+  };
+};
+
 /**
- * Each person's teams with their figures on the days they were in each team,
- * and on the days the view holds them. A person in one team for the whole
- * period gets their whole figures under it.
+ * Each person's parts: their teams with their figures on the days they were
+ * in each, and the days the view holds that no team covers, so the parts add
+ * up to the person's row. Under a team filter only that team's part.
  */
-const teamPartsFrom = ({
+const partsFrom = ({
   range,
+  people,
   teamSpans,
   outside,
   availability,
   days,
+  isTeamFiltered,
 }: {
   range: DateRange;
+  people: VisibleUser[];
   teamSpans: Map<string, TeamSpans[]>;
   outside: Map<string, DaySpan[]>;
   availability: Map<string, Availability>;
   days: DayMinutes[];
-}): Map<string, ReportTeam[]> => {
+  isTeamFiltered: boolean;
+}): Map<string, PersonParts> => {
   const daysByUser = new Map<string, DayMinutes[]>();
   for (const day of days) {
     const userDays = daysByUser.get(day.userId) ?? [];
@@ -202,41 +233,66 @@ const teamPartsFrom = ({
   }
 
   return new Map(
-    [...teamSpans].map(([userId, teams]) => {
+    people.map(({ id: userId }) => {
       const userOutside = outside.get(userId) ?? [];
       const personAvailability = availability.get(userId);
 
+      const partOn = (partSpans: DaySpan[]): ReportPart => {
+        const spans = partSpans.map((span) => withinRange(span, range));
+        const counts = (date: string) =>
+          spans.some((span) => isWithinSpan(span, date)) &&
+          !userOutside.some((span) => isWithinSpan(span, date));
+        const partDays = (daysByUser.get(userId) ?? []).filter((day) =>
+          counts(day.date),
+        );
+        const sum = (pick: (day: DayMinutes) => number) =>
+          partDays.reduce((total, day) => total + pick(day), 0);
+        const loggedMinutes = sum((day) => day.loggedMinutes);
+        const billableMinutes = sum((day) => day.billableMinutes);
+
+        return {
+          figures: {
+            loggedMinutes,
+            billableMinutes,
+            nonBillableMinutes: loggedMinutes - billableMinutes,
+            plannedMinutes: sum((day) => day.plannedMinutes),
+            expectedMinutes: (personAvailability?.byDate ?? [])
+              .filter((day) => counts(day.date))
+              .reduce((total, day) => total + day.minutes, 0),
+            timeOffDays: (personAvailability?.absenceDates ?? []).filter(counts)
+              .length,
+          },
+          spans,
+          moves: movesIn(range, partSpans),
+        };
+      };
+
+      const userTeams = teamSpans.get(userId) ?? [];
+      const teams = userTeams.map(({ team, spans }): ReportTeam => ({
+        ...team,
+        ...partOn(spans),
+      }));
+
+      // A team filter shows that team's days only, so nothing is outside it.
+      const outsideSpans = isTeamFiltered
+        ? []
+        : daysOutside(range, [
+            ...userTeams.flatMap(({ spans }) => spans),
+            ...userOutside,
+          ]);
+
+      // Days with nothing on them, such as before someone joined, say nothing.
+      const outsideTeams = outsideSpans.length ? partOn(outsideSpans) : null;
+
       return [
         userId,
-        teams.map(({ team, spans }): ReportTeam => {
-          const counts = (date: string) =>
-            spans.some((span) => isWithinSpan(span, date)) &&
-            !userOutside.some((span) => isWithinSpan(span, date));
-          const teamDays = (daysByUser.get(userId) ?? []).filter((day) =>
-            counts(day.date),
-          );
-          const sum = (pick: (day: DayMinutes) => number) =>
-            teamDays.reduce((total, day) => total + pick(day), 0);
-          const loggedMinutes = sum((day) => day.loggedMinutes);
-          const billableMinutes = sum((day) => day.billableMinutes);
-
-          return {
-            ...team,
-            figures: {
-              loggedMinutes,
-              billableMinutes,
-              nonBillableMinutes: loggedMinutes - billableMinutes,
-              plannedMinutes: sum((day) => day.plannedMinutes),
-              expectedMinutes: (personAvailability?.byDate ?? [])
-                .filter((day) => counts(day.date))
-                .reduce((total, day) => total + day.minutes, 0),
-              timeOffDays: (personAvailability?.absenceDates ?? []).filter(
-                counts,
-              ).length,
-            },
-            moves: movesIn(range, spans),
-          };
-        }),
+        {
+          teams,
+          outsideTeams:
+            outsideTeams && hasFigures(outsideTeams.figures)
+              ? outsideTeams
+              : null,
+        },
       ];
     }),
   );
@@ -248,7 +304,7 @@ const peopleReportFrom = ({
   people,
   availability,
   loggedDates,
-  teams,
+  parts,
 }: ReportBasis): PeopleReport => {
   const hoursByUser = new Map(hours.rows.map((row) => [row.id, row]));
   const rows = people.map((person): PeopleReportRow => {
@@ -262,18 +318,17 @@ const peopleReportFrom = ({
       position: person.position ?? null,
       role: person.role,
       status: person.status,
-      teams: teams.get(person.id) ?? [],
+      teams: parts.get(person.id)?.teams ?? [],
+      outsideTeams: parts.get(person.id)?.outsideTeams ?? null,
       loggedMinutes: personHours?.totalMinutes ?? 0,
       billableMinutes: personHours?.billableMinutes ?? 0,
       nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
       plannedMinutes: personHours?.plannedMinutes ?? 0,
       expectedMinutes: personAvailability?.availableMinutes ?? 0,
       timeOffDays: personAvailability?.absenceDates.length ?? 0,
-      daysWithoutTime: canStillLog(person)
-        ? (personAvailability?.expectedDates ?? []).filter(
-            (date) => !personLoggedDates?.has(date),
-          )
-        : [],
+      daysWithoutTime: (personAvailability?.expectedDates ?? []).filter(
+        (date) => !personLoggedDates?.has(date),
+      ),
     };
   });
 
@@ -320,7 +375,7 @@ export class PeopleReportService {
    */
   async getOverview(
     user: AuthUser,
-    query: PeopleReportQuery,
+    query: ReportRangeQuery,
   ): Promise<ReportOverview> {
     const basis = await this.basisFor(user, query);
 
@@ -332,30 +387,32 @@ export class PeopleReportService {
 
   private async basisFor(
     user: AuthUser,
-    { dateFrom, dateTo, teamId }: PeopleReportQuery,
+    query: PeopleReportQuery,
   ): Promise<ReportBasis> {
+    const { dateFrom, dateTo, teamId, userId } = query;
     assertDateRange(dateFrom, dateTo);
 
     const hours = await this.reportingService.getHoursReport(user, {
       dateFrom,
       dateTo,
       teamId,
+      userId,
       groupBy: HoursReportGroupBy.PERSON,
     });
-    const people = await this.peopleFor(user, hours, dateFrom, dateTo, teamId);
+    const candidates = await this.peopleFor(user, hours, query);
     // Expected stops where the Hours report stopped counting, so both use the
     // same "today" even across the company's midnight.
     const countedTo = hours.countedUntil ?? dateTo;
-    const counted = { from: dateFrom, to: countedTo };
     const hasCountedDays = countedTo >= dateFrom;
-    const peopleIds = people.map((person) => person.id);
+    const range = { from: dateFrom, to: dateTo };
+    const candidateIds = candidates.map((person) => person.id);
 
     // A person counts only on the days the view holds them: a manager's
     // teams', or the filtered team's.
     const inView = await this.teamVisibility.daysInView(
       user,
-      peopleIds,
-      counted,
+      candidateIds,
+      range,
       teamId,
     );
     const outside = new Map(
@@ -366,24 +423,36 @@ export class PeopleReportService {
       hasCountedDays
         ? this.expectedHours.availabilityToDateFor(
             user.companyId,
-            peopleIds,
+            candidateIds,
             dateFrom,
             countedTo,
             outside,
           )
         : new Map<string, Availability>(),
-      this.loggedDatesFor(user.companyId, peopleIds, dateFrom, countedTo),
+      this.loggedDatesFor(user.companyId, candidateIds, dateFrom, countedTo),
       hasCountedDays
         ? this.reportingService.minutesPerPersonDay(
             user,
-            peopleIds,
+            candidateIds,
             dateFrom,
             countedTo,
             teamId,
           )
         : [],
-      this.teamSpansFor(user, peopleIds, dateFrom, dateTo, teamId),
+      this.teamSpansFor(user, candidateIds, dateFrom, dateTo, teamId),
     ]);
+
+    // Whoever had expected hours, time off, logged or planned time on the
+    // days the view holds them counts, whatever their role or status.
+    const withTime = new Set(hours.rows.map((row) => row.id));
+    const people = candidates.filter((person) => {
+      const personAvailability = availability.get(person.id);
+      return (
+        withTime.has(person.id) ||
+        (personAvailability?.availableMinutes ?? 0) > 0 ||
+        (personAvailability?.absenceDates.length ?? 0) > 0
+      );
+    });
 
     return {
       dateFrom,
@@ -394,12 +463,14 @@ export class PeopleReportService {
       availability,
       loggedDates,
       days,
-      teams: teamPartsFrom({
-        range: { from: dateFrom, to: dateTo },
+      parts: partsFrom({
+        range,
+        people,
         teamSpans,
         outside,
         availability,
         days,
+        isTeamFiltered: Boolean(teamId),
       }),
     };
   }
@@ -467,41 +538,25 @@ export class PeopleReportService {
   }
 
   /**
-   * The same people the team grid lists, plus deactivated people with logged
-   * time in the range; a plan alone doesn't list them. An owner is listed only with logged or planned time:
-   * owners often don't track their own, but a plan made for them is part of
-   * the month's plan (Decision 27, refined by Decision 44).
+   * Everyone the view may hold in the range: the people the team grid lists,
+   * including leavers still employed on its first day, and anyone with time
+   * or a plan in it. `basisFor` keeps those with something on their days.
    */
-  private async peopleFor(
+  private peopleFor(
     user: AuthUser,
     hours: HoursReport,
-    dateFrom: string,
-    dateTo: string,
-    teamId: string | undefined,
-  ) {
-    const loggedIds = new Set(
-      hours.rows.filter((row) => row.totalMinutes > 0).map((row) => row.id),
-    );
-    const plannedIds = new Set(
-      hours.rows
-        .filter((row) => (row.plannedMinutes ?? 0) > 0)
-        .map((row) => row.id),
-    );
-    const people = await this.teamVisibility.findVisibleUsers(
+    { dateFrom, dateTo, teamId, userId }: PeopleReportQuery,
+  ): Promise<VisibleUser[]> {
+    return this.teamVisibility.findVisibleUsers(
       user,
       {
-        includeUserIds: [...loggedIds],
+        includeUserIds: hours.rows.map((row) => row.id),
+        stillEmployedOn: dateFrom,
         teamId,
+        userId,
         during: { from: dateFrom, to: dateTo },
       },
       { includeSelf: true },
-    );
-
-    return people.filter(
-      (person) =>
-        person.role !== UserRole.OWNER ||
-        loggedIds.has(person.id) ||
-        plannedIds.has(person.id),
     );
   }
 

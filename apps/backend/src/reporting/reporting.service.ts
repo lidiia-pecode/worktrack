@@ -37,7 +37,6 @@ import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import { HoursBilling } from './enums/hours-billing.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { UserStatus } from 'src/users/enums/user-role.enum';
 
 /** What every report returns besides its rows and totals. */
 export interface ReportCoverage {
@@ -660,9 +659,9 @@ export class ReportingService {
 
   /**
    * Planned minutes over the same days and people as the Hours report, summed
-   * by its grouping, which uses only projects and people. A deactivated
-   * person's plan counts only when they logged time in the range, as in the
-   * People report.
+   * by its grouping, which uses only projects and people. A leaver's plans
+   * after their last working day are deleted, so every plan here is on a day
+   * they worked.
    */
   private plannedRows(
     user: AuthUser,
@@ -683,15 +682,7 @@ export class ReportingService {
       .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom: query.dateFrom,
         countedTo,
-      })
-      .andWhere(
-        `(u.status = :activeStatus OR EXISTS (
-          SELECT 1 FROM time_logs l
-          WHERE l.user_id = u.id
-            AND l.date BETWEEN :dateFrom AND :countedTo
-        ))`,
-        { activeStatus: UserStatus.ACTIVE },
-      );
+      });
 
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
@@ -831,6 +822,12 @@ export class ReportingService {
       select: ['id', 'name'],
     });
     return team?.name ?? null;
+  }
+
+  /** The last day a report of a range ending on `dateTo` counts. */
+  async lastCountedDayOf(companyId: string, dateTo: string): Promise<string> {
+    const today = await findCompanyToday(this.companyRepo.manager, companyId);
+    return lastCountedDay(dateTo, today);
   }
 
   /**

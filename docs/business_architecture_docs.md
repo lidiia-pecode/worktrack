@@ -1343,21 +1343,28 @@ ready, or not, for the final stage.
 
 **Order.** Area 1 came first and Area 2 straight after, because every later
 area reuses what they settle; then Area 5, Area 6 and Area 7, with Areas 3
-and 4 in steps between them (the Delivered table has the sequence). What is
-left of Areas 3 and 4, Team time and Planning on a phone among it, comes
-next, and Area 8 closes the stage. A
-defect that distorts figures can be pulled into whichever work comes first.
+and 4 in steps between them (the Delivered table has the sequence). Report
+figures that add up come next, then access to teams (Configurable
+permissions, below); what is left of Areas 3 and 4, Team time and Planning on
+a phone among it, follows, and Area 8 closes the stage. A defect that distorts
+figures can be pulled into whichever work comes first.
 
 ---
 
-**Later — Configurable permissions — an approximate vision, not a specification**
+**Next — Configurable permissions — an approximate vision, not a specification**
 
-Not scheduled. Revisited once the planned work and the fixes are done and the
-app has been polished (agreed 29 October 2026); its own design settles the
-details then.
+Scheduled on 7 November 2026, in two parts split by kind of access. **Access
+to teams** comes right after the work on report figures that add up: someone
+given it acts for a team (its time, absences, plans and reports), for
+example a deputy while the manager is away, which PR #70's one manager per
+team makes necessary. **Access to the owner's administrative tasks** comes
+later, after the other quality work. Each part's design settles the details
+when it starts.
 
 - The owner may grant additional permissions to managers and employees, and a
-  manager may grant selected ones to employees in the teams they lead.
+  manager may grant selected ones to employees in the teams they lead, with
+  less power than the owner; which ones, and on what rules, is settled with
+  access to teams.
 - A permission extends what someone may **do**, never **whose data** they may
   reach: reach stays defined by teams (D9, D10). A grant that would widen reach
   over people, such as managing teams, builds on the membership-dated reach of
@@ -1556,5 +1563,5 @@ and design it then.
 - **Q3** — Company-wide structure is the owner's: teams (Area 1), and since
   PR #57 the activity and category catalogue and archiving or
   restoring a project. Managers create, edit and staff projects, which stay
-  company-wide because a project spans teams. Configurable grants are a later
-  piece of work (§7).
+  company-wide because a project spans teams. Configurable grants are
+  scheduled in §7, access to the owner's tasks being their second part.

@@ -31,7 +31,11 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { ReportingPeriod } from '../entities/reporting-period.entity';
 import { ReportingService } from '../reporting.service';
 import { HoursReportGroupBy } from '../enums/hours-report-group-by.enum';
-import { PeopleReportService, TimelineBucket } from './people-report.service';
+import {
+  PeopleReportRow,
+  PeopleReportService,
+  TimelineBucket,
+} from './people-report.service';
 
 /**
  * Runs against the development database, so it needs the Docker stack.
@@ -344,15 +348,18 @@ describe('PeopleReportService', () => {
     });
   });
 
-  it('lists a deactivated person only with logged time, expected up to their last working day, and never with missing days', async () => {
+  it('lists a leaver while they had days in the range, with their days without time and a plan alone', async () => {
     const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
     const plannedOnly = await createUser('Plannedonly', UserRole.EMPLOYEE);
-    await dataSource
-      .getRepository(User)
-      .update([leaver.id, plannedOnly.id], { status: UserStatus.DEACTIVATED });
+    const goneBefore = await createUser('Gonebefore', UserRole.EMPLOYEE);
     // Last working day Monday 9 March: six working days up to it.
-    await dataSource.getRepository(User).update(leaver.id, {
+    await dataSource.getRepository(User).update([leaver.id, plannedOnly.id], {
+      status: UserStatus.DEACTIVATED,
       lastWorkingDay: '2026-03-09',
+    });
+    await dataSource.getRepository(User).update(goneBefore.id, {
+      status: UserStatus.DEACTIVATED,
+      lastWorkingDay: '2026-02-27',
     });
     await dataSource.getRepository(TimeLog).save({
       companyId,
@@ -374,18 +381,84 @@ describe('PeopleReportService', () => {
       people: { rows, totals },
       timeline: { buckets },
     } = await service.getOverview(owner, MARCH);
-    await dataSource.getRepository(User).delete([leaver.id, plannedOnly.id]);
+    const projects = await reporting.getHoursReport(owner, {
+      ...MARCH,
+      groupBy: HoursReportGroupBy.PROJECT,
+    });
+    await dataSource
+      .getRepository(User)
+      .delete([leaver.id, plannedOnly.id, goneBefore.id]);
 
     expect(rows.find((row) => row.userId === leaver.id)).toMatchObject({
       status: UserStatus.DEACTIVATED,
       loggedMinutes: 120,
       expectedMinutes: 6 * FULL_DAY,
-      daysWithoutTime: [],
+      daysWithoutTime: [
+        '2026-03-02',
+        '2026-03-04',
+        '2026-03-05',
+        '2026-03-06',
+        '2026-03-09',
+      ],
     });
-    expect(rows.some((row) => row.userId === plannedOnly.id)).toBe(false);
+    const plannedRow = rows.find((row) => row.userId === plannedOnly.id);
+    expect(plannedRow).toMatchObject({
+      loggedMinutes: 0,
+      plannedMinutes: 240,
+      expectedMinutes: 6 * FULL_DAY,
+    });
+    expect(plannedRow?.outsideTeams?.figures.plannedMinutes).toBe(240);
+    expect(rows.some((row) => row.userId === goneBefore.id)).toBe(false);
+    expect(totals.plannedMinutes).toBe(projects.totals.plannedMinutes);
     expect(
       buckets.reduce((sum, bucket) => sum + bucket.plannedMinutes, 0),
     ).toBe(totals.plannedMinutes);
+  });
+
+  it('leaves out someone without working hours, time or plans, whose absences take nothing away', async () => {
+    const noHours = await createUser('Nohours', UserRole.EMPLOYEE);
+    await dataSource.getRepository(UserCapacity).save({
+      companyId,
+      userId: noHours.id,
+      validFrom: '2020-01-01',
+      minutesPerWeek: 0,
+    });
+    await dataSource.getRepository(Absence).save([
+      {
+        companyId,
+        userId: noHours.id,
+        type: AbsenceType.PUBLIC_HOLIDAY,
+        startDate: '2026-03-09',
+        endDate: '2026-03-09',
+      },
+      {
+        companyId,
+        userId: noHours.id,
+        type: AbsenceType.VACATION,
+        startDate: '2026-03-16',
+        endDate: '2026-03-31',
+      },
+    ]);
+
+    const listed = await rowFor(owner, noHours.id);
+    await dataSource.getRepository(TimeLog).save({
+      companyId,
+      userId: noHours.id,
+      projectActivityId,
+      date: '2026-03-05',
+      minutes: 60,
+      isBillable: false,
+    });
+    const withTime = await rowFor(owner, noHours.id);
+    await dataSource.getRepository(User).delete(noHours.id);
+
+    expect(listed).toBeUndefined();
+    expect(withTime).toMatchObject({
+      loggedMinutes: 60,
+      expectedMinutes: 0,
+      timeOffDays: 0,
+      daysWithoutTime: [],
+    });
   });
 
   it('expects nothing, and finds no missing days, while somebody was deactivated and has since come back', async () => {
@@ -473,34 +546,43 @@ describe('PeopleReportService', () => {
   });
 
   describe('the owner', () => {
-    it('is listed only with logged time, with its own days without time', async () => {
-      const before = await rowFor(owner, owner.id);
-      const log = await dataSource.getRepository(TimeLog).save({
-        companyId,
-        userId: owner.id,
-        projectActivityId,
-        date: '2026-03-05',
-        minutes: 60,
-        isBillable: false,
-      });
-
-      const after = await rowFor(owner, owner.id);
+    it('is listed by its data like anyone, not by its role', async () => {
+      const onStandardDay = await rowFor(owner, owner.id);
       const {
         people: { totals },
         timeline: { buckets },
       } = await service.getOverview(owner, MARCH);
-      await dataSource.getRepository(TimeLog).remove(log);
 
-      expect(before).toBeUndefined();
-      expect(after).toMatchObject({
-        loggedMinutes: 60,
-        role: UserRole.OWNER,
+      // At 0h, a public holiday takes nothing away and lists nobody.
+      const noHours = await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: owner.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 0,
       });
-      expect(after?.daysWithoutTime).toHaveLength(WORKING_DAYS_IN_MARCH - 1);
-      expect(after?.daysWithoutTime).not.toContain('2026-03-05');
+      const holiday = await dataSource.getRepository(Absence).save({
+        companyId,
+        userId: owner.id,
+        type: AbsenceType.PUBLIC_HOLIDAY,
+        startDate: '2026-03-31',
+        endDate: '2026-03-31',
+      });
+      const atNoHours = await rowFor(owner, owner.id);
+      await dataSource.getRepository(Absence).remove(holiday);
+      await dataSource.getRepository(UserCapacity).remove(noHours);
+
+      expect(onStandardDay).toMatchObject({
+        role: UserRole.OWNER,
+        loggedMinutes: 0,
+        expectedMinutes: WORKING_DAYS_IN_MARCH * FULL_DAY,
+      });
+      expect(onStandardDay?.daysWithoutTime).toHaveLength(
+        WORKING_DAYS_IN_MARCH,
+      );
       expect(
         buckets.reduce((sum, bucket) => sum + bucket.expectedMinutes, 0),
       ).toBe(totals.expectedMinutes);
+      expect(atNoHours).toBeUndefined();
     });
 
     it('is listed with a plan too, so the planned total matches the projects', async () => {
@@ -833,6 +915,12 @@ describe('PeopleReportService', () => {
         [northId, FULL_DAY, NORTH_WORKING_DAYS * FULL_DAY],
         [southId, FULL_DAY, SOUTH_WORKING_DAYS * FULL_DAY],
       ]);
+      expect(forOwner?.teams.map(({ spans }) => spans)).toEqual([
+        [{ from: '2026-03-01', until: MOVE_DAY }],
+        [{ from: MOVE_DAY, until: '2026-04-01' }],
+      ]);
+      expect(forOwner?.outsideTeams).toBeNull();
+      expect((await rowFor(northManager, mover))?.outsideTeams).toBeNull();
     });
 
     it("keeps each team's export and timeline to its own days", async () => {
@@ -848,6 +936,225 @@ describe('PeopleReportService', () => {
       expect(
         timeline.buckets.reduce((sum, bucket) => sum + bucket.loggedMinutes, 0),
       ).toBe(FULL_DAY);
+    });
+  });
+
+  describe("each person's parts", () => {
+    /** A row's teams and its part outside them, added up figure by figure. */
+    const sumOfParts = (row: PeopleReportRow) =>
+      [...row.teams, ...(row.outsideTeams ? [row.outsideTeams] : [])].reduce(
+        (sum, { figures }) => ({
+          loggedMinutes: sum.loggedMinutes + figures.loggedMinutes,
+          billableMinutes: sum.billableMinutes + figures.billableMinutes,
+          nonBillableMinutes:
+            sum.nonBillableMinutes + figures.nonBillableMinutes,
+          plannedMinutes: sum.plannedMinutes + figures.plannedMinutes,
+          expectedMinutes: sum.expectedMinutes + figures.expectedMinutes,
+          timeOffDays: sum.timeOffDays + figures.timeOffDays,
+        }),
+        {
+          loggedMinutes: 0,
+          billableMinutes: 0,
+          nonBillableMinutes: 0,
+          plannedMinutes: 0,
+          expectedMinutes: 0,
+          timeOffDays: 0,
+        },
+      );
+    const figuresOf = (row: PeopleReportRow) => ({
+      loggedMinutes: row.loggedMinutes,
+      billableMinutes: row.billableMinutes,
+      nonBillableMinutes: row.nonBillableMinutes,
+      plannedMinutes: row.plannedMinutes,
+      expectedMinutes: row.expectedMinutes,
+      timeOffDays: row.timeOffDays,
+    });
+
+    // Monday 16 March: the joiner joins the team, and the late manager starts
+    // leading a team of their own. The joiner logs, plans and takes a day off
+    // on both sides of it.
+    const JOIN_DAY = '2026-03-16';
+    let joiner: string;
+    let lateManager: AuthUser;
+    let steppedDown: AuthUser;
+    let lateTeamId: string;
+    let formerTeamId: string;
+
+    beforeAll(async () => {
+      joiner = (await createUser('Joiner', UserRole.EMPLOYEE)).id;
+      lateManager = await createUser('Latemanager', UserRole.MANAGER);
+      steppedDown = await createUser('Steppeddown', UserRole.MANAGER);
+
+      const [late, former] = await dataSource.getRepository(Team).save([
+        { companyId, name: `Late ${RUN}` },
+        { companyId, name: `Former ${RUN}` },
+      ]);
+      lateTeamId = late.id;
+      formerTeamId = former.id;
+
+      await dataSource.getRepository(TeamMembership).save([
+        {
+          companyId,
+          teamId,
+          userId: joiner,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: JOIN_DAY,
+        },
+        {
+          companyId,
+          teamId: lateTeamId,
+          userId: lateManager.id,
+          roleInTeam: TeamRole.MANAGER,
+          joinedAt: JOIN_DAY,
+        },
+        // Led the team once; now a member of it, leading nothing.
+        {
+          companyId,
+          teamId: formerTeamId,
+          userId: steppedDown.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: '2020-01-01',
+        },
+      ]);
+
+      await dataSource.getRepository(TimeLog).save(
+        [
+          { userId: joiner, date: '2026-03-12', isBillable: true },
+          { userId: joiner, date: '2026-03-18', isBillable: false },
+          { userId: lateManager.id, date: '2026-03-10', isBillable: false },
+          { userId: lateManager.id, date: '2026-03-17', isBillable: true },
+          { userId: steppedDown.id, date: '2026-03-11', isBillable: false },
+        ].map((log) => ({
+          ...log,
+          companyId,
+          projectActivityId,
+          minutes: 120,
+        })),
+      );
+      await dataSource.getRepository(PlanningEntry).save(
+        ['2026-03-13', '2026-03-19'].map((date) => ({
+          companyId,
+          userId: joiner,
+          projectId,
+          date,
+          plannedMinutes: 90,
+        })),
+      );
+      await dataSource.getRepository(Absence).save(
+        ['2026-03-11', '2026-03-20'].map((date) => ({
+          companyId,
+          userId: joiner,
+          type: AbsenceType.VACATION,
+          startDate: date,
+          endDate: date,
+        })),
+      );
+    });
+
+    it("gives the owner a person's days in no team and in a team, adding up to their row", async () => {
+      const row = (await rowFor(owner, joiner))!;
+
+      expect(row.teams.map(({ id, spans }) => [id, spans])).toEqual([
+        [teamId, [{ from: JOIN_DAY, until: '2026-04-01' }]],
+      ]);
+      expect(row.outsideTeams).toMatchObject({
+        spans: [{ from: '2026-03-01', until: JOIN_DAY }],
+        moves: [{ date: JOIN_DAY, direction: 'out' }],
+        figures: {
+          loggedMinutes: 120,
+          billableMinutes: 120,
+          plannedMinutes: 90,
+          timeOffDays: 1,
+        },
+      });
+      expect(sumOfParts(row)).toEqual(figuresOf(row));
+    });
+
+    it("gives a manager only their team's part of someone, and nothing outside it", async () => {
+      const row = (await rowFor(manager, joiner))!;
+
+      expect(row.outsideTeams).toBeNull();
+      expect(row).toMatchObject({ loggedMinutes: 120, plannedMinutes: 90 });
+      expect(sumOfParts(row)).toEqual(figuresOf(row));
+    });
+
+    it('gives a manager their own days before they led under their own part', async () => {
+      const row = (await rowFor(lateManager, lateManager.id))!;
+
+      expect(row.teams.map(({ id }) => id)).toEqual([lateTeamId]);
+      expect(row.teams[0].figures.loggedMinutes).toBe(120);
+      expect(row.outsideTeams).toMatchObject({
+        spans: [{ from: '2026-03-01', until: JOIN_DAY }],
+        figures: { loggedMinutes: 120 },
+      });
+      expect(sumOfParts(row)).toEqual(figuresOf(row));
+    });
+
+    it('gives a manager who leads nothing all their own days outside the teams', async () => {
+      const row = (await rowFor(steppedDown, steppedDown.id))!;
+
+      expect(row.teams).toEqual([]);
+      expect(row.outsideTeams?.spans).toEqual([
+        { from: '2026-03-01', until: '2026-04-01' },
+      ]);
+      expect(sumOfParts(row)).toEqual(figuresOf(row));
+    });
+
+    it('has nothing outside the team under a team filter, a team they only belong to included', async () => {
+      const filtered = await service.getPeopleReport(owner, {
+        ...MARCH,
+        teamId,
+      });
+      const ownTeam = await service.getPeopleReport(steppedDown, {
+        ...MARCH,
+        teamId: formerTeamId,
+      });
+
+      expect(filtered.rows.map((row) => row.userId)).toContain(joiner);
+      expect(filtered.rows.every((row) => row.outsideTeams === null)).toBe(
+        true,
+      );
+      expect(ownTeam.rows).toEqual([
+        expect.objectContaining({
+          userId: steppedDown.id,
+          teams: [],
+          outsideTeams: null,
+        }),
+      ]);
+    });
+
+    it("adds every person's parts up to the headline for the owner and a manager", async () => {
+      for (const viewer of [owner, manager, lateManager]) {
+        const { rows, totals } = await service.getPeopleReport(viewer, MARCH);
+        const parts = rows.map(sumOfParts);
+
+        expect(parts.reduce((sum, part) => sum + part.loggedMinutes, 0)).toBe(
+          totals.loggedMinutes,
+        );
+        expect(parts.reduce((sum, part) => sum + part.plannedMinutes, 0)).toBe(
+          totals.plannedMinutes,
+        );
+        expect(parts.reduce((sum, part) => sum + part.expectedMinutes, 0)).toBe(
+          totals.expectedMinutes,
+        );
+      }
+    });
+  });
+
+  describe('one person', () => {
+    it("gives their whole period's row, within what the viewer sees", async () => {
+      const employee = { ...owner, id: member, role: UserRole.EMPLOYEE };
+      const one = (viewer: AuthUser, userId: string) =>
+        service.getPeopleReport(viewer, { ...MARCH, userId });
+
+      expect((await one(owner, member)).rows).toEqual([
+        await rowFor(owner, member),
+      ]);
+      expect(
+        (await one(manager, member)).rows.map((row) => row.userId),
+      ).toEqual([member]);
+      expect((await one(manager, partTimer)).rows).toEqual([]);
+      expect((await one(employee, manager.id)).rows).toEqual([]);
     });
   });
 });

@@ -33,6 +33,7 @@ const person = (
   role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: 0,
   billableMinutes: 0,
   nonBillableMinutes: 0,

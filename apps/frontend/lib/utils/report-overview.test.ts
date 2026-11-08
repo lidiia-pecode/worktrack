@@ -25,6 +25,7 @@ const person = (
   role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: loggedHours * HOUR,
   billableMinutes: 0,
   nonBillableMinutes: loggedHours * HOUR,
@@ -45,6 +46,7 @@ describe("groupPeopleByTeam", () => {
         isArchived: false,
         figures: row,
         moves: [],
+        spans: [],
       })),
     };
   };
@@ -75,6 +77,7 @@ describe("groupPeopleByTeam", () => {
           isArchived: false,
           figures: { ...person("", 4, 0, 8), billableMinutes: 2 * HOUR },
           moves: [{ date: "2026-10-14", direction: "out" as const }],
+          spans: [],
         },
         {
           id: "Platform",
@@ -82,6 +85,7 @@ describe("groupPeopleByTeam", () => {
           isArchived: false,
           figures: person("", 6, 0, 12),
           moves: [{ date: "2026-10-14", direction: "in" as const }],
+          spans: [],
         },
       ],
     };

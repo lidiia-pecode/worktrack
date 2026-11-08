@@ -116,7 +116,8 @@ export const USERS: SeedUser[] = [
     lastName: 'WorkTrack',
     role: UserRole.OWNER,
     position: 'Owner',
-    capacityHoursPerWeek: 40,
+    // The owner doesn't log their own time: no fixed hours.
+    capacityHoursPerWeek: 0,
     note: 'Sees the whole company. Use this one for admin screens.',
   },
   {

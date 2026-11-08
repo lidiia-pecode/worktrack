@@ -77,6 +77,7 @@ const myRow: PeopleReportRow = {
   role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: 120 * HOUR,
   billableMinutes: 90 * HOUR,
   nonBillableMinutes: 30 * HOUR,
