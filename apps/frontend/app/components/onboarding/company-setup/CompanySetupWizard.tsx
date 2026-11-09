@@ -2,18 +2,27 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import Input from "@/components/ui/input";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
-import { getErrorMessage } from "@/lib/api/errors/api-error";
-import { WEEK_START_OPTIONS } from "@/lib/constants";
+import { queryKeys } from "@/hooks/shared/queryKeys";
 import {
-  CompanyFormValues,
-  companySchema,
-} from "@/lib/forms/schemas/company.schema";
+  useRefreshAfterCapacityChange,
+  useUserCapacity,
+} from "@/hooks/useCapacity";
+import { getErrorMessage } from "@/lib/api/errors/api-error";
+import { CapacityClientApi, CompaniesClientApi } from "@/lib/api/resources";
+import { WEEK_START_OPTIONS } from "@/lib/constants";
+import { companySchema } from "@/lib/forms/schemas/company.schema";
+import { todayISODate } from "@/lib/utils/date";
 import { browserTimeZone, toListedTimeZone } from "@/lib/utils/time-zones";
 
 import { ErrorState } from "../../shared/ErrorState";
@@ -22,23 +31,36 @@ import { FormSelect } from "../../shared/FormSelect";
 import { TimeZoneSelect } from "../../shared/TimeZoneSelect";
 import { OnboardingProgress } from "./OnboardingProgress";
 import { OnboardingStepHeader } from "./OnboardingStepHeader";
-import { StepActions } from "./StepActions";
 import { FormAlert } from "../../shared/FormAlert";
+import { OptionCards } from "../../shared/inputs/OptionCards";
 import {
   MAX_WORK_DAY_HOURS,
   WORK_DAY_STEP_HOURS,
+  minutesPerWeekOf,
 } from "@/lib/forms/schemas/work-day.schema";
 
-const setupSchema = companySchema.pick({
-  timezone: true,
-  weekStartDay: true,
-  standardWorkHoursPerDay: true,
-});
+const setupSchema = companySchema
+  .pick({
+    timezone: true,
+    weekStartDay: true,
+    standardWorkHoursPerDay: true,
+  })
+  .extend({ logsOwnTime: z.enum(["yes", "no"]) });
 
-type SetupValues = Pick<
-  CompanyFormValues,
-  "timezone" | "weekStartDay" | "standardWorkHoursPerDay"
->;
+type SetupValues = z.infer<typeof setupSchema>;
+
+const OWN_TIME_OPTIONS = [
+  {
+    value: "yes" as const,
+    label: "Yes, I log my time",
+    description: "You're expected the standard day, like everyone else.",
+  },
+  {
+    value: "no" as const,
+    label: "No, I don't",
+    description: "No fixed hours: nothing is expected, no missing days.",
+  },
+];
 
 const STEPS = [
   {
@@ -61,14 +83,26 @@ const STEPS = [
     description:
       "The standard day sets everyone's expected hours until you give someone their own.",
   },
+  {
+    label: "Your time",
+    field: "logsOwnTime",
+    title: "Do you log your own time?",
+    description:
+      "Your expected hours come from this. You can change it later on your own panel in People.",
+  },
 ] as const;
 
 export const CompanySetupWizard = () => {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const refreshCapacity = useRefreshAfterCapacityChange();
+  const { user } = useAuth();
   const { company, query, actions } = useCompany({
     showsSaveErrorInline: true,
   });
+  const ownCapacity = useUserCapacity(user?.id ?? "", Boolean(user));
   const [currentStep, setCurrentStep] = useState(0);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
@@ -82,8 +116,10 @@ export const CompanySetupWizard = () => {
     resolver: zodResolver(setupSchema),
   });
 
+  const ownMinutesPerWeek = ownCapacity.capacity?.minutesPerWeek;
+
   useEffect(() => {
-    if (!company) return;
+    if (!company || ownMinutesPerWeek === undefined) return;
 
     reset({
       timezone:
@@ -92,26 +128,68 @@ export const CompanySetupWizard = () => {
         company.timezone,
       weekStartDay: company.weekStartDay,
       standardWorkHoursPerDay: Number(company.standardWorkHoursPerDay),
+      logsOwnTime: ownMinutesPerWeek === 0 ? "no" : "yes",
     });
-  }, [company, reset]);
+  }, [company, ownMinutesPerWeek, reset]);
 
   const step = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
-  const isSaving = actions.update.isPending;
 
   const leaveSetup = () => {
     router.replace("/");
     router.refresh();
   };
 
-  const finish = async (values: SetupValues) => {
+  /**
+   * Saves as Settings and the person's panel do, from today where the company
+   * now is: at sign-up that is the company's first day, and opened again
+   * later it changes nothing before today.
+   */
+  const finish = async ({
+    timezone,
+    weekStartDay,
+    standardWorkHoursPerDay,
+    logsOwnTime,
+  }: SetupValues) => {
+    if (!company || !user || ownMinutesPerWeek === undefined) return;
     setSaveError(null);
+    setIsSaving(true);
 
     try {
-      await actions.update.mutateAsync(values);
+      const saved = await actions.update.mutateAsync({
+        timezone,
+        weekStartDay,
+      });
+      const today = todayISODate(saved.timezone);
+
+      if (standardWorkHoursPerDay !== Number(company.standardWorkHoursPerDay)) {
+        await CompaniesClientApi.setStandardDay({
+          hoursPerDay: standardWorkHoursPerDay,
+          validFrom: today,
+        });
+      }
+      // Only a changed answer is saved: "Yes" keeps the hours they have,
+      // and gives the standard day only to an owner at 0h.
+      const answeredNo = logsOwnTime === "no";
+      if (answeredNo !== (ownMinutesPerWeek === 0)) {
+        await CapacityClientApi.setForUser({
+          userId: user.id,
+          minutesPerWeek: answeredNo
+            ? 0
+            : minutesPerWeekOf(standardWorkHoursPerDay),
+          validFrom: today,
+        });
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.company.current,
+      });
+      refreshCapacity();
       leaveSetup();
     } catch (error) {
       setSaveError(getErrorMessage(error));
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -126,30 +204,34 @@ export const CompanySetupWizard = () => {
     }
   };
 
-  if (query.isLoading) {
+  if (query.isLoading || !user || ownCapacity.isLoading) {
     return <LoadingState size="compact" title="Loading your company..." />;
   }
 
-  if (query.isError || !company) {
+  if (query.isError || ownCapacity.isError || !company) {
     return (
       <ErrorState
         title="Your company could not be loaded"
         description="We couldn't load your company's settings. Try again in a moment."
-        onRetry={() => query.refetch()}
+        onRetry={() => {
+          void query.refetch();
+          void ownCapacity.refetch();
+        }}
       />
     );
   }
 
   return (
-    <div className="w-full">
-      <div className="mb-8">
+    <div className="flex w-full flex-col gap-8">
+      <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Set up {company.companyName}
         </h1>
 
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Three questions, saved together at the end. You can change them later
-          in Settings.
+          Four questions, asked once and saved together when you finish.
+          Skipping keeps the current settings. You can change them later in
+          Settings and on your own panel in People.
         </p>
       </div>
 
@@ -158,7 +240,7 @@ export const CompanySetupWizard = () => {
         currentStep={currentStep}
       />
 
-      <Card className="mt-8">
+      <Card>
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -218,21 +300,63 @@ export const CompanySetupWizard = () => {
             />
           )}
 
+          {step.field === "logsOwnTime" && (
+            <Controller
+              name="logsOwnTime"
+              control={control}
+              render={({ field }) => (
+                <OptionCards
+                  name="logsOwnTime"
+                  value={field.value}
+                  options={OWN_TIME_OPTIONS}
+                  onChange={field.onChange}
+                  disabled={isSaving}
+                />
+              )}
+            />
+          )}
+
           {saveError && (
             <FormAlert>
               Could not save your company settings: {saveError}
             </FormAlert>
           )}
 
-          <StepActions
-            showBack={currentStep > 0}
-            onBack={() => setCurrentStep((index) => index - 1)}
-            onSkip={leaveSetup}
-            isPending={isSaving}
-            submitLabel={isLastStep ? "Finish" : "Continue"}
-          />
+          <div className="flex gap-2">
+            {currentStep > 0 && (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setCurrentStep((index) => index - 1)}
+                disabled={isSaving}
+              >
+                <ChevronLeft className="size-4" />
+                Back
+              </Button>
+            )}
+
+            <Button
+              type="submit"
+              className="flex-1"
+              disabled={isSaving}
+              isLoading={isSaving}
+            >
+              {isLastStep ? "Finish" : "Continue"}
+            </Button>
+          </div>
         </form>
       </Card>
+
+      <Button
+        type="button"
+        variant="pastel"
+        size="sm"
+        className="self-end"
+        onClick={leaveSetup}
+        disabled={isSaving}
+      >
+        Skip setup for now
+      </Button>
     </div>
   );
 };

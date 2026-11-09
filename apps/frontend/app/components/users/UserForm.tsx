@@ -3,18 +3,25 @@
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { Info } from "lucide-react";
 
 import { UserRole } from "@/types/enums";
 import { ROLE_LABELS } from "@/lib/constants";
 import { Field } from "@/components/ui/field";
 import Input from "@/components/ui/input";
+import { usePlanningEntries } from "@/hooks/usePlanning";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import {
+  addDays,
+  formatDayMonthLabel,
   formatDayMonthYearLabel,
   formatDuration,
+  fromISODate,
+  toISODate,
   todayISODate,
 } from "@/lib/utils/date";
+import { countLabel } from "@/lib/utils/text";
 import { CapacityChange } from "@/types";
 import {
   MAX_WORK_DAY_HOURS,
@@ -25,6 +32,7 @@ import {
 } from "@/lib/forms/schemas/work-day.schema";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
+import { NO_FIXED_HOURS } from "@/lib/utils/user";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DatePicker } from "../shared/inputs";
@@ -48,9 +56,12 @@ export type UserFormData = z.infer<ReturnType<typeof userSchema>>;
 
 type UserFormProps = {
   formId: string;
+  userId: string;
   defaultValues: UserFormData;
   /** The hours change already waiting to start; a later date replaces it. */
   scheduledChange?: CapacityChange | null;
+  /** The day their hours in force today started; none on the standard day. */
+  hoursSince?: string | null;
   onSubmit: (data: UserFormData) => void | Promise<unknown>;
   onDirtyChange?: (isDirty: boolean) => void;
 };
@@ -62,8 +73,10 @@ const roleOptions = [
 
 export const UserForm = ({
   formId,
+  userId,
   defaultValues,
   scheduledChange,
+  hoursSince,
   onSubmit,
   onDirtyChange,
 }: UserFormProps) => {
@@ -83,6 +96,33 @@ export const UserForm = ({
   const { timezone } = useWorkSettings();
   const replacesScheduledChange =
     scheduledChange && validFrom > todayISODate(timezone);
+  // Saving 0h deletes the person's plans from that day, up to hours already
+  // scheduled to come back.
+  const hasNoHours = minutesPerWeek === 0;
+  const hoursBackOn =
+    scheduledChange &&
+    !replacesScheduledChange &&
+    scheduledChange.minutesPerWeek > 0
+      ? scheduledChange.validFrom
+      : null;
+  const { items: removedPlans } = usePlanningEntries(
+    {
+      userId,
+      dateFrom: validFrom,
+      dateTo: hoursBackOn
+        ? toISODate(addDays(fromISODate(hoursBackOn), -1))
+        : undefined,
+    },
+    { enabled: hasNoHours && Boolean(validFrom) },
+  );
+  // Hours in force today that started after that day mean a past change may
+  // bring hours back sooner than the form can see, so the count is an upper
+  // bound (the server ends the deletion at the first change with hours).
+  const isCountAtMost = Boolean(hoursSince && hoursSince > validFrom);
+  const removedMinutes = removedPlans.reduce(
+    (total, plan) => total + plan.plannedMinutes,
+    0,
+  );
   const losesManagerAccess =
     defaultValues.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
   // The API refuses a change that would reach back into a locked month.
@@ -108,23 +148,26 @@ export const UserForm = ({
         error={errors.position?.message}
       />
 
-      <Controller
-        control={control}
-        name="role"
-        render={({ field, fieldState }) => (
-          <FormSelect
-            label="Role"
-            value={field.value}
-            onValueChange={field.onChange}
-            options={roleOptions}
-            description={
-              losesManagerAccess &&
-              "As an Employee they lose Team time, Planning, Reports and Manage."
-            }
-            error={fieldState.error?.message}
-          />
-        )}
-      />
+      {/* An owner's role doesn't change here. */}
+      {defaultValues.role !== UserRole.OWNER && (
+        <Controller
+          control={control}
+          name="role"
+          render={({ field, fieldState }) => (
+            <FormSelect
+              label="Role"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={roleOptions}
+              description={
+                losesManagerAccess &&
+                "As an Employee they lose Team time, Planning, Reports and Manage."
+              }
+              error={fieldState.error?.message}
+            />
+          )}
+        />
+      )}
 
       <Field id="user-working-hours" group>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -136,8 +179,10 @@ export const UserForm = ({
             step={WORK_DAY_STEP_HOURS}
             label="Working hours a day"
             description={
-              Number.isFinite(minutesPerWeek) &&
-              `${formatDuration(minutesPerWeek)} a week`
+              hasNoHours
+                ? `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
+                : Number.isFinite(minutesPerWeek) &&
+                  `${formatDuration(minutesPerWeek)} a week`
             }
             error={errors.capacityHoursPerDay?.message}
           />
@@ -161,6 +206,15 @@ export const UserForm = ({
             )}
           />
         </div>
+
+        {hasNoHours && removedPlans.length > 0 && (
+          <p className="flex gap-2 text-sm text-muted-foreground">
+            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>
+              {`Deletes ${isCountAtMost ? "up to " : ""}${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
+            </span>
+          </p>
+        )}
       </Field>
     </form>
   );

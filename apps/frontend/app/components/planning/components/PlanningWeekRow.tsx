@@ -8,7 +8,7 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import { closedSpellOn, fullName } from "@/lib/utils/user";
+import { NO_FIXED_HOURS, closedSpellOn, fullName } from "@/lib/utils/user";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
@@ -105,9 +105,13 @@ export const PlanningWeekRow = ({
   // Someone who left the team in view this week has no period to plan here;
   // their days before the move still open one by one.
   const hasMovedOut = row.moves.some((move) => move.direction === "out");
-  const overMinutes = projectName
-    ? 0
-    : Math.max(0, row.plannedMinutes - row.availableMinutes);
+  // Listed at 0h only for plans left from before, which can be deleted day by
+  // day, but never changed or added to.
+  const hasNoFixedHours = row.dayLimits.every((day) => day.minutes === 0);
+  const overMinutes =
+    projectName || hasNoFixedHours
+      ? 0
+      : Math.max(0, row.plannedMinutes - row.availableMinutes);
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -115,7 +119,7 @@ export const PlanningWeekRow = ({
         scope="row"
         className={cn(STICKY_PERSON_CELL, "p-0 text-left font-normal")}
       >
-        {isActive && !hasMovedOut ? (
+        {isActive && !hasMovedOut && !hasNoFixedHours ? (
           <button
             type="button"
             onClick={() => onPlanPeriod(row)}
@@ -142,9 +146,18 @@ export const PlanningWeekRow = ({
               {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
             </PersonLabel>
 
-            {!isActive && (
-              <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
-                Deactivated
+            {(!isActive || hasNoFixedHours) && (
+              <Badge
+                variant="neutral"
+                size="sm"
+                className="ml-auto shrink-0"
+                title={
+                  isActive
+                    ? `Give ${row.user.firstName} working hours to plan them.`
+                    : undefined
+                }
+              >
+                {isActive ? NO_FIXED_HOURS : "Deactivated"}
               </Badge>
             )}
           </div>
@@ -154,13 +167,13 @@ export const PlanningWeekRow = ({
       {weekDates.map((date) => {
         const iso = toISODate(date);
         // A day someone wasn't employed on keeps the plans left over from
-        // before, read-only, for a deactivated person's whole row and for an
-        // earlier spell of someone since back; any other closed day holds
-        // nothing.
+        // before, read-only, as in an earlier spell of someone since back;
+        // any other closed day, such as a leaver's after their last day,
+        // holds nothing.
         const closed = closedSpellOn(row.closedSpells, iso);
         const keepsLeftoverPlans =
           closed?.reason === "inactive" &&
-          (!isActive || (entriesByDate.get(iso)?.length ?? 0) > 0);
+          (entriesByDate.get(iso)?.length ?? 0) > 0;
         if (closed && !keepsLeftoverPlans) {
           return <ClosedDayCell key={iso} reason={closed.reason} />;
         }
@@ -169,8 +182,13 @@ export const PlanningWeekRow = ({
         const absence = absencesByDate[iso];
 
         // A deactivated person's plans stay visible, but nothing can be
-        // written for them, like a locked day.
-        if (!isActive || !isEditable(iso)) {
+        // written for them, like a locked day; at 0h only a day with plans
+        // opens, to delete them.
+        if (
+          !isActive ||
+          !isEditable(iso) ||
+          (hasNoFixedHours && entries.length === 0)
+        ) {
           return (
             <td
               key={iso}
@@ -237,16 +255,19 @@ export const PlanningWeekRow = ({
               {" "}
               {projectName
                 ? `on ${projectName}`
-                : `of ${formatDuration(row.availableMinutes)}`}
+                : !hasNoFixedHours &&
+                  `of ${formatDuration(row.availableMinutes)}`}
             </span>
           </span>
 
-          {!projectName && (
+          {!projectName && !hasNoFixedHours && (
             <ReportBar
               value={row.plannedMinutes}
               reference={row.availableMinutes}
+              fill="planned"
               label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-              className="h-[5px] w-full max-w-32"
+              // As Team time's bar: the same height and width.
+              className="h-1.5 w-full max-w-28"
             />
           )}
 

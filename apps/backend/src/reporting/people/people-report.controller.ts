@@ -5,6 +5,7 @@ import { CurrentUser, Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
+import { ReportRangeQuery } from '../dtos/report-range-query.dto';
 import { PeopleReportQuery } from './dtos/people-report-query.dto';
 import { PeopleReportService } from './people-report.service';
 
@@ -24,10 +25,7 @@ export class PeopleReportController {
   /** Reports' opening figures; the timeline in it stays closed to employees (Q11). */
   @Get('overview')
   @Role(UserRole.OWNER, UserRole.MANAGER)
-  getOverview(
-    @CurrentUser() user: AuthUser,
-    @Query() query: PeopleReportQuery,
-  ) {
+  getOverview(@CurrentUser() user: AuthUser, @Query() query: ReportRangeQuery) {
     return this.peopleReportService.getOverview(user, query);
   }
 }

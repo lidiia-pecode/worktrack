@@ -776,7 +776,7 @@ describe('ReportingService', () => {
         expect(forManager.totals.plannedMinutes).toBe(540);
       });
 
-      it("leaves out a deactivated person's plan unless they logged time", async () => {
+      it("counts a leaver's plan, with or without logged time", async () => {
         const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
         await dataSource
           .getRepository(User)
@@ -790,8 +790,9 @@ describe('ReportingService', () => {
         await dataSource.getRepository(PlanningEntry).remove(leftoverPlan);
         await dataSource.getRepository(User).delete(leaver.id);
 
-        expect(rows[0].plannedMinutes).toBe(540);
-        expect(totals.plannedMinutes).toBe(540);
+        // Plans after a last working day are deleted, so one left is on a day they worked.
+        expect(rows[0].plannedMinutes).toBe(640);
+        expect(totals.plannedMinutes).toBe(640);
       });
 
       it('has no plan by activity, which plans are not made for', async () => {
@@ -845,8 +846,8 @@ describe('ReportingService', () => {
     });
 
     describe('hours export', () => {
-      const exportRows = (user: AuthUser) =>
-        service.getHoursExport(user, lockedRange);
+      const exportRows = async (user: AuthUser) =>
+        (await service.getHoursExport(user, lockedRange)).rows;
 
       it('has one row per person, day, project, activity and billing', async () => {
         const rows = await exportRows(owner);
@@ -920,7 +921,7 @@ describe('ReportingService', () => {
           isBillable: true,
         });
 
-        const rows = await service.getHoursExport(owner, {
+        const { rows } = await service.getHoursExport(owner, {
           dateFrom: lockedMonth,
           dateTo: today,
         });
@@ -947,7 +948,7 @@ describe('ReportingService', () => {
           isBillable: true,
         });
 
-        const rows = await service.getHoursExport(owner, {
+        const { rows, countedTo } = await service.getHoursExport(owner, {
           dateFrom: lockedMonth,
           dateTo: today,
         });
@@ -959,6 +960,8 @@ describe('ReportingService', () => {
         await dataSource.getRepository(TimeLog).delete({ id: todayLog.id });
 
         expect(rows.find((row) => row.date === today)).toBeUndefined();
+        // The file is named after the same last day.
+        expect(countedTo).toBe(addDays(today, -1));
         expect(rows.reduce((sum, row) => sum + row.minutes, 0)).toBe(
           totals.totalMinutes,
         );

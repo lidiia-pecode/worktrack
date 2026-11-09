@@ -278,6 +278,7 @@ export class PlanningService {
       {
         teamId: query.teamId,
         includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
+        stillEmployedOn: start,
         during: { from: start, to: end },
       },
       { includeSelf: true },
@@ -336,10 +337,24 @@ export class PlanningService {
       };
     });
 
+    // Someone is planned only with working hours on a day the row holds them
+    // and they were employed; a plan already there keeps them listed so it can
+    // be deleted. Time off doesn't take the hours away, so the row stays.
+    const isPlannable = (row: PlanningWeekRow) => {
+      const startDate = activeDates.get(row.user.id)?.startDate;
+      return row.dayLimits.some(
+        ({ date, minutes }) =>
+          minutes > 0 &&
+          isWorkingDay(date) &&
+          (!startDate || date >= startDate) &&
+          !row.closedSpells.some((spell) => isWithinSpan(spell, date)),
+      );
+    };
+
     return {
       weekStart: start,
       weekEnd: end,
-      rows,
+      rows: rows.filter((row) => row.entries.length > 0 || isPlannable(row)),
     };
   }
 

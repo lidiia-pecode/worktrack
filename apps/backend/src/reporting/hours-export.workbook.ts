@@ -1,6 +1,5 @@
 import { Workbook } from 'exceljs';
 
-import type { HoursExportQuery } from './dtos/hours-export-query.dto';
 import type { HoursExportRow } from './reporting.service';
 
 export const XLSX_CONTENT_TYPE =
@@ -71,16 +70,20 @@ const fileNamePart = (name: string) =>
     .replace(/^-+|-+$/g, '');
 
 /**
- * `worktrack-hours-2026-10-01-2026-10-31.xlsx`, with the team between when the
- * export is for one: `worktrack-hours-mobile-squad-…`.
+ * `worktrack-hours-2026-10-01-2026-10-31.xlsx`, the first day and the last day
+ * counted, with the team between when the export is for one:
+ * `worktrack-hours-mobile-squad-…`. Before any day is counted, it ends on the
+ * first day.
  */
 export const hoursExportFileName = (
-  { dateFrom, dateTo }: HoursExportQuery,
+  dateFrom: string,
+  countedTo: string,
   teamName?: string | null,
 ) => {
   const team = teamName ? fileNamePart(teamName) : '';
+  const lastDay = countedTo > dateFrom ? countedTo : dateFrom;
   return (
-    ['worktrack-hours', team, dateFrom, dateTo].filter(Boolean).join('-') +
+    ['worktrack-hours', team, dateFrom, lastDay].filter(Boolean).join('-') +
     '.xlsx'
   );
 };

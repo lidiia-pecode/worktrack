@@ -28,7 +28,7 @@ export interface ExpectedMinutes {
 export interface Availability {
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
-  /** The finished working days an absence covered, from the start date. */
+  /** The finished working days with working hours an absence covered, from the start date. */
   absenceDates: string[];
   /** The finished days they were expected to work, in date order. */
   expectedDates: string[];
@@ -246,7 +246,9 @@ export class ExpectedHoursService {
           (a) => a.startDate <= date && a.endDate >= date,
         );
         if (isAbsent) {
-          if (hasFinished) sum.absenceDatesToDate.push(date);
+          // Only a day with working hours is a day off: on a 0h day an
+          // absence takes nothing away.
+          if (hasFinished && share > 0) sum.absenceDatesToDate.push(date);
           continue;
         }
 

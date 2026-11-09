@@ -77,8 +77,8 @@ with users, projects, activities, teams, planning, time logs and absences.
 each role (an owner, two managers and employees) and about thirty-five demo
 people in several teams, with projects, activities and categories, including
 archived and deactivated ones and long names. For Reports it adds time,
-plans and absences from 1 July 2026 up to yesterday, the same on every reset
-for July to September; the company starts in June, which stays empty. Running
+plans and absences from the company's first day, 1 June 2026, up to
+yesterday, the same on every reset for June to September. Running
 it again adds only what is missing, and the history only into a database that
 has none; to rebuild everything, run `make down-hard` and then `make setup`. The logins are written to `apps/backend/docs/TEST-CREDENTIALS.md`
 (ignored by Git) every time you seed. To change what gets created, edit

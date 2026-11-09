@@ -29,7 +29,6 @@ export const useShownTeam = () => {
 
   return {
     teamId,
-    teamName: options.find((team) => team.value === teamId)?.label,
     teamOptions: options,
     choosesTeam,
     showTeam,

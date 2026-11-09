@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { HoursReportRow, PeopleReportRow } from "@/types";
-import { UserRole, UserStatus } from "@/types/enums";
+import { UserStatus } from "@/types/enums";
 
 import { formatDayMonthLabel } from "./date";
 import { lastCheckedDay, reportAttention } from "./report-attention";
@@ -30,9 +30,9 @@ const person = (
   userId: name,
   name,
   position: null,
-  role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: 0,
   billableMinutes: 0,
   nonBillableMinutes: 0,
@@ -107,19 +107,6 @@ describe("reportAttention", () => {
         detail: `${days.slice(0, 3).map(formatDayMonthLabel).join(", ")} and 1 more`,
         items: [],
       });
-    });
-
-    it("never names an owner, though their own month counts their days", () => {
-      const fact = factOf("daysWithoutTime", {
-        people: [
-          person("Olivia Owner", {
-            role: UserRole.OWNER,
-            daysWithoutTime: ["2026-10-02"],
-          }),
-        ],
-      });
-
-      expect(fact).toBeUndefined();
     });
 
     it("lists several people, most days first", () => {

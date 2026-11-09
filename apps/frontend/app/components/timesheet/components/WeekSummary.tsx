@@ -7,6 +7,8 @@ import { formatDuration } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 
 import { Badge } from "@/components/ui/badge";
+
+import { ReportBar } from "../../reports/components/ReportBar";
 import {
   Popover,
   PopoverContent,
@@ -24,6 +26,7 @@ type WeekSummaryProps = {
   className?: string;
 };
 
+/** The week's logged time against what was expected, as Reports draw it. */
 export const WeekBar = ({
   billableMinutes,
   nonBillableMinutes,
@@ -31,36 +34,14 @@ export const WeekBar = ({
 }: Pick<
   WeekSummaryProps,
   "billableMinutes" | "nonBillableMinutes" | "expectedMinutes"
->) => {
-  const totalMinutes = billableMinutes + nonBillableMinutes;
-  const scale = Math.max(totalMinutes, expectedMinutes, 1);
-  const percent = (minutes: number) => (minutes / scale) * 100;
-
-  return (
-    <span
-      aria-hidden
-      className="relative block h-1.5 min-w-20 flex-1 overflow-hidden rounded-full bg-report-track"
-    >
-      <span
-        className="absolute inset-y-0 left-0 bg-brand/70"
-        style={{ width: `${percent(billableMinutes)}%` }}
-      />
-      <span
-        className="absolute inset-y-0 bg-brand/25"
-        style={{
-          left: `${percent(billableMinutes)}%`,
-          width: `${percent(nonBillableMinutes)}%`,
-        }}
-      />
-      {totalMinutes > expectedMinutes && (
-        <span
-          className="absolute inset-y-0 right-0 bg-warning/60"
-          style={{ left: `${percent(expectedMinutes)}%` }}
-        />
-      )}
-    </span>
-  );
-};
+>) => (
+  <ReportBar
+    value={billableMinutes + nonBillableMinutes}
+    reference={expectedMinutes}
+    billable={billableMinutes}
+    className="h-1.5 min-w-20 flex-1"
+  />
+);
 
 const Fact = ({
   label,
@@ -101,13 +82,15 @@ export const WeekSummary = ({
   className,
 }: WeekSummaryProps) => {
   const totalMinutes = billableMinutes + nonBillableMinutes;
-  const overMinutes = totalMinutes - expectedMinutes;
-  const isComplete = expectedMinutes > 0 && overMinutes === 0;
+  // A week expecting nothing, as at 0h, shows its hours alone.
+  const expectsTime = expectedMinutes > 0;
+  const overMinutes = expectsTime ? totalMinutes - expectedMinutes : 0;
+  const isComplete = expectsTime && overMinutes === 0;
 
   return (
     <Popover>
       <PopoverTrigger
-        aria-label={`${formatDuration(totalMinutes)} of ${formatDuration(expectedMinutes)} expected. Show the week's breakdown`}
+        aria-label={`${formatDuration(totalMinutes)}${expectsTime ? ` of ${formatDuration(expectedMinutes)} expected` : " logged"}. Show the week's breakdown`}
         className={cn(
           "flex h-8 min-w-0 items-center gap-3 rounded-md border border-transparent px-2 text-sm transition-colors hover:border-control-border hover:bg-card focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-popup-open:border-control-border data-popup-open:bg-card max-sm:h-10",
           className,
@@ -115,10 +98,12 @@ export const WeekSummary = ({
       >
         <span className="whitespace-nowrap tabular-nums">
           <span className="font-semibold">{formatDuration(totalMinutes)}</span>
-          <span className="text-muted-foreground">
-            {" "}
-            / {formatDuration(expectedMinutes)}
-          </span>
+          {expectsTime && (
+            <span className="text-muted-foreground">
+              {" "}
+              / {formatDuration(expectedMinutes)}
+            </span>
+          )}
         </span>
         <WeekBar
           billableMinutes={billableMinutes}

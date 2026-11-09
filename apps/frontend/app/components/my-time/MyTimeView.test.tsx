@@ -4,12 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { HoursReport, PeopleReport, PeopleReportRow } from "@/types";
-import {
-  AbsenceType,
-  HoursReportGroupBy,
-  UserRole,
-  UserStatus,
-} from "@/types/enums";
+import { AbsenceType, HoursReportGroupBy, UserStatus } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
 import { usePeopleReport } from "@/hooks/usePeopleReport";
 
@@ -74,9 +69,9 @@ const myRow: PeopleReportRow = {
   userId: ME,
   name: "Emma Carter",
   position: "Developer",
-  role: UserRole.EMPLOYEE,
   status: UserStatus.ACTIVE,
   teams: [],
+  outsideTeams: null,
   loggedMinutes: 120 * HOUR,
   billableMinutes: 90 * HOUR,
   nonBillableMinutes: 30 * HOUR,
@@ -169,7 +164,7 @@ describe("MyTimeView", () => {
     expect(screen.getByText("of 136h expected")).toBeInTheDocument();
     expect(screen.getByText("16h still to log")).toBeInTheDocument();
     expect(screen.getByText("140h")).toBeInTheDocument();
-    expect(screen.getByText("2 days · Vacation")).toBeInTheDocument();
+    expect(screen.getByText("2 days")).toBeInTheDocument();
     expect(screen.getByText("CRM System")).toBeInTheDocument();
     expect(screen.queryByText("Liam Hayes")).not.toBeInTheDocument();
     expect(screen.queryByText("Open in Team time")).not.toBeInTheDocument();
@@ -216,18 +211,6 @@ describe("MyTimeView", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("says so when the person has nothing in the month, with the way to the timesheet", () => {
-    showMyTime(peopleReport([]));
-
-    expect(
-      screen.getByText("Nothing logged in October 2026"),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Log my time" })).toHaveAttribute(
-      "href",
-      "/timesheet",
-    );
-  });
-
   it("says nothing is counted yet when no day of the month has finished", () => {
     showMyTime({ ...peopleReport([myRow]), countedUntil: "2026-09-30" });
 
@@ -250,6 +233,7 @@ describe("MyTimeView", () => {
     expect(usePeopleReport).toHaveBeenLastCalledWith({
       dateFrom: "2026-09-01",
       dateTo: "2026-09-30",
+      userId: ME,
     });
 
     await user.click(

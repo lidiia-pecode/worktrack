@@ -120,7 +120,14 @@ const row = (
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
-  dayLimits: [],
+  // A full-time week: 8h on each working day.
+  dayLimits: [
+    "2026-11-02",
+    "2026-11-03",
+    "2026-11-04",
+    "2026-11-05",
+    "2026-11-06",
+  ].map((date) => ({ date, minutes: 480 })),
   projects,
   entries,
   closedSpells: [],

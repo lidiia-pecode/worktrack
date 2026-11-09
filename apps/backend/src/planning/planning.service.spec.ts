@@ -1256,6 +1256,58 @@ describe('PlanningService', () => {
       expect(row.availableMinutes).toBe(32 * HOUR);
     });
 
+    it('lists a leaver in the weeks they still had days in, with the days after closed', async () => {
+      const leaver = await createUser('Leaver', UserRole.EMPLOYEE);
+      const lastWorkingDay = addDays(PAST_MONDAY, 1);
+      await dataSource.getRepository(User).update(leaver.id, {
+        status: UserStatus.DEACTIVATED,
+        lastWorkingDay,
+      });
+
+      const lastWeek = await service.getWeek({ date: PAST_MONDAY }, owner);
+      const weekAfter = await service.getWeek(
+        { date: addDays(PAST_MONDAY, 7) },
+        owner,
+      );
+      await dataSource.getRepository(User).delete(leaver.id);
+
+      const row = lastWeek.rows.find((r) => r.user.id === leaver.id);
+      expect(row?.closedSpells).toEqual([
+        { from: addDays(lastWorkingDay, 1), until: null, reason: 'inactive' },
+      ]);
+      expect(weekAfter.rows.some((r) => r.user.id === leaver.id)).toBe(false);
+    });
+
+    it('lists someone without working hours only with a plan that week', async () => {
+      await dataSource.getRepository(UserCapacity).save({
+        companyId,
+        userId: outsider.id,
+        validFrom: '2020-01-01',
+        minutesPerWeek: 0,
+      });
+      const listed = async () =>
+        (await service.getWeek({ date: WEDNESDAY }, owner)).rows.some(
+          (row) => row.user.id === outsider.id,
+        );
+
+      const withoutPlans = await listed();
+      await existingEntry(outsider.id, MONDAY, HOUR);
+
+      expect(withoutPlans).toBe(false);
+      expect(await listed()).toBe(true);
+    });
+
+    it('keeps someone away the whole week, whose hours stay', async () => {
+      await absentOn(outsider.id, MONDAY, FRIDAY);
+
+      const week = await service.getWeek({ date: WEDNESDAY }, owner);
+
+      expect(week.rows.find((r) => r.user.id === outsider.id)).toMatchObject({
+        availableMinutes: 0,
+        plannedMinutes: 0,
+      });
+    });
+
     it('offers only the active projects a person is on', async () => {
       await dataSource
         .getRepository(Project)

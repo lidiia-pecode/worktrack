@@ -6,6 +6,7 @@ import {
   bucketLabel,
   bucketNote,
   bucketsSinceCompanyStart,
+  hasSomethingToShow,
   hourScale,
   kindOfWork,
   NO_CATEGORY,
@@ -61,6 +62,18 @@ describe("bucketLabel", () => {
     expect(bucketLabel(bucket("2026-01-10", "2026-01-31"), "month")).toBe(
       "Jan",
     );
+  });
+});
+
+describe("hasSomethingToShow", () => {
+  it("drops a week of weekend days only, unless time was logged on it", () => {
+    const sundayOnly = bucket("2026-11-01", "2026-11-01", 0, true);
+
+    expect(hasSomethingToShow(sundayOnly)).toBe(false);
+    expect(hasSomethingToShow({ ...sundayOnly, loggedMinutes: HOUR })).toBe(
+      true,
+    );
+    expect(hasSomethingToShow(bucket("2026-11-02", "2026-11-08"))).toBe(true);
   });
 });
 

@@ -10,7 +10,7 @@ import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { cn } from "@/lib/utils/cn";
 import { CLOSED_DAY_TEXT, closedSpellOn, isClosedOn } from "@/lib/utils/user";
 import {
-  formatDuration,
+  formatReportHours,
   formatWeekdayLabel,
   fromISODate,
   isWeekend,
@@ -64,30 +64,23 @@ const dayLabel = (date: string) =>
 type PersonDayGridProps = {
   person: PeopleReportRow;
   range: ReportRange;
-  /** A team filter closes the person's days outside the team. */
-  teamId?: string;
   countedUntil: string | null;
   dayWithoutTimeHref?: (date: string) => string;
 };
 
 /**
  * A person's working days, Monday to Friday in columns so the grid reads week
- * by week; a weekend day with time is listed under it. A day the view doesn't
- * hold, another team's or after they left, is closed, as on Team time.
+ * by week; a weekend day with time is listed under it. A day they weren't
+ * employed on is closed, as on Team time.
  */
 export const PersonDayGrid = ({
   person,
   range,
-  teamId,
   countedUntil,
   dayWithoutTimeHref,
 }: PersonDayGridProps) => {
   // Only this person's days, not the whole team's.
-  const summary = useTeamTimeSummary({
-    ...range,
-    userId: person.userId,
-    teamId,
-  });
+  const summary = useTeamTimeSummary({ ...range, userId: person.userId });
   const absences = useAllAbsencesQuery({ ...range, userId: person.userId });
   const row = summary.rows.find((entry) => entry.user.id === person.userId);
   const closedSpells = row?.closedSpells ?? NO_CLOSED_SPELLS;
@@ -135,7 +128,7 @@ export const PersonDayGrid = ({
   const dayValue = (day: ReportDay) => {
     switch (day.kind) {
       case "logged":
-        return formatDuration(day.minutes);
+        return formatReportHours(day.minutes);
       case "closed":
         // Said on hover and to a screen reader; the day itself stays quiet.
         return <span className="sr-only">{closedText(day.date)}</span>;
@@ -162,11 +155,6 @@ export const PersonDayGrid = ({
       label: "Day off",
       shows: days.some((day) => day.kind === "off"),
       swatch: <span className={cn(SWATCH, KIND_STYLES.off)} />,
-    },
-    {
-      label: "Not in this team",
-      shows: closedSpells.some((spell) => spell.reason === "outside-team"),
-      swatch: <span className={cn(SWATCH, KIND_STYLES.closed)} />,
     },
     {
       label: "Not employed",
@@ -273,7 +261,8 @@ export const PersonDayGrid = ({
           Also logged at the weekend:{" "}
           {weekendDays
             .map(
-              (day) => `${dayLabel(day.date)} · ${formatDuration(day.minutes)}`,
+              (day) =>
+                `${dayLabel(day.date)} · ${formatReportHours(day.minutes)}`,
             )
             .join(", ")}
         </p>

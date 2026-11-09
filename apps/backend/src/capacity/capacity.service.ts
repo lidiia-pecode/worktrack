@@ -5,13 +5,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
+import {
+  Between,
+  In,
+  LessThanOrEqual,
+  MoreThan,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 
 import { Company } from 'src/companies/entities/company.entity';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 import { UserInactivePeriod } from 'src/users/entities/user-inactive-period.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { DaySpan } from 'src/teams/days-in-view.util';
 
@@ -308,7 +316,8 @@ export class CapacityService {
   /**
    * Sets somebody's capacity from a date. Setting the same date twice replaces
    * that row rather than failing, so a typo can be corrected the same day.
-   * A date after today replaces the change already scheduled, if any.
+   * A date after today replaces the change already scheduled, if any. 0h
+   * deletes the person's plans from that date.
    */
   async setCapacity(
     companyId: string,
@@ -391,6 +400,21 @@ export class CapacityService {
 
       // A later change to these same hours no longer changes anything.
       if (next?.minutesPerWeek === minutesPerWeek) await manager.remove(next);
+
+      // Nobody is planned at 0h, so their plans go from that day until they
+      // have hours again.
+      if (minutesPerWeek === 0) {
+        const backToHours = rows.find(
+          (row) => row.validFrom > validFrom && row.minutesPerWeek > 0,
+        );
+        await manager.delete(PlanningEntry, {
+          companyId,
+          userId,
+          date: backToHours
+            ? Between(validFrom, addDays(backToHours.validFrom, -1))
+            : MoreThanOrEqual(validFrom),
+        });
+      }
     });
 
     return this.currentFor(companyId, userId, validFrom);
@@ -461,13 +485,13 @@ export class CapacityService {
   /**
    * Sets the company's standard day from a date, the way a person's hours are
    * set: earlier days keep theirs, a locked month can't change, and a date
-   * after today replaces the change already scheduled. Without a date it
-   * applies from the company's start, as the setup guide sets it.
+   * after today replaces the change already scheduled. Settings and the
+   * company setup both set it this way.
    */
   async setStandardDay(
     companyId: string,
     hoursPerDay: number,
-    validFrom: string | null,
+    validFrom: string,
     actorId: string,
   ): Promise<StandardDay> {
     const today = await this.today(companyId);
@@ -476,26 +500,24 @@ export class CapacityService {
       // Saves queue on the company's row, so two can't both stay scheduled.
       const company = await manager.findOne(Company, {
         where: { id: companyId },
-        select: ['id', 'timezone', 'createdAt', 'standardWorkHoursPerDay'],
+        select: ['id', 'standardWorkHoursPerDay'],
         // Not FOR UPDATE, which would also hold up every time log or plan
         // that points at the company until this save ends.
         lock: { mode: 'for_no_key_update' },
       });
       if (!company) throw new NotFoundException('Company not found');
 
-      // Months before the company existed lock too, but expected nothing.
-      const from = validFrom ?? isoDateIn(company.createdAt, company.timezone);
       const lockedUntil = await this.reportingService.latestLockedDate(
         companyId,
         manager,
       );
-      if (from <= lockedUntil) {
+      if (validFrom <= lockedUntil) {
         throw new ForbiddenException(
-          `The standard day can't change from ${from}: months up to ${lockedUntil} are locked, and their expected hours would change.`,
+          `The standard day can't change from ${validFrom}: months up to ${lockedUntil} are locked, and their expected hours would change.`,
         );
       }
 
-      if (validFrom !== null && validFrom > today) {
+      if (validFrom > today) {
         await manager.delete(CompanyStandardDay, {
           companyId,
           validFrom: MoreThan(today),
@@ -506,43 +528,31 @@ export class CapacityService {
         where: { companyId },
         order: { validFrom: 'ASC' },
       });
-      const next =
-        validFrom === null
-          ? changes[0]
-          : changes.find((change) => change.validFrom > validFrom);
+      const next = changes.find((change) => change.validFrom > validFrom);
+      const existing = changes.find((change) => change.validFrom === validFrom);
       const minutesPerWeek = minutesPerWeekOfDay(hoursPerDay);
+      const before = standardDayTimeline(
+        company.standardWorkHoursPerDay,
+        changes,
+      ).minutesPerWeekOn(addDays(validFrom, -1));
 
-      if (validFrom === null) {
-        await manager.update(Company, companyId, {
-          standardWorkHoursPerDay: hoursPerDay,
-        });
+      // The same day as the one before is no change: nothing is saved, and
+      // a change already on that day is removed.
+      if (before === minutesPerWeek) {
+        if (existing) await manager.remove(existing);
+      } else if (existing) {
+        existing.hoursPerDay = hoursPerDay;
+        existing.createdById = actorId;
+        await manager.save(existing);
       } else {
-        const existing = changes.find(
-          (change) => change.validFrom === validFrom,
+        await manager.save(
+          manager.create(CompanyStandardDay, {
+            companyId,
+            validFrom,
+            hoursPerDay,
+            createdById: actorId,
+          }),
         );
-        const before = standardDayTimeline(
-          company.standardWorkHoursPerDay,
-          changes,
-        ).minutesPerWeekOn(addDays(validFrom, -1));
-
-        // The same day as the one before is no change: nothing is saved, and
-        // a change already on that day is removed.
-        if (before === minutesPerWeek) {
-          if (existing) await manager.remove(existing);
-        } else if (existing) {
-          existing.hoursPerDay = hoursPerDay;
-          existing.createdById = actorId;
-          await manager.save(existing);
-        } else {
-          await manager.save(
-            manager.create(CompanyStandardDay, {
-              companyId,
-              validFrom,
-              hoursPerDay,
-              createdById: actorId,
-            }),
-          );
-        }
       }
 
       // A later change to this same day no longer changes anything.

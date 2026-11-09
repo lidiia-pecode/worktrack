@@ -37,7 +37,6 @@ import { HoursExportQuery } from './dtos/hours-export-query.dto';
 import { HoursBilling } from './enums/hours-billing.enum';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { UserStatus } from 'src/users/enums/user-role.enum';
 
 /** What every report returns besides its rows and totals. */
 export interface ReportCoverage {
@@ -660,9 +659,9 @@ export class ReportingService {
 
   /**
    * Planned minutes over the same days and people as the Hours report, summed
-   * by its grouping, which uses only projects and people. A deactivated
-   * person's plan counts only when they logged time in the range, as in the
-   * People report.
+   * by its grouping, which uses only projects and people. A leaver's plans
+   * after their last working day are deleted, so every plan here is on a day
+   * they worked.
    */
   private plannedRows(
     user: AuthUser,
@@ -683,15 +682,7 @@ export class ReportingService {
       .andWhere('e.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom: query.dateFrom,
         countedTo,
-      })
-      .andWhere(
-        `(u.status = :activeStatus OR EXISTS (
-          SELECT 1 FROM time_logs l
-          WHERE l.user_id = u.id
-            AND l.date BETWEEN :dateFrom AND :countedTo
-        ))`,
-        { activeStatus: UserStatus.ACTIVE },
-      );
+      });
 
     this.teamVisibility.applyUserVisibility(qb, 'e.user_id', user, {
       includeSelf: true,
@@ -835,12 +826,13 @@ export class ReportingService {
 
   /**
    * The Hours report's time, for the same people and days, one row per
-   * person, day, project, activity and billing.
+   * person, day, project, activity and billing, with the last day it counts,
+   * which names the file. Today is read once, so the two always agree.
    */
   async getHoursExport(
     user: AuthUser,
     query: HoursExportQuery,
-  ): Promise<HoursExportRow[]> {
+  ): Promise<{ rows: HoursExportRow[]; countedTo: string }> {
     const { dateFrom, dateTo } = query;
 
     assertDateRange(dateFrom, dateTo);
@@ -849,6 +841,7 @@ export class ReportingService {
       this.companyRepo.manager,
       user.companyId,
     );
+    const countedTo = lastCountedDay(dateTo, today);
     const qb = this.periodRepo.manager
       .createQueryBuilder()
       .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
@@ -869,7 +862,7 @@ export class ReportingService {
       .where('tl.company_id = :companyId', { companyId: user.companyId })
       .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom,
-        countedTo: lastCountedDay(dateTo, today),
+        countedTo,
       });
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
@@ -899,10 +892,11 @@ export class ReportingService {
       this.findLockedMonths(user.companyId, dateFrom, dateTo, today),
     ]);
 
-    return rawRows.map((raw) => ({
+    const rows = rawRows.map((raw) => ({
       ...raw,
       minutes: Number(raw.minutes),
       isPeriodClosed: lockedMonths.has(firstDayOfMonth(raw.date)),
     }));
+    return { rows, countedTo };
   }
 }

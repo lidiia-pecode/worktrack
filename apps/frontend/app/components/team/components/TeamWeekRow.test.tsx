@@ -60,7 +60,8 @@ const renderRow = (
 
   return {
     personCell: screen.getByRole("rowheader"),
-    bar: container.querySelector(".bg-report-track"),
+    // The week's bar sits on the track of what was expected.
+    bar: container.querySelector(".bg-report-expected, .bg-report-track"),
   };
 };
 

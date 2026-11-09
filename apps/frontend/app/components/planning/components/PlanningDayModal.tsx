@@ -166,6 +166,9 @@ export const PlanningDayModal = ({
     listedIds.reduce((total, projectId) => total + rowMinutes(projectId), 0) +
     addedLines.reduce((total, line) => total + line.minutes, 0);
   const dayLimitMinutes = dayLimitOn(row, date);
+  // A day without working hours, as at 0h, takes no plans: those left from
+  // before can only be deleted.
+  const canPlanDay = dayLimitMinutes > 0;
   const weekMinutes = row.plannedMinutes - savedDayMinutes + dayMinutes;
   const dayLeft = dayLimitMinutes - dayMinutes;
   const weekLeft = row.availableMinutes - weekMinutes;
@@ -361,18 +364,20 @@ export const PlanningDayModal = ({
               onClick={onClose}
               disabled={isBusy}
             >
-              Cancel
+              {canPlanDay ? "Cancel" : "Close"}
             </Button>
 
-            <Button
-              type="submit"
-              form={FORM_ID}
-              size="sm"
-              isLoading={planPeriod.isPending}
-              disabled={cannotSave}
-            >
-              Save plan
-            </Button>
+            {canPlanDay && (
+              <Button
+                type="submit"
+                form={FORM_ID}
+                size="sm"
+                isLoading={planPeriod.isPending}
+                disabled={cannotSave}
+              >
+                Save plan
+              </Button>
+            )}
           </>
         }
       >
@@ -415,7 +420,7 @@ export const PlanningDayModal = ({
                       line={line}
                       hoursLabel="Hours"
                       detail={
-                        isOnProject && !line.isArchived ? (
+                        canPlanDay && isOnProject && !line.isArchived ? (
                           <>
                             <input
                               aria-label={`Note for ${line.name}`}
@@ -453,6 +458,7 @@ export const PlanningDayModal = ({
                       }
                       editedMinutes={editedMinutes.get(line.projectId)}
                       isOnProject={isOnProject}
+                      isReadOnly={!canPlanDay}
                       maxMinutes={fitsBeside(rowMinutes(line.projectId))}
                       formId={FORM_ID}
                       onEdit={editLine(line.projectId)}
@@ -464,7 +470,12 @@ export const PlanningDayModal = ({
             </section>
           )}
 
-          {hasNoProjects ? (
+          {!canPlanDay ? (
+            <p className="text-sm text-muted-foreground">
+              {row.user.firstName} has no working hours on this day, so it
+              can&apos;t be planned. Plans made before can only be deleted.
+            </p>
+          ) : hasNoProjects ? (
             <p className="text-sm text-muted-foreground">
               {row.user.firstName} is not on any active project. Add them to a
               project before planning.

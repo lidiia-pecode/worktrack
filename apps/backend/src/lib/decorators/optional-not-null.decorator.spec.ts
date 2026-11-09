@@ -69,13 +69,7 @@ const UPDATE_PAYLOADS: {
   },
   {
     dto: UpdateCompanyDto,
-    required: [
-      'companyName',
-      'timezone',
-      'currency',
-      'weekStartDay',
-      'standardWorkHoursPerDay',
-    ],
+    required: ['companyName', 'timezone', 'currency', 'weekStartDay'],
     nullable: [],
   },
 ];

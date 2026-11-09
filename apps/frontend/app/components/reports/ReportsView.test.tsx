@@ -12,8 +12,8 @@ import {
 import { HoursReportGroupBy, UserRole, UserStatus } from "@/types/enums";
 
 import { useHoursReport } from "@/hooks/useHoursReport";
+import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
-import { useTeamTimeSummary } from "@/hooks/useTeamTimeSummary";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 import {
   addDays,
@@ -25,7 +25,6 @@ import {
   toISODate,
   toMonthKey,
 } from "@/lib/utils/date";
-import { AbsenceType } from "@/types/enums";
 
 import { ReportsView } from "./ReportsView";
 
@@ -52,14 +51,11 @@ const teams = vi.hoisted(() => ({
 vi.mock("@/hooks/useTeams", () => ({
   useTeamOptions: () => ({ ...teams, isLoading: false, isError: false }),
 }));
-// The previous period's figures, for the change; none unless a test gives them.
-vi.mock("@/hooks/usePeopleReport", () => ({
-  usePeopleReport: () => ({ report: null, isPlaceholderData: false }),
-}));
+// A person's whole period for their panel, from the rows shown; no previous period.
+vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
 vi.mock("@/hooks/useReportingPeriods", () => ({
   useReportingPeriods: () => ({ months: [] }),
 }));
-vi.mock("@/hooks/useTeamTimeSummary", () => ({ useTeamTimeSummary: vi.fn() }));
 vi.mock("@/hooks/useActivityCategories", () => ({
   useActivityCategoriesAllPagesQuery: () => ({
     items: [{ name: "Design" }, { name: "Development" }],
@@ -114,27 +110,34 @@ vi.mock("@/hooks/useHoursReport", () => ({
   useHoursExport: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
+/** In no team: every figure falls on their days outside the teams. */
 const person = (
   name: string,
   loggedHours: number,
   plannedHours: number,
   expectedHours: number,
   timeOffDays = 0,
-): PeopleReportRow => ({
-  userId: name.toLowerCase().replace(" ", "-"),
-  name,
-  position: "Developer",
-  role: UserRole.EMPLOYEE,
-  status: UserStatus.ACTIVE,
-  teams: [],
-  loggedMinutes: loggedHours * HOUR,
-  billableMinutes: (loggedHours / 2) * HOUR,
-  nonBillableMinutes: (loggedHours / 2) * HOUR,
-  plannedMinutes: plannedHours * HOUR,
-  expectedMinutes: expectedHours * HOUR,
-  timeOffDays,
-  daysWithoutTime: [],
-});
+): PeopleReportRow => {
+  const figures = {
+    loggedMinutes: loggedHours * HOUR,
+    billableMinutes: (loggedHours / 2) * HOUR,
+    nonBillableMinutes: (loggedHours / 2) * HOUR,
+    plannedMinutes: plannedHours * HOUR,
+    expectedMinutes: expectedHours * HOUR,
+    timeOffDays,
+  };
+
+  return {
+    userId: name.toLowerCase().replace(" ", "-"),
+    name,
+    position: "Developer",
+    status: UserStatus.ACTIVE,
+    teams: [],
+    outsideTeams: { figures, spans: [], moves: [] },
+    ...figures,
+    daysWithoutTime: [],
+  };
+};
 
 const project = (
   name: string,
@@ -157,11 +160,13 @@ const inTeams = (
   ...teams: { id: string; name: string }[]
 ): PeopleReportRow => ({
   ...row,
+  outsideTeams: null,
   teams: teams.map((team) => ({
     ...team,
     isArchived: false,
     figures: row,
     moves: [],
+    spans: [],
   })),
 });
 
@@ -244,11 +249,20 @@ const loaded = <T,>(report: T) => ({
 const showOverview = (
   people: PeopleReport | null,
   state: { isError?: boolean; isPlaceholderData?: boolean } = {},
-) =>
+) => {
   vi.mocked(useReportOverview).mockReturnValue({
     ...loaded(people && { people, timeline }),
     ...state,
   } as unknown as ReturnType<typeof useReportOverview>);
+  vi.mocked(usePeopleReport).mockImplementation(
+    ({ userId }) =>
+      loaded(
+        userId && people
+          ? peopleReport(people.rows.filter((row) => row.userId === userId))
+          : null,
+      ) as unknown as ReturnType<typeof usePeopleReport>,
+  );
+};
 
 /** What the panels load: a person's projects and a project's people. */
 const panelRows = {
@@ -263,8 +277,15 @@ const activityRows: HoursReportRow[] = [
 ];
 
 /** A person's name in the People card, which opens their panel. */
+/** A row of one of Reports' tables, by the name that opens its panel. */
+const tableRow = (table: string, name: string) =>
+  within(screen.getByRole("table", { name: table }))
+    .getByRole("button", { name })
+    .closest("tr")!;
+
+/** A person's name in the People table, which opens their panel. */
 const peopleRow = (name: string) =>
-  within(screen.getByRole("region", { name: "People" })).getByRole("button", {
+  within(screen.getByRole("table", { name: "People" })).getByRole("button", {
     name,
   });
 
@@ -303,12 +324,6 @@ describe("ReportsView", () => {
     vi.mocked(useReportOverview).mockReset();
     vi.mocked(useHoursReport).mockReset();
     navigation.history.splice(0, navigation.history.length, "");
-    vi.mocked(useTeamTimeSummary).mockReturnValue({
-      rows: [],
-      isLoading: false,
-      isError: false,
-      refetch: vi.fn(),
-    } as unknown as ReturnType<typeof useTeamTimeSummary>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
       items: [],
       isLoading: false,
@@ -330,7 +345,7 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("puts each person under their team, against what was expected, with their days off", () => {
+  it("lists each person once, against what was expected", () => {
     const core = { id: "core", name: "Core Development" };
     showReports(
       peopleReport([
@@ -341,94 +356,41 @@ describe("ReportsView", () => {
       projectsReport(projects),
     );
 
-    const people = screen.getByRole("region", { name: "People" });
-    const coreRow = within(people).getByRole("button", {
-      name: /Core Development/,
-    });
-    expect(coreRow).toHaveAttribute("aria-expanded", "true");
-    expect(coreRow.closest("li")).toHaveTextContent("187h of 184h");
-
-    const ethan = within(people).getByText("Ethan Brooks").closest("li")!;
-    expect(ethan).toHaveTextContent("5 days off");
-    expect(ethan).toHaveTextContent("79h of 72h");
-    expect(
-      within(ethan).getByRole("img", {
-        name: "Ethan Brooks: 79h of 72h expected",
-      }),
-    ).toBeInTheDocument();
+    const ethan = tableRow("People", "Ethan Brooks");
+    expect(ethan).toHaveTextContent("79h");
+    expect(ethan).toHaveTextContent("72h");
+    expect(ethan).toHaveTextContent("110%");
+    expect(ethan).toHaveTextContent("50%");
     // A day with no time, so marked as in Needs attention.
     expect(
       within(ethan).getByRole("img", { name: "1 day with no time logged" }),
     ).toBeInTheDocument();
 
-    // Somebody in no team is listed last, and says when nothing was expected.
-    const grace = within(people).getByText("Grace Morgan").closest("li")!;
-    expect(grace).toHaveTextContent("nothing expected");
-    expect(
-      within(people)
-        .getAllByRole("button", { expanded: true })
-        .map((button) => button.textContent),
-    ).toEqual([
-      expect.stringContaining("Core Development"),
-      expect.stringContaining("No team"),
-    ]);
-  });
-
-  it("folds a long list to its teams, and opens them on request", async () => {
-    const user = userEvent.setup();
-    const many = Array.from({ length: 16 }, (_, i) =>
-      inTeams(person(`Person ${String(i).padStart(2, "0")}`, 40, 40, 40), {
-        id: i < 8 ? "a" : "b",
-        name: i < 8 ? "Alpha" : "Beta",
-      }),
-    );
-    showReports(peopleReport(many), projectsReport(projects));
-
-    const people = screen.getByRole("region", { name: "People" });
-    const alpha = within(people).getByRole("button", { name: /Alpha/ });
-    expect(alpha).toHaveAttribute("aria-expanded", "false");
-    expect(within(people).queryByText("Person 00")).toBeNull();
-
-    await user.click(alpha);
-    expect(alpha).toHaveAttribute("aria-expanded", "true");
-    expect(within(people).getByText("Person 00")).toBeInTheDocument();
-
-    await user.click(
-      within(people).getByRole("button", { name: "Expand all" }),
-    );
-    expect(within(people).getByText("Person 15")).toBeInTheDocument();
-    expect(
-      within(people).getByRole("button", { name: "Collapse all" }),
-    ).toBeInTheDocument();
+    // Nothing expected: no expected hours and no share of them.
+    const grace = tableRow("People", "Grace Morgan");
+    expect(grace).toHaveTextContent("10h——");
   });
 
   it("lists projects with their client, against the plan, marking those off it", () => {
     showReports(peopleReport(team), projectsReport(projects));
 
-    const card = screen.getByRole("region", { name: "Where the time went" });
-    const row = (name: string) => within(card).getByText(name).closest("li")!;
+    const row = (name: string) => tableRow("Projects", name);
 
     expect(row("WorkTrack")).toHaveTextContent("Internal work");
-    expect(row("WorkTrack")).toHaveTextContent("120h of 100h");
+    expect(row("WorkTrack")).toHaveTextContent("120h100h+20h");
     expect(
       within(row("WorkTrack")).getByRole("img", {
         name: "More than 10% off plan",
       }),
     ).toBeInTheDocument();
     expect(row("CRM System")).toHaveTextContent("no plan");
-    // Logged with nothing to measure it against: a full, lighter bar.
-    expect(
-      within(row("CRM System"))
-        .getByRole("img", { name: "CRM System: 10h logged, no plan" })
-        .querySelector(".bg-report-unplanned"),
-    ).toHaveStyle({ width: "100%" });
     expect(
       within(row("CRM System")).getByRole("img", {
         name: "Logged with no plan",
       }),
     ).toBeInTheDocument();
     // Mobile App is within 10% of its plan, so it has no mark.
-    expect(row("Mobile App")).toHaveTextContent("54h of 50h");
+    expect(row("Mobile App")).toHaveTextContent("54h50h+4h");
     expect(
       within(row("Mobile App")).queryByRole("img", {
         name: /off plan|no plan/,
@@ -477,15 +439,25 @@ describe("ReportsView", () => {
     expect(screen.getByText("Nothing counted yet")).toBeInTheDocument();
   });
 
-  it("says when nothing was logged or planned", () => {
+  it("says when nothing was expected, logged or planned", () => {
     showReports(
-      peopleReport([person("Ava Mitchell", 0, 0, 112)]),
+      peopleReport([person("Ava Mitchell", 0, 0, 0)]),
       projectsReport([]),
     );
 
     expect(
       screen.getByText(/^Nothing logged or planned in /),
     ).toBeInTheDocument();
+  });
+
+  it("shows the period when people were expected to work and logged nothing", () => {
+    showReports(
+      peopleReport([person("Ava Mitchell", 0, 0, 112)]),
+      projectsReport([]),
+    );
+
+    expect(screen.queryByText(/^Nothing logged or planned in /)).toBeNull();
+    expect(peopleRow("Ava Mitchell")).toBeInTheDocument();
   });
 
   it("offers to try again when the report fails", () => {
@@ -502,27 +474,26 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says how far the month is counted and whether it can change", () => {
+  it("names the period, and while it runs the days counted so far", () => {
     const report = peopleReport(team);
 
     showReports({ ...report, countedUntil }, projectsReport(projects));
     expect(
-      screen.getByText(
-        `Up to ${formatDayMonthLabel(countedUntil)} · open for edits`,
-      ),
+      screen.getByRole("heading", {
+        name: `${formatDayMonthLabel(countedUntil)} so far`,
+      }),
     ).toBeInTheDocument();
     cleanup();
 
     showReports(report, projectsReport(projects));
-    expect(screen.getByText("Open for edits")).toBeInTheDocument();
-    cleanup();
-
-    auth.isOwner = true;
-    showReports({ ...report, isProvisional: false }, projectsReport(projects));
-    expect(screen.getByText("Locked")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+      }),
+    ).toBeInTheDocument();
   });
 
-  it("says nothing about the month while the next one loads", () => {
+  it("names the period alone while it loads, not the last period's days", () => {
     const report = { ...peopleReport(team), countedUntil };
     showOverview(report, { isPlaceholderData: true });
     vi.mocked(useHoursReport).mockReturnValue(
@@ -532,7 +503,12 @@ describe("ReportsView", () => {
     );
     render(<ReportsView />);
 
-    expect(screen.queryByText(/Up to/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "People" }).closest("[aria-busy]"),
     ).toHaveAttribute("aria-busy", "true");
@@ -570,7 +546,7 @@ describe("ReportsView", () => {
     ) {
       if (!isWeekend(day)) weekdays.push(toISODate(day));
     }
-    const [loggedDay, offDay, dayWithoutTime] = weekdays;
+    const dayWithoutTime = weekdays[2];
 
     beforeEach(() => {
       vi.spyOn(window.history, "pushState").mockImplementation(
@@ -601,32 +577,7 @@ describe("ReportsView", () => {
       daysWithoutTime: [dayWithoutTime],
     };
 
-    it("opens a person with their figures, days and projects, and closes back to the row", async () => {
-      vi.mocked(useTeamTimeSummary).mockReturnValue({
-        rows: [
-          {
-            user: { id: ethan.userId },
-            days: [{ date: loggedDay, minutes: 8 * HOUR }],
-          },
-        ],
-        isLoading: false,
-        isError: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useTeamTimeSummary>);
-      vi.mocked(useAllAbsencesQuery).mockReturnValue({
-        items: [
-          {
-            id: "a",
-            userId: ethan.userId,
-            type: AbsenceType.VACATION,
-            startDate: offDay,
-            endDate: offDay,
-          },
-        ],
-        isLoading: false,
-        isError: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useAllAbsencesQuery>);
+    it("opens a person with their whole period, its figures and projects, and closes back to the row", async () => {
       const user = userEvent.setup();
       showReports(peopleReport([ethan]), projectsReport(projects));
 
@@ -635,30 +586,11 @@ describe("ReportsView", () => {
 
       expect(navigation.search).toBe("?person=ethan-brooks");
       const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
-      // Only what the row doesn't say: the plan, billable time and time off.
+      expect(panel).toHaveTextContent("79h of 72h expected");
       expect(panel).toHaveTextContent("Planned96h");
-      expect(panel).toHaveTextContent("Billable40h · 50%");
-      expect(panel).not.toHaveTextContent("of 72h expected");
-      expect(panel).toHaveTextContent("1 day with no time logged");
-      expect(panel).toHaveTextContent("Vacation");
-
-      const days = within(panel)
-        .getAllByRole("listitem")
-        .filter(
-          (item) => item.closest("ul")?.getAttribute("aria-label") === "Days",
-        );
-      expect(days[0]).toHaveTextContent("8h");
-      expect(days[1]).toHaveTextContent("Vacation");
-      expect(days[2]).toHaveTextContent("No time");
-      // A day without time opens its week in Team time, on the person's row.
-      expect(within(days[2]).getByRole("link")).toHaveAttribute(
-        "href",
-        `/team?person=ethan-brooks&week=${dayWithoutTime}`,
-      );
-      // Each day sits in its weekday's column, Monday first.
-      expect(days[0]).toHaveStyle({
-        gridColumnStart: String(new Date(`${loggedDay}T00:00`).getDay()),
-      });
+      expect(panel).toHaveTextContent("Billable39.5h · 50%");
+      expect(panel).toHaveTextContent("Time off5 days");
+      expect(panel).toHaveTextContent("No time logged1 day");
 
       const projectsSection = within(panel).getByRole("region", {
         name: "Projects",
@@ -667,7 +599,11 @@ describe("ReportsView", () => {
       expect(projectsSection).toHaveTextContent("39h of 66h");
       expect(
         within(panel).getByRole("link", { name: /Open in Team time/ }),
-      ).toHaveAttribute("href", "/team?person=ethan-brooks");
+        // The week of the day with no time.
+      ).toHaveAttribute(
+        "href",
+        `/team?person=ethan-brooks&week=${dayWithoutTime}`,
+      );
 
       await user.click(
         within(panel).getByRole("button", { name: "Close panel" }),
@@ -707,7 +643,12 @@ describe("ReportsView", () => {
       showReports(peopleReport([ethan]), projectsReport(projects));
 
       await user.click(peopleRow("Ethan Brooks"));
-      await user.click(screen.getByRole("button", { name: "Mobile App" }));
+      await user.click(
+        within(screen.getByRole("table", { name: "Projects" })).getByRole(
+          "button",
+          { name: "Mobile App" },
+        ),
+      );
 
       expect(navigation.history).toEqual(["", "?project=Mobile+App"]);
       expect(
@@ -823,24 +764,6 @@ describe("ReportsView", () => {
           name: /with no time logged$|^More than 10% off plan$|^Logged with no plan$/,
         }),
       ).toBeNull();
-    });
-
-    it("waits for the person's days off before drawing their days", () => {
-      vi.mocked(useAllAbsencesQuery).mockReturnValue({
-        items: [],
-        isLoading: true,
-        isError: false,
-        refetch: vi.fn(),
-      } as unknown as ReturnType<typeof useAllAbsencesQuery>);
-      navigation.history.splice(0, 1, `?person=${ethan.userId}`);
-      showReports(peopleReport([ethan]), projectsReport(projects));
-
-      const panel = screen.getByRole("complementary", { name: "Ethan Brooks" });
-      expect(
-        within(panel).queryByRole("list", { name: "Days" }),
-      ).not.toBeInTheDocument();
-      expect(panel).toHaveTextContent("Loading the days…");
-      expect(panel).not.toHaveTextContent("None");
     });
 
     it("drops a link to someone outside the rows", () => {

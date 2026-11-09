@@ -4,14 +4,14 @@ import { useEffect } from "react";
 import { FileBarChart } from "lucide-react";
 
 import { ReportQuery } from "@/types";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useHoursReport } from "@/hooks/useHoursReport";
-import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { useReportOverview } from "@/hooks/useReportOverview";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { useShownPeriod } from "@/hooks/useShownPeriod";
 import { cn } from "@/lib/utils/cn";
 import { NO_ATTENTION, reportAttention } from "@/lib/utils/report-attention";
-import { periodChange, reportScope } from "@/lib/utils/report-overview";
+import { shownPeriodLabel } from "@/lib/utils/report-overview";
 import {
   containsDate,
   isShowablePeriod,
@@ -45,6 +45,7 @@ const PANEL_PARAMS = [PERSON_PARAM, PROJECT_PARAM] as const;
 const ALL_TEAMS = "all";
 
 export const ReportsView = () => {
+  const { user: viewer } = useAuth();
   const { period, today, firstDay, showPeriod } = useShownPeriod();
   const { opened, open, close } = useOpenedEntry(PANEL_PARAMS);
   const openPerson = (userId: string) => open(PERSON_PARAM, userId);
@@ -52,8 +53,7 @@ export const ReportsView = () => {
 
   const { range } = period;
 
-  const { teamId, teamName, teamOptions, choosesTeam, showTeam } =
-    useShownTeam();
+  const { teamId, teamOptions, choosesTeam, showTeam } = useShownTeam();
   const query: ReportQuery = { ...range, teamId };
   const isMonth = period.unit === "month";
   const periodName = periodLabel(period);
@@ -69,15 +69,9 @@ export const ReportsView = () => {
   const overview = useReportOverview(query);
   const people = overview.report?.people ?? null;
   const timeline = overview.report?.timeline ?? null;
-  // The period before, of the same kind, for each figure's change; none
-  // before the company's first month.
+  // The period before, offered by an empty current period; none before the
+  // company's first month.
   const isPreviousShowable = isShowablePeriod(previousPeriod, today, firstDay);
-  const previous = usePeopleReport(
-    { ...previousPeriod.range, teamId },
-    { enabled: isPreviousShowable },
-  );
-  const previousReport =
-    isPreviousShowable && !previous.isPlaceholderData ? previous.report : null;
   const projects = useHoursReport({
     ...query,
     groupBy: HoursReportGroupBy.PROJECT,
@@ -102,6 +96,17 @@ export const ReportsView = () => {
   const isNothingCounted = Boolean(
     settledPeople?.countedUntil && settledPeople.countedUntil < range.dateFrom,
   );
+  // While the next period loads, its name alone: the days counted are still
+  // the last period's.
+  const badgeLabel = settledPeople
+    ? shownPeriodLabel(
+        periodName,
+        rangeSinceCompanyStart,
+        settledPeople.countedUntil,
+      )
+    : periodName;
+  // A new period or team starts each table on its first rows, in its own order.
+  const tablesKey = `${range.dateFrom}:${range.dateTo}:${teamId ?? ""}`;
 
   // The current period starts empty, as a month does in its first days, so
   // its empty state offers the period before.
@@ -149,11 +154,16 @@ export const ReportsView = () => {
     }
 
     const { totals, isProvisional, countedUntil } = people;
-    if (totals.loggedMinutes === 0 && totals.plannedMinutes === 0) {
+    // Expected hours alone still make a period worth reading: nobody logged.
+    const isEmpty =
+      totals.expectedMinutes === 0 &&
+      totals.loggedMinutes === 0 &&
+      totals.plannedMinutes === 0;
+    if (isEmpty) {
       return (
         <EmptyState
           title={`Nothing logged or planned in ${periodName}`}
-          description="Pick another period, or check that people have logged their time."
+          description="No working hours, time or plans in this period."
           icon={<FileBarChart />}
           action={showPrevious}
         />
@@ -184,9 +194,7 @@ export const ReportsView = () => {
           timeline={timeline}
           totals={totals}
           firstDay={firstDay}
-          periodName={periodName}
-          previousName={previousName}
-          change={previousReport && periodChange(totals, previousReport.totals)}
+          periodLabel={badgeLabel}
         />
         {showsAttention && (
           <div className="mt-4">
@@ -209,23 +217,19 @@ export const ReportsView = () => {
             />
           </div>
         )}
-        <div className="mt-4 grid items-start gap-4 @5xl:grid-cols-[3fr_2fr]">
+        <div className="mt-4 flex flex-col gap-4">
           <PeopleCard
-            // A new period starts with every team open or folded by its size
-            // again, not as the last period left them.
-            key={`${range.dateFrom}:${range.dateTo}`}
+            key={`people:${tablesKey}`}
             people={people.rows}
-            previousPeople={previousReport?.rows}
-            previousName={previousName}
             marked={attention.people}
-            isOneTeam={Boolean(teamId)}
+            isTeamFiltered={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
+            key={`projects:${tablesKey}`}
             query={query}
             projects={projects.report.rows}
             marked={attention.projects}
-            scopeNote={teamName && `${teamName}’s time only`}
             onOpenProject={openProject}
           />
         </div>
@@ -264,9 +268,9 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
+          periodLabel={badgeLabel}
           teamId={teamId}
-          countedUntil={people.countedUntil}
-          showsDays={timeline?.bucketSize === "week"}
+          viewerId={viewer?.id}
           isUpdating={isUpdating}
           onClose={close}
         />
@@ -290,40 +294,28 @@ export const ReportsView = () => {
     // Fills the page, so an empty state stretches to the bottom as on Log my time.
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <ReportPeriodControl
-              period={period}
-              today={today}
-              firstDay={firstDay}
-              onChange={showPeriod}
+        <div className="flex flex-wrap items-center gap-3">
+          <ReportPeriodControl
+            period={period}
+            today={today}
+            firstDay={firstDay}
+            onChange={showPeriod}
+          />
+          {choosesTeam && (
+            <FormSelect
+              aria-label="Team"
+              className="max-sm:w-full sm:w-56"
+              size="sm"
+              value={teamId ?? ALL_TEAMS}
+              options={[
+                { value: ALL_TEAMS, label: "All teams" },
+                ...teamOptions,
+              ]}
+              onValueChange={(value) =>
+                showTeam(value === ALL_TEAMS ? undefined : value)
+              }
             />
-            {choosesTeam && (
-              <FormSelect
-                aria-label="Team"
-                className="max-sm:w-full sm:w-56"
-                size="sm"
-                value={teamId ?? ALL_TEAMS}
-                options={[
-                  { value: ALL_TEAMS, label: "All teams" },
-                  ...teamOptions,
-                ]}
-                onValueChange={(value) =>
-                  showTeam(value === ALL_TEAMS ? undefined : value)
-                }
-              />
-            )}
-          </div>
-          {/* One line high even while a period loads, so the header holds still and
-              says nothing about the period before. */}
-          <p className="min-h-5 text-sm text-muted-foreground">
-            {settledPeople &&
-              !isNothingCounted &&
-              reportScope(settledPeople, {
-                periodRange: isMonth ? undefined : rangeSinceCompanyStart,
-                teamName,
-              })}
-          </p>
+          )}
         </div>
 
         {/* The last figures keep the button in place while a period loads. */}

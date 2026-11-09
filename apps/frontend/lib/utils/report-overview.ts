@@ -1,224 +1,100 @@
 import {
-  PeopleReportFigures,
   PeopleReportRow,
   ReportCoverage,
+  ReportPart,
   ReportRange,
-  TeamMove,
+  ReportTeam,
 } from "@/types";
 
 import {
   addDays,
   formatDayMonthLabel,
+  formatDayRangeLabel,
   formatReportHours,
   fromISODate,
   isWeekend,
   toISODate,
 } from "./date";
-import { countLabel } from "./text";
 
 /**
  * How far the period is counted and whether it can change: "Up to Oct 23 ·
- * open for edits" for a month, "Oct 1 – Nov 1 · open for edits" for a
- * `periodRange`, then the team's name when there is one.
+ * open for edits", or "Locked" once it has ended.
  */
-export const reportScope = (
-  { countedUntil, isProvisional }: ReportCoverage,
-  {
-    periodRange,
-    teamName,
-  }: { periodRange?: ReportRange; teamName?: string } = {},
-) => {
+export const reportScope = ({
+  countedUntil,
+  isProvisional,
+}: ReportCoverage) => {
   const state = isProvisional ? "open for edits" : "locked";
-  const parts = periodRange
-    ? [
-        `${formatDayMonthLabel(periodRange.dateFrom)} – ${formatDayMonthLabel(countedUntil ?? periodRange.dateTo)}`,
-        state,
-      ]
-    : countedUntil
-      ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
-      : [isProvisional ? "Open for edits" : "Locked"];
-  if (teamName) parts.push(teamName);
-
-  return parts.join(" · ");
+  return countedUntil
+    ? `Up to ${formatDayMonthLabel(countedUntil)} · ${state}`
+    : isProvisional
+      ? "Open for edits"
+      : "Locked";
 };
 
-/** "96h of 120h", or the hours alone when nothing was expected. */
-export const againstExpected = (logged: number, expected: number) =>
-  expected > 0
-    ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
-    : formatReportHours(logged);
+/**
+ * What the figures cover, as one label: the period's own name once it has
+ * ended ("October 2026", "Q3 2026"), and while it runs the days counted so
+ * far ("Nov 1 - Nov 7 so far"), from the company's first day for a year it
+ * started in.
+ */
+export const shownPeriodLabel = (
+  name: string,
+  range: ReportRange,
+  countedUntil: string | null,
+) =>
+  countedUntil
+    ? `${formatDayRangeLabel(range.dateFrom, countedUntil)} so far`
+    : name;
 
-export const daysOffLabel = (days: number) =>
-  `${countLabel(days, "day", "days")} off`;
+/** "96h of 120h", or the hours alone with nothing to measure them against. */
+export const hoursAgainst = (minutes: number, reference: number | null) =>
+  reference
+    ? `${formatReportHours(minutes)} of ${formatReportHours(reference)}`
+    : formatReportHours(minutes);
 
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
 
-/** One figure's change from the previous period: its share in points, and the hours behind it. */
-export interface FigureChange {
-  points: number;
-  minutes: number;
-  /** Both shares as the page shows them, whole percentages. */
-  share: number;
-  previousShare: number;
-  /** The previous period's hours behind its share: none, and the change needs saying. */
-  previousMinutes: number;
-}
-
-export interface PeriodChange {
-  logged: FigureChange | null;
-  planned: FigureChange | null;
-  billable: FigureChange | null;
-}
-
-type ChangeFigures = Pick<
-  PeopleReportFigures,
-  "loggedMinutes" | "plannedMinutes" | "billableMinutes" | "expectedMinutes"
->;
-
-/**
- * Each figure's share against the previous period's, in points: 94% after 90%
- * is 4. Shares, not hours, since periods differ in working days and people
- * (Phase 42, decision 5).
- */
-export const periodChange = (
-  current: ChangeFigures,
-  previous: ChangeFigures,
-): PeriodChange => {
-  const change = (part: keyof ChangeFigures, whole: keyof ChangeFigures) =>
-    shareChange(
-      { part: current[part], whole: current[whole] },
-      { part: previous[part], whole: previous[whole] },
-    );
-
+/** The days a row has outside its teams: the viewer's own, or nobody's team. */
+const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
+  const isOwn = row.userId === viewerId;
   return {
-    logged: change("loggedMinutes", "expectedMinutes"),
-    planned: change("plannedMinutes", "expectedMinutes"),
-    billable: change("billableMinutes", "loggedMinutes"),
+    id: isOwn ? "my-time" : "no-team",
+    name: isOwn ? "My time" : "No team",
+    isArchived: false,
   };
 };
 
-/** One share against the previous period's; none if either has no whole. */
-export const shareChange = (
-  current: { part: number; whole: number },
-  previous: { part: number; whole: number },
-): FigureChange | null => {
-  if (current.whole === 0 || previous.whole === 0) return null;
-
-  const share = percentOf(current.part, current.whole);
-  const previousShare = percentOf(previous.part, previous.whole);
-  return {
-    points: share - previousShare,
-    minutes: current.part - previous.part,
-    share,
-    previousShare,
-    previousMinutes: previous.part,
-  };
-};
-
-/** "4 pts", "1 pt": the size of a change; its direction is an icon beside it. */
-export const changeLabel = ({ points }: FigureChange) => {
-  const size = Math.abs(points);
-  return `${size} ${size === 1 ? "pt" : "pts"}`;
-};
-
-/**
- * What a change means, for its tip: "Down 3 points from September 2026" over
- * "97% → 94% · about 109h less", or one line, "Same as September 2026 · 89%".
- * A previous period with hours expected and none logged (people invited
- * before they started logging) makes a large, true change that needs its
- * reason: a third line, "Nothing logged in Q2 2026".
- */
-export const changeTipLines = (
-  change: FigureChange,
-  previousName: string,
-  subject = "logged",
-) => {
-  const { points, minutes, share, previousShare, previousMinutes } = change;
-  if (points === 0) return [`Same as ${previousName} · ${share}%`];
-
-  const size = Math.abs(points);
-  const hours =
-    minutes === 0
-      ? "the same hours"
-      : `about ${formatReportHours(Math.abs(minutes))} ${minutes > 0 ? "more" : "less"}`;
-  const lines = [
-    `${points > 0 ? "Up" : "Down"} ${size} ${size === 1 ? "point" : "points"} from ${previousName}`,
-    `${previousShare}% → ${share}% · ${hours}`,
-  ];
-  if (previousMinutes === 0)
-    lines.push(`Nothing ${subject} in ${previousName}`);
-  return lines;
-};
-
-/** Up to this many people, every team starts open; past it, folded. */
-export const PEOPLE_SHOWN_OPEN = 15;
-
-/** A person under one team: their figures on that team's days. */
-export type TeamMember = PeopleReportRow & { moves: TeamMove[] };
-
-export interface TeamGroup {
-  /** The team's id, or "" for the people in no team. */
-  id: string;
-  name: string;
-  isArchived: boolean;
-  people: TeamMember[];
-  loggedMinutes: number;
-  billableMinutes: number;
-  expectedMinutes: number;
-}
-
-const NO_TEAM = "No team";
-
-/**
- * People under each team they were in during the period, so somebody in two
- * teams is in both, each time with their figures on that team's days, and
- * those in no team last under "No team". Teams run by name, people keep their
- * order; each team's figures add up its people.
- */
-export const groupPeopleByTeam = (people: PeopleReportRow[]): TeamGroup[] => {
-  const groups = new Map<string, TeamGroup>();
-  const add = (
-    id: string,
-    name: string,
-    isArchived: boolean,
-    person: TeamMember,
-  ) => {
-    const group = groups.get(id) ?? {
-      id,
-      name,
-      isArchived,
-      people: [],
-      loggedMinutes: 0,
-      billableMinutes: 0,
-      expectedMinutes: 0,
-    };
-    group.people.push(person);
-    group.loggedMinutes += person.loggedMinutes;
-    group.billableMinutes += person.billableMinutes;
-    group.expectedMinutes += person.expectedMinutes;
-    groups.set(id, group);
-  };
-
-  for (const person of people) {
-    if (person.teams.length === 0) {
-      add("", NO_TEAM, false, { ...person, moves: [] });
-    }
-    for (const team of person.teams) {
-      add(team.id, team.name, team.isArchived, {
-        ...person,
-        ...team.figures,
-        moves: team.moves,
-      });
-    }
+/** A person's parts of the period in date order: their teams, then any days outside them. */
+export const personParts = (
+  row: PeopleReportRow,
+  viewerId?: string,
+): ReportTeam[] => {
+  const parts = [...row.teams];
+  if (row.outsideTeams) {
+    parts.push({ ...row.outsideTeams, ...outsidePartOf(row, viewerId) });
   }
 
-  return [...groups.values()].sort(
-    (a, b) =>
-      Number(a.id === "") - Number(b.id === "") || a.name.localeCompare(b.name),
-  );
+  const firstDay = (part: ReportPart) => part.spans[0]?.from ?? "";
+  return parts.sort((a, b) => firstDay(a).localeCompare(firstDay(b)));
 };
+
+/** A part's days within the period: "Oct 1 - Oct 13", "From Oct 14". */
+export const partDaysLabel = (part: ReportPart, range: ReportRange) =>
+  part.spans
+    .map((span) => {
+      const from = span.from > range.dateFrom ? span.from : range.dateFrom;
+      const lastDay = toISODate(addDays(fromISODate(span.until), -1));
+      return lastDay >= range.dateTo && from > range.dateFrom
+        ? `From ${formatDayMonthLabel(from)}`
+        : formatDayRangeLabel(
+            from,
+            lastDay < range.dateTo ? lastDay : range.dateTo,
+          );
+    })
+    .join(", ");
 
 export type ReportDayKind =
   | "logged"

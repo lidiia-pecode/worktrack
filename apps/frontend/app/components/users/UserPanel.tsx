@@ -19,6 +19,7 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import {
+  NO_FIXED_HOURS,
   lastWorkingDayLabel,
   fullName,
   isDeactivatedUser,
@@ -60,16 +61,19 @@ import {
 const EDIT_FORM_ID = "user-edit-form";
 
 /** Wraps between its parts, never inside one. */
-const dayAndWeek = (minutesPerWeek: number) => (
-  <>
-    <span className="whitespace-nowrap">
-      {formatDuration(minutesPerDayOf(minutesPerWeek))} a day
-    </span>{" "}
-    <span className="whitespace-nowrap text-muted-foreground">
-      · {formatDuration(minutesPerWeek)} a week
-    </span>
-  </>
-);
+const dayAndWeek = (minutesPerWeek: number) =>
+  minutesPerWeek === 0 ? (
+    NO_FIXED_HOURS
+  ) : (
+    <>
+      <span className="whitespace-nowrap">
+        {formatDuration(minutesPerDayOf(minutesPerWeek))} a day
+      </span>{" "}
+      <span className="whitespace-nowrap text-muted-foreground">
+        · {formatDuration(minutesPerWeek)} a week
+      </span>
+    </>
+  );
 
 interface WorkingHoursProps {
   user: UserDetails;
@@ -171,10 +175,12 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   const ledTeam = user.team?.roleInTeam === TeamRole.MANAGER ? user.team : null;
 
   const save = async (data: UserFormData) => {
-    const { capacityHoursPerDay, capacityValidFrom, ...userData } = data;
+    const { capacityHoursPerDay, capacityValidFrom, role, ...details } = data;
+    // The role goes only when it changes: the API refuses Owner even unchanged.
+    const userData = role === user.role ? details : { ...details, role };
 
     const becomesEmployee =
-      user.role === UserRole.MANAGER && userData.role === UserRole.EMPLOYEE;
+      user.role === UserRole.MANAGER && role === UserRole.EMPLOYEE;
     if (becomesEmployee && ledTeam) {
       setIsRoleChangeBlocked(true);
       return;
@@ -212,6 +218,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
       >
         <UserForm
           formId={EDIT_FORM_ID}
+          userId={user.id}
           defaultValues={{
             position: user.position ?? "",
             role: user.role,
@@ -220,6 +227,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
             capacityValidFrom: today,
           }}
           scheduledChange={capacity.upcoming}
+          hoursSince={capacity.validFrom}
           onSubmit={save}
           onDirtyChange={panel.setHasUnsavedChanges}
         />
@@ -331,43 +339,46 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         // Only the person changes their own name, in their profile.
         editForm={isEditing && editForm}
       >
-        <PanelList
-          title="Team"
-          items={user.team ? [user.team] : []}
-          getKey={(team) => team.id}
-          renderRow={(team) => ({
-            entity: { type: "team", id: team.id },
-            name: team.name,
-            detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
-            remove: canRemoveFromTeam(team)
-              ? {
-                  label: `Remove ${fullName(user)} from ${team.name}`,
-                  onClick: () =>
-                    setRemoval({ teamId: team.id, userId: user.id }),
-                }
-              : undefined,
-          })}
-          emptyText={
-            <>
-              <ManageWarning inline>No team</ManageWarning>, so only the owner
-              sees them.
-            </>
-          }
-          note={
-            canChangeTeam && ledTeam
-              ? `Leads ${ledTeam.name}: give it another manager first to move them.`
-              : undefined
-          }
-          add={
-            canChangeTeam && !ledTeam
-              ? {
-                  label: user.team ? "Change team" : "Add to a team",
-                  icon: user.team ? ArrowRightLeft : Plus,
-                  onClick: () => setIsChangingTeam(true),
-                }
-              : undefined
-          }
-        />
+        {/* The owner is never in a team, so their panel has no team. */}
+        {user.role !== UserRole.OWNER && (
+          <PanelList
+            title="Team"
+            items={user.team ? [user.team] : []}
+            getKey={(team) => team.id}
+            renderRow={(team) => ({
+              entity: { type: "team", id: team.id },
+              name: team.name,
+              detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
+              remove: canRemoveFromTeam(team)
+                ? {
+                    label: `Remove ${fullName(user)} from ${team.name}`,
+                    onClick: () =>
+                      setRemoval({ teamId: team.id, userId: user.id }),
+                  }
+                : undefined,
+            })}
+            emptyText={
+              <>
+                <ManageWarning inline>No team</ManageWarning>, so only the owner
+                sees them.
+              </>
+            }
+            note={
+              canChangeTeam && ledTeam
+                ? `Leads ${ledTeam.name}: give it another manager first to move them.`
+                : undefined
+            }
+            add={
+              canChangeTeam && !ledTeam
+                ? {
+                    label: user.team ? "Change team" : "Add to a team",
+                    icon: user.team ? ArrowRightLeft : Plus,
+                    onClick: () => setIsChangingTeam(true),
+                  }
+                : undefined
+            }
+          />
+        )}
 
         <PanelList
           title="Projects"

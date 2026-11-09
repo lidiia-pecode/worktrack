@@ -41,7 +41,6 @@ describe('CompaniesService update', () => {
   it('returns the whole company when only some fields are sent', async () => {
     const dto = plainToInstance(UpdateCompanyDto, {
       timezone: 'America/Argentina/Buenos_Aires',
-      standardWorkHoursPerDay: 7.5,
     });
 
     const updated = await service.update(companyId, dto);
@@ -51,7 +50,6 @@ describe('CompaniesService update', () => {
       currency: 'USD',
       timezone: 'America/Argentina/Buenos_Aires',
     });
-    expect(Number(updated.standardWorkHoursPerDay)).toBe(7.5);
   });
 
   it('saves the other fields sent together with a new name', async () => {

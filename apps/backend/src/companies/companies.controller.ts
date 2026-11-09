@@ -45,17 +45,7 @@ export class CompaniesController {
     @CurrentUser() user: AuthUser,
     @Body() dto: UpdateCompanyDto,
   ): Promise<CompanyResponseDto> {
-    const { standardWorkHoursPerDay, ...settings } = dto;
-
-    if (standardWorkHoursPerDay !== undefined) {
-      await this.capacity.setStandardDay(
-        user.companyId,
-        standardWorkHoursPerDay,
-        null,
-        user.id,
-      );
-    }
-    await this.companiesService.update(user.companyId, settings);
+    await this.companiesService.update(user.companyId, dto);
 
     return this.respond(user.companyId);
   }

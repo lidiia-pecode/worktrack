@@ -55,6 +55,9 @@ export const isDeactivatedUser = (user: { status?: UserStatus }) =>
 export const lastWorkingDayLabel = (user: Pick<User, "lastWorkingDay">) =>
   user.lastWorkingDay ? formatDayMonthYearLabel(user.lastWorkingDay) : null;
 
+/** Working hours of 0: nothing expected, no missing days, never planned. */
+export const NO_FIXED_HOURS = "No fixed hours";
+
 /** The closed spell a day falls in, as the API refuses it, if any. */
 export const closedSpellOn = (spells: ClosedSpell[], date: string) =>
   spells.find(

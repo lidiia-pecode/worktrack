@@ -1,7 +1,6 @@
 "use client";
 
 import { ReactNode, useId } from "react";
-import Link from "next/link";
 import { CalendarCheck } from "lucide-react";
 
 import { PeopleReportRow, ReportRange } from "@/types";
@@ -13,10 +12,9 @@ import {
   formatReportHours,
   getMonthRange,
 } from "@/lib/utils/date";
-import { againstExpected, reportScope } from "@/lib/utils/report-overview";
+import { hoursAgainst, reportScope } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
-import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
 import { EmptyState } from "../shared/EmptyState";
@@ -39,7 +37,7 @@ const MonthCard = ({
   children,
 }: {
   title: string;
-  note: string;
+  note?: string;
   children: ReactNode;
 }) => {
   const titleId = useId();
@@ -49,7 +47,7 @@ const MonthCard = ({
       <h2 id={titleId} className="text-base font-semibold">
         {title}
       </h2>
-      <p className="mt-0.5 text-sm text-muted-foreground">{note}</p>
+      {note && <p className="mt-0.5 text-sm text-muted-foreground">{note}</p>}
       <div className="mt-4">{children}</div>
     </Card>
   );
@@ -99,7 +97,7 @@ const MonthTotal = ({
       value={person.loggedMinutes}
       reference={person.expectedMinutes}
       billable={person.billableMinutes}
-      label={`${againstExpected(person.loggedMinutes, person.expectedMinutes)} expected`}
+      label={`${hoursAgainst(person.loggedMinutes, person.expectedMinutes)} expected`}
       className="mt-3 h-2.5"
     />
   </>
@@ -109,7 +107,8 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
   const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
   const range: ReportRange = getMonthRange(month);
 
-  const people = usePeopleReport(range);
+  // Their own row only, as Reports' panel asks for it.
+  const people = usePeopleReport({ ...range, userId });
   const isUpdating = people.isPlaceholderData;
   const report = isUpdating ? null : people.report;
   const isNothingCounted = Boolean(
@@ -147,20 +146,13 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
       );
     }
 
+    // Without a row of their own, nothing was expected, logged or planned.
     if (!ownRow) {
       return (
         <EmptyState
-          title={`Nothing logged in ${formatMonthLabel(month)}`}
-          description="Time logged during the week appears here once the day is over."
+          title={`Nothing expected or logged in ${formatMonthLabel(month)}`}
+          description="No working hours, time or plans this month."
           icon={<CalendarCheck />}
-          action={
-            <Link
-              href="/timesheet"
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Log my time
-            </Link>
-          }
         />
       );
     }
@@ -179,12 +171,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
         <Card as="section" aria-label="Your month" className="p-6">
           <MonthTotal person={ownRow} isOpen={isOpen} />
           <div className="mt-5 border-t border-border pt-4">
-            <PersonFacts
-              person={ownRow}
-              range={range}
-              countedUntil={people.report.countedUntil}
-              withDaysOff
-            />
+            <PersonFacts person={ownRow} />
           </div>
         </Card>
 
@@ -205,7 +192,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
             />
           </MonthCard>
 
-          <MonthCard title="Projects" note="Logged against your plan">
+          <MonthCard title="Projects">
             <PersonProjects person={ownRow} range={range} />
           </MonthCard>
         </div>

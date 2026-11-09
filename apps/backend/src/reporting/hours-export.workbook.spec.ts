@@ -101,17 +101,19 @@ describe('hours export workbook', () => {
     expect(cell.value).toBe('=HYPERLINK("x")');
   });
 
-  it('names the file after the range, and the team when it is for one', () => {
-    const september = { dateFrom: '2026-09-01', dateTo: '2026-09-30' };
-
-    expect(hoursExportFileName(september)).toBe(
+  it('names the file after the days counted, and the team when it is for one', () => {
+    expect(hoursExportFileName('2026-09-01', '2026-09-30')).toBe(
       'worktrack-hours-2026-09-01-2026-09-30.xlsx',
     );
-    expect(hoursExportFileName(september, 'Mobile Squad & QA')).toBe(
-      'worktrack-hours-mobile-squad-qa-2026-09-01-2026-09-30.xlsx',
-    );
-    expect(hoursExportFileName(september, '★ ★')).toBe(
+    expect(
+      hoursExportFileName('2026-09-01', '2026-09-30', 'Mobile Squad & QA'),
+    ).toBe('worktrack-hours-mobile-squad-qa-2026-09-01-2026-09-30.xlsx');
+    expect(hoursExportFileName('2026-09-01', '2026-09-30', '★ ★')).toBe(
       'worktrack-hours-2026-09-01-2026-09-30.xlsx',
+    );
+    // Nothing counted yet: it ends on the first day.
+    expect(hoursExportFileName('2026-09-01', '2026-08-31')).toBe(
+      'worktrack-hours-2026-09-01-2026-09-01.xlsx',
     );
   });
 });

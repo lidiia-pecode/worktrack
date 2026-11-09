@@ -82,7 +82,7 @@ export const TeamFilters = ({
     Boolean(teamId ?? projectId) || Boolean(search.trim());
 
   return (
-    <FilterBar className="px-3 py-3 sm:gap-6">
+    <FilterBar className="py-3 sm:gap-6">
       {onSearchChange && (
         <SearchInput
           value={search}

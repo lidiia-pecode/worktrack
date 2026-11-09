@@ -163,18 +163,18 @@ describe('UsersService scope', () => {
   });
 
   describe('list', () => {
-    it('shows an owner the whole company except owners', async () => {
+    it('shows an owner the whole company, themselves included', async () => {
       const ids = await listedIds(owner);
 
       expect(ids).toEqual(
         expect.arrayContaining([
+          owner.id,
           manager.id,
           member.id,
           outsider.id,
           leadNothing.id,
         ]),
       );
-      expect(ids).not.toContain(owner.id);
     });
 
     it('shows a manager their own team, and themselves', async () => {
