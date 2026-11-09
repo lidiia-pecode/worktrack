@@ -9,6 +9,7 @@ import {
   PeopleReportRow,
   ReportQuery,
   ReportRange,
+  ReportTeam,
 } from "@/types";
 import { HoursReportGroupBy } from "@/types/enums";
 import { useHoursReport } from "@/hooks/useHoursReport";
@@ -16,9 +17,8 @@ import { usePeopleReport } from "@/hooks/usePeopleReport";
 import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
 import {
-  againstExpected,
+  hoursAgainst,
   partDaysLabel,
-  PersonPart,
   personParts,
   percentOf,
 } from "@/lib/utils/report-overview";
@@ -270,11 +270,12 @@ const PersonPeriod = ({
 const PersonTeams = ({
   parts,
   range,
-  isFiltered,
+  teamId,
 }: {
-  parts: PersonPart[];
+  parts: ReportTeam[];
   range: ReportRange;
-  isFiltered: boolean;
+  /** Reports' team filter, whose team stands out. */
+  teamId?: string;
 }) => (
   <section aria-label="Teams">
     <h3 className="pb-2 text-sm font-semibold">Teams</h3>
@@ -285,7 +286,7 @@ const PersonTeams = ({
           key={part.id}
           className={cn(
             "flex items-center justify-between gap-2.5 rounded-lg border px-2.5 py-2",
-            isFiltered && part.isInReport
+            part.id === teamId
               ? "border-brand/25 bg-brand-subtle"
               : "border-border",
           )}
@@ -299,7 +300,7 @@ const PersonTeams = ({
             </span>
           </span>
           <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
-            {againstExpected(
+            {hoursAgainst(
               part.figures.loggedMinutes,
               part.figures.expectedMinutes,
             )}
@@ -316,7 +317,7 @@ type PersonPanelProps = {
   range: ReportRange;
   /** What the figures cover: "October 2026", "Nov 1 - Nov 7 so far". */
   periodLabel: string;
-  /** Reports' team filter: its part is the one in the report. */
+  /** Reports' team filter: its team stands out. */
   teamId?: string;
   viewerId?: string;
   isUpdating: boolean;
@@ -355,7 +356,7 @@ export const PersonPanel = ({
       );
     }
 
-    const parts = personParts(row, { teamId, viewerId });
+    const parts = personParts(row, viewerId);
 
     return (
       <>
@@ -364,11 +365,7 @@ export const PersonPanel = ({
         <PersonFacts person={row} withDaysWithoutTime />
 
         {parts.length > 0 && (
-          <PersonTeams
-            parts={parts}
-            range={range}
-            isFiltered={Boolean(teamId)}
-          />
+          <PersonTeams parts={parts} range={range} teamId={teamId} />
         )}
 
         <PersonProjects person={row} range={range} title="Projects" />

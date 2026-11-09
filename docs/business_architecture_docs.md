@@ -1157,7 +1157,7 @@ one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-eight Vitest files and 463 tests: its date, month,
+The frontend has seventy-eight Vitest files and 462 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1269,6 +1269,7 @@ tooling, documentation and small fixes are left out.
 | #67 | The manager's week, finished: Planning narrowed by team, active project and a search by name or position, as Team time is, with "Clear filters" on both grids and Team time's search and sort kept in the URL; a team filter on the absences and plans the grids fetch; toolbars reading `Logged 30h / 128h` and `Planned 120h / 160h`, only the logged or planned hours under a project; the period dialog opening on the shown week with a `Week | Month` control beside its arrows; Plan a day rebuilt on Plan a period's model, its plans edited in place and saved with their notes in one request; the work dialogs on one frame, closed from the footer only and asking before unsaved changes are lost, confirmations titled as questions; the week grids waiting for the month locks before showing a day; controls on one scale of heights, radii and one border; the demo seed with Emma Clarke in one team |
 | #69 | Dates for people and hours: deactivating asks for the last working day, which stays open, and removes what was recorded after it, and reactivating for the first day back; a person's working hours and the company's standard day changed from a chosen date, with the one change waiting to start shown and cancellable; a team move, addition or removal dated back to an open day by the owner |
 | #70 | One team per person and one manager per team, held by the database: the owner picks a team's manager with Change manager on its panel, from its members (an Employee made a Manager in the same change) or a Manager in no team, the previous one staying as a member or leaving; team leaders shown but not choosable in the members picker and moved only once their team has another manager; a pending manager invitation holding a team's lead; Reports counting a manager once; the team filter on Team time, Planning and Reports offered to whoever sees more than one team, a link to a team they don't see dropped from the address; fewer notes telling a manager they see only their own people |
+| #71 | Report figures that add up: Reports, Team time and Planning counting the same people, anyone with working hours, logged or planned time on the days in view, leavers and the owner included; each person listed once, with their teams and the days outside them in their panel, so the rows add up to the period; 0h meaning no fixed hours and neutral on every screen, saving it deleting the person's plans from that day; the owner saying in the setup guide whether they log their own time, a second save changing nothing before today; Reports in decimal hours without the period comparison, People and Projects as sortable tables that fold into compact rows on a narrow screen |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1360,17 +1361,17 @@ ready, or not, for the final stage.
 **Order.** Area 1 came first and Area 2 straight after, because every later
 area reuses what they settle; then Area 5, Area 6 and Area 7, with Areas 3
 and 4 in steps between them (the Delivered table has the sequence). Report
-figures that add up come next, then access to teams (Configurable
-permissions, below); what is left of Areas 3 and 4, Team time and Planning on
-a phone among it, follows, and Area 8 closes the stage. A defect that distorts
-figures can be pulled into whichever work comes first.
+figures that add up followed (PR #71); access to teams (Configurable
+permissions, below) comes next; what is left of Areas 3 and 4, Team time and
+Planning on a phone among it, follows, and Area 8 closes the stage. A defect
+that distorts figures can be pulled into whichever work comes first.
 
 ---
 
 **Next — Configurable permissions — an approximate vision, not a specification**
 
 Scheduled on 7 November 2026, in two parts split by kind of access. **Access
-to teams** comes right after the work on report figures that add up: someone
+to teams** comes next, after the work on report figures that add up: someone
 given it acts for a team (its time, absences, plans and reports), for
 example a deputy while the manager is away, which PR #70's one manager per
 team makes necessary. **Access to the owner's administrative tasks** comes

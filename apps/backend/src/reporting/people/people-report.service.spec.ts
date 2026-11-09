@@ -572,7 +572,6 @@ describe('PeopleReportService', () => {
       await dataSource.getRepository(UserCapacity).remove(noHours);
 
       expect(onStandardDay).toMatchObject({
-        role: UserRole.OWNER,
         loggedMinutes: 0,
         expectedMinutes: WORKING_DAYS_IN_MARCH * FULL_DAY,
       });

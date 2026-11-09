@@ -60,7 +60,7 @@ export const ReportBar = ({
     value > 0 ? Math.min(100, (billable / filledMinutes) * 100) : 0;
 
   return (
-    // Spans, so a team row can put the bar beside its button.
+    // A span, so it can sit inside the inline content around it.
     <span
       {...(label
         ? { role: "img", "aria-label": label }

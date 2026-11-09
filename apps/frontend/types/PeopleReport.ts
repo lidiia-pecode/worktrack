@@ -1,4 +1,4 @@
-import { UserRole, UserStatus } from "./enums";
+import { UserStatus } from "./enums";
 import { TeamMove } from "./Timelog";
 import { ReportCoverage } from "./HoursReport";
 
@@ -34,7 +34,6 @@ export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
-  role: UserRole;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
   /** The teams they were in during the period, by name, archived ones included; for a manager, only the teams they lead. */

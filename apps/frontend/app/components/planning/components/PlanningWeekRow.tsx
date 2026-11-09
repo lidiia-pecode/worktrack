@@ -146,21 +146,19 @@ export const PlanningWeekRow = ({
               {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
             </PersonLabel>
 
-            {!isActive ? (
-              <Badge variant="neutral" size="sm" className="ml-auto shrink-0">
-                Deactivated
+            {(!isActive || hasNoFixedHours) && (
+              <Badge
+                variant="neutral"
+                size="sm"
+                className="ml-auto shrink-0"
+                title={
+                  isActive
+                    ? `Give ${row.user.firstName} working hours to plan them.`
+                    : undefined
+                }
+              >
+                {isActive ? NO_FIXED_HOURS : "Deactivated"}
               </Badge>
-            ) : (
-              hasNoFixedHours && (
-                <Badge
-                  variant="neutral"
-                  size="sm"
-                  className="ml-auto shrink-0"
-                  title={`Give ${row.user.firstName} working hours to plan them.`}
-                >
-                  {NO_FIXED_HOURS}
-                </Badge>
-              )
             )}
           </div>
         )}

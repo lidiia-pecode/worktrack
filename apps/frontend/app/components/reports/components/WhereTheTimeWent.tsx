@@ -6,7 +6,7 @@ import { FolderKanban } from "lucide-react";
 import { HoursReportRow, ReportQuery } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatReportHours } from "@/lib/utils/date";
-import { percentOf } from "@/lib/utils/report-overview";
+import { hoursAgainst, percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
@@ -15,7 +15,7 @@ import { SegmentedControl } from "../../shared/SegmentedControl";
 import { KindOfWork } from "./KindOfWork";
 import { ReportCardTitle } from "./ReportCardTitle";
 import { ReportBar } from "./ReportBar";
-import { AttentionLegend } from "./ReportRow";
+import { AttentionLegend } from "./NeedsAttention";
 import { CompactRow, ReportColumn, ReportTable } from "./ReportTable";
 
 type WhereView = "projects" | "work";
@@ -66,9 +66,7 @@ const barOf = (project: HoursReportRow) => (
 
 /** Where the columns don't fit: "731.5h of 660h", then the difference and billable share. */
 const compactOf = (project: HoursReportRow): CompactRow => ({
-  figure: project.plannedMinutes
-    ? `${formatReportHours(project.totalMinutes)} of ${formatReportHours(project.plannedMinutes)}`
-    : formatReportHours(project.totalMinutes),
+  figure: hoursAgainst(project.totalMinutes, project.plannedMinutes),
   note: (
     <>
       <DifferenceLabel project={project} />
@@ -81,14 +79,12 @@ const compactOf = (project: HoursReportRow): CompactRow => ({
 const COLUMNS: ReportColumn<HoursReportRow>[] = [
   {
     header: "Logged",
-    numeric: true,
     width: "w-24",
     cell: (project) => formatReportHours(project.totalMinutes),
     sortValue: (project) => project.totalMinutes,
   },
   {
     header: "Planned",
-    numeric: true,
     width: "w-24",
     cell: (project) =>
       project.plannedMinutes
@@ -100,7 +96,6 @@ const COLUMNS: ReportColumn<HoursReportRow>[] = [
   },
   {
     header: "Against plan",
-    numeric: true,
     width: "w-60",
     cell: (project) => (
       <span className="flex items-center gap-3">
@@ -114,7 +109,6 @@ const COLUMNS: ReportColumn<HoursReportRow>[] = [
   },
   {
     header: "Billable",
-    numeric: true,
     width: "w-24",
     cell: billableLabel,
     sortValue: (project) =>

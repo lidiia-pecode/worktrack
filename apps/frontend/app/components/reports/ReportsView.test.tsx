@@ -131,7 +131,6 @@ const person = (
     userId: name.toLowerCase().replace(" ", "-"),
     name,
     position: "Developer",
-    role: UserRole.EMPLOYEE,
     status: UserStatus.ACTIVE,
     teams: [],
     outsideTeams: { figures, spans: [], moves: [] },

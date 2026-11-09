@@ -70,8 +70,8 @@ type PersonDayGridProps = {
 
 /**
  * A person's working days, Monday to Friday in columns so the grid reads week
- * by week; a weekend day with time is listed under it. A day the view doesn't
- * hold, another team's or after they left, is closed, as on Team time.
+ * by week; a weekend day with time is listed under it. A day they weren't
+ * employed on is closed, as on Team time.
  */
 export const PersonDayGrid = ({
   person,
@@ -155,11 +155,6 @@ export const PersonDayGrid = ({
       label: "Day off",
       shows: days.some((day) => day.kind === "off"),
       swatch: <span className={cn(SWATCH, KIND_STYLES.off)} />,
-    },
-    {
-      label: "Not in this team",
-      shows: closedSpells.some((spell) => spell.reason === "outside-team"),
-      swatch: <span className={cn(SWATCH, KIND_STYLES.closed)} />,
     },
     {
       label: "Not employed",

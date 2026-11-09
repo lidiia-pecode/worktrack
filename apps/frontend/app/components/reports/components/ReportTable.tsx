@@ -17,17 +17,19 @@ import {
   TableRowHeader,
 } from "@/components/ui/table";
 
-import { AttentionDot } from "./ReportRow";
+import { AttentionDot } from "./NeedsAttention";
 
 /** Rows shown at first; the rest open on request. */
 const ROWS_SHOWN = 10;
 
 type SortValue = number | string | null;
 
+/**
+ * A column of the table. Every column after the name holds figures:
+ * right-aligned, and sorting first to the largest.
+ */
 export type ReportColumn<T> = {
   header: string;
-  /** Right-aligned figures; sorting them starts with the largest. */
-  numeric?: boolean;
   /** The column's width at table size, as a class. */
   width?: string;
   cell: (row: T) => ReactNode;
@@ -76,7 +78,7 @@ type ReportTableProps<T> = {
 /** A row where the columns don't fit: its main figure, a short note and the bar. */
 export type CompactRow = {
   figure: ReactNode;
-  note?: ReactNode;
+  note: ReactNode;
   bar: ReactNode;
 };
 
@@ -122,7 +124,7 @@ export const ReportTable = <T,>({
           }
         : {
             column: column.header,
-            direction: column.numeric ? "desc" : "asc",
+            direction: column === nameColumn ? "asc" : "desc",
           },
     );
 
@@ -137,7 +139,7 @@ export const ReportTable = <T,>({
     return (
       <TableHead
         key={column.header}
-        numeric={column.numeric}
+        numeric={column !== nameColumn}
         aria-sort={
           isActive
             ? sort.direction === "asc"
@@ -198,11 +200,7 @@ export const ReportTable = <T,>({
                   {name(row)}
                 </TableRowHeader>
                 {columns.map((column) => (
-                  <TableCell
-                    key={column.header}
-                    numeric={column.numeric}
-                    className="py-2.5"
-                  >
+                  <TableCell key={column.header} numeric className="py-2.5">
                     {column.cell(row)}
                   </TableCell>
                 ))}
@@ -223,11 +221,9 @@ export const ReportTable = <T,>({
                   <p className="text-sm font-medium whitespace-nowrap">
                     {figure}
                   </p>
-                  {note && (
-                    <p className="text-xs whitespace-nowrap text-muted-foreground">
-                      {note}
-                    </p>
-                  )}
+                  <p className="text-xs whitespace-nowrap text-muted-foreground">
+                    {note}
+                  </p>
                 </div>
               </div>
               <div className="mt-2">{bar}</div>

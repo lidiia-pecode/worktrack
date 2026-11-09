@@ -30,7 +30,7 @@ import {
   movesIn,
 } from 'src/teams/days-in-view.util';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
-import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 
 import { assertDateRange } from '../date-range.util';
 import { ReportRangeQuery } from '../dtos/report-range-query.dto';
@@ -80,7 +80,6 @@ export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
   position: string | null;
-  role: UserRole;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
   /**
@@ -153,10 +152,7 @@ interface ReportBasis {
   parts: Map<string, PersonParts>;
 }
 
-interface PersonParts {
-  teams: ReportTeam[];
-  outsideTeams: ReportPart | null;
-}
+type PersonParts = Pick<PeopleReportRow, 'teams' | 'outsideTeams'>;
 
 /** A team and the days a person was in it. */
 interface TeamSpans {
@@ -282,19 +278,12 @@ const partsFrom = ({
             ...userOutside,
           ]);
 
-      const outsideTeams = outsideSpans.length ? partOn(outsideSpans) : null;
+      const outsidePart = outsideSpans.length ? partOn(outsideSpans) : null;
+      // Days with nothing on them, such as before someone joined, say nothing.
+      const outsideTeams =
+        outsidePart && hasFigures(outsidePart.figures) ? outsidePart : null;
 
-      return [
-        userId,
-        {
-          teams,
-          // Days with nothing on them, such as before someone joined, say nothing.
-          outsideTeams:
-            outsideTeams && hasFigures(outsideTeams.figures)
-              ? outsideTeams
-              : null,
-        },
-      ];
+      return [userId, { teams, outsideTeams }];
     }),
   );
 };
@@ -317,7 +306,6 @@ const peopleReportFrom = ({
       userId: person.id,
       name: `${person.firstName} ${person.lastName}`,
       position: person.position ?? null,
-      role: person.role,
       status: person.status,
       teams: parts.get(person.id)?.teams ?? [],
       outsideTeams: parts.get(person.id)?.outsideTeams ?? null,

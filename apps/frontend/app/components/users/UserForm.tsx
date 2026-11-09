@@ -94,8 +94,8 @@ export const UserForm = ({
   const role = useWatch({ control, name: "role" });
   const validFrom = useWatch({ control, name: "capacityValidFrom" });
   const { timezone } = useWorkSettings();
-  const today = todayISODate(timezone);
-  const replacesScheduledChange = scheduledChange && validFrom > today;
+  const replacesScheduledChange =
+    scheduledChange && validFrom > todayISODate(timezone);
   // Saving 0h deletes the person's plans from that day, up to hours already
   // scheduled to come back.
   const hasNoHours = minutesPerWeek === 0;
@@ -179,7 +179,7 @@ export const UserForm = ({
             step={WORK_DAY_STEP_HOURS}
             label="Working hours a day"
             description={
-              minutesPerWeek === 0
+              hasNoHours
                 ? `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
                 : Number.isFinite(minutesPerWeek) &&
                   `${formatDuration(minutesPerWeek)} a week`

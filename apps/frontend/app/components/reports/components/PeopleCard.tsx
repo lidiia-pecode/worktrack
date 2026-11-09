@@ -6,13 +6,13 @@ import { PeopleReportRow } from "@/types";
 import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 import { isDeactivatedUser } from "@/lib/utils/user";
-import { percentOf } from "@/lib/utils/report-overview";
+import { hoursAgainst, percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
 import { ReportBar } from "./ReportBar";
 import { ReportCardTitle } from "./ReportCardTitle";
-import { AttentionLegend } from "./ReportRow";
+import { AttentionLegend } from "./NeedsAttention";
 import { CompactRow, ReportColumn, ReportTable } from "./ReportTable";
 
 const NO_FIGURE = "—";
@@ -79,10 +79,7 @@ const barOf = (person: PeopleReportRow) => (
 
 /** Where the columns don't fit: "56h of 176h", then the shares. */
 const compactOf = (person: PeopleReportRow): CompactRow => ({
-  figure:
-    person.expectedMinutes > 0
-      ? `${formatReportHours(person.loggedMinutes)} of ${formatReportHours(person.expectedMinutes)}`
-      : formatReportHours(person.loggedMinutes),
+  figure: hoursAgainst(person.loggedMinutes, person.expectedMinutes),
   note: (
     <>
       <span className={cn(isOverExpected(person) && "text-warning-text")}>
@@ -97,14 +94,12 @@ const compactOf = (person: PeopleReportRow): CompactRow => ({
 const COLUMNS: ReportColumn<PeopleReportRow>[] = [
   {
     header: "Logged",
-    numeric: true,
     width: "w-24",
     cell: (person) => formatReportHours(person.loggedMinutes),
     sortValue: (person) => person.loggedMinutes,
   },
   {
     header: "Expected",
-    numeric: true,
     width: "w-24",
     cell: (person) =>
       person.expectedMinutes > 0
@@ -115,7 +110,6 @@ const COLUMNS: ReportColumn<PeopleReportRow>[] = [
   },
   {
     header: "Of expected",
-    numeric: true,
     width: "w-56",
     cell: (person) => (
       <span className="flex items-center gap-3">
@@ -131,7 +125,6 @@ const COLUMNS: ReportColumn<PeopleReportRow>[] = [
   },
   {
     header: "Billable",
-    numeric: true,
     width: "w-24",
     cell: billableLabel,
     sortValue: (person) =>
@@ -146,7 +139,7 @@ type PeopleCardProps = {
   /** The people Needs attention names, with why. */
   marked: Map<string, string>;
   /** Narrowed to one team, so each row is that team's days. */
-  isTeamFiltered?: boolean;
+  isTeamFiltered: boolean;
   onOpenPerson: (userId: string) => void;
 };
 
@@ -158,7 +151,7 @@ type PeopleCardProps = {
 export const PeopleCard = ({
   people,
   marked,
-  isTeamFiltered = false,
+  isTeamFiltered,
   onOpenPerson,
 }: PeopleCardProps) => (
   <Card as="section" aria-labelledby="report-people" className="p-6">

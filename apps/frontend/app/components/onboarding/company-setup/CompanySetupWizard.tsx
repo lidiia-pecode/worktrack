@@ -102,7 +102,7 @@ export const CompanySetupWizard = () => {
   });
   const ownCapacity = useUserCapacity(user?.id ?? "", Boolean(user));
   const [currentStep, setCurrentStep] = useState(0);
-  const [isSavingHours, setIsSavingHours] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const {
@@ -134,7 +134,6 @@ export const CompanySetupWizard = () => {
 
   const step = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
-  const isSaving = actions.update.isPending || isSavingHours;
 
   const leaveSetup = () => {
     router.replace("/");
@@ -154,6 +153,7 @@ export const CompanySetupWizard = () => {
   }: SetupValues) => {
     if (!company || !user || ownMinutesPerWeek === undefined) return;
     setSaveError(null);
+    setIsSaving(true);
 
     try {
       const saved = await actions.update.mutateAsync({
@@ -162,7 +162,6 @@ export const CompanySetupWizard = () => {
       });
       const today = todayISODate(saved.timezone);
 
-      setIsSavingHours(true);
       if (standardWorkHoursPerDay !== Number(company.standardWorkHoursPerDay)) {
         await CompaniesClientApi.setStandardDay({
           hoursPerDay: standardWorkHoursPerDay,
@@ -190,7 +189,7 @@ export const CompanySetupWizard = () => {
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
-      setIsSavingHours(false);
+      setIsSaving(false);
     }
   };
 

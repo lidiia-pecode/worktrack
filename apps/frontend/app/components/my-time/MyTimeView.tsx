@@ -12,7 +12,7 @@ import {
   formatReportHours,
   getMonthRange,
 } from "@/lib/utils/date";
-import { againstExpected, reportScope } from "@/lib/utils/report-overview";
+import { hoursAgainst, reportScope } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
 import { Card } from "@/components/ui/card";
@@ -97,7 +97,7 @@ const MonthTotal = ({
       value={person.loggedMinutes}
       reference={person.expectedMinutes}
       billable={person.billableMinutes}
-      label={`${againstExpected(person.loggedMinutes, person.expectedMinutes)} expected`}
+      label={`${hoursAgainst(person.loggedMinutes, person.expectedMinutes)} expected`}
       className="mt-3 h-2.5"
     />
   </>

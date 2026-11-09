@@ -3,6 +3,7 @@ import {
   ReportCoverage,
   ReportPart,
   ReportRange,
+  ReportTeam,
 } from "@/types";
 
 import {
@@ -46,11 +47,11 @@ export const shownPeriodLabel = (
     ? `${formatDayRangeLabel(range.dateFrom, countedUntil)} so far`
     : name;
 
-/** "96h of 120h", or the hours alone when nothing was expected. */
-export const againstExpected = (logged: number, expected: number) =>
-  expected > 0
-    ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
-    : formatReportHours(logged);
+/** "96h of 120h", or the hours alone with nothing to measure them against. */
+export const hoursAgainst = (minutes: number, reference: number | null) =>
+  reference
+    ? `${formatReportHours(minutes)} of ${formatReportHours(reference)}`
+    : formatReportHours(minutes);
 
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
@@ -66,39 +67,22 @@ const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
   };
 };
 
-/** One part of a person's period, as their panel shows it. */
-export interface PersonPart extends ReportPart {
-  id: string;
-  name: string;
-  /** A team archived since; only the owner sees one. */
-  isArchived: boolean;
-  /** In the report's view: the team filtered to, or every part without one. */
-  isInReport: boolean;
-}
-
 /** A person's parts of the period in date order: their teams, then any days outside them. */
 export const personParts = (
   row: PeopleReportRow,
-  { teamId, viewerId }: { teamId?: string; viewerId?: string },
-): PersonPart[] => {
-  const parts: PersonPart[] = row.teams.map((team) => ({
-    ...team,
-    isInReport: !teamId || team.id === teamId,
-  }));
+  viewerId?: string,
+): ReportTeam[] => {
+  const parts = [...row.teams];
   if (row.outsideTeams) {
-    parts.push({
-      ...row.outsideTeams,
-      ...outsidePartOf(row, viewerId),
-      isInReport: !teamId,
-    });
+    parts.push({ ...row.outsideTeams, ...outsidePartOf(row, viewerId) });
   }
 
-  const firstDay = (part: PersonPart) => part.spans[0]?.from ?? "";
+  const firstDay = (part: ReportPart) => part.spans[0]?.from ?? "";
   return parts.sort((a, b) => firstDay(a).localeCompare(firstDay(b)));
 };
 
 /** A part's days within the period: "Oct 1 - Oct 13", "From Oct 14". */
-export const partDaysLabel = (part: PersonPart, range: ReportRange) =>
+export const partDaysLabel = (part: ReportPart, range: ReportRange) =>
   part.spans
     .map((span) => {
       const from = span.from > range.dateFrom ? span.from : range.dateFrom;
