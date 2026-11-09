@@ -76,12 +76,34 @@ const ReportPanel = ({
   );
 };
 
+// Each fact's mark, as the chart's legend and the week views draw it.
+const PLANNED_MARK = "bg-report-planned";
+const BILLABLE_MARK = "bg-stripes-billable";
+const TIME_OFF_MARK = "border border-border bg-stripes-day-off";
+// Needs attention's dot, as in the People table.
+const NO_TIME_MARK = "rounded-full bg-warning";
+
+type Fact = {
+  label: string;
+  value: string;
+  /** The fact's colour, as a class on a small square before its label. */
+  mark?: string;
+};
+
 /** What the panel adds to its row, in one line: never the row's own figures again. */
-const Facts = ({ facts }: { facts: { label: string; value: string }[] }) => (
+const Facts = ({ facts }: { facts: Fact[] }) => (
   <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
     {facts.map((fact) => (
       <div key={fact.label}>
-        <dt className="text-muted-foreground">{fact.label}</dt>
+        <dt className="flex items-center gap-1.5 text-muted-foreground">
+          {fact.mark && (
+            <span
+              className={cn("size-2.5 shrink-0 rounded-sm", fact.mark)}
+              aria-hidden
+            />
+          )}
+          {fact.label}
+        </dt>
         <dd className="font-medium tabular-nums">{fact.value}</dd>
       </div>
     ))}
@@ -148,6 +170,7 @@ export const PersonFacts = ({
       facts={[
         {
           label: "Planned",
+          mark: PLANNED_MARK,
           value:
             person.plannedMinutes > 0
               ? formatReportHours(person.plannedMinutes)
@@ -155,12 +178,14 @@ export const PersonFacts = ({
         },
         {
           label: "Billable",
+          mark: BILLABLE_MARK,
           value: `${formatReportHours(person.billableMinutes)} · ${percentOf(person.billableMinutes, person.loggedMinutes)}%`,
         },
         ...(person.timeOffDays > 0
           ? [
               {
                 label: "Time off",
+                mark: TIME_OFF_MARK,
                 value: countLabel(person.timeOffDays, "day", "days"),
               },
             ]
@@ -169,6 +194,7 @@ export const PersonFacts = ({
           ? [
               {
                 label: "No time logged",
+                mark: NO_TIME_MARK,
                 value: countLabel(daysWithoutTime, "day", "days"),
               },
             ]
@@ -213,91 +239,74 @@ export const PersonProjects = ({
   );
 };
 
-// A part outside the report, such as another team's days under a filter.
-const OTHER_PART_FILL = "bg-muted-foreground/40";
-
-/**
- * The person's whole period: what it covers, logged against expected, and
- * with more than one part or a team filter, a bar in parts by the hours
- * expected in each and a row per part with its days and figures.
- */
+/** The person's whole period in one line: what it covers, and logged against expected. */
 const PersonPeriod = ({
   person,
-  parts,
-  range,
   periodLabel,
-  isFiltered,
 }: {
   person: PeopleReportRow;
+  periodLabel: string;
+}) => (
+  <section
+    aria-label={periodLabel}
+    className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
+  >
+    <Badge>{periodLabel}</Badge>
+    <p className="text-sm text-muted-foreground tabular-nums">
+      <span className="text-base font-semibold text-foreground">
+        {formatReportHours(person.loggedMinutes)}
+      </span>
+      {person.expectedMinutes > 0 &&
+        ` of ${formatReportHours(person.expectedMinutes)} expected`}
+    </p>
+  </section>
+);
+
+/**
+ * The teams of their period in date order, each with its days and figures,
+ * and the days outside the teams shown; under a team filter its team stands
+ * out.
+ */
+const PersonTeams = ({
+  parts,
+  range,
+  isFiltered,
+}: {
   parts: PersonPart[];
   range: ReportRange;
-  periodLabel: string;
   isFiltered: boolean;
 }) => (
-  <section aria-label={periodLabel}>
-    <Badge className="mb-2">{periodLabel}</Badge>
-    <p className="text-xl font-semibold tabular-nums">
-      {formatReportHours(person.loggedMinutes)}
-      {person.expectedMinutes > 0 && (
-        <span className="text-sm font-normal text-muted-foreground">
-          {" "}
-          of {formatReportHours(person.expectedMinutes)} expected
-        </span>
-      )}
-    </p>
+  <section aria-label="Teams">
+    <h3 className="pb-2 text-sm font-semibold">Teams</h3>
 
-    {parts.length > 1 && person.expectedMinutes > 0 && (
-      <div
-        className="mt-2.5 flex h-3 gap-0.5 overflow-hidden rounded-full"
-        aria-hidden
-      >
-        {parts.map((part) => (
-          <span
-            key={part.id}
-            className={part.isInReport ? "bg-report-logged" : OTHER_PART_FILL}
-            style={{ flexGrow: part.figures.expectedMinutes }}
-          />
-        ))}
-      </div>
-    )}
-
-    {(isFiltered || parts.length > 1) && (
-      <ul className="mt-3 flex flex-col gap-1.5">
-        {parts.map((part) => (
-          <li
-            key={part.id}
-            className={cn(
-              "grid grid-cols-[0.75rem_1fr_auto] items-center gap-2.5 rounded-lg border px-2.5 py-2",
-              isFiltered && part.isInReport
-                ? "border-brand/25 bg-brand-subtle"
-                : "border-border",
+    <ul className="flex flex-col gap-1.5">
+      {parts.map((part) => (
+        <li
+          key={part.id}
+          className={cn(
+            "flex items-center justify-between gap-2.5 rounded-lg border px-2.5 py-2",
+            isFiltered && part.isInReport
+              ? "border-brand/25 bg-brand-subtle"
+              : "border-border",
+          )}
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">{part.name}</span>
+            <span className="block text-xs text-muted-foreground">
+              {[part.isArchived && "Archived", partDaysLabel(part, range)]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
+            {againstExpected(
+              part.figures.loggedMinutes,
+              part.figures.expectedMinutes,
             )}
-          >
-            <span
-              className={cn(
-                "size-3 rounded-sm",
-                part.isInReport ? "bg-report-logged" : OTHER_PART_FILL,
-              )}
-              aria-hidden
-            />
-            <span className="min-w-0">
-              <span className="flex flex-wrap items-center gap-1.5 text-sm font-medium">
-                {part.name}
-              </span>
-              <span className="block text-xs text-muted-foreground">
-                {partDaysLabel(part, range)}
-              </span>
-            </span>
-            <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
-              {againstExpected(
-                part.figures.loggedMinutes,
-                part.figures.expectedMinutes,
-              )}
-            </span>
-          </li>
-        ))}
-      </ul>
-    )}
+          </span>
+        </li>
+      ))}
+    </ul>
   </section>
 );
 
@@ -316,7 +325,7 @@ type PersonPanelProps = {
 
 /**
  * One person's whole period, under a team filter too: what it covers, their
- * parts, their plan, billable time and days, and their projects. Their days
+ * plan, billable time and days, their teams, and their projects. Their days
  * themselves are in Team time.
  */
 export const PersonPanel = ({
@@ -350,15 +359,17 @@ export const PersonPanel = ({
 
     return (
       <>
-        <PersonPeriod
-          person={row}
-          parts={parts}
-          range={range}
-          periodLabel={periodLabel}
-          isFiltered={Boolean(teamId)}
-        />
+        <PersonPeriod person={row} periodLabel={periodLabel} />
 
         <PersonFacts person={row} withDaysWithoutTime />
+
+        {parts.length > 0 && (
+          <PersonTeams
+            parts={parts}
+            range={range}
+            isFiltered={Boolean(teamId)}
+          />
+        )}
 
         <PersonProjects person={row} range={range} title="Projects" />
       </>
@@ -422,6 +433,7 @@ export const ProjectPanel = ({
         facts={[
           {
             label: "Billable",
+            mark: BILLABLE_MARK,
             value: `${formatReportHours(project.billableMinutes)} · ${percentOf(project.billableMinutes, project.totalMinutes)}%`,
           },
         ]}

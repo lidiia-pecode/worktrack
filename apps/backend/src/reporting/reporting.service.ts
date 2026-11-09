@@ -824,20 +824,15 @@ export class ReportingService {
     return team?.name ?? null;
   }
 
-  /** The last day a report of a range ending on `dateTo` counts. */
-  async lastCountedDayOf(companyId: string, dateTo: string): Promise<string> {
-    const today = await findCompanyToday(this.companyRepo.manager, companyId);
-    return lastCountedDay(dateTo, today);
-  }
-
   /**
    * The Hours report's time, for the same people and days, one row per
-   * person, day, project, activity and billing.
+   * person, day, project, activity and billing, with the last day it counts,
+   * which names the file. Today is read once, so the two always agree.
    */
   async getHoursExport(
     user: AuthUser,
     query: HoursExportQuery,
-  ): Promise<HoursExportRow[]> {
+  ): Promise<{ rows: HoursExportRow[]; countedTo: string }> {
     const { dateFrom, dateTo } = query;
 
     assertDateRange(dateFrom, dateTo);
@@ -846,6 +841,7 @@ export class ReportingService {
       this.companyRepo.manager,
       user.companyId,
     );
+    const countedTo = lastCountedDay(dateTo, today);
     const qb = this.periodRepo.manager
       .createQueryBuilder()
       .select(`TO_CHAR(tl.date, 'YYYY-MM-DD')`, 'date')
@@ -866,7 +862,7 @@ export class ReportingService {
       .where('tl.company_id = :companyId', { companyId: user.companyId })
       .andWhere('tl.date BETWEEN :dateFrom AND :countedTo', {
         dateFrom,
-        countedTo: lastCountedDay(dateTo, today),
+        countedTo,
       });
 
     this.teamVisibility.applyUserVisibility(qb, 'tl.user_id', user, {
@@ -896,10 +892,11 @@ export class ReportingService {
       this.findLockedMonths(user.companyId, dateFrom, dateTo, today),
     ]);
 
-    return rawRows.map((raw) => ({
+    const rows = rawRows.map((raw) => ({
       ...raw,
       minutes: Number(raw.minutes),
       isPeriodClosed: lockedMonths.has(firstDayOfMonth(raw.date)),
     }));
+    return { rows, countedTo };
   }
 }

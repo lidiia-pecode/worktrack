@@ -60,6 +60,8 @@ type UserFormProps = {
   defaultValues: UserFormData;
   /** The hours change already waiting to start; a later date replaces it. */
   scheduledChange?: CapacityChange | null;
+  /** The day their hours in force today started; none on the standard day. */
+  hoursSince?: string | null;
   onSubmit: (data: UserFormData) => void | Promise<unknown>;
   onDirtyChange?: (isDirty: boolean) => void;
 };
@@ -74,6 +76,7 @@ export const UserForm = ({
   userId,
   defaultValues,
   scheduledChange,
+  hoursSince,
   onSubmit,
   onDirtyChange,
 }: UserFormProps) => {
@@ -112,6 +115,10 @@ export const UserForm = ({
     },
     { enabled: hasNoHours && Boolean(validFrom) },
   );
+  // Hours in force today that started after that day mean a past change may
+  // bring hours back sooner than the form can see, so the count is an upper
+  // bound (the server ends the deletion at the first change with hours).
+  const isCountAtMost = Boolean(hoursSince && hoursSince > validFrom);
   const removedMinutes = removedPlans.reduce(
     (total, plan) => total + plan.plannedMinutes,
     0,
@@ -204,7 +211,7 @@ export const UserForm = ({
           <p className="flex gap-2 text-sm text-muted-foreground">
             <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
             <span>
-              {`Deletes ${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
+              {`Deletes ${isCountAtMost ? "up to " : ""}${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
             </span>
           </p>
         )}

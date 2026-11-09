@@ -219,14 +219,14 @@ export const ReportsView = () => {
         )}
         <div className="mt-4 flex flex-col gap-4">
           <PeopleCard
-            key={tablesKey}
+            key={`people:${tablesKey}`}
             people={people.rows}
             marked={attention.people}
             isTeamFiltered={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
-            key={tablesKey}
+            key={`projects:${tablesKey}`}
             query={query}
             projects={projects.report.rows}
             marked={attention.projects}

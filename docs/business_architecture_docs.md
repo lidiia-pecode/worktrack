@@ -793,8 +793,8 @@ added to a team or a project, and their details and working hours change only
 once they are reactivated. Reactivate asks first and names the teams and
 active projects they come back to; someone whose last working day is today
 can be reactivated from tomorrow. The Deactivated tab and the person's panel
-show the last working day, and Reports' People table says "deactivated" in
-the muted line under their name.
+show the last working day, and Reports' People table says "Deactivated" after
+their position.
 
 ---
 
@@ -1014,8 +1014,9 @@ see, and how a new company gets started. §7 plans that work.
   hours. People is one table, each person once with their figures on the days
   the view holds, so the rows add up to the band: Logged, Expected, the share of
   expected with a bar (billable striped, time past expected in the warning
-  colour) and Billable as a share of logged, the team, days off, a move under a
-  team filter and "deactivated" in a muted line under the name. It opens on the
+  colour) and Billable as a share of logged. Under a person's name is their
+  position, with "Deactivated" or, under a team filter, "Joined" or "Moved
+  out" and the date in the same line. It opens on the
   people furthest from what was expected, either way, those expected to work
   nothing last; any column sorts from its header, and the first ten show until
   the rest are asked for. Where the time went switches between projects and the
@@ -1028,10 +1029,11 @@ see, and how a new company gets started. §7 plans that work.
   beside what Needs attention names. Figures are in decimal hours, up to two
   decimals ("1,412.5h"); the export keeps exact time. It is a fact, not a score
   (D3): nothing is red or green. A person's name opens their whole period, under
-  a team filter too: logged against expected, the parts of the period by team
-  (a team, "No team", or "My time" for the viewer's own days outside the teams
-  shown) with their days and figures when there is more than one or a filter,
-  their plan, billable time, days off and days with no time logged, and their
+  a team filter too: logged against expected, their plan, billable time, days
+  off and days with no time logged, each marked in the chart's colours, their
+  teams in date order with their days and figures (a team archived since
+  says so beside its days, "No team", or
+  "My time" for the viewer's own days outside the teams shown), and their
   projects against plan, with a link to Team time; a project's name opens its
   billable time and its people against their plans. Everything counts finished
   days only (§4, capacity and expected hours). Managers see only the team they

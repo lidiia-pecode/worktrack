@@ -765,8 +765,8 @@ describe('PeopleReportService', () => {
       });
     });
 
-    const exportRows = (viewer: AuthUser, team?: string) =>
-      reporting.getHoursExport(viewer, { ...MARCH, teamId: team });
+    const exportRows = async (viewer: AuthUser, team?: string) =>
+      (await reporting.getHoursExport(viewer, { ...MARCH, teamId: team })).rows;
 
     it("narrows an owner's report, its timeline and the export to the team's members", async () => {
       const { people, timeline } = await service.getOverview(owner, {
@@ -925,7 +925,7 @@ describe('PeopleReportService', () => {
 
     it("keeps each team's export and timeline to its own days", async () => {
       const exportDates = async (team: string) =>
-        (await reporting.getHoursExport(owner, { ...MARCH, teamId: team }))
+        (await reporting.getHoursExport(owner, { ...MARCH, teamId: team })).rows
           .filter((row) => row.email.startsWith('Emma'))
           .map((row) => row.date);
 

@@ -107,7 +107,8 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
   const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
   const range: ReportRange = getMonthRange(month);
 
-  const people = usePeopleReport(range);
+  // Their own row only, as Reports' panel asks for it.
+  const people = usePeopleReport({ ...range, userId });
   const isUpdating = people.isPlaceholderData;
   const report = isUpdating ? null : people.report;
   const isNothingCounted = Boolean(

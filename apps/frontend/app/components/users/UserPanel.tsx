@@ -227,6 +227,7 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
             capacityValidFrom: today,
           }}
           scheduledChange={capacity.upcoming}
+          hoursSince={capacity.validFrom}
           onSubmit={save}
           onDirtyChange={panel.setHasUnsavedChanges}
         />

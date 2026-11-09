@@ -6,7 +6,7 @@ import { PeopleReportRow } from "@/types";
 import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 import { isDeactivatedUser } from "@/lib/utils/user";
-import { daysOffLabel, percentOf } from "@/lib/utils/report-overview";
+import { percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
 
@@ -18,27 +18,19 @@ import { CompactRow, ReportColumn, ReportTable } from "./ReportTable";
 const NO_FIGURE = "—";
 
 /**
- * The line under a name, in muted text so the name never wraps for it: their
- * teams, where they joined or left the team filtered to, whether they left
- * the company, and their days off. "Legacy Support · deactivated · 2 days off".
+ * The muted line under a name: their position, then where they joined or left
+ * the team filtered to and whether they left the company, in words so the row
+ * keeps its height. "Support Engineer · Joined Oct 19 · Deactivated".
  */
 const detailOf = (person: PeopleReportRow, isTeamFiltered: boolean) => {
   const moves = isTeamFiltered
     ? (person.teams[0]?.moves ?? []).map(
         ({ direction, date }) =>
-          `${direction === "in" ? "joined" : "moved out"} ${formatDayMonthLabel(date)}`,
+          `${direction === "in" ? "Joined" : "Moved out"} ${formatDayMonthLabel(date)}`,
       )
     : [];
-  const teams = isTeamFiltered
-    ? []
-    : [person.teams.map((team) => team.name).join(", ")];
 
-  return [
-    ...teams,
-    ...moves,
-    isDeactivatedUser(person) && "deactivated",
-    person.timeOffDays > 0 && daysOffLabel(person.timeOffDays),
-  ]
+  return [person.position, ...moves, isDeactivatedUser(person) && "Deactivated"]
     .filter(Boolean)
     .join(" · ");
 };

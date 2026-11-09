@@ -346,7 +346,7 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("lists each person once, against what was expected, with their team and days off", () => {
+  it("lists each person once, against what was expected", () => {
     const core = { id: "core", name: "Core Development" };
     showReports(
       peopleReport([
@@ -358,7 +358,6 @@ describe("ReportsView", () => {
     );
 
     const ethan = tableRow("People", "Ethan Brooks");
-    expect(ethan).toHaveTextContent("Core Development · 5 days off");
     expect(ethan).toHaveTextContent("79h");
     expect(ethan).toHaveTextContent("72h");
     expect(ethan).toHaveTextContent("110%");

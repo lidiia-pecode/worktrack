@@ -14,7 +14,6 @@ import {
   isWeekend,
   toISODate,
 } from "./date";
-import { countLabel } from "./text";
 
 /**
  * How far the period is counted and whether it can change: "Up to Oct 23 ·
@@ -53,9 +52,6 @@ export const againstExpected = (logged: number, expected: number) =>
     ? `${formatReportHours(logged)} of ${formatReportHours(expected)}`
     : formatReportHours(logged);
 
-export const daysOffLabel = (days: number) =>
-  `${countLabel(days, "day", "days")} off`;
-
 /** A share as a whole percentage; nothing of nothing is 0%. */
 export const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
@@ -66,6 +62,7 @@ const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
   return {
     id: isOwn ? "my-time" : "no-team",
     name: isOwn ? "My time" : "No team",
+    isArchived: false,
   };
 };
 
@@ -73,6 +70,8 @@ const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
 export interface PersonPart extends ReportPart {
   id: string;
   name: string;
+  /** A team archived since; only the owner sees one. */
+  isArchived: boolean;
   /** In the report's view: the team filtered to, or every part without one. */
   isInReport: boolean;
 }

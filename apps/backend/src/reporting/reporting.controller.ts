@@ -78,9 +78,8 @@ export class ReportingController {
     @CurrentUser() user: AuthUser,
     @Query() query: HoursExportQuery,
   ) {
-    const [rows, countedTo, teamName] = await Promise.all([
+    const [{ rows, countedTo }, teamName] = await Promise.all([
       this.reportingService.getHoursExport(user, query),
-      this.reportingService.lastCountedDayOf(user.companyId, query.dateTo),
       query.teamId
         ? this.reportingService.exportTeamName(user, query.teamId)
         : null,

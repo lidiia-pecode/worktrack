@@ -239,6 +239,7 @@ describe("MyTimeView", () => {
     expect(usePeopleReport).toHaveBeenLastCalledWith({
       dateFrom: "2026-09-01",
       dateTo: "2026-09-30",
+      userId: ME,
     });
 
     await user.click(
