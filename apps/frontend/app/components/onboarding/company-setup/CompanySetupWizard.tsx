@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { ChevronLeft } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -37,7 +38,6 @@ import {
   WORK_DAY_STEP_HOURS,
   minutesPerWeekOf,
 } from "@/lib/forms/schemas/work-day.schema";
-import { ChevronLeft } from "lucide-react";
 
 const setupSchema = companySchema
   .pick({

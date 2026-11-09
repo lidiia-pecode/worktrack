@@ -18,28 +18,18 @@ import { countLabel } from "./text";
 
 /**
  * How far the period is counted and whether it can change: "Up to Oct 23 ·
- * open for edits" for a month, "Oct 1 – Nov 1 · open for edits" for a
- * `periodRange`, then the team's name when there is one.
+ * open for edits", or "Locked" once it has ended.
  */
-export const reportScope = (
-  { countedUntil, isProvisional }: ReportCoverage,
-  {
-    periodRange,
-    teamName,
-  }: { periodRange?: ReportRange; teamName?: string } = {},
-) => {
+export const reportScope = ({
+  countedUntil,
+  isProvisional,
+}: ReportCoverage) => {
   const state = isProvisional ? "open for edits" : "locked";
-  const parts = periodRange
-    ? [
-        `${formatDayMonthLabel(periodRange.dateFrom)} – ${formatDayMonthLabel(countedUntil ?? periodRange.dateTo)}`,
-        state,
-      ]
-    : countedUntil
-      ? [`Up to ${formatDayMonthLabel(countedUntil)}`, state]
-      : [isProvisional ? "Open for edits" : "Locked"];
-  if (teamName) parts.push(teamName);
-
-  return parts.join(" · ");
+  return countedUntil
+    ? `Up to ${formatDayMonthLabel(countedUntil)} · ${state}`
+    : isProvisional
+      ? "Open for edits"
+      : "Locked";
 };
 
 /**
@@ -70,16 +60,12 @@ export const daysOffLabel = (days: number) =>
 export const percentOf = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 100) : 0;
 
-/** A team, the days in no team, or the viewer's own days outside the teams shown. */
-export type PartKind = "team" | "noTeam" | "myTime";
-
 /** The days a row has outside its teams: the viewer's own, or nobody's team. */
 const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
   const isOwn = row.userId === viewerId;
   return {
     id: isOwn ? "my-time" : "no-team",
     name: isOwn ? "My time" : "No team",
-    kind: (isOwn ? "myTime" : "noTeam") as PartKind,
   };
 };
 
@@ -87,7 +73,6 @@ const outsidePartOf = (row: PeopleReportRow, viewerId?: string) => {
 export interface PersonPart extends ReportPart {
   id: string;
   name: string;
-  kind: PartKind;
   /** In the report's view: the team filtered to, or every part without one. */
   isInReport: boolean;
 }
@@ -99,7 +84,6 @@ export const personParts = (
 ): PersonPart[] => {
   const parts: PersonPart[] = row.teams.map((team) => ({
     ...team,
-    kind: "team",
     isInReport: !teamId || team.id === teamId,
   }));
   if (row.outsideTeams) {

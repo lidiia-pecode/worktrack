@@ -1144,8 +1144,8 @@ them, plus themselves.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 929 tests, covering the role-visibility filters and reach by team
+This is the one place that counts the tests. Backend coverage is fifty-two
+suites and 955 tests, covering the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, who added and changed a time entry or an absence, the lock
@@ -1155,11 +1155,11 @@ one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-seven Vitest files and 470 tests: its date, month,
+The frontend has seventy-eight Vitest files and 463 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
-the chart's labels and start, the change from the previous period and its tip,
-a team's billable sum, tab
+the chart's labels and start, decimal hours, a day's fill at 0h, a team's
+billable sum, tab
 keyboard navigation and download file names, and component tests in jsdom for
 the sidebar and phone menu, sign-out, the shared states and form field, the
 Manage lists, panel and confirmation dialogs, the work and create dialogs'

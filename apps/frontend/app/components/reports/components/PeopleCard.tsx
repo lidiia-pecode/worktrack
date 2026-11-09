@@ -118,7 +118,8 @@ const COLUMNS: ReportColumn<PeopleReportRow>[] = [
       person.expectedMinutes > 0
         ? formatReportHours(person.expectedMinutes)
         : NO_FIGURE,
-    sortValue: (person) => person.expectedMinutes,
+    sortValue: (person) =>
+      person.expectedMinutes > 0 ? person.expectedMinutes : null,
   },
   {
     header: "Of expected",

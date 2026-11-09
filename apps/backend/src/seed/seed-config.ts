@@ -1098,8 +1098,9 @@ export const ABSENCES = [
  * Migration, Brand Refresh / Customer Portal Redesign, Energy Usage
  * Dashboard), time with no plan (Support Desk, Internal Training), a plan
  * beyond expected hours (Ethan from September), more than expected (Emma),
- * days with no time (Liam's Fridays, Noah, Samuel, the owner), a joiner
- * (Ruby), a leaver with time (Isla), absences, a public holiday, weekend work and thirteen categories.
+ * days with no time (Liam's Fridays, Noah, Samuel), a joiner (Ruby), a leaver
+ * with time (Isla), absences, a public holiday, weekend work and thirteen
+ * categories.
  */
 export const HISTORY_START = CAPACITY_VALID_FROM;
 
@@ -1139,7 +1140,7 @@ export interface SeedHistory {
 }
 
 export const REPORT_HISTORY: SeedHistory[] = [
-  // Owners rarely log time; Reports show what that looks like.
+  // The owner at 0h logs nothing, so Reports never list them.
   { email: OWNER_EMAIL, work: [], plan: [] },
   {
     email: MANAGER_EMAIL,

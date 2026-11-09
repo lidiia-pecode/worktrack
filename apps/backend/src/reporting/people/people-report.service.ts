@@ -90,8 +90,9 @@ export interface PeopleReportRow extends PeopleReportFigures {
   teams: ReportTeam[];
   /**
    * The days the view holds that none of `teams` covers: days in no team, or
-   * for a manager's own row days outside the team they lead. Null under a
-   * team filter, and when no such day has anything on it.
+   * on the viewer's own row their days outside the teams shown (an employee's
+   * whole period). Null under a team filter, and when no such day has
+   * anything on it.
    */
   outsideTeams: ReportPart | null;
   /** Finished days they were expected to work and logged nothing, in date order. */
@@ -281,13 +282,13 @@ const partsFrom = ({
             ...userOutside,
           ]);
 
-      // Days with nothing on them, such as before someone joined, say nothing.
       const outsideTeams = outsideSpans.length ? partOn(outsideSpans) : null;
 
       return [
         userId,
         {
           teams,
+          // Days with nothing on them, such as before someone joined, say nothing.
           outsideTeams:
             outsideTeams && hasFigures(outsideTeams.figures)
               ? outsideTeams

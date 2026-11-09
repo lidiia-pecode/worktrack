@@ -94,7 +94,9 @@ const COLUMNS: ReportColumn<HoursReportRow>[] = [
       project.plannedMinutes
         ? formatReportHours(project.plannedMinutes)
         : NO_FIGURE,
-    sortValue: (project) => project.plannedMinutes ?? 0,
+    // No plan sorts last, as its "—" says nothing to compare.
+    sortValue: (project) =>
+      project.plannedMinutes ? project.plannedMinutes : null,
   },
   {
     header: "Against plan",

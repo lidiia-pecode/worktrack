@@ -7,18 +7,10 @@ import { ReportRow } from "./ReportRow";
 type AgainstPlanRowProps = {
   row: HoursReportRow;
   detail?: string | null;
-  /** Why it is in Needs attention, when it is. */
-  flag?: string;
-  onOpen?: () => void;
 };
 
 /** A project's or a person's logged time against the plan: one bar, "139h of 88h". */
-export const AgainstPlanRow = ({
-  row,
-  detail,
-  flag,
-  onOpen,
-}: AgainstPlanRowProps) => {
+export const AgainstPlanRow = ({ row, detail }: AgainstPlanRowProps) => {
   const { name } = row;
   const planned = row.plannedMinutes ?? 0;
   const figure =
@@ -29,9 +21,7 @@ export const AgainstPlanRow = ({
   return (
     <ReportRow
       name={name}
-      onOpen={onOpen}
       detail={detail}
-      flag={flag}
       bar={
         <ReportBar
           value={row.totalMinutes}

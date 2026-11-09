@@ -96,6 +96,17 @@ export const ReportsView = () => {
   const isNothingCounted = Boolean(
     settledPeople?.countedUntil && settledPeople.countedUntil < range.dateFrom,
   );
+  // While the next period loads, its name alone: the days counted are still
+  // the last period's.
+  const badgeLabel = settledPeople
+    ? shownPeriodLabel(
+        periodName,
+        rangeSinceCompanyStart,
+        settledPeople.countedUntil,
+      )
+    : periodName;
+  // A new period or team starts each table on its first rows, in its own order.
+  const tablesKey = `${range.dateFrom}:${range.dateTo}:${teamId ?? ""}`;
 
   // The current period starts empty, as a month does in its first days, so
   // its empty state offers the period before.
@@ -183,11 +194,7 @@ export const ReportsView = () => {
           timeline={timeline}
           totals={totals}
           firstDay={firstDay}
-          periodLabel={shownPeriodLabel(
-            periodName,
-            rangeSinceCompanyStart,
-            countedUntil,
-          )}
+          periodLabel={badgeLabel}
         />
         {showsAttention && (
           <div className="mt-4">
@@ -212,14 +219,14 @@ export const ReportsView = () => {
         )}
         <div className="mt-4 flex flex-col gap-4">
           <PeopleCard
-            // A new period starts with its first people shown again.
-            key={`${range.dateFrom}:${range.dateTo}`}
+            key={tablesKey}
             people={people.rows}
             marked={attention.people}
             isTeamFiltered={Boolean(teamId)}
             onOpenPerson={openPerson}
           />
           <WhereTheTimeWent
+            key={tablesKey}
             query={query}
             projects={projects.report.rows}
             marked={attention.projects}
@@ -261,11 +268,7 @@ export const ReportsView = () => {
           key={openedPerson.userId}
           person={openedPerson}
           range={range}
-          periodLabel={shownPeriodLabel(
-            periodName,
-            rangeSinceCompanyStart,
-            people.countedUntil,
-          )}
+          periodLabel={badgeLabel}
           teamId={teamId}
           viewerId={viewer?.id}
           isUpdating={isUpdating}

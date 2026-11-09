@@ -495,7 +495,7 @@ describe("ReportsView", () => {
     ).toBeInTheDocument();
   });
 
-  it("says nothing about the month while the next one loads", () => {
+  it("names the period alone while it loads, not the last period's days", () => {
     const report = { ...peopleReport(team), countedUntil };
     showOverview(report, { isPlaceholderData: true });
     vi.mocked(useHoursReport).mockReturnValue(
@@ -505,7 +505,12 @@ describe("ReportsView", () => {
     );
     render(<ReportsView />);
 
-    expect(screen.queryByText(/Up to/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/so far/)).not.toBeInTheDocument();
     expect(
       screen.getByRole("region", { name: "People" }).closest("[aria-busy]"),
     ).toHaveAttribute("aria-busy", "true");
