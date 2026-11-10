@@ -8,9 +8,16 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import { NO_FIXED_HOURS, closedSpellOn, fullName } from "@/lib/utils/user";
+import {
+  NO_FIXED_HOURS,
+  closedSpellOn,
+  fullName,
+  leaverLabel,
+  moveLabel,
+} from "@/lib/utils/user";
 import { getProjectColor } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
+import { factsLine } from "@/lib/utils/text";
 
 import { Badge } from "@/components/ui/badge";
 
@@ -18,7 +25,6 @@ import { PersonLabel } from "../../shared/PersonLabel";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
-import { MoveBadges } from "../../shared/week/MoveBadges";
 import { ReportBar } from "../../reports/components/ReportBar";
 
 type PlanningWeekRowProps = {
@@ -108,6 +114,11 @@ export const PlanningWeekRow = ({
   // Listed at 0h only for plans left from before, which can be deleted day by
   // day, but never changed or added to.
   const hasNoFixedHours = row.dayLimits.every((day) => day.minutes === 0);
+  const facts = factsLine([
+    ...row.moves.map(moveLabel),
+    leaverLabel(row.user),
+    isActive && hasNoFixedHours && NO_FIXED_HOURS,
+  ]);
   const overMinutes =
     projectName || hasNoFixedHours
       ? 0
@@ -126,9 +137,7 @@ export const PlanningWeekRow = ({
             aria-label={`Plan a period for ${fullName(row.user)}`}
             className="group flex w-full min-w-0 cursor-pointer items-center gap-2.5 p-3 text-left transition hover:bg-muted/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
-            <PersonLabel user={row.user}>
-              {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
-            </PersonLabel>
+            <PersonLabel user={row.user}>{facts}</PersonLabel>
 
             {/* Says what the cell does once it is hovered or focused; it
                 takes no room until then, so the name keeps its width. */}
@@ -143,23 +152,18 @@ export const PlanningWeekRow = ({
         ) : (
           <div className="flex min-w-0 items-center gap-2.5 p-3">
             <PersonLabel user={row.user}>
-              {row.moves.length > 0 && <MoveBadges moves={row.moves} />}
+              {facts && (
+                <span
+                  title={
+                    isActive && hasNoFixedHours
+                      ? `Give ${row.user.firstName} working hours to plan them.`
+                      : undefined
+                  }
+                >
+                  {facts}
+                </span>
+              )}
             </PersonLabel>
-
-            {(!isActive || hasNoFixedHours) && (
-              <Badge
-                variant="neutral"
-                size="sm"
-                className="ml-auto shrink-0"
-                title={
-                  isActive
-                    ? `Give ${row.user.firstName} working hours to plan them.`
-                    : undefined
-                }
-              >
-                {isActive ? NO_FIXED_HOURS : "Deactivated"}
-              </Badge>
-            )}
           </div>
         )}
       </th>

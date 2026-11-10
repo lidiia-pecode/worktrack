@@ -25,7 +25,6 @@ import {
 } from "@/lib/constants";
 import { UserRole } from "@/types/enums";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Input from "@/components/ui/input";
 import { AuthCard, AuthLink } from "./components/AuthCard";
@@ -250,8 +249,8 @@ export const AuthForm = ({
           <div className="flex items-center justify-between gap-4">
             <dt className="text-sm text-muted-foreground">Role</dt>
 
-            <dd>
-              <Badge variant="neutral">{ROLE_LABELS[invitation.role]}</Badge>
+            <dd className="text-sm font-medium text-foreground">
+              {ROLE_LABELS[invitation.role]}
             </dd>
           </div>
 

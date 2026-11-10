@@ -75,6 +75,8 @@ export interface TeamSummaryUser {
   position?: string | null;
   avatarUrl?: string | null;
   status: UserStatus;
+  /** While deactivated, their last working day. */
+  lastWorkingDay: string | null;
 }
 
 /**

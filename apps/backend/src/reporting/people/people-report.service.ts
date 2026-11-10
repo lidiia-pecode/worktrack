@@ -82,6 +82,8 @@ export interface PeopleReportRow extends PeopleReportFigures {
   position: string | null;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
+  /** While deactivated, their last working day. */
+  lastWorkingDay: string | null;
   /**
    * The teams they were in during the period, by name, archived ones
    * included; for a manager, only the teams they lead.
@@ -307,6 +309,7 @@ const peopleReportFrom = ({
       name: `${person.firstName} ${person.lastName}`,
       position: person.position ?? null,
       status: person.status,
+      lastWorkingDay: person.lastWorkingDay,
       teams: parts.get(person.id)?.teams ?? [],
       outsideTeams: parts.get(person.id)?.outsideTeams ?? null,
       loggedMinutes: personHours?.totalMinutes ?? 0,

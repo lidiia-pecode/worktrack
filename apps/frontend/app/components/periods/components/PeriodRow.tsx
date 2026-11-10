@@ -1,6 +1,6 @@
 import { Lock } from "lucide-react";
 
-import { Badge, BadgeProps } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow, TableRowHeader } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
@@ -12,6 +12,8 @@ import {
 } from "@/lib/utils/date";
 import { ReportingMonth } from "@/types";
 import { ReportingMonthState } from "@/types/enums";
+
+import { StatusText } from "../../shared/StatusText";
 
 /** The same inset at both edges of the header and every row. */
 export const ROW_EDGE_START = "pl-5";
@@ -25,15 +27,11 @@ type PeriodRowProps = {
   onClose: (month: string) => void;
 };
 
-// Locked is the rule, so it gets the lock icon and no badge; a badge marks the
-// exceptions.
-const STATE_BADGE: Record<
-  Exclude<ReportingMonthState, ReportingMonthState.LOCKED>,
-  { label: string; variant: BadgeProps["variant"] }
-> = {
-  [ReportingMonthState.OPEN]: { label: "Open", variant: "default" },
-  [ReportingMonthState.GRACE]: { label: "Closing soon", variant: "warning" },
-  [ReportingMonthState.REOPENED]: { label: "Reopened", variant: "warning" },
+// Open and Locked are how a month normally is, so they read as quiet text;
+// a pill marks the months someone has to act on before they lock.
+const ACTION_LABELS: Partial<Record<ReportingMonthState, string>> = {
+  [ReportingMonthState.GRACE]: "Closing soon",
+  [ReportingMonthState.REOPENED]: "Reopened",
 };
 
 const describeState = ({ state, editableUntil }: ReportingMonth): string => {
@@ -87,15 +85,19 @@ export const PeriodRow = ({
       </TableRowHeader>
 
       <TableCell className="py-2">
-        {period.state === ReportingMonthState.LOCKED ? (
-          <span className="flex items-center gap-1.5 text-muted-foreground">
+        {ACTION_LABELS[period.state] ? (
+          <Badge variant="warning" dot>
+            {ACTION_LABELS[period.state]}
+          </Badge>
+        ) : period.state === ReportingMonthState.LOCKED ? (
+          <StatusText>
             <Lock className="size-3.5" aria-hidden />
             Locked
-          </span>
+          </StatusText>
         ) : (
-          <Badge variant={STATE_BADGE[period.state].variant} dot>
-            {STATE_BADGE[period.state].label}
-          </Badge>
+          <StatusText tone="brand" dot>
+            Open
+          </StatusText>
         )}
       </TableCell>
 

@@ -2,7 +2,7 @@
 
 import { FolderTree, Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import {
   useActivitiesMutations,
   useActivityDetails,
@@ -109,16 +109,8 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
             ),
           },
           {
-            label: "New time entries",
-            value: activity.defaultBillable ? (
-              <Badge variant="success" dot>
-                Billable
-              </Badge>
-            ) : (
-              <Badge variant="neutral" dot>
-                Non-billable
-              </Badge>
-            ),
+            label: "Billable by default",
+            value: activity.defaultBillable ? "Yes" : "No",
           },
         ]}
         editForm={isEditing && <ActivityEditForm activity={activity} />}
@@ -136,7 +128,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
               entity: { type: "project", id: project.id },
               name: project.name,
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeProjects && !isArchived
                   ? {

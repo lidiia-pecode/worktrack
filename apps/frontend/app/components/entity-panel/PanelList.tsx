@@ -49,8 +49,8 @@ interface PanelListProps<T> {
   note?: ReactNode;
   /** Opens the section's picker; left out when the viewer cannot add. */
   add?: { label: string; icon: LucideIcon; onClick: () => void };
-  /** Rows under headings, such as a project's activities by category; items come sorted by it. */
-  groupBy?: (item: T) => PanelListGroup;
+  /** Rows under headings, such as a project's activities by category; items come sorted by it. Null leaves a row under no heading. */
+  groupBy?: (item: T) => PanelListGroup | null;
 }
 
 const stopRowClick = (event: MouseEvent) => event.stopPropagation();
@@ -225,7 +225,7 @@ export const PanelList = <T,>({
             const startsGroup =
               group &&
               (index === 0 ||
-                groupBy?.(shownItems[index - 1]).key !== group.key);
+                groupBy?.(shownItems[index - 1])?.key !== group.key);
 
             return (
               <Fragment key={getKey(item)}>

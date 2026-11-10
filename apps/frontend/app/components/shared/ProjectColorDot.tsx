@@ -6,7 +6,11 @@ interface ProjectColorDotProps {
   className?: string;
 }
 
-/** The project's colour, as its entries show it on the timesheet. */
+/**
+ * The project's colour at full strength: the entries' own tint is translucent
+ * and too pale for a dot this small. Relative colour keeps the origin's alpha
+ * unless it is given, hence `/ 1`.
+ */
 export const ProjectColorDot = ({
   projectId,
   className,
@@ -14,6 +18,8 @@ export const ProjectColorDot = ({
   <span
     aria-hidden="true"
     className={cn("block size-2.5 shrink-0 rounded-full", className)}
-    style={{ backgroundColor: getProjectColor(projectId) }}
+    style={{
+      backgroundColor: `oklch(from ${getProjectColor(projectId)} l c h / 1)`,
+    }}
   />
 );

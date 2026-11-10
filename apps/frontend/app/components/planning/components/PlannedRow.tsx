@@ -6,7 +6,7 @@ import { Clock, Trash2 } from "lucide-react";
 import { formatDuration } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../../shared/StatusText";
 import { Button } from "@/components/ui/button";
 
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
@@ -77,9 +77,9 @@ export const PlannedRow = ({
         <p className="flex items-center gap-2 text-sm font-medium text-foreground">
           <span className="truncate">{line.name}</span>
           {line.isArchived ? (
-            <Badge variant="neutral">Archived</Badge>
+            <StatusText>Archived</StatusText>
           ) : (
-            !isOnProject && <Badge variant="neutral">Not on this project</Badge>
+            !isOnProject && <StatusText>Not on this project</StatusText>
           )}
         </p>
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, Plus } from "lucide-react";
+import { ArrowRightLeft, Plus, UserX } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import { useAuth } from "@/hooks/auth/useAuth";
 import {
   useCancelCapacityChange,
@@ -13,6 +13,7 @@ import {
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
+import { cn } from "@/lib/utils/cn";
 import {
   formatDayMonthYearLabel,
   formatDuration,
@@ -304,12 +305,29 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
         type="Person"
         name={fullName(user)}
         subtitle={user.position}
-        leading={<Avatar user={user} size="lg" />}
+        leading={
+          <Avatar
+            user={user}
+            size="lg"
+            className={cn(isDeactivated && "opacity-60")}
+          />
+        }
         status={
           isDeactivated && (
             <PanelStatus
+              icon={UserX}
               label={
-                lastDay ? `Deactivated · last day ${lastDay}` : "Deactivated"
+                lastDay ? (
+                  <>
+                    Deactivated. Last working day{" "}
+                    <span className="font-medium text-foreground">
+                      {lastDay}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  "Deactivated."
+                )
               }
             />
           )
@@ -392,7 +410,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
               entity: { type: "project", id: project.id },
               name: project.name,
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeProjects && !isArchived
                   ? {

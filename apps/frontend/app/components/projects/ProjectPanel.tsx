@@ -2,13 +2,14 @@
 
 import { FolderTree, Plus, UserPlus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import {
   useClientNameSuggestions,
   useProjectDetails,
   useProjectsMutations,
 } from "@/hooks/useProjects";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
+import { factsLine } from "@/lib/utils/text";
+import { fullName, isDeactivatedUser, leaverLabel } from "@/lib/utils/user";
 import { Project } from "@/types";
 import { countLabel } from "@/lib/utils/text";
 
@@ -147,10 +148,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             entity: { type: "user", id: member.id },
             name: fullName(member),
             leading: <Avatar user={member} />,
-            detail: member.position,
-            status: isDeactivatedUser(member) && (
-              <Badge variant="neutral">Deactivated</Badge>
-            ),
+            detail: factsLine([member.position, leaverLabel(member)]),
+            isInactive: isDeactivatedUser(member),
             remove: canChangeLinks
               ? {
                   label: `Remove ${fullName(member)} from ${project.name}`,
@@ -228,7 +227,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
               entity: { type: "activity", id: activity.id },
               name: activity.name,
               isInactive: true,
-              status: <Badge variant="neutral">Archived</Badge>,
+              status: <StatusText>Archived</StatusText>,
             })}
             emptyText="No archived activities."
           />

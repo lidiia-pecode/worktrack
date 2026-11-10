@@ -1,9 +1,8 @@
 "use client";
 
 import { ComponentProps, forwardRef, ReactNode, useContext } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { Archive, LucideIcon, Pencil, Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { isMissingEntityError } from "@/lib/api";
 import { cn } from "@/lib/utils/cn";
@@ -183,11 +182,21 @@ export const PanelTitleInput = forwardRef<
 ));
 PanelTitleInput.displayName = "PanelTitleInput";
 
-/** An archived or deactivated entity's status; an active one shows none. */
-export const PanelStatus = ({ label = "Archived" }: { label?: string }) => (
-  <Badge variant="neutral" dot>
-    {label}
-  </Badge>
+/**
+ * An archived or deactivated entity's status, one quiet line across the panel
+ * so it is seen before the details; an active one shows none.
+ */
+export const PanelStatus = ({
+  label = "Archived.",
+  icon: Icon = Archive,
+}: {
+  label?: ReactNode;
+  icon?: LucideIcon;
+}) => (
+  <p className="flex w-full items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+    <Icon aria-hidden="true" className="size-4 shrink-0" />
+    <span>{label}</span>
+  </p>
 );
 
 interface PanelDetail {

@@ -28,7 +28,7 @@
  * Exception: --warning-text is defined separately. Darkening the
  * light warning fill toward black produces a muddy brown, so the text
  * color is explicitly set to a matching darker shade. It provides
- * 5.3:1 contrast on white and 4.8:1 on --warning-subtle.
+ * 5.6:1 contrast on the card and 5.1:1 on --warning-subtle.
  *
  * :root = light theme
  * TODO: dark theme
@@ -110,10 +110,10 @@
   --success-foreground: oklch(0.17 0.025 155);
   --success-text: color-mix(in oklch, var(--success) 76%, black);
 
-  /* A light salmon, cool enough to sit beside the teal (Phase 42). */
-  --warning: oklch(0.79 0.095 29);
-  --warning-foreground: oklch(0.25 0.04 29);
-  --warning-text: oklch(0.54 0.098 27);
+  /* Amber, so a warning (someone has to act) never reads as an error. */
+  --warning: oklch(0.8 0.13 78);
+  --warning-foreground: oklch(0.27 0.05 65);
+  --warning-text: oklch(0.52 0.1 65);
   /* The tint behind a warning's text, and its border or hover. */
   --warning-subtle: color-mix(in oklch, var(--warning) 14%, transparent);
   --warning-border: color-mix(in oklch, var(--warning) 36%, transparent);
@@ -237,7 +237,8 @@
   --project-1: oklch(0.623 0.188 259.8 / 0.3);
   --project-2: oklch(0.696 0.149 162.5 / 0.3);
   --project-3: oklch(0.606 0.219 292.7 / 0.3);
-  --project-4: oklch(0.769 0.165 70.1 / 0.3);
+  /* Orchid rather than amber, so a project never reads as the warning. */
+  --project-4: oklch(0.62 0.17 320 / 0.3);
   --project-5: oklch(0.637 0.208 25.3 / 0.3);
   --project-6: oklch(0.715 0.126 215.2 / 0.3);
   --project-7: oklch(0.585 0.204 277.1 / 0.3);

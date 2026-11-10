@@ -11,17 +11,18 @@ import {
   fullName,
   isClosedOn,
   isDeactivatedUser,
+  leaverLabel,
+  moveLabel,
 } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
+import { factsLine } from "@/lib/utils/text";
 
-import { Badge } from "@/components/ui/badge";
 import { Avatar } from "../../shared/Avatar";
 import { WeekBar } from "../../timesheet/components/WeekSummary";
 import { Button } from "@/components/ui/button";
 import { TeamDayCell } from "./TeamDayCell";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
-import { MoveBadges } from "../../shared/week/MoveBadges";
 
 type TeamWeekRowProps = {
   row: TeamSummaryRow;
@@ -98,7 +99,11 @@ export const TeamWeekRow = ({
         }
       >
         <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
-          <Avatar user={row.user} size="md" />
+          <Avatar
+            user={row.user}
+            size="md"
+            className={cn(isDeactivatedUser(row.user) && "opacity-60")}
+          />
 
           <PersonSummary row={row} projectName={projectName} />
 
@@ -175,8 +180,11 @@ type PersonSummaryProps = {
 
 /** Who the row is, and their week against what was expected of them. */
 const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
-  const isDeactivated = isDeactivatedUser(row.user);
-  const isFormerMember = row.isOnProject === false;
+  const facts = factsLine([
+    ...row.moves.map(moveLabel),
+    leaverLabel(row.user),
+    row.isOnProject === false && "Former member",
+  ]);
   // A leaver is expected time up to the day they left, as on Reports.
   const expectsTime = row.expectedMinutes > 0;
   const isOver =
@@ -227,20 +235,8 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
         </span>
       )}
 
-      {(isDeactivated || isFormerMember || row.moves.length > 0) && (
-        <span className="mt-1 flex flex-wrap gap-1">
-          <MoveBadges moves={row.moves} />
-          {isDeactivated && (
-            <Badge variant="neutral" size="sm">
-              Deactivated
-            </Badge>
-          )}
-          {isFormerMember && (
-            <Badge variant="neutral" size="sm" className="whitespace-nowrap">
-              Former member
-            </Badge>
-          )}
-        </span>
+      {facts && (
+        <span className="mt-1 text-xs text-muted-foreground">{facts}</span>
       )}
     </div>
   );

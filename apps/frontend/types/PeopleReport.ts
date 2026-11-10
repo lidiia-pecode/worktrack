@@ -36,6 +36,8 @@ export interface PeopleReportRow extends PeopleReportFigures {
   position: string | null;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
+  /** While deactivated, their last working day. */
+  lastWorkingDay: string | null;
   /** The teams they were in during the period, by name, archived ones included; for a manager, only the teams they lead. */
   teams: ReportTeam[];
   /** The days the view holds that no listed team covers; null under a team filter, or when nothing is on those days. */

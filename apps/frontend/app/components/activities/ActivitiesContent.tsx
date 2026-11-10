@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Check, X } from "lucide-react";
+import { Activity, Check } from "lucide-react";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useManageListState } from "@/hooks/useManageListState";
@@ -11,7 +11,6 @@ import { hasManagerAccess } from "@/lib/utils/user";
 
 import { ActivityListItem } from "@/types";
 import { ActivityStatus } from "@/types/enums";
-import { cn } from "@/lib/utils/cn";
 import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
@@ -37,24 +36,16 @@ const categoryCell = (activity: ActivityListItem) => (
   </EntityLink>
 );
 
-// Both values carry an icon, so they line up in the column.
-const BillableValue = ({ isBillable }: { isBillable: boolean }) => {
-  const Icon = isBillable ? Check : X;
-
-  return (
+// Only billable activities carry a mark, so the column reads at a glance.
+const BillableValue = ({ isBillable }: { isBillable: boolean }) =>
+  isBillable ? (
     <span className="inline-flex items-center gap-1.5">
-      <Icon
-        aria-hidden="true"
-        strokeWidth={2.5}
-        className={cn(
-          "size-3.5",
-          isBillable ? "text-success" : "text-destructive",
-        )}
-      />
-      {isBillable ? "Yes" : "No"}
+      <Check aria-hidden="true" className="size-3.5 text-brand" />
+      Billable
     </span>
+  ) : (
+    <span className="text-muted-foreground">—</span>
   );
-};
 
 const COLUMNS: ManageColumn<ActivityListItem>[] = [
   {
@@ -64,8 +55,8 @@ const COLUMNS: ManageColumn<ActivityListItem>[] = [
     summary: categoryCell,
   },
   {
-    header: "Billable by default",
-    width: "w-40",
+    header: "Billable",
+    width: "w-32",
     cell: (activity) => <BillableValue isBillable={activity.defaultBillable} />,
     summary: (activity) =>
       activity.defaultBillable ? "Billable" : "Non-billable",

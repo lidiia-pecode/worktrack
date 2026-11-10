@@ -18,6 +18,7 @@ const row = (overrides: Partial<TeamSummaryRow> = {}): TeamSummaryRow => ({
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
   },
   minutes: 1920,
   billableMinutes: 1920,

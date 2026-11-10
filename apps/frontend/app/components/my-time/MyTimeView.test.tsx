@@ -70,6 +70,7 @@ const myRow: PeopleReportRow = {
   name: "Emma Carter",
   position: "Developer",
   status: UserStatus.ACTIVE,
+  lastWorkingDay: null,
   teams: [],
   outsideTeams: null,
   loggedMinutes: 120 * HOUR,

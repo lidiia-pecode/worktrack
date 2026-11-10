@@ -16,7 +16,9 @@ import { usePendingInvitations } from "@/hooks/auth/useInvitation";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
 import { formatDayMonthYearLabel } from "@/lib/utils/date";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
+import { cn } from "@/lib/utils/cn";
+import { factsLine } from "@/lib/utils/text";
+import { fullName, isDeactivatedUser, leaverLabel } from "@/lib/utils/user";
 import { PendingInvitation } from "@/types/Invitation";
 import { Team, TeamMembership } from "@/types/Team";
 import { TeamRole, UserRole } from "@/types/enums";
@@ -40,6 +42,7 @@ import { MEMBERS_PICKER, TeamMembersPicker } from "./TeamMembersPicker";
 import {
   activeManager,
   currentMemberships,
+  deactivatedMembersCount,
   formerMemberships,
   managerMembership,
   MembershipWithUser,
@@ -94,11 +97,12 @@ const FormerMembersList = ({ team, note }: { team: Team; note?: string }) => (
       entity: { type: "user", id: membership.user.id },
       name: fullName(membership.user),
       leading: <Avatar user={membership.user} />,
-      detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
+      detail: factsLine([
+        TEAM_ROLE_LABELS[membership.roleInTeam],
+        membershipPeriod(membership),
+        leaverLabel(membership.user),
+      ]),
       isInactive: isDeactivatedUser(membership.user),
-      status: isDeactivatedUser(membership.user) && (
-        <Badge variant="neutral">Deactivated</Badge>
-      ),
     })}
     emptyText="Nobody was on this team."
   />
@@ -184,27 +188,38 @@ const ManagerPicker = ({ team }: { team: Team }) => {
     );
   }
 
+  const leadLeft = lead && leaverLabel(lead);
+
   return (
     <>
       {lead ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="pl-1.5"
-          aria-label={`Change manager, now ${fullName(lead)}${isDeactivatedUser(lead) ? ", deactivated" : ""}`}
-          onClick={() => setIsChanging(true)}
-        >
-          <Avatar user={lead} size="xs" className="size-5 ring-0" />
-          {fullName(lead)}
-          {isDeactivatedUser(lead) && (
-            <Badge variant="neutral">Deactivated</Badge>
-          )}
-          <ChevronsUpDown
-            aria-hidden="true"
-            className="text-muted-foreground"
-          />
-        </Button>
+        <span className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="pl-1.5"
+            aria-label={`Change manager, now ${fullName(lead)}${leadLeft ? `, ${leadLeft}` : ""}`}
+            onClick={() => setIsChanging(true)}
+          >
+            <Avatar
+              user={lead}
+              size="xs"
+              className={cn("size-5 ring-0", leadLeft && "opacity-60")}
+            />
+            {fullName(lead)}
+            {leadLeft && (
+              <span className="font-normal text-muted-foreground">
+                · {leadLeft}
+              </span>
+            )}
+            <ChevronsUpDown
+              aria-hidden="true"
+              className="text-muted-foreground"
+            />
+          </Button>
+          {leadLeft && <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>}
+        </span>
       ) : (
         <Button
           type="button"
@@ -253,6 +268,14 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   const canRemove = (membership: MembershipWithUser) =>
     !isEditing && (isOwner || membership.roleInTeam === TeamRole.MEMBER);
 
+  // Deactivated members last, under their own heading, so they don't read as
+  // part of the team that works now.
+  const members = [...currentMemberships(team)].sort(
+    (a, b) =>
+      Number(isDeactivatedUser(a.user)) - Number(isDeactivatedUser(b.user)),
+  );
+  const deactivatedCount = deactivatedMembersCount(team);
+
   return (
     <>
       <EntityPanelLayout
@@ -279,16 +302,25 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       >
         <PanelList
           title="Members"
-          items={currentMemberships(team)}
+          items={members}
           getKey={(membership) => membership.id}
+          groupBy={(membership) =>
+            isDeactivatedUser(membership.user)
+              ? {
+                  key: "deactivated",
+                  heading: `Deactivated · ${deactivatedCount}`,
+                }
+              : null
+          }
           renderRow={(membership) => ({
             entity: { type: "user", id: membership.user.id },
             name: fullName(membership.user),
             leading: <Avatar user={membership.user} />,
-            detail: `${TEAM_ROLE_LABELS[membership.roleInTeam]} · ${membershipPeriod(membership)}`,
-            status: isDeactivatedUser(membership.user) && (
-              <Badge variant="neutral">Deactivated</Badge>
-            ),
+            detail: factsLine([
+              TEAM_ROLE_LABELS[membership.roleInTeam],
+              leaverLabel(membership.user) ?? membershipPeriod(membership),
+            ]),
+            isInactive: isDeactivatedUser(membership.user),
             actions: canMove(membership)
               ? [
                   {

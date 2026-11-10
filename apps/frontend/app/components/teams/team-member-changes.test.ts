@@ -28,6 +28,7 @@ const membership = (
     email: `${firstName.toLowerCase()}@example.test`,
     role: UserRole.MANAGER,
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
   },
 });
 

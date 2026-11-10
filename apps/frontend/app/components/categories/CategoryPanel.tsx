@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import {
   useActivityCategoriesMutations,
   useActivityCategoryDetails,
@@ -124,7 +124,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
               name: activity.name,
               detail: !isArchived && projectsLabel(activity.projectsCount ?? 0),
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeActivities && !isArchived
                   ? {

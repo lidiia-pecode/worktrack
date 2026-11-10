@@ -11,6 +11,10 @@ const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
 /** "Backend, QA and Design". */
 export const listNames = (names: string[]) => listFormat.format(names);
 
+/** The muted facts under a name, in one line: "Support Engineer · Deactivated". */
+export const factsLine = (facts: (string | false | null | undefined)[]) =>
+  facts.filter(Boolean).join(" · ");
+
 /** The one name, or how many: "Backend", "3 activities". */
 export const nameOrCount = (names: string[], plural: string) =>
   names.length === 1 ? names[0] : `${names.length} ${plural}`;

@@ -132,6 +132,7 @@ const person = (
     name,
     position: "Developer",
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
     teams: [],
     outsideTeams: { figures, spans: [], moves: [] },
     ...figures,
