@@ -24,8 +24,6 @@ import {
 import { countLabel } from "@/lib/utils/text";
 import { CapacityChange } from "@/types";
 import {
-  MAX_WORK_DAY_HOURS,
-  WORK_DAY_STEP_HOURS,
   minutesPerDayOf,
   minutesPerWeekOf,
   workDayHoursSchema,
@@ -33,6 +31,7 @@ import {
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
 import { NO_FIXED_HOURS } from "@/lib/utils/user";
+import { WorkDayHoursInput } from "../shared/inputs/WorkDayHoursInput";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DatePicker } from "../shared/inputs";
@@ -171,20 +170,21 @@ export const UserForm = ({
 
       <Field id="user-working-hours" group>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            {...register("capacityHoursPerDay", { valueAsNumber: true })}
-            type="number"
-            min={0}
-            max={MAX_WORK_DAY_HOURS}
-            step={WORK_DAY_STEP_HOURS}
-            label="Working hours a day"
-            description={
-              hasNoHours
-                ? `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
-                : Number.isFinite(minutesPerWeek) &&
-                  `${formatDuration(minutesPerWeek)} a week`
-            }
-            error={errors.capacityHoursPerDay?.message}
+          <Controller
+            control={control}
+            name="capacityHoursPerDay"
+            render={({ field, fieldState }) => (
+              <WorkDayHoursInput
+                {...field}
+                label="Working hours a day"
+                note={
+                  hasNoHours &&
+                  `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
+                }
+                min={0}
+                error={fieldState.error?.message}
+              />
+            )}
           />
 
           <Controller

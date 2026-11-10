@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils/cn";
 
 import { EmptyState } from "../EmptyState";
 import { SearchInput } from "../inputs/SearchInput";
@@ -42,6 +43,8 @@ export interface EntityPickerProps<T> {
   isFetchingNextPage?: boolean;
   onFetchNextPage?: () => void;
 
+  /** In a side panel: the list takes the panel's height rather than a fixed one. */
+  fillsHeight?: boolean;
   className?: string;
 }
 
@@ -62,6 +65,7 @@ export const EntityPicker = <T,>({
   hasNextPage = false,
   isFetchingNextPage = false,
   onFetchNextPage,
+  fillsHeight = false,
   className,
 }: EntityPickerProps<T>) => {
   const [search, setSearch] = useState("");
@@ -99,7 +103,9 @@ export const EntityPicker = <T,>({
   }, [hasNextPage, isFetchingNextPage, onFetchNextPage]);
 
   return (
-    <div className={className}>
+    <div
+      className={cn(fillsHeight && "flex min-h-0 flex-1 flex-col", className)}
+    >
       <SearchInput
         value={search}
         onChange={changeSearch}
@@ -109,7 +115,10 @@ export const EntityPicker = <T,>({
 
       <div
         ref={listRef}
-        className="mt-3 max-h-80 overflow-y-auto rounded-xl border border-border bg-card p-1.5"
+        className={cn(
+          "mt-3 overflow-y-auto rounded-xl border border-border bg-card p-1.5",
+          fillsHeight ? "min-h-40 flex-1" : "max-h-80",
+        )}
       >
         {isLoading ? (
           <div role="status" className="space-y-1 p-1">

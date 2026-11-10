@@ -191,35 +191,34 @@ export const PanelList = <T,>({
   const hiddenCount = items.length - shownItems.length;
 
   return (
-    <section>
-      <div className="flex min-h-8 items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">
-          {title}
-          <span className="ml-1.5 font-normal text-muted-foreground">
-            {items.length}
-          </span>
-        </h3>
-
-        {add && (
+    <PanelCard
+      title={title}
+      count={items.length}
+      action={
+        add && (
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="xs"
             onClick={add.onClick}
-            className="gap-1.5"
+            className="gap-1 bg-card"
           >
-            <add.icon className="size-4" />
+            <add.icon className="size-3.5" />
             {add.label}
           </Button>
-        )}
-      </div>
-
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
+        )
+      }
+    >
+      {note && (
+        <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
+          {note}
+        </p>
+      )}
 
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>
+        <p className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border">
+        <ul className="divide-y divide-border">
           {shownItems.map((item, index) => {
             const group = groupBy?.(item);
             const startsGroup =
@@ -242,16 +241,50 @@ export const PanelList = <T,>({
       )}
 
       {hiddenCount > 0 && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowsAll(true)}
-          className="mt-1"
-        >
-          Show all {items.length}
-        </Button>
+        <div className="border-t border-border px-1.5 py-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowsAll(true)}
+          >
+            Show all {items.length}
+          </Button>
+        </div>
       )}
-    </section>
+    </PanelCard>
   );
 };
+
+type PanelCardProps = {
+  title: string;
+  /** How many items the section holds, after its title. */
+  count?: number;
+  /** Beside the title, such as Add or a warning. */
+  action?: ReactNode;
+  children: ReactNode;
+};
+
+/**
+ * A panel section: a card with its title in a bar on top, the same for the
+ * entity's details and every list under them.
+ */
+export const PanelCard = ({
+  title,
+  count,
+  action,
+  children,
+}: PanelCardProps) => (
+  <section className="overflow-hidden rounded-xl border border-border">
+    <div className="flex min-h-10 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1.5">
+      <h3 className="text-xs font-medium text-muted-foreground">
+        {title}
+        {count !== undefined && (
+          <span className="ml-1.5 tabular-nums">{count}</span>
+        )}
+      </h3>
+      {action}
+    </div>
+    {children}
+  </section>
+);

@@ -114,6 +114,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>

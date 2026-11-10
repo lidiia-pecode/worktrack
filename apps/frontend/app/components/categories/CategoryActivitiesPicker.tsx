@@ -76,6 +76,7 @@ export const CategoryActivitiesPicker = ({
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(activity) =>

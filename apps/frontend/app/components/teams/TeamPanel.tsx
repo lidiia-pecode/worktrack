@@ -157,7 +157,8 @@ const ManagerLink = ({ team }: { team: Team }) => {
       {fullName(manager)}
     </EntityLink>
   ) : (
-    <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
+    // The row's warning says why; nothing to link to.
+    <span className="text-muted-foreground">None</span>
   );
 };
 
@@ -193,38 +194,36 @@ const ManagerPicker = ({ team }: { team: Team }) => {
   return (
     <>
       {lead ? (
-        <span className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="pl-1.5"
-            aria-label={`Change manager, now ${fullName(lead)}${leadLeft ? `, ${leadLeft}` : ""}`}
-            onClick={() => setIsChanging(true)}
-          >
-            <Avatar
-              user={lead}
-              size="xs"
-              className={cn("size-5 ring-0", leadLeft && "opacity-60")}
-            />
-            {fullName(lead)}
-            {leadLeft && (
-              <span className="font-normal text-muted-foreground">
-                · {leadLeft}
-              </span>
-            )}
-            <ChevronsUpDown
-              aria-hidden="true"
-              className="text-muted-foreground"
-            />
-          </Button>
-          {leadLeft && <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>}
-        </span>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="w-full justify-start pl-1.5"
+          aria-label={`Change manager, now ${fullName(lead)}${leadLeft ? `, ${leadLeft}` : ""}`}
+          onClick={() => setIsChanging(true)}
+        >
+          <Avatar
+            user={lead}
+            size="xs"
+            className={cn("size-5 ring-0", leadLeft && "opacity-60")}
+          />
+          {fullName(lead)}
+          {leadLeft && (
+            <span className="font-normal text-muted-foreground">
+              · {leadLeft}
+            </span>
+          )}
+          <ChevronsUpDown
+            aria-hidden="true"
+            className="ml-auto text-muted-foreground"
+          />
+        </Button>
       ) : (
         <Button
           type="button"
           size="sm"
           variant="outline"
+          className="w-full justify-start"
           onClick={() => setIsChanging(true)}
         >
           <Plus />
@@ -294,6 +293,9 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
               ) : (
                 <ManagerLink team={team} />
               ),
+            aside: !activeManager(team) && (
+              <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
+            ),
             wide: true,
           },
         ]}

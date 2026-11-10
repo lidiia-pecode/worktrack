@@ -53,3 +53,9 @@ export const PanelEntityContext = createContext<{ name: string } | null>(null);
 
 /** The id of the panel's heading, which labels the panel. */
 export const PanelTitleIdContext = createContext<string | undefined>(undefined);
+
+/**
+ * The place under the panel's scrolling body where an open form or picker puts
+ * its Cancel and Save, so the bar stays at the panel's bottom as in a dialog.
+ */
+export const PanelFooterSlotContext = createContext<HTMLElement | null>(null);

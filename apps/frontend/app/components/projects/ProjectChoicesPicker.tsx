@@ -59,6 +59,7 @@ export const ProjectChoicesPicker = ({
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={staged.toggle}

@@ -1,9 +1,11 @@
 "use client";
 
 import { ComponentProps, forwardRef, ReactNode, useContext } from "react";
+import { createPortal } from "react-dom";
 import { Archive, LucideIcon, Pencil, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CardFooter } from "@/components/ui/card";
 import { isMissingEntityError } from "@/lib/api";
 import { cn } from "@/lib/utils/cn";
 import { countLabel } from "@/lib/utils/text";
@@ -11,8 +13,10 @@ import { countLabel } from "@/lib/utils/text";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import type { ManageRowAction } from "../shared/resource/ManageList";
+import { PanelCard } from "./PanelList";
 import {
   PanelEntityContext,
+  PanelFooterSlotContext,
   PanelTitleIdContext,
 } from "./entity-panel-context";
 
@@ -63,7 +67,7 @@ export const EntityPanelLayout = ({
     <PanelEntityContext.Provider value={{ name }}>
       <header>
         <div className="flex min-h-7 items-center justify-between gap-3">
-          <p className="text-2xs font-medium tracking-wider text-muted-foreground uppercase">
+          <p className="text-xs text-muted-foreground">
             {isEditing ? `Editing ${type.toLowerCase()}` : type}
           </p>
 
@@ -125,7 +129,9 @@ export const EntityPanelLayout = ({
               </h2>
 
               {!isEditing && subtitle && (
-                <p className="mt-0.5 text-sm text-foreground/80">{subtitle}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  {subtitle}
+                </p>
               )}
             </div>
           </div>
@@ -141,7 +147,7 @@ export const EntityPanelLayout = ({
       </header>
 
       <div
-        className={cn("flex flex-col gap-7", hidesHeading ? "mt-1" : "mt-7")}
+        className={cn("flex flex-col gap-4", hidesHeading ? "mt-1" : "mt-4")}
       >
         {isEditing ? editForm : children}
       </div>
@@ -202,26 +208,54 @@ export const PanelStatus = ({
 interface PanelDetail {
   label: string;
   value: ReactNode;
-  /** A long value, such as a description or an email, across both columns. */
+  /** A long value, such as a description, under its label rather than beside it. */
   wide?: boolean;
+  /** Beside a wide value's label, such as a warning about it. */
+  aside?: ReactNode;
 }
 
-/** An entity's own facts, each label above its value, two to a row. */
+/**
+ * An entity's own facts, a card of rows like every list under them: each
+ * label beside its value, or above a wide one with its aside on its right.
+ */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <dl className="mt-5 grid grid-cols-2 gap-x-4 gap-y-4">
-    {details.map((detail) => (
-      <div
-        key={detail.label}
-        className={cn("min-w-0", detail.wide && "col-span-2")}
-      >
-        <dt className="text-xs text-muted-foreground">{detail.label}</dt>
-        <dd className="mt-1 text-sm break-words text-foreground">
-          {detail.value}
-        </dd>
-      </div>
-    ))}
-  </dl>
+  <div className="mt-5">
+    <PanelCard title="Details">
+      <dl className="divide-y divide-border text-sm">
+        {details.map((detail) => (
+          <div
+            key={detail.label}
+            className={cn(
+              "min-w-0 gap-x-4 px-3 py-2.5",
+              detail.wide
+                ? "flex flex-col gap-y-2"
+                : "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline",
+            )}
+          >
+            <div className="flex min-h-5 items-center justify-between gap-3">
+              <dt className="text-muted-foreground">{detail.label}</dt>
+              {detail.aside}
+            </div>
+            <dd className="min-w-0 break-words text-foreground">
+              {detail.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </PanelCard>
+  </div>
 );
+
+/**
+ * An open form's or picker's actions, in the bar at the panel's bottom as a
+ * dialog's footer is; inline where there is no panel around it.
+ */
+const PanelFooter = ({ children }: { children: ReactNode }) => {
+  const slot = useContext(PanelFooterSlotContext);
+  const footer = <CardFooter className="flex-wrap">{children}</CardFooter>;
+
+  return slot ? createPortal(footer, slot) : footer;
+};
 
 interface PanelEditFormProps {
   formId: string;
@@ -240,7 +274,7 @@ export const PanelEditForm = ({
   <section aria-label="Edit details">
     {children}
 
-    <div className="mt-6 flex justify-end gap-2">
+    <PanelFooter>
       <Button
         type="button"
         variant="outline"
@@ -254,7 +288,7 @@ export const PanelEditForm = ({
       <Button type="submit" form={formId} size="sm" isLoading={isSaving}>
         Save changes
       </Button>
-    </div>
+    </PanelFooter>
   </section>
 );
 
@@ -303,16 +337,16 @@ export const PanelView = ({
           size="sm"
           onClick={create.onClick}
           disabled={isApplying}
-          className="mt-4 gap-1.5"
+          className="mt-4 gap-1.5 self-start"
         >
           <Plus className="size-4" />
           {create.label}
         </Button>
       )}
 
-      <div className="mt-5">{children}</div>
+      <div className="mt-5 flex min-h-0 flex-1 flex-col">{children}</div>
 
-      <div className="mt-6 flex items-center justify-end gap-2">
+      <PanelFooter>
         {pendingCount > 0 && (
           <p className="mr-auto text-sm text-muted-foreground" role="status">
             {countLabel(pendingCount, "change", "changes")} to apply
@@ -332,7 +366,7 @@ export const PanelView = ({
         <Button type="button" size="sm" onClick={onDone} isLoading={isApplying}>
           {doneLabel}
         </Button>
-      </div>
+      </PanelFooter>
     </>
   );
 };

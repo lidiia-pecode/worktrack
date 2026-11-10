@@ -95,10 +95,6 @@ const WorkingHours = ({
     return <span className="text-muted-foreground">Not set</span>;
   }
 
-  const source = capacity.isCompanyDefault
-    ? "Company default"
-    : capacity.validFrom &&
-      `Since ${formatDayMonthYearLabel(capacity.validFrom)}`;
   const { upcoming } = capacity;
   const hoursPerDay = (minutesPerWeek: number) =>
     `${formatDuration(minutesPerDayOf(minutesPerWeek))} a day`;
@@ -114,12 +110,7 @@ const WorkingHours = ({
 
   return (
     <div className="grid gap-2">
-      <div className="grid gap-0.5">
-        <span>{dayAndWeek(capacity.minutesPerWeek)}</span>
-        {source && (
-          <span className="text-xs text-muted-foreground">{source}</span>
-        )}
-      </div>
+      <span>{dayAndWeek(capacity.minutesPerWeek)}</span>
 
       {upcoming && (
         <ScheduledChange
@@ -304,7 +295,6 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
       <EntityPanelLayout
         type="Person"
         name={fullName(user)}
-        subtitle={user.position}
         leading={
           <Avatar
             user={user}
@@ -336,6 +326,12 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }
         details={[
+          {
+            label: "Position",
+            value: user.position || (
+              <span className="text-muted-foreground">Not set</span>
+            ),
+          },
           { label: "Role", value: ROLE_LABELS[user.role] },
           ...(isOwner
             ? [
@@ -351,7 +347,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
                 },
               ]
             : []),
-          { label: "Email", value: user.email, wide: true },
+          { label: "Email", value: user.email },
         ]}
         actions={userActions.actionsFor(user)}
         // Only the person changes their own name, in their profile.

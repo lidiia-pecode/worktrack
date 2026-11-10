@@ -10,7 +10,6 @@ import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import Input from "@/components/ui/input";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { queryKeys } from "@/hooks/shared/queryKeys";
@@ -33,11 +32,12 @@ import { OnboardingProgress } from "./OnboardingProgress";
 import { OnboardingStepHeader } from "./OnboardingStepHeader";
 import { FormAlert } from "../../shared/FormAlert";
 import { OptionCards } from "../../shared/inputs/OptionCards";
+import { minutesPerWeekOf } from "@/lib/forms/schemas/work-day.schema";
 import {
-  MAX_WORK_DAY_HOURS,
-  WORK_DAY_STEP_HOURS,
-  minutesPerWeekOf,
-} from "@/lib/forms/schemas/work-day.schema";
+  STANDARD_DAY_LABEL,
+  STANDARD_DAY_NOTE,
+  WorkDayHoursInput,
+} from "../../shared/inputs/WorkDayHoursInput";
 
 const setupSchema = companySchema
   .pick({
@@ -92,6 +92,11 @@ const STEPS = [
   },
 ] as const;
 
+type SetupField = (typeof STEPS)[number]["field"];
+
+// Every company starts in UTC (set at sign-up), never a zone someone chose.
+const DEFAULT_TIME_ZONE = "UTC";
+
 export const CompanySetupWizard = () => {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -107,9 +112,9 @@ export const CompanySetupWizard = () => {
 
   const {
     control,
-    register,
     reset,
     trigger,
+    getValues,
     handleSubmit,
     formState: { errors },
   } = useForm<SetupValues>({
@@ -122,9 +127,11 @@ export const CompanySetupWizard = () => {
     if (!company || ownMinutesPerWeek === undefined) return;
 
     reset({
+      // A company still on UTC, as every one starts, has never chosen a zone,
+      // so the browser's is the better guess; a chosen one stays.
       timezone:
-        browserTimeZone() ??
-        toListedTimeZone(company.timezone) ??
+        (company.timezone === DEFAULT_TIME_ZONE && browserTimeZone()) ||
+        toListedTimeZone(company.timezone) ||
         company.timezone,
       weekStartDay: company.weekStartDay,
       standardWorkHoursPerDay: Number(company.standardWorkHoursPerDay),
@@ -141,16 +148,21 @@ export const CompanySetupWizard = () => {
   };
 
   /**
-   * Saves as Settings and the person's panel do, from today where the company
-   * now is: at sign-up that is the company's first day, and opened again
-   * later it changes nothing before today.
+   * Saves the answered questions as Settings and the person's panel do, from
+   * today where the company now is: at sign-up that is the company's first
+   * day, and opened again later it changes nothing before today. The time
+   * zone is always saved, since the one shown beats the UTC every company
+   * starts in.
    */
-  const finish = async ({
-    timezone,
-    weekStartDay,
-    standardWorkHoursPerDay,
-    logsOwnTime,
-  }: SetupValues) => {
+  const save = async (
+    {
+      timezone,
+      weekStartDay,
+      standardWorkHoursPerDay,
+      logsOwnTime,
+    }: SetupValues,
+    answered: SetupField[],
+  ) => {
     if (!company || !user || ownMinutesPerWeek === undefined) return;
     setSaveError(null);
     setIsSaving(true);
@@ -158,11 +170,14 @@ export const CompanySetupWizard = () => {
     try {
       const saved = await actions.update.mutateAsync({
         timezone,
-        weekStartDay,
+        ...(answered.includes("weekStartDay") && { weekStartDay }),
       });
       const today = todayISODate(saved.timezone);
 
-      if (standardWorkHoursPerDay !== Number(company.standardWorkHoursPerDay)) {
+      if (
+        answered.includes("standardWorkHoursPerDay") &&
+        standardWorkHoursPerDay !== Number(company.standardWorkHoursPerDay)
+      ) {
         await CompaniesClientApi.setStandardDay({
           hoursPerDay: standardWorkHoursPerDay,
           validFrom: today,
@@ -171,7 +186,10 @@ export const CompanySetupWizard = () => {
       // Only a changed answer is saved: "Yes" keeps the hours they have,
       // and gives the standard day only to an owner at 0h.
       const answeredNo = logsOwnTime === "no";
-      if (answeredNo !== (ownMinutesPerWeek === 0)) {
+      if (
+        answered.includes("logsOwnTime") &&
+        answeredNo !== (ownMinutesPerWeek === 0)
+      ) {
         await CapacityClientApi.setForUser({
           userId: user.id,
           minutesPerWeek: answeredNo
@@ -192,6 +210,19 @@ export const CompanySetupWizard = () => {
       setIsSaving(false);
     }
   };
+
+  const finish = (values: SetupValues) =>
+    save(
+      values,
+      STEPS.map((setupStep) => setupStep.field),
+    );
+
+  // The questions passed with Next are kept; the time zone always is.
+  const skipRest = () =>
+    save(
+      getValues(),
+      STEPS.slice(0, currentStep).map((setupStep) => setupStep.field),
+    );
 
   const continueOrFinish = async () => {
     if (isLastStep) {
@@ -229,9 +260,9 @@ export const CompanySetupWizard = () => {
         </h1>
 
         <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
-          Four questions, asked once and saved together when you finish.
-          Skipping keeps the current settings. You can change them later in
-          Settings and on your own panel in People.
+          Four questions, asked once. Skipping keeps the answers you have given
+          and your time zone. You can change them later in Settings and on your
+          own panel in People.
         </p>
       </div>
 
@@ -288,15 +319,19 @@ export const CompanySetupWizard = () => {
           )}
 
           {step.field === "standardWorkHoursPerDay" && (
-            <Input
-              label="Hours in a working day"
-              type="number"
-              min={1}
-              max={MAX_WORK_DAY_HOURS}
-              step={WORK_DAY_STEP_HOURS}
-              {...register("standardWorkHoursPerDay", { valueAsNumber: true })}
-              error={errors.standardWorkHoursPerDay?.message}
-              disabled={isSaving}
+            <Controller
+              control={control}
+              name="standardWorkHoursPerDay"
+              render={({ field, fieldState }) => (
+                <WorkDayHoursInput
+                  {...field}
+                  label={STANDARD_DAY_LABEL}
+                  note={STANDARD_DAY_NOTE}
+                  min={1}
+                  error={fieldState.error?.message}
+                  disabled={isSaving}
+                />
+              )}
             />
           )}
 
@@ -352,10 +387,10 @@ export const CompanySetupWizard = () => {
         variant="pastel"
         size="sm"
         className="self-end"
-        onClick={leaveSetup}
+        onClick={() => void skipRest()}
         disabled={isSaving}
       >
-        Skip setup for now
+        Skip the rest
       </Button>
     </div>
   );

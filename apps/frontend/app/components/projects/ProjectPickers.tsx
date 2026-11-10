@@ -112,6 +112,7 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>
@@ -201,6 +202,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={staged.toggle}
