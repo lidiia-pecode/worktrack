@@ -18,6 +18,7 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -104,9 +105,12 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Project"
         name={project.name}
-        leading={<ProjectColorDot projectId={project.id} className="size-3" />}
+        leading={
+          <PanelIcon>
+            <ProjectColorDot projectId={project.id} className="size-3" />
+          </PanelIcon>
+        }
         status={!isActive && <PanelStatus />}
         onEdit={
           projectActions.canEdit(project)

@@ -21,16 +21,16 @@ import {
 } from "./entity-panel-context";
 
 interface EntityPanelLayoutProps {
-  /** What the entity is, such as "Project", above its name. */
-  type: string;
   name: string;
-  /** Before the name, such as a person's avatar; decorative, since the name says it. */
+  /** Before the name, a person's avatar or the entity's icon, which tells what it is. */
   leading?: ReactNode;
   subtitle?: ReactNode;
   /** Only what the tab doesn't already say, such as Archived or Deactivated. */
   status?: ReactNode;
   /** Opens the entity's form; left out when the viewer cannot edit it. */
   onEdit?: () => void;
+  /** The edit button's words, "Rename" where only the name changes. */
+  editLabel?: string;
   /** Its lifecycle, such as Archive or Restore, beside Edit. */
   actions?: ManageRowAction[];
   /** The entity's own facts under its name, such as a client or a category. */
@@ -46,12 +46,12 @@ const TOOLBAR_BUTTON = "rounded-none first:rounded-l-md last:rounded-r-md";
 
 /** The panel's header, facts and relationship sections; an open form replaces everything under the heading. */
 export const EntityPanelLayout = ({
-  type,
   name,
   leading,
   subtitle,
   status,
   onEdit,
+  editLabel = "Edit",
   actions = [],
   details = [],
   editForm,
@@ -66,79 +66,71 @@ export const EntityPanelLayout = ({
   return (
     <PanelEntityContext.Provider value={{ name }}>
       <header>
-        <div className="flex min-h-7 items-center justify-between gap-3">
-          <p className="text-xs text-muted-foreground">
-            {isEditing ? `Editing ${type.toLowerCase()}` : type}
-          </p>
-
-          {hasToolbar && (
-            <div
-              role="toolbar"
-              aria-label={`Actions for ${name}`}
-              className="flex items-center divide-x divide-border rounded-md border border-border bg-card shadow-xs"
-            >
-              {onEdit && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={onEdit}
-                  className={cn(TOOLBAR_BUTTON, "text-foreground")}
-                >
-                  <Pencil className="size-3.5" />
-                  Edit
-                </Button>
-              )}
-
-              {actions.map((action) => (
-                <Button
-                  key={action.label}
-                  type="button"
-                  variant="ghost"
-                  size="xs"
-                  onClick={action.onSelect}
-                  className={cn(
-                    TOOLBAR_BUTTON,
-                    action.warning
-                      ? "text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
-                      : "text-brand",
-                  )}
-                >
-                  <action.icon className="size-3.5" />
-                  {action.label}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
-
         <div className={cn(hidesHeading && "sr-only")}>
-          <div className="mt-1 flex items-center gap-3">
+          <div className="flex items-center gap-3">
             {leading && (
               <span aria-hidden="true" className="shrink-0">
                 {leading}
               </span>
             )}
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h2
                 id={titleId}
-                className="text-xl font-semibold tracking-tight break-words text-foreground"
+                className="text-lg leading-snug font-semibold tracking-tight break-words text-foreground"
               >
                 {name}
               </h2>
 
               {!isEditing && subtitle && (
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {subtitle}
-                </p>
+                <p className="text-sm text-muted-foreground">{subtitle}</p>
               )}
             </div>
+
+            {hasToolbar && (
+              <div
+                role="toolbar"
+                aria-label={`Actions for ${name}`}
+                className="flex shrink-0 items-center divide-x divide-border rounded-md border border-border bg-card shadow-xs"
+              >
+                {onEdit && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={onEdit}
+                    className={cn(TOOLBAR_BUTTON, "text-foreground")}
+                  >
+                    <Pencil className="size-3.5" />
+                    {editLabel}
+                  </Button>
+                )}
+
+                {actions.map((action) => (
+                  <Button
+                    key={action.label}
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    onClick={action.onSelect}
+                    className={cn(
+                      TOOLBAR_BUTTON,
+                      action.warning
+                        ? "text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
+                        : "text-brand",
+                    )}
+                  >
+                    <action.icon className="size-3.5" />
+                    {action.label}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
 
           {!isEditing && (
             <>
-              {status && <div className="mt-2.5 flex">{status}</div>}
+              {status && <div className="mt-4 flex">{status}</div>}
 
               {details.length > 0 && <PanelDetails details={details} />}
             </>
@@ -154,6 +146,16 @@ export const EntityPanelLayout = ({
     </PanelEntityContext.Provider>
   );
 };
+
+/**
+ * A panel's leading mark where there is no avatar: the entity's icon, as the
+ * sidebar shows it, or a project's colour. It says what the panel shows.
+ */
+export const PanelIcon = ({ children }: { children: ReactNode }) => (
+  <span className="flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
+    {children}
+  </span>
+);
 
 interface PanelTitleInputProps extends ComponentProps<"input"> {
   id: string;
@@ -210,32 +212,27 @@ interface PanelDetail {
   value: ReactNode;
   /** A long value, such as a description, under its label rather than beside it. */
   wide?: boolean;
-  /** Beside a wide value's label, such as a warning about it. */
-  aside?: ReactNode;
 }
 
 /**
  * An entity's own facts, a card of rows like every list under them: each
- * label beside its value, or above a wide one with its aside on its right.
+ * label beside its value, or above a wide one.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <div className="mt-5">
+  <div className="mt-4">
     <PanelCard title="Details">
-      <dl className="divide-y divide-border text-sm">
+      <dl className="divide-y divide-border text-xs">
         {details.map((detail) => (
           <div
             key={detail.label}
             className={cn(
-              "min-w-0 gap-x-4 px-3 py-2.5",
+              "min-w-0 gap-x-4 px-3 py-2",
               detail.wide
                 ? "flex flex-col gap-y-2"
                 : "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline",
             )}
           >
-            <div className="flex min-h-5 items-center justify-between gap-3">
-              <dt className="text-muted-foreground">{detail.label}</dt>
-              {detail.aside}
-            </div>
+            <dt className="text-muted-foreground">{detail.label}</dt>
             <dd className="min-w-0 break-words text-foreground">
               {detail.value}
             </dd>
@@ -344,7 +341,7 @@ export const PanelView = ({
         </Button>
       )}
 
-      <div className="mt-5 flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className="mt-4 flex min-h-0 flex-1 flex-col">{children}</div>
 
       <PanelFooter>
         {pendingCount > 0 && (

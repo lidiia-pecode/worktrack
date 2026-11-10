@@ -16,8 +16,10 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
+import { activities } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { LoadingState } from "../shared/LoadingState";
@@ -83,7 +85,11 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Activity"
+        leading={
+          <PanelIcon>
+            <activities.icon className="size-4" />
+          </PanelIcon>
+        }
         name={activity.name}
         status={!isActive && <PanelStatus />}
         onEdit={

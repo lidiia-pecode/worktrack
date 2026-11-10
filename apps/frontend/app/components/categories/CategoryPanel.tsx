@@ -17,8 +17,10 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
+import { categories } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { NameForm, NameFormData } from "../shared/resource/NameForm";
@@ -99,7 +101,11 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Category"
+        leading={
+          <PanelIcon>
+            <categories.icon className="size-4" />
+          </PanelIcon>
+        }
         name={category.name}
         status={!isActive && <PanelStatus />}
         onEdit={

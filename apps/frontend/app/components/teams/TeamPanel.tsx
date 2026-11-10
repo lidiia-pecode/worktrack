@@ -28,11 +28,13 @@ import { Avatar } from "../shared/Avatar";
 import {
   EntityPanelLayout,
   PanelEditForm,
+  PanelIcon,
   PanelQueryState,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
+import { teams } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import { PanelList } from "../entity-panel/PanelList";
+import { PanelCard, PanelList } from "../entity-panel/PanelList";
 import { ManageWarning } from "../shared/resource/ManageList";
 import { NameForm, NameFormData } from "../shared/resource/NameForm";
 import { RevokeInvitationModal } from "../users/PendingInvitations";
@@ -53,6 +55,12 @@ import { TeamMemberRemoveDialog, TeamRemoval } from "./TeamMemberRemoveDialog";
 import { isActiveTeam, useTeamActions } from "./useTeamActions";
 
 const EDIT_FORM_ID = "team-edit-form";
+
+const TeamIcon = () => (
+  <PanelIcon>
+    <teams.icon className="size-4" />
+  </PanelIcon>
+);
 
 const membershipPeriod = (membership: TeamMembership) => {
   const joined = formatDayMonthYearLabel(membership.joinedAt);
@@ -278,30 +286,34 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Team"
+        leading={<TeamIcon />}
         name={team.name}
         onEdit={
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
+        // Only the name changes, in the heading's place.
+        editLabel="Rename"
         actions={teamActions.actionsFor(team)}
-        details={[
-          {
-            label: "Manager",
-            value:
-              isOwner && !isEditing ? (
-                <ManagerPicker team={team} />
-              ) : (
-                <ManagerLink team={team} />
-              ),
-            aside: !activeManager(team) && (
-              <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
-            ),
-            wide: true,
-          },
-        ]}
         editForm={isEditing && <TeamEditForm team={team} />}
         editsName
       >
+        <PanelCard
+          title="Manager"
+          action={
+            !activeManager(team) && (
+              <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
+            )
+          }
+        >
+          <div className="px-3 py-2.5 text-sm">
+            {isOwner && !isEditing ? (
+              <ManagerPicker team={team} />
+            ) : (
+              <ManagerLink team={team} />
+            )}
+          </div>
+        </PanelCard>
+
         <PanelList
           title="Members"
           items={members}
@@ -389,7 +401,7 @@ const ArchivedTeamView = ({ team }: { team: Team }) => {
 
   return (
     <EntityPanelLayout
-      type="Team"
+      leading={<TeamIcon />}
       name={team.name}
       status={<PanelStatus />}
       actions={teamActions.actionsFor(team)}

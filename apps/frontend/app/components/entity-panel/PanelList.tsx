@@ -201,10 +201,12 @@ export const PanelList = <T,>({
             variant="outline"
             size="xs"
             onClick={add.onClick}
+            // The section's title says what is added to.
+            aria-label={add.label}
             className="gap-1 bg-card"
           >
             <add.icon className="size-3.5" />
-            {add.label}
+            Add
           </Button>
         )
       }
@@ -276,7 +278,7 @@ export const PanelCard = ({
   children,
 }: PanelCardProps) => (
   <section className="overflow-hidden rounded-xl border border-border">
-    <div className="flex min-h-10 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1.5">
+    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1">
       <h3 className="text-xs font-medium text-muted-foreground">
         {title}
         {count !== undefined && (

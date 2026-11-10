@@ -293,12 +293,12 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Person"
         name={fullName(user)}
+        subtitle={user.position}
         leading={
           <Avatar
             user={user}
-            size="lg"
+            size="md"
             className={cn(isDeactivated && "opacity-60")}
           />
         }
@@ -326,12 +326,6 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
           userActions.canEdit(user) ? () => userActions.edit(user) : undefined
         }
         details={[
-          {
-            label: "Position",
-            value: user.position || (
-              <span className="text-muted-foreground">Not set</span>
-            ),
-          },
           { label: "Role", value: ROLE_LABELS[user.role] },
           ...(isOwner
             ? [
