@@ -48,6 +48,7 @@ import { UserRole } from "@/types/enums";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
@@ -149,7 +150,11 @@ export const TeamTimeView = ({
 
   // Context for an empty day, narrowed like the entries; a failed load leaves
   // the days without it.
-  const { items: plannedEntries } = usePlanningEntries({
+  const {
+    items: plannedEntries,
+    isError: isPlansError,
+    refetch: refetchPlans,
+  } = usePlanningEntries({
     dateFrom,
     dateTo,
     teamId,
@@ -233,6 +238,9 @@ export const TeamTimeView = ({
   const loggedMinutes = isSearching
     ? shownRows.reduce((sum, row) => sum + row.minutes, 0)
     : totals.minutes;
+  const billableMinutes = isSearching
+    ? shownRows.reduce((sum, row) => sum + row.billableMinutes, 0)
+    : totals.billableMinutes;
   // What was expected of the people shown; a project's hours have none.
   const expectedMinutes = projectId
     ? undefined
@@ -322,6 +330,7 @@ export const TeamTimeView = ({
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
 
   const retry = () => {
+    void refetchPlans();
     void refetchSummary();
     void refetchSettings();
     void refetchAbsences();
@@ -329,21 +338,13 @@ export const TeamTimeView = ({
   };
 
   // The locks too, so no day shows before it is known whether it can change.
-  if (
+  // The toolbar stays meanwhile, as on every page with a period.
+  const isLoading =
     isLoadingSettings ||
     isLoadingSummary ||
     isLoadingAbsences ||
-    isLoadingLocks
-  ) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <LoadingState
-          title="Loading the team's week"
-          description="Fetching logged time and company settings."
-        />
-      </div>
-    );
-  }
+    isLoadingLocks;
+  const isReady = !isLoading && !hasError;
 
   return (
     // Fills the page, so an empty state stretches to the bottom.
@@ -357,11 +358,12 @@ export const TeamTimeView = ({
             onWeekChange={showWeekOf}
           />
 
-          {!hasError && (
+          {isReady && (
             <WeekTotal
               label="Logged"
               minutes={loggedMinutes}
               ofMinutes={expectedMinutes}
+              billableMinutes={billableMinutes}
             />
           )}
         </div>
@@ -381,6 +383,19 @@ export const TeamTimeView = ({
         />
       )}
 
+      {isReady && isPlansError && (
+        <PartLoadError onRetry={() => void refetchPlans()}>
+          {PLANS_LOAD_ERROR}
+        </PartLoadError>
+      )}
+
+      {isLoading && !hasError && (
+        <LoadingState
+          title="Loading the team's week"
+          description="Fetching logged time and company settings."
+        />
+      )}
+
       {hasError && (
         <ErrorState
           title="We couldn't load the team's week"
@@ -389,7 +404,7 @@ export const TeamTimeView = ({
         />
       )}
 
-      {!hasError && matchesNobody && (
+      {isReady && matchesNobody && (
         <EmptyState
           className="mt-3"
           icon={<SearchX />}
@@ -403,13 +418,13 @@ export const TeamTimeView = ({
         />
       )}
 
-      {!hasError && notice && (
+      {isReady && notice && (
         <div className="py-3 pr-3">
           <OnlyViewerNotice reason={notice} />
         </div>
       )}
 
-      {!hasError && !matchesNobody && (
+      {isReady && !matchesNobody && (
         <div
           className={[
             "overflow-x-auto transition-opacity",

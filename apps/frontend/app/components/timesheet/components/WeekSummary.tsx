@@ -7,6 +7,7 @@ import { formatDuration } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 
 import { ReportBar } from "../../reports/components/ReportBar";
+import { WeekTotal } from "../../shared/week/WeekTotal";
 import {
   Popover,
   PopoverContent,
@@ -94,19 +95,11 @@ export const WeekSummary = ({
           className,
         )}
       >
-        <span className="whitespace-nowrap tabular-nums">
-          <span className="font-semibold">{formatDuration(totalMinutes)}</span>
-          {expectsTime && (
-            <span className="text-muted-foreground">
-              {" "}
-              / {formatDuration(expectedMinutes)}
-            </span>
-          )}
-        </span>
-        <WeekBar
+        <WeekTotal
+          label="Logged"
+          minutes={totalMinutes}
+          ofMinutes={expectsTime ? expectedMinutes : undefined}
           billableMinutes={billableMinutes}
-          nonBillableMinutes={nonBillableMinutes}
-          expectedMinutes={expectedMinutes}
         />
         {overMinutes > 0 && (
           <span className="text-xs font-medium whitespace-nowrap text-warning-text tabular-nums">

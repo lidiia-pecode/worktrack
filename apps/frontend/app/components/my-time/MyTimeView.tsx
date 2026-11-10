@@ -12,7 +12,7 @@ import {
   formatReportHours,
   getMonthRange,
 } from "@/lib/utils/date";
-import { hoursAgainst, reportScope } from "@/lib/utils/report-overview";
+import { hoursAgainst, shownPeriodLabel } from "@/lib/utils/report-overview";
 import { countLabel } from "@/lib/utils/text";
 
 import { Card } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { BackToNowButton } from "../shared/buttons/BackToNowButton";
+import { PeriodBand } from "../reports/components/PeriodBand";
 import { ReportBar } from "../reports/components/ReportBar";
 import { ReportMonthStepper } from "../reports/components/ReportMonthStepper";
 import { PersonDayGrid } from "../reports/components/PersonDayGrid";
@@ -104,7 +105,7 @@ const MonthTotal = ({
 );
 
 export const MyTimeView = ({ userId }: { userId: string }) => {
-  const { month, currentMonth, firstMonth, showMonth } = useShownMonth();
+  const { month, today, currentMonth, firstMonth, showMonth } = useShownMonth();
   const range: ReportRange = getMonthRange(month);
 
   // Their own row only, as Reports' panel asks for it.
@@ -115,6 +116,7 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
     report?.countedUntil && report.countedUntil < range.dateFrom,
   );
   const ownRow = people.report?.rows.find((row) => row.userId === userId);
+  const monthTitleId = useId();
 
   const renderMonth = () => {
     if (people.isLoading) {
@@ -168,9 +170,20 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
         )}
         aria-busy={isUpdating}
       >
-        <Card as="section" aria-label="Your month" className="p-6">
-          <MonthTotal person={ownRow} isOpen={isOpen} />
-          <div className="mt-5 border-t border-border pt-4">
+        <Card as="section" aria-labelledby={monthTitleId}>
+          <PeriodBand
+            titleId={monthTitleId}
+            label={shownPeriodLabel(
+              formatMonthLabel(month),
+              range,
+              people.report.countedUntil,
+            )}
+          >
+            <div className="rounded-xl border border-brand-strong bg-card px-4 py-3.5">
+              <MonthTotal person={ownRow} isOpen={isOpen} />
+            </div>
+          </PeriodBand>
+          <div className="px-6 py-4">
             <PersonFacts person={ownRow} />
           </div>
         </Card>
@@ -204,17 +217,13 @@ export const MyTimeView = ({ userId }: { userId: string }) => {
     // Fills the page, so an empty state stretches to the bottom as on Log my time.
     <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex flex-col gap-2">
-          <ReportMonthStepper
-            month={month}
-            currentMonth={currentMonth}
-            companyFirstMonth={firstMonth}
-            onChange={showMonth}
-          />
-          <p className="min-h-5 text-sm text-muted-foreground">
-            {report && !isNothingCounted && reportScope(report)}
-          </p>
-        </div>
+        <ReportMonthStepper
+          month={month}
+          today={today}
+          currentMonth={currentMonth}
+          companyFirstMonth={firstMonth}
+          onChange={showMonth}
+        />
 
         {month !== currentMonth && (
           <BackToNowButton

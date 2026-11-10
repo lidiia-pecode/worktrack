@@ -42,8 +42,8 @@ type PeriodPickerProps = {
   onChange: (period: ShownPeriod) => void;
 };
 
-/** The calendar behind a month, quarter or year: a day picked shows its period. */
-const CalendarPeriodPicker = ({
+/** The calendar behind a month, quarter or year: a day picked shows its period. Review my time uses it for its month. */
+export const CalendarPeriodPicker = ({
   period,
   unit,
   today,

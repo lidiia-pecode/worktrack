@@ -36,6 +36,7 @@ import { EmptyState } from "../shared/EmptyState";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
@@ -160,7 +161,11 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
   const graceMonth = useGraceMonth();
 
-  const { items: plannedEntries } = usePlanningEntries({
+  const {
+    items: plannedEntries,
+    isError: isPlansError,
+    refetch: refetchPlans,
+  } = usePlanningEntries({
     userId,
     dateFrom,
     dateTo,
@@ -316,6 +321,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const closeModal = () => setModalState(null);
 
   const retry = () => {
+    void refetchPlans();
     void refetchLogs();
     void refetchPicker();
     void refetchSettings();
@@ -349,6 +355,13 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     });
 
   const header = <PageHeader title="Log my time" hideTitle />;
+
+  const weekNav = (
+    <div className="flex items-center gap-2">
+      <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+      <BackToThisWeekButton weekStart={weekStart} onWeekChange={showWeekOf} />
+    </div>
+  );
 
   const addAbsenceButton = (
     <Button
@@ -404,6 +417,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     return (
       <>
         {header}
+        {/* The toolbar stays meanwhile, as on every page with a period. */}
+        <div className="border-b border-border pb-3">{weekNav}</div>
         <LoadingState
           title="Loading your timesheet"
           description="Fetching your week and company settings."
@@ -458,13 +473,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
       <div className="@container border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-5">
-          <div className="flex items-center gap-2">
-            <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
-            <BackToThisWeekButton
-              weekStart={weekStart}
-              onWeekChange={showWeekOf}
-            />
-          </div>
+          {weekNav}
 
           {showsFigures && (
             <WeekSummary
@@ -490,6 +499,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           )}
         </div>
       </div>
+
+      {!hasError && isPlansError && (
+        <PartLoadError onRetry={() => void refetchPlans()}>
+          {PLANS_LOAD_ERROR}
+        </PartLoadError>
+      )}
 
       {hasError && (
         <ErrorState

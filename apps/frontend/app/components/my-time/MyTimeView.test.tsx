@@ -158,9 +158,6 @@ describe("MyTimeView", () => {
     );
 
     expect(screen.getByText("October 2026")).toBeInTheDocument();
-    expect(
-      screen.getByText("Up to Oct 23 · open for edits"),
-    ).toBeInTheDocument();
     expect(screen.getByText("120h")).toBeInTheDocument();
     expect(screen.getByText("of 136h expected")).toBeInTheDocument();
     expect(screen.getByText("16h still to log")).toBeInTheDocument();

@@ -53,6 +53,7 @@ export function usePlanningEntries(
     isError: query.isError,
     /** The items are still the previous query's, kept while these load. */
     isPlaceholderData: query.isPlaceholderData,
+    refetch: query.refetch,
   };
 }
 

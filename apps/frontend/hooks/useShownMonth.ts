@@ -24,7 +24,8 @@ export function useShownMonth() {
   const { company } = useCompany();
   const searchParams = useSearchParams();
 
-  const currentMonth = toMonthKey(todayISODate(company?.timezone));
+  const today = todayISODate(company?.timezone);
+  const currentMonth = toMonthKey(today);
   const firstMonth = company ? companyFirstMonth(company) : undefined;
 
   const linkedMonth = searchParams.get(MONTH_PARAM);
@@ -47,5 +48,5 @@ export function useShownMonth() {
     [currentMonth],
   );
 
-  return { month, currentMonth, firstMonth, showMonth };
+  return { month, today, currentMonth, firstMonth, showMonth };
 }

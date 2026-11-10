@@ -251,21 +251,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
   // The locks too, so no day shows before it is known whether it can change.
-  if (
-    isLoadingSettings ||
-    isLoadingWeek ||
-    isLoadingAbsences ||
-    isLoadingLocks
-  ) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <LoadingState
-          title="Loading the week's plan"
-          description="Fetching planned work and company settings."
-        />
-      </div>
-    );
-  }
+  // The toolbar stays meanwhile, as on every page with a period.
+  const isLoading =
+    isLoadingSettings || isLoadingWeek || isLoadingAbsences || isLoadingLocks;
+  const isReady = !isLoading && !hasError;
 
   return (
     // Fills the page, so an empty state stretches to the bottom.
@@ -279,9 +268,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             onWeekChange={showWeekOf}
           />
 
-          {!hasError && (
+          {isReady && (
             <WeekTotal
               label="Planned"
+              fill="planned"
               minutes={totalPlanned}
               // A project's plans have no available figure of their own.
               ofMinutes={projectId ? undefined : totalAvailable}
@@ -305,6 +295,13 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
+      {isLoading && !hasError && (
+        <LoadingState
+          title="Loading the week's plan"
+          description="Fetching planned work and company settings."
+        />
+      )}
+
       {hasError && (
         <ErrorState
           title="We couldn't load the week's plan"
@@ -313,7 +310,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && matchesNobody && (
+      {isReady && matchesNobody && (
         <EmptyState
           className="mt-3"
           icon={<SearchX />}
@@ -327,13 +324,13 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && onlyViewer && (
+      {isReady && onlyViewer && (
         <div className="py-3 pr-3">
           <OnlyViewerNotice reason={onlyViewer} />
         </div>
       )}
 
-      {!hasError && shownRows.length > 0 && (
+      {isReady && shownRows.length > 0 && (
         <div
           className={[
             "overflow-x-auto transition-opacity",

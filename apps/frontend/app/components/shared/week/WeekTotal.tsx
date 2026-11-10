@@ -1,23 +1,35 @@
 import { formatDuration } from "@/lib/utils/date";
 
+import { ReportBar } from "../../reports/components/ReportBar";
+
 type WeekTotalProps = {
-  /** "Logged" or "Planned": what the figure is of everyone shown. */
+  /** "Logged" or "Planned": what the figure is of. */
   label: string;
   minutes: number;
   /** What the figure is measured against; left out when nothing fits, as under a project filter. */
   ofMinutes?: number;
+  /** The billable part of logged time, striped in the bar. */
+  billableMinutes?: number;
+  fill?: "logged" | "planned";
 };
 
-/** A week grid's total in the toolbar: "Logged 30h / 128h". */
-export const WeekTotal = ({ label, minutes, ofMinutes }: WeekTotalProps) => (
-  <div className="flex items-center gap-2 text-sm">
-    <span>{label}</span>
-
-    <span className="tabular-nums">
+/**
+ * A page's total for its period, in the toolbar: "Logged 30h / 128h" and its
+ * bar. Without anything to measure against, the hours stand alone.
+ */
+export const WeekTotal = ({
+  label,
+  minutes,
+  ofMinutes,
+  billableMinutes,
+  fill = "logged",
+}: WeekTotalProps) => (
+  <span className="flex min-w-0 items-center gap-2 text-sm">
+    <span className="whitespace-nowrap tabular-nums">
+      {label}{" "}
       <span className="font-medium text-foreground">
         {formatDuration(minutes)}
       </span>
-
       {ofMinutes !== undefined && (
         <span className="text-muted-foreground">
           {" "}
@@ -25,5 +37,15 @@ export const WeekTotal = ({ label, minutes, ofMinutes }: WeekTotalProps) => (
         </span>
       )}
     </span>
-  </div>
+
+    {ofMinutes !== undefined && ofMinutes > 0 && (
+      <ReportBar
+        value={minutes}
+        reference={ofMinutes}
+        fill={fill}
+        billable={billableMinutes}
+        className="h-1.5 w-20 shrink-0"
+      />
+    )}
+  </span>
 );
