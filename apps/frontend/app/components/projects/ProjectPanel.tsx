@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { FolderTree, Plus, UserPlus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 import { StatusText } from "../shared/StatusText";
 import {
@@ -73,6 +76,63 @@ const ProjectEditForm = ({ project }: { project: Project }) => {
   );
 };
 
+// About six lines of the description before "Show more".
+const COLLAPSED_DESCRIPTION_PX = 120;
+
+/** A long description shows its first lines, fading out, and the rest on request. */
+const CollapsibleDescription = ({ value }: { value: string }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isLong, setIsLong] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isCollapsed = isLong && !isExpanded;
+
+  // The read-only editor renders after mount, so its height is known only then.
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    const observer = new ResizeObserver(() =>
+      setIsLong(content.scrollHeight > COLLAPSED_DESCRIPTION_PX),
+    );
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div>
+      <div
+        className="relative overflow-hidden"
+        style={
+          isCollapsed ? { maxHeight: COLLAPSED_DESCRIPTION_PX } : undefined
+        }
+      >
+        <div ref={contentRef}>
+          <DescriptionView value={value} className="text-muted-foreground" />
+        </div>
+
+        {isCollapsed && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-b from-transparent to-card"
+          />
+        )}
+      </div>
+
+      {isLong && (
+        <Button
+          type="button"
+          variant="link"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          className="mt-1 h-auto px-0 text-xs text-brand"
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 const ProjectDetails = ({ project }: { project: Project }) => {
   const panel = useEntityPanel();
   const projectActions = useProjectActions();
@@ -118,23 +178,13 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             : undefined
         }
         actions={projectActions.actionsFor(project)}
-        details={[
-          {
-            label: "Client",
-            value: project.clientName || (
-              <span className="text-muted-foreground">Internal project</span>
-            ),
-          },
-          ...(project.description
-            ? [
-                {
-                  label: "Description",
-                  value: <DescriptionView value={project.description} />,
-                  wide: true,
-                },
-              ]
-            : []),
-        ]}
+        // Who the work is for, as the Projects table says it.
+        subtitle={project.clientName || "Internal project"}
+        description={
+          project.description && (
+            <CollapsibleDescription value={project.description} />
+          )
+        }
         editForm={isEditing && <ProjectEditForm project={project} />}
         editsName
       >

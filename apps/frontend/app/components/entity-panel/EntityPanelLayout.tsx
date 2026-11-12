@@ -15,6 +15,7 @@ import { LoadingState } from "../shared/LoadingState";
 import type { ManageRowAction } from "../shared/resource/ManageList";
 import { ActionsMenu } from "./PanelList";
 import {
+  PanelActionsSlotContext,
   PanelEntityContext,
   PanelFooterSlotContext,
   PanelFormContext,
@@ -34,7 +35,9 @@ interface EntityPanelLayoutProps {
   editLabel?: string;
   /** Its lifecycle, such as Archive or Restore, beside Edit. */
   actions?: ManageRowAction[];
-  /** The entity's own facts under its name, such as a client or a category. */
+  /** A paragraph about the entity under its heading, such as a project's description. */
+  description?: ReactNode;
+  /** The entity's own facts under its name, such as a role or a category. */
   details?: PanelDetail[];
   /** The open form: it takes the facts' place until Save or Cancel. */
   editForm?: ReactNode;
@@ -56,6 +59,7 @@ export const EntityPanelLayout = ({
   onEdit,
   editLabel = "Edit",
   actions = [],
+  description,
   details = [],
   editForm,
   editsName = false,
@@ -76,18 +80,41 @@ export const EntityPanelLayout = ({
   const shownAction = editAction ?? actions.find((action) => !action.warning);
   const otherActions = actions.filter((action) => action !== shownAction);
   const hasActions = !isEditing && (shownAction || otherActions.length > 0);
+  const actionsSlot = useContext(PanelActionsSlotContext);
+
+  // In the panel's top bar beside its close button, and drawn like it.
+  const toolbar = (
+    <div className="flex items-center gap-1">
+      {shownAction && <TopBarAction action={shownAction} leads />}
+
+      {otherActions.length === 1 && <TopBarAction action={otherActions[0]} />}
+
+      {otherActions.length > 1 && (
+        <ActionsMenu
+          label={`More actions for ${name}`}
+          actions={otherActions}
+        />
+      )}
+
+      <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
+    </div>
+  );
 
   return (
     <PanelEntityContext.Provider value={{ name }}>
+      {hasActions &&
+        (actionsSlot ? createPortal(toolbar, actionsSlot) : toolbar)}
+
       <header className={cn(hidesHeading && "sr-only")}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-start gap-3">
           {leading && (
             <span aria-hidden="true" className="shrink-0">
               {leading}
             </span>
           )}
 
-          <div className="min-w-0 flex-1">
+          {/* Beside the leading mark when short, growing down from it when long. */}
+          <div className="flex min-h-9 min-w-0 flex-1 flex-col justify-center">
             <h2
               id={titleId}
               className="text-lg leading-snug font-semibold tracking-tight break-words text-foreground"
@@ -99,35 +126,6 @@ export const EntityPanelLayout = ({
               <p className="text-sm text-muted-foreground">{subtitle}</p>
             )}
           </div>
-
-          {hasActions && (
-            <div className="flex shrink-0 items-center gap-1.5">
-              {shownAction && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={shownAction.onSelect}
-                  className="gap-1.5"
-                >
-                  <shownAction.icon className="size-3.5" />
-                  {shownAction.label}
-                </Button>
-              )}
-
-              {otherActions.length === 1 && (
-                <QuietActionButton action={otherActions[0]} />
-              )}
-
-              {otherActions.length > 1 && (
-                <ActionsMenu
-                  label={`More actions for ${name}`}
-                  actions={otherActions}
-                  variant="outline"
-                />
-              )}
-            </div>
-          )}
         </div>
 
         {showsStatus && <div className="mt-6 flex">{status}</div>}
@@ -145,7 +143,10 @@ export const EntityPanelLayout = ({
             {editForm}
           </PanelFormContext.Provider>
         ) : (
-          details.length > 0 && <PanelDetails details={details} />
+          <>
+            {description}
+            {details.length > 0 && <PanelDetails details={details} />}
+          </>
         )}
 
         {children && (
@@ -166,20 +167,32 @@ export const EntityPanelLayout = ({
   );
 };
 
-/** A panel's one secondary action, such as Archive: grey until hovered. */
-const QuietActionButton = ({ action }: { action: ManageRowAction }) => (
+/**
+ * An action in the panel's top bar: borderless like the close button, the
+ * lead one darker, a warning one amber on hover. On a phone only its icon
+ * shows, so the bar keeps room for "back".
+ */
+const TopBarAction = ({
+  action,
+  leads = false,
+}: {
+  action: ManageRowAction;
+  leads?: boolean;
+}) => (
   <Button
     type="button"
     variant="ghost"
     size="sm"
     onClick={action.onSelect}
+    title={action.label}
     className={cn(
-      "gap-1.5",
+      "gap-1.5 max-sm:aspect-square max-sm:px-0",
+      leads && "text-foreground",
       action.warning && "hover:bg-warning-subtle hover:text-warning-text",
     )}
   >
-    <action.icon className="size-3.5" />
-    {action.label}
+    <action.icon aria-hidden="true" className="size-4" />
+    <span className="max-sm:sr-only">{action.label}</span>
   </Button>
 );
 
@@ -332,10 +345,10 @@ const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
       <div
         key={detail.label}
         className={cn(
-          "min-w-0 gap-x-4 px-3 py-2.5",
+          "min-w-0 gap-x-4 px-3 py-2",
           detail.wide
-            ? "flex flex-col gap-y-1.5"
-            : "grid grid-cols-[9rem_minmax(0,1fr)] items-baseline",
+            ? "flex flex-col gap-y-1"
+            : "grid grid-cols-[8rem_minmax(0,1fr)] items-baseline",
         )}
       >
         <dt className="text-muted-foreground">{detail.label}</dt>

@@ -251,7 +251,13 @@ export const DescriptionEditor = ({
 };
 
 /** A saved description, formatted as the editor shows it. */
-export const DescriptionView = ({ value }: { value: string }) => {
+export const DescriptionView = ({
+  value,
+  className,
+}: {
+  value: string;
+  className?: string;
+}) => {
   const editor = useEditor(
     {
       editable: false,
@@ -265,11 +271,12 @@ export const DescriptionView = ({ value }: { value: string }) => {
             proseClassName,
             "prose-h3:text-base prose-h4:text-sm prose-h5:text-sm",
             "prose-headings:mt-3 prose-headings:mb-1",
+            className,
           ),
         },
       },
     },
-    [value],
+    [value, className],
   );
 
   return <EditorContent editor={editor} />;

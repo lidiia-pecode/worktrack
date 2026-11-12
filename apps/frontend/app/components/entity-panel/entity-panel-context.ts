@@ -63,6 +63,13 @@ export const PanelFormContext = createContext<{ leading?: ReactNode } | null>(
 export const PanelTitleIdContext = createContext<string | undefined>(undefined);
 
 /**
+ * The place in the panel's top bar, before its close button, where the entity
+ * shown puts its actions, such as Edit and Archive, so its name keeps the
+ * panel's whole width.
+ */
+export const PanelActionsSlotContext = createContext<HTMLElement | null>(null);
+
+/**
  * The place under the panel's scrolling body where an open form or picker puts
  * its Cancel and Save, so the bar stays at the panel's bottom as in a dialog.
  */
