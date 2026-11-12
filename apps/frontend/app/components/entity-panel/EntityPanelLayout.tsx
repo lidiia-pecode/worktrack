@@ -331,25 +331,18 @@ export const PanelStatus = ({
 interface PanelDetail {
   label: string;
   value: ReactNode;
-  /** A long value, such as a description, under its label rather than beside it. */
-  wide?: boolean;
 }
 
 /**
  * An entity's own facts: a card of rows, each label beside its value, or
- * above a wide one. It needs no title; it is the entity under the heading.
+ * above it on a phone. It needs no title; it is the entity under the heading.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
   <dl className="divide-y divide-border/55 rounded-xl border border-border text-sm">
     {details.map((detail) => (
       <div
         key={detail.label}
-        className={cn(
-          "min-w-0 gap-x-4 px-3 py-2",
-          detail.wide
-            ? "flex flex-col gap-y-1"
-            : "grid grid-cols-[8rem_minmax(0,1fr)] items-baseline",
-        )}
+        className="grid min-w-0 grid-cols-[8rem_minmax(0,1fr)] items-baseline gap-x-4 px-3 py-2 max-sm:grid-cols-1 max-sm:gap-y-0.5"
       >
         <dt className="text-muted-foreground">{detail.label}</dt>
         <dd className="min-w-0 break-words text-foreground">{detail.value}</dd>
