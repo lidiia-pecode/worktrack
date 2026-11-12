@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, Plus, UserX } from "lucide-react";
+import { Plus, UserMinus, UserX } from "lucide-react";
 
 import { StatusText } from "../shared/StatusText";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -28,9 +28,10 @@ import {
 import { Capacity, UserDetails, UserTeam } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
-import { linkedEntities } from "../entity-panel/EntityLink";
+import { EntityLink, linkedEntities } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
+  PanelDetailButton,
   PanelEditForm,
   PanelQueryState,
   PanelStatus,
@@ -43,6 +44,7 @@ import { ScheduledChange } from "../shared/ScheduledChange";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { ManageWarning } from "../shared/resource/ManageList";
+import { teams } from "../layout/sidebar/sidebar-navigation";
 import { useUserActions } from "./useUserActions";
 import { UserChangeTeamDialog } from "./UserChangeTeamDialog";
 import { UserForm, UserFormData } from "./UserForm";
@@ -243,6 +245,48 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   );
 };
 
+interface TeamValueProps {
+  user: UserDetails;
+  /** The team they lead, which keeps them until it has another manager. */
+  ledTeam: UserTeam | null;
+  canChangeTeam: boolean;
+}
+
+/** Their team and role in it, or a warning that nobody but the owner sees them. */
+const TeamValue = ({ user, ledTeam, canChangeTeam }: TeamValueProps) => {
+  const { team } = user;
+
+  if (!team) {
+    return (
+      <>
+        <ManageWarning inline>No team</ManageWarning>
+        <span className="mt-0.5 block text-xs text-muted-foreground">
+          Only the owner sees them.
+        </span>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <EntityLink entity={{ type: "team", id: team.id }} tone="chip">
+        <teams.icon
+          aria-hidden="true"
+          className="size-3.5 text-muted-foreground"
+        />
+        {team.name}
+      </EntityLink>
+      <span className="mt-1 block text-xs text-muted-foreground">
+        {TEAM_ROLE_LABELS[team.roleInTeam]} since{" "}
+        {formatDayMonthYearLabel(team.joinedAt)}
+        {canChangeTeam && ledTeam && (
+          <>. Give the team another manager to move them.</>
+        )}
+      </span>
+    </>
+  );
+};
+
 const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const { user: viewer } = useAuth();
   const isOwner = viewer?.role === UserRole.OWNER;
@@ -342,52 +386,44 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
               ]
             : []),
           { label: "Email", value: user.email },
+          // The owner is never in a team, so their panel has no team.
+          ...(user.role !== UserRole.OWNER
+            ? [
+                {
+                  label: "Team",
+                  value: (
+                    <TeamValue
+                      user={user}
+                      ledTeam={ledTeam}
+                      canChangeTeam={canChangeTeam}
+                    />
+                  ),
+                  action: canChangeTeam && !ledTeam && (
+                    <PanelDetailButton onClick={() => setIsChangingTeam(true)}>
+                      {user.team ? "Change" : "Add"}
+                    </PanelDetailButton>
+                  ),
+                },
+              ]
+            : []),
         ]}
-        actions={userActions.actionsFor(user)}
+        actions={[
+          ...userActions.actionsFor(user),
+          ...(user.team && canRemoveFromTeam(user.team)
+            ? [
+                {
+                  label: "Remove from team",
+                  icon: UserMinus,
+                  warning: true,
+                  onSelect: () =>
+                    setRemoval({ teamId: user.team!.id, userId: user.id }),
+                },
+              ]
+            : []),
+        ]}
         // Only the person changes their own name, in their profile.
         editForm={isEditing && editForm}
       >
-        {/* The owner is never in a team, so their panel has no team. */}
-        {user.role !== UserRole.OWNER && (
-          <PanelList
-            title="Team"
-            items={user.team ? [user.team] : []}
-            getKey={(team) => team.id}
-            renderRow={(team) => ({
-              entity: { type: "team", id: team.id },
-              name: team.name,
-              detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
-              remove: canRemoveFromTeam(team)
-                ? {
-                    label: `Remove ${fullName(user)} from ${team.name}`,
-                    onClick: () =>
-                      setRemoval({ teamId: team.id, userId: user.id }),
-                  }
-                : undefined,
-            })}
-            emptyText={
-              <>
-                <ManageWarning inline>No team</ManageWarning>, so only the owner
-                sees them.
-              </>
-            }
-            note={
-              canChangeTeam && ledTeam
-                ? `Leads ${ledTeam.name}: give it another manager first to move them.`
-                : undefined
-            }
-            add={
-              canChangeTeam && !ledTeam
-                ? {
-                    label: user.team ? "Change team" : "Add to a team",
-                    icon: user.team ? ArrowRightLeft : Plus,
-                    onClick: () => setIsChangingTeam(true),
-                  }
-                : undefined
-            }
-          />
-        )}
-
         <PanelList
           title="Projects"
           items={user.projects}

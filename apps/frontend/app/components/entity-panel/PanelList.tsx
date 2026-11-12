@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { EntityRef } from "@/lib/utils/entity-ref";
@@ -66,18 +67,21 @@ const RemoveButton = ({
     aria-label={label}
     title={label}
     onClick={onClick}
-    className="text-muted-foreground group-hover:text-foreground hover:bg-warning-subtle hover:text-warning-text"
+    className="text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
   >
     <X className="size-4" />
   </Button>
 );
 
-const RowMenu = ({
-  name,
+/** Actions behind a "⋯" button: a row's link changes, or a panel's Archive. */
+export const ActionsMenu = ({
+  label,
   actions,
+  variant = "ghost",
 }: {
-  name: string;
+  label: string;
   actions: ManageRowAction[];
+  variant?: "ghost" | "outline";
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -93,11 +97,12 @@ const RowMenu = ({
         render={
           <Button
             type="button"
-            variant="ghost"
+            variant={variant}
             size="iconSm"
             ref={triggerRef}
-            aria-label={`Actions for ${name}`}
-            className="text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
+            aria-label={label}
+            title={label}
+            className="text-muted-foreground hover:text-foreground data-popup-open:text-foreground"
           >
             <MoreHorizontal className="size-4" />
           </Button>
@@ -105,33 +110,41 @@ const RowMenu = ({
       />
 
       <DropdownMenuContent align="end" className="w-44 p-0">
-        {actions.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            variant={action.warning ? "warning" : "default"}
-            onClick={() => select(action.onSelect)}
-          >
-            <action.icon />
-            {action.label}
-          </DropdownMenuItem>
+        {actions.map((action, index) => (
+          <Fragment key={action.label}>
+            {/* Archive and Deactivate apart from the changes before them. */}
+            {action.warning && index > 0 && !actions[index - 1].warning && (
+              <DropdownMenuSeparator />
+            )}
+            <DropdownMenuItem
+              variant={action.warning ? "warning" : "default"}
+              onClick={() => select(action.onSelect)}
+            >
+              <action.icon />
+              {action.label}
+            </DropdownMenuItem>
+          </Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
-/** The whole row opens its entity, as a row does in the Manage tables. */
+/**
+ * The whole row opens its entity, as a row does in the Manage tables. Its
+ * controls show on hover or focus where there is a pointer, always on touch.
+ */
 const Row = ({ row }: { row: PanelListRow }) => {
   const openEntity = useOpenEntity();
   const { entity } = row;
   const hasActions = Boolean(row.actions?.length);
-  const hasControls = row.status || hasActions || row.remove;
+  const hasControls = hasActions || row.remove;
 
   return (
     <li
       onClick={entity && (() => openEntity(entity))}
       className={cn(
-        "group flex min-h-13 items-center gap-3 px-3 py-2 text-sm",
+        "group flex min-h-10 items-center gap-3 px-3 py-2 text-sm",
         entity && "cursor-pointer transition-colors hover:bg-muted/30",
       )}
     >
@@ -161,13 +174,19 @@ const Row = ({ row }: { row: PanelListRow }) => {
         )}
       </div>
 
+      {row.status && <div className="shrink-0">{row.status}</div>}
+
       {hasControls && (
         <div
           onClick={stopRowClick}
-          className="flex shrink-0 items-center gap-1.5"
+          className="-my-1 flex shrink-0 items-center gap-0.5 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100 pointer-fine:has-data-popup-open:opacity-100"
         >
-          {row.status}
-          {hasActions && <RowMenu name={row.name} actions={row.actions!} />}
+          {hasActions && (
+            <ActionsMenu
+              label={`Actions for ${row.name}`}
+              actions={row.actions!}
+            />
+          )}
           {row.remove && <RemoveButton {...row.remove} />}
         </div>
       )}
@@ -198,12 +217,13 @@ export const PanelList = <T,>({
         add && (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="xs"
             onClick={add.onClick}
             // The section's title says what is added to.
             aria-label={add.label}
-            className="gap-1 bg-card"
+            title={add.label}
+            className="-mr-1.5 text-brand hover:text-brand"
           >
             <add.icon className="size-3.5" />
             Add
@@ -267,16 +287,8 @@ type PanelCardProps = {
   children: ReactNode;
 };
 
-/**
- * A panel section: a card with its title in a bar on top, the same for the
- * entity's details and every list under them.
- */
-export const PanelCard = ({
-  title,
-  count,
-  action,
-  children,
-}: PanelCardProps) => (
+/** A list section: a card with its title, count and Add in a bar on top. */
+const PanelCard = ({ title, count, action, children }: PanelCardProps) => (
   <section className="overflow-hidden rounded-xl border border-border">
     <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1">
       <h3 className="text-xs font-medium text-muted-foreground">

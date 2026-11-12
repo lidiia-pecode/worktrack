@@ -1,13 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ArrowRightLeft,
-  ChevronsUpDown,
-  Mail,
-  Plus,
-  UserPlus,
-} from "lucide-react";
+import { ArrowRightLeft, UserPlus, UserRoundCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,8 +9,7 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { usePendingInvitations } from "@/hooks/auth/useInvitation";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
-import { formatDayMonthYearLabel } from "@/lib/utils/date";
-import { cn } from "@/lib/utils/cn";
+import { formatDayMonthLabel, formatDayMonthYearLabel } from "@/lib/utils/date";
 import { factsLine } from "@/lib/utils/text";
 import { fullName, isDeactivatedUser, leaverLabel } from "@/lib/utils/user";
 import { PendingInvitation } from "@/types/Invitation";
@@ -29,13 +22,13 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelIcon,
+  PanelNotice,
   PanelQueryState,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { teams } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
-import { PanelCard, PanelList } from "../entity-panel/PanelList";
-import { ManageWarning } from "../shared/resource/ManageList";
+import { PanelList } from "../entity-panel/PanelList";
 import { NameForm, NameFormData } from "../shared/resource/NameForm";
 import { RevokeInvitationModal } from "../users/PendingInvitations";
 import { UserChangeTeamDialog } from "../users/UserChangeTeamDialog";
@@ -155,100 +148,104 @@ const TeamInvitations = ({ team }: { team: Team }) => {
   );
 };
 
-/** The team's manager as a link, for anyone who can't change them. */
-const ManagerLink = ({ team }: { team: Team }) => {
+/**
+ * Who leads the team, under its name as the Teams table says it. A manager
+ * invited and not yet joined holds the lead until they accept or the
+ * invitation is revoked.
+ */
+const ManagerLine = ({
+  team,
+  invitedLead,
+}: {
+  team: Team;
+  invitedLead?: PendingInvitation;
+}) => {
   const manager = activeManager(team);
 
-  return manager ? (
-    <EntityLink entity={{ type: "user", id: manager.id }} tone="chip">
-      <Avatar user={manager} size="xs" className="size-5 ring-0" />
-      {fullName(manager)}
-    </EntityLink>
-  ) : (
-    // The row's warning says why; nothing to link to.
-    <span className="text-muted-foreground">None</span>
+  if (invitedLead) return <>Manager invited: {invitedLead.email}</>;
+  if (!manager) return null;
+
+  return (
+    <>
+      Managed by{" "}
+      <EntityLink
+        entity={{ type: "user", id: manager.id }}
+        tone="plain"
+        className="font-medium"
+      >
+        {fullName(manager)}
+      </EntityLink>
+    </>
   );
 };
 
-/**
- * The owner's Manager line: one button that shows the manager and changes
- * them. A pending manager invitation holds the lead until it is accepted or
- * revoked.
- */
-const ManagerPicker = ({ team }: { team: Team }) => {
-  const { data: invitations = [], isLoading } = usePendingInvitations();
-  const [isChanging, setIsChanging] = useState(false);
+/** A team nobody leads: said once, with the way to choose someone for the owner. */
+const NoManagerNotice = ({
+  team,
+  onChoose,
+}: {
+  team: Team;
+  onChoose?: () => void;
+}) => {
   const lead = managerMembership(team)?.user;
+  const lastDay = lead?.lastWorkingDay
+    ? formatDayMonthLabel(lead.lastWorkingDay)
+    : null;
+
+  return (
+    <PanelNotice
+      title={lead ? NO_ACTIVE_MANAGER : "No manager yet"}
+      description={
+        lead
+          ? lastDay
+            ? `${fullName(lead)}'s last day was ${lastDay}.`
+            : `${fullName(lead)} is deactivated.`
+          : "Nobody leads this team yet."
+      }
+      action={
+        onChoose && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onChoose}
+            className="bg-card"
+          >
+            Choose manager
+          </Button>
+        )
+      }
+    />
+  );
+};
+
+interface ManagerChange {
+  /** The manager invited and not yet joined, who holds the lead. */
+  invitedLead?: PendingInvitation;
+  /** Until the invitations load, it isn't known whether one holds the lead. */
+  isLoading: boolean;
+}
+
+/** The owner's view, which knows the team's pending invitations. */
+const OwnerActiveTeamView = ({ team }: { team: Team }) => {
+  const { data: invitations = [], isLoading } = usePendingInvitations();
   const invitedLead = invitations.find(
     (invitation) =>
       invitation.team?.id === team.id && invitation.role === UserRole.MANAGER,
   );
 
-  // Until the invitations load, it isn't known whether one holds the lead.
-  if (isLoading) return <ManagerLink team={team} />;
-
-  if (invitedLead) {
-    return (
-      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-        <Mail aria-hidden="true" className="size-4 shrink-0" />
-        Invited: {invitedLead.email}. Revoke the invitation below to choose
-        someone else.
-      </span>
-    );
-  }
-
-  const leadLeft = lead && leaverLabel(lead);
-
   return (
-    <>
-      {lead ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="w-full justify-start pl-1.5"
-          aria-label={`Change manager, now ${fullName(lead)}${leadLeft ? `, ${leadLeft}` : ""}`}
-          onClick={() => setIsChanging(true)}
-        >
-          <Avatar
-            user={lead}
-            size="xs"
-            className={cn("size-5 ring-0", leadLeft && "opacity-60")}
-          />
-          {fullName(lead)}
-          {leadLeft && (
-            <span className="font-normal text-muted-foreground">
-              · {leadLeft}
-            </span>
-          )}
-          <ChevronsUpDown
-            aria-hidden="true"
-            className="ml-auto text-muted-foreground"
-          />
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="w-full justify-start"
-          onClick={() => setIsChanging(true)}
-        >
-          <Plus />
-          Add a manager
-        </Button>
-      )}
-
-      <TeamManagerDialog
-        team={team}
-        isOpen={isChanging}
-        onClose={() => setIsChanging(false)}
-      />
-    </>
+    <ActiveTeamView team={team} managerChange={{ invitedLead, isLoading }} />
   );
 };
 
-const ActiveTeamView = ({ team }: { team: Team }) => {
+interface ActiveTeamViewProps {
+  team: Team;
+  /** The owner's, who chooses the manager; left out for anyone else. */
+  managerChange?: ManagerChange;
+}
+
+const ActiveTeamView = ({ team, managerChange }: ActiveTeamViewProps) => {
   const { user: viewer } = useAuth();
   const isOwner = viewer?.role === UserRole.OWNER;
   const panel = useEntityPanel();
@@ -256,8 +253,14 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   const [removal, setRemoval] = useState<TeamRemoval | null>(null);
   const [movingMembership, setMovingMembership] =
     useState<MembershipWithUser | null>(null);
+  const [isChangingManager, setIsChangingManager] = useState(false);
 
   const isEditing = panel.isEditing && teamActions.canEdit(team);
+  const hasActiveManager = Boolean(activeManager(team));
+  const invitedLead = managerChange?.invitedLead;
+  const canChangeManager =
+    managerChange && !managerChange.isLoading && !invitedLead && !isEditing;
+  const chooseManager = () => setIsChangingManager(true);
 
   if (isOwner && panel.view === MEMBERS_PICKER) {
     return <TeamMembersPicker team={team} />;
@@ -275,11 +278,13 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
   const canRemove = (membership: MembershipWithUser) =>
     !isEditing && (isOwner || membership.roleInTeam === TeamRole.MEMBER);
 
-  // Deactivated members last, under their own heading, so they don't read as
-  // part of the team that works now.
+  // The manager first; deactivated members last, under their own heading, so
+  // they don't read as part of the team that works now.
   const members = [...currentMemberships(team)].sort(
     (a, b) =>
-      Number(isDeactivatedUser(a.user)) - Number(isDeactivatedUser(b.user)),
+      Number(isDeactivatedUser(a.user)) - Number(isDeactivatedUser(b.user)) ||
+      Number(a.roleInTeam !== TeamRole.MANAGER) -
+        Number(b.roleInTeam !== TeamRole.MANAGER),
   );
   const deactivatedCount = deactivatedMembersCount(team);
 
@@ -288,32 +293,37 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       <EntityPanelLayout
         leading={<TeamIcon />}
         name={team.name}
+        subtitle={<ManagerLine team={team} invitedLead={invitedLead} />}
+        status={
+          !hasActiveManager &&
+          !invitedLead && (
+            <NoManagerNotice
+              team={team}
+              onChoose={canChangeManager ? chooseManager : undefined}
+            />
+          )
+        }
         onEdit={
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
         // Only the name changes, in the heading's place.
         editLabel="Rename"
-        actions={teamActions.actionsFor(team)}
+        actions={[
+          // Rare, so beside Archive rather than on the panel.
+          ...(canChangeManager && hasActiveManager
+            ? [
+                {
+                  label: "Change manager",
+                  icon: UserRoundCog,
+                  onSelect: chooseManager,
+                },
+              ]
+            : []),
+          ...teamActions.actionsFor(team),
+        ]}
         editForm={isEditing && <TeamEditForm team={team} />}
         editsName
       >
-        <PanelCard
-          title="Manager"
-          action={
-            !activeManager(team) && (
-              <ManageWarning>{NO_ACTIVE_MANAGER}</ManageWarning>
-            )
-          }
-        >
-          <div className="px-3 py-2.5 text-sm">
-            {isOwner && !isEditing ? (
-              <ManagerPicker team={team} />
-            ) : (
-              <ManagerLink team={team} />
-            )}
-          </div>
-        </PanelCard>
-
         <PanelList
           title="Members"
           items={members}
@@ -376,6 +386,13 @@ const ActiveTeamView = ({ team }: { team: Team }) => {
       </EntityPanelLayout>
 
       {teamActions.dialogs}
+      {managerChange && (
+        <TeamManagerDialog
+          team={team}
+          isOpen={isChangingManager}
+          onClose={() => setIsChangingManager(false)}
+        />
+      )}
       <TeamMemberRemoveDialog
         removal={removal}
         onClose={() => setRemoval(null)}
@@ -429,9 +446,11 @@ export const TeamPanel = ({ id }: { id: string }) => {
     );
   }
 
-  return isActiveTeam(team) ? (
-    <ActiveTeamView team={team} />
+  if (!isActiveTeam(team)) return <ArchivedTeamView team={team} />;
+
+  return viewer?.role === UserRole.OWNER ? (
+    <OwnerActiveTeamView team={team} />
   ) : (
-    <ArchivedTeamView team={team} />
+    <ActiveTeamView team={team} />
   );
 };

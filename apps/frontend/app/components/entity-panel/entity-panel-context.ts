@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, ReactNode, useContext } from "react";
 
 import type { EntityRef } from "@/lib/utils/entity-ref";
 
@@ -50,6 +50,14 @@ export const useEntityPanel = () => {
 
 /** The entity a panel is showing, which a link inside it is followed from. */
 export const PanelEntityContext = createContext<{ name: string } | null>(null);
+
+/**
+ * Set while the panel's own form is open: the form edits the entity where its
+ * facts stood, the name beside the panel's leading mark and the rest in a card.
+ */
+export const PanelFormContext = createContext<{ leading?: ReactNode } | null>(
+  null,
+);
 
 /** The id of the panel's heading, which labels the panel. */
 export const PanelTitleIdContext = createContext<string | undefined>(undefined);

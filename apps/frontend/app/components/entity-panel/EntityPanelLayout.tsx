@@ -2,7 +2,7 @@
 
 import { ComponentProps, forwardRef, ReactNode, useContext } from "react";
 import { createPortal } from "react-dom";
-import { Archive, LucideIcon, Pencil, Plus } from "lucide-react";
+import { Archive, LucideIcon, Pencil, Plus, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { CardFooter } from "@/components/ui/card";
@@ -13,10 +13,11 @@ import { countLabel } from "@/lib/utils/text";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import type { ManageRowAction } from "../shared/resource/ManageList";
-import { PanelCard } from "./PanelList";
+import { ActionsMenu } from "./PanelList";
 import {
   PanelEntityContext,
   PanelFooterSlotContext,
+  PanelFormContext,
   PanelTitleIdContext,
 } from "./entity-panel-context";
 
@@ -35,16 +36,18 @@ interface EntityPanelLayoutProps {
   actions?: ManageRowAction[];
   /** The entity's own facts under its name, such as a client or a category. */
   details?: PanelDetail[];
-  /** The open form: it takes the panel until Save or Cancel. */
+  /** The open form: it takes the facts' place until Save or Cancel. */
   editForm?: ReactNode;
   /** Whether the form edits the name too, in the heading's place. */
   editsName?: boolean;
   children?: ReactNode;
 }
 
-const TOOLBAR_BUTTON = "rounded-none first:rounded-l-md last:rounded-r-md";
-
-/** The panel's header, facts and relationship sections; an open form replaces everything under the heading. */
+/**
+ * The panel's header, facts and relationship sections. An open form edits the
+ * entity in place of its facts; the sections stay in view, dimmed, until it
+ * closes.
+ */
 export const EntityPanelLayout = ({
   name,
   leading,
@@ -61,91 +64,147 @@ export const EntityPanelLayout = ({
   const titleId = useContext(PanelTitleIdContext);
   const isEditing = Boolean(editForm);
   const hidesHeading = isEditing && editsName;
-  const hasToolbar = !isEditing && (onEdit || actions.length > 0);
+
+  // One action in sight: Edit, or else a way back such as Restore. The rest
+  // follow as one quiet button, or behind "⋯" when there are two or more.
+  const editAction: ManageRowAction | undefined = onEdit && {
+    label: editLabel,
+    icon: Pencil,
+    onSelect: onEdit,
+  };
+  const shownAction = editAction ?? actions.find((action) => !action.warning);
+  const otherActions = actions.filter((action) => action !== shownAction);
+  const hasActions = !isEditing && (shownAction || otherActions.length > 0);
 
   return (
     <PanelEntityContext.Provider value={{ name }}>
-      <header>
-        <div className={cn(hidesHeading && "sr-only")}>
-          <div className="flex items-center gap-3">
-            {leading && (
-              <span aria-hidden="true" className="shrink-0">
-                {leading}
-              </span>
-            )}
+      <header className={cn(hidesHeading && "sr-only")}>
+        <div className="flex items-center gap-3">
+          {leading && (
+            <span aria-hidden="true" className="shrink-0">
+              {leading}
+            </span>
+          )}
 
-            <div className="min-w-0 flex-1">
-              <h2
-                id={titleId}
-                className="text-lg leading-snug font-semibold tracking-tight break-words text-foreground"
-              >
-                {name}
-              </h2>
+          <div className="min-w-0 flex-1">
+            <h2
+              id={titleId}
+              className="text-lg leading-snug font-semibold tracking-tight break-words text-foreground"
+            >
+              {name}
+            </h2>
 
-              {!isEditing && subtitle && (
-                <p className="text-sm text-muted-foreground">{subtitle}</p>
-              )}
-            </div>
-
-            {hasToolbar && (
-              <div
-                role="toolbar"
-                aria-label={`Actions for ${name}`}
-                className="flex shrink-0 items-center divide-x divide-border rounded-md border border-border bg-card shadow-xs"
-              >
-                {onEdit && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={onEdit}
-                    className={cn(TOOLBAR_BUTTON, "text-foreground")}
-                  >
-                    <Pencil className="size-3.5" />
-                    {editLabel}
-                  </Button>
-                )}
-
-                {actions.map((action) => (
-                  <Button
-                    key={action.label}
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    onClick={action.onSelect}
-                    className={cn(
-                      TOOLBAR_BUTTON,
-                      action.warning
-                        ? "text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
-                        : "text-brand",
-                    )}
-                  >
-                    <action.icon className="size-3.5" />
-                    {action.label}
-                  </Button>
-                ))}
-              </div>
+            {!isEditing && subtitle && (
+              <p className="text-sm text-muted-foreground">{subtitle}</p>
             )}
           </div>
 
-          {!isEditing && (
-            <>
-              {status && <div className="mt-4 flex">{status}</div>}
+          {hasActions && (
+            <div className="flex shrink-0 items-center gap-1.5">
+              {shownAction && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={shownAction.onSelect}
+                  className="gap-1.5"
+                >
+                  <shownAction.icon className="size-3.5" />
+                  {shownAction.label}
+                </Button>
+              )}
 
-              {details.length > 0 && <PanelDetails details={details} />}
-            </>
+              {otherActions.length === 1 && (
+                <QuietActionButton action={otherActions[0]} />
+              )}
+
+              {otherActions.length > 1 && (
+                <ActionsMenu
+                  label={`More actions for ${name}`}
+                  actions={otherActions}
+                  variant="outline"
+                />
+              )}
+            </div>
           )}
         </div>
+
+        {!isEditing && status && <div className="mt-4 flex">{status}</div>}
       </header>
 
       <div
         className={cn("flex flex-col gap-4", hidesHeading ? "mt-1" : "mt-4")}
       >
-        {isEditing ? editForm : children}
+        {isEditing ? (
+          <PanelFormContext.Provider value={{ leading }}>
+            {editForm}
+          </PanelFormContext.Provider>
+        ) : (
+          details.length > 0 && <PanelDetails details={details} />
+        )}
+
+        {children && (
+          // Visible while the form is open, but out of reach, so a click
+          // elsewhere can't leave the form's changes behind.
+          <div
+            inert={isEditing}
+            className={cn(
+              "flex flex-col gap-4 transition-opacity",
+              isEditing && "opacity-50",
+            )}
+          >
+            {children}
+          </div>
+        )}
       </div>
     </PanelEntityContext.Provider>
   );
 };
+
+/** A panel's one secondary action, such as Archive: grey until hovered. */
+const QuietActionButton = ({ action }: { action: ManageRowAction }) => (
+  <Button
+    type="button"
+    variant="ghost"
+    size="sm"
+    onClick={action.onSelect}
+    className={cn(
+      "gap-1.5",
+      action.warning && "hover:bg-warning-subtle hover:text-warning-text",
+    )}
+  >
+    <action.icon className="size-3.5" />
+    {action.label}
+  </Button>
+);
+
+/**
+ * Something about the entity that someone has to act on, such as a team with
+ * no active manager: one amber line under the heading, with the fix beside it.
+ */
+export const PanelNotice = ({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description?: ReactNode;
+  action?: ReactNode;
+}) => (
+  <div className="flex w-full items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5">
+    <TriangleAlert
+      aria-hidden="true"
+      className="size-4 shrink-0 self-start text-warning-text mt-0.5"
+    />
+    <div className="min-w-0 flex-1">
+      <p className="text-sm font-medium text-warning-text">{title}</p>
+      {description && (
+        <p className="text-xs text-muted-foreground">{description}</p>
+      )}
+    </div>
+    {action && <div className="shrink-0">{action}</div>}
+  </div>
+);
 
 /**
  * A panel's leading mark where there is no avatar: the entity's icon, as the
@@ -162,33 +221,66 @@ interface PanelTitleInputProps extends ComponentProps<"input"> {
   error?: string;
 }
 
-/** A name field set like the heading it replaces. */
+/**
+ * A name field set like the heading it replaces; in a panel, beside the
+ * panel's leading mark.
+ */
 export const PanelTitleInput = forwardRef<
   HTMLInputElement,
   PanelTitleInputProps
->(({ id, error, className, ...props }, ref) => (
-  <div>
-    <input
-      ref={ref}
-      id={id}
-      aria-invalid={Boolean(error)}
-      aria-describedby={error ? `${id}-error` : undefined}
-      className={cn(
-        "w-full border-0 border-b-2 border-border/60 bg-transparent px-0 pt-0 pb-1 text-xl font-semibold tracking-tight text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-input-placeholder focus:border-brand",
-        error && "border-destructive focus:border-destructive",
-        className,
-      )}
-      {...props}
-    />
+>(({ id, error, className, ...props }, ref) => {
+  const panelForm = useContext(PanelFormContext);
+  const leading = panelForm?.leading;
 
-    {error && (
-      <p id={`${id}-error`} className="mt-1.5 text-xs text-destructive-text">
-        {error}
-      </p>
-    )}
-  </div>
-));
+  return (
+    <div className="flex items-start gap-3">
+      {leading && (
+        <span aria-hidden="true" className="shrink-0">
+          {leading}
+        </span>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <input
+          ref={ref}
+          id={id}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${id}-error` : undefined}
+          className={cn(
+            "w-full border-0 border-b-2 border-border/60 bg-transparent px-0 pt-0 pb-1 font-semibold tracking-tight text-foreground outline-none transition-colors placeholder:font-normal placeholder:text-input-placeholder focus:border-brand",
+            panelForm ? "h-9 py-0 text-lg" : "text-xl",
+            error && "border-destructive focus:border-destructive",
+            className,
+          )}
+          {...props}
+        />
+
+        {error && (
+          <p
+            id={`${id}-error`}
+            className="mt-1.5 text-xs text-destructive-text"
+          >
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+});
 PanelTitleInput.displayName = "PanelTitleInput";
+
+/**
+ * A form's fields after its name: in a panel, a card where the facts stood;
+ * in a dialog, as they are.
+ */
+export const PanelFormFields = ({ children }: { children: ReactNode }) =>
+  useContext(PanelFormContext) ? (
+    <div className="space-y-5 rounded-xl border border-border p-4">
+      {children}
+    </div>
+  ) : (
+    <>{children}</>
+  );
 
 /**
  * An archived or deactivated entity's status, one quiet line across the panel
@@ -207,40 +299,57 @@ export const PanelStatus = ({
   </p>
 );
 
-interface PanelDetail {
+export interface PanelDetail {
   label: string;
   value: ReactNode;
+  /** At the row's end, such as Change. */
+  action?: ReactNode;
   /** A long value, such as a description, under its label rather than beside it. */
   wide?: boolean;
 }
 
 /**
- * An entity's own facts, a card of rows like every list under them: each
- * label beside its value, or above a wide one.
+ * An entity's own facts: a card of rows, each label beside its value, or
+ * above a wide one. It needs no title; it is the entity under the heading.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <div className="mt-4">
-    <PanelCard title="Details">
-      <dl className="divide-y divide-border text-xs">
-        {details.map((detail) => (
-          <div
-            key={detail.label}
-            className={cn(
-              "min-w-0 gap-x-4 px-3 py-2",
-              detail.wide
-                ? "flex flex-col gap-y-2"
-                : "grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)] items-baseline",
-            )}
-          >
-            <dt className="text-muted-foreground">{detail.label}</dt>
-            <dd className="min-w-0 break-words text-foreground">
-              {detail.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </PanelCard>
-  </div>
+  <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+    {details.map((detail) => (
+      <div
+        key={detail.label}
+        className={cn(
+          "min-w-0 gap-x-4 px-3 py-2.5",
+          detail.wide
+            ? "flex flex-col gap-y-1.5"
+            : "grid grid-cols-[9rem_minmax(0,1fr)] items-baseline",
+        )}
+      >
+        <dt className="text-muted-foreground">{detail.label}</dt>
+        <dd className="flex min-w-0 items-baseline justify-between gap-2 text-foreground">
+          <div className="min-w-0 flex-1 break-words">{detail.value}</div>
+          {detail.action && <div className="shrink-0">{detail.action}</div>}
+        </dd>
+      </div>
+    ))}
+  </dl>
+);
+
+/** A quiet button at a detail's end, such as Change. */
+export const PanelDetailButton = ({
+  onClick,
+  children,
+}: {
+  onClick: () => void;
+  children: ReactNode;
+}) => (
+  <Button
+    type="button"
+    variant="link"
+    onClick={onClick}
+    className="text-sm text-brand"
+  >
+    {children}
+  </Button>
 );
 
 /**

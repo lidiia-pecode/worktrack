@@ -92,7 +92,8 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   const isActive = isActiveCategory(category);
   // Archiving it from its row ends an open edit.
   const isEditing = panel.isEditing && categoryActions.canEdit(category);
-  const canChangeActivities = isActive && categoryActions.canManage;
+  const canChangeActivities =
+    isActive && categoryActions.canManage && !isEditing;
 
   if (canChangeActivities && panel.view === ACTIVITIES_PICKER) {
     return <CategoryActivitiesPicker category={category} />;
@@ -113,6 +114,8 @@ export const CategoryPanel = ({ id }: { id: string }) => {
             ? () => categoryActions.edit(category)
             : undefined
         }
+        // Only the name changes, in the heading's place.
+        editLabel="Rename"
         actions={categoryActions.actionsFor(category)}
         editForm={isEditing && <CategoryEditForm category={category} />}
         editsName
