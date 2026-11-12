@@ -25,7 +25,7 @@ const Harness = () => {
         listState={listState}
         panelId="projects-panel"
         archivedLabel="Archived"
-        searchPlaceholder="Search projects..."
+        searchPlaceholder="Search projects…"
         actions={<button type="button">Create project</button>}
       />
       <output aria-label="Search sent">{listState.searchQuery ?? ""}</output>

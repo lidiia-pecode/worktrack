@@ -38,7 +38,7 @@ export const ProjectArchiveDialog = ({
   const description = impact.isError
     ? "Could not check its plans. Close this and try again."
     : !impact.data
-      ? "Checking its plans..."
+      ? "Checking its plans…"
       : planCount === 0
         ? `${LOCKS_IT} Its people and activities are kept, and restoring it brings them back.`
         : `${LOCKS_IT} Its ${countLabel(planCount, "plan", "plans")} from today on will be deleted; past plans stay. Its people and activities are kept, and restoring it brings them back, but not the deleted plans.`;

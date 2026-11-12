@@ -87,10 +87,10 @@ export const useTeamsMutations = createEntityMutations<
   },
 
   messages: {
-    create: "Team created successfully!",
-    update: "Team updated successfully!",
+    create: "Team created",
+    update: "Team updated",
     archive: "Team archived",
-    unarchive: "Team restored successfully!",
+    unarchive: "Team restored",
   },
   conflictShownInForm: true,
 });

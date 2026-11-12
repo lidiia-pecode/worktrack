@@ -247,9 +247,7 @@ describe("PlanningWeekView", () => {
       name: "Search by name or position",
     });
     await user.type(search, "nobody");
-    expect(
-      screen.getByText("Nobody matches these filters"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
     // Clears the project and the search together (the address too).
     await user.click(

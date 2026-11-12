@@ -71,7 +71,7 @@ export const useUsersMutations = createEntityMutations<
   },
 
   messages: {
-    update: "User updated successfully",
+    update: "Person updated",
   },
 });
 
@@ -107,7 +107,7 @@ export const useUserStatusMutations = () => {
     }) => UsersClientApi.deactivate(id, lastWorkingDay),
     onSuccess: () => {
       refresh();
-      toast.success("User deactivated successfully");
+      toast.success("Person deactivated");
     },
   });
 
@@ -116,7 +116,7 @@ export const useUserStatusMutations = () => {
       UsersClientApi.reactivate(id, firstDayBack),
     onSuccess: () => {
       refresh();
-      toast.success("User reactivated successfully");
+      toast.success("Person reactivated");
     },
   });
 

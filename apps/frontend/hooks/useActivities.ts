@@ -59,10 +59,10 @@ export const useActivitiesMutations = createEntityMutations<
   },
 
   messages: {
-    create: "Activity created successfully",
-    update: "Activity updated successfully",
-    archive: "Activity archived successfully",
-    unarchive: "Activity restored successfully",
+    create: "Activity created",
+    update: "Activity updated",
+    archive: "Activity archived",
+    unarchive: "Activity restored",
   },
   conflictShownInForm: true,
 });
@@ -149,6 +149,6 @@ export const useRestoreActivityWithCategory = () => {
       );
     },
 
-    onSuccess: () => toast.success("Activity restored successfully"),
+    onSuccess: () => toast.success("Activity restored"),
   });
 };

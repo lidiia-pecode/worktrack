@@ -95,7 +95,7 @@ export const CategoryActivitiesPicker = ({
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
           emptyMessage="No activities yet. Make the first with New activity."
-          searchPlaceholder="Search activities..."
+          searchPlaceholder="Search activities…"
         />
       </PanelView>
 

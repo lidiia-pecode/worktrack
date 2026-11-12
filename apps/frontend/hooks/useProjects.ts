@@ -81,10 +81,10 @@ export const useProjectsMutations = createEntityMutations<
   },
 
   messages: {
-    create: "Project created successfully",
-    update: "Project updated successfully",
-    archive: "Project archived successfully",
-    unarchive: "Project restored successfully",
+    create: "Project created",
+    update: "Project updated",
+    archive: "Project archived",
+    unarchive: "Project restored",
   },
   conflictShownInForm: true,
 });

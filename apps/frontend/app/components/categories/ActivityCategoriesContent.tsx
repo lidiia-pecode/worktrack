@@ -132,7 +132,7 @@ export const ActivityCategoriesContent = () => {
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search categories..."
+        searchPlaceholder="Search categories…"
         emptyTitle="No activity categories yet"
         emptyDescription="Create your first category to organize activities."
         emptyIcon={<FolderTree className="size-6" />}

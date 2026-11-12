@@ -39,7 +39,9 @@ vi.mock("@/hooks/usePlanning", () => ({
   usePlanningEntries: () => ({ items: [] }),
 }));
 vi.mock("@/hooks/useProjects", () => ({
-  useAllProjectsQuery: () => ({ items: [] }),
+  useAllProjectsQuery: () => ({
+    items: [{ id: "7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b", name: "CRM System" }],
+  }),
 }));
 vi.mock("@/hooks/useAbsences", () => ({
   useAllAbsencesQuery: () => ({
@@ -336,7 +338,7 @@ describe("TeamTimeView", () => {
     expect(getAssignable).toHaveBeenCalledWith("user-alice");
   });
 
-  it("reads the team and project from the URL, ignoring one that isn't an id", () => {
+  it("reads the team and project from the URL, dropping a project that isn't listed", () => {
     const teamId = "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c";
     teams.options = [{ value: teamId, label: "Core Development" }];
     window.history.replaceState(
@@ -349,6 +351,7 @@ describe("TeamTimeView", () => {
     expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
       expect.objectContaining({ teamId, projectId: undefined }),
     );
+    expect(window.location.search).toBe(`?team=${teamId}`);
 
     vi.mocked(useTeamTimeSummary).mockClear();
     window.history.replaceState(

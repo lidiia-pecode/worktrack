@@ -113,7 +113,7 @@ export const DescriptionEditor = ({
   value,
   onChange,
   disabled = false,
-  placeholder = "Describe the project...",
+  placeholder = "Describe the project…",
   className,
 }: DescriptionEditorProps) => {
   const editor = useEditor({

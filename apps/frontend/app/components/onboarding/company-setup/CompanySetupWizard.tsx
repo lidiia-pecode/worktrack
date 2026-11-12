@@ -236,7 +236,7 @@ export const CompanySetupWizard = () => {
   };
 
   if (query.isLoading || !user || ownCapacity.isLoading) {
-    return <LoadingState size="compact" title="Loading your company..." />;
+    return <LoadingState size="compact" title="Loading your company…" />;
   }
 
   if (query.isError || ownCapacity.isError || !company) {

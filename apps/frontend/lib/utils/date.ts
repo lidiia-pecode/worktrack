@@ -134,12 +134,20 @@ export function isWeekend(date: Date): boolean {
   return day === 0 || day === 6;
 }
 
-const WEEKDAY_LABEL = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-const DAY_MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
+/**
+ * Every date reads in US English, whatever the browser's language, since the
+ * interface is in English: "Nov 9", "Wednesday, September 23".
+ */
+export const DATE_LOCALE = "en-US";
+
+const WEEKDAY_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
+  weekday: "short",
+});
+const DAY_MONTH_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "short",
 });
-const DAY_MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
+const DAY_MONTH_YEAR_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "short",
   year: "numeric",
@@ -149,7 +157,7 @@ export function formatWeekdayLabel(date: Date): string {
   return WEEKDAY_LABEL.format(date);
 }
 
-const LONG_DAY_LABEL = new Intl.DateTimeFormat(undefined, {
+const LONG_DAY_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   weekday: "long",
   day: "numeric",
   month: "long",
@@ -160,7 +168,7 @@ export function formatLongDayLabel(date: Date): string {
   return LONG_DAY_LABEL.format(date);
 }
 
-const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(undefined, {
+const MONTH_YEAR_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   month: "long",
   year: "numeric",
 });

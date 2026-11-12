@@ -33,6 +33,7 @@ import {
   readLastEntryChoice,
   storeLastEntryChoice,
 } from "../helpers/last-entry-choice";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
 const FORM_ID = "timelog-form";
 // The counter appears only near the limit, so a short note stays uncluttered.
@@ -58,7 +59,7 @@ const timeLogSchema = z
 
 type TimeLogFormData = z.infer<typeof timeLogSchema>;
 
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, {
+const DAY_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   weekday: "long",
   day: "numeric",
   month: "long",

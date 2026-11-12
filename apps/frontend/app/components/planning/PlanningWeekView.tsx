@@ -334,8 +334,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         <EmptyState
           className="mt-3"
           icon={<SearchX />}
-          title="Nobody matches these filters"
-          description="Nobody you can plan for matches the team, project or search you picked."
+          title="Nobody matches"
+          description="Nobody you can plan for matches the search, team or project you picked."
           action={
             <Button variant="secondary" onClick={clearFilters}>
               Clear filters

@@ -148,7 +148,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
           emptyMessage="Nobody to add yet."
-          searchPlaceholder="Search people..."
+          searchPlaceholder="Search people…"
         />
       </PanelView>
 

@@ -134,7 +134,7 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
         {SETTINGS_HEADER}
         <CardBody>
           {query.isLoading ? (
-            <LoadingState size="compact" title="Loading company settings..." />
+            <LoadingState size="compact" title="Loading company settings…" />
           ) : (
             <ErrorState
               size="compact"

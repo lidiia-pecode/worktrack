@@ -58,10 +58,10 @@ export const useActivityCategoriesMutations = createEntityMutations<
   },
 
   messages: {
-    create: "Category created successfully",
-    update: "Category updated successfully",
-    archive: "Category archived successfully",
-    unarchive: "Category restored successfully",
+    create: "Category created",
+    update: "Category updated",
+    archive: "Category archived",
+    unarchive: "Category restored",
   },
   conflictShownInForm: true,
 });
@@ -104,7 +104,7 @@ export const useArchiveActivityCategory = () => {
         queryClient.invalidateQueries({ queryKey }),
       );
 
-      toast.success("Category archived successfully");
+      toast.success("Category archived");
     },
   });
 };
@@ -126,7 +126,7 @@ export const useRestoreActivityCategory = () => {
         queryClient.invalidateQueries({ queryKey }),
       );
 
-      toast.success("Category restored successfully");
+      toast.success("Category restored");
     },
   });
 };

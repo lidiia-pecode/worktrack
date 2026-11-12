@@ -29,8 +29,9 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { PageHeader } from "../../shared/PageHeader";
 import { SetupStepItem, SetupStepRow } from "./SetupStepRow";
 import { TOPIC_TEXT } from "./setup-topics";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
-const EXPIRY_LABEL = new Intl.DateTimeFormat(undefined, {
+const EXPIRY_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "long",
 });

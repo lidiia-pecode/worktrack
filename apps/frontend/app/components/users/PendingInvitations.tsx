@@ -17,8 +17,9 @@ import {
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
 import { UserRole } from "@/types/enums";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
-const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
+const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "short",
   hour: "2-digit",

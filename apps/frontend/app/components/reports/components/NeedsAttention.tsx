@@ -9,6 +9,7 @@ import { AttentionFact, AttentionItem } from "@/lib/utils/report-attention";
 import { Card } from "@/components/ui/card";
 
 import { ReportCardTitle } from "./ReportCardTitle";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
 /**
  * The one mark on Reports: somebody or something named in Needs attention.
@@ -34,7 +35,7 @@ export const AttentionLegend = () => (
 /** People or projects named before the rest open on request. */
 const ITEMS_SHOWN = 3;
 
-const MONTH_NAME = new Intl.DateTimeFormat(undefined, { month: "long" });
+const MONTH_NAME = new Intl.DateTimeFormat(DATE_LOCALE, { month: "long" });
 
 const NAME_CLASS =
   "rounded-sm underline-offset-2 hover:text-brand hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";

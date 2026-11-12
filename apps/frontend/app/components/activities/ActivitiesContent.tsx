@@ -104,7 +104,7 @@ export const ActivitiesContent = () => {
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search activities..."
+        searchPlaceholder="Search activities…"
         emptyTitle="No activities yet"
         emptyDescription="Create your first activity to start tracking work."
         emptyIcon={<Activity className="size-6" />}

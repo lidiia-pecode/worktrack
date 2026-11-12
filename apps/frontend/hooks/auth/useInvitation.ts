@@ -26,7 +26,7 @@ export const useInvitations = () => {
     onSuccess: () => {
       invalidateInvitations();
 
-      toast.success("Invitation sent successfully");
+      toast.success("Invitation sent");
     },
 
     // A failed email still leaves the invitation saved, with a new link.

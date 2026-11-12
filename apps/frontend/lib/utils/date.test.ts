@@ -7,7 +7,10 @@ import {
   addMonthsToKey,
   companyToday,
   firstOfMonth,
+  formatDayMonthLabel,
+  formatDayMonthYearLabel,
   formatDuration,
+  formatLongDayLabel,
   formatReportHours,
   formatWeekRangeLabel,
   getMonthGridDates,
@@ -24,6 +27,15 @@ import {
 
 // Tuesday 13 January 2026, in local time like the helpers themselves.
 const TUESDAY = new Date(2026, 0, 13, 15, 30);
+
+// The interface is in English, so dates are too, whatever the browser's language.
+describe("date labels", () => {
+  it("read in US English", () => {
+    expect(formatDayMonthLabel("2026-01-13")).toBe("Jan 13");
+    expect(formatDayMonthYearLabel("2026-01-13")).toBe("Jan 13, 2026");
+    expect(formatLongDayLabel(TUESDAY)).toBe("Tuesday, January 13");
+  });
+});
 
 describe("toISODate", () => {
   it("writes the local date as YYYY-MM-DD", () => {

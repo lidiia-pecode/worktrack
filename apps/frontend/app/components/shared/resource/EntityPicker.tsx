@@ -59,7 +59,7 @@ export const EntityPicker = <T,>({
   isDisabled,
   getGroup,
   emptyMessage,
-  searchPlaceholder = "Search...",
+  searchPlaceholder = "Search…",
   onSearchChange,
   isLoading = false,
   hasNextPage = false,
@@ -175,7 +175,7 @@ export const EntityPicker = <T,>({
 
         {isFetchingNextPage && (
           <p className="py-2 text-center text-xs text-muted-foreground">
-            Loading more...
+            Loading more…
           </p>
         )}
       </div>

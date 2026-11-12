@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useMemo, useState } from "react";
+import Link from "next/link";
 
 import { CalendarOff, FolderKanban, ListTodo } from "lucide-react";
 
@@ -22,6 +23,8 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { UserRole } from "@/types/enums";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import {
   ABSENCE_TYPE_LABELS,
@@ -33,6 +36,7 @@ import { groupTimelogsByDate } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 
 import { EmptyState } from "../shared/EmptyState";
+import { projects } from "../layout/sidebar/sidebar-navigation";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
@@ -40,7 +44,7 @@ import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   AbsenceFormModal,
   LockedAbsenceModal,
@@ -82,6 +86,9 @@ type WeekTimesheetProps = {
 };
 
 export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
+  const { user: viewer } = useAuth();
+  const addsOwnProjects =
+    viewer?.role === UserRole.OWNER || viewer?.role === UserRole.MANAGER;
   const {
     dailyTargetMinutes,
     timezone,
@@ -448,11 +455,29 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         </div>
 
         {content === "notOnProjects" ? (
-          <EmptyState
-            title="You're not on any projects yet"
-            description="Once a manager adds you to a project, you'll be able to log time against it here."
-            icon={<FolderKanban />}
-          />
+          // An owner or a manager puts themselves on a project; an employee
+          // waits for their manager to.
+          addsOwnProjects ? (
+            <EmptyState
+              title="You're not on any projects yet"
+              description="Add yourself to a project on its panel in Projects, then log your time against it here."
+              icon={<FolderKanban />}
+              action={
+                <Link
+                  href={projects.href}
+                  className={buttonVariants({ variant: "secondary" })}
+                >
+                  Go to Projects
+                </Link>
+              }
+            />
+          ) : (
+            <EmptyState
+              title="You're not on any projects yet"
+              description="Once a manager adds you to a project, you'll be able to log time against it here."
+              icon={<FolderKanban />}
+            />
+          )
         ) : (
           <EmptyState
             title="No activities yet"

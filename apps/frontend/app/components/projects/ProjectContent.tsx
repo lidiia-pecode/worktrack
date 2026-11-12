@@ -89,7 +89,7 @@ export const ProjectsContent = () => {
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search projects..."
+        searchPlaceholder="Search projects…"
         emptyTitle="No projects yet"
         emptyDescription="Create your first project to start tracking work."
         emptyIcon={<FolderKanban className="size-6" />}

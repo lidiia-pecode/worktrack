@@ -106,7 +106,7 @@ export const TeamArchiveDialog = ({
           impact.isError
             ? "Could not check what is on the team. Close this and try again."
             : !impact.data
-              ? "Checking what is on the team..."
+              ? "Checking what is on the team…"
               : "Nobody is on it. It leaves the team filters and the invite form; you can restore it from the Archived tab."
         }
         confirmText="Archive"
