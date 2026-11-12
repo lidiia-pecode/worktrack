@@ -34,6 +34,9 @@ const replaceParams = (
   );
 };
 
+const addressKey = (search: string, sort: string | null) =>
+  JSON.stringify([search, sort]);
+
 type TeamTimeFilters = {
   teamId?: string;
   projectId?: string;
@@ -81,20 +84,23 @@ export const useTeamTimeFilters = () => {
 
   const [search, setSearchState] = useState(searchInAddress);
   const [sort, setSortState] = useState(() => readTeamSort(sortParamInAddress));
-  // What this hook last put in the address, so its own writes arriving a
-  // render late aren't taken for an outside change.
-  const written = useRef({
-    search: searchInAddress,
-    sort: sortParamInAddress,
-  });
+  // What this hook has put in the address and not yet seen back, oldest
+  // first, so its own writes arriving a render late, even after a newer
+  // keystroke, aren't taken for an outside change.
+  const pendingWrites = useRef([
+    addressKey(searchInAddress, sortParamInAddress),
+  ]);
 
   useEffect(() => {
-    const isOwnWrite =
-      searchInAddress === written.current.search &&
-      sortParamInAddress === written.current.sort;
-    if (isOwnWrite) return;
+    const key = addressKey(searchInAddress, sortParamInAddress);
+    const ownWrite = pendingWrites.current.indexOf(key);
 
-    written.current = { search: searchInAddress, sort: sortParamInAddress };
+    if (ownWrite >= 0) {
+      pendingWrites.current = pendingWrites.current.slice(ownWrite);
+      return;
+    }
+
+    pendingWrites.current = [key];
     setSearchState(searchInAddress);
     setSortState(readTeamSort(sortParamInAddress));
   }, [searchInAddress, sortParamInAddress]);
@@ -104,7 +110,9 @@ export const useTeamTimeFilters = () => {
     const searchParam = values.search?.trim() || undefined;
     const sortParam = teamSortParam(values.sort);
 
-    written.current = { search: searchParam ?? "", sort: sortParam ?? null };
+    pendingWrites.current.push(
+      addressKey(searchParam ?? "", sortParam ?? null),
+    );
     replaceParams(pathname, [
       [TEAM_PARAM, values.teamId],
       [PROJECT_PARAM, values.projectId],

@@ -25,7 +25,7 @@ interface PanelListRow {
   name: string;
   leading?: ReactNode;
   detail?: ReactNode;
-  /** Why the row reads differently, such as an Archived badge. */
+  /** Why the row reads differently, such as "Archived". */
   status?: ReactNode;
   /** Changes the link itself, such as a member's role in a team, from a "⋯" menu. */
   actions?: ManageRowAction[];
@@ -77,11 +77,9 @@ const RemoveButton = ({
 export const ActionsMenu = ({
   label,
   actions,
-  variant = "ghost",
 }: {
   label: string;
   actions: ManageRowAction[];
-  variant?: "ghost" | "outline";
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -97,7 +95,7 @@ export const ActionsMenu = ({
         render={
           <Button
             type="button"
-            variant={variant}
+            variant="ghost"
             size="iconSm"
             ref={triggerRef}
             aria-label={label}
@@ -130,10 +128,6 @@ export const ActionsMenu = ({
   );
 };
 
-/**
- * The whole row opens its entity, as a row does in the Manage tables. Its
- * controls show on hover or focus where there is a pointer, always on touch.
- */
 /** The line above a row: none at the top of a list or a group, a softer one inside a group. */
 type RowDivider = "none" | "soft" | "full";
 
@@ -143,6 +137,10 @@ const DIVIDER_CLASSES: Record<RowDivider, string> = {
   full: "border-t border-border",
 };
 
+/**
+ * The whole row opens its entity, as a row does in the Manage tables. Its
+ * controls show on hover or focus where there is a pointer, always on touch.
+ */
 const Row = ({ row, divider }: { row: PanelListRow; divider: RowDivider }) => {
   const openEntity = useOpenEntity();
   const { entity } = row;
@@ -299,8 +297,8 @@ export const PanelList = <T,>({
 type PanelCardProps = {
   title: string;
   /** How many items the section holds, after its title. */
-  count?: number;
-  /** Beside the title, such as Add or a warning. */
+  count: number;
+  /** Beside the title: Add. */
   action?: ReactNode;
   children: ReactNode;
 };
@@ -311,9 +309,7 @@ const PanelCard = ({ title, count, action, children }: PanelCardProps) => (
     <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1">
       <h3 className="text-xs font-medium text-muted-foreground">
         {title}
-        {count !== undefined && (
-          <span className="ml-1.5 tabular-nums">{count}</span>
-        )}
+        <span className="ml-1.5 tabular-nums">{count}</span>
       </h3>
       {action}
     </div>

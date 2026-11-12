@@ -11,10 +11,9 @@ import {
   useProjectDetails,
   useProjectsMutations,
 } from "@/hooks/useProjects";
-import { factsLine } from "@/lib/utils/text";
+import { countLabel, factsLine } from "@/lib/utils/text";
 import { fullName, isDeactivatedUser, leaverLabel } from "@/lib/utils/user";
 import { Project } from "@/types";
-import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
 import {

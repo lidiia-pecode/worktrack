@@ -407,8 +407,8 @@ describe("TeamTimeView", () => {
 
     expect(shownNames()).toEqual(["Ben"]);
     expect(
-      screen.getByRole("button", { name: "Sort by logged time, most first" }),
-    ).toHaveAttribute("aria-pressed", "true");
+      screen.getByRole("columnheader", { name: /Logged/ }),
+    ).toHaveAttribute("aria-sort", "ascending");
 
     await user.clear(
       screen.getByRole("textbox", { name: "Search by name or position" }),
@@ -446,10 +446,8 @@ describe("TeamTimeView", () => {
     );
     expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
-    // Both the filter row's and the empty state's button reset everything.
-    await user.click(
-      screen.getAllByRole("button", { name: "Clear filters" })[0],
-    );
+    // The empty state's button resets everything.
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(shownNames()).toEqual(["Alice", "Ben"]);
   });
 
@@ -472,7 +470,6 @@ describe("TeamTimeView", () => {
       name: "Sort by logged time, least first",
     });
     await user.click(logged);
-    expect(logged).toHaveAttribute("aria-pressed", "true");
     expect(loggedHeader).toHaveAttribute("aria-sort", "ascending");
     expect(header).not.toHaveAttribute("aria-sort");
     expect(shownNames()).toEqual(["Ben", "Alice"]);

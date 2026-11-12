@@ -107,6 +107,8 @@ export const CompanySetupWizard = () => {
   });
   const ownCapacity = useUserCapacity(user?.id ?? "", Boolean(user));
   const [currentStep, setCurrentStep] = useState(0);
+  // Back doesn't undo an answer passed with Next.
+  const [passedSteps, setPassedSteps] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -221,7 +223,7 @@ export const CompanySetupWizard = () => {
   const skipRest = () =>
     save(
       getValues(),
-      STEPS.slice(0, currentStep).map((setupStep) => setupStep.field),
+      STEPS.slice(0, passedSteps).map((setupStep) => setupStep.field),
     );
 
   const continueOrFinish = async () => {
@@ -231,6 +233,7 @@ export const CompanySetupWizard = () => {
     }
 
     if (await trigger(step.field)) {
+      setPassedSteps((passed) => Math.max(passed, currentStep + 1));
       setCurrentStep((index) => index + 1);
     }
   };
@@ -293,7 +296,11 @@ export const CompanySetupWizard = () => {
                   value={field.value ?? ""}
                   onValueChange={field.onChange}
                   error={errors.timezone?.message}
-                  description="Preselected from this browser."
+                  description={
+                    company?.timezone === DEFAULT_TIME_ZONE
+                      ? "Preselected from this browser."
+                      : undefined
+                  }
                   disabled={isSaving}
                 />
               )}

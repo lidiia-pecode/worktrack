@@ -682,7 +682,10 @@ at once are confirmed together in one dialog.
 A new company's owner answers four questions in the setup wizard — time zone,
 week start, working day and whether they log their own time (Yes keeps them on
 the standard day, or gives an owner at 0h its hours; No gives them 0h) — or
-skips them all, keeping the settings as they are — then follows a checklist
+skips the rest at any step, which saves the answers given so far and always
+the time zone, since every company starts in UTC and the one offered is the
+browser's; opened again, the wizard offers the company's own zone unless it is
+still UTC — then follows a checklist
 whose steps end with somebody able to log time: a team, a category and activities, a project with
 activities, and at least one person on it, the owner included. Inviting a
 manager is optional, so an owner who manages everyone can finish. Setup is a
@@ -793,8 +796,8 @@ added to a team or a project, and their details and working hours change only
 once they are reactivated. Reactivate asks first and names the teams and
 active projects they come back to; someone whose last working day is today
 can be reactivated from tomorrow. The Deactivated tab and the person's panel
-show the last working day, and Reports' People table says "Deactivated" after
-their position.
+show the last working day, and Team time, Planning, Reports' People table and
+the team and project panels say "Last day" and the date after their position.
 
 ---
 
@@ -912,20 +915,23 @@ see, and how a new company gets started. §7 plans that work.
   always a category. A project's panel lists its archived activities apart, and
   its archive dialog names whose plans from today on it removes.
 - **Team time view** — owners and managers land on `/team` and read their
-  people's week, a row each: the person, their hours against what was
-  expected, and each day's entries as project-coloured blocks, with the plan
-  shown on a day nothing is logged yet. They correct the week in the grid: a
-  block opens that entry, the empty part of a day logs time for the person,
-  and an icon by the name records an absence. A search by name or position,
-  a sort by name or by how much of the expected time is logged, and filters by
-  team and project (archived projects included) narrow it, with "Clear
-  filters" at the end of the row; the team filter is offered to the owner and
+  people's week, a row each: the person, each day's entries as chips with the
+  project and its hours (a plan dashed, shown on a day nothing is logged yet),
+  and their week's hours against what was expected in a column on the right,
+  as on Planning. Saturday and Sunday are left out unless someone shown has
+  time on one, and open from Friday's heading. They correct the week in the
+  grid: a chip opens that entry, the empty part of a day logs time for the
+  person ("No time" on an empty past working day), and an icon by the name
+  records an absence. A search by name or position, a sort by name or by how
+  much of the expected time is logged, and filters by team and project
+  (archived projects included) narrow it, and "Clear filters" comes with a
+  search or filter that matches nobody; the team filter is offered to the owner and
   to anyone who sees more than one team, and a linked team the viewer doesn't
   see is dropped from the address. The week, the filters, the search and the
   sort are in the URL, so a reload or a shared link keeps them. The toolbar
   totals the people shown against what was expected of them ("Logged 30h /
-  128h"). A deactivated
-  person is marked and listed on every week up to their last working day,
+  128h", with a bar). A deactivated
+  person is marked with their last day and listed on every week up to their last working day,
   logged time or not; those days stay editable in an open month, the days after
   it are closed, and their week reads against what was expected up to their
   last working day. Filtered to
@@ -960,7 +966,8 @@ see, and how a new company gets started. §7 plans that work.
   against available hours ("30h of 32h") with a bar, and says which weeks no
   longer fit. It is narrowed as Team time is, by team, project (active ones
   only, since nothing is planned on an archived one) and a search by name or
-  position, with the same "Clear filters", and kept in the URL the same way.
+  position, with the same "Clear filters" when nothing matches, and kept in
+  the URL the same way.
   Under a project the
   rows are the people on it or with a plan on it, each showing only its plans
   and its hours ("on Acme redesign"). The toolbar totals the people shown
@@ -968,7 +975,9 @@ see, and how a new company gets started. §7 plans that work.
   alone under a project). A week lists the people with working hours in it or
   plans on it: someone at 0h shows only with plans left from before, marked
   "No fixed hours", those plans deletable but not changed; a leaver shows in
-  the weeks they still had days in, the days after their last closed. A day
+  the weeks they still had days in, the days after their last closed. A week
+  wholly in locked months offers no "Plan a period", as a locked day offers
+  nothing. A day
   can be planned up to the person's own working day, in 15-minute steps, and
   the day dialog's hours stop at what still fits.
   An absence day opens straight into its form, which names the person, and
@@ -1015,8 +1024,8 @@ see, and how a new company gets started. §7 plans that work.
   the view holds, so the rows add up to the band: Logged, Expected, the share of
   expected with a bar (billable striped, time past expected in the warning
   colour) and Billable as a share of logged. Under a person's name is their
-  position, with "Deactivated" or, under a team filter, "Joined" or "Moved
-  out" and the date in the same line. It opens on the
+  position, with "Last day" and the date for a leaver or, under a team
+  filter, "Joined" or "Moved out" and the date in the same line. It opens on the
   people furthest from what was expected, either way, those expected to work
   nothing last; any column sorts from its header, and the first ten show until
   the rest are asked for. Where the time went switches between projects and the
@@ -1047,8 +1056,8 @@ see, and how a new company gets started. §7 plans that work.
   them), and their
   projects against plan, in decimal hours. The figures are the ones a manager
   sees in their panel on Reports, through the same routes pinned to the person
-  (§5), and count finished days only, with a line under the month saying how
-  far it is counted and whether it can still be edited. A month with nothing
+  (§5), and count finished days only, in Reports' band, whose badge names the
+  month or the days counted so far. A month with nothing
   expected, logged or planned for them says so. Nothing about anybody else is
   shown.
 - **Hours export** — from Reports, owners and managers download the
@@ -1073,6 +1082,16 @@ see, and how a new company gets started. §7 plans that work.
   team's week stays "Team time", with no period in a name so it holds as the
   pages grow. Only what a user sees changed (menu, headings, wording); routes
   and code keep `/timesheet`, `/my-time` and `/team`.
+
+- **One visual language** (10–13 November 2026). A pill marks only what
+  someone has to act on (No team, No active manager, Expired, Closing soon,
+  Reopened), in amber so a warning never reads as an error; a fact
+  (Deactivated, Archived, Locked, Open, a role) is quiet text. A page with a
+  period has one toolbar: the period control on the left, the total on the
+  right as "Logged 30h / 128h" with a bar, actions last; it stays while the
+  content loads, and a part that fails to load says so with Try again. The
+  company's and a person's working day are one field. Dates read in US English
+  whatever the browser's language.
 
 - **One way to close a dialog** (4 November 2026, PR #67). No dialog has a
   close button in its header: it closes from its footer, "Cancel" in a form
@@ -1361,8 +1380,10 @@ ready, or not, for the final stage.
 **Order.** Area 1 came first and Area 2 straight after, because every later
 area reuses what they settle; then Area 5, Area 6 and Area 7, with Areas 3
 and 4 in steps between them (the Delivered table has the sequence). Report
-figures that add up followed (PR #71); access to teams (Configurable
-permissions, below) comes next; what is left of Areas 3 and 4, Team time and
+figures that add up followed (PR #71), then one visual language and screens
+that fit, moved ahead of access to teams on 10 November 2026 because UI/UX is
+the top direction and the new access screens should land on settled patterns;
+access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
 Planning on a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 
@@ -1371,7 +1392,7 @@ that distorts figures can be pulled into whichever work comes first.
 **Next — Configurable permissions — an approximate vision, not a specification**
 
 Scheduled on 7 November 2026, in two parts split by kind of access. **Access
-to teams** comes next, after the work on report figures that add up: someone
+to teams** comes next, after one visual language and screens that fit: someone
 given it acts for a team (its time, absences, plans and reports), for
 example a deputy while the manager is away, which PR #70's one manager per
 team makes necessary. **Access to the owner's administrative tasks** comes

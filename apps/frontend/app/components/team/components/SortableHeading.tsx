@@ -75,7 +75,6 @@ export const SortableHeading = ({
         type="button"
         variant="ghost"
         size="iconXs"
-        aria-pressed={isActive}
         aria-label={NEXT_ORDER_LABELS[sortKey][nextDirection]}
         title={NEXT_ORDER_LABELS[sortKey][nextDirection]}
         onClick={() => onSort(sortKey)}

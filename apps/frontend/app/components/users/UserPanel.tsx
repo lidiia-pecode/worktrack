@@ -244,7 +244,14 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
 };
 
 /** Their team as plain text that opens it, and their role in it. */
-const TeamValue = ({ team }: { team: UserTeam }) => (
+const TeamValue = ({
+  team,
+  note,
+}: {
+  team: UserTeam;
+  /** Why the team can't be changed from here. */
+  note?: string;
+}) => (
   <>
     <EntityLink
       entity={{ type: "team", id: team.id }}
@@ -257,6 +264,9 @@ const TeamValue = ({ team }: { team: UserTeam }) => (
       {TEAM_ROLE_LABELS[team.roleInTeam]} since{" "}
       {formatDayMonthYearLabel(team.joinedAt)}
     </span>
+    {note && (
+      <span className="mt-0.5 block text-xs text-muted-foreground">{note}</span>
+    )}
   </>
 );
 
@@ -375,7 +385,21 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
             : []),
           { label: "Email", value: user.email },
           ...(user.team
-            ? [{ label: "Team", value: <TeamValue team={user.team} /> }]
+            ? [
+                {
+                  label: "Team",
+                  value: (
+                    <TeamValue
+                      team={user.team}
+                      note={
+                        canChangeTeam && ledTeam
+                          ? "To move them, give the team another manager first."
+                          : undefined
+                      }
+                    />
+                  ),
+                },
+              ]
             : []),
         ]}
         // Rare changes to their team wait in the menu, beside Deactivate.

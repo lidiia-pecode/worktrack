@@ -19,6 +19,11 @@ import { factsLine } from "@/lib/utils/text";
 import { PersonLabel } from "../../shared/PersonLabel";
 import { WeekBar } from "../../timesheet/components/WeekSummary";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { TeamDayCell } from "./TeamDayCell";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
@@ -104,19 +109,26 @@ export const TeamWeekRow = ({
             weekDates.some(
               (date) => !isClosedOn(row.closedSpells, toISODate(date)),
             ) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="iconSm"
-                onClick={onAddAbsence}
-                aria-label={`Add an absence for ${name}`}
-                title="Add an absence"
-                // Shown on the row's hover or focus, over the name's end, as
-                // Planning offers a period; always there on touch.
-                className="shrink-0 bg-card text-muted-foreground transition-opacity pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
-              >
-                <CalendarOff aria-hidden />
-              </Button>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="iconSm"
+                      onClick={onAddAbsence}
+                      aria-label={`Add an absence for ${name}`}
+                      // Shown on the row's hover or focus, over the name's
+                      // end, as Planning offers a period; always there on
+                      // touch.
+                      className="shrink-0 bg-card text-muted-foreground transition-opacity pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
+                    />
+                  }
+                >
+                  <CalendarOff aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>Add an absence</TooltipContent>
+              </Tooltip>
             )}
         </div>
       </th>

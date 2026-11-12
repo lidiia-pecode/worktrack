@@ -222,6 +222,8 @@ const PlanBlock = ({ plan, dayLabel, isCompact, onClick }: PlanBlockProps) => {
       isCompact={isCompact}
       title={isCompact ? plan.project.name : undefined}
       onClick={onClick && (() => onClick(plan.project.id))}
+      // Named as a plan when it is no button too.
+      role={onClick ? undefined : "group"}
       aria-label={
         onClick
           ? `Log time on ${dayLabel} for ${plan.project.name} (planned ${duration})`
