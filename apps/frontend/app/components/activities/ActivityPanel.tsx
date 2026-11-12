@@ -1,6 +1,6 @@
 "use client";
 
-import { FolderTree, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { StatusText } from "../shared/StatusText";
 import {
@@ -104,12 +104,9 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
             value: (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
-                tone="chip"
+                tone="plain"
+                className="font-medium"
               >
-                <FolderTree
-                  aria-hidden="true"
-                  className="size-3.5 text-muted-foreground"
-                />
                 {activity.category.name}
               </EntityLink>
             ),

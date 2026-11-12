@@ -85,6 +85,10 @@
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
   --brand-strong: color-mix(in oklch, var(--brand) 24%, transparent);
 
+  /* A row under the pointer in a list or table: a faint teal, lighter than
+     the stone of a table's or card's header so the two never merge. */
+  --row-hover: color-mix(in oklch, var(--brand) 5%, transparent);
+
   /* ------------------------------------------------------------------------
      Glow
      ------------------------------------------------------------------------ */
@@ -310,6 +314,7 @@
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
   --color-brand-strong: var(--brand-strong);
+  --color-row-hover: var(--row-hover);
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);

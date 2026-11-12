@@ -4,7 +4,6 @@ import { useState } from "react";
 import { ArrowRightLeft, UserPlus, UserRoundCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { usePendingInvitations } from "@/hooks/auth/useInvitation";
 import { useTeamDetails, useTeamsMutations } from "@/hooks/useTeams";
@@ -203,17 +202,7 @@ const NoManagerNotice = ({
           : "Nobody leads this team yet."
       }
       action={
-        onChoose && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onChoose}
-            className="bg-card"
-          >
-            Choose manager
-          </Button>
-        )
+        onChoose ? { label: "Choose manager", onClick: onChoose } : undefined
       }
     />
   );

@@ -13,18 +13,13 @@ interface EntityLinkProps {
   className?: string;
   /** Runs before the panel opens, such as closing the dialog the link is in. */
   onNavigate?: () => void;
-  /**
-   * `brand` in running text; `plain` in a row, which itself shows it opens;
-   * `chip` for a name standing alone, such as an activity's category.
-   */
-  tone?: "brand" | "plain" | "chip";
+  /** `brand` in running text; `plain` in a row or a detail, which shows it opens. */
+  tone?: "brand" | "plain";
 }
 
 const TONE_CLASSES = {
   brand: "font-medium text-brand underline-offset-4 hover:underline",
   plain: "text-foreground hover:text-brand",
-  // The padding is narrower beside an avatar than beside an icon.
-  chip: "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border bg-card py-0.5 pr-2.5 pl-0.5 font-medium text-foreground transition-colors hover:border-brand/40 hover:bg-muted/30 has-[>svg]:pl-2",
 } as const;
 
 const opensElsewhere = (event: MouseEvent) =>

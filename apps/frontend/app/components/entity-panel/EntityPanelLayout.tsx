@@ -64,6 +64,7 @@ export const EntityPanelLayout = ({
   const titleId = useContext(PanelTitleIdContext);
   const isEditing = Boolean(editForm);
   const hidesHeading = isEditing && editsName;
+  const showsStatus = !isEditing && Boolean(status);
 
   // One action in sight: Edit, or else a way back such as Restore. The rest
   // follow as one quiet button, or behind "⋯" when there are two or more.
@@ -129,11 +130,15 @@ export const EntityPanelLayout = ({
           )}
         </div>
 
-        {!isEditing && status && <div className="mt-4 flex">{status}</div>}
+        {showsStatus && <div className="mt-6 flex">{status}</div>}
       </header>
 
       <div
-        className={cn("flex flex-col gap-4", hidesHeading ? "mt-1" : "mt-4")}
+        className={cn(
+          "flex flex-col gap-4",
+          // Room under the heading; a status line is part of it.
+          hidesHeading ? "mt-1" : showsStatus ? "mt-4" : "mt-6",
+        )}
       >
         {isEditing ? (
           <PanelFormContext.Provider value={{ leading }}>
@@ -189,12 +194,13 @@ export const PanelNotice = ({
 }: {
   title: string;
   description?: ReactNode;
-  action?: ReactNode;
+  /** The fix, such as "Choose manager"; left out for whoever can't make it. */
+  action?: { label: string; onClick: () => void };
 }) => (
   <div className="flex w-full items-center gap-3 rounded-lg border border-warning-border bg-warning-subtle px-3 py-2.5">
     <TriangleAlert
       aria-hidden="true"
-      className="size-4 shrink-0 self-start text-warning-text mt-0.5"
+      className="mt-0.5 size-4 shrink-0 self-start text-warning-text"
     />
     <div className="min-w-0 flex-1">
       <p className="text-sm font-medium text-warning-text">{title}</p>
@@ -202,7 +208,17 @@ export const PanelNotice = ({
         <p className="text-xs text-muted-foreground">{description}</p>
       )}
     </div>
-    {action && <div className="shrink-0">{action}</div>}
+    {action && (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={action.onClick}
+        className="shrink-0 bg-card"
+      >
+        {action.label}
+      </Button>
+    )}
   </div>
 );
 
@@ -299,11 +315,9 @@ export const PanelStatus = ({
   </p>
 );
 
-export interface PanelDetail {
+interface PanelDetail {
   label: string;
   value: ReactNode;
-  /** At the row's end, such as Change. */
-  action?: ReactNode;
   /** A long value, such as a description, under its label rather than beside it. */
   wide?: boolean;
 }
@@ -313,7 +327,7 @@ export interface PanelDetail {
  * above a wide one. It needs no title; it is the entity under the heading.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <dl className="divide-y divide-border rounded-xl border border-border text-sm">
+  <dl className="divide-y divide-border/55 rounded-xl border border-border text-sm">
     {details.map((detail) => (
       <div
         key={detail.label}
@@ -325,31 +339,10 @@ const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
         )}
       >
         <dt className="text-muted-foreground">{detail.label}</dt>
-        <dd className="flex min-w-0 items-baseline justify-between gap-2 text-foreground">
-          <div className="min-w-0 flex-1 break-words">{detail.value}</div>
-          {detail.action && <div className="shrink-0">{detail.action}</div>}
-        </dd>
+        <dd className="min-w-0 break-words text-foreground">{detail.value}</dd>
       </div>
     ))}
   </dl>
-);
-
-/** A quiet button at a detail's end, such as Change. */
-export const PanelDetailButton = ({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: ReactNode;
-}) => (
-  <Button
-    type="button"
-    variant="link"
-    onClick={onClick}
-    className="text-sm text-brand"
-  >
-    {children}
-  </Button>
 );
 
 /**

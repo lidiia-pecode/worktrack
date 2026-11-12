@@ -134,7 +134,16 @@ export const ActionsMenu = ({
  * The whole row opens its entity, as a row does in the Manage tables. Its
  * controls show on hover or focus where there is a pointer, always on touch.
  */
-const Row = ({ row }: { row: PanelListRow }) => {
+/** The line above a row: none at the top of a list or a group, a softer one inside a group. */
+type RowDivider = "none" | "soft" | "full";
+
+const DIVIDER_CLASSES: Record<RowDivider, string> = {
+  none: "",
+  soft: "border-t border-border/55",
+  full: "border-t border-border",
+};
+
+const Row = ({ row, divider }: { row: PanelListRow; divider: RowDivider }) => {
   const openEntity = useOpenEntity();
   const { entity } = row;
   const hasActions = Boolean(row.actions?.length);
@@ -145,7 +154,8 @@ const Row = ({ row }: { row: PanelListRow }) => {
       onClick={entity && (() => openEntity(entity))}
       className={cn(
         "group flex min-h-10 items-center gap-3 px-3 py-2 text-sm",
-        entity && "cursor-pointer transition-colors hover:bg-muted/30",
+        DIVIDER_CLASSES[divider],
+        entity && "cursor-pointer transition-colors hover:bg-row-hover",
       )}
     >
       {row.leading && (
@@ -240,22 +250,30 @@ export const PanelList = <T,>({
       {items.length === 0 ? (
         <p className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</p>
       ) : (
-        <ul className="divide-y divide-border">
+        <ul>
           {shownItems.map((item, index) => {
             const group = groupBy?.(item);
             const startsGroup =
               group &&
               (index === 0 ||
                 groupBy?.(shownItems[index - 1])?.key !== group.key);
+            const divider: RowDivider =
+              index === 0 || startsGroup ? "none" : group ? "soft" : "full";
 
             return (
               <Fragment key={getKey(item)}>
+                {/* A quiet label on the card's own background, with room above it. */}
                 {startsGroup && (
-                  <li className="bg-muted/10 px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
+                  <li
+                    className={cn(
+                      "px-3 pb-1 text-xs font-medium text-muted-foreground",
+                      index === 0 ? "pt-2.5" : "border-t border-border pt-3.5",
+                    )}
+                  >
                     {group.heading}
                   </li>
                 )}
-                <Row row={renderRow(item)} />
+                <Row row={renderRow(item)} divider={divider} />
               </Fragment>
             );
           })}
