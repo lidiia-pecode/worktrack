@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchX } from "lucide-react";
+import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -40,6 +40,7 @@ import {
   nextTeamSort,
   searchTeamRows,
   sortTeamRows,
+  TeamSort,
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 import { cn } from "@/lib/utils/cn";
@@ -65,7 +66,7 @@ import {
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
-import { SortButton } from "./components/SortButton";
+import { SortableHeading } from "./components/SortableHeading";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
@@ -91,6 +92,47 @@ type TeamTimeViewProps = {
   highlightedPersonId?: string;
 };
 
+type WeekendToggleProps = {
+  isShown: boolean;
+  canHide: boolean;
+  onChange: (isShown: boolean) => void;
+};
+
+/**
+ * Opens Saturday and Sunday from the last weekday's heading, and folds them
+ * from Sunday's: the control sits where the columns appear.
+ */
+const WeekendToggle = ({ isShown, canHide, onChange }: WeekendToggleProps) => {
+  if (isShown && !canHide) return null;
+
+  return (
+    <button
+      type="button"
+      aria-expanded={isShown}
+      aria-label={
+        isShown ? "Hide Saturday and Sunday" : "Show Saturday and Sunday"
+      }
+      title={isShown ? "Hide the weekend" : "Show the weekend"}
+      onClick={() => onChange(!isShown)}
+      className={cn(
+        "ml-auto flex shrink-0 cursor-pointer items-center gap-0.5 rounded-md py-px text-2xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        isShown
+          ? "px-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          : "bg-brand-subtle px-1 text-brand hover:bg-brand-muted",
+      )}
+    >
+      {isShown ? (
+        <ChevronLeft aria-hidden className="size-3" />
+      ) : (
+        <>
+          Sat–Sun
+          <ChevronRight aria-hidden className="size-3" />
+        </>
+      )}
+    </button>
+  );
+};
+
 export const TeamTimeView = ({
   role,
   viewerId,
@@ -108,12 +150,20 @@ export const TeamTimeView = ({
     teamId,
     projectId,
     search,
-    sort,
+    sort: sortInAddress,
     setFilters,
     setSearch,
     setSort,
     clearFilters,
   } = useTeamTimeFilters();
+  // A link's sort by the week's total reads as Logged here.
+  const sort = useMemo<TeamSort>(
+    () =>
+      sortInAddress.key === "planned"
+        ? { ...sortInAddress, key: "logged" }
+        : sortInAddress,
+    [sortInAddress],
+  );
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -392,12 +442,6 @@ export const TeamTimeView = ({
           }
           search={search}
           onSearchChange={setSearch}
-          onClear={clearFilters}
-          weekend={{
-            isShown: showsWeekend,
-            hasTime: hasWeekendTime,
-            onChange: setIsWeekendWanted,
-          }}
         />
       )}
 
@@ -461,7 +505,7 @@ export const TeamTimeView = ({
               {shownDates.map((date) => (
                 <col
                   key={toISODate(date)}
-                  className={cn(isWeekend(date) && "w-16")}
+                  className={cn(isWeekend(date) && "w-22")}
                 />
               ))}
 
@@ -473,21 +517,38 @@ export const TeamTimeView = ({
                 <th
                   scope="col"
                   aria-sort={sort.key === "name" ? ariaSort : undefined}
-                  className={cn(STICKY_PERSON_CELL, "p-1.5 text-left")}
+                  className={cn(STICKY_PERSON_CELL, "p-2 text-left align-top")}
                 >
-                  <SortButton sortKey="name" sort={sort} onSort={sortBy} />
+                  <SortableHeading
+                    label="Person"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={sortBy}
+                  />
                 </th>
 
                 {shownDates.map((date) => (
                   <th
                     key={toISODate(date)}
                     scope="col"
-                    className="border-r border-border/60 p-0"
+                    // Top-aligned, so Sunday's fold control under its date
+                    // leaves every day on one line.
+                    className="border-r border-border/60 p-0 align-top"
                   >
                     <WeekHeaderDay
                       date={date}
                       isToday={toISODate(date) === todayIso}
                       isLocked={isLocked(toISODate(date))}
+                      action={
+                        date === shownDates.at(-1) && (
+                          <WeekendToggle
+                            isShown={showsWeekend}
+                            // Weekend time is never hidden.
+                            canHide={!hasWeekendTime}
+                            onChange={setIsWeekendWanted}
+                          />
+                        )
+                      }
                     />
                   </th>
                 ))}
@@ -495,11 +556,15 @@ export const TeamTimeView = ({
                 <th
                   scope="col"
                   aria-sort={sort.key === "logged" ? ariaSort : undefined}
-                  className="p-1.5 pr-3"
+                  className="p-2 pr-3 align-top"
                 >
-                  <div className="flex justify-end">
-                    <SortButton sortKey="logged" sort={sort} onSort={sortBy} />
-                  </div>
+                  <SortableHeading
+                    label="Logged"
+                    sortKey="logged"
+                    sort={sort}
+                    onSort={sortBy}
+                    alignEnd
+                  />
                 </th>
               </tr>
             </thead>

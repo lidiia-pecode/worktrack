@@ -369,9 +369,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       variant="outline"
       size="sm"
       onClick={openNewAbsence}
-      className="max-sm:size-10 max-sm:px-0"
+      // Drawn like the week's date button beside it.
+      className="font-medium max-sm:size-10 max-sm:px-0"
     >
-      <CalendarOff className="size-4" aria-hidden />
+      <CalendarOff className="size-4 text-muted-foreground" aria-hidden />
       <span className="max-sm:sr-only">Add absence</span>
     </Button>
   );
@@ -482,12 +483,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
               expectedMinutes={expectedMinutes}
               daysOff={daysOff}
               weekendMinutes={weekendMinutes}
-              className="order-last w-full @5xl:order-none @5xl:ml-auto @5xl:w-auto"
+              className="order-last w-full @3xl:order-none @3xl:ml-auto @3xl:w-auto"
             />
           )}
 
           {!hasError && (
-            <div className="ml-auto flex items-center gap-2 @5xl:ml-0">
+            <div className="ml-auto flex items-center gap-2 @3xl:ml-0">
               {graceMonth?.editableUntil && (
                 <GraceMonthNote
                   month={graceMonth.month}

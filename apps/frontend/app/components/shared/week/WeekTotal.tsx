@@ -14,7 +14,7 @@ type WeekTotalProps = {
 };
 
 /**
- * A page's total for its period, in the toolbar: "Logged 30h / 128h" and its
+ * A page's total for its period, in the toolbar: "Logged 30h / 128h" over its
  * bar. Without anything to measure against, the hours stand alone.
  */
 export const WeekTotal = ({
@@ -24,8 +24,9 @@ export const WeekTotal = ({
   billableMinutes,
   fill = "logged",
 }: WeekTotalProps) => (
-  <span className="flex min-w-0 items-center gap-2 text-sm">
-    <span className="whitespace-nowrap tabular-nums">
+  // The figure over its bar, as a row's total reads in the grids.
+  <span className="inline-flex min-w-0 flex-col items-stretch gap-1 text-sm leading-4">
+    <span className="text-right whitespace-nowrap tabular-nums">
       {label}{" "}
       <span className="font-medium text-foreground">
         {formatDuration(minutes)}
@@ -44,7 +45,7 @@ export const WeekTotal = ({
         reference={ofMinutes}
         fill={fill}
         billable={billableMinutes}
-        className="h-1.5 w-20 shrink-0"
+        className="h-1.5 w-full"
       />
     )}
   </span>

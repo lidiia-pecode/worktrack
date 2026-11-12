@@ -15,8 +15,10 @@ export const HoursExportButton = ({ query }: { query: ReportQuery }) => {
       size="sm"
       isLoading={exportHours.isPending}
       onClick={() => exportHours.mutate(query)}
+      // Drawn like the period controls beside it.
+      className="font-medium"
     >
-      <FileSpreadsheet />
+      <FileSpreadsheet className="text-muted-foreground" />
       Export to Excel
     </Button>
   );

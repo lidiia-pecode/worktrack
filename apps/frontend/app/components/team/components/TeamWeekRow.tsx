@@ -77,7 +77,7 @@ export const TeamWeekRow = ({
     <tr
       ref={rowRef}
       className={cn(
-        "border-b border-border last:border-b-0",
+        "group/row border-b border-border last:border-b-0",
         isHighlighted && "bg-brand-subtle",
       )}
     >
@@ -97,7 +97,7 @@ export const TeamWeekRow = ({
             : undefined
         }
       >
-        <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
+        <div className="relative flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
           <PersonLabel user={row.user}>{personFacts(row)}</PersonLabel>
 
           {canWrite &&
@@ -111,7 +111,9 @@ export const TeamWeekRow = ({
                 onClick={onAddAbsence}
                 aria-label={`Add an absence for ${name}`}
                 title="Add an absence"
-                className="shrink-0 text-muted-foreground"
+                // Shown on the row's hover or focus, over the name's end, as
+                // Planning offers a period; always there on touch.
+                className="shrink-0 bg-card text-muted-foreground transition-opacity pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
               >
                 <CalendarOff aria-hidden />
               </Button>

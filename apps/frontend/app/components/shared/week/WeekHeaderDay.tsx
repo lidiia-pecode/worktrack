@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { Lock } from "lucide-react";
 
 import {
@@ -13,6 +14,8 @@ type WeekHeaderDayProps = {
   totalMinutes?: number;
   targetMinutes?: number;
   isLocked?: boolean;
+  /** At the heading's end, such as Team time's control for the weekend. */
+  action?: ReactNode;
 };
 
 export const WeekHeaderDay = ({
@@ -21,6 +24,7 @@ export const WeekHeaderDay = ({
   totalMinutes,
   targetMinutes,
   isLocked = false,
+  action,
 }: WeekHeaderDayProps) => {
   // A weekend expects nothing, so any time on it is over; a working day
   // expecting nothing, as at 0h, has no figure to go past.
@@ -32,23 +36,27 @@ export const WeekHeaderDay = ({
   return (
     <div
       className={`
-        p-2 flex flex-col md:flex-row gap-2 justify-between
+        p-2 flex flex-col md:flex-row md:flex-wrap gap-x-1 gap-y-2 md:gap-y-0.5 justify-between
         border-r border-border/60 last:border-r-0
       `}
     >
+      {/* The day and its date never part; a lock or an action wraps below
+          them in a narrow column. */}
       <div className="flex flex-wrap items-baseline gap-x-2">
-        <p className="text-2xs uppercase tracking-wider text-muted-foreground">
-          {formatWeekdayLabel(date)}
-        </p>
+        <span className="flex items-baseline gap-2 whitespace-nowrap">
+          <p className="text-2xs uppercase tracking-wider text-muted-foreground">
+            {formatWeekdayLabel(date)}
+          </p>
 
-        <p
-          className={`
-            text-xs font-semibold
-            ${today ? "text-brand" : "text-foreground"}
-          `}
-        >
-          {date.getDate()}
-        </p>
+          <p
+            className={`
+              text-xs font-semibold
+              ${today ? "text-brand" : "text-foreground"}
+            `}
+          >
+            {date.getDate()}
+          </p>
+        </span>
 
         {isLocked && (
           <Lock
@@ -57,6 +65,8 @@ export const WeekHeaderDay = ({
           />
         )}
       </div>
+
+      {action}
 
       {totalMinutes !== undefined && (
         <p

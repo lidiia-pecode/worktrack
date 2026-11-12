@@ -13,7 +13,10 @@ type StepArrowsProps = {
   nextDisabled?: boolean;
 };
 
-/** The pair of arrows that steps a week, a month or a period, as one group. */
+/**
+ * The pair of arrows that steps a week, a month or a period, as one group, as
+ * tall as the controls beside it: the group's border is inside its height.
+ */
 export const StepArrows = ({
   unit,
   onPrevious,
@@ -21,11 +24,11 @@ export const StepArrows = ({
   previousDisabled = false,
   nextDisabled = false,
 }: StepArrowsProps) => (
-  <div className="flex items-center overflow-hidden rounded-md border border-control-border max-sm:rounded-lg">
+  <div className="flex h-8 items-stretch overflow-hidden rounded-md border border-control-border max-sm:h-10 max-sm:rounded-lg">
     <Button
       variant="ghost"
       size="iconSm"
-      className="w-9 rounded-none focus-visible:ring-inset max-sm:size-10"
+      className="h-auto w-9 rounded-none focus-visible:ring-inset max-sm:h-auto max-sm:w-10"
       aria-label={`Previous ${unit}`}
       disabled={previousDisabled}
       onClick={onPrevious}
@@ -35,7 +38,7 @@ export const StepArrows = ({
     <Button
       variant="ghost"
       size="iconSm"
-      className="w-9 rounded-none border-0 border-l border-control-border focus-visible:ring-inset max-sm:size-10"
+      className="h-auto w-9 rounded-none border-0 border-l border-control-border focus-visible:ring-inset max-sm:h-auto max-sm:w-10"
       aria-label={`Next ${unit}`}
       disabled={nextDisabled}
       onClick={onNext}

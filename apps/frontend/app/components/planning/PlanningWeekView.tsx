@@ -20,7 +20,13 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
-import { searchTeamRows } from "@/lib/utils/team-rows";
+import {
+  nextTeamSort,
+  searchTeamRows,
+  sortPlanningRows,
+  TeamSort,
+  TeamSortKey,
+} from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
@@ -36,6 +42,7 @@ import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
+import { SortableHeading } from "../team/components/SortableHeading";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
 import {
   absenceInAnotherTeam,
@@ -78,10 +85,22 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     teamId,
     projectId: projectInAddress,
     search,
+    sort: sortInAddress,
     setFilters,
     setSearch,
+    setSort,
     clearFilters,
   } = useTeamTimeFilters();
+  // A link's sort by the week's total reads as Planned here.
+  const sort = useMemo<TeamSort>(
+    () =>
+      sortInAddress.key === "logged"
+        ? { ...sortInAddress, key: "planned" }
+        : sortInAddress,
+    [sortInAddress],
+  );
+  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
+  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
@@ -181,8 +200,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           })
       : rows;
 
-    return searchTeamRows(onProject, search);
-  }, [rows, projectId, search]);
+    return sortPlanningRows(searchTeamRows(onProject, search), sort, {
+      byProject: Boolean(projectId),
+    });
+  }, [rows, projectId, search, sort]);
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
   const isSearching = Boolean(search.trim());
@@ -291,7 +312,6 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           activeProjectsOnly
           search={search}
           onSearchChange={setSearch}
-          onClear={clearFilters}
         />
       )}
 
@@ -355,12 +375,15 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className={cn(
-                    STICKY_PERSON_CELL,
-                    "p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground",
-                  )}
+                  aria-sort={sort.key === "name" ? ariaSort : undefined}
+                  className={cn(STICKY_PERSON_CELL, "p-2 text-left")}
                 >
-                  Person
+                  <SortableHeading
+                    label="Person"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={sortBy}
+                  />
                 </th>
 
                 {workingDates.map((date) => (
@@ -379,9 +402,16 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
                 <th
                   scope="col"
-                  className="p-2 pr-4 text-right text-2xs whitespace-nowrap uppercase tracking-wider text-muted-foreground"
+                  aria-sort={sort.key === "planned" ? ariaSort : undefined}
+                  className="p-2 pr-3"
                 >
-                  Planned
+                  <SortableHeading
+                    label="Planned"
+                    sortKey="planned"
+                    sort={sort}
+                    onSort={sortBy}
+                    alignEnd
+                  />
                 </th>
               </tr>
             </thead>

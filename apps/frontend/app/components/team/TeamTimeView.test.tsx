@@ -300,9 +300,10 @@ describe("TeamTimeView", () => {
 
     // Person, seven days and the week's total.
     expect(screen.getAllByRole("columnheader")).toHaveLength(9);
-    const toggle = screen.getByRole("switch", { name: "Weekend" });
-    expect(toggle).toBeChecked();
-    expect(toggle).toBeDisabled();
+    // Nothing offers to fold it.
+    expect(
+      screen.queryByRole("button", { name: "Hide Saturday and Sunday" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the weekend on request, and asks before logging time on it", async () => {
@@ -315,7 +316,9 @@ describe("TeamTimeView", () => {
         name: /^Log time for Alice Cooper on Saturday/,
       }),
     ).not.toBeInTheDocument();
-    await user.click(screen.getByRole("switch", { name: "Weekend" }));
+    await user.click(
+      screen.getByRole("button", { name: "Show Saturday and Sunday" }),
+    );
 
     await user.click(
       within(aliceRow()).getByRole("button", {
