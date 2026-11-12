@@ -331,12 +331,12 @@ describe("PlanPeriodModal", () => {
     server.previewError = {
       statusCode: 403,
       message:
-        "Cannot plan in October 2026 because it is a LOCKED reporting period.",
+        "Cannot plan in October 2026 because it is a locked reporting period.",
     };
     renderModal();
 
     expect(screen.getByRole("alert")).toHaveTextContent(
-      "LOCKED reporting period",
+      "locked reporting period",
     );
     expect(screen.getByRole("button", { name: "Save plan" })).toBeDisabled();
   });

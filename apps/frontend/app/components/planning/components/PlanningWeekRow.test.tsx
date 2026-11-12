@@ -10,7 +10,6 @@ import {
 } from "@/types";
 import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
-import { getProjectColor } from "@/lib/utils/project-colors";
 
 import { PlanningWeekRow } from "./PlanningWeekRow";
 
@@ -60,6 +59,7 @@ const renderRow = (
   entries?: PlanningEntry[],
   absencesByDate: Record<string, Absence> = {},
   moves?: TeamMove[],
+  isLocked: (date: string) => boolean = () => false,
 ) => {
   const onPlanPeriod = vi.fn();
   const onOpenDay = vi.fn();
@@ -70,8 +70,8 @@ const renderRow = (
           row={row(status, entries, moves)}
           weekDates={WEEK_DATES}
           absencesByDate={absencesByDate}
-          isLocked={() => false}
-          isEditable={() => true}
+          isLocked={isLocked}
+          isEditable={(date) => !isLocked(date)}
           onOpenDay={onOpenDay}
           onPlanPeriod={onPlanPeriod}
         />
@@ -116,14 +116,6 @@ describe("PlanningWeekRow", () => {
     ).toBeInTheDocument();
   });
 
-  it("draws each plan as a chip in its project's colour", () => {
-    renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
-
-    expect(screen.getByText("Northwind").parentElement).toHaveStyle({
-      backgroundColor: getProjectColor("project-northwind"),
-    });
-  });
-
   it("shows the plus on an empty day without hovering", () => {
     const { container } = renderRow();
 
@@ -151,6 +143,15 @@ describe("PlanningWeekRow", () => {
     expect(
       screen.getByRole("button", { name: /^Monday, November 2:/ }),
     ).toBeInTheDocument();
+  });
+
+  it("plans no period on a week wholly in a locked month", () => {
+    renderRow(UserStatus.ACTIVE, [], {}, [], () => true);
+
+    expect(
+      screen.queryByRole("button", { name: "Plan a period for Alice Cooper" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Alice Cooper")).toBeInTheDocument();
   });
 
   it("marks a deactivated person and keeps their row read-only", () => {

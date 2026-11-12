@@ -12,14 +12,16 @@ type PersonLabelProps = {
   children?: ReactNode;
 };
 
+/** A person in a week grid's first column: avatar, name, position and facts. */
 export const PersonLabel = ({ user, children }: PersonLabelProps) => (
   <>
     <Avatar
       user={user}
+      size="md"
       className={cn(isDeactivatedUser(user) && "opacity-60")}
     />
 
-    <span className="min-w-0">
+    <span className="min-w-0 flex-1">
       <span className="block truncate text-sm font-medium text-foreground transition-colors group-hover:text-brand group-focus-visible:text-brand">
         {fullName(user)}
       </span>

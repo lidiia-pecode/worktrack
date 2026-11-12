@@ -220,7 +220,7 @@ describe("TeamTimeView", () => {
     );
     expect(
       within(aliceRow()).getByRole("button", {
-        name: "5h CRM System, edit this entry",
+        name: "CRM System 5h, edit this entry",
       }),
     ).toBeInTheDocument();
   });
@@ -279,7 +279,7 @@ describe("TeamTimeView", () => {
     showTeamTime();
 
     await user.click(
-      screen.getByRole("button", { name: "5h CRM System, edit this entry" }),
+      screen.getByRole("button", { name: "CRM System 5h, edit this entry" }),
     );
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(
@@ -287,10 +287,35 @@ describe("TeamTimeView", () => {
     );
   });
 
-  it("asks before logging time on a weekend", async () => {
+  it("never hides time logged on a weekend", () => {
+    const saturday = {
+      date: "2026-11-07",
+      minutes: 120,
+      billableMinutes: 120,
+      nonBillableMinutes: 0,
+      entries: [{ ...ENTRY, id: "log-2", date: "2026-11-07", minutes: 120 }],
+    };
+    summary({ rows: [{ ...ALICE, days: [...ALICE.days, saturday] }, BEN] });
+    showTeamTime();
+
+    // Person, seven days and the week's total.
+    expect(screen.getAllByRole("columnheader")).toHaveLength(9);
+    const toggle = screen.getByRole("switch", { name: "Weekend" });
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeDisabled();
+  });
+
+  it("shows the weekend on request, and asks before logging time on it", async () => {
     getAssignable.mockResolvedValue({ count: 0, results: [] });
     const user = userEvent.setup();
     showTeamTime();
+
+    expect(
+      within(aliceRow()).queryByRole("button", {
+        name: /^Log time for Alice Cooper on Saturday/,
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole("switch", { name: "Weekend" }));
 
     await user.click(
       within(aliceRow()).getByRole("button", {
@@ -426,7 +451,8 @@ describe("TeamTimeView", () => {
     const user = userEvent.setup();
     showTeamTime();
 
-    const header = screen.getByRole("columnheader", { name: /^Person/ });
+    const [header] = screen.getAllByRole("columnheader");
+    const loggedHeader = screen.getAllByRole("columnheader").at(-1)!;
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(shownNames()).toEqual(["Alice", "Ben"]);
 
@@ -441,6 +467,8 @@ describe("TeamTimeView", () => {
     });
     await user.click(logged);
     expect(logged).toHaveAttribute("aria-pressed", "true");
+    expect(loggedHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(header).not.toHaveAttribute("aria-sort");
     expect(shownNames()).toEqual(["Ben", "Alice"]);
 
     await user.click(

@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import {
   getWeekDates,
   getWeekEnd,
+  fromISODate,
   isWeekend,
   toISODate,
   todayISODate,
@@ -64,7 +65,7 @@ import {
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
-import { PersonSortHeader } from "./components/PersonSortHeader";
+import { SortButton } from "./components/SortButton";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
@@ -229,6 +230,17 @@ export const TeamTimeView = ({
     [rows, search, sort, projectId],
   );
 
+  // Weekends wait behind the toggle, unless someone shown has time on one,
+  // which is never hidden.
+  const [isWeekendWanted, setIsWeekendWanted] = useState(false);
+  const hasWeekendTime = shownRows.some((row) =>
+    row.days.some((day) => day.minutes > 0 && isWeekend(fromISODate(day.date))),
+  );
+  const showsWeekend = isWeekendWanted || hasWeekendTime;
+  const shownDates = showsWeekend
+    ? weekDates
+    : weekDates.filter((date) => !isWeekend(date));
+
   const isSearching = Boolean(search.trim());
   const matchesNobody =
     (hasActiveFilters || isSearching) && shownRows.length === 0;
@@ -328,6 +340,7 @@ export const TeamTimeView = ({
       : undefined;
 
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
+  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
 
   const retry = () => {
     void refetchPlans();
@@ -380,6 +393,11 @@ export const TeamTimeView = ({
           search={search}
           onSearchChange={setSearch}
           onClear={clearFilters}
+          weekend={{
+            isShown: showsWeekend,
+            hasTime: hasWeekendTime,
+            onChange: setIsWeekendWanted,
+          }}
         />
       )}
 
@@ -434,29 +452,33 @@ export const TeamTimeView = ({
             .join(" ")}
           aria-busy={isShowingPreviousWeek}
         >
-          <table className="w-full min-w-5xl table-fixed border-collapse">
+          {/* Narrow weekends and the week's total on the right fit the
+              table in a 1280px screen's content area. */}
+          <table className="w-full min-w-240 table-fixed border-collapse">
             <colgroup>
               <col className="w-52" />
 
-              {weekDates.map((date) => (
-                <col key={toISODate(date)} />
+              {shownDates.map((date) => (
+                <col
+                  key={toISODate(date)}
+                  className={cn(isWeekend(date) && "w-16")}
+                />
               ))}
+
+              <col className="w-32" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  aria-sort={
-                    sort.direction === "asc" ? "ascending" : "descending"
-                  }
-                  aria-label={`Person, sorted by ${sort.key === "name" ? "name" : "logged time"}`}
+                  aria-sort={sort.key === "name" ? ariaSort : undefined}
                   className={cn(STICKY_PERSON_CELL, "p-1.5 text-left")}
                 >
-                  <PersonSortHeader sort={sort} onSort={sortBy} />
+                  <SortButton sortKey="name" sort={sort} onSort={sortBy} />
                 </th>
 
-                {weekDates.map((date) => (
+                {shownDates.map((date) => (
                   <th
                     key={toISODate(date)}
                     scope="col"
@@ -469,6 +491,16 @@ export const TeamTimeView = ({
                     />
                   </th>
                 ))}
+
+                <th
+                  scope="col"
+                  aria-sort={sort.key === "logged" ? ariaSort : undefined}
+                  className="p-1.5 pr-3"
+                >
+                  <div className="flex justify-end">
+                    <SortButton sortKey="logged" sort={sort} onSort={sortBy} />
+                  </div>
+                </th>
               </tr>
             </thead>
 
@@ -477,7 +509,7 @@ export const TeamTimeView = ({
                 <TeamWeekRow
                   key={row.user.id}
                   row={row}
-                  weekDates={weekDates}
+                  weekDates={shownDates}
                   todayIso={todayIso}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   plansByDate={plansByUser[row.user.id] ?? {}}

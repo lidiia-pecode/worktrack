@@ -342,7 +342,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         >
           <table className="w-full min-w-4xl table-fixed border-collapse">
             <colgroup>
-              <col className="w-56" />
+              <col className="w-52" />
 
               {workingDates.map((date) => (
                 <col key={toISODate(date)} className="w-28" />

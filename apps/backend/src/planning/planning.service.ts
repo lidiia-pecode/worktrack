@@ -1104,7 +1104,7 @@ export class PlanningService {
           { month: 'long', year: 'numeric', timeZone: 'UTC' },
         );
         throw new ForbiddenException(
-          `Cannot plan in ${name} because it is a LOCKED reporting period.`,
+          `Cannot plan in ${name} because it is a locked reporting period.`,
         );
       }
     }
@@ -1174,7 +1174,7 @@ export class PlanningService {
   ): Promise<void> {
     if (await this.reportingService.isDateLocked(companyId, date, manager)) {
       throw new ForbiddenException(
-        `Cannot change planning for ${date} because it belongs to a LOCKED reporting period.`,
+        `Cannot change planning for ${date} because it belongs to a locked reporting period.`,
       );
     }
   }

@@ -61,55 +61,55 @@ const renderRow = (
 
   return {
     personCell: screen.getByRole("rowheader"),
+    // The week's total, in the row's last column.
+    totalCell: screen.getAllByRole("cell").at(-1)!,
     // The week's bar sits on the track of what was expected.
     bar: container.querySelector(".bg-report-expected, .bg-report-track"),
   };
 };
 
 describe("TeamWeekRow", () => {
-  it("shows the person, their week against expected and the bar", () => {
-    const { personCell, bar } = renderRow(row());
+  it("shows the person, and their week against expected with the bar", () => {
+    const { personCell, totalCell, bar } = renderRow(row());
 
     expect(within(personCell).getByText("Alice Cooper")).toBeInTheDocument();
     expect(within(personCell).getByText("Designer")).toBeInTheDocument();
-    expect(within(personCell).getByText("32h")).toHaveClass("text-foreground");
-    expect(within(personCell).getByText("of 40h")).toBeInTheDocument();
+    expect(within(totalCell).getByText("32h")).toHaveClass("text-foreground");
+    expect(within(totalCell).getByText("of 40h")).toBeInTheDocument();
     expect(bar).toBeInTheDocument();
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
   it("marks nobody deactivated for a week with nothing expected", () => {
-    const { personCell, bar } = renderRow(
+    const { totalCell, bar } = renderRow(
       row({ expectedMinutes: 0, expectedToDateMinutes: 0 }),
     );
 
-    expect(within(personCell).getByText("32h")).toBeInTheDocument();
+    expect(within(totalCell).getByText("32h")).toBeInTheDocument();
     expect(bar).not.toBeInTheDocument();
     expect(screen.queryByText("Deactivated")).not.toBeInTheDocument();
   });
 
   it("turns the figure amber past what was expected", () => {
-    const { personCell } = renderRow(
+    const { totalCell } = renderRow(
       row({ minutes: 2700, billableMinutes: 2700 }),
     );
 
-    expect(within(personCell).getByText("45h")).toHaveClass(
-      "text-warning-text",
-    );
+    expect(within(totalCell).getByText("45h")).toHaveClass("text-warning-text");
   });
 
   it("names the project under a project filter, with no bar", () => {
-    const { personCell, bar } = renderRow(row(), { projectName: "CRM System" });
+    const { totalCell, bar } = renderRow(row(), { projectName: "CRM System" });
 
-    expect(within(personCell).getByText("on CRM System")).toBeInTheDocument();
-    expect(within(personCell).queryByText("of 40h")).not.toBeInTheDocument();
+    expect(within(totalCell).getByText("on CRM System")).toBeInTheDocument();
+    expect(within(totalCell).queryByText("of 40h")).not.toBeInTheDocument();
     expect(bar).not.toBeInTheDocument();
   });
 
-  it("gives every day of the week a cell", () => {
+  it("gives every day of the week a cell, and the week's total one", () => {
     renderRow(row());
 
-    expect(screen.getAllByRole("cell")).toHaveLength(7);
+    expect(screen.getAllByRole("cell")).toHaveLength(8);
   });
 
   it("records an absence from the Person cell", () => {

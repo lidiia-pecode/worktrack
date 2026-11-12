@@ -10,14 +10,13 @@ import {
   closedSpellOn,
   fullName,
   isClosedOn,
-  isDeactivatedUser,
   leaverLabel,
   moveLabel,
 } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 import { factsLine } from "@/lib/utils/text";
 
-import { Avatar } from "../../shared/Avatar";
+import { PersonLabel } from "../../shared/PersonLabel";
 import { WeekBar } from "../../timesheet/components/WeekSummary";
 import { Button } from "@/components/ui/button";
 import { TeamDayCell } from "./TeamDayCell";
@@ -99,13 +98,7 @@ export const TeamWeekRow = ({
         }
       >
         <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
-          <Avatar
-            user={row.user}
-            size="md"
-            className={cn(isDeactivatedUser(row.user) && "opacity-60")}
-          />
-
-          <PersonSummary row={row} projectName={projectName} />
+          <PersonLabel user={row.user}>{personFacts(row)}</PersonLabel>
 
           {canWrite &&
             weekDates.some(
@@ -117,6 +110,7 @@ export const TeamWeekRow = ({
                 size="iconSm"
                 onClick={onAddAbsence}
                 aria-label={`Add an absence for ${name}`}
+                title="Add an absence"
                 className="shrink-0 text-muted-foreground"
               >
                 <CalendarOff aria-hidden />
@@ -169,22 +163,30 @@ export const TeamWeekRow = ({
           />
         );
       })}
+
+      <WeekTotalCell row={row} projectName={projectName} />
     </tr>
   );
 };
 
-type PersonSummaryProps = {
-  row: TeamSummaryRow;
-  projectName?: string;
-};
-
-/** Who the row is, and their week against what was expected of them. */
-const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
-  const facts = factsLine([
+/** Moves and a last day this week, under the person's position. */
+const personFacts = (row: TeamSummaryRow) =>
+  factsLine([
     ...row.moves.map(moveLabel),
     leaverLabel(row.user),
     row.isOnProject === false && "Former member",
   ]);
+
+type WeekTotalCellProps = {
+  row: TeamSummaryRow;
+  projectName?: string;
+};
+
+/**
+ * The person's week against what was expected of them, in the right column as
+ * Planning shows a week's plans; under a project filter only its hours.
+ */
+const WeekTotalCell = ({ row, projectName }: WeekTotalCellProps) => {
   // A leaver is expected time up to the day they left, as on Reports.
   const expectsTime = row.expectedMinutes > 0;
   const isOver =
@@ -199,45 +201,39 @@ const PersonSummary = ({ row, projectName }: PersonSummaryProps) => {
   })();
 
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-px">
-      <span className="truncate text-sm font-medium text-foreground">
-        {fullName(row.user)}
-      </span>
+    <td className="p-3 align-top">
+      <div className="flex flex-col items-end gap-1.5">
+        <span className="text-right text-xs tabular-nums">
+          <span
+            className={cn(
+              "font-semibold whitespace-nowrap",
+              isOver ? "text-warning-text" : "text-foreground",
+            )}
+          >
+            {formatDuration(row.minutes)}
+          </span>
 
-      {row.user.position && (
-        <span className="truncate text-xs text-muted-foreground">
-          {row.user.position}
-        </span>
-      )}
-
-      <span className="mt-1 flex items-center gap-1 text-xs tabular-nums">
-        <span
-          className={cn(
-            "font-semibold",
-            isOver ? "text-warning-text" : "text-foreground",
+          {/* A long week breaks between the figures, never inside one. */}
+          {expectation && (
+            <>
+              {" "}
+              <span className="whitespace-nowrap text-muted-foreground">
+                {expectation}
+              </span>
+            </>
           )}
-        >
-          {formatDuration(row.minutes)}
         </span>
 
-        {expectation && (
-          <span className="truncate text-muted-foreground">{expectation}</span>
+        {showsBar && (
+          <span className="flex w-full max-w-28">
+            <WeekBar
+              billableMinutes={row.billableMinutes}
+              nonBillableMinutes={row.nonBillableMinutes}
+              expectedMinutes={row.expectedMinutes}
+            />
+          </span>
         )}
-      </span>
-
-      {showsBar && (
-        <span className="mt-0.5 flex w-28">
-          <WeekBar
-            billableMinutes={row.billableMinutes}
-            nonBillableMinutes={row.nonBillableMinutes}
-            expectedMinutes={row.expectedMinutes}
-          />
-        </span>
-      )}
-
-      {facts && (
-        <span className="mt-1 text-xs text-muted-foreground">{facts}</span>
-      )}
-    </div>
+      </div>
+    </td>
   );
 };

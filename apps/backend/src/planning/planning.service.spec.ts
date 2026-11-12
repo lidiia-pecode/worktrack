@@ -450,7 +450,7 @@ describe('PlanningService', () => {
     it('refuses creating inside a locked period', async () => {
       await expect(
         service.create(plan(member.id, LOCKED_MONDAY, HOUR), manager),
-      ).rejects.toThrow(/LOCKED/);
+      ).rejects.toThrow(/locked reporting period/);
     });
 
     it('refuses moving an entry into a locked period', async () => {
@@ -458,7 +458,7 @@ describe('PlanningService', () => {
 
       await expect(
         service.update(id, { date: LOCKED_MONDAY }, manager),
-      ).rejects.toThrow(/LOCKED/);
+      ).rejects.toThrow(/locked reporting period/);
     });
 
     it('refuses changing or deleting an entry inside a locked period', async () => {
@@ -466,8 +466,10 @@ describe('PlanningService', () => {
 
       await expect(
         service.update(id, { note: 'Late note' }, manager),
-      ).rejects.toThrow(/LOCKED/);
-      await expect(service.delete(id, manager)).rejects.toThrow(/LOCKED/);
+      ).rejects.toThrow(/locked reporting period/);
+      await expect(service.delete(id, manager)).rejects.toThrow(
+        /locked reporting period/,
+      );
     });
 
     it('lets a past plan in an open period be corrected', async () => {
@@ -985,10 +987,10 @@ describe('PlanningService', () => {
       ]);
 
       await expect(service.planPeriod(lockedWeek, manager)).rejects.toThrow(
-        /LOCKED reporting period/,
+        /locked reporting period/,
       );
       await expect(service.previewPeriod(lockedWeek, manager)).rejects.toThrow(
-        /LOCKED reporting period/,
+        /locked reporting period/,
       );
       expect(await entriesFor(member.id)).toHaveLength(0);
     });
@@ -1070,7 +1072,7 @@ describe('PlanningService', () => {
           range(LOCKED_MONDAY, addDays(LOCKED_MONDAY, 4)),
           manager,
         ),
-      ).rejects.toThrow(/LOCKED reporting period/);
+      ).rejects.toThrow(/locked reporting period/);
       expect(await entriesFor(member.id)).toHaveLength(1);
     });
 
@@ -1470,7 +1472,7 @@ describe('PlanningService', () => {
 
       await expect(
         service.create(plan(member.id, DATE_IN_MONTH, HOUR), manager),
-      ).rejects.toThrow(/LOCKED/);
+      ).rejects.toThrow(/locked reporting period/);
     });
   });
   describe('a move between teams', () => {

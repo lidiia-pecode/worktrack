@@ -65,10 +65,9 @@ const renderCell = (props: Partial<ComponentProps<typeof TeamDayCell>> = {}) =>
   );
 
 describe("TeamDayCell", () => {
-  it("shows the day's total and a block per entry", () => {
+  it("shows a block per entry", () => {
     renderCell({ entries: [CRM, PORTAL], minutes: 480 });
 
-    expect(screen.getByText("8h")).toHaveClass("text-muted-foreground");
     expect(screen.getByText("CRM System")).toBeInTheDocument();
     expect(screen.getByText("Customer Portal")).toBeInTheDocument();
   });
@@ -82,7 +81,7 @@ describe("TeamDayCell", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "5h CRM System, edit this entry" }),
+      screen.getByRole("button", { name: "CRM System 5h, edit this entry" }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^Log time for Alice Cooper on / }),
@@ -94,7 +93,7 @@ describe("TeamDayCell", () => {
     renderCell({ entries: [CRM], minutes: 300 });
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
-    expect(screen.getByLabelText("5h CRM System")).toHaveAttribute(
+    expect(screen.getByLabelText("CRM System 5h")).toHaveAttribute(
       "tabindex",
       "0",
     );
@@ -128,7 +127,6 @@ describe("TeamDayCell", () => {
     renderCell({ entries: [CRM, PORTAL], minutes: 480, expectedMinutes: 360 });
 
     expect(screen.getByRole("cell")).toHaveClass("bg-excess");
-    expect(screen.getByText("8h")).toHaveClass("text-warning-text");
   });
 
   it("stripes a weekend, in amber once it has time", () => {
@@ -174,10 +172,14 @@ describe("TeamDayCell", () => {
 
   it("shows the plan on an empty day only", () => {
     renderCell({ plans: [PLAN] });
-    expect(screen.getByText("8h planned · Data Warehouse")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("Data Warehouse, planned 8h"),
+    ).toBeInTheDocument();
 
     renderCell({ plans: [PLAN], entries: [CRM], minutes: 300 });
-    expect(screen.getAllByText("8h planned · Data Warehouse")).toHaveLength(1);
+    expect(screen.getAllByLabelText("Data Warehouse, planned 8h")).toHaveLength(
+      1,
+    );
   });
 
   it("edits the entry a block names, and creates from the +", () => {
@@ -187,7 +189,7 @@ describe("TeamDayCell", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "3h Customer Portal, edit this entry",
+        name: "Customer Portal 3h, edit this entry",
       }),
     );
     expect(onEditEntry).toHaveBeenCalledWith(PORTAL);
@@ -224,10 +226,10 @@ describe("TeamDayCell", () => {
   it("shows an entry's details while its block is hovered", () => {
     renderCell({ entries: [CRM], minutes: 300 });
 
-    fireEvent.mouseEnter(screen.getByLabelText("5h CRM System"));
+    fireEvent.mouseEnter(screen.getByLabelText("CRM System 5h"));
     expect(screen.getByRole("tooltip")).toHaveTextContent("Design");
 
-    fireEvent.mouseLeave(screen.getByLabelText("5h CRM System"));
+    fireEvent.mouseLeave(screen.getByLabelText("CRM System 5h"));
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

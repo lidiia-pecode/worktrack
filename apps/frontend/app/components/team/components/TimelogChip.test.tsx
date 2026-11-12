@@ -20,7 +20,7 @@ const TIMELOG = {
 } as TimeLog;
 
 describe("TimelogChip", () => {
-  it("shows the duration and the project, and opens the entry", () => {
+  it("shows the project and the duration, and opens the entry", () => {
     const onClick = vi.fn();
     render(
       <TimelogChip
@@ -32,9 +32,9 @@ describe("TimelogChip", () => {
     );
 
     const block = screen.getByRole("button", {
-      name: "1h 30m CRM System, edit this entry",
+      name: "CRM System 1h 30m, edit this entry",
     });
-    expect(block).toHaveTextContent("1h 30mCRM System");
+    expect(block).toHaveTextContent("CRM System1h 30m");
 
     fireEvent.click(block);
     expect(onClick).toHaveBeenCalledWith(TIMELOG);
@@ -48,7 +48,7 @@ describe("TimelogChip", () => {
 
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
 
-    const block = screen.getByLabelText("1h 30m CRM System");
+    const block = screen.getByLabelText("CRM System 1h 30m");
     fireEvent.focus(block);
     expect(onHover).toHaveBeenCalledWith(TIMELOG, block);
   });
