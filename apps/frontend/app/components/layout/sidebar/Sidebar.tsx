@@ -7,6 +7,7 @@ import { Menu } from "lucide-react";
 import { User } from "@/types";
 import { UserRole } from "@/types/enums";
 import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   Dialog,
   DialogClose,
@@ -73,6 +74,12 @@ export const Sidebar = ({ user }: SidebarProps) => {
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
   const isMenuOpen = menuOpenedOn === pathname;
   const closeMenu = () => setMenuOpenedOn(null);
+  // The phone header shows what the desktop avatar's dot does: notifications
+  // waiting in the menu.
+  const { data: notifications } = useNotifications({
+    enabled: user.role !== UserRole.EMPLOYEE,
+  });
+  const unreadCount = notifications?.unreadCount ?? 0;
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -112,10 +119,21 @@ export const Sidebar = ({ user }: SidebarProps) => {
             </div>
 
             <DialogTrigger
-              aria-label="Open menu"
-              className="rounded-lg p-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+              aria-label={
+                unreadCount > 0
+                  ? `Open menu, ${unreadCount} unread notifications`
+                  : "Open menu"
+              }
+              className="relative rounded-lg p-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
             >
               <Menu className="size-5" aria-hidden="true" />
+
+              {unreadCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute top-1.5 right-1.5 size-2.5 rounded-full bg-brand ring-2 ring-sidebar"
+                />
+              )}
             </DialogTrigger>
           </div>
         </header>

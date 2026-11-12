@@ -104,8 +104,10 @@ export const PeriodPicker = ({
   };
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="flex flex-1 items-center gap-1">
+    // On a phone the step switch wraps under the dates, so the date field
+    // keeps its width.
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex min-w-64 flex-1 items-center gap-1">
         <Button
           type="button"
           variant="outline"

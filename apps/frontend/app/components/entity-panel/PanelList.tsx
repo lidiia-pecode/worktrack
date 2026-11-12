@@ -67,7 +67,7 @@ const RemoveButton = ({
     aria-label={label}
     title={label}
     onClick={onClick}
-    className="text-muted-foreground hover:bg-warning-subtle hover:text-warning-text"
+    className="text-muted-foreground hover:bg-warning-subtle hover:text-warning-text max-sm:size-10"
   >
     <X className="size-4" />
   </Button>
@@ -102,7 +102,7 @@ export const ActionsMenu = ({
             ref={triggerRef}
             aria-label={label}
             title={label}
-            className="text-muted-foreground hover:text-foreground data-popup-open:text-foreground"
+            className="text-muted-foreground hover:text-foreground data-popup-open:text-foreground max-sm:size-10"
           >
             <MoreHorizontal className="size-4" />
           </Button>

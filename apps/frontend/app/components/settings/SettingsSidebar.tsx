@@ -46,7 +46,7 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
     : items.filter((item) => item.id !== "company");
 
   return (
-    <aside className="w-full shrink-0 md:w-60">
+    <aside className="w-full shrink-0 lg:w-60">
       <nav className="space-y-1">
         {visibleItems.map((item) => {
           const Icon = item.icon;

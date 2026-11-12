@@ -52,7 +52,7 @@ export const SettingsView = ({ isOwner }: { isOwner: boolean }) => {
 
   return (
     <>
-      <div className="flex max-w-6xl flex-col gap-10 md:flex-row md:items-start">
+      <div className="flex max-w-6xl flex-col gap-10 lg:flex-row lg:items-start">
         <SettingsSidebar
           activeTab={activeTab}
           isOwner={isOwner}

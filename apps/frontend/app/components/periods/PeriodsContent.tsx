@@ -22,6 +22,7 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import {
+  PeriodListItem,
   PeriodRow,
   ROW_EDGE_END,
   ROW_EDGE_START,
@@ -113,32 +114,53 @@ export const PeriodsContent = () => {
   return (
     <>
       <Card>
-        <Table aria-label="Reporting periods" className="min-w-2xl table-fixed">
-          <TableHeader>
-            <TableHead className={cn(HEAD_CELL, ROW_EDGE_START)}>
-              Month
-            </TableHead>
-            <TableHead className={cn(HEAD_CELL, "w-40")}>Status</TableHead>
-            <TableHead className={cn(HEAD_CELL, "w-64")}>
-              Last changed
-            </TableHead>
-            <TableHead className={cn(HEAD_CELL, "w-28", ROW_EDGE_END)}>
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableHeader>
+        {/* A table from lg up, a list below, as on the other Manage pages. */}
+        <div className="hidden lg:block">
+          <Table
+            aria-label="Reporting periods"
+            className="min-w-2xl table-fixed"
+          >
+            <TableHeader>
+              <TableHead className={cn(HEAD_CELL, ROW_EDGE_START)}>
+                Month
+              </TableHead>
+              <TableHead className={cn(HEAD_CELL, "w-40")}>Status</TableHead>
+              <TableHead className={cn(HEAD_CELL, "w-64")}>
+                Last changed
+              </TableHead>
+              <TableHead className={cn(HEAD_CELL, "w-28", ROW_EDGE_END)}>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableHeader>
 
-          <TableBody>
-            {months.map((period) => (
-              <PeriodRow
-                key={period.month}
-                period={period}
-                timezone={company?.timezone}
-                onReopen={(month) => ask("reopen", month)}
-                onClose={(month) => ask("close", month)}
-              />
-            ))}
-          </TableBody>
-        </Table>
+            <TableBody>
+              {months.map((period) => (
+                <PeriodRow
+                  key={period.month}
+                  period={period}
+                  timezone={company?.timezone}
+                  onReopen={(month) => ask("reopen", month)}
+                  onClose={(month) => ask("close", month)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        <ul
+          aria-label="Reporting periods"
+          className="divide-y divide-border lg:hidden"
+        >
+          {months.map((period) => (
+            <PeriodListItem
+              key={period.month}
+              period={period}
+              timezone={company?.timezone}
+              onReopen={(month) => ask("reopen", month)}
+              onClose={(month) => ask("close", month)}
+            />
+          ))}
+        </ul>
       </Card>
 
       {hasOlder && (

@@ -88,11 +88,13 @@ type FigureCardProps = {
 };
 
 const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
-  <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5">
+  // One a row on a phone; three across from a tablet, the ring above the
+  // figure until there is room beside it.
+  <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:flex-col @sm:items-start @sm:gap-2 @sm:px-3 @sm:py-3 @3xl:flex-row @3xl:items-center @3xl:gap-4 @3xl:px-4 @3xl:py-3.5">
     {percent !== null && <ShareRing percent={percent} tone={tone} />}
     <div className="min-w-0">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums">
+      <p className="text-2xl font-semibold tracking-tight tabular-nums @sm:text-xl @3xl:text-2xl">
         {value}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -235,7 +237,7 @@ export const PeriodOverview = ({
   return (
     <Card as="section" aria-labelledby="report-period">
       <PeriodBand titleId="report-period" label={periodLabel}>
-        <ul className="grid gap-4 @3xl:grid-cols-3">
+        <ul className="grid gap-3 @sm:grid-cols-3 @3xl:gap-4">
           <FigureCard
             label="Logged"
             value={formatReportHours(loggedMinutes)}

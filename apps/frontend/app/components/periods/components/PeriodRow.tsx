@@ -61,6 +61,59 @@ const describeChange = (
   return changedBy ? `${changedBy} · ${day}` : day;
 };
 
+/** Open and Locked as quiet text; a pill for a month someone has to act on. */
+const PeriodStatus = ({ period }: { period: ReportingMonth }) =>
+  ACTION_LABELS[period.state] ? (
+    <Badge variant="warning" dot>
+      {ACTION_LABELS[period.state]}
+    </Badge>
+  ) : period.state === ReportingMonthState.LOCKED ? (
+    <StatusText>
+      <Lock className="size-3.5" aria-hidden />
+      Locked
+    </StatusText>
+  ) : (
+    <StatusText tone="brand" dot>
+      Open
+    </StatusText>
+  );
+
+/** Reopen for a locked month, Close for a reopened one, nothing otherwise. */
+const PeriodAction = ({
+  period,
+  monthLabel,
+  onReopen,
+  onClose,
+}: Omit<PeriodRowProps, "timezone"> & { monthLabel: string }) => {
+  if (period.state === ReportingMonthState.LOCKED) {
+    return (
+      <Button
+        variant="outline"
+        size="sm"
+        aria-label={`Reopen ${monthLabel}`}
+        onClick={() => onReopen(period.month)}
+      >
+        Reopen
+      </Button>
+    );
+  }
+
+  if (period.state === ReportingMonthState.REOPENED) {
+    return (
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-label={`Close ${monthLabel}`}
+        onClick={() => onClose(period.month)}
+      >
+        Close
+      </Button>
+    );
+  }
+
+  return null;
+};
+
 export const PeriodRow = ({
   period,
   timezone,
@@ -85,20 +138,7 @@ export const PeriodRow = ({
       </TableRowHeader>
 
       <TableCell className="py-2">
-        {ACTION_LABELS[period.state] ? (
-          <Badge variant="warning" dot>
-            {ACTION_LABELS[period.state]}
-          </Badge>
-        ) : period.state === ReportingMonthState.LOCKED ? (
-          <StatusText>
-            <Lock className="size-3.5" aria-hidden />
-            Locked
-          </StatusText>
-        ) : (
-          <StatusText tone="brand" dot>
-            Open
-          </StatusText>
-        )}
+        <PeriodStatus period={period} />
       </TableCell>
 
       <TableCell className="py-2 text-muted-foreground">
@@ -106,28 +146,54 @@ export const PeriodRow = ({
       </TableCell>
 
       <TableCell className={cn("py-2 text-right", ROW_EDGE_END)}>
-        {period.state === ReportingMonthState.LOCKED && (
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={`Reopen ${monthLabel}`}
-            onClick={() => onReopen(period.month)}
-          >
-            Reopen
-          </Button>
-        )}
-
-        {period.state === ReportingMonthState.REOPENED && (
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`Close ${monthLabel}`}
-            onClick={() => onClose(period.month)}
-          >
-            Close
-          </Button>
-        )}
+        <PeriodAction
+          period={period}
+          monthLabel={monthLabel}
+          onReopen={onReopen}
+          onClose={onClose}
+        />
       </TableCell>
     </TableRow>
+  );
+};
+
+/**
+ * A month on a phone, as the other Manage lists show a row there: the month
+ * and its status, what that means, who changed it last, and its action.
+ */
+export const PeriodListItem = ({
+  period,
+  timezone,
+  onReopen,
+  onClose,
+}: PeriodRowProps) => {
+  const monthLabel = formatMonthLabel(period.month);
+  const change = describeChange(period, timezone);
+
+  return (
+    <li
+      className={cn(
+        "flex items-center gap-3 py-3 pr-3 pl-4",
+        period.state === ReportingMonthState.REOPENED && "bg-warning-subtle",
+      )}
+    >
+      <div className="min-w-0 flex-1 text-sm">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-medium text-foreground">{monthLabel}</span>
+          <PeriodStatus period={period} />
+        </div>
+        <p className="text-xs text-muted-foreground">{describeState(period)}</p>
+        {change && (
+          <p className="text-xs text-muted-foreground">Changed by {change}</p>
+        )}
+      </div>
+
+      <PeriodAction
+        period={period}
+        monthLabel={monthLabel}
+        onReopen={onReopen}
+        onClose={onClose}
+      />
+    </li>
   );
 };

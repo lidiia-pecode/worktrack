@@ -57,12 +57,14 @@ export const ManageToolbar = ({
         />
       </ResourceTabList>
 
-      <div className="flex items-center gap-2 md:mb-2">
+      {/* Beside an open panel the search narrows first, so the page's
+          action stays in sight. */}
+      <div className="flex min-w-0 items-center gap-2 md:mb-2">
         <SearchInput
           value={search}
           onChange={setSearch}
           placeholder={searchPlaceholder}
-          className="w-full md:w-72"
+          className="w-full min-w-0 md:w-72"
         />
         {actions}
       </div>
