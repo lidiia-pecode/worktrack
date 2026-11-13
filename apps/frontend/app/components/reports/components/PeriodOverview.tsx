@@ -51,14 +51,16 @@ type FigureCardProps = {
 };
 
 const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
-  <li className="min-w-0 rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:px-3 @sm:py-3 @3xl:px-4 @3xl:py-3.5">
+  // A flex column, so a note that wraps doesn't drop this card's bar below
+  // the bars of the cards beside it.
+  <li className="flex min-w-0 flex-col rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:px-3 @sm:py-3 @3xl:px-4 @3xl:py-3.5">
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
 
     <p className="text-3xl font-semibold tracking-tight @sm:text-2xl @3xl:text-3xl">
       {value}
     </p>
 
-    <p className="flex items-baseline justify-between gap-2 text-xs text-muted-foreground">
+    <p className="flex flex-1 items-baseline justify-between gap-2 text-xs text-muted-foreground">
       <span className="min-w-0">{note}</span>
 
       {percent !== null && (
