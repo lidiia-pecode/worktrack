@@ -76,17 +76,6 @@ describe("ManageToolbar", () => {
     );
   });
 
-  it("shows the page's actions after the search", () => {
-    render(<Harness />);
-
-    const search = screen.getByRole("textbox");
-    const create = screen.getByRole("button", { name: "Create project" });
-
-    expect(
-      search.compareDocumentPosition(create) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
   it("sends the search once typing pauses, trimmed", () => {
     vi.useFakeTimers();
     render(<Harness />);

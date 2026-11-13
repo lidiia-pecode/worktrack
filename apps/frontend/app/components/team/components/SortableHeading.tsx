@@ -9,17 +9,19 @@ import {
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 
-/** What pressing each button does, from the order it would put the rows in. */
-const NEXT_ORDER_LABELS: Record<TeamSortKey, { asc: string; desc: string }> = {
-  name: { asc: "Sort by name, A to Z", desc: "Sort by name, Z to A" },
-  logged: {
-    asc: "Sort by logged time, least first",
-    desc: "Sort by logged time, most first",
-  },
-  planned: {
-    asc: "Sort by planned time, least first",
-    desc: "Sort by planned time, most first",
-  },
+/** What pressing the button does, from the order it would put the rows in. */
+const nextOrderLabel = (
+  sortKey: TeamSortKey,
+  label: string,
+  direction: SortDirection,
+) => {
+  if (sortKey === "name") {
+    return direction === "asc"
+      ? "Sort by name, A to Z"
+      : "Sort by name, Z to A";
+  }
+  const time = `Sort by ${label.toLowerCase()} time`;
+  return direction === "asc" ? `${time}, least first` : `${time}, most first`;
 };
 
 const SortIcon = ({
@@ -61,6 +63,7 @@ export const SortableHeading = ({
 }: SortableHeadingProps) => {
   const isActive = sort.key === sortKey;
   const { direction: nextDirection } = nextTeamSort(sort, sortKey);
+  const actionLabel = nextOrderLabel(sortKey, label, nextDirection);
 
   return (
     <div
@@ -75,8 +78,8 @@ export const SortableHeading = ({
         type="button"
         variant="ghost"
         size="iconXs"
-        aria-label={NEXT_ORDER_LABELS[sortKey][nextDirection]}
-        title={NEXT_ORDER_LABELS[sortKey][nextDirection]}
+        aria-label={actionLabel}
+        title={actionLabel}
         onClick={() => onSort(sortKey)}
         className={cn("size-5 [&_svg]:size-3", isActive && "text-foreground")}
       >

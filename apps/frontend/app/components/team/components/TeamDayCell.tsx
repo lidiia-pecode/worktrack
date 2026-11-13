@@ -177,7 +177,6 @@ export const TeamDayCell = ({
                 key={plan.id}
                 plan={plan}
                 dayLabel={dayLabel}
-                isCompact={isNarrow}
                 onClick={onPlanClick}
               />
             ))}
@@ -205,12 +204,11 @@ export const TeamDayCell = ({
 type PlanBlockProps = {
   plan: PlanningEntry;
   dayLabel: string;
-  isCompact: boolean;
   onClick?: (projectId: string) => void;
 };
 
 /** A plan on a day with nothing logged yet, dashed as on Planning. */
-const PlanBlock = ({ plan, dayLabel, isCompact, onClick }: PlanBlockProps) => {
+const PlanBlock = ({ plan, dayLabel, onClick }: PlanBlockProps) => {
   const duration = formatDuration(plan.plannedMinutes);
 
   return (
@@ -219,8 +217,6 @@ const PlanBlock = ({ plan, dayLabel, isCompact, onClick }: PlanBlockProps) => {
       colorSeed={plan.project.id}
       minutes={plan.plannedMinutes}
       isPlan
-      isCompact={isCompact}
-      title={isCompact ? plan.project.name : undefined}
       onClick={onClick && (() => onClick(plan.project.id))}
       // Named as a plan when it is no button too.
       role={onClick ? undefined : "group"}

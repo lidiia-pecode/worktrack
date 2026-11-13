@@ -3,7 +3,7 @@ import { PlanningWeekRow, TeamSummaryRow } from "@/types";
 import { fullName } from "./user";
 
 /** By name, or by the week's total: logged time on Team time, planned on Planning. */
-export type TeamSortKey = "name" | "logged" | "planned";
+export type TeamSortKey = "name" | "total";
 export type SortDirection = "asc" | "desc";
 export type TeamSort = { key: TeamSortKey; direction: SortDirection };
 
@@ -12,10 +12,8 @@ export const DEFAULT_TEAM_SORT: TeamSort = { key: "name", direction: "asc" };
 const SORT_PARAM_VALUES: Record<string, TeamSort> = {
   name: DEFAULT_TEAM_SORT,
   "name-desc": { key: "name", direction: "desc" },
-  logged: { key: "logged", direction: "asc" },
-  "logged-desc": { key: "logged", direction: "desc" },
-  planned: { key: "planned", direction: "asc" },
-  "planned-desc": { key: "planned", direction: "desc" },
+  total: { key: "total", direction: "asc" },
+  "total-desc": { key: "total", direction: "desc" },
 };
 
 /** The sort a `?sort=` value names; the default for anything else. */

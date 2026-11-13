@@ -30,7 +30,12 @@ describe("TeamFilters", () => {
     const onProjectChange = vi.fn();
     const user = userEvent.setup();
     render(
-      <TeamFilters onTeamChange={vi.fn()} onProjectChange={onProjectChange} />,
+      <TeamFilters
+        onTeamChange={vi.fn()}
+        onProjectChange={onProjectChange}
+        search=""
+        onSearchChange={vi.fn()}
+      />,
     );
 
     await user.click(screen.getByRole("combobox", { name: "Project" }));
@@ -55,6 +60,8 @@ describe("TeamFilters", () => {
         onTeamChange={vi.fn()}
         onProjectChange={vi.fn()}
         activeProjectsOnly
+        search=""
+        onSearchChange={vi.fn()}
       />,
     );
 

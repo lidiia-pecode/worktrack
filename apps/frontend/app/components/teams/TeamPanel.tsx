@@ -248,7 +248,7 @@ const ActiveTeamView = ({ team, managerChange }: ActiveTeamViewProps) => {
   const hasActiveManager = Boolean(activeManager(team));
   const invitedLead = managerChange?.invitedLead;
   const canChangeManager =
-    managerChange && !managerChange.isLoading && !invitedLead && !isEditing;
+    managerChange && !managerChange.isLoading && !invitedLead;
   const chooseManager = () => setIsChangingManager(true);
 
   if (isOwner && panel.view === MEMBERS_PICKER) {
@@ -295,7 +295,6 @@ const ActiveTeamView = ({ team, managerChange }: ActiveTeamViewProps) => {
         onEdit={
           teamActions.canEdit(team) ? () => teamActions.edit(team) : undefined
         }
-        // Only the name changes, in the heading's place.
         editLabel="Rename"
         actions={[
           // Rare, so beside Archive rather than on the panel.

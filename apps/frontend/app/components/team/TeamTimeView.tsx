@@ -40,7 +40,6 @@ import {
   nextTeamSort,
   searchTeamRows,
   sortTeamRows,
-  TeamSort,
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 import { cn } from "@/lib/utils/cn";
@@ -150,20 +149,12 @@ export const TeamTimeView = ({
     teamId,
     projectId,
     search,
-    sort: sortInAddress,
+    sort,
     setFilters,
     setSearch,
     setSort,
     clearFilters,
   } = useTeamTimeFilters();
-  // A link's sort by the week's total reads as Logged here.
-  const sort = useMemo<TeamSort>(
-    () =>
-      sortInAddress.key === "planned"
-        ? { ...sortInAddress, key: "logged" }
-        : sortInAddress,
-    [sortInAddress],
-  );
   const [entryForm, setEntryForm] = useState<EntryForm | null>(null);
   const [pendingEntryForm, setPendingEntryForm] = useState<EntryForm | null>(
     null,
@@ -369,7 +360,7 @@ export const TeamTimeView = ({
     setAbsenceForm({
       user,
       date: newAbsenceStartDate({
-        today: new Date(`${todayIso}T00:00:00`),
+        today: fromISODate(todayIso),
         weekStart,
         isCurrentWeek,
         isEditable,
@@ -488,12 +479,10 @@ export const TeamTimeView = ({
 
       {isReady && !matchesNobody && (
         <div
-          className={[
+          className={cn(
             "overflow-x-auto transition-opacity",
             isShowingPreviousWeek && "opacity-60",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          )}
           aria-busy={isShowingPreviousWeek}
         >
           {/* Narrow weekends and the week's total on the right fit the
@@ -543,7 +532,6 @@ export const TeamTimeView = ({
                         date === shownDates.at(-1) && (
                           <WeekendToggle
                             isShown={showsWeekend}
-                            // Weekend time is never hidden.
                             canHide={!hasWeekendTime}
                             onChange={setIsWeekendWanted}
                           />
@@ -555,12 +543,12 @@ export const TeamTimeView = ({
 
                 <th
                   scope="col"
-                  aria-sort={sort.key === "logged" ? ariaSort : undefined}
+                  aria-sort={sort.key === "total" ? ariaSort : undefined}
                   className="p-2 pr-3 align-top"
                 >
                   <SortableHeading
                     label="Logged"
-                    sortKey="logged"
+                    sortKey="total"
                     sort={sort}
                     onSort={sortBy}
                     alignEnd
@@ -614,7 +602,7 @@ export const TeamTimeView = ({
       )}
 
       <NonWorkDayConfirm
-        date={nonWorkDay ? new Date(`${nonWorkDay.date}T00:00:00`) : null}
+        date={nonWorkDay ? fromISODate(nonWorkDay.date) : null}
         onClose={() => setNonWorkDay(null)}
         onConfirm={confirmNonWorkDay}
       />

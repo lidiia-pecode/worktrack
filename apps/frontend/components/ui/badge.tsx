@@ -9,13 +9,12 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-brand-subtle text-brand border border-brand/20",
-        success: "bg-success/10 text-success-text border border-success/20",
         warning:
           "bg-warning-subtle text-warning-text border border-warning-border",
         destructive:
           "bg-destructive/10 text-destructive-text border border-destructive/20",
-        // A state such as Archived or Deactivated, on a lighter `muted` ground
-        // so the cool text stays readable.
+        // A quiet count, such as pending invitations, on a lighter `muted`
+        // ground so the cool text stays readable.
         neutral: "bg-muted/60 text-muted-foreground border",
         // For a count that asks for attention, such as unread notifications.
         solid: "bg-brand text-brand-foreground border border-brand",
@@ -55,7 +54,6 @@ export function Badge({
         <span
           className={cn("size-1.5 rounded-full", {
             "bg-brand": !variant || variant === "default",
-            "bg-success": variant === "success",
             "bg-warning": variant === "warning",
             "bg-destructive": variant === "destructive",
             "bg-muted-foreground": variant === "neutral",

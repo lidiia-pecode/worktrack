@@ -8,7 +8,6 @@ type StatusTextProps = {
   dot?: boolean;
   /** The brand colour marks the state things are normally in, such as an open month. */
   tone?: "neutral" | "brand";
-  className?: string;
 };
 
 /**
@@ -20,13 +19,11 @@ export const StatusText = ({
   children,
   dot = false,
   tone = "neutral",
-  className,
 }: StatusTextProps) => (
   <span
     className={cn(
       "inline-flex items-center gap-1.5 text-xs font-normal whitespace-nowrap",
       tone === "brand" ? "text-brand" : "text-muted-foreground",
-      className,
     )}
   >
     {dot && (

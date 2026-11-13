@@ -114,7 +114,6 @@ export const CategoryPanel = ({ id }: { id: string }) => {
             ? () => categoryActions.edit(category)
             : undefined
         }
-        // Only the name changes, in the heading's place.
         editLabel="Rename"
         actions={categoryActions.actionsFor(category)}
         editForm={isEditing && <CategoryEditForm category={category} />}

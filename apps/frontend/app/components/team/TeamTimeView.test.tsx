@@ -402,7 +402,7 @@ describe("TeamTimeView", () => {
 
   it("reads the search and sort from the URL, and writes them back", async () => {
     const user = userEvent.setup();
-    window.history.replaceState(null, "", "/team?search=develop&sort=logged");
+    window.history.replaceState(null, "", "/team?search=develop&sort=total");
     showTeamTime();
 
     expect(shownNames()).toEqual(["Ben"]);

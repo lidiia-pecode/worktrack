@@ -65,7 +65,7 @@ describe("sortTeamRows", () => {
   it("sorts by the share of what was expected, least complete first", () => {
     const sorted = sortTeamRows(
       [JANE, AVA],
-      { key: "logged", direction: "asc" },
+      { key: "total", direction: "asc" },
       { byProject: false },
     );
 
@@ -76,7 +76,7 @@ describe("sortTeamRows", () => {
     for (const direction of ["asc", "desc"] as const) {
       const sorted = sortTeamRows(
         [MIA, JANE, AVA],
-        { key: "logged", direction },
+        { key: "total", direction },
         { byProject: false },
       );
 
@@ -87,7 +87,7 @@ describe("sortTeamRows", () => {
   it("sorts by minutes on the project under a project filter", () => {
     const sorted = sortTeamRows(
       [AVA, MIA, JANE],
-      { key: "logged", direction: "desc" },
+      { key: "total", direction: "desc" },
       { byProject: true },
     );
 
@@ -118,7 +118,7 @@ describe("sortPlanningRows", () => {
     const sorted = (direction: "asc" | "desc") =>
       sortPlanningRows(
         rows,
-        { key: "planned", direction },
+        { key: "total", direction },
         { byProject: false },
       ).map((row) => row.user.firstName);
 
@@ -133,8 +133,8 @@ describe("nextTeamSort", () => {
       key: "name",
       direction: "desc",
     });
-    expect(nextTeamSort({ key: "name", direction: "desc" }, "logged")).toEqual({
-      key: "logged",
+    expect(nextTeamSort({ key: "name", direction: "desc" }, "total")).toEqual({
+      key: "total",
       direction: "asc",
     });
   });

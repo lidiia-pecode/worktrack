@@ -24,7 +24,6 @@ export const WeekTotal = ({
   billableMinutes,
   fill = "logged",
 }: WeekTotalProps) => (
-  // The figure over its bar, as a row's total reads in the grids.
   <span className="inline-flex min-w-0 flex-col items-stretch gap-1 text-sm leading-4">
     <span className="text-right whitespace-nowrap tabular-nums">
       {label}{" "}

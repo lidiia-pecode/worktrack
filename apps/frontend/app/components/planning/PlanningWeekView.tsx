@@ -24,7 +24,6 @@ import {
   nextTeamSort,
   searchTeamRows,
   sortPlanningRows,
-  TeamSort,
   TeamSortKey,
 } from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
@@ -85,20 +84,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     teamId,
     projectId: projectInAddress,
     search,
-    sort: sortInAddress,
+    sort,
     setFilters,
     setSearch,
     setSort,
     clearFilters,
   } = useTeamTimeFilters();
-  // A link's sort by the week's total reads as Planned here.
-  const sort = useMemo<TeamSort>(
-    () =>
-      sortInAddress.key === "logged"
-        ? { ...sortInAddress, key: "planned" }
-        : sortInAddress,
-    [sortInAddress],
-  );
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
   const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
@@ -352,12 +343,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
       {isReady && shownRows.length > 0 && (
         <div
-          className={[
+          className={cn(
             "overflow-x-auto transition-opacity",
             isShowingPreviousWeek && "opacity-60",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          )}
           aria-busy={isShowingPreviousWeek}
         >
           <table className="w-full min-w-4xl table-fixed border-collapse">
@@ -402,12 +391,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
                 <th
                   scope="col"
-                  aria-sort={sort.key === "planned" ? ariaSort : undefined}
+                  aria-sort={sort.key === "total" ? ariaSort : undefined}
                   className="p-2 pr-3"
                 >
                   <SortableHeading
                     label="Planned"
-                    sortKey="planned"
+                    sortKey="total"
                     sort={sort}
                     onSort={sortBy}
                     alignEnd

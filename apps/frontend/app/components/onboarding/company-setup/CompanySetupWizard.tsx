@@ -144,11 +144,6 @@ export const CompanySetupWizard = () => {
   const step = STEPS[currentStep];
   const isLastStep = currentStep === STEPS.length - 1;
 
-  const leaveSetup = () => {
-    router.replace("/");
-    router.refresh();
-  };
-
   /**
    * Saves the answered questions as Settings and the person's panel do, from
    * today where the company now is: at sign-up that is the company's first
@@ -205,7 +200,8 @@ export const CompanySetupWizard = () => {
         queryKey: queryKeys.company.current,
       });
       refreshCapacity();
-      leaveSetup();
+      router.replace("/");
+      router.refresh();
     } catch (error) {
       setSaveError(getErrorMessage(error));
     } finally {
@@ -219,7 +215,6 @@ export const CompanySetupWizard = () => {
       STEPS.map((setupStep) => setupStep.field),
     );
 
-  // The questions passed with Next are kept; the time zone always is.
   const skipRest = () =>
     save(
       getValues(),

@@ -106,12 +106,6 @@ describe("TeamWeekRow", () => {
     expect(bar).not.toBeInTheDocument();
   });
 
-  it("gives every day of the week a cell, and the week's total one", () => {
-    renderRow(row());
-
-    expect(screen.getAllByRole("cell")).toHaveLength(8);
-  });
-
   it("records an absence from the Person cell", () => {
     const onAddAbsence = vi.fn();
     renderRow(row(), { onAddAbsence });

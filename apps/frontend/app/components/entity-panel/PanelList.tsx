@@ -260,7 +260,6 @@ export const PanelList = <T,>({
 
             return (
               <Fragment key={getKey(item)}>
-                {/* A quiet label on the card's own background, with room above it. */}
                 {startsGroup && (
                   <li
                     className={cn(

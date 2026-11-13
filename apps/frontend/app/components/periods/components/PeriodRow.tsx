@@ -61,7 +61,6 @@ const describeChange = (
   return changedBy ? `${changedBy} · ${day}` : day;
 };
 
-/** Open and Locked as quiet text; a pill for a month someone has to act on. */
 const PeriodStatus = ({ period }: { period: ReportingMonth }) =>
   ACTION_LABELS[period.state] ? (
     <Badge variant="warning" dot>

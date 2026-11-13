@@ -22,11 +22,11 @@ type TeamFiltersProps = {
   teamId?: string;
   projectId?: string;
   onTeamChange: (teamId?: string) => void;
-  onProjectChange?: (projectId?: string) => void;
+  onProjectChange: (projectId?: string) => void;
   /** Active projects only, for a grid where nothing can go on a past one. */
   activeProjectsOnly?: boolean;
-  search?: string;
-  onSearchChange?: (search: string) => void;
+  search: string;
+  onSearchChange: (search: string) => void;
 };
 
 export const TeamFilters = ({
@@ -35,15 +35,13 @@ export const TeamFilters = ({
   onTeamChange,
   onProjectChange,
   activeProjectsOnly = false,
-  search = "",
+  search,
   onSearchChange,
 }: TeamFiltersProps) => {
   const { options: activeTeamOptions, choosesTeam } = useTeamChoice();
 
   // Every status, so a past project's time can still be looked at.
-  const { items: projects } = useAllProjectsQuery(undefined, {
-    enabled: Boolean(onProjectChange),
-  });
+  const { items: projects } = useAllProjectsQuery();
 
   const teamOptions = useMemo(
     () => [{ value: ALL_OPTION, label: "All teams" }, ...activeTeamOptions],
@@ -74,14 +72,12 @@ export const TeamFilters = ({
 
   return (
     <FilterBar className="py-3 sm:gap-4">
-      {onSearchChange && (
-        <SearchInput
-          value={search}
-          onChange={onSearchChange}
-          placeholder="Search by name or position"
-          className="sm:min-w-48 sm:flex-1"
-        />
-      )}
+      <SearchInput
+        value={search}
+        onChange={onSearchChange}
+        placeholder="Search by name or position"
+        className="sm:min-w-48 sm:flex-1"
+      />
 
       <div className="flex flex-col gap-3 sm:flex-row">
         {choosesTeam && (
@@ -94,15 +90,13 @@ export const TeamFilters = ({
           />
         )}
 
-        {onProjectChange && (
-          <FormSelect
-            aria-label="Project"
-            className="sm:w-48"
-            value={projectId ?? ALL_OPTION}
-            options={projectOptions}
-            onValueChange={(value) => onProjectChange(toFilterValue(value))}
-          />
-        )}
+        <FormSelect
+          aria-label="Project"
+          className="sm:w-48"
+          value={projectId ?? ALL_OPTION}
+          options={projectOptions}
+          onValueChange={(value) => onProjectChange(toFilterValue(value))}
+        />
       </div>
     </FilterBar>
   );

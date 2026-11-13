@@ -1083,7 +1083,7 @@ see, and how a new company gets started. §7 plans that work.
   pages grow. Only what a user sees changed (menu, headings, wording); routes
   and code keep `/timesheet`, `/my-time` and `/team`.
 
-- **One visual language** (10–13 November 2026). A pill marks only what
+- **One visual language** (10–13 November 2026, PR #72). A pill marks only what
   someone has to act on (No team, No active manager, Expired, Closing soon,
   Reopened), in amber so a warning never reads as an error; a fact
   (Deactivated, Archived, Locked, Open, a role) is quiet text. A page with a
@@ -1176,7 +1176,7 @@ one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-eight Vitest files and 462 tests: its date, month,
+The frontend has seventy-seven Vitest files and 457 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1289,6 +1289,7 @@ tooling, documentation and small fixes are left out.
 | #69 | Dates for people and hours: deactivating asks for the last working day, which stays open, and removes what was recorded after it, and reactivating for the first day back; a person's working hours and the company's standard day changed from a chosen date, with the one change waiting to start shown and cancellable; a team move, addition or removal dated back to an open day by the owner |
 | #70 | One team per person and one manager per team, held by the database: the owner picks a team's manager with Change manager on its panel, from its members (an Employee made a Manager in the same change) or a Manager in no team, the previous one staying as a member or leaving; team leaders shown but not choosable in the members picker and moved only once their team has another manager; a pending manager invitation holding a team's lead; Reports counting a manager once; the team filter on Team time, Planning and Reports offered to whoever sees more than one team, a link to a team they don't see dropped from the address; fewer notes telling a manager they see only their own people |
 | #71 | Report figures that add up: Reports, Team time and Planning counting the same people, anyone with working hours, logged or planned time on the days in view, leavers and the owner included; each person listed once, with their teams and the days outside them in their panel, so the rows add up to the period; 0h meaning no fixed hours and neutral on every screen, saving it deleting the person's plans from that day; the owner saying in the setup guide whether they log their own time, a second save changing nothing before today; Reports in decimal hours without the period comparison, People and Projects as sortable tables that fold into compact rows on a narrow screen |
+| #72 | One visual language, and screens that fit: an amber warning, pills only for what someone has to act on and quiet text for facts, leavers shown by their last day; one toolbar total with a bar on every page with a period, kept while content loads, and a line with Try again when plans fail to load; Review my time in Reports' band; one side panel layout with actions in the top bar, the key fact under the name and editing in place; one working hours field, and a skipped setup guide keeping its answers and the time zone; one row and one chip in Team time and Planning, sortable by person and total, Team time fitting 1280px with weekends shown when needed; no "Plan a period" on a locked week; dates in US English; the week calendar, Settings, Periods, Plan a period and Reports fitting tablets and phones, and an unread mark on the phone menu |
 
 ### Improvement roadmap — high level, flexible
 

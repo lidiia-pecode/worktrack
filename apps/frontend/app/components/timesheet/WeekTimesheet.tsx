@@ -457,27 +457,25 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         {content === "notOnProjects" ? (
           // An owner or a manager puts themselves on a project; an employee
           // waits for their manager to.
-          addsOwnProjects ? (
-            <EmptyState
-              title="You're not on any projects yet"
-              description="Add yourself to a project on its panel in Projects, then log your time against it here."
-              icon={<FolderKanban />}
-              action={
+          <EmptyState
+            title="You're not on any projects yet"
+            description={
+              addsOwnProjects
+                ? "Add yourself to a project on its panel in Projects, then log your time against it here."
+                : "Once a manager adds you to a project, you'll be able to log time against it here."
+            }
+            icon={<FolderKanban />}
+            action={
+              addsOwnProjects && (
                 <Link
                   href={projects.href}
                   className={buttonVariants({ variant: "secondary" })}
                 >
                   Go to Projects
                 </Link>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="You're not on any projects yet"
-              description="Once a manager adds you to a project, you'll be able to log time against it here."
-              icon={<FolderKanban />}
-            />
-          )
+              )
+            }
+          />
         ) : (
           <EmptyState
             title="No activities yet"

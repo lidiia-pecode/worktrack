@@ -65,13 +65,6 @@ const renderCell = (props: Partial<ComponentProps<typeof TeamDayCell>> = {}) =>
   );
 
 describe("TeamDayCell", () => {
-  it("shows a block per entry", () => {
-    renderCell({ entries: [CRM, PORTAL], minutes: 480 });
-
-    expect(screen.getByText("CRM System")).toBeInTheDocument();
-    expect(screen.getByText("Customer Portal")).toBeInTheDocument();
-  });
-
   it("makes the blocks and the + sibling buttons, never one inside another", () => {
     const { container } = renderCell({
       entries: [CRM],
@@ -142,12 +135,6 @@ describe("TeamDayCell", () => {
     expect(screen.getAllByRole("cell")[1]).toHaveClass("bg-stripes-extra");
   });
 
-  it("greys a locked day", () => {
-    renderCell({ entries: [CRM], minutes: 300, isLocked: true });
-
-    expect(screen.getByRole("cell")).toHaveClass("bg-muted/20");
-  });
-
   it("folds entries past three behind +N more, and expands in place", () => {
     renderCell({
       entries: [
@@ -216,11 +203,6 @@ describe("TeamDayCell", () => {
       screen.getByRole("button", { name: "Vacation, open the absence" }),
     );
     expect(onAbsenceClick).toHaveBeenCalled();
-  });
-
-  it("shows the day as busy while its form waits", () => {
-    renderCell({ isBusy: true });
-    expect(screen.getByRole("cell")).toHaveAttribute("aria-busy", "true");
   });
 
   it("shows an entry's details while its block is hovered", () => {

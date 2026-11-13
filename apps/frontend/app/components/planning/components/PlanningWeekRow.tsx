@@ -25,6 +25,7 @@ import { EntryChip } from "../../shared/week/EntryChip";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
+import { RowTotalCell } from "../../shared/week/RowTotalCell";
 import { ReportBar } from "../../reports/components/ReportBar";
 
 type PlanningWeekRowProps = {
@@ -42,7 +43,6 @@ type PlanningWeekRowProps = {
 const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
   const isArchived = entry.project.status === ProjectStatus.ARCHIVED;
 
-  // A plan, dashed as Team time shows one; an archived project stays grey.
   return (
     <EntryChip
       projectName={entry.project.name}
@@ -232,48 +232,36 @@ export const PlanningWeekRow = ({
         );
       })}
 
-      {/* The week against what is available, read as Team time reads a person's
-          week; under a project filter only the project's hours, as there. */}
-      <td className="p-3 align-top">
-        <div className="flex flex-col items-end gap-1.5">
-          <span className="text-right text-xs tabular-nums">
-            <span
-              className={cn(
-                "font-semibold whitespace-nowrap",
-                overMinutes > 0 ? "text-warning-text" : "text-foreground",
-              )}
-            >
-              {formatDuration(row.plannedMinutes)}
-            </span>{" "}
-            <span className="whitespace-nowrap text-muted-foreground">
-              {projectName
-                ? `on ${projectName}`
-                : !hasNoFixedHours &&
-                  `of ${formatDuration(row.availableMinutes)}`}
-            </span>
+      <RowTotalCell
+        minutes={row.plannedMinutes}
+        isOver={overMinutes > 0}
+        expectation={
+          projectName
+            ? `on ${projectName}`
+            : hasNoFixedHours
+              ? undefined
+              : `of ${formatDuration(row.availableMinutes)}`
+        }
+      >
+        {!projectName && !hasNoFixedHours && (
+          <ReportBar
+            value={row.plannedMinutes}
+            reference={row.availableMinutes}
+            fill="planned"
+            label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
+            className="h-1.5 w-full max-w-28"
+          />
+        )}
+
+        {!projectName && overMinutes > 0 && (
+          <span
+            title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
+            className="text-2xs font-medium whitespace-nowrap text-warning-text"
+          >
+            Over by {formatDuration(overMinutes)}
           </span>
-
-          {!projectName && !hasNoFixedHours && (
-            <ReportBar
-              value={row.plannedMinutes}
-              reference={row.availableMinutes}
-              fill="planned"
-              label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-              // As Team time's bar: the same height and width.
-              className="h-1.5 w-full max-w-28"
-            />
-          )}
-
-          {!projectName && overMinutes > 0 && (
-            <span
-              title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
-              className="text-2xs font-medium whitespace-nowrap text-warning-text"
-            >
-              Over by {formatDuration(overMinutes)}
-            </span>
-          )}
-        </div>
-      </td>
+        )}
+      </RowTotalCell>
     </tr>
   );
 };

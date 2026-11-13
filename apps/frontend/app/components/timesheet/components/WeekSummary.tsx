@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 
-import { ReportBar } from "../../reports/components/ReportBar";
 import { WeekTotal } from "../../shared/week/WeekTotal";
 import {
   Popover,
@@ -24,23 +23,6 @@ type WeekSummaryProps = {
   weekendMinutes: number;
   className?: string;
 };
-
-/** The week's logged time against what was expected, as Reports draw it. */
-export const WeekBar = ({
-  billableMinutes,
-  nonBillableMinutes,
-  expectedMinutes,
-}: Pick<
-  WeekSummaryProps,
-  "billableMinutes" | "nonBillableMinutes" | "expectedMinutes"
->) => (
-  <ReportBar
-    value={billableMinutes + nonBillableMinutes}
-    reference={expectedMinutes}
-    billable={billableMinutes}
-    className="h-1.5 min-w-20 flex-1"
-  />
-);
 
 const Fact = ({
   label,

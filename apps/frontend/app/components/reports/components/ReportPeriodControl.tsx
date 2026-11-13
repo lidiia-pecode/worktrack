@@ -42,7 +42,7 @@ type PeriodPickerProps = {
   onChange: (period: ShownPeriod) => void;
 };
 
-/** The calendar behind a month, quarter or year: a day picked shows its period. Review my time uses it for its month. */
+/** The calendar behind a month, quarter or year: a day picked shows its period. */
 export const CalendarPeriodPicker = ({
   period,
   unit,

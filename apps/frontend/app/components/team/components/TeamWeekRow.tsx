@@ -17,7 +17,8 @@ import { cn } from "@/lib/utils/cn";
 import { factsLine } from "@/lib/utils/text";
 
 import { PersonLabel } from "../../shared/PersonLabel";
-import { WeekBar } from "../../timesheet/components/WeekSummary";
+import { ReportBar } from "../../reports/components/ReportBar";
+import { RowTotalCell } from "../../shared/week/RowTotalCell";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -197,57 +198,33 @@ type WeekTotalCellProps = {
 };
 
 /**
- * The person's week against what was expected of them, in the right column as
- * Planning shows a week's plans; under a project filter only its hours.
+ * The person's week against what was expected of them; under a project filter
+ * only its hours. A leaver is expected time up to the day they left, as on
+ * Reports, and someone expected nothing shows their hours alone.
  */
 const WeekTotalCell = ({ row, projectName }: WeekTotalCellProps) => {
-  // A leaver is expected time up to the day they left, as on Reports.
-  const expectsTime = row.expectedMinutes > 0;
-  const isOver =
-    !projectName && expectsTime && row.minutes > row.expectedMinutes;
-  const showsBar = !projectName && expectsTime;
-
-  // Someone expected nothing shows their hours alone.
-  const expectation = (() => {
-    if (projectName) return `on ${projectName}`;
-    if (!expectsTime) return null;
-    return `of ${formatDuration(row.expectedMinutes)}`;
-  })();
+  const expectsTime = !projectName && row.expectedMinutes > 0;
 
   return (
-    <td className="p-3 align-top">
-      <div className="flex flex-col items-end gap-1.5">
-        <span className="text-right text-xs tabular-nums">
-          <span
-            className={cn(
-              "font-semibold whitespace-nowrap",
-              isOver ? "text-warning-text" : "text-foreground",
-            )}
-          >
-            {formatDuration(row.minutes)}
-          </span>
-
-          {/* A long week breaks between the figures, never inside one. */}
-          {expectation && (
-            <>
-              {" "}
-              <span className="whitespace-nowrap text-muted-foreground">
-                {expectation}
-              </span>
-            </>
-          )}
-        </span>
-
-        {showsBar && (
-          <span className="flex w-full max-w-28">
-            <WeekBar
-              billableMinutes={row.billableMinutes}
-              nonBillableMinutes={row.nonBillableMinutes}
-              expectedMinutes={row.expectedMinutes}
-            />
-          </span>
-        )}
-      </div>
-    </td>
+    <RowTotalCell
+      minutes={row.minutes}
+      isOver={expectsTime && row.minutes > row.expectedMinutes}
+      expectation={
+        projectName
+          ? `on ${projectName}`
+          : expectsTime
+            ? `of ${formatDuration(row.expectedMinutes)}`
+            : undefined
+      }
+    >
+      {expectsTime && (
+        <ReportBar
+          value={row.minutes}
+          reference={row.expectedMinutes}
+          billable={row.billableMinutes}
+          className="h-1.5 w-full max-w-28"
+        />
+      )}
+    </RowTotalCell>
   );
 };

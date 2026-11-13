@@ -102,8 +102,7 @@ export const EntityPanelLayout = ({
 
   return (
     <PanelEntityContext.Provider value={{ name }}>
-      {hasActions &&
-        (actionsSlot ? createPortal(toolbar, actionsSlot) : toolbar)}
+      {hasActions && actionsSlot && createPortal(toolbar, actionsSlot)}
 
       <header className={cn(hidesHeading && "sr-only")}>
         <div className="flex items-start gap-3">
@@ -351,15 +350,17 @@ const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
   </dl>
 );
 
-/**
- * An open form's or picker's actions, in the bar at the panel's bottom as a
- * dialog's footer is; inline where there is no panel around it.
- */
+/** An open form's or picker's actions, in the bar at the panel's bottom as a dialog's footer is. */
 const PanelFooter = ({ children }: { children: ReactNode }) => {
   const slot = useContext(PanelFooterSlotContext);
-  const footer = <CardFooter className="flex-wrap">{children}</CardFooter>;
 
-  return slot ? createPortal(footer, slot) : footer;
+  return (
+    slot &&
+    createPortal(
+      <CardFooter className="flex-wrap">{children}</CardFooter>,
+      slot,
+    )
+  );
 };
 
 interface PanelEditFormProps {
