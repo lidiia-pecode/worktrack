@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightLeft, Plus } from "lucide-react";
+import { ArrowRightLeft, Plus, UserMinus, UserX } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import { useAuth } from "@/hooks/auth/useAuth";
 import {
   useCancelCapacityChange,
@@ -13,6 +13,7 @@ import {
 import { useUserDetails, useUsersMutations } from "@/hooks/useUsers";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 import { ROLE_LABELS, TEAM_ROLE_LABELS } from "@/lib/constants";
+import { cn } from "@/lib/utils/cn";
 import {
   formatDayMonthYearLabel,
   formatDuration,
@@ -27,10 +28,11 @@ import {
 import { Capacity, UserDetails, UserTeam } from "@/types";
 import { ProjectStatus, TeamRole, UserRole } from "@/types/enums";
 
-import { linkedEntities } from "../entity-panel/EntityLink";
+import { EntityLink, linkedEntities } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
+  PanelNotice,
   PanelQueryState,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
@@ -41,7 +43,6 @@ import { ImpactDialog } from "../shared/ImpactDialog";
 import { ScheduledChange } from "../shared/ScheduledChange";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
-import { ManageWarning } from "../shared/resource/ManageList";
 import { useUserActions } from "./useUserActions";
 import { UserChangeTeamDialog } from "./UserChangeTeamDialog";
 import { UserForm, UserFormData } from "./UserForm";
@@ -94,10 +95,6 @@ const WorkingHours = ({
     return <span className="text-muted-foreground">Not set</span>;
   }
 
-  const source = capacity.isCompanyDefault
-    ? "Company default"
-    : capacity.validFrom &&
-      `Since ${formatDayMonthYearLabel(capacity.validFrom)}`;
   const { upcoming } = capacity;
   const hoursPerDay = (minutesPerWeek: number) =>
     `${formatDuration(minutesPerDayOf(minutesPerWeek))} a day`;
@@ -113,12 +110,7 @@ const WorkingHours = ({
 
   return (
     <div className="grid gap-2">
-      <div className="grid gap-0.5">
-        <span>{dayAndWeek(capacity.minutesPerWeek)}</span>
-        {source && (
-          <span className="text-xs text-muted-foreground">{source}</span>
-        )}
-      </div>
+      <span>{dayAndWeek(capacity.minutesPerWeek)}</span>
 
       {upcoming && (
         <ScheduledChange
@@ -251,6 +243,33 @@ const UserEditForm = ({ user, capacity }: UserEditFormProps) => {
   );
 };
 
+/** Their team as plain text that opens it, and their role in it. */
+const TeamValue = ({
+  team,
+  note,
+}: {
+  team: UserTeam;
+  /** Why the team can't be changed from here. */
+  note?: string;
+}) => (
+  <>
+    <EntityLink
+      entity={{ type: "team", id: team.id }}
+      tone="plain"
+      className="font-medium"
+    >
+      {team.name}
+    </EntityLink>
+    <span className="mt-0.5 block text-xs text-muted-foreground">
+      {TEAM_ROLE_LABELS[team.roleInTeam]} since{" "}
+      {formatDayMonthYearLabel(team.joinedAt)}
+    </span>
+    {note && (
+      <span className="mt-0.5 block text-xs text-muted-foreground">{note}</span>
+    )}
+  </>
+);
+
 const UserDetailsView = ({ user }: { user: UserDetails }) => {
   const { user: viewer } = useAuth();
   const isOwner = viewer?.role === UserRole.OWNER;
@@ -280,6 +299,9 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
     !isEditing && (isOwner || team.roleInTeam === TeamRole.MEMBER);
   // Someone who leads their team moves once it has another manager.
   const ledTeam = user.team?.roleInTeam === TeamRole.MANAGER ? user.team : null;
+  // The owner is never in a team, so their panel says nothing about one.
+  const hasNoTeam = !user.team && user.role !== UserRole.OWNER;
+  const changeTeam = () => setIsChangingTeam(true);
 
   // Without their hours, a save could neither show nor keep them.
   const editForm = isLoadingCapacity ? (
@@ -301,17 +323,45 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Person"
         name={fullName(user)}
         subtitle={user.position}
-        leading={<Avatar user={user} size="lg" />}
+        leading={
+          <Avatar
+            user={user}
+            size="md"
+            className={cn(isDeactivated && "opacity-60")}
+          />
+        }
         status={
-          isDeactivated && (
+          isDeactivated ? (
             <PanelStatus
+              icon={UserX}
               label={
-                lastDay ? `Deactivated · last day ${lastDay}` : "Deactivated"
+                lastDay ? (
+                  <>
+                    Deactivated. Last working day{" "}
+                    <span className="font-medium text-foreground">
+                      {lastDay}
+                    </span>
+                    .
+                  </>
+                ) : (
+                  "Deactivated."
+                )
               }
             />
+          ) : (
+            hasNoTeam && (
+              <PanelNotice
+                title="No team"
+                description="Only the owner sees them."
+                action={
+                  canChangeTeam
+                    ? { label: "Add to team", onClick: changeTeam }
+                    : undefined
+                }
+              />
+            )
           )
         }
         onEdit={
@@ -333,53 +383,52 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
                 },
               ]
             : []),
-          { label: "Email", value: user.email, wide: true },
+          { label: "Email", value: user.email },
+          ...(user.team
+            ? [
+                {
+                  label: "Team",
+                  value: (
+                    <TeamValue
+                      team={user.team}
+                      note={
+                        canChangeTeam && ledTeam
+                          ? "To move them, give the team another manager first."
+                          : undefined
+                      }
+                    />
+                  ),
+                },
+              ]
+            : []),
         ]}
-        actions={userActions.actionsFor(user)}
+        // Rare changes to their team wait in the menu, beside Deactivate.
+        actions={[
+          ...(user.team && canChangeTeam && !ledTeam
+            ? [
+                {
+                  label: "Change team",
+                  icon: ArrowRightLeft,
+                  onSelect: changeTeam,
+                },
+              ]
+            : []),
+          ...(user.team && canRemoveFromTeam(user.team)
+            ? [
+                {
+                  label: "Remove from team",
+                  icon: UserMinus,
+                  warning: true,
+                  onSelect: () =>
+                    setRemoval({ teamId: user.team!.id, userId: user.id }),
+                },
+              ]
+            : []),
+          ...userActions.actionsFor(user),
+        ]}
         // Only the person changes their own name, in their profile.
         editForm={isEditing && editForm}
       >
-        {/* The owner is never in a team, so their panel has no team. */}
-        {user.role !== UserRole.OWNER && (
-          <PanelList
-            title="Team"
-            items={user.team ? [user.team] : []}
-            getKey={(team) => team.id}
-            renderRow={(team) => ({
-              entity: { type: "team", id: team.id },
-              name: team.name,
-              detail: `${TEAM_ROLE_LABELS[team.roleInTeam]} since ${formatDayMonthYearLabel(team.joinedAt)}`,
-              remove: canRemoveFromTeam(team)
-                ? {
-                    label: `Remove ${fullName(user)} from ${team.name}`,
-                    onClick: () =>
-                      setRemoval({ teamId: team.id, userId: user.id }),
-                  }
-                : undefined,
-            })}
-            emptyText={
-              <>
-                <ManageWarning inline>No team</ManageWarning>, so only the owner
-                sees them.
-              </>
-            }
-            note={
-              canChangeTeam && ledTeam
-                ? `Leads ${ledTeam.name}: give it another manager first to move them.`
-                : undefined
-            }
-            add={
-              canChangeTeam && !ledTeam
-                ? {
-                    label: user.team ? "Change team" : "Add to a team",
-                    icon: user.team ? ArrowRightLeft : Plus,
-                    onClick: () => setIsChangingTeam(true),
-                  }
-                : undefined
-            }
-          />
-        )}
-
         <PanelList
           title="Projects"
           items={user.projects}
@@ -392,7 +441,7 @@ const UserDetailsView = ({ user }: { user: UserDetails }) => {
               entity: { type: "project", id: project.id },
               name: project.name,
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeProjects && !isArchived
                   ? {

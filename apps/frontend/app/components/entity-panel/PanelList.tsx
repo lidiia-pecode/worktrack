@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import type { EntityRef } from "@/lib/utils/entity-ref";
@@ -24,7 +25,7 @@ interface PanelListRow {
   name: string;
   leading?: ReactNode;
   detail?: ReactNode;
-  /** Why the row reads differently, such as an Archived badge. */
+  /** Why the row reads differently, such as "Archived". */
   status?: ReactNode;
   /** Changes the link itself, such as a member's role in a team, from a "⋯" menu. */
   actions?: ManageRowAction[];
@@ -49,8 +50,8 @@ interface PanelListProps<T> {
   note?: ReactNode;
   /** Opens the section's picker; left out when the viewer cannot add. */
   add?: { label: string; icon: LucideIcon; onClick: () => void };
-  /** Rows under headings, such as a project's activities by category; items come sorted by it. */
-  groupBy?: (item: T) => PanelListGroup;
+  /** Rows under headings, such as a project's activities by category; items come sorted by it. Null leaves a row under no heading. */
+  groupBy?: (item: T) => PanelListGroup | null;
 }
 
 const stopRowClick = (event: MouseEvent) => event.stopPropagation();
@@ -66,17 +67,18 @@ const RemoveButton = ({
     aria-label={label}
     title={label}
     onClick={onClick}
-    className="text-muted-foreground group-hover:text-foreground hover:bg-warning-subtle hover:text-warning-text"
+    className="text-muted-foreground hover:bg-warning-subtle hover:text-warning-text max-sm:size-10"
   >
     <X className="size-4" />
   </Button>
 );
 
-const RowMenu = ({
-  name,
+/** Actions behind a "⋯" button: a row's link changes, or a panel's Archive. */
+export const ActionsMenu = ({
+  label,
   actions,
 }: {
-  name: string;
+  label: string;
   actions: ManageRowAction[];
 }) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -96,8 +98,9 @@ const RowMenu = ({
             variant="ghost"
             size="iconSm"
             ref={triggerRef}
-            aria-label={`Actions for ${name}`}
-            className="text-muted-foreground group-hover:text-foreground data-popup-open:text-foreground"
+            aria-label={label}
+            title={label}
+            className="text-muted-foreground hover:text-foreground data-popup-open:text-foreground max-sm:size-10"
           >
             <MoreHorizontal className="size-4" />
           </Button>
@@ -105,34 +108,52 @@ const RowMenu = ({
       />
 
       <DropdownMenuContent align="end" className="w-44 p-0">
-        {actions.map((action) => (
-          <DropdownMenuItem
-            key={action.label}
-            variant={action.warning ? "warning" : "default"}
-            onClick={() => select(action.onSelect)}
-          >
-            <action.icon />
-            {action.label}
-          </DropdownMenuItem>
+        {actions.map((action, index) => (
+          <Fragment key={action.label}>
+            {/* Archive and Deactivate apart from the changes before them. */}
+            {action.warning && index > 0 && !actions[index - 1].warning && (
+              <DropdownMenuSeparator />
+            )}
+            <DropdownMenuItem
+              variant={action.warning ? "warning" : "default"}
+              onClick={() => select(action.onSelect)}
+            >
+              <action.icon />
+              {action.label}
+            </DropdownMenuItem>
+          </Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
 };
 
-/** The whole row opens its entity, as a row does in the Manage tables. */
-const Row = ({ row }: { row: PanelListRow }) => {
+/** The line above a row: none at the top of a list or a group, a softer one inside a group. */
+type RowDivider = "none" | "soft" | "full";
+
+const DIVIDER_CLASSES: Record<RowDivider, string> = {
+  none: "",
+  soft: "border-t border-border/55",
+  full: "border-t border-border",
+};
+
+/**
+ * The whole row opens its entity, as a row does in the Manage tables. Its
+ * controls show on hover or focus where there is a pointer, always on touch.
+ */
+const Row = ({ row, divider }: { row: PanelListRow; divider: RowDivider }) => {
   const openEntity = useOpenEntity();
   const { entity } = row;
   const hasActions = Boolean(row.actions?.length);
-  const hasControls = row.status || hasActions || row.remove;
+  const hasControls = hasActions || row.remove;
 
   return (
     <li
       onClick={entity && (() => openEntity(entity))}
       className={cn(
-        "group flex min-h-13 items-center gap-3 px-3 py-2 text-sm",
-        entity && "cursor-pointer transition-colors hover:bg-muted/30",
+        "group flex min-h-10 items-center gap-3 px-3 py-2 text-sm",
+        DIVIDER_CLASSES[divider],
+        entity && "cursor-pointer transition-colors hover:bg-row-hover",
       )}
     >
       {row.leading && (
@@ -161,13 +182,19 @@ const Row = ({ row }: { row: PanelListRow }) => {
         )}
       </div>
 
+      {row.status && <div className="shrink-0">{row.status}</div>}
+
       {hasControls && (
         <div
           onClick={stopRowClick}
-          className="flex shrink-0 items-center gap-1.5"
+          className="-my-1 flex shrink-0 items-center gap-0.5 transition-opacity pointer-fine:opacity-0 pointer-fine:group-focus-within:opacity-100 pointer-fine:group-hover:opacity-100 pointer-fine:has-data-popup-open:opacity-100"
         >
-          {row.status}
-          {hasActions && <RowMenu name={row.name} actions={row.actions!} />}
+          {hasActions && (
+            <ActionsMenu
+              label={`Actions for ${row.name}`}
+              actions={row.actions!}
+            />
+          )}
           {row.remove && <RemoveButton {...row.remove} />}
         </div>
       )}
@@ -191,50 +218,59 @@ export const PanelList = <T,>({
   const hiddenCount = items.length - shownItems.length;
 
   return (
-    <section>
-      <div className="flex min-h-8 items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">
-          {title}
-          <span className="ml-1.5 font-normal text-muted-foreground">
-            {items.length}
-          </span>
-        </h3>
-
-        {add && (
+    <PanelCard
+      title={title}
+      count={items.length}
+      action={
+        add && (
           <Button
             type="button"
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="xs"
             onClick={add.onClick}
-            className="gap-1.5"
+            // The section's title says what is added to.
+            aria-label={add.label}
+            title={add.label}
+            className="-mr-1.5 text-brand hover:text-brand"
           >
-            <add.icon className="size-4" />
-            {add.label}
+            <add.icon className="size-3.5" />
+            Add
           </Button>
-        )}
-      </div>
-
-      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
+        )
+      }
+    >
+      {note && (
+        <p className="border-b border-border px-3 py-2 text-xs text-muted-foreground">
+          {note}
+        </p>
+      )}
 
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-muted-foreground">{emptyText}</p>
+        <p className="px-3 py-3 text-sm text-muted-foreground">{emptyText}</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border overflow-hidden rounded-xl border border-border">
+        <ul>
           {shownItems.map((item, index) => {
             const group = groupBy?.(item);
             const startsGroup =
               group &&
               (index === 0 ||
-                groupBy?.(shownItems[index - 1]).key !== group.key);
+                groupBy?.(shownItems[index - 1])?.key !== group.key);
+            const divider: RowDivider =
+              index === 0 || startsGroup ? "none" : group ? "soft" : "full";
 
             return (
               <Fragment key={getKey(item)}>
                 {startsGroup && (
-                  <li className="bg-muted/10 px-3 pt-2 pb-1 text-xs font-semibold text-muted-foreground">
+                  <li
+                    className={cn(
+                      "px-3 pb-1 text-xs font-medium text-muted-foreground",
+                      index === 0 ? "pt-2.5" : "border-t border-border pt-3.5",
+                    )}
+                  >
                     {group.heading}
                   </li>
                 )}
-                <Row row={renderRow(item)} />
+                <Row row={renderRow(item)} divider={divider} />
               </Fragment>
             );
           })}
@@ -242,16 +278,40 @@ export const PanelList = <T,>({
       )}
 
       {hiddenCount > 0 && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowsAll(true)}
-          className="mt-1"
-        >
-          Show all {items.length}
-        </Button>
+        <div className="border-t border-border px-1.5 py-1">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowsAll(true)}
+          >
+            Show all {items.length}
+          </Button>
+        </div>
       )}
-    </section>
+    </PanelCard>
   );
 };
+
+type PanelCardProps = {
+  title: string;
+  /** How many items the section holds, after its title. */
+  count: number;
+  /** Beside the title: Add. */
+  action?: ReactNode;
+  children: ReactNode;
+};
+
+/** A list section: a card with its title, count and Add in a bar on top. */
+const PanelCard = ({ title, count, action, children }: PanelCardProps) => (
+  <section className="overflow-hidden rounded-xl border border-border">
+    <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1">
+      <h3 className="text-xs font-medium text-muted-foreground">
+        {title}
+        <span className="ml-1.5 tabular-nums">{count}</span>
+      </h3>
+      {action}
+    </div>
+    {children}
+  </section>
+);

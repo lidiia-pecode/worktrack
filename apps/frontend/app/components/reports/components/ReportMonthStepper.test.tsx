@@ -11,6 +11,7 @@ const renderStepper = (month: string) => {
   render(
     <ReportMonthStepper
       month={month}
+      today="2026-10-15"
       currentMonth="2026-10"
       companyFirstMonth="2026-06"
       onChange={onChange}

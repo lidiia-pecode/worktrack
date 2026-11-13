@@ -43,7 +43,7 @@ type PeriodPickerProps = {
 };
 
 /** The calendar behind a month, quarter or year: a day picked shows its period. */
-const CalendarPeriodPicker = ({
+export const CalendarPeriodPicker = ({
   period,
   unit,
   today,

@@ -16,6 +16,8 @@ export interface TeamUser {
   email: string;
   role: UserRole;
   status: UserStatus;
+  /** While deactivated, their last working day. */
+  lastWorkingDay: string | null;
   avatarUrl?: string | null;
   position?: string | null;
 }

@@ -117,6 +117,7 @@ const row = (
     email: `${firstName.toLowerCase()}@example.com`,
     position,
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
@@ -246,9 +247,7 @@ describe("PlanningWeekView", () => {
       name: "Search by name or position",
     });
     await user.type(search, "nobody");
-    expect(
-      screen.getByText("Nobody matches these filters"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
     // Clears the project and the search together (the address too).
     await user.click(

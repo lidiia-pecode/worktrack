@@ -85,7 +85,7 @@ export const ImpactDialog = ({
   ...content
 }: ImpactDialogProps) => {
   // Callers clear their text as soon as it closes, so the closing dialog
-  // keeps what it last showed open rather than an empty title or "Checking...".
+  // keeps what it last showed open rather than an empty title or "Checking…".
   const [lastOpenContent, setLastOpenContent] = useState(content);
   if (isOpen && !isSameContent(content, lastOpenContent)) {
     setLastOpenContent(content);

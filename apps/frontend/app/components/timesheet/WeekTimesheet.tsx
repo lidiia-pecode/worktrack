@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useMemo, useState } from "react";
+import Link from "next/link";
 
 import { CalendarOff, FolderKanban, ListTodo } from "lucide-react";
 
@@ -22,6 +23,8 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { UserRole } from "@/types/enums";
 import { useShownWeek } from "@/hooks/useShownWeek";
 import {
   ABSENCE_TYPE_LABELS,
@@ -33,13 +36,15 @@ import { groupTimelogsByDate } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 
 import { EmptyState } from "../shared/EmptyState";
+import { projects } from "../layout/sidebar/sidebar-navigation";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   AbsenceFormModal,
   LockedAbsenceModal,
@@ -81,6 +86,9 @@ type WeekTimesheetProps = {
 };
 
 export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
+  const { user: viewer } = useAuth();
+  const addsOwnProjects =
+    viewer?.role === UserRole.OWNER || viewer?.role === UserRole.MANAGER;
   const {
     dailyTargetMinutes,
     timezone,
@@ -160,7 +168,11 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
   const graceMonth = useGraceMonth();
 
-  const { items: plannedEntries } = usePlanningEntries({
+  const {
+    items: plannedEntries,
+    isError: isPlansError,
+    refetch: refetchPlans,
+  } = usePlanningEntries({
     userId,
     dateFrom,
     dateTo,
@@ -316,6 +328,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   const closeModal = () => setModalState(null);
 
   const retry = () => {
+    void refetchPlans();
     void refetchLogs();
     void refetchPicker();
     void refetchSettings();
@@ -350,15 +363,23 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
   const header = <PageHeader title="Log my time" hideTitle />;
 
+  const weekNav = (
+    <div className="flex items-center gap-2">
+      <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
+      <BackToThisWeekButton weekStart={weekStart} onWeekChange={showWeekOf} />
+    </div>
+  );
+
   const addAbsenceButton = (
     <Button
       type="button"
       variant="outline"
       size="sm"
       onClick={openNewAbsence}
-      className="max-sm:size-10 max-sm:px-0"
+      // Drawn like the week's date button beside it.
+      className="font-medium max-sm:size-10 max-sm:px-0"
     >
-      <CalendarOff className="size-4" aria-hidden />
+      <CalendarOff className="size-4 text-muted-foreground" aria-hidden />
       <span className="max-sm:sr-only">Add absence</span>
     </Button>
   );
@@ -404,6 +425,8 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     return (
       <>
         {header}
+        {/* The toolbar stays meanwhile, as on every page with a period. */}
+        <div className="border-b border-border pb-3">{weekNav}</div>
         <LoadingState
           title="Loading your timesheet"
           description="Fetching your week and company settings."
@@ -432,10 +455,26 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         </div>
 
         {content === "notOnProjects" ? (
+          // An owner or a manager puts themselves on a project; an employee
+          // waits for their manager to.
           <EmptyState
             title="You're not on any projects yet"
-            description="Once a manager adds you to a project, you'll be able to log time against it here."
+            description={
+              addsOwnProjects
+                ? "Add yourself to a project on its panel in Projects, then log your time against it here."
+                : "Once a manager adds you to a project, you'll be able to log time against it here."
+            }
             icon={<FolderKanban />}
+            action={
+              addsOwnProjects && (
+                <Link
+                  href={projects.href}
+                  className={buttonVariants({ variant: "secondary" })}
+                >
+                  Go to Projects
+                </Link>
+              )
+            }
           />
         ) : (
           <EmptyState
@@ -458,13 +497,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
       <div className="@container border-b border-border pb-3">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-5">
-          <div className="flex items-center gap-2">
-            <WeekNav weekStart={weekStart} onWeekChange={showWeekOf} />
-            <BackToThisWeekButton
-              weekStart={weekStart}
-              onWeekChange={showWeekOf}
-            />
-          </div>
+          {weekNav}
 
           {showsFigures && (
             <WeekSummary
@@ -473,12 +506,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
               expectedMinutes={expectedMinutes}
               daysOff={daysOff}
               weekendMinutes={weekendMinutes}
-              className="order-last w-full @5xl:order-none @5xl:ml-auto @5xl:w-auto"
+              className="order-last w-full @3xl:order-none @3xl:ml-auto @3xl:w-auto"
             />
           )}
 
           {!hasError && (
-            <div className="ml-auto flex items-center gap-2 @5xl:ml-0">
+            <div className="ml-auto flex items-center gap-2 @3xl:ml-0">
               {graceMonth?.editableUntil && (
                 <GraceMonthNote
                   month={graceMonth.month}
@@ -490,6 +523,12 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
           )}
         </div>
       </div>
+
+      {!hasError && isPlansError && (
+        <PartLoadError onRetry={() => void refetchPlans()}>
+          {PLANS_LOAD_ERROR}
+        </PartLoadError>
+      )}
 
       {hasError && (
         <ErrorState

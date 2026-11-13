@@ -3,9 +3,10 @@
 import { UsersRound } from "lucide-react";
 
 import { PeopleReportRow } from "@/types";
-import { formatDayMonthLabel, formatReportHours } from "@/lib/utils/date";
+import { formatReportHours } from "@/lib/utils/date";
 import { cn } from "@/lib/utils/cn";
-import { isDeactivatedUser } from "@/lib/utils/user";
+import { factsLine } from "@/lib/utils/text";
+import { leaverLabel, moveLabel } from "@/lib/utils/user";
 import { hoursAgainst, percentOf } from "@/lib/utils/report-overview";
 
 import { Card } from "@/components/ui/card";
@@ -24,15 +25,10 @@ const NO_FIGURE = "—";
  */
 const detailOf = (person: PeopleReportRow, isTeamFiltered: boolean) => {
   const moves = isTeamFiltered
-    ? (person.teams[0]?.moves ?? []).map(
-        ({ direction, date }) =>
-          `${direction === "in" ? "Joined" : "Moved out"} ${formatDayMonthLabel(date)}`,
-      )
+    ? (person.teams[0]?.moves ?? []).map(moveLabel)
     : [];
 
-  return [person.position, ...moves, isDeactivatedUser(person) && "Deactivated"]
-    .filter(Boolean)
-    .join(" · ");
+  return factsLine([person.position, ...moves, leaverLabel(person)]);
 };
 
 /** How far logged time is from what was expected, either way. */

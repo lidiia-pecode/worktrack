@@ -4,6 +4,7 @@ import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
+  DATE_LOCALE,
   addDays,
   firstOfMonth,
   formatLongDayLabel,
@@ -17,7 +18,7 @@ import {
 } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
-const MONTH_LABEL = new Intl.DateTimeFormat(undefined, {
+const MONTH_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   month: "long",
   year: "numeric",
 });

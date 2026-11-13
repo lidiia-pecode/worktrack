@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { TeamSummaryRow } from "@/types";
+import { PlanningWeekRow, TeamSummaryRow } from "@/types";
 import { UserStatus } from "@/types/enums";
 
 import {
   DEFAULT_TEAM_SORT,
   nextTeamSort,
   searchTeamRows,
+  sortPlanningRows,
   sortTeamRows,
 } from "./team-rows";
 
@@ -23,6 +24,7 @@ const row = (
     email: `${firstName.toLowerCase()}@example.com`,
     position,
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
   },
   minutes,
   billableMinutes: minutes,
@@ -63,7 +65,7 @@ describe("sortTeamRows", () => {
   it("sorts by the share of what was expected, least complete first", () => {
     const sorted = sortTeamRows(
       [JANE, AVA],
-      { key: "logged", direction: "asc" },
+      { key: "total", direction: "asc" },
       { byProject: false },
     );
 
@@ -74,7 +76,7 @@ describe("sortTeamRows", () => {
     for (const direction of ["asc", "desc"] as const) {
       const sorted = sortTeamRows(
         [MIA, JANE, AVA],
-        { key: "logged", direction },
+        { key: "total", direction },
         { byProject: false },
       );
 
@@ -85,11 +87,43 @@ describe("sortTeamRows", () => {
   it("sorts by minutes on the project under a project filter", () => {
     const sorted = sortTeamRows(
       [AVA, MIA, JANE],
-      { key: "logged", direction: "desc" },
+      { key: "total", direction: "desc" },
       { byProject: true },
     );
 
     expect(names(sorted)).toEqual(["Ava", "Jane", "Mia"]);
+  });
+});
+
+describe("sortPlanningRows", () => {
+  const planned = (
+    teamRow: TeamSummaryRow,
+    plannedMinutes: number,
+    availableMinutes: number,
+  ) =>
+    ({
+      user: teamRow.user,
+      plannedMinutes,
+      availableMinutes,
+    }) as PlanningWeekRow;
+
+  // Ava 30h of 40h, Jane 20h of 20h (a part-timer), Mia nothing available.
+  const rows = [
+    planned(MIA, 0, 0),
+    planned(JANE, 1200, 1200),
+    planned(AVA, 1800, 2400),
+  ];
+
+  it("compares the share of what is available, nobody available last", () => {
+    const sorted = (direction: "asc" | "desc") =>
+      sortPlanningRows(
+        rows,
+        { key: "total", direction },
+        { byProject: false },
+      ).map((row) => row.user.firstName);
+
+    expect(sorted("asc")).toEqual(["Ava", "Jane", "Mia"]);
+    expect(sorted("desc")).toEqual(["Jane", "Ava", "Mia"]);
   });
 });
 
@@ -99,8 +133,8 @@ describe("nextTeamSort", () => {
       key: "name",
       direction: "desc",
     });
-    expect(nextTeamSort({ key: "name", direction: "desc" }, "logged")).toEqual({
-      key: "logged",
+    expect(nextTeamSort({ key: "name", direction: "desc" }, "total")).toEqual({
+      key: "total",
       direction: "asc",
     });
   });

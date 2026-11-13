@@ -13,7 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import { isConflictError } from "@/lib/api";
 import { useReportDirty } from "@/hooks/useReportDirty";
 
-import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
+import {
+  PanelFormFields,
+  PanelTitleInput,
+} from "../entity-panel/EntityPanelLayout";
 
 import { FormSelect } from "../shared/FormSelect";
 
@@ -113,35 +116,37 @@ export const ActivityForm = ({
         disabled={isSubmitting}
       />
 
-      <Controller
-        control={control}
-        name="categoryId"
-        render={({ field }) => (
-          <FormSelect
-            label="Category"
-            value={field.value}
-            onValueChange={field.onChange}
-            options={categoryOptions}
-            placeholder="Select category"
-            description={categoryHint}
-            error={errors.categoryId?.message}
-            disabled={isSubmitting || hasNoCategories}
-          />
-        )}
-      />
+      <PanelFormFields>
+        <Controller
+          control={control}
+          name="categoryId"
+          render={({ field }) => (
+            <FormSelect
+              label="Category"
+              value={field.value}
+              onValueChange={field.onChange}
+              options={categoryOptions}
+              placeholder="Select category"
+              description={categoryHint}
+              error={errors.categoryId?.message}
+              disabled={isSubmitting || hasNoCategories}
+            />
+          )}
+        />
 
-      <label className="flex cursor-pointer items-center justify-between gap-4 select-none">
-        <span>
-          <span className="block text-sm font-medium text-foreground">
-            Billable by default
+        <label className="flex cursor-pointer items-center justify-between gap-4 select-none">
+          <span>
+            <span className="block text-sm font-medium text-foreground">
+              Billable by default
+            </span>
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              New time entries on client projects start billable.
+            </span>
           </span>
-          <span className="mt-0.5 block text-xs text-muted-foreground">
-            New time entries on client projects start billable.
-          </span>
-        </span>
 
-        <Switch {...register("defaultBillable")} disabled={isSubmitting} />
-      </label>
+          <Switch {...register("defaultBillable")} disabled={isSubmitting} />
+        </label>
+      </PanelFormFields>
     </form>
   );
 };

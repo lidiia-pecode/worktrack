@@ -3,7 +3,7 @@
 import { ReactNode, useState } from "react";
 import { ArrowRight } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import { Field } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { useTeamMembers } from "@/hooks/useTeams";
@@ -175,7 +175,7 @@ export const TeamManagerDialog = ({
                 <ChangeLine person={picked}>
                   manager
                   {picked.role === UserRole.EMPLOYEE && (
-                    <Badge variant="neutral">Gets the Manager role</Badge>
+                    <StatusText>Gets the Manager role</StatusText>
                   )}
                 </ChangeLine>
                 {current && (

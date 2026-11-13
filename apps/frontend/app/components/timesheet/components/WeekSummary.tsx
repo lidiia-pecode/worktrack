@@ -6,9 +6,7 @@ import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
 import { percentOf } from "@/lib/utils/report-overview";
 
-import { Badge } from "@/components/ui/badge";
-
-import { ReportBar } from "../../reports/components/ReportBar";
+import { WeekTotal } from "../../shared/week/WeekTotal";
 import {
   Popover,
   PopoverContent,
@@ -25,23 +23,6 @@ type WeekSummaryProps = {
   weekendMinutes: number;
   className?: string;
 };
-
-/** The week's logged time against what was expected, as Reports draw it. */
-export const WeekBar = ({
-  billableMinutes,
-  nonBillableMinutes,
-  expectedMinutes,
-}: Pick<
-  WeekSummaryProps,
-  "billableMinutes" | "nonBillableMinutes" | "expectedMinutes"
->) => (
-  <ReportBar
-    value={billableMinutes + nonBillableMinutes}
-    reference={expectedMinutes}
-    billable={billableMinutes}
-    className="h-1.5 min-w-20 flex-1"
-  />
-);
 
 const Fact = ({
   label,
@@ -96,19 +77,11 @@ export const WeekSummary = ({
           className,
         )}
       >
-        <span className="whitespace-nowrap tabular-nums">
-          <span className="font-semibold">{formatDuration(totalMinutes)}</span>
-          {expectsTime && (
-            <span className="text-muted-foreground">
-              {" "}
-              / {formatDuration(expectedMinutes)}
-            </span>
-          )}
-        </span>
-        <WeekBar
+        <WeekTotal
+          label="Logged"
+          minutes={totalMinutes}
+          ofMinutes={expectsTime ? expectedMinutes : undefined}
           billableMinutes={billableMinutes}
-          nonBillableMinutes={nonBillableMinutes}
-          expectedMinutes={expectedMinutes}
         />
         {overMinutes > 0 && (
           <span className="text-xs font-medium whitespace-nowrap text-warning-text tabular-nums">
@@ -116,10 +89,10 @@ export const WeekSummary = ({
           </span>
         )}
         {isComplete && (
-          <Badge variant="success" className="px-1.5 text-2xs font-medium">
+          <span className="inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap text-success-text">
             <Check className="size-3" aria-hidden />
             Complete
-          </Badge>
+          </span>
         )}
         <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
       </PopoverTrigger>

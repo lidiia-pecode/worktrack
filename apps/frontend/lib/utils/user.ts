@@ -55,6 +55,19 @@ export const isDeactivatedUser = (user: { status?: UserStatus }) =>
 export const lastWorkingDayLabel = (user: Pick<User, "lastWorkingDay">) =>
   user.lastWorkingDay ? formatDayMonthYearLabel(user.lastWorkingDay) : null;
 
+/**
+ * A leaver in a list of people, where the date says more than the status:
+ * "Last day Aug 28", or "Deactivated" without a date.
+ */
+export const leaverLabel = (user: {
+  status?: UserStatus;
+  lastWorkingDay?: string | null;
+}) => {
+  if (!isDeactivatedUser(user)) return null;
+  if (!user.lastWorkingDay) return "Deactivated";
+  return `Last day ${formatDayMonthLabel(user.lastWorkingDay)}`;
+};
+
 /** Working hours of 0: nothing expected, no missing days, never planned. */
 export const NO_FIXED_HOURS = "No fixed hours";
 
@@ -74,9 +87,9 @@ export const CLOSED_DAY_TEXT: Record<ClosedSpell["reason"], string> = {
   inactive: "Not employed on this day",
 };
 
-/** "Moved out · 14 Oct" or "Joined · 14 Oct"; no team is named. */
+/** "Joined Oct 14" or "Moved out Oct 14"; no team is named. */
 export const moveLabel = ({ date, direction }: TeamMove) =>
-  `${direction === "in" ? "Joined" : "Moved out"} · ${formatDayMonthLabel(date)}`;
+  `${direction === "in" ? "Joined" : "Moved out"} ${formatDayMonthLabel(date)}`;
 
 /**
  * Whether the viewer may create, edit and delete someone's time entries.

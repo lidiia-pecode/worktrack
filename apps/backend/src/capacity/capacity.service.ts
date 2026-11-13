@@ -349,7 +349,7 @@ export class CapacityService {
 
       if (validFrom <= lockedUntil) {
         throw new ForbiddenException(
-          `Cannot change capacity from ${validFrom}: periods are LOCKED up to ${lockedUntil}, and the change would alter what was expected then.`,
+          `Cannot change capacity from ${validFrom}: periods are locked up to ${lockedUntil}, and the change would alter what was expected then.`,
         );
       }
 

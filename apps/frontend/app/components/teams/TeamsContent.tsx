@@ -135,7 +135,7 @@ export const TeamsContent = () => {
         isRefreshing={isPlaceholderData}
         isError={isError}
         onRetry={refetch}
-        searchPlaceholder="Search teams..."
+        searchPlaceholder="Search teams…"
         emptyTitle="No teams yet"
         emptyDescription="Create your first team to organize your company."
         emptyIcon={<UsersRound className="size-6" />}

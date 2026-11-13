@@ -37,7 +37,7 @@ export const ActivityArchiveDialog = ({
   const description = impact.isError
     ? "Could not check which projects use it. Close this and try again."
     : !impact.data
-      ? "Checking which projects use it..."
+      ? "Checking which projects use it…"
       : projects.length === 0
         ? "No active project offers it now. You can restore it later."
         : "Nobody can log new time on it in these projects. Time already logged stays in reports, and restoring it puts it back on them.";

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
+import { useAllProjectsQuery } from "@/hooks/useProjects";
 import { readTeamSort, TeamSort, teamSortParam } from "@/lib/utils/team-rows";
 
 import {
@@ -33,6 +34,9 @@ const replaceParams = (
   );
 };
 
+const addressKey = (search: string, sort: string | null) =>
+  JSON.stringify([search, sort]);
+
 type TeamTimeFilters = {
   teamId?: string;
   projectId?: string;
@@ -42,11 +46,13 @@ type TeamTimeFilters = {
 
 /**
  * The week grids' team, project, search and sort, read from and written to
- * the URL; Planning uses the first three. Defaults stay out of the address.
- * The search and the sort are kept here as set, the search as typed while the
- * address holds it trimmed; the address only seeds them, since Next.js applies
- * a history change to `useSearchParams` a render later than the state. A
- * linked team that isn't the viewer's is dropped, as on Reports.
+ * the URL. Defaults stay out of the address. The search and the sort are kept
+ * here as set, the search as typed while the address holds it trimmed; the
+ * address seeds them, since Next.js applies a history change to
+ * `useSearchParams` a render later than the state, and resets them when it
+ * changes from outside, such as the page's own sidebar link. A linked team
+ * that isn't the viewer's, or a project that isn't listed, is dropped, as on
+ * Reports.
  */
 export const useTeamTimeFilters = () => {
   const searchParams = useSearchParams();
@@ -55,26 +61,79 @@ export const useTeamTimeFilters = () => {
   const { readLinkedTeam } = useTeamChoice();
 
   const { teamId, isDropped } = readLinkedTeam(searchParams.get(TEAM_PARAM));
-  const projectId = readIdParam(searchParams.get(PROJECT_PARAM));
+
+  // The same list the project filter shows, so it comes from the cache.
+  const {
+    items: projects,
+    isLoading: isLoadingProjects,
+    isError: isProjectsError,
+  } = useAllProjectsQuery();
+  const hasProjects = !isLoadingProjects && !isProjectsError;
+  const projectInAddress = searchParams.get(PROJECT_PARAM);
+  const isProjectDropped =
+    projectInAddress !== null &&
+    (!readIdParam(projectInAddress) ||
+      (hasProjects &&
+        !projects.some((project) => project.id === projectInAddress)));
+  const projectId = isProjectDropped
+    ? undefined
+    : readIdParam(projectInAddress);
+
   const searchInAddress = searchParams.get(SEARCH_PARAM) ?? "";
-  const sortInAddress = readTeamSort(searchParams.get(SORT_PARAM));
+  const sortParamInAddress = searchParams.get(SORT_PARAM);
 
   const [search, setSearchState] = useState(searchInAddress);
-  const [sort, setSortState] = useState(sortInAddress);
+  const [sort, setSortState] = useState(() => readTeamSort(sortParamInAddress));
+  // What this hook has put in the address and not yet seen back, oldest
+  // first, so its own writes arriving a render late, even after a newer
+  // keystroke, aren't taken for an outside change.
+  const pendingWrites = useRef([
+    addressKey(searchInAddress, sortParamInAddress),
+  ]);
+
+  useEffect(() => {
+    const key = addressKey(searchInAddress, sortParamInAddress);
+    const ownWrite = pendingWrites.current.indexOf(key);
+
+    if (ownWrite >= 0) {
+      pendingWrites.current = pendingWrites.current.slice(ownWrite);
+      return;
+    }
+
+    pendingWrites.current = [key];
+    setSearchState(searchInAddress);
+    setSortState(readTeamSort(sortParamInAddress));
+  }, [searchInAddress, sortParamInAddress]);
 
   const setFilters = (filters: TeamTimeFilters) => {
     const values = { teamId, projectId, search, sort, ...filters };
+    const searchParam = values.search?.trim() || undefined;
+    const sortParam = teamSortParam(values.sort);
+
+    pendingWrites.current.push(
+      addressKey(searchParam ?? "", sortParam ?? null),
+    );
     replaceParams(pathname, [
       [TEAM_PARAM, values.teamId],
       [PROJECT_PARAM, values.projectId],
-      [SEARCH_PARAM, values.search?.trim() || undefined],
-      [SORT_PARAM, teamSortParam(values.sort)],
+      [SEARCH_PARAM, searchParam],
+      [SORT_PARAM, sortParam],
     ]);
   };
 
   useEffect(() => {
-    if (isDropped) replaceParams(pathname, [[TEAM_PARAM, undefined]]);
-  }, [isDropped, pathname]);
+    const dropped = [
+      isDropped && TEAM_PARAM,
+      isProjectDropped && PROJECT_PARAM,
+    ].filter((name): name is string => Boolean(name));
+
+    if (dropped.length > 0) {
+      replaceParams(
+        pathname,
+        dropped.map((name) => [name, undefined]),
+      );
+    }
+  }, [isDropped, isProjectDropped, pathname]);
 
   const setSearch = (value: string) => {
     setSearchState(value);

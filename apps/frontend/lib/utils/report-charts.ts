@@ -1,10 +1,10 @@
 import { HoursReportRow, TimelineBucket, TimelineBucketSize } from "@/types";
 
-import { formatDayMonthLabel, fromISODate } from "./date";
+import { DATE_LOCALE, formatDayMonthLabel, fromISODate } from "./date";
 import { countLabel } from "./text";
 
-const DAY_LABEL = new Intl.DateTimeFormat(undefined, { day: "numeric" });
-const MONTH_LABEL = new Intl.DateTimeFormat(undefined, { month: "short" });
+const DAY_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, { day: "numeric" });
+const MONTH_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, { month: "short" });
 
 /**
  * A bucket by name: a month as "Jan", whatever part of it the range covers; a

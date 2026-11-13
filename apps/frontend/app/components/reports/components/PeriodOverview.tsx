@@ -17,9 +17,9 @@ import {
 } from "@/lib/utils/report-charts";
 import { percentOf } from "@/lib/utils/report-overview";
 
-import { Badge } from "@/components/ui/badge";
-import { BrandPattern } from "@/components/ui/brand-pattern";
 import { Card } from "@/components/ui/card";
+
+import { PeriodBand } from "./PeriodBand";
 
 const heightOn = (minutes: number, endMinutes: number) =>
   `${(minutes / endMinutes) * 100}%`;
@@ -88,11 +88,13 @@ type FigureCardProps = {
 };
 
 const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
-  <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5">
+  // One a row on a phone; three across from a tablet, the ring above the
+  // figure until there is room beside it.
+  <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:flex-col @sm:items-start @sm:gap-2 @sm:px-3 @sm:py-3 @3xl:flex-row @3xl:items-center @3xl:gap-4 @3xl:px-4 @3xl:py-3.5">
     {percent !== null && <ShareRing percent={percent} tone={tone} />}
     <div className="min-w-0">
       <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums">
+      <p className="text-2xl font-semibold tracking-tight tabular-nums @sm:text-xl @3xl:text-2xl">
         {value}
       </p>
       <p className="text-xs text-muted-foreground">
@@ -234,16 +236,8 @@ export const PeriodOverview = ({
 
   return (
     <Card as="section" aria-labelledby="report-period">
-      <div className="relative overflow-hidden border-b border-brand-strong bg-brand-muted px-6 pt-5 pb-6">
-        <BrandPattern className="opacity-50" />
-
-        <h2 id="report-period" className="relative">
-          <Badge variant="solid" className="px-3 py-1 text-sm font-semibold">
-            {periodLabel}
-          </Badge>
-        </h2>
-
-        <ul className="relative mt-4 grid gap-4 @3xl:grid-cols-3">
+      <PeriodBand titleId="report-period" label={periodLabel}>
+        <ul className="grid gap-3 @sm:grid-cols-3 @3xl:gap-4">
           <FigureCard
             label="Logged"
             value={formatReportHours(loggedMinutes)}
@@ -280,7 +274,7 @@ export const PeriodOverview = ({
             note={loggedMinutes > 0 ? "of logged" : "Nothing logged yet"}
           />
         </ul>
-      </div>
+      </PeriodBand>
 
       <section aria-labelledby="report-timeline" className="p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">

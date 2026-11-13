@@ -25,7 +25,11 @@ import { Company, StandardDayChange } from "@/types/Company";
 import { WeekDay } from "@/types/enums";
 import { WEEK_DAY_LABELS, WEEK_START_OPTIONS } from "@/lib/constants";
 import { findTimeZoneOption, toListedTimeZone } from "@/lib/utils/time-zones";
-import { NumberStepper } from "@/app/components/shared/inputs/NumberStepper";
+import {
+  STANDARD_DAY_LABEL,
+  STANDARD_DAY_NOTE,
+  WorkDayHoursInput,
+} from "@/app/components/shared/inputs/WorkDayHoursInput";
 import { useCompany } from "@/hooks/auth/useCompany";
 import { useReportDirty } from "@/hooks/useReportDirty";
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
@@ -36,10 +40,6 @@ import {
   todayISODate,
 } from "@/lib/utils/date";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
-import {
-  MAX_WORK_DAY_HOURS,
-  WORK_DAY_STEP_HOURS,
-} from "@/lib/forms/schemas/work-day.schema";
 
 interface CompanySettingsProps {
   onDirtyChange?: (isDirty: boolean) => void;
@@ -134,7 +134,7 @@ export const CompanySettings = ({ onDirtyChange }: CompanySettingsProps) => {
         {SETTINGS_HEADER}
         <CardBody>
           {query.isLoading ? (
-            <LoadingState size="compact" title="Loading company settings..." />
+            <LoadingState size="compact" title="Loading company settings…" />
           ) : (
             <ErrorState
               size="compact"
@@ -177,7 +177,6 @@ const CompanySettingsForm = ({
     control,
     reset,
     handleSubmit,
-    setValue,
     formState: { errors, isDirty, isSubmitting },
   } = useForm<CompanyFormValues>({
     resolver: zodResolver(companySchema),
@@ -185,18 +184,6 @@ const CompanySettingsForm = ({
   });
 
   useReportDirty(isDirty, onDirtyChange);
-
-  const workHours =
-    Number(useWatch({ control, name: "standardWorkHoursPerDay" })) || 0;
-
-  const updateWorkHours = (delta: number) => {
-    const next = Math.min(MAX_WORK_DAY_HOURS, Math.max(1, workHours + delta));
-
-    setValue("standardWorkHoursPerDay", next, {
-      shouldDirty: true,
-      shouldValidate: true,
-    });
-  };
 
   const validFrom = useWatch({ control, name: "standardWorkHoursFrom" });
   const replacesScheduled = scheduled && validFrom > today;
@@ -329,32 +316,19 @@ const CompanySettingsForm = ({
                 )}
               />
 
-              <div>
-                <Input
-                  label="Standard work hours / day"
-                  type="number"
-                  min={1}
-                  max={MAX_WORK_DAY_HOURS}
-                  step={WORK_DAY_STEP_HOURS}
-                  placeholder="8"
-                  {...register("standardWorkHoursPerDay", {
-                    valueAsNumber: true,
-                  })}
-                  error={errors.standardWorkHoursPerDay?.message}
-                  // The stepper stands in for the browser's own spin buttons.
-                  className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-                  endAdornment={
-                    <NumberStepper
-                      label="Standard work hours / day"
-                      canIncrease={workHours < MAX_WORK_DAY_HOURS}
-                      canDecrease={workHours > 1}
-                      onStep={(direction) =>
-                        updateWorkHours(direction * WORK_DAY_STEP_HOURS)
-                      }
-                    />
-                  }
-                />
-              </div>
+              <Controller
+                control={control}
+                name="standardWorkHoursPerDay"
+                render={({ field, fieldState }) => (
+                  <WorkDayHoursInput
+                    {...field}
+                    label={STANDARD_DAY_LABEL}
+                    note={STANDARD_DAY_NOTE}
+                    min={1}
+                    error={fieldState.error?.message}
+                  />
+                )}
+              />
 
               <Controller
                 control={control}

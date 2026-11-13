@@ -1,8 +1,8 @@
 "use client";
 
-import { FolderTree, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import {
   useActivitiesMutations,
   useActivityDetails,
@@ -16,8 +16,10 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
+import { activities } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { LoadingState } from "../shared/LoadingState";
@@ -83,7 +85,11 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Activity"
+        leading={
+          <PanelIcon>
+            <activities.icon className="size-4" />
+          </PanelIcon>
+        }
         name={activity.name}
         status={!isActive && <PanelStatus />}
         onEdit={
@@ -98,27 +104,16 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
             value: (
               <EntityLink
                 entity={{ type: "category", id: activity.category.id }}
-                tone="chip"
+                tone="plain"
+                className="font-medium"
               >
-                <FolderTree
-                  aria-hidden="true"
-                  className="size-3.5 text-muted-foreground"
-                />
                 {activity.category.name}
               </EntityLink>
             ),
           },
           {
-            label: "New time entries",
-            value: activity.defaultBillable ? (
-              <Badge variant="success" dot>
-                Billable
-              </Badge>
-            ) : (
-              <Badge variant="neutral" dot>
-                Non-billable
-              </Badge>
-            ),
+            label: "Billable by default",
+            value: activity.defaultBillable ? "Yes" : "No",
           },
         ]}
         editForm={isEditing && <ActivityEditForm activity={activity} />}
@@ -136,7 +131,7 @@ const ActivityDetailsView = ({ activity }: { activity: ActivityDetails }) => {
               entity: { type: "project", id: project.id },
               name: project.name,
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeProjects && !isArchived
                   ? {

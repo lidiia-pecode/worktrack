@@ -864,7 +864,7 @@ export class UsersService {
 
     if (firstAffectedDay <= lockedUntil) {
       throw new ForbiddenException(
-        `${subject} is in a locked month: periods are LOCKED up to ${lockedUntil}.`,
+        `${subject} is in a locked month: periods are locked up to ${lockedUntil}.`,
       );
     }
   }

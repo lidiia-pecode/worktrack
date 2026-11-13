@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
+
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useActivitiesInfiniteQuery } from "@/hooks/useActivities";
 import { useServerSearch } from "@/hooks/useManageListState";
@@ -31,12 +33,16 @@ export const PEOPLE_PICKER = "add-people";
 
 export const ACTIVITIES_PICKER = "add-activities";
 
-// From setup, Done goes back to Getting started.
-const useSetupDone = () => {
+/**
+ * From setup, Done goes back to Getting started, but only on the project the
+ * checklist opened: another one opened on the way is ordinary work.
+ */
+const useSetupDone = (projectId: string) => {
   const router = useRouter();
   const isOnboarding = useIsOnboarding();
+  const { data: setupState } = useOwnerSetupState({ enabled: isOnboarding });
 
-  return isOnboarding
+  return isOnboarding && setupState?.setupProjectId === projectId
     ? {
         label: "Back to Getting started",
         afterwards: () => router.push(GETTING_STARTED_PATH),
@@ -51,7 +57,7 @@ export const offeredActivities = (project: Project): Activity[] =>
     .filter((activity): activity is Activity => Boolean(activity));
 
 export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
-  const setupDone = useSetupDone();
+  const setupDone = useSetupDone(project.id);
   const links = useProjectLinks();
   const { confirmRemoval, isChecking, confirmProps } =
     usePlanningRemovalGuard();
@@ -112,6 +118,7 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>
@@ -127,7 +134,7 @@ export const ProjectPeoplePicker = ({ project }: { project: Project }) => {
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
           emptyMessage="Nobody to add yet."
-          searchPlaceholder="Search people..."
+          searchPlaceholder="Search people…"
         />
       </PanelView>
 
@@ -140,7 +147,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
   const { user } = useAuth();
   // A manager picks from the catalogue; new activities are the owner's.
   const canCreate = canManageCatalogue(user?.role);
-  const setupDone = useSetupDone();
+  const setupDone = useSetupDone(project.id);
   const links = useProjectLinks();
   const [isCreating, setIsCreating] = useState(false);
   const [removal, setRemoval] = useState<ProjectActivityRemoval | null>(null);
@@ -201,6 +208,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={staged.toggle}
@@ -217,7 +225,7 @@ export const ProjectActivitiesPicker = ({ project }: { project: Project }) => {
               ? "No activities yet. Make the first with New activity."
               : "No activities yet. The owner adds them."
           }
-          searchPlaceholder="Search activities..."
+          searchPlaceholder="Search activities…"
         />
       </PanelView>
 

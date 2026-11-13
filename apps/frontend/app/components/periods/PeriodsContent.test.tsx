@@ -59,7 +59,10 @@ describe("PeriodsContent", () => {
     const user = userEvent.setup();
     render(<PeriodsContent />);
 
-    await user.click(screen.getByRole("button", { name: "Close August 2026" }));
+    // The table's button; the phone list repeats it.
+    await user.click(
+      screen.getAllByRole("button", { name: "Close August 2026" })[0],
+    );
     expect(close.mutate).not.toHaveBeenCalled();
     expect(
       await screen.findByRole("heading", { name: "Close August 2026?" }),

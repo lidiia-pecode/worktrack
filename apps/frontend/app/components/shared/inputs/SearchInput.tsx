@@ -28,7 +28,7 @@ export const SearchInput = ({
   id,
   value,
   onChange,
-  placeholder = "Search...",
+  placeholder = "Search…",
   autoFocus = false,
   className,
   size = "md",

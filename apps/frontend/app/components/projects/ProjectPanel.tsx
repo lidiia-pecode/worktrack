@@ -1,22 +1,26 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { FolderTree, Plus, UserPlus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+
+import { StatusText } from "../shared/StatusText";
 import {
   useClientNameSuggestions,
   useProjectDetails,
   useProjectsMutations,
 } from "@/hooks/useProjects";
-import { fullName, isDeactivatedUser } from "@/lib/utils/user";
+import { countLabel, factsLine } from "@/lib/utils/text";
+import { fullName, isDeactivatedUser, leaverLabel } from "@/lib/utils/user";
 import { Project } from "@/types";
-import { countLabel } from "@/lib/utils/text";
 
 import { EntityLink } from "../entity-panel/EntityLink";
 import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
@@ -71,6 +75,63 @@ const ProjectEditForm = ({ project }: { project: Project }) => {
   );
 };
 
+// About six lines of the description before "Show more".
+const COLLAPSED_DESCRIPTION_PX = 120;
+
+/** A long description shows its first lines, fading out, and the rest on request. */
+const CollapsibleDescription = ({ value }: { value: string }) => {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [isLong, setIsLong] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isCollapsed = isLong && !isExpanded;
+
+  // The read-only editor renders after mount, so its height is known only then.
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+
+    const observer = new ResizeObserver(() =>
+      setIsLong(content.scrollHeight > COLLAPSED_DESCRIPTION_PX),
+    );
+    observer.observe(content);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div>
+      <div
+        className="relative overflow-hidden"
+        style={
+          isCollapsed ? { maxHeight: COLLAPSED_DESCRIPTION_PX } : undefined
+        }
+      >
+        <div ref={contentRef}>
+          <DescriptionView value={value} className="text-muted-foreground" />
+        </div>
+
+        {isCollapsed && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-linear-to-b from-transparent to-card"
+          />
+        )}
+      </div>
+
+      {isLong && (
+        <Button
+          type="button"
+          variant="link"
+          onClick={() => setIsExpanded(!isExpanded)}
+          aria-expanded={isExpanded}
+          className="mt-1 h-auto px-0 text-xs text-brand"
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 const ProjectDetails = ({ project }: { project: Project }) => {
   const panel = useEntityPanel();
   const projectActions = useProjectActions();
@@ -103,9 +164,12 @@ const ProjectDetails = ({ project }: { project: Project }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Project"
         name={project.name}
-        leading={<ProjectColorDot projectId={project.id} className="size-3" />}
+        leading={
+          <PanelIcon>
+            <ProjectColorDot projectId={project.id} className="size-3" />
+          </PanelIcon>
+        }
         status={!isActive && <PanelStatus />}
         onEdit={
           projectActions.canEdit(project)
@@ -113,23 +177,13 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             : undefined
         }
         actions={projectActions.actionsFor(project)}
-        details={[
-          {
-            label: "Client",
-            value: project.clientName || (
-              <span className="text-muted-foreground">Internal project</span>
-            ),
-          },
-          ...(project.description
-            ? [
-                {
-                  label: "Description",
-                  value: <DescriptionView value={project.description} />,
-                  wide: true,
-                },
-              ]
-            : []),
-        ]}
+        // Who the work is for, as the Projects table says it.
+        subtitle={project.clientName || "Internal project"}
+        description={
+          project.description && (
+            <CollapsibleDescription value={project.description} />
+          )
+        }
         editForm={isEditing && <ProjectEditForm project={project} />}
         editsName
       >
@@ -147,10 +201,8 @@ const ProjectDetails = ({ project }: { project: Project }) => {
             entity: { type: "user", id: member.id },
             name: fullName(member),
             leading: <Avatar user={member} />,
-            detail: member.position,
-            status: isDeactivatedUser(member) && (
-              <Badge variant="neutral">Deactivated</Badge>
-            ),
+            detail: factsLine([member.position, leaverLabel(member)]),
+            isInactive: isDeactivatedUser(member),
             remove: canChangeLinks
               ? {
                   label: `Remove ${fullName(member)} from ${project.name}`,
@@ -228,7 +280,7 @@ const ProjectDetails = ({ project }: { project: Project }) => {
               entity: { type: "activity", id: activity.id },
               name: activity.name,
               isInactive: true,
-              status: <Badge variant="neutral">Archived</Badge>,
+              status: <StatusText>Archived</StatusText>,
             })}
             emptyText="No archived activities."
           />

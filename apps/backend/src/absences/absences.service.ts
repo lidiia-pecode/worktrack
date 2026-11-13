@@ -323,7 +323,7 @@ export class AbsencesService {
 
     if (isLocked) {
       throw new ForbiddenException(
-        `Cannot modify absences between ${startDate} and ${endDate} because the range touches a LOCKED reporting period.`,
+        `Cannot modify absences between ${startDate} and ${endDate} because the range touches a locked reporting period.`,
       );
     }
   }

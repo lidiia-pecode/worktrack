@@ -31,6 +31,7 @@ const person = (
   name,
   position: null,
   status: UserStatus.ACTIVE,
+  lastWorkingDay: null,
   teams: [],
   outsideTeams: null,
   loggedMinutes: 0,

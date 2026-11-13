@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,12 @@ import { CloseButton } from "../shared/buttons/CloseButton";
 import { SidePanel } from "../shared/SidePanel";
 import { TeamPanel } from "../teams/TeamPanel";
 import { UserPanel } from "../users/UserPanel";
-import { PanelTitleIdContext, useEntityPanel } from "./entity-panel-context";
+import {
+  PanelActionsSlotContext,
+  PanelFooterSlotContext,
+  PanelTitleIdContext,
+  useEntityPanel,
+} from "./entity-panel-context";
 
 const PanelContent = ({ entity }: { entity: EntityRef }) => {
   switch (entity.type) {
@@ -34,6 +39,8 @@ export const EntityPanel = () => {
   const { current, view, previous, back, close } = useEntityPanel();
   const titleId = useId();
   const asideRef = useRef<HTMLElement>(null);
+  const [actionsSlot, setActionsSlot] = useState<HTMLDivElement | null>(null);
+  const [footerSlot, setFooterSlot] = useState<HTMLDivElement | null>(null);
   const currentKey = current ? formatEntityRef(current) : "";
 
   // A view, such as a picker, focuses its own field; leaving one returns to
@@ -60,23 +67,36 @@ export const EntityPanel = () => {
               variant="ghost"
               size="sm"
               onClick={back}
-              className="min-w-0 gap-1"
+              title={previous.name}
+              // Gives way to the entity's actions, cut short with "…".
+              className="min-w-0 shrink gap-1"
             >
               <ChevronLeft className="size-4" />
               <span className="truncate">{previous.name}</span>
             </Button>
           )}
 
-          <CloseButton
-            aria-label="Close panel"
-            onClick={close}
-            className="ml-auto"
-          />
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {/* The shown entity's actions, such as Edit and Archive. */}
+            <div
+              ref={setActionsSlot}
+              className="flex items-center gap-1 empty:hidden"
+            />
+
+            <CloseButton aria-label="Close panel" onClick={close} />
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <PanelContent key={currentKey} entity={current} />
-        </div>
+        <PanelActionsSlotContext.Provider value={actionsSlot}>
+          <PanelFooterSlotContext.Provider value={footerSlot}>
+            <div className="flex flex-1 flex-col overflow-y-auto px-6 py-5">
+              <PanelContent key={currentKey} entity={current} />
+            </div>
+          </PanelFooterSlotContext.Provider>
+        </PanelActionsSlotContext.Provider>
+
+        {/* An open form's or picker's Cancel and Save, under the scrolling body. */}
+        <div ref={setFooterSlot} className="shrink-0 empty:hidden" />
       </PanelTitleIdContext.Provider>
     </SidePanel>
   );

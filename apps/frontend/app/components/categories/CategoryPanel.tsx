@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import {
   useActivityCategoriesMutations,
   useActivityCategoryDetails,
@@ -17,8 +17,10 @@ import {
   EntityPanelLayout,
   PanelEditForm,
   PanelQueryState,
+  PanelIcon,
   PanelStatus,
 } from "../entity-panel/EntityPanelLayout";
+import { categories } from "../layout/sidebar/sidebar-navigation";
 import { useEntityPanel } from "../entity-panel/entity-panel-context";
 import { PanelList } from "../entity-panel/PanelList";
 import { NameForm, NameFormData } from "../shared/resource/NameForm";
@@ -90,7 +92,8 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   const isActive = isActiveCategory(category);
   // Archiving it from its row ends an open edit.
   const isEditing = panel.isEditing && categoryActions.canEdit(category);
-  const canChangeActivities = isActive && categoryActions.canManage;
+  const canChangeActivities =
+    isActive && categoryActions.canManage && !isEditing;
 
   if (canChangeActivities && panel.view === ACTIVITIES_PICKER) {
     return <CategoryActivitiesPicker category={category} />;
@@ -99,7 +102,11 @@ export const CategoryPanel = ({ id }: { id: string }) => {
   return (
     <>
       <EntityPanelLayout
-        type="Category"
+        leading={
+          <PanelIcon>
+            <categories.icon className="size-4" />
+          </PanelIcon>
+        }
         name={category.name}
         status={!isActive && <PanelStatus />}
         onEdit={
@@ -107,6 +114,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
             ? () => categoryActions.edit(category)
             : undefined
         }
+        editLabel="Rename"
         actions={categoryActions.actionsFor(category)}
         editForm={isEditing && <CategoryEditForm category={category} />}
         editsName
@@ -124,7 +132,7 @@ export const CategoryPanel = ({ id }: { id: string }) => {
               name: activity.name,
               detail: !isArchived && projectsLabel(activity.projectsCount ?? 0),
               isInactive: isArchived,
-              status: isArchived && <Badge variant="neutral">Archived</Badge>,
+              status: isArchived && <StatusText>Archived</StatusText>,
               remove:
                 canChangeActivities && !isArchived
                   ? {

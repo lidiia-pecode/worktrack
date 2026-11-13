@@ -72,7 +72,7 @@ export const TeamMemberRemoveDialog = ({
       description={
         team.isError
           ? "Could not load the team. Close this and try again."
-          : (copy?.description ?? "Loading the team...")
+          : (copy?.description ?? "Loading the team…")
       }
       choice={
         isOwner && (

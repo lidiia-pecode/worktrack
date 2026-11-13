@@ -1,10 +1,4 @@
-import {
-  PeopleReportRow,
-  ReportCoverage,
-  ReportPart,
-  ReportRange,
-  ReportTeam,
-} from "@/types";
+import { PeopleReportRow, ReportPart, ReportRange, ReportTeam } from "@/types";
 
 import {
   addDays,
@@ -15,22 +9,6 @@ import {
   isWeekend,
   toISODate,
 } from "./date";
-
-/**
- * How far the period is counted and whether it can change: "Up to Oct 23 ·
- * open for edits", or "Locked" once it has ended.
- */
-export const reportScope = ({
-  countedUntil,
-  isProvisional,
-}: ReportCoverage) => {
-  const state = isProvisional ? "open for edits" : "locked";
-  return countedUntil
-    ? `Up to ${formatDayMonthLabel(countedUntil)} · ${state}`
-    : isProvisional
-      ? "Open for edits"
-      : "Locked";
-};
 
 /**
  * What the figures cover, as one label: the period's own name once it has

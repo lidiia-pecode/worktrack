@@ -127,7 +127,7 @@ export const UsersContent = () => {
         isRefreshing={isPlaceholderData}
         isError={isError || !canManage}
         onRetry={refetch}
-        searchPlaceholder="Search people..."
+        searchPlaceholder="Search people…"
         emptyTitle="No people yet"
         emptyDescription="Invite your first person to start building your workspace."
         emptyIcon={<UsersRound className="size-6" />}

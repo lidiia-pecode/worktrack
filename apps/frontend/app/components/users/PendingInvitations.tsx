@@ -4,6 +4,7 @@ import { useState } from "react";
 import { MailPlus, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { StatusText } from "../shared/StatusText";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ROLE_LABELS } from "@/lib/constants";
@@ -16,8 +17,9 @@ import {
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
 import { UserRole } from "@/types/enums";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
-const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(undefined, {
+const EXPIRES_AT_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "short",
   hour: "2-digit",
@@ -120,7 +122,9 @@ export const PendingInvitations = () => {
                   {invitation.email}
                 </p>
 
-                <Badge>{ROLE_LABELS[invitation.role] ?? invitation.role}</Badge>
+                <StatusText>
+                  {ROLE_LABELS[invitation.role] ?? invitation.role}
+                </StatusText>
 
                 {invitation.expired && <Badge variant="warning">Expired</Badge>}
               </div>

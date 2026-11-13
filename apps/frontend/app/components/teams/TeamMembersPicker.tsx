@@ -114,6 +114,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={(person) =>
@@ -147,7 +148,7 @@ export const TeamMembersPicker = ({ team }: { team: Team }) => {
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
           emptyMessage="Nobody to add yet."
-          searchPlaceholder="Search people..."
+          searchPlaceholder="Search people…"
         />
       </PanelView>
 

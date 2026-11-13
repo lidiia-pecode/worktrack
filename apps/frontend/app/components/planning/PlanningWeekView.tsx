@@ -20,7 +20,12 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { mapAbsencesByUserAndDate } from "@/lib/utils/absence";
 import { fullName } from "@/lib/utils/user";
-import { searchTeamRows } from "@/lib/utils/team-rows";
+import {
+  nextTeamSort,
+  searchTeamRows,
+  sortPlanningRows,
+  TeamSortKey,
+} from "@/lib/utils/team-rows";
 import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
@@ -36,6 +41,7 @@ import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { TeamFilters } from "../team/components/TeamFilters";
+import { SortableHeading } from "../team/components/SortableHeading";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
 import {
   absenceInAnotherTeam,
@@ -78,10 +84,14 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
     teamId,
     projectId: projectInAddress,
     search,
+    sort,
     setFilters,
     setSearch,
+    setSort,
     clearFilters,
   } = useTeamTimeFilters();
+  const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
+  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
   const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
@@ -181,8 +191,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           })
       : rows;
 
-    return searchTeamRows(onProject, search);
-  }, [rows, projectId, search]);
+    return sortPlanningRows(searchTeamRows(onProject, search), sort, {
+      byProject: Boolean(projectId),
+    });
+  }, [rows, projectId, search, sort]);
 
   const hasActiveFilters = Boolean(teamId ?? projectId);
   const isSearching = Boolean(search.trim());
@@ -251,21 +263,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const onlyViewer = isLoadingTeams || isTeamsError ? null : onlyViewerFromRows;
 
   // The locks too, so no day shows before it is known whether it can change.
-  if (
-    isLoadingSettings ||
-    isLoadingWeek ||
-    isLoadingAbsences ||
-    isLoadingLocks
-  ) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <LoadingState
-          title="Loading the week's plan"
-          description="Fetching planned work and company settings."
-        />
-      </div>
-    );
-  }
+  // The toolbar stays meanwhile, as on every page with a period.
+  const isLoading =
+    isLoadingSettings || isLoadingWeek || isLoadingAbsences || isLoadingLocks;
+  const isReady = !isLoading && !hasError;
 
   return (
     // Fills the page, so an empty state stretches to the bottom.
@@ -279,9 +280,10 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
             onWeekChange={showWeekOf}
           />
 
-          {!hasError && (
+          {isReady && (
             <WeekTotal
               label="Planned"
+              fill="planned"
               minutes={totalPlanned}
               // A project's plans have no available figure of their own.
               ofMinutes={projectId ? undefined : totalAvailable}
@@ -301,7 +303,13 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           activeProjectsOnly
           search={search}
           onSearchChange={setSearch}
-          onClear={clearFilters}
+        />
+      )}
+
+      {isLoading && !hasError && (
+        <LoadingState
+          title="Loading the week's plan"
+          description="Fetching planned work and company settings."
         />
       )}
 
@@ -313,12 +321,12 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && matchesNobody && (
+      {isReady && matchesNobody && (
         <EmptyState
           className="mt-3"
           icon={<SearchX />}
-          title="Nobody matches these filters"
-          description="Nobody you can plan for matches the team, project or search you picked."
+          title="Nobody matches"
+          description="Nobody you can plan for matches the search, team or project you picked."
           action={
             <Button variant="secondary" onClick={clearFilters}>
               Clear filters
@@ -327,25 +335,23 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
         />
       )}
 
-      {!hasError && onlyViewer && (
+      {isReady && onlyViewer && (
         <div className="py-3 pr-3">
           <OnlyViewerNotice reason={onlyViewer} />
         </div>
       )}
 
-      {!hasError && shownRows.length > 0 && (
+      {isReady && shownRows.length > 0 && (
         <div
-          className={[
+          className={cn(
             "overflow-x-auto transition-opacity",
             isShowingPreviousWeek && "opacity-60",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          )}
           aria-busy={isShowingPreviousWeek}
         >
           <table className="w-full min-w-4xl table-fixed border-collapse">
             <colgroup>
-              <col className="w-56" />
+              <col className="w-52" />
 
               {workingDates.map((date) => (
                 <col key={toISODate(date)} className="w-28" />
@@ -358,12 +364,15 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  className={cn(
-                    STICKY_PERSON_CELL,
-                    "p-2 text-left text-2xs font-medium uppercase tracking-wider text-muted-foreground",
-                  )}
+                  aria-sort={sort.key === "name" ? ariaSort : undefined}
+                  className={cn(STICKY_PERSON_CELL, "p-2 text-left")}
                 >
-                  Person
+                  <SortableHeading
+                    label="Person"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={sortBy}
+                  />
                 </th>
 
                 {workingDates.map((date) => (
@@ -382,9 +391,16 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
 
                 <th
                   scope="col"
-                  className="p-2 pr-4 text-right text-2xs whitespace-nowrap uppercase tracking-wider text-muted-foreground"
+                  aria-sort={sort.key === "total" ? ariaSort : undefined}
+                  className="p-2 pr-3"
                 >
-                  Planned
+                  <SortableHeading
+                    label="Planned"
+                    sortKey="total"
+                    sort={sort}
+                    onSort={sortBy}
+                    alignEnd
+                  />
                 </th>
               </tr>
             </thead>

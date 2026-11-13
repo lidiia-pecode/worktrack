@@ -7,7 +7,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import Input from "@/components/ui/input";
-import { PanelTitleInput } from "../entity-panel/EntityPanelLayout";
+import {
+  PanelFormFields,
+  PanelTitleInput,
+} from "../entity-panel/EntityPanelLayout";
 import { Button } from "@/components/ui/button";
 
 import { Field, fieldMessageId } from "@/components/ui/field";
@@ -143,79 +146,81 @@ export const ProjectForm = ({
         disabled={isSubmitting}
       />
 
-      <Field id="project-work-type" label="Who is it for" group>
-        <Controller
-          name="workType"
-          control={control}
-          render={({ field }) => (
-            <OptionCards
-              name="project-work-type"
-              value={field.value}
-              options={WORK_TYPE_OPTIONS}
-              onChange={field.onChange}
-              disabled={isSubmitting}
-            />
-          )}
-        />
-
-        {workType === "client" && (
-          <div className="mt-3">
-            <Input
-              id="project-client"
-              aria-label="Client name"
-              {...register("clientName")}
-              list="project-client-suggestions"
-              autoComplete="off"
-              placeholder="Client name, e.g. Retail Corp"
-              error={errors.clientName?.message}
-              disabled={isSubmitting}
-            />
-
-            <datalist id="project-client-suggestions">
-              {clientSuggestions.map((client) => (
-                <option key={client} value={client} />
-              ))}
-            </datalist>
-          </div>
-        )}
-      </Field>
-
-      {!showsDescription ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => setShowsDescription(true)}
-          disabled={isSubmitting}
-          className="-ml-2 gap-1.5 text-brand"
-        >
-          <Plus className="size-4" />
-          Add description
-        </Button>
-      ) : (
-        <Field
-          id="project-description"
-          label="Description"
-          error={errors.description?.message}
-        >
+      <PanelFormFields>
+        <Field id="project-work-type" label="Who is it for" group>
           <Controller
-            name="description"
+            name="workType"
             control={control}
             render={({ field }) => (
-              <DescriptionEditor
-                id="project-description"
-                labelledBy="project-description-label"
-                describedBy={fieldMessageId("project-description", {
-                  error: errors.description?.message,
-                })}
-                value={field.value ?? ""}
+              <OptionCards
+                name="project-work-type"
+                value={field.value}
+                options={WORK_TYPE_OPTIONS}
                 onChange={field.onChange}
                 disabled={isSubmitting}
               />
             )}
           />
+
+          {workType === "client" && (
+            <div className="mt-3">
+              <Input
+                id="project-client"
+                aria-label="Client name"
+                {...register("clientName")}
+                list="project-client-suggestions"
+                autoComplete="off"
+                placeholder="Client name, e.g. Retail Corp"
+                error={errors.clientName?.message}
+                disabled={isSubmitting}
+              />
+
+              <datalist id="project-client-suggestions">
+                {clientSuggestions.map((client) => (
+                  <option key={client} value={client} />
+                ))}
+              </datalist>
+            </div>
+          )}
         </Field>
-      )}
+
+        {!showsDescription ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowsDescription(true)}
+            disabled={isSubmitting}
+            className="-ml-2 gap-1.5 text-brand"
+          >
+            <Plus className="size-4" />
+            Add description
+          </Button>
+        ) : (
+          <Field
+            id="project-description"
+            label="Description"
+            error={errors.description?.message}
+          >
+            <Controller
+              name="description"
+              control={control}
+              render={({ field }) => (
+                <DescriptionEditor
+                  id="project-description"
+                  labelledBy="project-description-label"
+                  describedBy={fieldMessageId("project-description", {
+                    error: errors.description?.message,
+                  })}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              )}
+            />
+          </Field>
+        )}
+      </PanelFormFields>
     </form>
   );
 };

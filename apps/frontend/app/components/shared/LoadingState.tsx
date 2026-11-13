@@ -10,8 +10,8 @@ type LoadingStateProps = {
 };
 
 export const LoadingState = ({
-  title = "Loading...",
-  description = "Please wait while we fetch your data.",
+  title = "Loading…",
+  description = "Fetching your data.",
   size = "page",
   className,
 }: LoadingStateProps) => {

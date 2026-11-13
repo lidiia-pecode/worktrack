@@ -24,8 +24,6 @@ import {
 import { countLabel } from "@/lib/utils/text";
 import { CapacityChange } from "@/types";
 import {
-  MAX_WORK_DAY_HOURS,
-  WORK_DAY_STEP_HOURS,
   minutesPerDayOf,
   minutesPerWeekOf,
   workDayHoursSchema,
@@ -33,6 +31,8 @@ import {
 import { useReportingPeriods } from "@/hooks/useReportingPeriods";
 import { firstDayAfterLockedMonths } from "@/lib/utils/reporting-period";
 import { NO_FIXED_HOURS } from "@/lib/utils/user";
+import { WorkDayHoursInput } from "../shared/inputs/WorkDayHoursInput";
+import { PanelFormFields } from "../entity-panel/EntityPanelLayout";
 
 import { FormSelect } from "../shared/FormSelect";
 import { DatePicker } from "../shared/inputs";
@@ -134,88 +134,86 @@ export const UserForm = ({
   return (
     // The schema checks the hours, so a value saved before the working day had
     // its steps and limit isn't refused by the browser's own checks.
-    <form
-      id={formId}
-      onSubmit={handleSubmit(onSubmit)}
-      noValidate
-      className="space-y-6"
-    >
-      <Input
-        label="Position"
-        {...register("position")}
-        placeholder="e.g. Frontend Developer"
-        autoFocus
-        error={errors.position?.message}
-      />
-
-      {/* An owner's role doesn't change here. */}
-      {defaultValues.role !== UserRole.OWNER && (
-        <Controller
-          control={control}
-          name="role"
-          render={({ field, fieldState }) => (
-            <FormSelect
-              label="Role"
-              value={field.value}
-              onValueChange={field.onChange}
-              options={roleOptions}
-              description={
-                losesManagerAccess &&
-                "As an Employee they lose Team time, Planning, Reports and Manage."
-              }
-              error={fieldState.error?.message}
-            />
-          )}
+    <form id={formId} onSubmit={handleSubmit(onSubmit)} noValidate>
+      <PanelFormFields>
+        <Input
+          label="Position"
+          {...register("position")}
+          placeholder="e.g. Frontend Developer"
+          autoFocus
+          error={errors.position?.message}
         />
-      )}
 
-      <Field id="user-working-hours" group>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Input
-            {...register("capacityHoursPerDay", { valueAsNumber: true })}
-            type="number"
-            min={0}
-            max={MAX_WORK_DAY_HOURS}
-            step={WORK_DAY_STEP_HOURS}
-            label="Working hours a day"
-            description={
-              hasNoHours
-                ? `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
-                : Number.isFinite(minutesPerWeek) &&
-                  `${formatDuration(minutesPerWeek)} a week`
-            }
-            error={errors.capacityHoursPerDay?.message}
-          />
-
+        {/* An owner's role doesn't change here. */}
+        {defaultValues.role !== UserRole.OWNER && (
           <Controller
             control={control}
-            name="capacityValidFrom"
+            name="role"
             render={({ field, fieldState }) => (
-              <DatePicker
+              <FormSelect
+                label="Role"
                 value={field.value}
-                onChange={field.onChange}
-                minDate={firstChangeableDay}
-                label="Applies from"
+                onValueChange={field.onChange}
+                options={roleOptions}
                 description={
-                  replacesScheduledChange
-                    ? `Replaces the change to ${formatDuration(minutesPerDayOf(scheduledChange.minutesPerWeek))} a day from ${formatDayMonthYearLabel(scheduledChange.validFrom)}.`
-                    : "Earlier weeks keep their hours."
+                  losesManagerAccess &&
+                  "As an Employee they lose Team time, Planning, Reports and Manage."
                 }
                 error={fieldState.error?.message}
               />
             )}
           />
-        </div>
-
-        {hasNoHours && removedPlans.length > 0 && (
-          <p className="flex gap-2 text-sm text-muted-foreground">
-            <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
-            <span>
-              {`Deletes ${isCountAtMost ? "up to " : ""}${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
-            </span>
-          </p>
         )}
-      </Field>
+
+        <Field id="user-working-hours" group>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Controller
+              control={control}
+              name="capacityHoursPerDay"
+              render={({ field, fieldState }) => (
+                <WorkDayHoursInput
+                  {...field}
+                  label="Working hours a day"
+                  note={
+                    hasNoHours &&
+                    `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
+                  }
+                  min={0}
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
+
+            <Controller
+              control={control}
+              name="capacityValidFrom"
+              render={({ field, fieldState }) => (
+                <DatePicker
+                  value={field.value}
+                  onChange={field.onChange}
+                  minDate={firstChangeableDay}
+                  label="Applies from"
+                  description={
+                    replacesScheduledChange
+                      ? `Replaces the change to ${formatDuration(minutesPerDayOf(scheduledChange.minutesPerWeek))} a day from ${formatDayMonthYearLabel(scheduledChange.validFrom)}.`
+                      : "Earlier weeks keep their hours."
+                  }
+                  error={fieldState.error?.message}
+                />
+              )}
+            />
+          </div>
+
+          {hasNoHours && removedPlans.length > 0 && (
+            <p className="flex gap-2 text-sm text-muted-foreground">
+              <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                {`Deletes ${isCountAtMost ? "up to " : ""}${countLabel(removedPlans.length, "plan", "plans")} (${formatDuration(removedMinutes)}) from ${formatDayMonthLabel(validFrom)}, since nobody is planned at 0h.`}
+              </span>
+            </p>
+          )}
+        </Field>
+      </PanelFormFields>
     </form>
   );
 };

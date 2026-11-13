@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { addDays, companyToday, getWeekStart } from "@/lib/utils/date";
 import { useWorkSettings } from "@/hooks/useWorkSettings";
 
@@ -12,32 +12,17 @@ type Props = {
   onClose: () => void;
 };
 
+/** The calendar a week is chosen from: the week under the pointer is the one a click picks. */
 export const WeekCalendarPopover = ({
   weekStart,
   onSelectWeek,
   onClose,
 }: Props) => {
   const { timezone, weekStartDay } = useWorkSettings();
-  const ref = useRef<HTMLDivElement>(null);
   const [hoveredDay, setHoveredDay] = useState<Date | null>(null);
   const shownWeekStart = hoveredDay
     ? getWeekStart(hoveredDay, weekStartDay)
     : weekStart;
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
-    };
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("mousedown", handleClick);
-    window.addEventListener("keydown", handleEsc);
-    return () => {
-      document.removeEventListener("mousedown", handleClick);
-      window.removeEventListener("keydown", handleEsc);
-    };
-  }, [onClose]);
 
   const selectWeek = (day: Date) => {
     onSelectWeek(day);
@@ -45,12 +30,7 @@ export const WeekCalendarPopover = ({
   };
 
   return (
-    <div
-      ref={ref}
-      role="dialog"
-      aria-label="Choose a week"
-      className="absolute z-40 top-full mt-2 left-0 w-72 bg-popover rounded-lg border border-border shadow-xl p-4 animate-in fade-in zoom-in-95 duration-150"
-    >
+    <>
       <MonthCalendar
         initialMonth={weekStart}
         selection={{ start: shownWeekStart, end: addDays(shownWeekStart, 6) }}
@@ -63,10 +43,10 @@ export const WeekCalendarPopover = ({
       <button
         type="button"
         onClick={() => selectWeek(companyToday(timezone))}
-        className="w-full mt-3 pt-3 border-t border-border/60 text-xs font-medium text-brand hover:underline"
+        className="mt-3 w-full border-t border-border/60 pt-3 text-xs font-medium text-brand hover:underline"
       >
         Back to this week
       </button>
-    </div>
+    </>
   );
 };

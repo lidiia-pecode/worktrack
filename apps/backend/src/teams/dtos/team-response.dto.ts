@@ -23,6 +23,10 @@ export class TeamUserResponse {
   @Expose()
   status!: UserStatus;
 
+  /** While deactivated, their last working day. */
+  @Expose()
+  lastWorkingDay!: string | null;
+
   @Expose()
   avatarUrl?: string;
 

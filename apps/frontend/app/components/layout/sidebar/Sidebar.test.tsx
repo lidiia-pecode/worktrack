@@ -20,6 +20,10 @@ vi.mock("@/hooks/auth/useOnboarding", () => ({
   useOwnerSetupState: () => ({ data: undefined }),
 }));
 
+vi.mock("@/hooks/useNotifications", () => ({
+  useNotifications: () => ({ data: undefined }),
+}));
+
 const employee: User = {
   id: "user-1",
   companyId: "company-1",

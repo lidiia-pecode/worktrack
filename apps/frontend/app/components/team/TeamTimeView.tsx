@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { SearchX } from "lucide-react";
+import { ChevronLeft, ChevronRight, SearchX } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import {
   getWeekDates,
   getWeekEnd,
+  fromISODate,
   isWeekend,
   toISODate,
   todayISODate,
@@ -48,6 +49,7 @@ import { UserRole } from "@/types/enums";
 import { EmptyState } from "../shared/EmptyState";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
 import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
@@ -63,7 +65,7 @@ import {
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
-import { PersonSortHeader } from "./components/PersonSortHeader";
+import { SortableHeading } from "./components/SortableHeading";
 import { TeamFilters } from "./components/TeamFilters";
 import { TeamWeekRow } from "./components/TeamWeekRow";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
@@ -87,6 +89,47 @@ type TeamTimeViewProps = {
   viewerId: string;
   /** A person whose row to mark and scroll to, from a link. */
   highlightedPersonId?: string;
+};
+
+type WeekendToggleProps = {
+  isShown: boolean;
+  canHide: boolean;
+  onChange: (isShown: boolean) => void;
+};
+
+/**
+ * Opens Saturday and Sunday from the last weekday's heading, and folds them
+ * from Sunday's: the control sits where the columns appear.
+ */
+const WeekendToggle = ({ isShown, canHide, onChange }: WeekendToggleProps) => {
+  if (isShown && !canHide) return null;
+
+  return (
+    <button
+      type="button"
+      aria-expanded={isShown}
+      aria-label={
+        isShown ? "Hide Saturday and Sunday" : "Show Saturday and Sunday"
+      }
+      title={isShown ? "Hide the weekend" : "Show the weekend"}
+      onClick={() => onChange(!isShown)}
+      className={cn(
+        "ml-auto flex shrink-0 cursor-pointer items-center gap-0.5 rounded-md py-px text-2xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        isShown
+          ? "px-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          : "bg-brand-subtle px-1 text-brand hover:bg-brand-muted",
+      )}
+    >
+      {isShown ? (
+        <ChevronLeft aria-hidden className="size-3" />
+      ) : (
+        <>
+          Sat–Sun
+          <ChevronRight aria-hidden className="size-3" />
+        </>
+      )}
+    </button>
+  );
 };
 
 export const TeamTimeView = ({
@@ -149,7 +192,11 @@ export const TeamTimeView = ({
 
   // Context for an empty day, narrowed like the entries; a failed load leaves
   // the days without it.
-  const { items: plannedEntries } = usePlanningEntries({
+  const {
+    items: plannedEntries,
+    isError: isPlansError,
+    refetch: refetchPlans,
+  } = usePlanningEntries({
     dateFrom,
     dateTo,
     teamId,
@@ -224,6 +271,17 @@ export const TeamTimeView = ({
     [rows, search, sort, projectId],
   );
 
+  // Weekends wait behind the toggle, unless someone shown has time on one,
+  // which is never hidden.
+  const [isWeekendWanted, setIsWeekendWanted] = useState(false);
+  const hasWeekendTime = shownRows.some((row) =>
+    row.days.some((day) => day.minutes > 0 && isWeekend(fromISODate(day.date))),
+  );
+  const showsWeekend = isWeekendWanted || hasWeekendTime;
+  const shownDates = showsWeekend
+    ? weekDates
+    : weekDates.filter((date) => !isWeekend(date));
+
   const isSearching = Boolean(search.trim());
   const matchesNobody =
     (hasActiveFilters || isSearching) && shownRows.length === 0;
@@ -233,6 +291,9 @@ export const TeamTimeView = ({
   const loggedMinutes = isSearching
     ? shownRows.reduce((sum, row) => sum + row.minutes, 0)
     : totals.minutes;
+  const billableMinutes = isSearching
+    ? shownRows.reduce((sum, row) => sum + row.billableMinutes, 0)
+    : totals.billableMinutes;
   // What was expected of the people shown; a project's hours have none.
   const expectedMinutes = projectId
     ? undefined
@@ -299,7 +360,7 @@ export const TeamTimeView = ({
     setAbsenceForm({
       user,
       date: newAbsenceStartDate({
-        today: new Date(`${todayIso}T00:00:00`),
+        today: fromISODate(todayIso),
         weekStart,
         isCurrentWeek,
         isEditable,
@@ -320,8 +381,10 @@ export const TeamTimeView = ({
       : undefined;
 
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
+  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
 
   const retry = () => {
+    void refetchPlans();
     void refetchSummary();
     void refetchSettings();
     void refetchAbsences();
@@ -329,21 +392,13 @@ export const TeamTimeView = ({
   };
 
   // The locks too, so no day shows before it is known whether it can change.
-  if (
+  // The toolbar stays meanwhile, as on every page with a period.
+  const isLoading =
     isLoadingSettings ||
     isLoadingSummary ||
     isLoadingAbsences ||
-    isLoadingLocks
-  ) {
-    return (
-      <div className="flex flex-1 flex-col">
-        <LoadingState
-          title="Loading the team's week"
-          description="Fetching logged time and company settings."
-        />
-      </div>
-    );
-  }
+    isLoadingLocks;
+  const isReady = !isLoading && !hasError;
 
   return (
     // Fills the page, so an empty state stretches to the bottom.
@@ -357,11 +412,12 @@ export const TeamTimeView = ({
             onWeekChange={showWeekOf}
           />
 
-          {!hasError && (
+          {isReady && (
             <WeekTotal
               label="Logged"
               minutes={loggedMinutes}
               ofMinutes={expectedMinutes}
+              billableMinutes={billableMinutes}
             />
           )}
         </div>
@@ -377,7 +433,19 @@ export const TeamTimeView = ({
           }
           search={search}
           onSearchChange={setSearch}
-          onClear={clearFilters}
+        />
+      )}
+
+      {isReady && isPlansError && (
+        <PartLoadError onRetry={() => void refetchPlans()}>
+          {PLANS_LOAD_ERROR}
+        </PartLoadError>
+      )}
+
+      {isLoading && !hasError && (
+        <LoadingState
+          title="Loading the team's week"
+          description="Fetching logged time and company settings."
         />
       )}
 
@@ -389,7 +457,7 @@ export const TeamTimeView = ({
         />
       )}
 
-      {!hasError && matchesNobody && (
+      {isReady && matchesNobody && (
         <EmptyState
           className="mt-3"
           icon={<SearchX />}
@@ -403,57 +471,89 @@ export const TeamTimeView = ({
         />
       )}
 
-      {!hasError && notice && (
+      {isReady && notice && (
         <div className="py-3 pr-3">
           <OnlyViewerNotice reason={notice} />
         </div>
       )}
 
-      {!hasError && !matchesNobody && (
+      {isReady && !matchesNobody && (
         <div
-          className={[
+          className={cn(
             "overflow-x-auto transition-opacity",
             isShowingPreviousWeek && "opacity-60",
-          ]
-            .filter(Boolean)
-            .join(" ")}
+          )}
           aria-busy={isShowingPreviousWeek}
         >
-          <table className="w-full min-w-5xl table-fixed border-collapse">
+          {/* Narrow weekends and the week's total on the right fit the
+              table in a 1280px screen's content area. */}
+          <table className="w-full min-w-240 table-fixed border-collapse">
             <colgroup>
               <col className="w-52" />
 
-              {weekDates.map((date) => (
-                <col key={toISODate(date)} />
+              {shownDates.map((date) => (
+                <col
+                  key={toISODate(date)}
+                  className={cn(isWeekend(date) && "w-22")}
+                />
               ))}
+
+              <col className="w-32" />
             </colgroup>
 
             <thead>
               <tr className="border-b border-border bg-muted/10">
                 <th
                   scope="col"
-                  aria-sort={
-                    sort.direction === "asc" ? "ascending" : "descending"
-                  }
-                  aria-label={`Person, sorted by ${sort.key === "name" ? "name" : "logged time"}`}
-                  className={cn(STICKY_PERSON_CELL, "p-1.5 text-left")}
+                  aria-sort={sort.key === "name" ? ariaSort : undefined}
+                  className={cn(STICKY_PERSON_CELL, "p-2 text-left align-top")}
                 >
-                  <PersonSortHeader sort={sort} onSort={sortBy} />
+                  <SortableHeading
+                    label="Person"
+                    sortKey="name"
+                    sort={sort}
+                    onSort={sortBy}
+                  />
                 </th>
 
-                {weekDates.map((date) => (
+                {shownDates.map((date) => (
                   <th
                     key={toISODate(date)}
                     scope="col"
-                    className="border-r border-border/60 p-0"
+                    // Top-aligned, so Sunday's fold control under its date
+                    // leaves every day on one line.
+                    className="border-r border-border/60 p-0 align-top"
                   >
                     <WeekHeaderDay
                       date={date}
                       isToday={toISODate(date) === todayIso}
                       isLocked={isLocked(toISODate(date))}
+                      action={
+                        date === shownDates.at(-1) && (
+                          <WeekendToggle
+                            isShown={showsWeekend}
+                            canHide={!hasWeekendTime}
+                            onChange={setIsWeekendWanted}
+                          />
+                        )
+                      }
                     />
                   </th>
                 ))}
+
+                <th
+                  scope="col"
+                  aria-sort={sort.key === "total" ? ariaSort : undefined}
+                  className="p-2 pr-3 align-top"
+                >
+                  <SortableHeading
+                    label="Logged"
+                    sortKey="total"
+                    sort={sort}
+                    onSort={sortBy}
+                    alignEnd
+                  />
+                </th>
               </tr>
             </thead>
 
@@ -462,7 +562,7 @@ export const TeamTimeView = ({
                 <TeamWeekRow
                   key={row.user.id}
                   row={row}
-                  weekDates={weekDates}
+                  weekDates={shownDates}
                   todayIso={todayIso}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   plansByDate={plansByUser[row.user.id] ?? {}}
@@ -502,7 +602,7 @@ export const TeamTimeView = ({
       )}
 
       <NonWorkDayConfirm
-        date={nonWorkDay ? new Date(`${nonWorkDay.date}T00:00:00`) : null}
+        date={nonWorkDay ? fromISODate(nonWorkDay.date) : null}
         onClose={() => setNonWorkDay(null)}
         onConfirm={confirmNonWorkDay}
       />

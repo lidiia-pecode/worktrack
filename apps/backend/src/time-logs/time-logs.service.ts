@@ -575,7 +575,7 @@ export class TimeLogsService {
   }
 
   /**
-   * Verifies that the date is not part of a LOCKED reporting period. Runs
+   * Verifies that the date is not part of a locked reporting period. Runs
    * inside the write's transaction, so a Close at the same moment waits for it.
    */
   private async assertDateNotLocked(
@@ -590,7 +590,7 @@ export class TimeLogsService {
     );
     if (isLocked) {
       throw new ForbiddenException(
-        `Cannot modify time logs for date ${date} because it belongs to a LOCKED reporting period.`,
+        `Cannot modify time logs for date ${date} because it belongs to a locked reporting period.`,
       );
     }
   }

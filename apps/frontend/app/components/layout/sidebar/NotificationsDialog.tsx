@@ -17,8 +17,9 @@ import { EmptyState } from "../../shared/EmptyState";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { DATE_LOCALE } from "@/lib/utils/date";
 
-const SENT_AT_LABEL = new Intl.DateTimeFormat(undefined, {
+const SENT_AT_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
   month: "short",
   hour: "2-digit",
@@ -152,7 +153,7 @@ export const NotificationsDialog = ({
           onRetry={() => refetch()}
         />
       ) : isPending ? (
-        <LoadingState size="compact" title="Loading notifications..." />
+        <LoadingState size="compact" title="Loading notifications…" />
       ) : notifications.length === 0 ? (
         <EmptyState
           size="compact"

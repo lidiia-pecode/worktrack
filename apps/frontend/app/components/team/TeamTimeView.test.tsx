@@ -39,7 +39,9 @@ vi.mock("@/hooks/usePlanning", () => ({
   usePlanningEntries: () => ({ items: [] }),
 }));
 vi.mock("@/hooks/useProjects", () => ({
-  useAllProjectsQuery: () => ({ items: [] }),
+  useAllProjectsQuery: () => ({
+    items: [{ id: "7a9e4d21-5b3c-4f8a-a1d2-6c7b8e9f0a1b", name: "CRM System" }],
+  }),
 }));
 vi.mock("@/hooks/useAbsences", () => ({
   useAllAbsencesQuery: () => ({
@@ -109,6 +111,7 @@ const ALICE: TeamSummaryRow = {
     email: "alice@example.com",
     position: "Designer",
     status: UserStatus.ACTIVE,
+    lastWorkingDay: null,
   },
   minutes: 300,
   billableMinutes: 300,
@@ -219,7 +222,7 @@ describe("TeamTimeView", () => {
     );
     expect(
       within(aliceRow()).getByRole("button", {
-        name: "5h CRM System, edit this entry",
+        name: "CRM System 5h, edit this entry",
       }),
     ).toBeInTheDocument();
   });
@@ -278,7 +281,7 @@ describe("TeamTimeView", () => {
     showTeamTime();
 
     await user.click(
-      screen.getByRole("button", { name: "5h CRM System, edit this entry" }),
+      screen.getByRole("button", { name: "CRM System 5h, edit this entry" }),
     );
 
     expect(await screen.findByRole("dialog")).toHaveTextContent(
@@ -286,10 +289,38 @@ describe("TeamTimeView", () => {
     );
   });
 
-  it("asks before logging time on a weekend", async () => {
+  it("never hides time logged on a weekend", () => {
+    const saturday = {
+      date: "2026-11-07",
+      minutes: 120,
+      billableMinutes: 120,
+      nonBillableMinutes: 0,
+      entries: [{ ...ENTRY, id: "log-2", date: "2026-11-07", minutes: 120 }],
+    };
+    summary({ rows: [{ ...ALICE, days: [...ALICE.days, saturday] }, BEN] });
+    showTeamTime();
+
+    // Person, seven days and the week's total.
+    expect(screen.getAllByRole("columnheader")).toHaveLength(9);
+    // Nothing offers to fold it.
+    expect(
+      screen.queryByRole("button", { name: "Hide Saturday and Sunday" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows the weekend on request, and asks before logging time on it", async () => {
     getAssignable.mockResolvedValue({ count: 0, results: [] });
     const user = userEvent.setup();
     showTeamTime();
+
+    expect(
+      within(aliceRow()).queryByRole("button", {
+        name: /^Log time for Alice Cooper on Saturday/,
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Show Saturday and Sunday" }),
+    );
 
     await user.click(
       within(aliceRow()).getByRole("button", {
@@ -307,7 +338,7 @@ describe("TeamTimeView", () => {
     expect(getAssignable).toHaveBeenCalledWith("user-alice");
   });
 
-  it("reads the team and project from the URL, ignoring one that isn't an id", () => {
+  it("reads the team and project from the URL, dropping a project that isn't listed", () => {
     const teamId = "3f1c2b7e-8a4d-4c1e-9b2a-1d5e6f7a8b9c";
     teams.options = [{ value: teamId, label: "Core Development" }];
     window.history.replaceState(
@@ -320,6 +351,7 @@ describe("TeamTimeView", () => {
     expect(useTeamTimeSummary).toHaveBeenLastCalledWith(
       expect.objectContaining({ teamId, projectId: undefined }),
     );
+    expect(window.location.search).toBe(`?team=${teamId}`);
 
     vi.mocked(useTeamTimeSummary).mockClear();
     window.history.replaceState(
@@ -370,13 +402,13 @@ describe("TeamTimeView", () => {
 
   it("reads the search and sort from the URL, and writes them back", async () => {
     const user = userEvent.setup();
-    window.history.replaceState(null, "", "/team?search=develop&sort=logged");
+    window.history.replaceState(null, "", "/team?search=develop&sort=total");
     showTeamTime();
 
     expect(shownNames()).toEqual(["Ben"]);
     expect(
-      screen.getByRole("button", { name: "Sort by logged time, most first" }),
-    ).toHaveAttribute("aria-pressed", "true");
+      screen.getByRole("columnheader", { name: /Logged/ }),
+    ).toHaveAttribute("aria-sort", "ascending");
 
     await user.clear(
       screen.getByRole("textbox", { name: "Search by name or position" }),
@@ -414,10 +446,8 @@ describe("TeamTimeView", () => {
     );
     expect(screen.getByText("Nobody matches")).toBeInTheDocument();
 
-    // Both the filter row's and the empty state's button reset everything.
-    await user.click(
-      screen.getAllByRole("button", { name: "Clear filters" })[0],
-    );
+    // The empty state's button resets everything.
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(shownNames()).toEqual(["Alice", "Ben"]);
   });
 
@@ -425,7 +455,8 @@ describe("TeamTimeView", () => {
     const user = userEvent.setup();
     showTeamTime();
 
-    const header = screen.getByRole("columnheader", { name: /^Person/ });
+    const [header] = screen.getAllByRole("columnheader");
+    const loggedHeader = screen.getAllByRole("columnheader").at(-1)!;
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(shownNames()).toEqual(["Alice", "Ben"]);
 
@@ -439,7 +470,8 @@ describe("TeamTimeView", () => {
       name: "Sort by logged time, least first",
     });
     await user.click(logged);
-    expect(logged).toHaveAttribute("aria-pressed", "true");
+    expect(loggedHeader).toHaveAttribute("aria-sort", "ascending");
+    expect(header).not.toHaveAttribute("aria-sort");
     expect(shownNames()).toEqual(["Ben", "Alice"]);
 
     await user.click(

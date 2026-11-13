@@ -59,6 +59,7 @@ export const ProjectChoicesPicker = ({
         onCancel={staged.cancel}
       >
         <EntityPicker
+          fillsHeight
           items={items}
           selectedIds={staged.selectedIds}
           onToggle={staged.toggle}
@@ -71,7 +72,7 @@ export const ProjectChoicesPicker = ({
           isFetchingNextPage={pagination.isFetchingNextPage}
           onFetchNextPage={pagination.fetchNextPage}
           emptyMessage="No active projects yet. Make the first with New project."
-          searchPlaceholder="Search projects..."
+          searchPlaceholder="Search projects…"
         />
       </PanelView>
 

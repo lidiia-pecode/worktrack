@@ -91,7 +91,7 @@ export const CategoryArchiveDialog = ({
   const description = loadFailed
     ? "Could not check its activities. Close this and try again."
     : !isReady
-      ? "Checking its activities..."
+      ? "Checking its activities…"
       : hasActiveActivities
         ? "Every activity is in a category, so its active activities move to another one or are archived with it."
         : "Nobody will be able to put new activities in it. You can restore it later.";

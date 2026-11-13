@@ -31,6 +31,3 @@ export const dayFill = ({
   if (hasFigure && minutes > expectedMinutes) return EXCESS_FILL;
   return undefined;
 };
-
-export const isOverFill = (fill: string | undefined) =>
-  fill === EXCESS_FILL || fill === WEEKEND_EXTRA_PATTERN;
