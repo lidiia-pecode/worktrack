@@ -32,7 +32,7 @@ export const PlanSummary = ({
 }: PlanSummaryProps) => (
   <div
     className={cn(
-      "space-y-3 rounded-xl bg-brand-subtle p-4 text-sm transition-opacity",
+      "space-y-3 rounded-md bg-brand-subtle p-4 text-sm transition-opacity",
       isOutdated && "opacity-60",
     )}
     aria-busy={isOutdated}

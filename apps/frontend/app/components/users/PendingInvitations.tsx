@@ -88,7 +88,7 @@ export const PendingInvitations = () => {
         size="compact"
         title="Could not load pending invitations."
         onRetry={() => refetch()}
-        className="mb-6 rounded-2xl border border-border bg-card"
+        className="mb-6 rounded-xl border border-border bg-card"
       />
     );
   }

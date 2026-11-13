@@ -303,7 +303,7 @@ PanelTitleInput.displayName = "PanelTitleInput";
  */
 export const PanelFormFields = ({ children }: { children: ReactNode }) =>
   useContext(PanelFormContext) ? (
-    <div className="space-y-5 rounded-xl border border-border p-4">
+    <div className="space-y-5 rounded-md border border-border p-4">
       {children}
     </div>
   ) : (
@@ -337,7 +337,7 @@ interface PanelDetail {
  * above it on a phone. It needs no title; it is the entity under the heading.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <dl className="divide-y divide-border/55 rounded-xl border border-border text-sm">
+  <dl className="divide-y divide-border/55 rounded-md border border-border text-sm">
     {details.map((detail) => (
       <div
         key={detail.label}

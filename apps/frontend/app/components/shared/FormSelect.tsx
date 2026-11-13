@@ -114,7 +114,7 @@ export const FormSelect = ({
           side="bottom"
           align="start"
           sideOffset={6}
-          className="rounded-lg border border-border py-1 shadow-lg"
+          className="rounded-xl border border-border py-1 shadow-lg"
         >
           {options.map((option) => (
             <SelectItem

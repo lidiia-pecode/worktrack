@@ -138,7 +138,7 @@ export const GettingStartedLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 overflow-hidden rounded-xl border border-brand-strong p-3",
+        "group flex items-center gap-3 overflow-hidden rounded-lg border border-brand-strong p-3",
         "transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none",
         // The desktop sidebar shows the icon alone and opens to the name on
         // hover or focus; the phone menu keeps the whole card, where nothing hovers.

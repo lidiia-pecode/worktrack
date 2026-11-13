@@ -36,7 +36,7 @@ export const EmptyState = ({
     <div
       className={cn(
         "flex min-h-[360px] flex-1 items-center justify-center",
-        "rounded-2xl border border-dashed border-border",
+        "rounded-xl border border-dashed border-border",
         "bg-card/50 px-6 py-16 text-center",
         className,
       )}

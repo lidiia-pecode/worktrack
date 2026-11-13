@@ -32,7 +32,7 @@ const IllustrationCard = ({
 }: IllustrationCardProps) => (
   <div
     className={cn(
-      "rounded-2xl border border-border bg-card p-4 shadow-xl shadow-glow-primary",
+      "rounded-xl border border-border bg-card p-4 shadow-xl shadow-glow-primary",
       className,
     )}
   >

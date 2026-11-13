@@ -116,7 +116,7 @@ export const EntityPicker = <T,>({
       <div
         ref={listRef}
         className={cn(
-          "mt-3 overflow-y-auto rounded-xl border border-border bg-card p-1.5",
+          "mt-3 overflow-y-auto rounded-md border border-border bg-card p-1.5",
           fillsHeight ? "min-h-40 flex-1" : "max-h-80",
         )}
       >
@@ -125,7 +125,7 @@ export const EntityPicker = <T,>({
             <span className="sr-only">Loading</span>
 
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-11 rounded-xl" />
+              <Skeleton key={i} className="h-11 rounded-md" />
             ))}
           </div>
         ) : items.length === 0 ? (

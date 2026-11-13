@@ -17,7 +17,7 @@ export const Card = ({
 }: CardProps) => (
   <Element
     className={cn(
-      "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground",
+      "overflow-hidden rounded-xl border border-border bg-card text-card-foreground",
       elevation === "raised" && "shadow-raised",
       className,
     )}

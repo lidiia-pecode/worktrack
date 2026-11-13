@@ -225,7 +225,7 @@ export const AuthForm = ({
       {googleError && <FormAlert className="mb-6">{googleError}</FormAlert>}
 
       {isInvitation && invitation && (
-        <dl className="mb-7 space-y-3 rounded-xl border border-border/80 bg-muted/30 p-4">
+        <dl className="mb-7 space-y-3 rounded-md border border-border/80 bg-muted/30 p-4">
           <div className="flex items-center justify-between gap-4">
             <dt className="text-sm text-muted-foreground">Company</dt>
 

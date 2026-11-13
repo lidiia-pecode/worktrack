@@ -59,7 +59,7 @@ export const SettingsSidebar = ({ activeTab, isOwner, onChange }: Props) => {
               aria-current={active ? "page" : undefined}
               onClick={() => onChange(item.id)}
               className={cn(
-                "group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left",
+                "group flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left",
                 "border border-transparent transition-all duration-200",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 active ? "border-border bg-brand-subtle" : "hover:bg-accent",

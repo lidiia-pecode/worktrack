@@ -185,7 +185,7 @@ const ResourcePageSkeleton = () => (
     {Array.from({ length: SKELETON_ROWS }).map((_, index) => (
       <Skeleton
         key={index}
-        className="h-14 rounded-xl border border-border bg-card"
+        className="h-14 rounded-md border border-border bg-card"
       />
     ))}
   </div>
