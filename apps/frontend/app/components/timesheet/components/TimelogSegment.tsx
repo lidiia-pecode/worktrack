@@ -1,7 +1,7 @@
 import { formatDuration } from "@/lib/utils/date";
 import { Segment } from "../types";
 import { TimeLog } from "@/types";
-import { getProjectColor } from "@/lib/utils/project-colors";
+import { entryBlockStyle, getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 import { TWO_LINE_MIN_HEIGHT } from "../helpers/build-segments";
@@ -48,14 +48,7 @@ export const TimelogSegment = ({
       onMouseLeave={onLeave}
       onFocus={(e) => onHover(timelog, e.currentTarget)}
       onBlur={onLeave}
-      // The project colour is translucent, so it sits on the card colour: an
-      // entry looks the same over a weekend's stripes or a day's excess.
-      style={{
-        height,
-        top: offsetTop,
-        backgroundColor: "var(--card)",
-        backgroundImage: `linear-gradient(${color}, ${color})`,
-      }}
+      style={{ height, top: offsetTop, ...entryBlockStyle(color) }}
       className={cn(
         "absolute left-[3px] right-[3px] overflow-hidden rounded-md ring-1 ring-foreground/5 transition-all focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
         onClick &&

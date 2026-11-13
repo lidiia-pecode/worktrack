@@ -14,7 +14,7 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
-import { getProjectColor } from "@/lib/utils/project-colors";
+import { entryBlockStyle, getProjectColor } from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { changedByText } from "@/lib/utils/user";
 
@@ -340,11 +340,7 @@ const EntryRow = ({
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
   const changedBy = changedByText(timelog);
-  // The project colour is translucent, so it sits on the card colour.
-  const style = {
-    backgroundColor: "var(--card)",
-    backgroundImage: `linear-gradient(${color}, ${color})`,
-  };
+  const style = entryBlockStyle(color);
   const content = (
     <>
       <span className="w-14 shrink-0 font-semibold text-foreground tabular-nums">

@@ -2,7 +2,7 @@ import { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
-import { getProjectColor } from "@/lib/utils/project-colors";
+import { entryTint, getProjectColor } from "@/lib/utils/project-colors";
 
 type EntryChipProps = Omit<
   HTMLAttributes<HTMLElement>,
@@ -40,8 +40,6 @@ export const EntryChip = ({
   const color = getProjectColor(colorSeed);
   const duration = formatDuration(minutes);
 
-  // The project colour is translucent, so logged time sits on the card colour:
-  // a chip looks the same over a weekend's stripes or a day's excess.
   const style = isArchived
     ? undefined
     : isPlan
@@ -49,10 +47,17 @@ export const EntryChip = ({
           backgroundColor: `oklch(from ${color} l c h / 0.1)`,
           borderColor: `oklch(from ${color} l c h / 0.7)`,
         }
-      : {
-          backgroundColor: "var(--card)",
-          backgroundImage: `linear-gradient(${color}, ${color})`,
-        };
+      : { backgroundColor: entryTint(color) };
+
+  // The project at full strength: the surface behind the text is mixed down,
+  // so the dot is what carries the colour.
+  const mark = isArchived ? null : (
+    <span
+      aria-hidden
+      className="size-1.5 shrink-0 rounded-full"
+      style={{ backgroundColor: color }}
+    />
+  );
 
   const className = cn(
     "flex h-5 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-2xs leading-none",
@@ -68,15 +73,12 @@ export const EntryChip = ({
 
   const content = isCompact ? (
     <>
-      <span
-        aria-hidden
-        className="size-1.5 shrink-0 rounded-full"
-        style={{ backgroundColor: `oklch(from ${color} l c h / 1)` }}
-      />
+      {mark}
       <span className="shrink-0 font-semibold tabular-nums">{duration}</span>
     </>
   ) : (
     <>
+      {mark}
       <span className="min-w-0 flex-1 truncate">{projectName}</span>
       <span
         className={cn(

@@ -8,9 +8,14 @@
  * WORKTRACK — Design Tokens
  *
  * CONTRAST RULE (WCAG AA, 4.5:1 for text):
- * --brand (L 0.51) paired with --brand-foreground provides a 5.3:1
- * contrast ratio. Brand-colored text on cards and on --brand-muted
+ * --brand (L 0.44) paired with --brand-foreground provides 6.8:1, and
+ * reads as text at 7.0:1 on a card, 6.5:1 on the background and 5.6:1
+ * on --brand-muted. Brand-colored text on cards and on --brand-muted
  * must maintain a contrast ratio of at least 4.5:1.
+ *
+ * A project colour is a mark, not a text ground: each one reaches at
+ * least 4:1 against the card, and entry text stays --foreground on the
+ * --entry-tint mix, which keeps it above 12:1.
  *
  * Warning, success, and error text must use the corresponding *-text
  * tokens. The --warning, --success, and --destructive fill colors
@@ -39,18 +44,21 @@
      Foundation
      ------------------------------------------------------------------------ */
 
-  --background: oklch(0.99 0.003 285);
-  --foreground: oklch(0.27 0.015 195);
+  /* One warm neutral family (hue 92) for the page, the rail and the canvas, so
+     the app reads as one surface; the card stays the lightest thing on it and
+     separates by its own colour rather than by a shadow. */
+  --background: oklch(0.966 0.008 92);
+  --foreground: oklch(0.265 0.018 200);
 
-  --card: oklch(0.995 0.002 285);
+  --card: oklch(0.995 0.003 92);
   --card-foreground: var(--foreground);
 
   --popover: var(--card);
   --popover-foreground: var(--foreground);
 
   /* Warm stone */
-  --muted: oklch(0.81 0.018 95);
-  --muted-foreground: oklch(0.42 0.018 205);
+  --muted: oklch(0.81 0.018 92);
+  --muted-foreground: oklch(0.44 0.016 200);
 
   --secondary: var(--accent);
   --secondary-foreground: var(--accent-foreground);
@@ -59,11 +67,11 @@
   --accent: oklch(0.91 0.025 200);
   --accent-foreground: oklch(0.34 0.055 205);
 
-  --border: oklch(0.86 0.012 95);
+  --border: oklch(0.895 0.013 92);
 
   /* Around the app on a screen wider than it grows: the warm stone of the
      sidebar, one step deeper, so the app reads as one surface. */
-  --canvas: oklch(0.935 0.01 95);
+  --canvas: oklch(0.912 0.017 92);
 
   /* ------------------------------------------------------------------------
      Brand — muted teal
@@ -72,7 +80,7 @@
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
 
-  --brand: oklch(0.51 0.07 205);
+  --brand: oklch(0.44 0.095 198);
   --brand-secondary: oklch(0.51 0.055 230);
 
   --brand-foreground: oklch(0.98 0.006 200);
@@ -149,7 +157,7 @@
      Sidebar
      ------------------------------------------------------------------------ */
 
-  --sidebar: oklch(0.965 0.006 95);
+  --sidebar: oklch(0.945 0.013 92);
   --sidebar-foreground: var(--foreground);
 
   --sidebar-primary: var(--brand);
@@ -181,7 +189,7 @@
   --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
   --report-logged: color-mix(in oklch, var(--brand) 75%, var(--card));
   --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
-  --report-planned-base: oklch(0.56 0.106 307);
+  --report-planned-base: oklch(0.52 0.105 305);
   --report-planned: color-mix(
     in oklch,
     var(--report-planned-base) 75%,
@@ -237,18 +245,27 @@
      ------------------------------------------------------------------------ */
 
   /* One per project, picked by hashing its id (lib/utils/project-colors.ts).
-     Translucent tints, so entry text in --foreground stays readable on them. */
-  --project-1: oklch(0.623 0.188 259.8 / 0.3);
-  --project-2: oklch(0.696 0.149 162.5 / 0.3);
-  --project-3: oklch(0.606 0.219 292.7 / 0.3);
-  /* Orchid rather than amber, so a project never reads as the warning. */
-  --project-4: oklch(0.62 0.17 320 / 0.3);
-  --project-5: oklch(0.637 0.208 25.3 / 0.3);
-  --project-6: oklch(0.715 0.126 215.2 / 0.3);
-  --project-7: oklch(0.585 0.204 277.1 / 0.3);
-  --project-8: oklch(0.704 0.123 182.5 / 0.3);
-  --project-9: oklch(0.656 0.212 354.3 / 0.3);
-  --project-10: oklch(0.768 0.204 130.8 / 0.3);
+     Solid inks, spread round the wheel and kept clear of the amber warning's
+     hue, so no project ever reads as a problem. Neighbouring entries in this
+     list are far apart in hue, since a company with few projects takes the
+     first ones the hash lands on. The colour carries an entry as a mark at
+     full strength; a surface behind text mixes it down (--entry-tint), which
+     is why entry text stays --foreground. */
+  --project-1: oklch(0.58 0.15 18);
+  --project-2: oklch(0.57 0.115 215);
+  --project-3: oklch(0.57 0.115 128);
+  --project-4: oklch(0.54 0.16 282);
+  --project-5: oklch(0.58 0.1 170);
+  --project-6: oklch(0.57 0.15 350);
+  --project-7: oklch(0.55 0.155 255);
+  --project-8: oklch(0.6 0.145 42);
+  --project-9: oklch(0.56 0.16 318);
+  --project-10: oklch(0.56 0.125 150);
+
+  /* How much of a project's colour sits behind entry text, and the solid bar
+     that carries the colour where an entry is a block rather than a line. */
+  --entry-tint: 14%;
+  --entry-bar: 3px;
 
   /* ------------------------------------------------------------------------
      Dark secondary action
