@@ -35,12 +35,8 @@ const ROW_CLASS =
 
 const Figures = ({ minutes, share }: CategoryShare) => (
   <>
-    <span className="font-medium tabular-nums">
-      {formatReportHours(minutes)}
-    </span>
-    <span className="text-right text-xs text-muted-foreground tabular-nums">
-      {share}%
-    </span>
+    <span className="font-medium">{formatReportHours(minutes)}</span>
+    <span className="text-right text-xs text-muted-foreground">{share}%</span>
   </>
 );
 

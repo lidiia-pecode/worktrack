@@ -80,7 +80,7 @@ const MonthTotal = ({
 }) => (
   <>
     <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-      <p className="tabular-nums">
+      <p>
         <span className="text-3xl font-semibold tracking-tight">
           {formatReportHours(person.loggedMinutes)}
         </span>
@@ -90,7 +90,7 @@ const MonthTotal = ({
           </span>
         )}
       </p>
-      <p className="text-sm text-muted-foreground tabular-nums">
+      <p className="text-sm text-muted-foreground">
         {balanceOf(person, isOpen)}
       </p>
     </div>

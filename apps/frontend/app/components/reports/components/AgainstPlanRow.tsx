@@ -40,7 +40,7 @@ export const AgainstPlanRow = ({ row, detail }: AgainstPlanRowProps) => {
           }
         />
       </div>
-      <div className="text-right tabular-nums">
+      <div className="text-right">
         <p className="text-sm font-medium whitespace-nowrap">{figure}</p>
         {planned === 0 ? (
           <p className="text-xs text-muted-foreground">no plan</p>

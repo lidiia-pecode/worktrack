@@ -153,8 +153,8 @@ export const ReportTable = <T,>({
           type="button"
           onClick={() => sortBy(column)}
           className={cn(
-            "inline-flex cursor-pointer items-center gap-1 rounded-sm uppercase transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
-            isActive && "text-foreground",
+            "inline-flex cursor-pointer items-center gap-1 rounded-sm transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            !isActive && "text-muted-foreground",
           )}
         >
           {column.header}
@@ -217,7 +217,7 @@ export const ReportTable = <T,>({
             <li key={getKey(row)} className="py-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">{name(row)}</div>
-                <div className="shrink-0 text-right tabular-nums">
+                <div className="shrink-0 text-right">
                   <p className="text-sm font-medium whitespace-nowrap">
                     {figure}
                   </p>

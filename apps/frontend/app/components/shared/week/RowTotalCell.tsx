@@ -21,10 +21,10 @@ export const RowTotalCell = ({
 }: RowTotalCellProps) => (
   <td className="p-3 align-top">
     <div className="flex flex-col items-end gap-1.5">
-      <span className="text-right text-xs tabular-nums">
+      <span className="text-right text-xs">
         <span
           className={cn(
-            "font-semibold whitespace-nowrap",
+            "text-sm font-semibold whitespace-nowrap",
             isOver ? "text-warning-text" : "text-foreground",
           )}
         >

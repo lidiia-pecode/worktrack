@@ -200,7 +200,7 @@ export const PersonDayGrid = ({
               </span>
               <span
                 className={cn(
-                  "flex min-h-4 items-center gap-1.5 text-xs font-medium tabular-nums",
+                  "flex min-h-4 items-center gap-1.5 text-xs font-medium",
                   href
                     ? "text-brand underline underline-offset-2"
                     : day.kind !== "logged" && "text-muted-foreground",

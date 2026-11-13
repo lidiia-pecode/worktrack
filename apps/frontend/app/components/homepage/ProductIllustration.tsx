@@ -95,7 +95,7 @@ const TeamCard = ({ className }: { className?: string }) => (
           {"absence" in person ? (
             <Badge dot>{person.absence}</Badge>
           ) : (
-            <span className="flex items-center gap-1.5 text-sm tabular-nums">
+            <span className="flex items-center gap-1.5 text-sm">
               <span className="font-semibold text-foreground">
                 {formatDuration(person.minutes)}
               </span>
@@ -124,7 +124,7 @@ const ReportCard = ({ className }: { className?: string }) => (
             <span className="text-foreground">
               {SAMPLE_PROJECTS[project].name}
             </span>
-            <span className="font-semibold tabular-nums text-foreground">
+            <span className="font-semibold text-foreground">
               {formatDuration(minutes)}
             </span>
           </div>

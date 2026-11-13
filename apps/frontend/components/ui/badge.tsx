@@ -22,7 +22,7 @@ const badgeVariants = cva(
       size: {
         md: "px-2.5 py-0.5 text-xs",
         // A count beside a label, such as a tab's.
-        sm: "min-w-5 justify-center px-1.5 text-2xs tabular-nums",
+        sm: "min-w-5 justify-center px-1.5 text-2xs",
       },
     },
     defaultVariants: {

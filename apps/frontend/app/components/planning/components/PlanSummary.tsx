@@ -39,10 +39,8 @@ export const PlanSummary = ({
   >
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium text-foreground tabular-nums">
-          {heading}
-        </span>
-        <span className="text-muted-foreground tabular-nums">
+        <span className="font-medium text-foreground">{heading}</span>
+        <span className="text-muted-foreground">
           {formatDuration(dayLimitMinutes)} working day
         </span>
       </div>

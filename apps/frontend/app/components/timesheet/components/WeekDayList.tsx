@@ -254,7 +254,7 @@ const DayFigure = ({
     const overMinutes = hasFigure ? totalMinutes - expectedMinutes : 0;
 
     return (
-      <span className="ml-auto flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
+      <span className="ml-auto flex shrink-0 items-center gap-1.5 text-sm">
         <span
           className={cn(
             "font-semibold",
@@ -286,7 +286,7 @@ const DayFigure = ({
       0,
     );
     return (
-      <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground tabular-nums">
+      <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground">
         {formatDuration(plannedMinutes)} planned
       </span>
     );
@@ -295,7 +295,7 @@ const DayFigure = ({
   if (!expectsTime) return null;
 
   return (
-    <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground tabular-nums">
+    <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground">
       {day.canLogTime && (
         <>
           <span className="whitespace-nowrap">No time logged ·</span>{" "}
@@ -343,7 +343,7 @@ const EntryRow = ({
   const style = entryBlockStyle(color);
   const content = (
     <>
-      <span className="w-14 shrink-0 font-semibold text-foreground tabular-nums">
+      <span className="w-14 shrink-0 font-semibold text-foreground">
         {formatDuration(timelog.minutes)}
       </span>
       <span className="flex min-w-0 flex-col items-start gap-1">
@@ -414,7 +414,7 @@ const PlanRow = ({
   );
   const content = (
     <>
-      <span className="w-14 shrink-0 font-semibold text-foreground/70 tabular-nums">
+      <span className="w-14 shrink-0 font-semibold text-foreground/70">
         {duration}
       </span>
       <span className="min-w-0 break-words">{plan.project.name} · planned</span>

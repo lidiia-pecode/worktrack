@@ -74,17 +74,14 @@ export const EntryChip = ({
   const content = isCompact ? (
     <>
       {mark}
-      <span className="shrink-0 font-semibold tabular-nums">{duration}</span>
+      <span className="shrink-0 font-semibold">{duration}</span>
     </>
   ) : (
     <>
       {mark}
       <span className="min-w-0 flex-1 truncate">{projectName}</span>
       <span
-        className={cn(
-          "shrink-0 tabular-nums",
-          isPlan ? "font-medium" : "font-semibold",
-        )}
+        className={cn("shrink-0", isPlan ? "font-medium" : "font-semibold")}
       >
         {duration}
       </span>

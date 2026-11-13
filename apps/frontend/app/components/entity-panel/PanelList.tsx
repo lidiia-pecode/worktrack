@@ -308,7 +308,7 @@ const PanelCard = ({ title, count, action, children }: PanelCardProps) => (
     <div className="flex min-h-9 items-center justify-between gap-3 border-b border-border bg-muted/30 px-3 py-1">
       <h3 className="text-xs font-medium text-muted-foreground">
         {title}
-        <span className="ml-1.5 tabular-nums">{count}</span>
+        <span className="ml-1.5">{count}</span>
       </h3>
       {action}
     </div>

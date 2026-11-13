@@ -54,7 +54,7 @@ const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
   <li className="min-w-0 rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:px-3 @sm:py-3 @3xl:px-4 @3xl:py-3.5">
     <p className="text-sm font-medium text-muted-foreground">{label}</p>
 
-    <p className="text-2xl font-semibold tracking-tight tabular-nums @sm:text-xl @3xl:text-2xl">
+    <p className="text-3xl font-semibold tracking-tight @sm:text-2xl @3xl:text-3xl">
       {value}
     </p>
 
@@ -62,7 +62,7 @@ const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
       <span className="min-w-0">{note}</span>
 
       {percent !== null && (
-        <span className="shrink-0 font-semibold text-foreground tabular-nums">
+        <span className="shrink-0 font-semibold text-foreground">
           {percent}%
         </span>
       )}
@@ -284,7 +284,7 @@ export const PeriodOverview = ({
 
         <div className="mt-6 flex gap-3">
           <div
-            className="relative h-48 w-11 shrink-0 text-xs text-muted-foreground tabular-nums"
+            className="relative h-48 w-11 shrink-0 text-xs text-muted-foreground"
             aria-hidden
           >
             {scale.ticks.slice(1).map((tick) => (
