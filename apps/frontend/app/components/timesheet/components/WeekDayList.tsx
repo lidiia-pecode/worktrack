@@ -112,7 +112,7 @@ const DayRow = ({
       isWeekend: weekend,
       minutes: totalMinutes,
     }) ??
-    (isToday ? "bg-brand-subtle" : day.isLocked ? "bg-muted/20" : undefined);
+    (isToday ? "bg-brand-subtle" : day.isLocked ? "bg-day-locked" : undefined);
   // The rows reach into the page's padding, so their text lines up with the toolbar.
   const sectionClass = cn(
     "-mx-3 flex flex-col gap-2 border-b border-border px-3 py-2",

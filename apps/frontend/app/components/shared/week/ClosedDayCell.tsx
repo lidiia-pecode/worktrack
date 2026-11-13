@@ -17,7 +17,7 @@ export const ClosedDayCell = ({
 }: {
   reason: ClosedSpell["reason"];
 }) => (
-  <td className="h-px border-r border-border/60 bg-muted/20 p-0 align-top">
+  <td className="h-px border-r border-border/60 bg-day-locked p-0 align-top">
     <Tooltip>
       <TooltipTrigger
         render={<div tabIndex={0} />}

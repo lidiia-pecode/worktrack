@@ -25,13 +25,11 @@ export function entryTint(color: string): string {
 }
 
 /**
- * An entry drawn as a block: the tint, with the project's colour as a solid
- * bar at the leading edge. A chip is a line and carries its colour as a dot
- * instead, since a bar that short reads as an accident.
+ * An entry drawn as a block, in a day's column or its list. It has no dot to
+ * carry the project's colour, so its ground takes more of it than a chip's.
  */
 export function entryBlockStyle(color: string) {
   return {
-    backgroundColor: entryTint(color),
-    backgroundImage: `linear-gradient(to right, ${color} 0 var(--entry-bar), transparent var(--entry-bar))`,
+    backgroundColor: `color-mix(in oklab, ${color} var(--entry-block-tint), var(--card))`,
   };
 }

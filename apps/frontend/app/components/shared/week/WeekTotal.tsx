@@ -27,12 +27,10 @@ export const WeekTotal = ({
   <span className="inline-flex min-w-0 flex-col items-stretch gap-1 text-sm leading-4">
     <span className="text-right whitespace-nowrap text-muted-foreground">
       {label}{" "}
-      <span className="text-base font-semibold text-foreground">
+      <span className="font-semibold text-foreground">
         {formatDuration(minutes)}
       </span>
-      {ofMinutes !== undefined && (
-        <span className="text-xs"> / {formatDuration(ofMinutes)}</span>
-      )}
+      {ofMinutes !== undefined && <span> / {formatDuration(ofMinutes)}</span>}
     </span>
 
     {ofMinutes !== undefined && ofMinutes > 0 && (

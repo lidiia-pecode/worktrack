@@ -158,7 +158,7 @@ export const DayColumn = ({
           isAbsent: Boolean(absence),
           isWeekend: weekend,
           minutes: totalMinutes,
-        }) ?? (isLocked ? "bg-muted/20" : "bg-card"),
+        }) ?? (isLocked ? "bg-day-locked" : "bg-card"),
       )}
     >
       {absence &&

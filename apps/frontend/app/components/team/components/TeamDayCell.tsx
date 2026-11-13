@@ -94,7 +94,7 @@ export const TeamDayCell = ({
       aria-busy={isBusy}
       className={cn(
         "group h-px border-r border-border/60 p-0 align-top",
-        fill ?? (isLocked && "bg-muted/20"),
+        fill ?? (isLocked ? "bg-day-locked" : "bg-card"),
         isBusy && "cursor-progress opacity-60",
       )}
     >

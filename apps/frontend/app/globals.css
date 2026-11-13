@@ -29,6 +29,11 @@
  *
  * All other tokens are derived using var() / color-mix().
  *
+ * Mix a near-neutral toward another near-neutral in oklab, never oklch:
+ * once the build rewrites these to lab(), a colour this close to grey has
+ * a powerless hue, and oklch interpolation drops it, which turns a warm
+ * stone into a pink one.
+ *
  * Exception: --warning-text is defined separately. Darkening the
  * light warning fill toward black produces a muddy brown, so the text
  * color is explicitly set to a matching darker shade. It provides
@@ -46,7 +51,7 @@
   /* One warm neutral family (hue 92) for the page, the rail and the canvas, so
      the app reads as one surface; the card stays the lightest thing on it and
      separates by its own colour rather than by a shadow. */
-  --background: oklch(0.966 0.008 92);
+  --background: oklch(0.978 0.006 92);
   --foreground: oklch(0.265 0.018 200);
 
   --card: oklch(0.995 0.003 92);
@@ -66,11 +71,11 @@
   --accent: oklch(0.91 0.025 200);
   --accent-foreground: oklch(0.34 0.055 205);
 
-  --border: oklch(0.895 0.013 92);
+  --border: oklch(0.885 0.01 92);
 
   /* Around the app on a screen wider than it grows: the warm stone of the
      sidebar, one step deeper, so the app reads as one surface. */
-  --canvas: oklch(0.912 0.017 92);
+  --canvas: oklch(0.93 0.012 92);
 
   /* ------------------------------------------------------------------------
      Brand — muted teal
@@ -159,7 +164,7 @@
      Sidebar
      ------------------------------------------------------------------------ */
 
-  --sidebar: oklch(0.945 0.013 92);
+  --sidebar: oklch(0.958 0.009 92);
   --sidebar-foreground: var(--foreground);
 
   --sidebar-primary: var(--brand);
@@ -182,7 +187,7 @@
      pale block behind each week and planned a bar beside the logged one. A
      row's track says what it measures against: pale teal for expected, pale
      mauve for planned. Logged and planned reach 3:1 against the card. */
-  --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
+  --report-track: color-mix(in oklab, var(--muted) 40%, var(--card));
   --report-logged: color-mix(in oklch, var(--brand) 75%, var(--card));
   --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
   --report-planned-base: oklch(0.52 0.105 305);
@@ -206,12 +211,12 @@
 
   /* Day states on the week views (see DAY STATES below). */
   --stripe-weekend: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 6%,
     var(--card)
   );
   --stripe-weekend-ground: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 2%,
     var(--card)
   );
@@ -219,7 +224,7 @@
   --stripe-day-off-ground: color-mix(in oklch, var(--brand) 7%, var(--card));
   --stripe-extra: color-mix(in oklch, var(--warning) 28%, var(--card));
   --stripe-extra-ground: color-mix(in oklch, var(--warning) 8%, var(--card));
-  --excess: color-mix(in oklch, var(--warning) 14%, var(--card));
+  --excess: color-mix(in oklch, var(--warning) 24%, var(--card));
 
   /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
      honey, lavender. Checked for colour vision as a set; mint beside
@@ -231,7 +236,7 @@
   --category-4: #d9a832;
   --category-5: #9a7fd9;
   --category-other: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 45%,
     var(--card)
   );
@@ -258,10 +263,16 @@
   --project-9: oklch(0.56 0.16 318);
   --project-10: oklch(0.56 0.125 150);
 
-  /* How much of a project's colour sits behind entry text, and the solid bar
-     that carries the colour where an entry is a block rather than a line. */
+  /* How much of a project's colour sits behind entry text. A chip is a line
+     and carries the colour in its dot, so its ground stays faint; a block has
+     no dot and is read as an area, so it takes more. */
   --entry-tint: 14%;
-  --entry-bar: 3px;
+  --entry-block-tint: 26%;
+
+  /* The week grids' ladder of surfaces, so what can be changed reads at a
+     glance: an available day is the lightest thing on the page (the card),
+     a locked one a clear step down into the stone. */
+  --day-locked: color-mix(in oklab, var(--muted) 26%, var(--card));
 
   /* ------------------------------------------------------------------------
      Dark secondary action
@@ -363,6 +374,8 @@
 
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-day-locked: var(--day-locked);
 
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);

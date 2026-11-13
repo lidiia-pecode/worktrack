@@ -190,7 +190,9 @@ export const PlanningWeekRow = ({
                 "border-r border-border/60 p-1.5 align-top",
                 absence
                   ? ABSENCE_PATTERN
-                  : (!isActive || isLocked(iso)) && "bg-muted/20",
+                  : !isActive || isLocked(iso)
+                    ? "bg-day-locked"
+                    : "bg-card",
               )}
             >
               <div className="flex min-h-10 flex-col gap-0.75">
@@ -204,7 +206,7 @@ export const PlanningWeekRow = ({
           <td
             key={iso}
             className={cn(
-              "h-px border-r border-border/60 p-0 align-top",
+              "h-px border-r border-border/60 bg-card p-0 align-top",
               absence && ABSENCE_PATTERN,
             )}
           >

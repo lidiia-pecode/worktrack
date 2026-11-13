@@ -30,7 +30,7 @@ import { LoadingState } from "../../shared/LoadingState";
 const KIND_STYLES: Record<ReportDay["kind"], string> = {
   logged: "border-brand/25 bg-brand-subtle",
   // The quiet fill a closed day has on Team time.
-  closed: "border-border/60 bg-muted/20",
+  closed: "border-border/60 bg-day-locked",
   off: cn("border-border", ABSENCE_PATTERN),
   withoutTime: "border-border bg-card",
   nothingExpected: "border-border bg-card",
