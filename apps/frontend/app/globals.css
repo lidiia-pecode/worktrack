@@ -85,6 +85,10 @@
 
   --brand-hover: color-mix(in oklch, var(--brand) 88%, black);
 
+  /* The bottom edge of a solid brand button, so it reads as pressable
+     without a coloured glow under it. */
+  --brand-edge: color-mix(in oklch, var(--brand) 72%, black);
+
   --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
@@ -383,6 +387,41 @@
   /* Below text-xs, for dense grids and captions. */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(0.875 / 0.6875);
+}
+
+/* ============================================================================
+   THE CURRENT THING
+
+   One mark answers "which one am I on": a 3px brand bar at the leading edge
+   of an item in a list, or under it in a row of headings. It marks a
+   selection only; focus keeps its own ring, so the two never stand in for
+   each other.
+   ============================================================================ */
+
+.mark-current,
+.mark-current-under {
+  position: relative;
+}
+
+.mark-current::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
+  background: var(--brand);
+}
+
+.mark-current-under::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--brand);
 }
 
 /* ============================================================================

@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Lock } from "lucide-react";
 
+import { cn } from "@/lib/utils/cn";
 import {
   formatDuration,
   formatWeekdayLabel,
@@ -49,10 +50,10 @@ export const WeekHeaderDay = ({
           </p>
 
           <p
-            className={`
-              text-xs font-semibold
-              ${today ? "text-brand" : "text-foreground"}
-            `}
+            className={cn(
+              "text-xs font-semibold text-foreground",
+              today && "mark-current-under",
+            )}
           >
             {date.getDate()}
           </p>

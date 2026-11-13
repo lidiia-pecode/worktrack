@@ -30,7 +30,7 @@ export const SegmentedControl = <T extends string>({
     role="group"
     aria-label={label}
     className={cn(
-      "flex overflow-hidden border border-control-border",
+      "flex overflow-hidden border border-control-border bg-muted/30",
       fieldControlSizeClassName[size],
       className,
     )}
@@ -45,8 +45,8 @@ export const SegmentedControl = <T extends string>({
           "border-l border-control-border px-3 text-xs transition first:border-l-0",
           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
           value === option.value
-            ? "bg-accent text-accent-foreground"
-            : "text-foreground hover:bg-accent",
+            ? "bg-card font-semibold text-foreground"
+            : "text-muted-foreground hover:text-foreground",
         )}
       >
         {option.label}

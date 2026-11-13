@@ -29,7 +29,7 @@ import {
   TableRowHeader,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
-import type { EntityRef } from "@/lib/utils/entity-ref";
+import { isSameEntity, type EntityRef } from "@/lib/utils/entity-ref";
 
 import { EntityLink } from "../../entity-panel/EntityLink";
 import { useEntityPanel } from "../../entity-panel/entity-panel-context";
@@ -244,6 +244,9 @@ interface ManageListProps<T> {
 
 const ROW_HOVER = "group cursor-pointer transition-colors hover:bg-row-hover";
 
+/** The row whose entity the panel is showing. */
+const ROW_OPEN = "bg-row-hover";
+
 // One height for every Manage table, whether its rows have a second line or
 // not, and the same inset at both edges of the header and the rows.
 const ROW_HEIGHT = "h-14";
@@ -292,32 +295,38 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
           </TableHeader>
 
           <TableBody>
-            {items.map((item) => (
-              <TableRow
-                key={row.getKey(item)}
-                onClick={(event) => openRow(event, item)}
-                className={cn(ROW_HOVER, ROW_HEIGHT)}
-              >
-                <TableRowHeader className={cn("py-2", EDGE_START)}>
-                  <RowName item={item} row={row} />
-                </TableRowHeader>
+            {items.map((item) => {
+              const isOpen = isSameEntity(panel.current, row.getEntity(item));
 
-                {row.columns.map((column) => (
-                  <TableCell
-                    key={column.header}
-                    numeric={column.numeric}
-                    className="py-2"
+              return (
+                <TableRow
+                  key={row.getKey(item)}
+                  onClick={(event) => openRow(event, item)}
+                  className={cn(ROW_HOVER, ROW_HEIGHT, isOpen && ROW_OPEN)}
+                >
+                  <TableRowHeader
+                    className={cn("py-2", EDGE_START, isOpen && "mark-current")}
                   >
-                    {/* A long value ends in an ellipsis instead of wrapping and growing the row. */}
-                    <div className="truncate">{column.cell(item)}</div>
-                  </TableCell>
-                ))}
+                    <RowName item={item} row={row} />
+                  </TableRowHeader>
 
-                <TableCell className={cn("py-2 text-right", EDGE_END)}>
-                  <RowMenu item={item} row={row} />
-                </TableCell>
-              </TableRow>
-            ))}
+                  {row.columns.map((column) => (
+                    <TableCell
+                      key={column.header}
+                      numeric={column.numeric}
+                      className="py-2"
+                    >
+                      {/* A long value ends in an ellipsis instead of wrapping and growing the row. */}
+                      <div className="truncate">{column.cell(item)}</div>
+                    </TableCell>
+                  ))}
+
+                  <TableCell className={cn("py-2 text-right", EDGE_END)}>
+                    <RowMenu item={item} row={row} />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
@@ -333,7 +342,12 @@ export const ManageList = <T,>({ label, items, row }: ManageListProps<T>) => {
           <li
             key={row.getKey(item)}
             onClick={(event) => openRow(event, item)}
-            className={cn("flex items-center gap-2 py-3 pr-2 pl-4", ROW_HOVER)}
+            className={cn(
+              "flex items-center gap-2 py-3 pr-2 pl-4",
+              ROW_HOVER,
+              isSameEntity(panel.current, row.getEntity(item)) &&
+                cn(ROW_OPEN, "mark-current"),
+            )}
           >
             <div className="min-w-0 flex-1 text-sm">
               <RowName item={item} row={row}>

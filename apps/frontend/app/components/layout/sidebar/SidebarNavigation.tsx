@@ -32,18 +32,19 @@ const NavigationLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
         FOCUS_RING,
         isActive
-          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          ? "mark-current font-semibold text-sidebar-foreground"
+          : "font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       )}
     >
       <Icon
         className={cn(
           "size-4 shrink-0",
-          !isActive &&
-            "text-muted-foreground group-hover:text-sidebar-accent-foreground",
+          isActive
+            ? "text-brand"
+            : "text-muted-foreground group-hover:text-sidebar-accent-foreground",
         )}
         aria-hidden="true"
       />
