@@ -339,8 +339,8 @@ describe("ReportsView", () => {
     const month = screen.getByRole("region", {
       name: formatMonthLabel(toMonthKey(todayISODate("UTC"))),
     });
-    expect(month).toHaveTextContent("Logged187h102% of 184h expected");
-    expect(month).toHaveTextContent("50% of logged");
+    expect(month).toHaveTextContent("Logged187hof 184h expected102%");
+    expect(month).toHaveTextContent("of logged50%");
     expect(
       within(month).getByRole("region", { name: "Week by week" }),
     ).toBeInTheDocument();

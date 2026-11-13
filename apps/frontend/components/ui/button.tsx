@@ -22,11 +22,7 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: [
-          "bg-brand text-brand-foreground",
-          "shadow-lg shadow-glow-primary",
-          "hover:bg-brand-hover",
-        ],
+        primary: ["bg-brand text-brand-foreground", "hover:bg-brand-hover"],
 
         secondary: [
           "border border-control-border",

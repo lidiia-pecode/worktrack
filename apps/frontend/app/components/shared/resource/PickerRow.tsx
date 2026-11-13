@@ -42,7 +42,7 @@ export const PickerRow = ({
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-          "bg-gradient-to-br from-brand to-brand-secondary text-brand-foreground",
+          "bg-brand-muted text-brand",
         )}
       >
         {selected ? <Check className="size-3.5" /> : avatarText}

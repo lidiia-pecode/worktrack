@@ -239,7 +239,7 @@ export const PanelNotice = ({
  * sidebar shows it, or a project's colour. It says what the panel shows.
  */
 export const PanelIcon = ({ children }: { children: ReactNode }) => (
-  <span className="flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
+  <span className="flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground">
     {children}
   </span>
 );

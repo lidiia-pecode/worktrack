@@ -18,7 +18,7 @@ export const Card = ({
   <Element
     className={cn(
       "overflow-hidden rounded-2xl border border-border bg-card text-card-foreground",
-      elevation === "raised" ? "shadow-raised" : "shadow-sm",
+      elevation === "raised" && "shadow-raised",
       className,
     )}
     {...props}
@@ -50,9 +50,10 @@ export const CardHeader = ({
     )}
   >
     {Icon && (
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
-        <Icon className="size-5" aria-hidden="true" />
-      </div>
+      <Icon
+        className="size-5 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
     )}
 
     <div className="min-w-0 flex-1">

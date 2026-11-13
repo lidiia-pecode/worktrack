@@ -43,12 +43,10 @@ export const EmptyState = ({
     >
       <div className="flex max-w-md flex-col items-center">
         {icon && (
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-brand-subtle text-brand shadow-sm">
-            <div className="[&>svg]:size-8">{icon}</div>
-          </div>
+          <div className="text-muted-foreground [&>svg]:size-8">{icon}</div>
         )}
 
-        <h2 className="mt-6 text-lg font-semibold tracking-tight text-foreground">
+        <h2 className="mt-4 text-lg font-semibold tracking-tight text-foreground">
           {title}
         </h2>
 

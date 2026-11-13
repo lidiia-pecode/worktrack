@@ -25,7 +25,7 @@ export const OnboardingProgress = ({
                   "flex size-9 items-center justify-center rounded-full",
                   "text-xs font-semibold transition-all duration-200",
                   isCompleted || isCurrent
-                    ? "bg-brand text-brand-foreground shadow-lg shadow-glow-primary/20"
+                    ? "bg-brand text-brand-foreground"
                     : "border border-border bg-muted/40 text-muted-foreground",
                 ].join(" ")}
               >

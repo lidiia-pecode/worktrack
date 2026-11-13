@@ -24,9 +24,8 @@
  * Re-check contrast whenever any base color is changed.
  *
  * SINGLE SOURCE OF TRUTH RULE:
- * Edit only --background, --foreground, --brand, --brand-secondary,
- * --destructive, --warning, --success, and their corresponding
- * *-foreground pairs.
+ * Edit only --background, --foreground, --brand, --destructive,
+ * --warning, --success, and their corresponding *-foreground pairs.
  *
  * All other tokens are derived using var() / color-mix().
  *
@@ -81,7 +80,6 @@
   --primary-foreground: var(--brand-foreground);
 
   --brand: oklch(0.44 0.095 198);
-  --brand-secondary: oklch(0.51 0.055 230);
 
   --brand-foreground: oklch(0.98 0.006 200);
 
@@ -172,12 +170,6 @@
   /* ------------------------------------------------------------------------
      Charts
      ------------------------------------------------------------------------ */
-
-  --chart-1: var(--brand);
-  --chart-2: var(--brand-secondary);
-  --chart-3: var(--warning);
-  --chart-4: var(--destructive);
-  --chart-5: var(--success);
 
   /* Hours, one language on every page: logged is a softer teal than the brand,
      its billable part striped; planned is a mauve, apart from the warning, so
@@ -323,7 +315,6 @@
   --color-primary-foreground: var(--primary-foreground);
 
   --color-brand: var(--brand);
-  --color-brand-secondary: var(--brand-secondary);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
   --color-brand-on-dark: var(--brand-on-dark);
@@ -369,12 +360,6 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);
   --color-excess: var(--excess);
@@ -398,10 +383,6 @@
   /* Below text-xs, for dense grids and captions. */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: calc(0.875 / 0.6875);
-}
-
-.bg-time-management {
-  background-image: url("/images/time-management.webp");
 }
 
 /* ============================================================================
