@@ -1099,8 +1099,11 @@ see, and how a new company gets started. §7 plans that work.
   project has its own colour, from ten made for the product; the typeface is
   new, every figure is set in aligned digits and no heading is in capitals.
   The screens people work in carry no shadows, glows, gradients or icon
-  tiles; the brand pattern is a fine texture on the band of Reports and
-  Review my time, and stays at full size only on the sign-in pages. One teal
+  tiles. The logo is a mark of three bars instead of a letter, and the brand
+  pattern repeats it: behind the password and error pages and, faintly, on
+  the band of Reports and Review my time. The pages before sign-in (signing
+  in, joining, the home page's first screen) share one dark, softly lit
+  surface. One teal
   bar marks where you are (the menu, the open row, today, the selected tab),
   and pointing at something only darkens it slightly, so the two never look
   alike. In the week grids logged time is filled in its project's colour and
