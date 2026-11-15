@@ -13,7 +13,6 @@ import {
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
 import { TimelogPopover } from "./TimelogPopover";
 import {
-  SEGMENT_GAP_PX,
   STACK_TOP_INSET_PX,
   offsetAtMinutes,
   stackSegments,
@@ -124,7 +123,7 @@ export const DayColumn = ({
   // The part of the day below its entries, or its plans, logs a new entry.
   const lastBlock = (showsPlan ? plannedSegments : segments).at(-1);
   const freeFromPx = lastBlock
-    ? lastBlock.offsetTop + lastBlock.height + SEGMENT_GAP_PX
+    ? lastBlock.offsetTop + lastBlock.height
     : STACK_TOP_INSET_PX;
 
   const absenceContent = absence && (
