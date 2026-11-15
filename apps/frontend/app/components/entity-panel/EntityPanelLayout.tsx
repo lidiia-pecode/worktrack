@@ -226,7 +226,8 @@ export const PanelNotice = ({
         variant="outline"
         size="sm"
         onClick={action.onClick}
-        className="shrink-0 bg-card"
+        // On the warning band, so its hover is laid over the card ground.
+        className="shrink-0 bg-card hover:bg-card hover:bg-[image:linear-gradient(var(--hover),var(--hover))]"
       >
         {action.label}
       </Button>

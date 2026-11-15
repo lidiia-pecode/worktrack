@@ -1,6 +1,6 @@
 import {
   ABSENCE_PATTERN,
-  EXCESS_FILL,
+  EXCESS_DAY_FILL,
   WEEKEND_EXTRA_PATTERN,
   WEEKEND_PATTERN,
 } from "../consts";
@@ -28,6 +28,6 @@ export const dayFill = ({
   if (isAbsent) return ABSENCE_PATTERN;
   if (isWeekend) return minutes > 0 ? WEEKEND_EXTRA_PATTERN : WEEKEND_PATTERN;
   const hasFigure = expectedMinutes !== undefined && expectedMinutes > 0;
-  if (hasFigure && minutes > expectedMinutes) return EXCESS_FILL;
+  if (hasFigure && minutes > expectedMinutes) return EXCESS_DAY_FILL;
   return undefined;
 };

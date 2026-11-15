@@ -119,7 +119,7 @@ describe("TeamDayCell", () => {
   it("marks a day over the person's hours in amber", () => {
     renderCell({ entries: [CRM, PORTAL], minutes: 480, expectedMinutes: 360 });
 
-    expect(screen.getByRole("cell")).toHaveClass("bg-excess");
+    expect(screen.getByRole("cell")).toHaveClass("bg-excess-day");
   });
 
   it("stripes a weekend, in amber once it has time", () => {

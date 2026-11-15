@@ -161,9 +161,6 @@
   --sidebar: oklch(0.958 0.009 92);
   --sidebar-foreground: var(--foreground);
 
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--brand-foreground);
-
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
 
@@ -216,6 +213,9 @@
   --stripe-extra: color-mix(in oklch, var(--warning) 28%, var(--card));
   --stripe-extra-ground: color-mix(in oklch, var(--warning) 8%, var(--card));
   --excess: color-mix(in oklch, var(--warning) 24%, var(--card));
+  /* A whole day past its figure, as Team time paints the cell: lighter than
+     the timesheet's excess region, since the day's project chips sit on it. */
+  --excess-day: color-mix(in oklch, var(--warning) 14%, var(--card));
 
   /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
      honey, lavender. Checked for colour vision as a set; mint beside
@@ -263,7 +263,7 @@
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),
      a locked one a clear step down into the stone. */
-  --day-locked: color-mix(in oklab, var(--muted) 38%, var(--card));
+  --day-locked: color-mix(in oklab, var(--muted) 20%, var(--card));
 
   /* ------------------------------------------------------------------------
      Dark secondary action
@@ -349,9 +349,6 @@
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
@@ -360,6 +357,7 @@
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);
   --color-excess: var(--excess);
+  --color-excess-day: var(--excess-day);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
   --color-report-planned-track: var(--report-planned-track);
@@ -422,7 +420,8 @@
    Stripes mark a day that expects nothing: a weekend in a quiet grey, a day
    off in the brand colour, and a weekend with time logged in the warning
    colour, since all of it is extra. Time past a working day's figure sits on
-   the solid warning tint (`bg-excess`) instead. One geometry, so only the
+   the solid warning tint (`bg-excess`) instead, or a whole day past it on a
+   lighter one (`bg-excess-day`). One geometry, so only the
    colour tells them apart.
    ============================================================================ */
 

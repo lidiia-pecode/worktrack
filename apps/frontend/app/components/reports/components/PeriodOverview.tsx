@@ -168,7 +168,7 @@ const BucketColumn = ({
         style={{ height: heightOn(bucket.plannedMinutes, endMinutes) }}
       />
     </span>
-    <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
+    <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
       <span className="block font-semibold">{label}</span>
       {bucketSummary(bucket, countedUntil)}
     </span>

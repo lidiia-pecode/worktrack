@@ -1,21 +1,12 @@
-import { cn } from "@/lib/utils/cn";
-
-interface GlowBackgroundProps {
-  className?: string;
-}
-
 /**
  * The light of the dark pages before sign-in, the auth panel and the
  * landing's hero: two pale teal pools in opposite corners and one of the
  * brand on the right. The parent provides the dark ground and clips it.
  */
-export const GlowBackground = ({ className }: GlowBackgroundProps) => (
+export const GlowBackground = () => (
   <div
     aria-hidden="true"
-    className={cn(
-      "pointer-events-none absolute inset-0 overflow-hidden",
-      className,
-    )}
+    className="pointer-events-none absolute inset-0 overflow-hidden"
   >
     <div className="absolute -top-40 -left-40 size-130 rounded-full bg-brand-mist/25 blur-[100px]" />
     <div className="absolute -right-32 -bottom-48 size-140 rounded-full bg-brand-mist/20 blur-[120px]" />
