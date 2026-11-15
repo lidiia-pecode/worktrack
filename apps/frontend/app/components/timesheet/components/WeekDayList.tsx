@@ -355,7 +355,7 @@ const EntryRow = ({
           {projectName} · {activityName}
         </span>
         {timelog.note && (
-          <span className="break-words text-xs text-foreground/70">
+          <span className="break-words text-xs text-muted-foreground">
             {timelog.note}
           </span>
         )}
@@ -365,7 +365,7 @@ const EntryRow = ({
           </span>
         )}
         {changedBy && (
-          <span className="text-xs text-foreground/70">{changedBy}</span>
+          <span className="text-xs text-muted-foreground">{changedBy}</span>
         )}
       </span>
     </>

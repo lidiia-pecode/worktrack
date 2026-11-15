@@ -107,9 +107,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
         {timelog.note && (
           <div className="mt-1.5 flex items-start gap-1.5 border-t border-border/60 pt-1.5">
             <StickyNote className="size-3.5 shrink-0 mt-0.5" />
-            <span className="line-clamp-3 text-foreground/80">
-              {timelog.note}
-            </span>
+            <span className="line-clamp-3 text-foreground">{timelog.note}</span>
           </div>
         )}
 

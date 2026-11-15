@@ -149,7 +149,7 @@ export const TeamDayCell = ({
               >
                 <Badge
                   variant="default"
-                  className="cursor-pointer text-2xs transition-colors hover:bg-brand-subtle"
+                  className="cursor-pointer text-2xs transition-colors hover:bg-brand-muted"
                 >
                   {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
                 </Badge>
