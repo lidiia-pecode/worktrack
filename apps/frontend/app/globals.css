@@ -94,6 +94,10 @@
 
   --brand-on-dark: color-mix(in oklch, var(--brand) 55%, white);
 
+  /* The brand pulled toward the text colour: the auth panel's ground, and the
+     bars of the mark when it sits on that panel as a light tile. */
+  --brand-deep: color-mix(in oklab, var(--brand) 65%, var(--foreground));
+
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
   --brand-strong: color-mix(in oklch, var(--brand) 24%, transparent);
@@ -328,6 +332,7 @@
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
   --color-brand-on-dark: var(--brand-on-dark);
+  --color-brand-deep: var(--brand-deep);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
