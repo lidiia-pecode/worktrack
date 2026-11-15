@@ -128,11 +128,14 @@ export const LandingPage = () => (
     <main>
       <section
         aria-labelledby="landing-title"
-        className="relative overflow-hidden bg-foreground text-background"
+        className="relative flex min-h-svh flex-col overflow-hidden bg-foreground text-background"
       >
         <GlowBackground />
 
-        <div className="relative mx-auto grid max-w-6xl items-center gap-14 px-6 pt-28 pb-14 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:px-10 lg:pt-36 lg:pb-20">
+        {/* At least a window tall, the content centred under the header, so
+            the first screen is dark from edge to edge and the light page
+            starts only on scrolling. */}
+        <div className="relative mx-auto grid w-full max-w-6xl flex-1 content-center items-center gap-14 px-6 pt-28 pb-14 lg:grid-cols-[1fr_1.05fr] lg:gap-12 lg:px-10 lg:pt-24 lg:pb-16">
           <div>
             <h1
               id="landing-title"
