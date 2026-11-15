@@ -30,7 +30,7 @@ import { LoadingState } from "../../shared/LoadingState";
 const KIND_STYLES: Record<ReportDay["kind"], string> = {
   logged: "border-brand/25 bg-brand-subtle",
   // The quiet fill a closed day has on Team time.
-  closed: "border-border/60 bg-muted/20",
+  closed: "border-border/60 bg-day-locked",
   off: cn("border-border", ABSENCE_PATTERN),
   withoutTime: "border-border bg-card",
   nothingExpected: "border-border bg-card",
@@ -198,9 +198,11 @@ export const PersonDayGrid = ({
                 {dayLabel(day.date)}
                 {isToday && " · Today"}
               </span>
+              {/* A phone's tile is narrower than "tomorrow", so a long
+                  value breaks with a hyphen instead of leaving its tile. */}
               <span
                 className={cn(
-                  "flex min-h-4 items-center gap-1.5 text-xs font-medium tabular-nums",
+                  "flex min-h-4 min-w-0 items-center gap-1.5 text-xs font-medium hyphens-auto wrap-anywhere",
                   href
                     ? "text-brand underline underline-offset-2"
                     : day.kind !== "logged" && "text-muted-foreground",

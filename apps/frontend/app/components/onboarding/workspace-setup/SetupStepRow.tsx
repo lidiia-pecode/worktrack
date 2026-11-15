@@ -38,12 +38,12 @@ export const SetupStepRow = ({ step, isCurrent }: SetupStepRowProps) => {
       <div className="flex min-w-0 flex-1 items-start gap-4">
         <div
           className={cn(
-            "flex size-10 shrink-0 items-center justify-center rounded-xl",
+            "flex size-10 shrink-0 items-center justify-center rounded-lg",
             step.completed
               ? "bg-success/10 text-success-text"
               : isLocked
                 ? "bg-muted text-muted-foreground"
-                : "bg-brand-subtle text-brand",
+                : "border border-border text-muted-foreground",
           )}
         >
           {step.completed ? (

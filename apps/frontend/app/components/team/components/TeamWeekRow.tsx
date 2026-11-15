@@ -106,10 +106,13 @@ export const TeamWeekRow = ({
         <div className="relative flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
           <PersonLabel user={row.user}>{personFacts(row)}</PersonLabel>
 
+          {/* Only while some day of the shown week is open: in a locked week
+              or a spell the person was gone, there is nothing to add here. */}
           {canWrite &&
-            weekDates.some(
-              (date) => !isClosedOn(row.closedSpells, toISODate(date)),
-            ) && (
+            weekDates.some((date) => {
+              const iso = toISODate(date);
+              return !isClosedOn(row.closedSpells, iso) && !isLocked(iso);
+            }) && (
               <Tooltip>
                 <TooltipTrigger
                   render={
@@ -121,8 +124,9 @@ export const TeamWeekRow = ({
                       aria-label={`Add an absence for ${name}`}
                       // Shown on the row's hover or focus, over the name's
                       // end, as Planning offers a period; always there on
-                      // touch.
-                      className="shrink-0 bg-card text-muted-foreground transition-opacity pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
+                      // touch. It covers the name, so its own hover is laid
+                      // over the card's ground instead of replacing it.
+                      className="shrink-0 bg-card text-muted-foreground transition-opacity hover:bg-card hover:bg-[image:linear-gradient(var(--hover),var(--hover))] pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
                     />
                   }
                 >

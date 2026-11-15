@@ -34,15 +34,13 @@ export const PickerRow = ({
         "disabled:cursor-not-allowed disabled:opacity-50",
         selected && "bg-brand-subtle text-brand",
         !selected && "text-foreground",
-        !selected &&
-          !disabled &&
-          "hover:bg-accent hover:text-accent-foreground",
+        !selected && !disabled && "hover:bg-hover hover:text-foreground",
       )}
     >
       <span
         className={cn(
           "flex size-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold",
-          "bg-gradient-to-br from-brand to-brand-secondary text-brand-foreground",
+          "bg-brand-muted text-brand",
         )}
       >
         {selected ? <Check className="size-3.5" /> : avatarText}

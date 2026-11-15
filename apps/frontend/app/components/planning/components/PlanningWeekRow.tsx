@@ -125,7 +125,7 @@ export const PlanningWeekRow = ({
             type="button"
             onClick={() => onPlanPeriod(row)}
             aria-label={`Plan a period for ${fullName(row.user)}`}
-            className="group flex w-full min-w-0 cursor-pointer items-start gap-2.5 py-2 pr-1.5 pl-2.5 text-left transition hover:bg-row-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="group flex w-full min-w-0 cursor-pointer items-start gap-2.5 py-2 pr-1.5 pl-2.5 text-left transition hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <PersonLabel user={row.user}>{facts}</PersonLabel>
 
@@ -190,7 +190,9 @@ export const PlanningWeekRow = ({
                 "border-r border-border/60 p-1.5 align-top",
                 absence
                   ? ABSENCE_PATTERN
-                  : (!isActive || isLocked(iso)) && "bg-muted/20",
+                  : !isActive || isLocked(iso)
+                    ? "bg-day-locked"
+                    : "bg-card",
               )}
             >
               <div className="flex min-h-10 flex-col gap-0.75">
@@ -204,7 +206,7 @@ export const PlanningWeekRow = ({
           <td
             key={iso}
             className={cn(
-              "h-px border-r border-border/60 p-0 align-top",
+              "h-px border-r border-border/60 bg-card p-0 align-top",
               absence && ABSENCE_PATTERN,
             )}
           >
@@ -212,7 +214,7 @@ export const PlanningWeekRow = ({
             <button
               type="button"
               onClick={() => onOpenDay(row, iso)}
-              className="group flex h-full min-h-14 w-full flex-col gap-0.75 p-1.5 text-left hover:bg-brand/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+              className="group flex h-full min-h-14 w-full flex-col gap-0.75 p-1.5 text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <span className="sr-only">{formatLongDayLabel(date)}: </span>
 

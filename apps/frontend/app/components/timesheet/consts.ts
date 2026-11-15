@@ -9,5 +9,8 @@ export const ABSENCE_PATTERN = "bg-stripes-day-off";
 
 export const EXCESS_FILL = "bg-excess";
 
+/** A whole day past its figure, under the entries (Team time's cell). */
+export const EXCESS_DAY_FILL = "bg-excess-day";
+
 export const DAY_COLUMN_CLASS =
   "relative h-full border-r border-border last:border-r-0 overflow-hidden transition-colors";

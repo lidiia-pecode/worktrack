@@ -12,7 +12,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <AuthFormWrapper
-      badge="Sign in"
       title="Let's get back to it"
       description="Keep track of your work, projects and time"
     >

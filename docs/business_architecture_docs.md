@@ -1093,6 +1093,24 @@ see, and how a new company gets started. §7 plans that work.
   company's and a person's working day are one field. Dates read in US English
   whatever the browser's language.
 
+- **A look of its own** (13–15 November 2026, PR #73). The design stayed; what it
+  had by default was replaced by choices made for this product. The page and
+  the menu share one warm paper tone and the brand is a deeper teal; every
+  project has its own colour, from ten made for the product; the typeface is
+  new, every figure is set in aligned digits and no heading is in capitals.
+  The screens people work in carry no shadows, glows, gradients or icon
+  tiles. The logo is a mark of three bars instead of a letter, and the brand
+  pattern repeats it: behind the password and error pages and, faintly, on
+  the band of Reports and Review my time. The pages before sign-in (signing
+  in, joining, the home page's first screen) share one dark, softly lit
+  surface. One teal
+  bar marks where you are (the menu, the open row, today, the selected tab),
+  and pointing at something only darkens it slightly, so the two never look
+  alike. In the week grids logged time is filled in its project's colour and
+  a plan is a lighter fill inside a dashed edge; a day that can be changed is
+  white and a locked one grey. In Log my time the expected hours are one line
+  across the whole week.
+
 - **One way to close a dialog** (4 November 2026, PR #67). No dialog has a
   close button in its header: it closes from its footer, "Cancel" in a form
   and "Close" in a read-only one and in Notifications. Escape and a click
@@ -1290,6 +1308,7 @@ tooling, documentation and small fixes are left out.
 | #70 | One team per person and one manager per team, held by the database: the owner picks a team's manager with Change manager on its panel, from its members (an Employee made a Manager in the same change) or a Manager in no team, the previous one staying as a member or leaving; team leaders shown but not choosable in the members picker and moved only once their team has another manager; a pending manager invitation holding a team's lead; Reports counting a manager once; the team filter on Team time, Planning and Reports offered to whoever sees more than one team, a link to a team they don't see dropped from the address; fewer notes telling a manager they see only their own people |
 | #71 | Report figures that add up: Reports, Team time and Planning counting the same people, anyone with working hours, logged or planned time on the days in view, leavers and the owner included; each person listed once, with their teams and the days outside them in their panel, so the rows add up to the period; 0h meaning no fixed hours and neutral on every screen, saving it deleting the person's plans from that day; the owner saying in the setup guide whether they log their own time, a second save changing nothing before today; Reports in decimal hours without the period comparison, People and Projects as sortable tables that fold into compact rows on a narrow screen |
 | #72 | One visual language, and screens that fit: an amber warning, pills only for what someone has to act on and quiet text for facts, leavers shown by their last day; one toolbar total with a bar on every page with a period, kept while content loads, and a line with Try again when plans fail to load; Review my time in Reports' band; one side panel layout with actions in the top bar, the key fact under the name and editing in place; one working hours field, and a skipped setup guide keeping its answers and the time zone; one row and one chip in Team time and Planning, sortable by person and total, Team time fitting 1280px with weekends shown when needed; no "Plan a period" on a locked week; dates in US English; the week calendar, Settings, Periods, Plan a period and Reports fitting tablets and phones, and an unread mark on the phone menu |
+| #73 | A look of its own: one warm page tone and a deeper teal, ten project colours made for the product, a new typeface with aligned figures and no capital headings, corners by role, one teal bar for where you are and a neutral hover; no icon tiles, card shadows, glows or gradients on the work screens, and Reports' donuts as bars; logged time and plans filled alike in every week view, the expected hours one line across Log my time, locked days set apart from open ones; a three-bar mark for the logo and a brand pattern drawn from it; the sign-in pages and the home page's first screen on one dark, softly lit surface that fills the window, with only the logo and the form on a phone |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1384,7 +1403,8 @@ and 4 in steps between them (the Delivered table has the sequence). Report
 figures that add up followed (PR #71), then one visual language and screens
 that fit, moved ahead of access to teams on 10 November 2026 because UI/UX is
 the top direction and the new access screens should land on settled patterns;
-access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
+a look of its own followed on 13 November 2026, ahead of access to teams for
+the same reason; access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
 Planning on a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 
@@ -1393,7 +1413,7 @@ that distorts figures can be pulled into whichever work comes first.
 **Next — Configurable permissions — an approximate vision, not a specification**
 
 Scheduled on 7 November 2026, in two parts split by kind of access. **Access
-to teams** comes next, after one visual language and screens that fit: someone
+to teams** comes next, after the two rounds of visual work: someone
 given it acts for a team (its time, absences, plans and reports), for
 example a deputy while the manager is away, which PR #70's one manager per
 team makes necessary. **Access to the owner's administrative tasks** comes

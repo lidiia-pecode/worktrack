@@ -25,17 +25,12 @@ export const WeekTotal = ({
   fill = "logged",
 }: WeekTotalProps) => (
   <span className="inline-flex min-w-0 flex-col items-stretch gap-1 text-sm leading-4">
-    <span className="text-right whitespace-nowrap tabular-nums">
+    <span className="text-right whitespace-nowrap text-muted-foreground">
       {label}{" "}
-      <span className="font-medium text-foreground">
+      <span className="font-semibold text-foreground">
         {formatDuration(minutes)}
       </span>
-      {ofMinutes !== undefined && (
-        <span className="text-muted-foreground">
-          {" "}
-          / {formatDuration(ofMinutes)}
-        </span>
-      )}
+      {ofMinutes !== undefined && <span> / {formatDuration(ofMinutes)}</span>}
     </span>
 
     {ofMinutes !== undefined && ofMinutes > 0 && (

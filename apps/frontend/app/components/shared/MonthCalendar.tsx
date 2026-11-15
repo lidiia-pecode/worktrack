@@ -24,7 +24,7 @@ const MONTH_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
 });
 
 const MONTH_ARROW_CLASS =
-  "rounded-md p-1.5 text-muted-foreground transition hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
+  "rounded-md p-1.5 text-muted-foreground transition hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none";
 
 const ARROW_STEP_DAYS: Record<string, number> = {
   ArrowLeft: -1,
@@ -191,7 +191,7 @@ export const MonthCalendar = ({
               className={`
                 relative mx-auto h-8 w-8 rounded-md text-xs transition focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none
                 ${inCurrentMonth && !isUnavailable ? "text-foreground" : "text-muted-foreground"}
-                ${isUnavailable ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-accent"}
+                ${isUnavailable ? "cursor-not-allowed opacity-50" : isChosen ? "bg-brand-muted" : "hover:bg-hover"}
                 ${isEnd ? "font-semibold text-brand" : ""}
               `}
             >

@@ -5,3 +5,4 @@ export * from "./company";
 export * from "./onboarding";
 export * from "./invitations";
 export * from "./auth-errors";
+export * from "./brand-mark";

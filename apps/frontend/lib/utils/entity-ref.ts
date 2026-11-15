@@ -16,6 +16,10 @@ export interface EntityRef {
 
 export const OPEN_PARAM = "open";
 
+/** Whether two refs point at the same entity; a missing one never matches. */
+export const isSameEntity = (a: EntityRef | null, b: EntityRef | null) =>
+  Boolean(a && b && a.type === b.type && a.id === b.id);
+
 const SEPARATOR = ":";
 
 const isEntityType = (value: string): value is EntityType =>

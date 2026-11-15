@@ -311,7 +311,7 @@ export const PlanningDayModal = ({
           </Button>
         }
       >
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
+        <div className="space-y-3 rounded-md border border-border bg-card p-4">
           <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
             <Badge variant="default" dot>
               {ABSENCE_TYPE_LABELS[absence.type]}
@@ -404,7 +404,7 @@ export const PlanningDayModal = ({
               <h3 className="mb-2 text-sm font-medium text-foreground">
                 Planned this day
               </h3>
-              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
                 {lines.map((line) => {
                   const entry = entryOf(line.projectId);
                   const isOnProject = personProjects.some(

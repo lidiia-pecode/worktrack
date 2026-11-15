@@ -212,6 +212,9 @@ describe("TeamWeekRow", () => {
       screen.getByRole("button", { name: "Vacation, open the absence" }),
     );
     expect(onAbsenceClick).toHaveBeenCalledWith(vacation);
+    expect(
+      screen.queryByRole("button", { name: "Add an absence for Alice Cooper" }),
+    ).not.toBeInTheDocument();
   });
 
   it("marks the highlighted row and scrolls to it", () => {

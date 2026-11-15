@@ -15,9 +15,7 @@ export const SecondaryAuthHeader = ({
   return (
     <div className="mb-7">
       <div className="mb-5 flex items-center justify-between">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-brand-subtle text-brand">
-          <Icon className="h-5 w-5" />
-        </div>
+        <Icon className="size-6 text-muted-foreground" aria-hidden="true" />
 
         <Link
           href="/login"

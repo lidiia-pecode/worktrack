@@ -39,7 +39,7 @@ const Fact = ({
     <dt className="text-muted-foreground">{label}</dt>
     <dd
       className={cn(
-        "font-medium tabular-nums",
+        "font-medium",
         isWarning ? "text-warning-text" : "text-foreground",
       )}
     >
@@ -84,7 +84,7 @@ export const WeekSummary = ({
           billableMinutes={billableMinutes}
         />
         {overMinutes > 0 && (
-          <span className="text-xs font-medium whitespace-nowrap text-warning-text tabular-nums">
+          <span className="text-xs font-medium whitespace-nowrap text-warning-text">
             +{formatDuration(overMinutes)}
           </span>
         )}

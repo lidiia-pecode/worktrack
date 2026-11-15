@@ -109,7 +109,7 @@ export const PlannedRow = ({
       </div>
 
       {isReadOnly && line.sameMinutes !== null && (
-        <span className="text-sm text-muted-foreground tabular-nums">
+        <span className="text-sm text-muted-foreground">
           {formatDuration(line.sameMinutes)}
         </span>
       )}

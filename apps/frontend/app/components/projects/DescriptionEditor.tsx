@@ -55,10 +55,10 @@ const ToolbarButton = ({
       className={cn(
         "flex size-7 items-center justify-center rounded-md",
         "text-muted-foreground transition-colors",
-        "hover:bg-accent hover:text-accent-foreground",
+        "hover:bg-hover hover:text-foreground",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "disabled:pointer-events-none disabled:opacity-50",
-        active && "bg-accent text-accent-foreground",
+        active && "bg-brand-muted text-brand",
       )}
     >
       {children}

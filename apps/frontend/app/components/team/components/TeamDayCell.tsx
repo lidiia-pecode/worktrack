@@ -71,7 +71,9 @@ export const TeamDayCell = ({
     isAbsent: Boolean(absence),
     isWeekend: isNarrow,
     minutes,
-    expectedMinutes,
+    // A locked day reads as locked even past its figure; the row's total
+    // still shows the overtime in amber.
+    expectedMinutes: isLocked ? undefined : expectedMinutes,
   });
   const isWithoutTime =
     isPast && !absence && minutes === 0 && (expectedMinutes ?? 0) > 0;
@@ -94,7 +96,7 @@ export const TeamDayCell = ({
       aria-busy={isBusy}
       className={cn(
         "group h-px border-r border-border/60 p-0 align-top",
-        fill ?? (isLocked && "bg-muted/20"),
+        fill ?? (isLocked ? "bg-day-locked" : "bg-card"),
         isBusy && "cursor-progress opacity-60",
       )}
     >
@@ -109,7 +111,7 @@ export const TeamDayCell = ({
             title={
               minutes > 0 ? `${formatDuration(minutes)} logged` : undefined
             }
-            className="group/add absolute inset-0 cursor-pointer transition-colors hover:bg-brand/8 focus-visible:bg-brand/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="group/add absolute inset-0 cursor-pointer transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <Plus
               aria-hidden
@@ -147,7 +149,7 @@ export const TeamDayCell = ({
               >
                 <Badge
                   variant="default"
-                  className="cursor-pointer text-2xs transition-colors hover:bg-brand-subtle"
+                  className="cursor-pointer text-2xs transition-colors hover:bg-brand-muted"
                 >
                   {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
                 </Badge>

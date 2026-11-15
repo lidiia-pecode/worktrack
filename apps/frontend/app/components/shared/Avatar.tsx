@@ -21,7 +21,7 @@ export const Avatar = ({ user, size = "sm", className }: AvatarProps) => {
       title={fullName(user)}
       className={cn(
         "flex shrink-0 items-center justify-center rounded-full",
-        "bg-gradient-to-br from-brand to-brand-secondary font-semibold text-brand-foreground",
+        "bg-brand-muted font-semibold text-brand",
         "ring-2 ring-card",
         sizeClasses[size],
         className,

@@ -11,13 +11,15 @@ type PeriodBandProps = {
 };
 
 /**
- * The patterned band at the top of an overview, Reports and Review my time:
- * the period as a badge, its headline figures under it. The brand pattern
- * marks overview moments only, never the screens people work in all day.
+ * The band at the top of an overview, Reports and Review my time: the period
+ * as a badge, its headline figures under it, on the brand pattern. The
+ * pattern marks the overview moments only, never the screens people work in
+ * all day.
  */
 export const PeriodBand = ({ titleId, label, children }: PeriodBandProps) => (
   <div className="relative overflow-hidden border-b border-brand-strong bg-brand-muted px-6 pt-5 pb-6">
-    <BrandPattern className="opacity-50" />
+    {/* Quieter here than on the standalone pages: it sits behind figures. */}
+    <BrandPattern className="opacity-60" />
 
     <h2 id={titleId} className="relative">
       <Badge variant="solid" className="px-3 py-1 text-sm font-semibold">

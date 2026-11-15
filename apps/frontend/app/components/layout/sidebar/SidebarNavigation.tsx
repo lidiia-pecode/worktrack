@@ -32,18 +32,19 @@ const NavigationLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
         FOCUS_RING,
         isActive
-          ? "bg-sidebar-primary text-sidebar-primary-foreground"
-          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          ? "mark-current font-semibold text-sidebar-foreground"
+          : "font-medium text-sidebar-foreground hover:bg-hover hover:text-foreground",
       )}
     >
       <Icon
         className={cn(
           "size-4 shrink-0",
-          !isActive &&
-            "text-muted-foreground group-hover:text-sidebar-accent-foreground",
+          isActive
+            ? "text-brand"
+            : "text-muted-foreground group-hover:text-foreground",
         )}
         aria-hidden="true"
       />
@@ -138,7 +139,7 @@ export const GettingStartedLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 overflow-hidden rounded-xl border border-brand-strong p-3",
+        "group flex items-center gap-3 overflow-hidden rounded-lg border border-brand-strong p-3",
         "transition-[width,background-color] duration-200 ease-out motion-reduce:transition-none",
         // The desktop sidebar shows the icon alone and opens to the name on
         // hover or focus; the phone menu keeps the whole card, where nothing hovers.

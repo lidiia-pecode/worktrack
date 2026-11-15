@@ -41,9 +41,10 @@ export const WelcomeCard = ({
       className={cn("p-4 sm:p-5", className)}
     >
       <div className="flex items-center gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-brand-subtle text-brand">
-          <Hand className="size-4" aria-hidden="true" />
-        </div>
+        <Hand
+          className="size-5 shrink-0 text-muted-foreground"
+          aria-hidden="true"
+        />
 
         <div className="min-w-0">
           <h2 id={titleId} className="text-base font-semibold text-foreground">

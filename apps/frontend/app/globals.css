@@ -8,9 +8,17 @@
  * WORKTRACK — Design Tokens
  *
  * CONTRAST RULE (WCAG AA, 4.5:1 for text):
- * --brand (L 0.51) paired with --brand-foreground provides a 5.3:1
- * contrast ratio. Brand-colored text on cards and on --brand-muted
+ * --brand (L 0.44) paired with --brand-foreground provides 6.8:1, and
+ * reads as text at 7.0:1 on a card, 6.5:1 on the background and 5.6:1
+ * on --brand-muted. Brand-colored text on cards and on --brand-muted
  * must maintain a contrast ratio of at least 4.5:1.
+ *
+ * On the dark pages before sign-in (--foreground as the ground), text in
+ * --background reads at 14.3:1 and in --brand-mist at 11.7:1.
+ *
+ * A project colour is a mark, not a text ground: each one reaches at
+ * least 4:1 against the card, and entry text stays --foreground on the
+ * --entry-tint mix, which keeps it above 11:1.
  *
  * Warning, success, and error text must use the corresponding *-text
  * tokens. The --warning, --success, and --destructive fill colors
@@ -19,11 +27,15 @@
  * Re-check contrast whenever any base color is changed.
  *
  * SINGLE SOURCE OF TRUTH RULE:
- * Edit only --background, --foreground, --brand, --brand-secondary,
- * --destructive, --warning, --success, and their corresponding
- * *-foreground pairs.
+ * Edit only --background, --foreground, --brand, --destructive,
+ * --warning, --success, and their corresponding *-foreground pairs.
  *
  * All other tokens are derived using var() / color-mix().
+ *
+ * Mix a near-neutral toward another near-neutral in oklab, never oklch:
+ * once the build rewrites these to lab(), a colour this close to grey has
+ * a powerless hue, and oklch interpolation drops it, which turns a warm
+ * stone into a pink one.
  *
  * Exception: --warning-text is defined separately. Darkening the
  * light warning fill toward black produces a muddy brown, so the text
@@ -39,31 +51,27 @@
      Foundation
      ------------------------------------------------------------------------ */
 
-  --background: oklch(0.99 0.003 285);
-  --foreground: oklch(0.27 0.015 195);
+  /* One warm neutral family (hue 92) for the page, the rail and the canvas, so
+     the app reads as one surface; the card stays the lightest thing on it and
+     separates by its own colour rather than by a shadow. */
+  --background: oklch(0.978 0.006 92);
+  --foreground: oklch(0.265 0.018 200);
 
-  --card: oklch(0.995 0.002 285);
+  --card: oklch(0.995 0.003 92);
   --card-foreground: var(--foreground);
 
   --popover: var(--card);
   --popover-foreground: var(--foreground);
 
   /* Warm stone */
-  --muted: oklch(0.81 0.018 95);
-  --muted-foreground: oklch(0.42 0.018 205);
+  --muted: oklch(0.81 0.018 92);
+  --muted-foreground: oklch(0.44 0.016 200);
 
-  --secondary: var(--accent);
-  --secondary-foreground: var(--accent-foreground);
-
-  /* Soft teal-tinted accent */
-  --accent: oklch(0.91 0.025 200);
-  --accent-foreground: oklch(0.34 0.055 205);
-
-  --border: oklch(0.86 0.012 95);
+  --border: oklch(0.885 0.01 92);
 
   /* Around the app on a screen wider than it grows: the warm stone of the
      sidebar, one step deeper, so the app reads as one surface. */
-  --canvas: oklch(0.935 0.01 95);
+  --canvas: oklch(0.93 0.012 92);
 
   /* ------------------------------------------------------------------------
      Brand — muted teal
@@ -72,28 +80,29 @@
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
 
-  --brand: oklch(0.51 0.07 205);
-  --brand-secondary: oklch(0.51 0.055 230);
+  --brand: oklch(0.44 0.095 198);
 
   --brand-foreground: oklch(0.98 0.006 200);
 
   --brand-hover: color-mix(in oklch, var(--brand) 88%, black);
 
-  --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
+  /* The bottom edge of a solid brand button, so it reads as pressable
+     without a coloured glow under it. */
+  --brand-edge: color-mix(in oklch, var(--brand) 72%, black);
+
+  /* A pale teal for the dark pages before sign-in (the auth panel and the
+     landing's hero): the glow's pools and the text beside a heading. */
+  --brand-mist: oklch(0.91 0.025 200);
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
   --brand-strong: color-mix(in oklch, var(--brand) 24%, transparent);
 
-  /* A row under the pointer in a list or table: a faint teal, lighter than
-     the stone of a table's or card's header so the two never merge. */
-  --row-hover: color-mix(in oklch, var(--brand) 5%, transparent);
-
-  /* ------------------------------------------------------------------------
-     Glow
-     ------------------------------------------------------------------------ */
-
-  --glow-primary: color-mix(in oklch, var(--brand) 14%, transparent);
+  /* The pointer is here. One wash for every quiet hover, neutral on purpose:
+     it darkens whatever lies under it, so the same value is right on a card,
+     on the warm rail and inside a menu, and it never argues with the brand
+     mark that says which item you are on. */
+  --hover: color-mix(in oklab, var(--foreground) 6%, transparent);
 
   /* ------------------------------------------------------------------------
      Elevation
@@ -149,14 +158,8 @@
      Sidebar
      ------------------------------------------------------------------------ */
 
-  --sidebar: oklch(0.965 0.006 95);
+  --sidebar: oklch(0.958 0.009 92);
   --sidebar-foreground: var(--foreground);
-
-  --sidebar-primary: var(--brand);
-  --sidebar-primary-foreground: var(--brand-foreground);
-
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
 
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
@@ -165,12 +168,6 @@
      Charts
      ------------------------------------------------------------------------ */
 
-  --chart-1: var(--brand);
-  --chart-2: var(--brand-secondary);
-  --chart-3: var(--warning);
-  --chart-4: var(--destructive);
-  --chart-5: var(--success);
-
   /* Hours, one language on every page: logged is a softer teal than the brand,
      its billable part striped; planned is a mauve, apart from the warning, so
      a plan never reads as a problem; expected is a pale teal; time past what
@@ -178,10 +175,10 @@
      pale block behind each week and planned a bar beside the logged one. A
      row's track says what it measures against: pale teal for expected, pale
      mauve for planned. Logged and planned reach 3:1 against the card. */
-  --report-track: color-mix(in oklch, var(--muted) 40%, var(--card));
+  --report-track: color-mix(in oklab, var(--muted) 40%, var(--card));
   --report-logged: color-mix(in oklch, var(--brand) 75%, var(--card));
   --report-expected: color-mix(in oklch, var(--brand) 12%, var(--card));
-  --report-planned-base: oklch(0.56 0.106 307);
+  --report-planned-base: oklch(0.52 0.105 305);
   --report-planned: color-mix(
     in oklch,
     var(--report-planned-base) 75%,
@@ -202,12 +199,12 @@
 
   /* Day states on the week views (see DAY STATES below). */
   --stripe-weekend: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 6%,
     var(--card)
   );
   --stripe-weekend-ground: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 2%,
     var(--card)
   );
@@ -215,7 +212,10 @@
   --stripe-day-off-ground: color-mix(in oklch, var(--brand) 7%, var(--card));
   --stripe-extra: color-mix(in oklch, var(--warning) 28%, var(--card));
   --stripe-extra-ground: color-mix(in oklch, var(--warning) 8%, var(--card));
-  --excess: color-mix(in oklch, var(--warning) 14%, var(--card));
+  --excess: color-mix(in oklch, var(--warning) 24%, var(--card));
+  /* A whole day past its figure, as Team time paints the cell: lighter than
+     the timesheet's excess region, since the day's project chips sit on it. */
+  --excess-day: color-mix(in oklch, var(--warning) 14%, var(--card));
 
   /* Activity categories in Reports, in a fixed order: soft blue, coral, mint,
      honey, lavender. Checked for colour vision as a set; mint beside
@@ -227,7 +227,7 @@
   --category-4: #d9a832;
   --category-5: #9a7fd9;
   --category-other: color-mix(
-    in oklch,
+    in oklab,
     var(--muted-foreground) 45%,
     var(--card)
   );
@@ -237,18 +237,33 @@
      ------------------------------------------------------------------------ */
 
   /* One per project, picked by hashing its id (lib/utils/project-colors.ts).
-     Translucent tints, so entry text in --foreground stays readable on them. */
-  --project-1: oklch(0.623 0.188 259.8 / 0.3);
-  --project-2: oklch(0.696 0.149 162.5 / 0.3);
-  --project-3: oklch(0.606 0.219 292.7 / 0.3);
-  /* Orchid rather than amber, so a project never reads as the warning. */
-  --project-4: oklch(0.62 0.17 320 / 0.3);
-  --project-5: oklch(0.637 0.208 25.3 / 0.3);
-  --project-6: oklch(0.715 0.126 215.2 / 0.3);
-  --project-7: oklch(0.585 0.204 277.1 / 0.3);
-  --project-8: oklch(0.704 0.123 182.5 / 0.3);
-  --project-9: oklch(0.656 0.212 354.3 / 0.3);
-  --project-10: oklch(0.768 0.204 130.8 / 0.3);
+     Solid inks, spread round the wheel and kept clear of the amber warning's
+     hue, so no project ever reads as a problem. Neighbouring entries in this
+     list are far apart in hue, since a company with few projects takes the
+     first ones the hash lands on. The colour carries an entry as a mark at
+     full strength; a surface behind text mixes it down (--entry-tint), which
+     is why entry text stays --foreground. */
+  --project-1: oklch(0.58 0.15 18);
+  --project-2: oklch(0.57 0.14 215);
+  --project-3: oklch(0.58 0.15 128);
+  --project-4: oklch(0.54 0.16 282);
+  --project-5: oklch(0.58 0.13 170);
+  --project-6: oklch(0.57 0.15 350);
+  --project-7: oklch(0.55 0.155 255);
+  --project-8: oklch(0.6 0.145 42);
+  --project-9: oklch(0.56 0.16 318);
+  --project-10: oklch(0.57 0.145 150);
+
+  /* How much of a project's colour sits behind an entry's text: logged time
+     takes enough to read as the project's at a glance, a plan a third of
+     that, so what is only intended stays lighter than what happened. */
+  --entry-tint: 20%;
+  --plan-tint: 7%;
+
+  /* The week grids' ladder of surfaces, so what can be changed reads at a
+     glance: an available day is the lightest thing on the page (the card),
+     a locked one a clear step down into the stone. */
+  --day-locked: color-mix(in oklab, var(--muted) 14%, var(--card));
 
   /* ------------------------------------------------------------------------
      Dark secondary action
@@ -289,12 +304,6 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-
   --color-border: var(--border);
 
   --color-action-dark: var(--action-dark);
@@ -306,15 +315,14 @@
   --color-primary-foreground: var(--primary-foreground);
 
   --color-brand: var(--brand);
-  --color-brand-secondary: var(--brand-secondary);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
-  --color-brand-on-dark: var(--brand-on-dark);
+  --color-brand-mist: var(--brand-mist);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
   --color-brand-strong: var(--brand-strong);
-  --color-row-hover: var(--row-hover);
+  --color-hover: var(--hover);
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -336,31 +344,20 @@
   --color-control-border: var(--control-border);
   --color-ring: var(--ring);
 
-  --color-glow-primary: var(--glow-primary);
-
   --shadow-raised: var(--raised-shadow);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
 
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
+  --color-day-locked: var(--day-locked);
 
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);
   --color-excess: var(--excess);
+  --color-excess-day: var(--excess-day);
   --color-report-expected: var(--report-expected);
   --color-report-planned: var(--report-planned);
   --color-report-planned-track: var(--report-planned-track);
@@ -374,8 +371,7 @@
   --color-category-5: var(--category-5);
   --color-category-other: var(--category-other);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-instrument-sans);
   --font-heading: var(--font-sans);
 
   /* Below text-xs, for dense grids and captions. */
@@ -383,8 +379,39 @@
   --text-2xs--line-height: calc(0.875 / 0.6875);
 }
 
-.bg-time-management {
-  background-image: url("/images/time-management.webp");
+/* ============================================================================
+   THE CURRENT THING
+
+   One mark answers "which one am I on": a 3px brand bar at the leading edge
+   of an item in a list, or under it in a row of headings. It marks a
+   selection only; focus keeps its own ring, so the two never stand in for
+   each other.
+   ============================================================================ */
+
+.mark-current,
+.mark-current-under {
+  position: relative;
+}
+
+.mark-current::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 3px;
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
+  background: var(--brand);
+}
+
+.mark-current-under::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: -2px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--brand);
 }
 
 /* ============================================================================
@@ -393,7 +420,8 @@
    Stripes mark a day that expects nothing: a weekend in a quiet grey, a day
    off in the brand colour, and a weekend with time logged in the warning
    colour, since all of it is extra. Time past a working day's figure sits on
-   the solid warning tint (`bg-excess`) instead. One geometry, so only the
+   the solid warning tint (`bg-excess`) instead, or a whole day past it on a
+   lighter one (`bg-excess-day`). One geometry, so only the
    colour tells them apart.
    ============================================================================ */
 
@@ -450,68 +478,13 @@ body {
 
   body {
     @apply bg-background text-foreground;
+    /* Hours are what this product is about, and they sit in columns on every
+       screen, so every figure is tabular: a changing total never shifts the
+       text beside it. */
+    font-variant-numeric: tabular-nums;
   }
 
   html {
     @apply font-sans;
-  }
-}
-
-@keyframes glow-slow {
-  0%,
-  100% {
-    opacity: 0.7;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 1;
-    scale: 1.08;
-  }
-}
-
-@keyframes glow-slow-reverse {
-  0%,
-  100% {
-    opacity: 0.6;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 0.9;
-    scale: 1.1;
-  }
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 0.85;
-    scale: 1.08;
-  }
-}
-
-.animate-glow-slow {
-  animation: glow-slow 12s ease-in-out infinite;
-}
-
-.animate-glow-slow-reverse {
-  animation: glow-slow-reverse 15s ease-in-out infinite;
-}
-
-.animate-glow-pulse {
-  animation: glow-pulse 10s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-glow-slow,
-  .animate-glow-slow-reverse,
-  .animate-glow-pulse {
-    animation: none;
   }
 }

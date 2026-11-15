@@ -55,9 +55,10 @@ const NotificationRow = ({
 
   return (
     <li className="flex gap-3 py-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-subtle text-brand">
-        <Icon className="size-4" aria-hidden="true" />
-      </span>
+      <Icon
+        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+        aria-hidden="true"
+      />
 
       <div className="min-w-0 flex-1">
         <p className="text-sm text-foreground">

@@ -415,7 +415,7 @@ export const PlanPeriodModal = ({
               <h3 className="mb-2 text-sm font-medium text-foreground">
                 Planned in this period
               </h3>
-              <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+              <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
                 {lines.map((line) => (
                   <PlannedRow
                     key={line.projectId}

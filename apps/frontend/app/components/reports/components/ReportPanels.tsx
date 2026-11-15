@@ -104,7 +104,7 @@ const Facts = ({ facts }: { facts: Fact[] }) => (
           )}
           {fact.label}
         </dt>
-        <dd className="font-medium tabular-nums">{fact.value}</dd>
+        <dd className="font-medium">{fact.value}</dd>
       </div>
     ))}
   </dl>
@@ -252,7 +252,7 @@ const PersonPeriod = ({
     className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1"
   >
     <Badge>{periodLabel}</Badge>
-    <p className="text-sm text-muted-foreground tabular-nums">
+    <p className="text-sm text-muted-foreground">
       <span className="text-base font-semibold text-foreground">
         {formatReportHours(person.loggedMinutes)}
       </span>
@@ -299,7 +299,7 @@ const PersonTeams = ({
                 .join(" · ")}
             </span>
           </span>
-          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
+          <span className="text-sm font-semibold whitespace-nowrap">
             {hoursAgainst(
               part.figures.loggedMinutes,
               part.figures.expectedMinutes,

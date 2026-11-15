@@ -103,7 +103,7 @@ export const TimeZoneSelect = ({
             sideOffset={6}
             className="isolate z-50"
           >
-            <Combobox.Popup className="max-h-72 w-(--anchor-width) overflow-y-auto rounded-lg border border-border bg-popover py-1 text-popover-foreground shadow-lg">
+            <Combobox.Popup className="max-h-72 w-(--anchor-width) overflow-y-auto rounded-xl border border-border bg-popover py-1 text-popover-foreground shadow-raised">
               {!query.trim() && (
                 <p className="px-3 pt-1 pb-2 text-xs text-muted-foreground">
                   Main time zones. Type to search every city and region.
@@ -119,7 +119,7 @@ export const TimeZoneSelect = ({
                   <Combobox.Item
                     key={option.value}
                     value={option}
-                    className="relative flex cursor-default items-center rounded-md py-2 pr-9 pl-3 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                    className="relative flex cursor-default items-center rounded-md py-2 pr-9 pl-3 text-sm outline-none select-none data-highlighted:bg-hover data-highlighted:text-foreground"
                   >
                     {option.label}
                     <Combobox.ItemIndicator className="absolute right-3">

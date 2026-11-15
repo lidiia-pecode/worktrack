@@ -53,7 +53,7 @@ export const TableHead = ({
   <th
     scope="col"
     className={cn(
-      "p-3 text-2xs font-medium uppercase tracking-wider text-muted-foreground",
+      "p-3 text-xs font-semibold text-foreground",
       numeric ? "text-right" : "text-left",
       className,
     )}
@@ -108,8 +108,5 @@ export const TableCell = ({
   className,
   ...props
 }: TableCellProps) => (
-  <td
-    className={cn("p-3", numeric && "text-right tabular-nums", className)}
-    {...props}
-  />
+  <td className={cn("p-3", numeric && "text-right", className)} {...props} />
 );

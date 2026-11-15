@@ -152,10 +152,10 @@ describe("DayColumn", () => {
     }));
     const { container } = render(renderDay(sixEntries));
 
-    // Five 90-minute entries and their gaps end at 468px; 8h falls 30
-    // minutes into the sixth.
+    // Five 90-minute entries end at 453px, since entries sit edge to edge;
+    // 8h falls 30 minutes into the sixth.
     expect(container.querySelector(".bg-excess")).toHaveStyle({
-      top: "498px",
+      top: "483px",
     });
     expect(screen.getByText("+5m")).toBeInTheDocument();
   });

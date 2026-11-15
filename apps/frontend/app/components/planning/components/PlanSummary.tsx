@@ -32,17 +32,15 @@ export const PlanSummary = ({
 }: PlanSummaryProps) => (
   <div
     className={cn(
-      "space-y-3 rounded-xl bg-brand-subtle p-4 text-sm transition-opacity",
+      "space-y-3 rounded-md bg-brand-subtle p-4 text-sm transition-opacity",
       isOutdated && "opacity-60",
     )}
     aria-busy={isOutdated}
   >
     <div className="space-y-2">
       <div className="flex items-baseline justify-between gap-3">
-        <span className="font-medium text-foreground tabular-nums">
-          {heading}
-        </span>
-        <span className="text-muted-foreground tabular-nums">
+        <span className="font-medium text-foreground">{heading}</span>
+        <span className="text-muted-foreground">
           {formatDuration(dayLimitMinutes)} working day
         </span>
       </div>

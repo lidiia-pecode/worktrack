@@ -40,68 +40,50 @@ const LEGEND = [
   { label: "Expected", className: "border border-border bg-report-expected" },
 ];
 
-const RING_RADIUS = 19;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
-
-/** A share as a ring, its figure in the middle; the card's note says what of. */
-const ShareRing = ({ percent, tone }: { percent: number; tone: string }) => (
-  <svg viewBox="0 0 52 52" className={cn("size-13 shrink-0", tone)} aria-hidden>
-    <circle
-      cx="26"
-      cy="26"
-      r={RING_RADIUS}
-      fill="none"
-      stroke="currentColor"
-      strokeOpacity={0.18}
-      strokeWidth="6"
-    />
-    <circle
-      cx="26"
-      cy="26"
-      r={RING_RADIUS}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="6"
-      strokeLinecap="round"
-      strokeDasharray={`${(RING_LENGTH * Math.min(percent, 100)) / 100} ${RING_LENGTH}`}
-      transform="rotate(-90 26 26)"
-    />
-    <text
-      x="26"
-      y="30"
-      textAnchor="middle"
-      className="fill-foreground text-[11.5px] font-semibold"
-    >
-      {percent}%
-    </text>
-  </svg>
-);
-
 type FigureCardProps = {
   label: string;
   value: string;
-  /** The share the ring shows; none without anything to measure against. */
+  /** The share the bar draws; none without anything to measure against. */
   percent: number | null;
-  /** The ring's colour, as a text-colour class. */
+  /** The bar's colour, as a text-colour class it draws from. */
   tone: string;
   note: string;
 };
 
 const FigureCard = ({ label, value, percent, tone, note }: FigureCardProps) => (
-  // One a row on a phone; three across from a tablet, the ring above the
-  // figure until there is room beside it.
-  <li className="flex items-center gap-4 rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:flex-col @sm:items-start @sm:gap-2 @sm:px-3 @sm:py-3 @3xl:flex-row @3xl:items-center @3xl:gap-4 @3xl:px-4 @3xl:py-3.5">
-    {percent !== null && <ShareRing percent={percent} tone={tone} />}
-    <div className="min-w-0">
-      <p className="text-sm font-medium text-muted-foreground">{label}</p>
-      <p className="text-2xl font-semibold tracking-tight tabular-nums @sm:text-xl @3xl:text-2xl">
-        {value}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {percent !== null && <span className="sr-only">{percent}% </span>}
-        {note}
-      </p>
-    </div>
+  // A flex column, so a note that wraps doesn't drop this card's bar below
+  // the bars of the cards beside it.
+  <li className="flex min-w-0 flex-col rounded-xl border border-brand-strong bg-card px-4 py-3.5 @sm:px-3 @sm:py-3 @3xl:px-4 @3xl:py-3.5">
+    <p className="text-sm font-medium text-muted-foreground">{label}</p>
+
+    <p className="text-3xl font-semibold tracking-tight @sm:text-2xl @3xl:text-3xl">
+      {value}
+    </p>
+
+    <p className="flex flex-1 items-baseline justify-between gap-2 text-xs text-muted-foreground">
+      <span className="min-w-0">{note}</span>
+
+      {percent !== null && (
+        <span className="shrink-0 font-semibold text-foreground">
+          {percent}%
+        </span>
+      )}
+    </p>
+
+    {percent !== null && (
+      <span
+        aria-hidden
+        className={cn(
+          "mt-2 block h-1.5 overflow-hidden rounded-full bg-current/15",
+          tone,
+        )}
+      >
+        <span
+          className="block h-full rounded-full bg-current"
+          style={{ width: `${Math.min(percent, 100)}%` }}
+        />
+      </span>
+    )}
   </li>
 );
 
@@ -186,7 +168,7 @@ const BucketColumn = ({
         style={{ height: heightOn(bucket.plannedMinutes, endMinutes) }}
       />
     </span>
-    <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
+    <span className="pointer-events-none absolute top-0 left-1/2 z-10 hidden w-max max-w-56 -translate-x-1/2 rounded-xl border border-border bg-card px-3 py-2 text-xs shadow-raised group-hover:block group-focus:block">
       <span className="block font-semibold">{label}</span>
       {bucketSummary(bucket, countedUntil)}
     </span>
@@ -304,7 +286,7 @@ export const PeriodOverview = ({
 
         <div className="mt-6 flex gap-3">
           <div
-            className="relative h-48 w-11 shrink-0 text-xs text-muted-foreground tabular-nums"
+            className="relative h-48 w-11 shrink-0 text-xs text-muted-foreground"
             aria-hidden
           >
             {scale.ticks.slice(1).map((tick) => (

@@ -116,10 +116,22 @@ describe("TeamDayCell", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("marks a day over the person's hours in amber", () => {
-    renderCell({ entries: [CRM, PORTAL], minutes: 480, expectedMinutes: 360 });
+  it("marks a day over the person's hours in amber, unless it is locked", () => {
+    const { unmount } = renderCell({
+      entries: [CRM, PORTAL],
+      minutes: 480,
+      expectedMinutes: 360,
+    });
+    expect(screen.getByRole("cell")).toHaveClass("bg-excess-day");
+    unmount();
 
-    expect(screen.getByRole("cell")).toHaveClass("bg-excess");
+    renderCell({
+      entries: [CRM, PORTAL],
+      minutes: 480,
+      expectedMinutes: 360,
+      isLocked: true,
+    });
+    expect(screen.getByRole("cell")).toHaveClass("bg-day-locked");
   });
 
   it("stripes a weekend, in amber once it has time", () => {

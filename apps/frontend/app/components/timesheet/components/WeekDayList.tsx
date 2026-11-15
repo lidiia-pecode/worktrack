@@ -14,7 +14,11 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
-import { getProjectColor } from "@/lib/utils/project-colors";
+import {
+  entryTint,
+  getProjectColor,
+  planSurface,
+} from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { changedByText } from "@/lib/utils/user";
 
@@ -112,7 +116,7 @@ const DayRow = ({
       isWeekend: weekend,
       minutes: totalMinutes,
     }) ??
-    (isToday ? "bg-brand-subtle" : day.isLocked ? "bg-muted/20" : undefined);
+    (isToday ? "bg-brand-subtle" : day.isLocked ? "bg-day-locked" : undefined);
   // The rows reach into the page's padding, so their text lines up with the toolbar.
   const sectionClass = cn(
     "-mx-3 flex flex-col gap-2 border-b border-border px-3 py-2",
@@ -206,7 +210,7 @@ const DayRow = ({
             aria-label={`Log time on ${longLabel}`}
             onClick={() => onAddClick(date)}
             className={cn(
-              "-mr-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-brand/8",
+              "-mr-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-hover",
               weekend ? "text-muted-foreground" : "text-brand",
               FOCUS_RING,
             )}
@@ -254,7 +258,7 @@ const DayFigure = ({
     const overMinutes = hasFigure ? totalMinutes - expectedMinutes : 0;
 
     return (
-      <span className="ml-auto flex shrink-0 items-center gap-1.5 text-sm tabular-nums">
+      <span className="ml-auto flex shrink-0 items-center gap-1.5 text-sm">
         <span
           className={cn(
             "font-semibold",
@@ -286,7 +290,7 @@ const DayFigure = ({
       0,
     );
     return (
-      <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground tabular-nums">
+      <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground">
         {formatDuration(plannedMinutes)} planned
       </span>
     );
@@ -295,7 +299,7 @@ const DayFigure = ({
   if (!expectsTime) return null;
 
   return (
-    <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground tabular-nums">
+    <span className="ml-auto min-w-0 text-right text-sm text-muted-foreground">
       {day.canLogTime && (
         <>
           <span className="whitespace-nowrap">No time logged ·</span>{" "}
@@ -340,14 +344,10 @@ const EntryRow = ({
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
   const changedBy = changedByText(timelog);
-  // The project colour is translucent, so it sits on the card colour.
-  const style = {
-    backgroundColor: "var(--card)",
-    backgroundImage: `linear-gradient(${color}, ${color})`,
-  };
+  const style = { backgroundColor: entryTint(color) };
   const content = (
     <>
-      <span className="w-14 shrink-0 font-semibold text-foreground tabular-nums">
+      <span className="w-14 shrink-0 font-semibold text-foreground">
         {formatDuration(timelog.minutes)}
       </span>
       <span className="flex min-w-0 flex-col items-start gap-1">
@@ -355,7 +355,7 @@ const EntryRow = ({
           {projectName} · {activityName}
         </span>
         {timelog.note && (
-          <span className="break-words text-xs text-foreground/70">
+          <span className="break-words text-xs text-muted-foreground">
             {timelog.note}
           </span>
         )}
@@ -365,7 +365,7 @@ const EntryRow = ({
           </span>
         )}
         {changedBy && (
-          <span className="text-xs text-foreground/70">{changedBy}</span>
+          <span className="text-xs text-muted-foreground">{changedBy}</span>
         )}
       </span>
     </>
@@ -407,18 +407,14 @@ const PlanRow = ({
 }) => {
   const color = getProjectColor(plan.project.id);
   const duration = formatDuration(plan.plannedMinutes);
-  // Fainter than an entry, so it reads as time not yet worked.
-  const style = {
-    backgroundColor: `oklch(from ${color} l c h / 0.1)`,
-    borderColor: `oklch(from ${color} l c h / 0.7)`,
-  };
+  const style = planSurface(color);
   const className = cn(
     "flex min-h-11 w-full gap-3 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground",
     onClick && cn("cursor-pointer hover:brightness-95", FOCUS_RING),
   );
   const content = (
     <>
-      <span className="w-14 shrink-0 font-semibold text-foreground/70 tabular-nums">
+      <span className="w-14 shrink-0 font-semibold text-foreground/70">
         {duration}
       </span>
       <span className="min-w-0 break-words">{plan.project.name} · planned</span>

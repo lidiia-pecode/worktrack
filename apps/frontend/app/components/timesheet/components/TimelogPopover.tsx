@@ -75,7 +75,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
     <div
       id={timelogDetailsId(timelog)}
       role="tooltip"
-      className="pointer-events-none fixed z-50 w-60 rounded-lg border border-border bg-popover p-3 shadow-lg animate-in fade-in zoom-in-95 duration-100"
+      className="pointer-events-none fixed z-50 w-60 rounded-xl border border-border bg-popover p-3 shadow-raised animate-in fade-in zoom-in-95 duration-100"
       style={style}
     >
       <div className="mb-2 flex items-center gap-2">
@@ -107,9 +107,7 @@ export const TimelogPopover = ({ timelog, anchor }: Props) => {
         {timelog.note && (
           <div className="mt-1.5 flex items-start gap-1.5 border-t border-border/60 pt-1.5">
             <StickyNote className="size-3.5 shrink-0 mt-0.5" />
-            <span className="line-clamp-3 text-foreground/80">
-              {timelog.note}
-            </span>
+            <span className="line-clamp-3 text-foreground">{timelog.note}</span>
           </div>
         )}
 

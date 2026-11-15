@@ -2,22 +2,49 @@
 
 import Link from "next/link";
 
+import {
+  MARK_BARS,
+  MARK_BAR_WIDTH,
+  MARK_BASELINE,
+  MARK_TILE,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
 
 type LogoProps = {
+  /** On the dark pages before sign-in the tile turns light. */
   onDark?: boolean;
 };
 
 export const Logo = ({ onDark = false }: LogoProps) => (
   <Link href="/" className="group relative z-10 flex w-fit items-center gap-3">
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-brand to-brand-secondary font-bold text-brand-foreground shadow-lg shadow-glow-primary transition-transform group-hover:scale-105">
-      W
-    </div>
+    <svg
+      viewBox={`0 0 ${MARK_TILE} ${MARK_TILE}`}
+      aria-hidden="true"
+      className="size-8 transition-transform group-hover:scale-105"
+    >
+      <rect
+        width={MARK_TILE}
+        height={MARK_TILE}
+        rx="8"
+        className={onDark ? "fill-brand-foreground" : "fill-brand"}
+      />
+      {MARK_BARS.map(({ x, height }) => (
+        <rect
+          key={x}
+          x={x}
+          y={MARK_BASELINE - height}
+          width={MARK_BAR_WIDTH}
+          height={height}
+          rx={MARK_BAR_WIDTH / 2}
+          className={onDark ? "fill-brand" : "fill-brand-foreground"}
+        />
+      ))}
+    </svg>
 
     <span
       className={cn(
-        "bg-clip-text text-xl font-semibold tracking-tight text-transparent",
-        onDark ? "bg-brand-on-dark" : "bg-brand",
+        "text-xl font-semibold tracking-tight",
+        onDark ? "text-brand-foreground" : "text-foreground",
       )}
     >
       WorkTrack

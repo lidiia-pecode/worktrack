@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Lock } from "lucide-react";
 
+import { cn } from "@/lib/utils/cn";
 import {
   formatDuration,
   formatWeekdayLabel,
@@ -44,15 +45,15 @@ export const WeekHeaderDay = ({
           them in a narrow column. */}
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="flex items-baseline gap-2 whitespace-nowrap">
-          <p className="text-2xs uppercase tracking-wider text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {formatWeekdayLabel(date)}
           </p>
 
           <p
-            className={`
-              text-xs font-semibold
-              ${today ? "text-brand" : "text-foreground"}
-            `}
+            className={cn(
+              "text-xs font-semibold text-foreground",
+              today && "mark-current-under",
+            )}
           >
             {date.getDate()}
           </p>

@@ -124,7 +124,7 @@ export const Sidebar = ({ user }: SidebarProps) => {
                   ? `Open menu, ${unreadCount} unread notifications`
                   : "Open menu"
               }
-              className="relative rounded-lg p-2 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+              className="relative rounded-lg p-2 transition-colors hover:bg-hover hover:text-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
             >
               <Menu className="size-5" aria-hidden="true" />
 

@@ -160,14 +160,11 @@ export const InvitationLoadFailed = ({
   </InvitationNoticeLayout>
 );
 
-export const INVITED_HEADING = {
-  badge: "You're invited",
-  title: "Join your team on WorkTrack.",
-};
+export const INVITED_TITLE = "Join your team on WorkTrack.";
 
 export const InvitationLoading = () => (
   <AuthFormWrapper
-    {...INVITED_HEADING}
+    title={INVITED_TITLE}
     description="Checking your invitation link."
   >
     <AuthCard>
@@ -183,7 +180,6 @@ export const InvitationLoading = () => (
 
 const InvitationLayout = ({ children }: { children: React.ReactNode }) => (
   <AuthFormWrapper
-    badge="Invitation"
     title="Joining a company on WorkTrack."
     description="Everyone joins through a link in an invitation email from their company."
   >

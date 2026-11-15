@@ -94,7 +94,7 @@ export const ResourceTabButton = ({
       <span
         aria-hidden="true"
         className={cn(
-          "absolute inset-x-2 -bottom-px h-0.5 rounded-full transition-all",
+          "absolute inset-x-2 -bottom-px h-[3px] rounded-full transition-all",
           active ? "bg-brand opacity-100" : "bg-transparent opacity-0",
         )}
       />

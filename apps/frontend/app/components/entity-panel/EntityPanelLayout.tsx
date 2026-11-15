@@ -226,7 +226,8 @@ export const PanelNotice = ({
         variant="outline"
         size="sm"
         onClick={action.onClick}
-        className="shrink-0 bg-card"
+        // On the warning band, so its hover is laid over the card ground.
+        className="shrink-0 bg-card hover:bg-card hover:bg-[image:linear-gradient(var(--hover),var(--hover))]"
       >
         {action.label}
       </Button>
@@ -239,7 +240,7 @@ export const PanelNotice = ({
  * sidebar shows it, or a project's colour. It says what the panel shows.
  */
 export const PanelIcon = ({ children }: { children: ReactNode }) => (
-  <span className="flex size-9 items-center justify-center rounded-lg bg-brand-muted text-brand">
+  <span className="flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground">
     {children}
   </span>
 );
@@ -303,7 +304,7 @@ PanelTitleInput.displayName = "PanelTitleInput";
  */
 export const PanelFormFields = ({ children }: { children: ReactNode }) =>
   useContext(PanelFormContext) ? (
-    <div className="space-y-5 rounded-xl border border-border p-4">
+    <div className="space-y-5 rounded-md border border-border p-4">
       {children}
     </div>
   ) : (
@@ -337,7 +338,7 @@ interface PanelDetail {
  * above it on a phone. It needs no title; it is the entity under the heading.
  */
 const PanelDetails = ({ details }: { details: PanelDetail[] }) => (
-  <dl className="divide-y divide-border/55 rounded-xl border border-border text-sm">
+  <dl className="divide-y divide-border/55 rounded-md border border-border text-sm">
     {details.map((detail) => (
       <div
         key={detail.label}

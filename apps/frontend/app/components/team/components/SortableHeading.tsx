@@ -68,7 +68,7 @@ export const SortableHeading = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-1 text-2xs font-medium tracking-wider text-muted-foreground uppercase",
+        "flex items-center gap-1 text-xs font-semibold text-foreground",
         alignEnd && "justify-end",
       )}
     >
