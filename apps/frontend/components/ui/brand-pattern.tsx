@@ -20,16 +20,26 @@ const MOTIF_CENTRES = [
   [TILE_WIDTH * 0.75, TILE_HEIGHT],
 ] as const;
 
+// Brand lines on a light ground; light lines on the brand-coloured auth panel.
+const TONE_INK = {
+  brand: "stroke-brand/18",
+  onBrand: "stroke-brand-foreground/13",
+} as const;
+
 interface BrandPatternProps {
+  tone?: keyof typeof TONE_INK;
   className?: string;
 }
 
 /**
  * The mark's three bars as a 1px outline, repeated on a regular grid. One
  * size everywhere it appears: the standalone auth pages, the 404 and error
- * pages, the landing page's hero and the overview band.
+ * pages, the split auth panel, the landing page and the overview band.
  */
-export const BrandPattern = ({ className }: BrandPatternProps) => {
+export const BrandPattern = ({
+  tone = "brand",
+  className,
+}: BrandPatternProps) => {
   const patternId = useId();
   const centre = MARK_TILE / 2;
 
@@ -53,7 +63,7 @@ export const BrandPattern = ({ className }: BrandPatternProps) => {
           <g
             fill="none"
             strokeWidth={1 / MOTIF_SCALE}
-            className="stroke-brand/18"
+            className={TONE_INK[tone]}
           >
             {MOTIF_CENTRES.map(([x, y]) => (
               <g

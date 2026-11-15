@@ -13,6 +13,9 @@
  * on --brand-muted. Brand-colored text on cards and on --brand-muted
  * must maintain a contrast ratio of at least 4.5:1.
  *
+ * On the auth panel's --brand-deep, --brand-foreground reads at 9.2:1
+ * and --brand-foreground-muted at 6.4:1.
+ *
  * A project colour is a mark, not a text ground: each one reaches at
  * least 4:1 against the card, and entry text stays --foreground on the
  * --entry-tint mix, which keeps it above 11:1.
@@ -64,11 +67,6 @@
   --muted: oklch(0.81 0.018 92);
   --muted-foreground: oklch(0.44 0.016 200);
 
-  /* The soft teal left on the decorative glow behind the auth and landing
-     pages. Quiet states are --hover, which is neutral on purpose. */
-  --secondary: var(--accent);
-  --accent: oklch(0.91 0.025 200);
-
   --border: oklch(0.885 0.01 92);
 
   /* Around the app on a screen wider than it grows: the warm stone of the
@@ -92,11 +90,15 @@
      without a coloured glow under it. */
   --brand-edge: color-mix(in oklch, var(--brand) 72%, black);
 
-  --brand-on-dark: color-mix(in oklch, var(--brand) 55%, white);
-
   /* The brand pulled toward the text colour: the auth panel's ground, and the
      bars of the mark when it sits on that panel as a light tile. */
   --brand-deep: color-mix(in oklab, var(--brand) 65%, var(--foreground));
+  /* Secondary text on --brand-deep. */
+  --brand-foreground-muted: color-mix(
+    in oklab,
+    var(--brand-foreground) 80%,
+    var(--brand-deep)
+  );
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
@@ -107,12 +109,6 @@
      on the warm rail and inside a menu, and it never argues with the brand
      mark that says which item you are on. */
   --hover: color-mix(in oklab, var(--foreground) 6%, transparent);
-
-  /* ------------------------------------------------------------------------
-     Glow
-     ------------------------------------------------------------------------ */
-
-  --glow-primary: color-mix(in oklch, var(--brand) 14%, transparent);
 
   /* ------------------------------------------------------------------------
      Elevation
@@ -314,10 +310,6 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
 
-  --color-secondary: var(--secondary);
-
-  --color-accent: var(--accent);
-
   --color-border: var(--border);
 
   --color-action-dark: var(--action-dark);
@@ -331,8 +323,8 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
-  --color-brand-on-dark: var(--brand-on-dark);
   --color-brand-deep: var(--brand-deep);
+  --color-brand-foreground-muted: var(--brand-foreground-muted);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
@@ -358,8 +350,6 @@
   --color-input-placeholder: var(--input-placeholder);
   --color-control-border: var(--control-border);
   --color-ring: var(--ring);
-
-  --color-glow-primary: var(--glow-primary);
 
   --shadow-raised: var(--raised-shadow);
 
@@ -504,64 +494,5 @@ body {
 
   html {
     @apply font-sans;
-  }
-}
-
-@keyframes glow-slow {
-  0%,
-  100% {
-    opacity: 0.7;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 1;
-    scale: 1.08;
-  }
-}
-
-@keyframes glow-slow-reverse {
-  0%,
-  100% {
-    opacity: 0.6;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 0.9;
-    scale: 1.1;
-  }
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-    scale: 1;
-  }
-
-  50% {
-    opacity: 0.85;
-    scale: 1.08;
-  }
-}
-
-.animate-glow-slow {
-  animation: glow-slow 12s ease-in-out infinite;
-}
-
-.animate-glow-slow-reverse {
-  animation: glow-slow-reverse 15s ease-in-out infinite;
-}
-
-.animate-glow-pulse {
-  animation: glow-pulse 10s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .animate-glow-slow,
-  .animate-glow-slow-reverse,
-  .animate-glow-pulse {
-    animation: none;
   }
 }

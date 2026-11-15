@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { AuthForm } from "@/app/components/auth/AuthForm";
 import { AuthFormWrapper } from "@/app/components/auth/components/AuthFormWrapper";
 import {
-  INVITED_HEADING,
+  INVITED_TITLE,
   InvitationForAnotherAccount,
   InvitationLoadFailed,
   InvitationLoading,
@@ -85,7 +85,7 @@ export const InvitationComplete = ({
 
   return (
     <AuthFormWrapper
-      {...INVITED_HEADING}
+      title={INVITED_TITLE}
       description={describeInvitation(invitation)}
     >
       <AuthForm

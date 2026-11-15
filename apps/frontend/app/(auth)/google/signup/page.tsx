@@ -73,7 +73,6 @@ export default function GoogleSignupPage() {
 
   return (
     <AuthFormWrapper
-      badge="Almost there"
       title="Name your company."
       description="You signed in with Google. Add your company's name to finish, and you become its owner."
     >
