@@ -115,7 +115,7 @@ export const LandingPage = () => (
 
     <main>
       <div className="relative overflow-hidden">
-        <GlowBackground />
+        <GlowBackground variant="page" />
 
         <section
           aria-labelledby="landing-title"

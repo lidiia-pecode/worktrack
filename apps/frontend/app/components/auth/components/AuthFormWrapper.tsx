@@ -26,8 +26,8 @@ export const AuthFormWrapper = ({
         </div>
 
         <div className="relative z-10 my-auto -translate-y-10 max-w-xl py-20 xl:-translate-y-14">
-          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-brand/35 bg-brand/10 px-3.5 py-1.5 text-xs font-medium tracking-wide text-brand-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-brand" />
+          <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-brand-on-dark/40 bg-brand-on-dark/10 px-3.5 py-1.5 text-xs font-medium tracking-wide text-brand-foreground">
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-on-dark" />
             {badge}
           </div>
 

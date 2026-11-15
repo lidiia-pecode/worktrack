@@ -92,7 +92,7 @@
      without a coloured glow under it. */
   --brand-edge: color-mix(in oklch, var(--brand) 72%, black);
 
-  --brand-on-dark: color-mix(in oklch, var(--brand) 70%, white);
+  --brand-on-dark: color-mix(in oklch, var(--brand) 55%, white);
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);

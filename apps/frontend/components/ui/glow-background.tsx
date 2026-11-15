@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils/cn";
 
 interface GlowBackgroundProps {
   className?: string;
-  variant?: "auth";
+  variant?: "auth" | "page";
   animated?: boolean;
 }
 
@@ -13,6 +13,15 @@ const variantClasses = {
     silverBottom:
       "absolute -bottom-48 -right-32 h-[560px] w-[560px] rounded-full bg-secondary/20 blur-[120px]",
     cyan: "absolute right-[-120px] top-[28%] h-[360px] w-[360px] rounded-full bg-brand/20 blur-[110px]",
+  },
+  // On the warm page a teal mist turns grey, so the light there comes from
+  // pools of the card's white, with only a breath of the brand beside them.
+  page: {
+    silverTop:
+      "absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-card blur-[100px]",
+    silverBottom:
+      "absolute -bottom-48 -right-32 h-[560px] w-[560px] rounded-full bg-card blur-[120px]",
+    cyan: "absolute right-[-120px] top-[28%] h-[360px] w-[360px] rounded-full bg-brand/8 blur-[110px]",
   },
 } as const;
 

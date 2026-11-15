@@ -10,7 +10,14 @@ type LogoProps = {
 
 export const Logo = ({ onDark = false }: LogoProps) => (
   <Link href="/" className="group relative z-10 flex w-fit items-center gap-3">
-    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand font-bold text-brand-foreground transition-transform group-hover:scale-105">
+    <div
+      className={cn(
+        "flex h-8 w-8 items-center justify-center rounded-lg font-bold transition-transform group-hover:scale-105",
+        onDark
+          ? "bg-brand-on-dark text-foreground"
+          : "bg-brand text-brand-foreground",
+      )}
+    >
       W
     </div>
 

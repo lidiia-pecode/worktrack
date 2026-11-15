@@ -3,6 +3,7 @@ import { ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
+import { entryTint } from "@/lib/utils/project-colors";
 
 import { Avatar } from "../shared/Avatar";
 import { ABSENCE_PATTERN } from "../timesheet/consts";
@@ -64,7 +65,7 @@ const TimesheetCard = () => (
                 className="overflow-hidden rounded-md px-1.5 py-1.5 hyphens-auto"
                 style={{
                   height: toPercent(minutes, DAY_SCALE_MINUTES),
-                  backgroundColor: SAMPLE_PROJECTS[project].color,
+                  backgroundColor: entryTint(SAMPLE_PROJECTS[project].color),
                 }}
               >
                 {minutes >= LABELLED_ENTRY_MIN_MINUTES && (
