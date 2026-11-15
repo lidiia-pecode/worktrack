@@ -11,11 +11,11 @@ import {
 import { cn } from "@/lib/utils/cn";
 
 type LogoProps = {
-  /** On the brand-coloured auth panel the tile turns light. */
-  onBrand?: boolean;
+  /** On the dark pages before sign-in the tile turns light. */
+  onDark?: boolean;
 };
 
-export const Logo = ({ onBrand = false }: LogoProps) => (
+export const Logo = ({ onDark = false }: LogoProps) => (
   <Link href="/" className="group relative z-10 flex w-fit items-center gap-3">
     <svg
       viewBox={`0 0 ${MARK_TILE} ${MARK_TILE}`}
@@ -26,7 +26,7 @@ export const Logo = ({ onBrand = false }: LogoProps) => (
         width={MARK_TILE}
         height={MARK_TILE}
         rx="8"
-        className={onBrand ? "fill-brand-foreground" : "fill-brand"}
+        className={onDark ? "fill-brand-foreground" : "fill-brand"}
       />
       {MARK_BARS.map(({ x, height }) => (
         <rect
@@ -36,7 +36,7 @@ export const Logo = ({ onBrand = false }: LogoProps) => (
           width={MARK_BAR_WIDTH}
           height={height}
           rx={MARK_BAR_WIDTH / 2}
-          className={onBrand ? "fill-brand-deep" : "fill-brand-foreground"}
+          className={onDark ? "fill-brand" : "fill-brand-foreground"}
         />
       ))}
     </svg>
@@ -44,7 +44,7 @@ export const Logo = ({ onBrand = false }: LogoProps) => (
     <span
       className={cn(
         "text-xl font-semibold tracking-tight",
-        onBrand ? "text-brand-foreground" : "text-foreground",
+        onDark ? "text-brand-foreground" : "text-foreground",
       )}
     >
       WorkTrack

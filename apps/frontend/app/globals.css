@@ -13,8 +13,8 @@
  * on --brand-muted. Brand-colored text on cards and on --brand-muted
  * must maintain a contrast ratio of at least 4.5:1.
  *
- * On the auth panel's --brand-deep, --brand-foreground reads at 9.2:1
- * and --brand-foreground-muted at 6.4:1.
+ * On the dark pages before sign-in (--foreground as the ground), text in
+ * --background reads at 14.3:1 and in --brand-mist at 11.7:1.
  *
  * A project colour is a mark, not a text ground: each one reaches at
  * least 4:1 against the card, and entry text stays --foreground on the
@@ -90,15 +90,9 @@
      without a coloured glow under it. */
   --brand-edge: color-mix(in oklch, var(--brand) 72%, black);
 
-  /* The brand pulled toward the text colour: the auth panel's ground, and the
-     bars of the mark when it sits on that panel as a light tile. */
-  --brand-deep: color-mix(in oklab, var(--brand) 65%, var(--foreground));
-  /* Secondary text on --brand-deep. */
-  --brand-foreground-muted: color-mix(
-    in oklab,
-    var(--brand-foreground) 80%,
-    var(--brand-deep)
-  );
+  /* A pale teal for the dark pages before sign-in (the auth panel and the
+     landing's hero): the glow's pools and the text beside a heading. */
+  --brand-mist: oklch(0.91 0.025 200);
 
   --brand-subtle: color-mix(in oklch, var(--brand) 8%, transparent);
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
@@ -323,8 +317,7 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-hover: var(--brand-hover);
-  --color-brand-deep: var(--brand-deep);
-  --color-brand-foreground-muted: var(--brand-foreground-muted);
+  --color-brand-mist: var(--brand-mist);
 
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);

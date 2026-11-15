@@ -1,7 +1,7 @@
 import React from "react";
 
 import { Logo } from "../../shared/Logo";
-import { BrandPattern } from "@/components/ui/brand-pattern";
+import { GlowBackground } from "@/components/ui/glow-background";
 
 interface AuthFormWrapperProps {
   children: React.ReactNode;
@@ -15,20 +15,20 @@ export const AuthFormWrapper = ({
   description,
 }: AuthFormWrapperProps) => {
   return (
-    <main className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[2fr_3fr]">
-      <section className="relative hidden min-h-screen overflow-hidden bg-brand-deep text-brand-foreground lg:flex lg:flex-col lg:px-12 lg:py-10 xl:px-16">
-        <BrandPattern tone="onBrand" />
+    <main className="min-h-screen w-full bg-background lg:grid lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative hidden min-h-screen overflow-hidden bg-foreground text-background lg:flex lg:flex-col lg:px-14 lg:py-10 xl:px-20">
+        <GlowBackground />
 
         <div className="relative z-10">
-          <Logo onBrand />
+          <Logo onDark />
         </div>
 
-        <div className="relative z-10 my-auto -translate-y-10 max-w-md py-20 xl:-translate-y-14">
-          <h1 className="text-4xl font-bold leading-[1.06] tracking-[-0.035em] text-balance xl:text-5xl">
+        <div className="relative z-10 my-auto -translate-y-10 max-w-xl py-20 xl:-translate-y-14">
+          <h1 className="max-w-xl text-5xl font-bold leading-[1.06] tracking-[-0.035em] text-background xl:text-6xl">
             {title}
           </h1>
 
-          <p className="mt-6 text-base leading-7 text-brand-foreground-muted xl:text-lg">
+          <p className="mt-6 max-w-lg text-base leading-7 text-brand-mist xl:text-lg">
             {description}
           </p>
         </div>

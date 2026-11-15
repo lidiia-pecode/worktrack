@@ -31,12 +31,7 @@ const IllustrationCard = ({
   className,
   children,
 }: IllustrationCardProps) => (
-  <div
-    className={cn(
-      "rounded-xl border border-border bg-card p-4 shadow-xl",
-      className,
-    )}
-  >
+  <div className={cn("rounded-xl border border-border bg-card p-4", className)}>
     <p className="text-xs font-semibold text-muted-foreground">{title}</p>
     <div className="mt-3">{children}</div>
   </div>
@@ -82,8 +77,8 @@ const TimesheetCard = () => (
   </IllustrationCard>
 );
 
-const TeamCard = ({ className }: { className?: string }) => (
-  <IllustrationCard title="Team this week" className={className}>
+const TeamCard = () => (
+  <IllustrationCard title="Team this week">
     <ul className="space-y-2.5">
       {SAMPLE_TEAM.map((person) => (
         <li key={person.firstName} className="flex items-center gap-2.5">
@@ -142,6 +137,7 @@ const ReportCard = ({ className }: { className?: string }) => (
   </IllustrationCard>
 );
 
+// Light cards on the landing's dark hero, hence the caption's pale teal.
 export const ProductIllustration = () => (
   <figure>
     <div aria-hidden="true" className="relative sm:pb-28">
@@ -149,12 +145,16 @@ export const ProductIllustration = () => (
         <TimesheetCard />
       </div>
 
-      <TeamCard className="mt-4 sm:absolute sm:bottom-0 sm:left-0 sm:mt-0 sm:w-64" />
-
-      <ReportCard className="mt-4 sm:absolute sm:bottom-8 sm:right-0 sm:mt-0 sm:w-60" />
+      {/* Two columns, so the cards overlap the timesheet but never each
+          other, however narrow the column gets; the team's names need the
+          wider one. */}
+      <div className="mt-4 grid gap-3 sm:absolute sm:inset-x-0 sm:bottom-0 sm:mt-0 sm:grid-cols-[6fr_5fr] sm:items-end">
+        <TeamCard />
+        <ReportCard className="sm:mb-8" />
+      </div>
     </div>
 
-    <figcaption className="mt-6 text-center text-xs text-muted-foreground">
+    <figcaption className="mt-6 text-center text-xs text-brand-mist">
       Sample data: a week in the timesheet, the team&apos;s view and a monthly
       report.
     </figcaption>
