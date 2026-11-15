@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { BrandPattern } from "@/components/ui/brand-pattern";
 import { buttonVariants } from "@/components/ui/button";
-import { GlowBackground } from "@/components/ui/glow-background";
 import { cn } from "@/lib/utils/cn";
 
 import { Logo } from "../shared/Logo";
@@ -115,7 +115,7 @@ export const LandingPage = () => (
 
     <main>
       <div className="relative overflow-hidden">
-        <GlowBackground variant="page" />
+        <BrandPattern />
 
         <section
           aria-labelledby="landing-title"

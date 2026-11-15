@@ -1,37 +1,37 @@
 import { useId } from "react";
 
+import {
+  MARK_BARS,
+  MARK_BAR_WIDTH,
+  MARK_BASELINE,
+  MARK_TILE,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
 
-/**
- * `bold` fills a whole page behind a single card, where the motifs have room
- * to read as drawings. `fine` is the same marks at a third of their size on a
- * tighter tile: behind a band of figures it has to be texture, not pictures.
- */
-type PatternScale = "fine" | "bold";
-
-const SCALES: Record<
-  PatternScale,
-  { tile: number; motif: number; stroke: number; ink: string }
-> = {
-  fine: { tile: 96, motif: 0.3, stroke: 0.9, ink: "stroke-brand/25" },
-  bold: { tile: 288, motif: 1, stroke: 1.75, ink: "stroke-brand/40" },
-};
+const TILE_WIDTH = 56;
+const TILE_HEIGHT = 52;
+// The mark drawn at about 12px across, so the pattern reads as a texture.
+const MOTIF_SCALE = 0.65;
+// A brick layout: one mark in the middle of the left half, one on the right
+// half's top edge, repeated on the bottom edge so the tile wraps cleanly.
+const MOTIF_CENTRES = [
+  [TILE_WIDTH * 0.25, TILE_HEIGHT * 0.5],
+  [TILE_WIDTH * 0.75, 0],
+  [TILE_WIDTH * 0.75, TILE_HEIGHT],
+] as const;
 
 interface BrandPatternProps {
-  scale?: PatternScale;
   className?: string;
 }
 
-export const BrandPattern = ({
-  scale = "fine",
-  className,
-}: BrandPatternProps) => {
+/**
+ * The mark's three bars as a 1px outline, repeated on a regular grid. One
+ * size everywhere it appears: the standalone auth pages, the 404 and error
+ * pages, the landing page's hero and the overview band.
+ */
+export const BrandPattern = ({ className }: BrandPatternProps) => {
   const patternId = useId();
-  const { tile, motif, stroke, ink } = SCALES[scale];
-  // The marks are drawn around their own origin, so one set of coordinates
-  // serves both scales.
-  const place = (x: number, y: number) =>
-    `translate(${x * tile} ${y * tile}) scale(${motif})`;
+  const centre = MARK_TILE / 2;
 
   return (
     <svg
@@ -44,38 +44,34 @@ export const BrandPattern = ({
       <defs>
         <pattern
           id={patternId}
-          width={tile}
-          height={tile}
+          width={TILE_WIDTH}
+          height={TILE_HEIGHT}
           patternUnits="userSpaceOnUse"
-          patternTransform="rotate(-8)"
         >
+          {/* The motif is scaled down, so its line is widened by the same
+              factor to land at 1px. */}
           <g
             fill="none"
-            strokeWidth={stroke}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={ink}
+            strokeWidth={1 / MOTIF_SCALE}
+            className="stroke-brand/18"
           >
-            {/* Clock */}
-            <g transform={place(0.22, 0.23)}>
-              <circle cx="0" cy="0" r="17" />
-              <path d="M0 -11v11l7 5" />
-            </g>
-
-            {/* Stopwatch */}
-            <g transform={place(0.74, 0.58)}>
-              <circle cx="0" cy="0" r="16" />
-              <path d="M0 -22v-6M-6 -28h12M12 -14l3-3" />
-            </g>
-
-            {/* A week of hours */}
-            <g transform={place(0.3, 0.85)}>
-              <rect x="-25" y="-12" width="6" height="12" rx="3" />
-              <rect x="-14" y="-20" width="6" height="20" rx="3" />
-              <rect x="-3" y="-16" width="6" height="16" rx="3" />
-              <rect x="8" y="-26" width="6" height="26" rx="3" />
-              <rect x="19" y="-10" width="6" height="10" rx="3" />
-            </g>
+            {MOTIF_CENTRES.map(([x, y]) => (
+              <g
+                key={`${x}-${y}`}
+                transform={`translate(${x} ${y}) scale(${MOTIF_SCALE}) translate(${-centre} ${-centre})`}
+              >
+                {MARK_BARS.map((bar) => (
+                  <rect
+                    key={bar.x}
+                    x={bar.x}
+                    y={MARK_BASELINE - bar.height}
+                    width={MARK_BAR_WIDTH}
+                    height={bar.height}
+                    rx={MARK_BAR_WIDTH / 2}
+                  />
+                ))}
+              </g>
+            ))}
           </g>
         </pattern>
       </defs>

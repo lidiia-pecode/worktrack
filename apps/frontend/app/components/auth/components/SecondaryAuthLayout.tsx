@@ -10,7 +10,7 @@ interface SecondaryAuthLayoutProps {
 
 export const SecondaryAuthLayout = ({ children }: SecondaryAuthLayoutProps) => (
   <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12 sm:px-6">
-    <BrandPattern scale="bold" />
+    <BrandPattern />
 
     <div className="relative z-10 w-full max-w-md">
       <AuthCard>{children}</AuthCard>

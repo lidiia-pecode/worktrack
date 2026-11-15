@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 
+import {
+  MARK_BARS,
+  MARK_BAR_WIDTH,
+  MARK_BASELINE,
+  MARK_TILE,
+} from "@/lib/constants";
 import { cn } from "@/lib/utils/cn";
-
-/** The mark's three bars on its 32-unit tile, bottom-aligned at 24. */
-const MARK_BARS = [
-  { x: 7, height: 9 },
-  { x: 14, height: 16 },
-  { x: 21, height: 12 },
-] as const;
-
-const MARK_BAR_WIDTH = 4;
-const MARK_BASELINE = 24;
 
 type LogoProps = {
   /** On the brand-coloured auth panel the tile turns light. */
@@ -22,13 +18,13 @@ type LogoProps = {
 export const Logo = ({ onBrand = false }: LogoProps) => (
   <Link href="/" className="group relative z-10 flex w-fit items-center gap-3">
     <svg
-      viewBox="0 0 32 32"
+      viewBox={`0 0 ${MARK_TILE} ${MARK_TILE}`}
       aria-hidden="true"
       className="size-8 transition-transform group-hover:scale-105"
     >
       <rect
-        width="32"
-        height="32"
+        width={MARK_TILE}
+        height={MARK_TILE}
         rx="8"
         className={onBrand ? "fill-brand-foreground" : "fill-brand"}
       />
