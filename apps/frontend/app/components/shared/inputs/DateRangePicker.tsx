@@ -40,7 +40,7 @@ type DateFieldTriggerProps = ComponentProps<typeof PopoverTrigger> & {
 /** The look of a button that opens a date picker, shared with the week nav. */
 export const dateFieldClassName = (size: FieldControlSize, invalid = false) =>
   cn(
-    "flex w-full min-w-0 items-center gap-2 border border-control-border px-3 text-sm font-medium text-foreground transition hover:bg-accent focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
+    "flex w-full min-w-0 items-center gap-2 border border-control-border px-3 text-sm font-medium text-foreground transition hover:bg-hover focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:outline-none",
     fieldControlSizeClassName[size],
     invalid && "border-destructive",
   );

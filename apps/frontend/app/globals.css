@@ -15,7 +15,7 @@
  *
  * A project colour is a mark, not a text ground: each one reaches at
  * least 4:1 against the card, and entry text stays --foreground on the
- * --entry-tint mix, which keeps it above 12:1.
+ * --entry-tint mix, which keeps it above 11:1.
  *
  * Warning, success, and error text must use the corresponding *-text
  * tokens. The --warning, --success, and --destructive fill colors
@@ -64,12 +64,10 @@
   --muted: oklch(0.81 0.018 92);
   --muted-foreground: oklch(0.44 0.016 200);
 
+  /* The soft teal left on the decorative glow behind the auth and landing
+     pages. Quiet states are --hover, which is neutral on purpose. */
   --secondary: var(--accent);
-  --secondary-foreground: var(--accent-foreground);
-
-  /* Soft teal-tinted accent */
   --accent: oklch(0.91 0.025 200);
-  --accent-foreground: oklch(0.34 0.055 205);
 
   --border: oklch(0.885 0.01 92);
 
@@ -100,9 +98,11 @@
   --brand-muted: color-mix(in oklch, var(--brand) 14%, transparent);
   --brand-strong: color-mix(in oklch, var(--brand) 24%, transparent);
 
-  /* A row under the pointer in a list or table: a faint teal, lighter than
-     the stone of a table's or card's header so the two never merge. */
-  --row-hover: color-mix(in oklch, var(--brand) 5%, transparent);
+  /* The pointer is here. One wash for every quiet hover, neutral on purpose:
+     it darkens whatever lies under it, so the same value is right on a card,
+     on the warm rail and inside a menu, and it never argues with the brand
+     mark that says which item you are on. */
+  --hover: color-mix(in oklab, var(--foreground) 6%, transparent);
 
   /* ------------------------------------------------------------------------
      Glow
@@ -169,9 +169,6 @@
 
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-
-  --sidebar-accent: var(--accent);
-  --sidebar-accent-foreground: var(--accent-foreground);
 
   --sidebar-border: var(--border);
   --sidebar-ring: var(--brand);
@@ -253,26 +250,26 @@
      full strength; a surface behind text mixes it down (--entry-tint), which
      is why entry text stays --foreground. */
   --project-1: oklch(0.58 0.15 18);
-  --project-2: oklch(0.57 0.115 215);
-  --project-3: oklch(0.57 0.115 128);
+  --project-2: oklch(0.57 0.14 215);
+  --project-3: oklch(0.58 0.15 128);
   --project-4: oklch(0.54 0.16 282);
-  --project-5: oklch(0.58 0.1 170);
+  --project-5: oklch(0.58 0.13 170);
   --project-6: oklch(0.57 0.15 350);
   --project-7: oklch(0.55 0.155 255);
   --project-8: oklch(0.6 0.145 42);
   --project-9: oklch(0.56 0.16 318);
-  --project-10: oklch(0.56 0.125 150);
+  --project-10: oklch(0.57 0.145 150);
 
-  /* How much of a project's colour sits behind entry text. A chip is a line
-     and carries the colour in its dot, so its ground stays faint; a block has
-     no dot and is read as an area, so it takes more. */
-  --entry-tint: 14%;
-  --entry-block-tint: 26%;
+  /* How much of a project's colour sits behind an entry's text: logged time
+     takes enough to read as the project's at a glance, a plan a third of
+     that, so what is only intended stays lighter than what happened. */
+  --entry-tint: 20%;
+  --plan-tint: 7%;
 
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),
      a locked one a clear step down into the stone. */
-  --day-locked: color-mix(in oklab, var(--muted) 26%, var(--card));
+  --day-locked: color-mix(in oklab, var(--muted) 38%, var(--card));
 
   /* ------------------------------------------------------------------------
      Dark secondary action
@@ -314,10 +311,8 @@
   --color-muted-foreground: var(--muted-foreground);
 
   --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
 
   --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
 
   --color-border: var(--border);
 
@@ -337,7 +332,7 @@
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-muted: var(--brand-muted);
   --color-brand-strong: var(--brand-strong);
-  --color-row-hover: var(--row-hover);
+  --color-hover: var(--hover);
 
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
@@ -368,9 +363,6 @@
 
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);

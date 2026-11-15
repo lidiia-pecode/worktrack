@@ -14,7 +14,11 @@ import {
   toISODate,
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_LABELS } from "@/lib/utils/absence";
-import { entryBlockStyle, getProjectColor } from "@/lib/utils/project-colors";
+import {
+  entryTint,
+  getProjectColor,
+  planSurface,
+} from "@/lib/utils/project-colors";
 import { getTimelogDisplay } from "@/lib/utils/timelog";
 import { changedByText } from "@/lib/utils/user";
 
@@ -206,7 +210,7 @@ const DayRow = ({
             aria-label={`Log time on ${longLabel}`}
             onClick={() => onAddClick(date)}
             className={cn(
-              "-mr-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-brand/8",
+              "-mr-2 flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors hover:bg-hover",
               weekend ? "text-muted-foreground" : "text-brand",
               FOCUS_RING,
             )}
@@ -340,7 +344,7 @@ const EntryRow = ({
   const { colorSeed, projectName, activityName } = getTimelogDisplay(timelog);
   const color = getProjectColor(colorSeed);
   const changedBy = changedByText(timelog);
-  const style = entryBlockStyle(color);
+  const style = { backgroundColor: entryTint(color) };
   const content = (
     <>
       <span className="w-14 shrink-0 font-semibold text-foreground">
@@ -403,11 +407,7 @@ const PlanRow = ({
 }) => {
   const color = getProjectColor(plan.project.id);
   const duration = formatDuration(plan.plannedMinutes);
-  // Fainter than an entry, so it reads as time not yet worked.
-  const style = {
-    backgroundColor: `oklch(from ${color} l c h / 0.1)`,
-    borderColor: `oklch(from ${color} l c h / 0.7)`,
-  };
+  const style = planSurface(color);
   const className = cn(
     "flex min-h-11 w-full gap-3 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground",
     onClick && cn("cursor-pointer hover:brightness-95", FOCUS_RING),

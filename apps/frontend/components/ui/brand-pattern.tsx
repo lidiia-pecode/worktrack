@@ -2,12 +2,36 @@ import { useId } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
+/**
+ * `bold` fills a whole page behind a single card, where the motifs have room
+ * to read as drawings. `fine` is the same marks at a third of their size on a
+ * tighter tile: behind a band of figures it has to be texture, not pictures.
+ */
+type PatternScale = "fine" | "bold";
+
+const SCALES: Record<
+  PatternScale,
+  { tile: number; motif: number; stroke: number; ink: string }
+> = {
+  fine: { tile: 96, motif: 0.3, stroke: 0.9, ink: "stroke-brand/25" },
+  bold: { tile: 288, motif: 1, stroke: 1.75, ink: "stroke-brand/40" },
+};
+
 interface BrandPatternProps {
+  scale?: PatternScale;
   className?: string;
 }
 
-export const BrandPattern = ({ className }: BrandPatternProps) => {
+export const BrandPattern = ({
+  scale = "fine",
+  className,
+}: BrandPatternProps) => {
   const patternId = useId();
+  const { tile, motif, stroke, ink } = SCALES[scale];
+  // The marks are drawn around their own origin, so one set of coordinates
+  // serves both scales.
+  const place = (x: number, y: number) =>
+    `translate(${x * tile} ${y * tile}) scale(${motif})`;
 
   return (
     <svg
@@ -20,45 +44,39 @@ export const BrandPattern = ({ className }: BrandPatternProps) => {
       <defs>
         <pattern
           id={patternId}
-          width="288"
-          height="288"
+          width={tile}
+          height={tile}
           patternUnits="userSpaceOnUse"
           patternTransform="rotate(-8)"
         >
           <g
             fill="none"
-            strokeWidth="1.75"
+            strokeWidth={stroke}
             strokeLinecap="round"
             strokeLinejoin="round"
+            className={ink}
           >
             {/* Clock */}
-            <g className="stroke-brand/45">
-              <circle cx="62" cy="66" r="17" />
-              <path d="M62 55v11l7 5" />
+            <g transform={place(0.22, 0.23)}>
+              <circle cx="0" cy="0" r="17" />
+              <path d="M0 -11v11l7 5" />
             </g>
 
             {/* Stopwatch */}
-            <g className="stroke-brand/40">
-              <circle cx="214" cy="100" r="16" />
-              <path d="M214 78v-6M208 72h12M226 86l3-3M214 100l6-6" />
-            </g>
-
-            {/* A week filling up */}
-            <g className="stroke-brand/40">
-              <path d="M88 192a15 15 0 1 1-15 15" />
+            <g transform={place(0.74, 0.58)}>
+              <circle cx="0" cy="0" r="16" />
+              <path d="M0 -22v-6M-6 -28h12M12 -14l3-3" />
             </g>
 
             {/* A week of hours */}
-            <g className="stroke-brand/35">
-              <rect x="178" y="214" width="6" height="12" rx="3" />
-              <rect x="189" y="206" width="6" height="20" rx="3" />
-              <rect x="200" y="210" width="6" height="16" rx="3" />
-              <rect x="211" y="200" width="6" height="26" rx="3" />
-              <rect x="222" y="216" width="6" height="10" rx="3" />
+            <g transform={place(0.3, 0.85)}>
+              <rect x="-25" y="-12" width="6" height="12" rx="3" />
+              <rect x="-14" y="-20" width="6" height="20" rx="3" />
+              <rect x="-3" y="-16" width="6" height="16" rx="3" />
+              <rect x="8" y="-26" width="6" height="26" rx="3" />
+              <rect x="19" y="-10" width="6" height="10" rx="3" />
             </g>
           </g>
-
-          <circle cx="73" cy="207" r="2.5" className="fill-brand/35" />
         </pattern>
       </defs>
 

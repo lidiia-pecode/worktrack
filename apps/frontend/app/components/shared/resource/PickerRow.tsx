@@ -34,9 +34,7 @@ export const PickerRow = ({
         "disabled:cursor-not-allowed disabled:opacity-50",
         selected && "bg-brand-subtle text-brand",
         !selected && "text-foreground",
-        !selected &&
-          !disabled &&
-          "hover:bg-accent hover:text-accent-foreground",
+        !selected && !disabled && "hover:bg-hover hover:text-foreground",
       )}
     >
       <span

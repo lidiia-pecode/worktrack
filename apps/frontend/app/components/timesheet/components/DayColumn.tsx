@@ -188,8 +188,10 @@ export const DayColumn = ({
       )}
 
       {hasTargetLine && (
+        // Over the blocks, not behind them: on a full day the figure's line
+        // would otherwise be hidden by the entry that reaches it.
         <div
-          className="pointer-events-none absolute left-0 right-0 border-t border-dashed border-border"
+          className="pointer-events-none absolute right-0 left-0 z-10 border-t border-dashed border-muted-foreground/35"
           style={{
             top: targetLineOffset,
           }}
@@ -205,7 +207,7 @@ export const DayColumn = ({
 
           <Badge
             variant="warning"
-            className="pointer-events-none absolute z-1 right-1.5 mt-1 px-1.5 py-0.5 text-2xs font-semibold shadow-sm"
+            className="pointer-events-none absolute right-1.5 z-20 mt-1 px-1.5 py-0.5 text-2xs font-semibold shadow-sm"
             style={{ top: targetLineOffset + 4 }}
           >
             +{formatDuration(overTargetMinutes)}
@@ -244,7 +246,7 @@ export const DayColumn = ({
           aria-label={`Log time on ${dayLabel}`}
           onClick={() => onAddClick(date)}
           style={{ top: freeFromPx }}
-          className="group absolute right-[3px] bottom-[3px] left-[3px] flex cursor-pointer items-center justify-center rounded-md text-2xs text-muted-foreground transition-colors hover:bg-brand/8 hover:text-brand focus-visible:bg-brand/8 focus-visible:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+          className="group absolute right-[3px] bottom-[3px] left-[3px] flex cursor-pointer items-center justify-center rounded-md text-2xs text-muted-foreground transition-colors hover:bg-hover hover:text-brand focus-visible:bg-hover focus-visible:text-brand focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
         >
           {isEmpty ? (
             "Click to log time"

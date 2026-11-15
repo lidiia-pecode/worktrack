@@ -2,7 +2,11 @@ import { HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
-import { entryTint, getProjectColor } from "@/lib/utils/project-colors";
+import {
+  entryTint,
+  getProjectColor,
+  planSurface,
+} from "@/lib/utils/project-colors";
 
 type EntryChipProps = Omit<
   HTMLAttributes<HTMLElement>,
@@ -43,19 +47,20 @@ export const EntryChip = ({
   const style = isArchived
     ? undefined
     : isPlan
-      ? {
-          backgroundColor: `oklch(from ${color} l c h / 0.1)`,
-          borderColor: `oklch(from ${color} l c h / 0.7)`,
-        }
+      ? planSurface(color)
       : { backgroundColor: entryTint(color) };
 
-  // The project at full strength: the surface behind the text is mixed down,
-  // so the dot is what carries the colour.
+  // The project at full strength on logged time, hollow on a plan, since
+  // there the colour stands for what is intended rather than what happened.
   const mark = isArchived ? null : (
     <span
       aria-hidden
       className="size-1.5 shrink-0 rounded-full"
-      style={{ backgroundColor: color }}
+      style={
+        isPlan
+          ? { boxShadow: `inset 0 0 0 1.5px ${color}` }
+          : { backgroundColor: color }
+      }
     />
   );
 

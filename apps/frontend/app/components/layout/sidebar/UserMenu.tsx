@@ -65,7 +65,7 @@ export const UserMenu = () => {
         <DropdownMenuTrigger
           render={
             <button
-              className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
+              className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition-colors hover:bg-hover focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:outline-none"
               aria-label={accountLabel}
             >
               <span className="relative shrink-0">

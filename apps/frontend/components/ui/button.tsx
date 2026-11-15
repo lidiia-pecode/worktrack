@@ -30,19 +30,19 @@ const buttonVariants = cva(
 
         secondary: [
           "border border-control-border",
-          "bg-secondary text-secondary-foreground",
-          "hover:bg-secondary/80",
+          "bg-muted/30 text-foreground",
+          "hover:bg-hover",
         ],
 
         outline: [
           "border border-control-border",
           "bg-transparent text-foreground",
-          "hover:bg-accent hover:text-accent-foreground",
+          "hover:bg-hover hover:text-foreground",
         ],
 
         ghost: [
           "bg-transparent text-muted-foreground",
-          "hover:bg-accent hover:text-accent-foreground",
+          "hover:bg-hover hover:text-foreground",
         ],
 
         // A quiet control that removes something: the trash beside an entry.

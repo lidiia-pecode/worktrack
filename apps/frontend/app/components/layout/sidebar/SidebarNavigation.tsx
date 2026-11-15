@@ -36,7 +36,7 @@ const NavigationLink = ({
         FOCUS_RING,
         isActive
           ? "mark-current font-semibold text-sidebar-foreground"
-          : "font-medium text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+          : "font-medium text-sidebar-foreground hover:bg-hover hover:text-foreground",
       )}
     >
       <Icon
@@ -44,7 +44,7 @@ const NavigationLink = ({
           "size-4 shrink-0",
           isActive
             ? "text-brand"
-            : "text-muted-foreground group-hover:text-sidebar-accent-foreground",
+            : "text-muted-foreground group-hover:text-foreground",
         )}
         aria-hidden="true"
       />

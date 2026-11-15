@@ -153,7 +153,7 @@ const Row = ({ row, divider }: { row: PanelListRow; divider: RowDivider }) => {
       className={cn(
         "group flex min-h-10 items-center gap-3 px-3 py-2 text-sm",
         DIVIDER_CLASSES[divider],
-        entity && "cursor-pointer transition-colors hover:bg-row-hover",
+        entity && "cursor-pointer transition-colors hover:bg-hover",
       )}
     >
       {row.leading && (

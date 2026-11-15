@@ -4,7 +4,14 @@ import { Segment } from "../types";
 export const MIN_SEGMENT_HEIGHT = 22;
 /** From this height a block has room for its second line. */
 export const TWO_LINE_MIN_HEIGHT = 36;
-export const SEGMENT_GAP_PX = 3;
+/**
+ * Entries sit edge to edge, separated by a hairline drawn inside each block.
+ * A gap would add its own pixels to the stack, so a day split into several
+ * entries would reach its expected figure lower down the column than a day
+ * logged in one — and the line marking that figure could never run straight
+ * across the week.
+ */
+export const SEGMENT_GAP_PX = 0;
 export const STACK_TOP_INSET_PX = 3;
 
 /** Stacks a day's entries or plans from the top, each as tall as its minutes. */

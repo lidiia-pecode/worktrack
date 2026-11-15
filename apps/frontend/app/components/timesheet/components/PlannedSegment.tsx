@@ -1,7 +1,7 @@
 import { PlanningEntry } from "@/types";
 import { cn } from "@/lib/utils/cn";
 import { formatDuration } from "@/lib/utils/date";
-import { getProjectColor } from "@/lib/utils/project-colors";
+import { getProjectColor, planSurface } from "@/lib/utils/project-colors";
 
 import { TWO_LINE_MIN_HEIGHT } from "../helpers/build-segments";
 import { Segment } from "../types";
@@ -44,16 +44,14 @@ export const PlannedSegment = ({
     </span>
   );
   const className = cn(
-    "absolute left-[3px] right-[3px] overflow-hidden rounded-md border border-dashed",
+    "absolute right-[3px] left-[3px] overflow-hidden rounded-md border border-dashed",
     onClick &&
       "cursor-pointer transition-[filter] hover:brightness-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
   );
-  // Fainter than an entry, so it reads as time not yet worked.
   const style = {
     top: offsetTop,
     height,
-    backgroundColor: `oklch(from ${color} l c h / 0.1)`,
-    borderColor: `oklch(from ${color} l c h / 0.7)`,
+    ...planSurface(color),
   };
 
   if (!onClick) {

@@ -16,7 +16,7 @@ export function getProjectColor(projectId: string): string {
 }
 
 /**
- * The surface an entry's text sits on: its project's colour mixed down to the
+ * The surface logged time sits on: its project's colour mixed down to the
  * card, rather than laid over it, so an entry looks the same over a weekend's
  * stripes or a day's excess.
  */
@@ -25,11 +25,12 @@ export function entryTint(color: string): string {
 }
 
 /**
- * An entry drawn as a block, in a day's column or its list. It has no dot to
- * carry the project's colour, so its ground takes more of it than a chip's.
+ * A plan's surface: a much lighter mix of the same colour inside a dashed
+ * edge of it, so a plan reads as its project's, but as time not yet worked.
  */
-export function entryBlockStyle(color: string) {
+export function planSurface(color: string) {
   return {
-    backgroundColor: `color-mix(in oklab, ${color} var(--entry-block-tint), var(--card))`,
+    backgroundColor: `color-mix(in oklab, ${color} var(--plan-tint), var(--card))`,
+    borderColor: `oklch(from ${color} l c h / 0.75)`,
   };
 }

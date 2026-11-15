@@ -1093,6 +1093,21 @@ see, and how a new company gets started. §7 plans that work.
   company's and a person's working day are one field. Dates read in US English
   whatever the browser's language.
 
+- **A look of its own** (13–15 November 2026). The design stayed; what it
+  had by default was replaced by choices made for this product. The page and
+  the menu share one warm paper tone and the brand is a deeper teal; every
+  project has its own colour, from ten made for the product; the typeface is
+  new, every figure is set in aligned digits and no heading is in capitals.
+  The screens people work in carry no shadows, glows, gradients or icon
+  tiles; the brand pattern is a fine texture on the band of Reports and
+  Review my time, and stays at full size only on the sign-in pages. One teal
+  bar marks where you are (the menu, the open row, today, the selected tab),
+  and pointing at something only darkens it slightly, so the two never look
+  alike. In the week grids logged time is filled in its project's colour and
+  a plan is a lighter fill inside a dashed edge; a day that can be changed is
+  white and a locked one grey. In Log my time the expected hours are one line
+  across the whole week.
+
 - **One way to close a dialog** (4 November 2026, PR #67). No dialog has a
   close button in its header: it closes from its footer, "Cancel" in a form
   and "Close" in a read-only one and in Notifications. Escape and a click
@@ -1384,7 +1399,8 @@ and 4 in steps between them (the Delivered table has the sequence). Report
 figures that add up followed (PR #71), then one visual language and screens
 that fit, moved ahead of access to teams on 10 November 2026 because UI/UX is
 the top direction and the new access screens should land on settled patterns;
-access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
+a look of its own followed on 13 November 2026, ahead of access to teams for
+the same reason; access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
 Planning on a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 
@@ -1393,7 +1409,7 @@ that distorts figures can be pulled into whichever work comes first.
 **Next — Configurable permissions — an approximate vision, not a specification**
 
 Scheduled on 7 November 2026, in two parts split by kind of access. **Access
-to teams** comes next, after one visual language and screens that fit: someone
+to teams** comes next, after the two rounds of visual work: someone
 given it acts for a team (its time, absences, plans and reports), for
 example a deputy while the manager is away, which PR #70's one manager per
 team makes necessary. **Access to the owner's administrative tasks** comes

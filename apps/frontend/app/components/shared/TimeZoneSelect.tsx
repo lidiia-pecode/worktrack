@@ -119,7 +119,7 @@ export const TimeZoneSelect = ({
                   <Combobox.Item
                     key={option.value}
                     value={option}
-                    className="relative flex cursor-default items-center rounded-md py-2 pr-9 pl-3 text-sm outline-none select-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                    className="relative flex cursor-default items-center rounded-md py-2 pr-9 pl-3 text-sm outline-none select-none data-highlighted:bg-hover data-highlighted:text-foreground"
                   >
                     {option.label}
                     <Combobox.ItemIndicator className="absolute right-3">

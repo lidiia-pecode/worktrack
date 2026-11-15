@@ -215,7 +215,7 @@ const TimeField = ({
         className={cn(
           "w-7 rounded-md bg-transparent py-1 text-center text-sm leading-none font-semibold",
           "text-foreground outline-none transition-colors",
-          "hover:bg-accent focus:bg-brand-subtle focus:text-brand",
+          "hover:bg-hover focus:bg-brand-subtle focus:text-brand",
         )}
       />
 

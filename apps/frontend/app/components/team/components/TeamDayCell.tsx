@@ -109,7 +109,7 @@ export const TeamDayCell = ({
             title={
               minutes > 0 ? `${formatDuration(minutes)} logged` : undefined
             }
-            className="group/add absolute inset-0 cursor-pointer transition-colors hover:bg-brand/8 focus-visible:bg-brand/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            className="group/add absolute inset-0 cursor-pointer transition-colors hover:bg-hover focus-visible:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           >
             <Plus
               aria-hidden

@@ -242,10 +242,10 @@ interface ManageListProps<T> {
   row: ManageRowDefinition<T>;
 }
 
-const ROW_HOVER = "group cursor-pointer transition-colors hover:bg-row-hover";
+const ROW_HOVER = "group cursor-pointer transition-colors hover:bg-hover";
 
 /** The row whose entity the panel is showing. */
-const ROW_OPEN = "bg-row-hover";
+const ROW_OPEN = "bg-hover";
 
 // One height for every Manage table, whether its rows have a second line or
 // not, and the same inset at both edges of the header and the rows.

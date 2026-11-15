@@ -116,7 +116,7 @@ const WeekendToggle = ({ isShown, canHide, onChange }: WeekendToggleProps) => {
       className={cn(
         "ml-auto flex shrink-0 cursor-pointer items-center gap-0.5 rounded-md py-px text-2xs font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
         isShown
-          ? "px-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+          ? "px-0.5 text-muted-foreground hover:bg-hover hover:text-foreground"
           : "bg-brand-subtle px-1 text-brand hover:bg-brand-muted",
       )}
     >
