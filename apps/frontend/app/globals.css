@@ -263,7 +263,7 @@
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),
      a locked one a clear step down into the stone. */
-  --day-locked: color-mix(in oklab, var(--muted) 20%, var(--card));
+  --day-locked: color-mix(in oklab, var(--muted) 14%, var(--card));
 
   /* ------------------------------------------------------------------------
      Dark secondary action

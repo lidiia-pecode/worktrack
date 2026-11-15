@@ -46,7 +46,7 @@ export const SegmentedControl = <T extends string>({
           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:ring-inset",
           value === option.value
             ? "bg-card font-semibold text-foreground"
-            : "text-muted-foreground hover:text-foreground",
+            : "text-foreground hover:bg-hover",
         )}
       >
         {option.label}

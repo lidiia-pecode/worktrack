@@ -71,7 +71,9 @@ export const TeamDayCell = ({
     isAbsent: Boolean(absence),
     isWeekend: isNarrow,
     minutes,
-    expectedMinutes,
+    // A locked day reads as locked even past its figure; the row's total
+    // still shows the overtime in amber.
+    expectedMinutes: isLocked ? undefined : expectedMinutes,
   });
   const isWithoutTime =
     isPast && !absence && minutes === 0 && (expectedMinutes ?? 0) > 0;

@@ -198,9 +198,11 @@ export const PersonDayGrid = ({
                 {dayLabel(day.date)}
                 {isToday && " · Today"}
               </span>
+              {/* A phone's tile is narrower than "tomorrow", so a long
+                  value breaks with a hyphen instead of leaving its tile. */}
               <span
                 className={cn(
-                  "flex min-h-4 items-center gap-1.5 text-xs font-medium",
+                  "flex min-h-4 min-w-0 items-center gap-1.5 text-xs font-medium hyphens-auto wrap-anywhere",
                   href
                     ? "text-brand underline underline-offset-2"
                     : day.kind !== "logged" && "text-muted-foreground",
