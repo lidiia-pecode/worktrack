@@ -50,7 +50,10 @@ Browser
                                                                       · business rules
 ```
 
-Auth state lives in HTTP-only cookies. Access tokens are short-lived (15 minutes
+`AccessGuard` and `RolesGuard` run for every route, after the rate limit, so a
+route needs a session unless it is marked `@Public()`.
+
+Auth state lives in HTTP-only cookies, never in a response body. Access tokens are short-lived (15 minutes
 by default) and refreshed by rotation; refresh tokens are stored only as
 session-bound HMAC hashes.
 

@@ -438,7 +438,8 @@ not only at runtime.
 Render needs everything marked required in `apps/backend/.env.sample`, plus
 `DATABASE_URL`, `DATABASE_SSL=true`, `NODE_ENV=production` and
 `AUTH_COOKIE_SECURE=true`. Its secrets differ from the local ones deliberately: a
-token from one environment must not be valid in another.
+token from one environment must not be valid in another. `REFRESH_TOKEN_SECRET`
+must also differ from `ACCESS_TOKEN_SECRET`, or the backend refuses to start.
 
 Neon's URL comes with `sslmode=require`; change it to `sslmode=verify-full`,
 here and in `.env.neon`. `pg` treats `require` as a full certificate check today

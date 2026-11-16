@@ -53,7 +53,14 @@ itself: an owner invites managers and employees, a manager only employees into
 a team they lead, and an employee invitation always names a team (business §4
 "Access"). A company has exactly one Owner; nobody can be made one, and the
 Owner can't be deactivated. Handing ownership over is an open product decision
-(business §10 Q17). A notification belongs to its recipient alone.
+(business §10 Q17). A notification belongs to its recipient alone; the one
+saying someone joined goes to whoever answers for them — the owner who invited
+them, otherwise their team's current manager.
+
+**Invite tells a manager nothing about people outside their teams.** An
+address with an account in this company or another, or with a pending
+invitation the manager doesn't see, gets one answer, which points them to the
+owner; the owner keeps the exact reasons.
 
 ### 3.2 Team structure
 
@@ -190,8 +197,14 @@ rule trustworthy.
   working day, which the Owner or the person's manager could already delete
   one record at a time. No new or changed plan for a deactivated person;
   deleting plans is allowed.
+- **A former member's time form lists only their old projects.** Logging time
+  for someone who has left their team, a manager is offered only the
+  person's current projects with their time or plans on the days they were in
+  it, so the form says nothing of the work they have joined since.
 - **Planning follows the same people**, except that an employee plans for
-  nobody, not even themselves. Recording an absence deletes the absence owner's
+  nobody, not even themselves. Reach is checked before anything about the
+  person, so a manager is refused the same way for someone outside it whether
+  that person is active or not. Recording an absence deletes the absence owner's
   plans on its days, which opens no planning route to employees. A manager's
   project save only removes people they were shown, so they can never clear
   plans for someone outside their teams.
