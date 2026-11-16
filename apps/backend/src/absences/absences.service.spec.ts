@@ -29,6 +29,9 @@ import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { Notification } from 'src/notifications/entities/notification.entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/enums/notification-type.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   freezeAtFirstLockedSecond,
@@ -163,6 +166,7 @@ describe('AbsencesService', () => {
       reporting,
       teamVisibility,
       capacity,
+      new NotificationsService(dataSource.getRepository(Notification)),
       dataSource,
     );
 
@@ -256,6 +260,7 @@ describe('AbsencesService', () => {
   });
 
   afterEach(async () => {
+    await dataSource.getRepository(Notification).delete({ companyId });
     await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(TimeLog).delete({ companyId });
     await dataSource.getRepository(Absence).delete({ companyId });
@@ -274,6 +279,23 @@ describe('AbsencesService', () => {
       .delete({ slug: In([SLUG, OTHER_SLUG]) });
     await dataSource.destroy();
   });
+
+  /** A 4h plan written straight to the table, as made by `authorId`. */
+  const planBy = (authorId: string, userId: string, date: string) =>
+    dataSource.getRepository(PlanningEntry).save({
+      companyId,
+      userId,
+      projectId,
+      date,
+      plannedMinutes: 240,
+      createdById: authorId,
+    });
+
+  const noticesFor = (recipientId: string) =>
+    dataSource.getRepository(Notification).find({
+      where: { companyId, recipientId },
+      order: { createdAt: 'ASC' },
+    });
 
   describe('write scope', () => {
     it('lets anyone record their own absence', async () => {
@@ -552,6 +574,67 @@ describe('AbsencesService', () => {
       );
 
       expect(await plannedDates(member.id)).toEqual([]);
+    });
+
+    it('tells whoever made the plans, once, with the days and hours and no type', async () => {
+      await planBy(manager.id, member.id, START);
+      await planBy(manager.id, member.id, END);
+
+      await service.create(
+        absenceFor(member.id, START, END, AbsenceType.SICK_LEAVE),
+        member,
+      );
+
+      const notices = await noticesFor(manager.id);
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toMatchObject({
+        type: NotificationType.PLANS_REMOVED_BY_ABSENCE,
+        subjectUserId: member.id,
+      });
+      expect(notices[0].details).toEqual({
+        from: START,
+        to: END,
+        planCount: 2,
+        projects: [{ name: `Project ${RUN}`, minutes: 480 }],
+      });
+      expect(await noticesFor(member.id)).toEqual([]);
+    });
+
+    it('never tells whoever recorded the absence', async () => {
+      await planBy(manager.id, member.id, START);
+
+      await service.create(absenceFor(member.id), manager);
+
+      expect(await noticesFor(manager.id)).toEqual([]);
+    });
+
+    it("tells nobody who can't read those days, or who has left", async () => {
+      await planBy(loneManager.id, member.id, START);
+      await planBy(deactivated.id, member.id, END);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await plannedDates(member.id)).toEqual([]);
+      expect(await noticesFor(loneManager.id)).toEqual([]);
+      expect(await noticesFor(deactivated.id)).toEqual([]);
+    });
+
+    it('tells about the newly removed plans when an absence widens', async () => {
+      await planBy(manager.id, member.id, START);
+      await planBy(manager.id, member.id, '2026-02-16');
+      const absence = await service.create(absenceFor(member.id), member);
+
+      await service.update(absence.id, { endDate: '2026-02-16' }, member);
+
+      const notices = await noticesFor(manager.id);
+      expect(notices.map((notice) => notice.details)).toEqual([
+        expect.objectContaining({ from: START, to: START, planCount: 1 }),
+        expect.objectContaining({
+          from: '2026-02-16',
+          to: '2026-02-16',
+          planCount: 1,
+        }),
+      ]);
     });
   });
 
@@ -880,6 +963,20 @@ describe('AbsencesService', () => {
           joinedAt: MOVE_DAY,
         },
       ]);
+    });
+
+    it("tells a team's manager only about the plans on that team's days", async () => {
+      await planBy(manager.id, mover.id, '2026-02-11');
+      await planBy(manager.id, mover.id, MOVE_DAY);
+
+      await service.create(absenceFor(mover.id, '2026-02-11', MOVE_DAY), owner);
+
+      const [notice] = await noticesFor(manager.id);
+      expect(notice.details).toMatchObject({
+        from: '2026-02-11',
+        to: '2026-02-11',
+        planCount: 1,
+      });
     });
 
     it('lets each manager record an absence on their own days only', async () => {

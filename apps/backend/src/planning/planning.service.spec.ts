@@ -186,9 +186,10 @@ describe('PlanningService', () => {
     });
 
   const entriesFor = (userId: string) =>
-    dataSource
-      .getRepository(PlanningEntry)
-      .find({ where: { companyId, userId }, order: { date: 'ASC' } });
+    dataSource.getRepository(PlanningEntry).find({
+      where: { companyId, userId },
+      order: { date: 'ASC', createdAt: 'ASC' },
+    });
 
   beforeAll(async () => {
     dataSource = await new DataSource({

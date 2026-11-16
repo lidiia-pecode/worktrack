@@ -15,6 +15,31 @@ export class NotificationSubjectResponse {
 }
 
 @Exclude()
+export class RemovedProjectResponse {
+  @Expose()
+  name!: string;
+
+  @Expose()
+  minutes!: number;
+}
+
+@Exclude()
+export class PlansRemovedDetailsResponse {
+  @Expose()
+  from!: string;
+
+  @Expose()
+  to!: string;
+
+  @Expose()
+  planCount!: number;
+
+  @Expose()
+  @Type(() => RemovedProjectResponse)
+  projects!: RemovedProjectResponse[];
+}
+
+@Exclude()
 export class NotificationResponse {
   @Expose()
   id!: string;
@@ -25,6 +50,10 @@ export class NotificationResponse {
   @Expose()
   @Type(() => NotificationSubjectResponse)
   subjectUser!: NotificationSubjectResponse | null;
+
+  @Expose()
+  @Type(() => PlansRemovedDetailsResponse)
+  details!: PlansRemovedDetailsResponse | null;
 
   @Expose()
   readAt!: Date | null;

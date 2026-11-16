@@ -9,14 +9,18 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   DataSource,
   EntityManager,
+  In,
   Repository,
   SelectQueryBuilder,
 } from 'typeorm';
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
-import { DateRange } from 'src/teams/days-in-view.util';
+import { DateRange, isWithinSpan } from 'src/teams/days-in-view.util';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import type { PlansRemovedDetails } from 'src/notifications/entities/notification.entity';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
@@ -27,6 +31,15 @@ import { AbsencesQuery } from './dtos/absences-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
+/** A plan an absence removed, with who made it, for telling them. */
+interface RemovedPlan {
+  id: string;
+  authorId: string | null;
+  projectName: string;
+  minutes: number;
+  date: string;
+}
+
 @Injectable()
 export class AbsencesService {
   constructor(
@@ -35,6 +48,7 @@ export class AbsencesService {
     private readonly reportingService: ReportingService,
     private readonly teamVisibility: TeamVisibilityService,
     private readonly capacity: CapacityService,
+    private readonly notifications: NotificationsService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -171,7 +185,7 @@ export class AbsencesService {
         payload.startDate,
         payload.endDate,
       );
-      await this.removePlansOn(
+      const removedPlans = await this.removePlansOn(
         manager,
         ownerId,
         user.companyId,
@@ -189,7 +203,9 @@ export class AbsencesService {
         createdById: user.id,
       });
 
-      return manager.save(entity);
+      const saved = await manager.save(entity);
+      await this.tellPlanAuthors(manager, ownerId, user, removedPlans);
+      return saved;
     });
   }
 
@@ -249,7 +265,7 @@ export class AbsencesService {
         endDate,
         id,
       );
-      await this.removePlansOn(
+      const removedPlans = await this.removePlansOn(
         manager,
         ownerId,
         user.companyId,
@@ -257,7 +273,9 @@ export class AbsencesService {
         endDate,
       );
 
-      return manager.save(Absence, absence);
+      const saved = await manager.save(Absence, absence);
+      await this.tellPlanAuthors(manager, ownerId, user, removedPlans);
+      return saved;
     });
   }
 
@@ -383,8 +401,9 @@ export class AbsencesService {
 
   /**
    * A day the person is away is not a planned day, so recording an absence
-   * removes their plans on it, whoever records it. Its range is never locked,
-   * so only open days lose plans.
+   * removes their plans on it, whoever made them. Its range is never locked,
+   * so only open days lose plans. Returns what went, read under the person's
+   * lock that every plan write also takes.
    */
   private async removePlansOn(
     manager: EntityManager,
@@ -392,15 +411,86 @@ export class AbsencesService {
     companyId: string,
     startDate: string,
     endDate: string,
-  ): Promise<void> {
-    await manager
+  ): Promise<RemovedPlan[]> {
+    const removed = await manager
       .createQueryBuilder()
-      .delete()
-      .from('planning_entries')
-      .where('company_id = :companyId', { companyId })
-      .andWhere('user_id = :userId', { userId })
-      .andWhere('date BETWEEN :startDate AND :endDate', { startDate, endDate })
-      .execute();
+      .select('p.id', 'id')
+      .addSelect('p.created_by_id', 'authorId')
+      .addSelect('project.name', 'projectName')
+      .addSelect('p.planned_minutes', 'minutes')
+      .addSelect(`TO_CHAR(p.date, 'YYYY-MM-DD')`, 'date')
+      .from('planning_entries', 'p')
+      .innerJoin('projects', 'project', 'project.id = p.project_id')
+      .where('p.company_id = :companyId', { companyId })
+      .andWhere('p.user_id = :userId', { userId })
+      .andWhere('p.date BETWEEN :startDate AND :endDate', {
+        startDate,
+        endDate,
+      })
+      .getRawMany<RemovedPlan>();
+
+    if (removed.length > 0) {
+      await manager
+        .createQueryBuilder()
+        .delete()
+        .from('planning_entries')
+        .where('id IN (:...ids)', { ids: removed.map((plan) => plan.id) })
+        .execute();
+    }
+
+    return removed;
+  }
+
+  /**
+   * Tells each author of the removed plans, except whoever recorded the
+   * absence, about those on days they can still read for the person, so a
+   * notice never reaches past their teams. An author who has left, or reaches
+   * none of those days, is told nothing; the absence's type is never named.
+   */
+  private async tellPlanAuthors(
+    manager: EntityManager,
+    ownerId: string,
+    recorder: AuthUser,
+    removed: RemovedPlan[],
+  ): Promise<void> {
+    const authorIds = [
+      ...new Set(
+        removed
+          .map((plan) => plan.authorId)
+          .filter((id): id is string => id !== null && id !== recorder.id),
+      ),
+    ];
+    if (authorIds.length === 0) return;
+
+    const authors = await manager.find(User, {
+      where: {
+        id: In(authorIds),
+        companyId: recorder.companyId,
+        status: UserStatus.ACTIVE,
+      },
+      select: ['id', 'email', 'companyId', 'role'],
+    });
+
+    for (const author of authors) {
+      const theirs = removed.filter((plan) => plan.authorId === author.id);
+      const dates = theirs.map((plan) => plan.date).sort();
+      const inView = await this.teamVisibility.daysInView(author, [ownerId], {
+        from: dates[0],
+        to: dates[dates.length - 1],
+      });
+      const outside = inView.get(ownerId)?.outside ?? [];
+      const reached = theirs.filter(
+        (plan) => !outside.some((span) => isWithinSpan(span, plan.date)),
+      );
+      if (reached.length === 0) continue;
+
+      await this.notifications.notifyPlansRemoved(manager, {
+        companyId: recorder.companyId,
+        recipientId: author.id,
+        subjectUserId: ownerId,
+        details: summarisePlans(reached),
+      });
+    }
   }
 
   /**
@@ -490,3 +580,24 @@ export class AbsencesService {
     );
   }
 }
+
+/** The days, count and hours per project of the plans someone is told about. */
+const summarisePlans = (plans: RemovedPlan[]): PlansRemovedDetails => {
+  const dates = plans.map((plan) => plan.date).sort();
+  const minutesByProject = new Map<string, number>();
+  for (const plan of plans) {
+    minutesByProject.set(
+      plan.projectName,
+      (minutesByProject.get(plan.projectName) ?? 0) + plan.minutes,
+    );
+  }
+
+  return {
+    from: dates[0],
+    to: dates[dates.length - 1],
+    planCount: plans.length,
+    projects: [...minutesByProject]
+      .map(([name, minutes]) => ({ name, minutes }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
+  };
+};

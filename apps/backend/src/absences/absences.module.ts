@@ -6,6 +6,7 @@ import { AbsencesController } from './absences.controller';
 import { ReportingModule } from 'src/reporting/reporting.module';
 import { TeamsModule } from 'src/teams/teams.module';
 import { CapacityModule } from 'src/capacity/capacity.module';
+import { NotificationsModule } from 'src/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { CapacityModule } from 'src/capacity/capacity.module';
     ReportingModule,
     TeamsModule,
     CapacityModule,
+    NotificationsModule,
   ],
   controllers: [AbsencesController],
   providers: [AbsencesService],

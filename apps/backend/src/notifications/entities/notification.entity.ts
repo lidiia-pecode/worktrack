@@ -14,6 +14,17 @@ import { User } from 'src/users/entities/user.entity';
 import { NotificationType } from '../enums/notification-type.enum';
 
 /**
+ * What an absence removed from someone's plans, as it was when they were
+ * told: the days they can read, how many plans, and hours per project.
+ */
+export interface PlansRemovedDetails {
+  from: string;
+  to: string;
+  planCount: number;
+  projects: { name: string; minutes: number }[];
+}
+
+/**
  * Something one person is told in the app. Deliberately small: one row per
  * recipient, a type, the person it is about and whether it has been read.
  */
@@ -42,6 +53,9 @@ export class Notification {
 
   @Column({ type: 'timestamp with time zone', name: 'read_at', nullable: true })
   readAt!: Date | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  details!: PlansRemovedDetails | null;
 
   @CreateDateColumn({ type: 'timestamp with time zone', name: 'created_at' })
   createdAt!: Date;

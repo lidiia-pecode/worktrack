@@ -8,7 +8,10 @@ import type { Invitation } from 'src/invitations/entities/invitation.entity';
 import { User } from 'src/users/entities/user.entity';
 import { UserStatus } from 'src/users/enums/user-role.enum';
 
-import { Notification } from './entities/notification.entity';
+import {
+  Notification,
+  PlansRemovedDetails,
+} from './entities/notification.entity';
 import { LATEST_NOTIFICATIONS } from './notification.constants';
 import { NotificationType } from './enums/notification-type.enum';
 
@@ -51,6 +54,27 @@ export class NotificationsService {
       recipientId: invitation.invitedById,
       type: NotificationType.INVITATION_ACCEPTED,
       subjectUserId: joinedUserId,
+      readAt: null,
+    });
+  }
+
+  /**
+   * Tells the author of plans that an absence removed some of them, in the
+   * absence's transaction. The caller decides who is told, and about which
+   * days.
+   */
+  async notifyPlansRemoved(
+    manager: EntityManager,
+    notice: {
+      companyId: string;
+      recipientId: string;
+      subjectUserId: string;
+      details: PlansRemovedDetails;
+    },
+  ): Promise<void> {
+    await manager.getRepository(Notification).save({
+      ...notice,
+      type: NotificationType.PLANS_REMOVED_BY_ABSENCE,
       readAt: null,
     });
   }

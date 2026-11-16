@@ -31,7 +31,11 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { PartLoadError } from "../../shared/PartLoadError";
 import { ChangedByNote } from "./ChangedByNote";
+
+const PLANS_CHECK_ERROR =
+  "Plans on these days couldn't load, so the absence can't be saved yet.";
 
 const FORM_ID = "absence-form";
 
@@ -134,14 +138,24 @@ export const AbsenceFormModal = ({
   });
 
   const isRangeComplete = isISODateRange(startDate, endDate);
-  const { items: plansInRange } = usePlanningEntries(
+  const {
+    items: plansInRange,
+    isLoading: plansLoading,
+    isError: plansFailed,
+    isPlaceholderData: plansFromOtherRange,
+    refetch: refetchPlans,
+  } = usePlanningEntries(
     { userId, dateFrom: startDate, dateTo: endDate },
     { enabled: open && isRangeComplete },
   );
+  // Saving deletes the plans on these days, so it waits until they are known
+  // for this range: not while they load, nor the last range's kept meanwhile.
+  const arePlansKnown =
+    !isRangeComplete || (!plansLoading && !plansFromOtherRange && !plansFailed);
 
   // Recording the absence deletes these on the server; named here first.
   const removedPlans = useMemo(() => {
-    if (!isRangeComplete) return null;
+    if (!isRangeComplete || !arePlansKnown) return null;
 
     const minutesByProject = new Map<string, number>();
     plansInRange.forEach((plan) => {
@@ -159,7 +173,7 @@ export const AbsenceFormModal = ({
             .map(([name, minutes]) => `${name} ${formatDuration(minutes)}`)
             .join(", "),
         };
-  }, [isRangeComplete, plansInRange]);
+  }, [isRangeComplete, arePlansKnown, plansInRange]);
 
   const setDays = (first: string, last: string) => {
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
@@ -248,7 +262,7 @@ export const AbsenceFormModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={isSaving}
-              disabled={isDeleting}
+              disabled={isDeleting || !arePlansKnown}
             >
               {isEditMode ? "Save changes" : "Add absence"}
             </Button>
@@ -289,6 +303,12 @@ export const AbsenceFormModal = ({
                 onChange={setDays}
               />
             </Field>
+          )}
+
+          {plansFailed && (
+            <PartLoadError onRetry={() => refetchPlans()}>
+              {PLANS_CHECK_ERROR}
+            </PartLoadError>
           )}
 
           {removedPlans && (
