@@ -161,6 +161,22 @@ describe('the app over HTTP', () => {
       );
     });
 
+    it('answers every public route without a session', async () => {
+      // Refresh has a guard of its own, which asks for the refresh cookie.
+      const opened = PUBLIC_ROUTES.filter(
+        (route) => route !== 'POST /auth/refresh',
+      );
+
+      const refused = await Promise.all(
+        opened.map(async (route) => ({
+          route,
+          status: (await call(route)).status,
+        })),
+      );
+
+      expect(refused.filter(({ status }) => status === 401)).toEqual([]);
+    });
+
     it('refuses every other route without a session', async () => {
       const closed = registeredRoutes(app).filter(
         (route) => !PUBLIC_ROUTES.includes(route),

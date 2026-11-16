@@ -7,6 +7,7 @@ import {
 import { DataSource } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
+import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -270,6 +271,42 @@ describe('InvitationsService pending invitations', () => {
       expect(statuses).toEqual([
         InvitationStatus.PENDING,
         InvitationStatus.REVOKED,
+      ]);
+    });
+
+    it('refuses to replace one resent at the same moment', async () => {
+      const email = nextEmail();
+      await invite(owner, email, alpha);
+      const { id } = await findPending(email);
+      await dataSource
+        .getRepository(Invitation)
+        .update(id, { expiresAt: new Date(Date.now() - 1000) });
+
+      // A resend in progress holds the invitation and gives it a new expiry.
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+      try {
+        await holder.manager.update(Invitation, id, {
+          expiresAt: new Date(Date.now() + INVITATION_VALID_MS),
+        });
+        const reinvite = Promise.allSettled([invite(owner, email, beta)]);
+        await waitUntilBlockedBy(dataSource, holder);
+        await holder.commitTransaction();
+
+        const [result] = await reinvite;
+        expect(result).toMatchObject({
+          status: 'rejected',
+          reason: expect.any(ConflictException) as unknown,
+        });
+      } finally {
+        if (holder.isTransactionActive) await holder.rollbackTransaction();
+        await holder.release();
+      }
+
+      const invitations = await findInvitations(email);
+      expect(invitations).toEqual([
+        expect.objectContaining({ id, status: InvitationStatus.PENDING }),
       ]);
     });
 

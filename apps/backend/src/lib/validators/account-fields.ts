@@ -29,7 +29,7 @@ export const NewPassword = () =>
     Matches(PASSWORD_PATTERN, { message: PASSWORD_RULES_MESSAGE }),
   );
 
-// One longer than any new password may be can't be right: refused unhashed.
+// Longer than any new password can be, so refused before it is hashed.
 export const ExistingPassword = () =>
   applyDecorators(
     IsString({ message: 'Enter your password' }),

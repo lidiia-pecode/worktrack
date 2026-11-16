@@ -50,8 +50,12 @@ export default function GoogleSignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const askedNames = (Object.keys(NAME_FIELDS) as NameField[]).filter((field) =>
-    searchParams.getAll("ask").includes(field),
+  // Names the server asked for that the address didn't, e.g. on an old link.
+  const [refusedNames, setRefusedNames] = useState<NameField[]>([]);
+  const askedNames = (Object.keys(NAME_FIELDS) as NameField[]).filter(
+    (field) =>
+      searchParams.getAll("ask").includes(field) ||
+      refusedNames.includes(field),
   );
 
   const actions = useAuthActions();
@@ -61,6 +65,7 @@ export default function GoogleSignupPage() {
     register,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<GoogleSignupFormInputs>({
     resolver: zodResolver(googleSignupSchema),
@@ -82,6 +87,11 @@ export default function GoogleSignupPage() {
       router.refresh();
     } catch (error: unknown) {
       if (isApiValidationError(error)) {
+        const newlyAsked = (Object.keys(NAME_FIELDS) as NameField[]).filter(
+          (field) => error.errors?.[field] && !askedNames.includes(field),
+        );
+        newlyAsked.forEach((field) => setValue(field, ""));
+        setRefusedNames((names) => [...names, ...newlyAsked]);
         applyServerErrors(error, setError);
         return;
       }

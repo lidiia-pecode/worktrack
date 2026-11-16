@@ -14,6 +14,7 @@ import {
   EntityManager,
   In,
   IsNull,
+  LessThanOrEqual,
   Not,
   Repository,
 } from 'typeorm';
@@ -353,6 +354,25 @@ export class InvitationsService {
         });
         if (!isStillPending) {
           throw new NotFoundException('Invitation not found');
+        }
+      }
+
+      // Replacing an expired invitation revokes it, so it is held first as
+      // well, and the invite is refused if it was resent, accepted or revoked
+      // since it was read.
+      if (replaces) {
+        const isStillExpired = await repository.exists({
+          where: {
+            id: replaces.id,
+            status: InvitationStatus.PENDING,
+            expiresAt: LessThanOrEqual(new Date()),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!isStillExpired) {
+          throw new ConflictException(
+            'The invitation for this email changed at the same moment. Try again.',
+          );
         }
       }
 

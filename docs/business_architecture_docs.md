@@ -1227,7 +1227,7 @@ in cookies, never in a response.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1010 tests, covering the roles of every route and the whole app over
+suites and 1012 tests, covering the roles of every route and the whole app over
 HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
