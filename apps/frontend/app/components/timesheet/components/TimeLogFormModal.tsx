@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useForm, useWatch, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -13,9 +14,10 @@ import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
 import { TimePicker } from "../../shared/TimePicker";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { projects } from "../../layout/sidebar/sidebar-navigation";
 import { ChangedByNote } from "./ChangedByNote";
 import { TimeLog, TimeLogPayload, UpdateTimeLogPayload } from "@/types";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   Field,
@@ -118,6 +120,11 @@ type Props = {
   open: boolean;
   onClose: () => void;
   date: string;
+  /**
+   * Whose time it is when it isn't the viewer's, as Team time opens it; also
+   * turns on the note that sends someone with nothing to log against to
+   * Projects.
+   */
   subjectName?: string;
   /** From `lastEntryChoiceKey`: where the last pair logged for this person is kept. */
   rememberKey: string;
@@ -424,6 +431,23 @@ export const TimeLogFormModal = ({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-6"
         >
+          {hasNoOptions && subjectName && (
+            // Someone else's form, as Team time opens it: nothing to log
+            // against, and the way out is staffing them.
+            <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
+              <p>
+                {subjectName} isn&apos;t on a project with activities yet. Add
+                them to one on its panel in Projects, then log their time.
+              </p>
+              <Link
+                href={projects.href}
+                className={buttonVariants({ variant: "secondary", size: "sm" })}
+              >
+                Go to Projects
+              </Link>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Controller
               control={control}

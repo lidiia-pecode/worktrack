@@ -9,14 +9,23 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
-import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
 import {
-  formatDuration,
+  ABSENCE_TYPE_LABELS,
+  formatAbsenceRange,
+  projectHoursText,
+} from "@/lib/utils/absence";
+import {
+  formatDayRangeLabel,
   formatLongDayLabel,
   fromISODate,
   isISODateRange,
   formatDateRangeLabel,
+  shiftISODate,
 } from "@/lib/utils/date";
+import {
+  AbsenceLockedPart,
+  absenceLockedPart,
+} from "@/lib/utils/reporting-period";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,9 +38,13 @@ import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
 
 import { ImpactDialog } from "../../shared/ImpactDialog";
 import { FormSelect } from "../../shared/FormSelect";
-import { DateRangePicker } from "../../shared/inputs";
+import { DatePicker, DateRangePicker } from "../../shared/inputs";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
+import { PartLoadError } from "../../shared/PartLoadError";
 import { ChangedByNote } from "./ChangedByNote";
+
+const PLANS_CHECK_ERROR =
+  "Plans on these days couldn't load, so the absence can't be saved yet.";
 
 const FORM_ID = "absence-form";
 
@@ -63,6 +76,26 @@ const deletedAbsenceText = (absence: Absence) => {
   return `${ABSENCE_TYPE_LABELS[absence.type]} on ${formatAbsenceRange(absence)} will be deleted, and ${daysBecome} again. This can't be undone.`;
 };
 
+/** The open days a delete removes from an absence partly in a locked month. */
+const removedOpenDaysText = (absence: Absence, locked: AbsenceLockedPart) => {
+  const removed = [
+    locked.startOpen &&
+      formatDayRangeLabel(absence.startDate, shiftISODate(locked.from, -1)),
+    locked.endOpen &&
+      formatDayRangeLabel(shiftISODate(locked.to, 1), absence.endDate),
+  ].filter(Boolean);
+
+  return `${removed.join(" and ")} will be removed from this absence. ${lockedDaysText(locked)} This can't be undone.`;
+};
+
+const lockedDaysText = ({ from, to }: AbsenceLockedPart) =>
+  from === to
+    ? `${formatDayRangeLabel(from, to)} stays as it is: it's in a locked month.`
+    : `${formatDayRangeLabel(from, to)} stay as they are: they're in a locked month.`;
+
+/** Under the locked days in the form: why its reason and note can't change. */
+const LOCKED_RECORD_NOTE = "Its reason and note stay as they are too.";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -76,6 +109,8 @@ type Props = {
   /** For one known day, such as a Planning day: no dates to pick, the day named. */
   isSingleDay?: boolean;
   absence?: Absence;
+  /** Month locks: an absence partly in a locked month keeps those days, and its reason and note. */
+  isLocked: (date: string) => boolean;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
   onUpdate: (id: string, payload: UpdateAbsencePayload) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
@@ -92,6 +127,7 @@ export const AbsenceFormModal = ({
   endDate: lastDate = date,
   isSingleDay = false,
   absence,
+  isLocked,
   onCreate,
   onUpdate,
   onDelete,
@@ -99,6 +135,8 @@ export const AbsenceFormModal = ({
   isDeleting,
 }: Props) => {
   const isEditMode = !!absence;
+  const lockedPart =
+    absence && absenceLockedPart(isLocked, absence.startDate, absence.endDate);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const defaultValues = useMemo<AbsenceFormData>(
@@ -134,32 +172,44 @@ export const AbsenceFormModal = ({
   });
 
   const isRangeComplete = isISODateRange(startDate, endDate);
-  const { items: plansInRange } = usePlanningEntries(
+  const {
+    items: plansInRange,
+    isLoading: plansLoading,
+    isError: plansFailed,
+    isPlaceholderData: plansFromOtherRange,
+    refetch: refetchPlans,
+  } = usePlanningEntries(
     { userId, dateFrom: startDate, dateTo: endDate },
     { enabled: open && isRangeComplete },
   );
+  // Saving deletes the plans on these days, so it waits until they are known
+  // for this range: not while they load, nor the last range's kept meanwhile.
+  const arePlansKnown =
+    !isRangeComplete || (!plansLoading && !plansFromOtherRange && !plansFailed);
 
   // Recording the absence deletes these on the server; named here first.
   const removedPlans = useMemo(() => {
-    if (!isRangeComplete) return null;
+    if (!isRangeComplete || !arePlansKnown) return null;
+
+    // Plans on its days in a locked month stay, as those days do.
+    const removable = plansInRange.filter((plan) => !isLocked(plan.date));
+    if (removable.length === 0) return null;
 
     const minutesByProject = new Map<string, number>();
-    plansInRange.forEach((plan) => {
+    removable.forEach((plan) => {
       minutesByProject.set(
         plan.project.name,
         (minutesByProject.get(plan.project.name) ?? 0) + plan.plannedMinutes,
       );
     });
 
-    return plansInRange.length === 0
-      ? null
-      : {
-          count: plansInRange.length,
-          projects: [...minutesByProject]
-            .map(([name, minutes]) => `${name} ${formatDuration(minutes)}`)
-            .join(", "),
-        };
-  }, [isRangeComplete, plansInRange]);
+    return {
+      count: removable.length,
+      projects: projectHoursText(
+        [...minutesByProject].map(([name, minutes]) => ({ name, minutes })),
+      ),
+    };
+  }, [isRangeComplete, arePlansKnown, plansInRange, isLocked]);
 
   const setDays = (first: string, last: string) => {
     setValue("startDate", first, { shouldDirty: true, shouldValidate: true });
@@ -176,7 +226,13 @@ export const AbsenceFormModal = ({
     // A refusal is the server's to explain — the global mutation handler shows
     // it, and the modal stays open on the values that caused it.
     try {
-      if (absence) {
+      if (absence && lockedPart) {
+        // Only its open days move; the server keeps the rest as it is.
+        await onUpdate(absence.id, {
+          startDate: data.startDate,
+          endDate: data.endDate,
+        });
+      } else if (absence) {
         // null clears a saved note; undefined would leave it unchanged.
         await onUpdate(absence.id, { ...shared, note: data.note || null });
       } else {
@@ -248,7 +304,7 @@ export const AbsenceFormModal = ({
               form={FORM_ID}
               size="sm"
               isLoading={isSaving}
-              disabled={isDeleting}
+              disabled={isDeleting || !arePlansKnown}
             >
               {isEditMode ? "Save changes" : "Add absence"}
             </Button>
@@ -271,11 +327,45 @@ export const AbsenceFormModal = ({
                 options={TYPE_OPTIONS}
                 placeholder="Select a reason"
                 error={errors.type?.message}
+                disabled={!!lockedPart}
               />
             )}
           />
 
-          {!isSingleDay && (
+          {lockedPart && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {lockedPart.startOpen && (
+                  <DatePicker
+                    label="First day"
+                    value={startDate}
+                    maxDate={shiftISODate(lockedPart.from, -1)}
+                    onChange={(day) =>
+                      setValue("startDate", day, { shouldDirty: true })
+                    }
+                  />
+                )}
+                {lockedPart.endOpen && (
+                  <DatePicker
+                    label="Last day"
+                    value={endDate}
+                    minDate={shiftISODate(lockedPart.to, 1)}
+                    onChange={(day) =>
+                      setValue("endDate", day, { shouldDirty: true })
+                    }
+                  />
+                )}
+              </div>
+              <p className="flex gap-2 text-sm text-muted-foreground">
+                <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <span>
+                  {lockedDaysText(lockedPart)} {LOCKED_RECORD_NOTE}
+                </span>
+              </p>
+            </>
+          )}
+
+          {!isSingleDay && !lockedPart && (
             <Field
               id="absence-days"
               label="Days"
@@ -289,6 +379,12 @@ export const AbsenceFormModal = ({
                 onChange={setDays}
               />
             </Field>
+          )}
+
+          {plansFailed && (
+            <PartLoadError onRetry={() => refetchPlans()}>
+              {PLANS_CHECK_ERROR}
+            </PartLoadError>
           )}
 
           {removedPlans && (
@@ -313,6 +409,7 @@ export const AbsenceFormModal = ({
               })}
               minRows={3}
               maxRows={8}
+              disabled={!!lockedPart}
               placeholder="Anything worth adding?"
               className={cn(
                 fieldControlClassName(!!errors.note),
@@ -329,9 +426,14 @@ export const AbsenceFormModal = ({
         isOpen={confirmDeleteOpen}
         onClose={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDelete}
-        title="Delete this absence?"
-        description={absence && deletedAbsenceText(absence)}
-        confirmText="Delete"
+        title={lockedPart ? "Remove the open days?" : "Delete this absence?"}
+        description={
+          absence &&
+          (lockedPart
+            ? removedOpenDaysText(absence, lockedPart)
+            : deletedAbsenceText(absence))
+        }
+        confirmText={lockedPart ? "Remove" : "Delete"}
         confirmVariant="destructive"
         loading={isDeleting}
       />
@@ -341,7 +443,7 @@ export const AbsenceFormModal = ({
 
 /** Why an absence opens to be read only, by default a locked month. */
 export const ABSENCE_IN_LOCKED_MONTH =
-  "Part of it is in a locked month, so it can no longer be changed.";
+  "It's in a locked month, so it can no longer be changed.";
 /** For an absence the viewer can't change because some of its days are another team's. */
 export const absenceInAnotherTeam = (subjectName: string) =>
   `This absence includes days in another team. ${subjectName} or your company owner can change it.`;

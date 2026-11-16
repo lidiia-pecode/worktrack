@@ -43,6 +43,10 @@ import {
 } from 'src/teams/days-in-view.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
+import {
+  SPLIT_AROUND_WEEKEND,
+  isWorkingDay,
+} from 'src/capacity/working-days.util';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 interface DailyMinutesRaw {
@@ -773,7 +777,7 @@ export class TimeLogsService {
 
     if (isAbsent) {
       throw new ConflictException(
-        `${date} is covered by an absence, so time cannot be logged for it.`,
+        `${date} is covered by an absence, so time cannot be logged for it.${isWorkingDay(date) ? '' : SPLIT_AROUND_WEEKEND}`,
       );
     }
   }

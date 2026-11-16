@@ -9,8 +9,8 @@ import {
 
 /**
  * A day the viewer can't touch in a person's row: outside the team in view,
- * or after they left. It holds nothing, in the read-only tint a locked day
- * has, and says why on hover and to a screen reader.
+ * after they left, or before they joined. It holds nothing, in the read-only
+ * tint a locked day has, and says why on hover and to a screen reader.
  */
 export const ClosedDayCell = ({
   reason,

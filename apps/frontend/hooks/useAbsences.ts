@@ -2,6 +2,7 @@
 
 import {
   Absence,
+  AbsenceDeleteResult,
   AbsencePayload,
   AbsencesQuery,
   UpdateAbsencePayload,
@@ -31,7 +32,7 @@ export const useAbsencesMutations = createEntityMutations<
   Absence,
   AbsencePayload,
   UpdateAbsencePayload,
-  unknown
+  AbsenceDeleteResult
 >({
   queryKey: queryKeys.absences.all,
 
@@ -54,7 +55,9 @@ export const useAbsencesMutations = createEntityMutations<
   messages: {
     create: "Absence recorded",
     update: "Absence updated",
-    delete: "Absence deleted",
+    // Only its open days go when some of its days are in a locked month.
+    delete: ({ trimmed }) =>
+      trimmed ? "Open days removed" : "Absence deleted",
   },
 });
 

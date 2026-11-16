@@ -9,10 +9,20 @@ import {
 
 import { toast } from "sonner";
 
+/** A success toast from a fixed message or one built from the result. */
+const toastFor = <TResult>(
+  message: string | ((result: TResult) => string) | undefined,
+  result: TResult,
+) => {
+  if (message) {
+    toast.success(typeof message === "function" ? message(result) : message);
+  }
+};
+
 type MutationMessages<TDeleteResult> = {
   create?: string;
   update?: string;
-  delete?: string;
+  delete?: string | ((result: TDeleteResult) => string);
   archive?: string | ((result: TDeleteResult) => string);
   unarchive?: string;
 };
@@ -144,11 +154,9 @@ export function createEntityMutations<
         if (!config.api.delete) throw new Error("Delete is not supported.");
         return config.api.delete(id);
       },
-      onSuccess: () => {
+      onSuccess: (result) => {
         invalidate();
-        if (config.messages?.delete) {
-          toast.success(config.messages.delete);
-        }
+        toastFor(config.messages?.delete, result);
       },
     });
     const archive = useMutation({
@@ -158,14 +166,7 @@ export function createEntityMutations<
       },
       onSuccess: (result) => {
         invalidate();
-
-        const message = config.messages?.archive;
-
-        if (message) {
-          toast.success(
-            typeof message === "function" ? message(result) : message,
-          );
-        }
+        toastFor(config.messages?.archive, result);
       },
     });
 

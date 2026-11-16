@@ -2,6 +2,7 @@ import { Exclude, Expose, Type } from 'class-transformer';
 
 import { ExpectedDayResponse } from 'src/capacity/dtos/expected-hours-response.dto';
 import { UserStatus } from 'src/users/enums/user-role.enum';
+import type { ClosedSpell } from 'src/teams/days-in-view.util';
 import { TimeLogResponse } from './time-log-response.dto';
 
 @Exclude()
@@ -41,9 +42,8 @@ export class ClosedSpellResponse {
   @Expose()
   until!: string | null;
 
-  /** Outside the team in view, or while the person wasn't employed. */
   @Expose()
-  reason!: 'outside-team' | 'inactive';
+  reason!: ClosedSpell['reason'];
 }
 
 @Exclude()

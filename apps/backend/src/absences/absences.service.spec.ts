@@ -29,6 +29,9 @@ import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
 import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
+import { Notification } from 'src/notifications/entities/notification.entity';
+import { NotificationsService } from 'src/notifications/notifications.service';
+import { NotificationType } from 'src/notifications/enums/notification-type.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   freezeAtFirstLockedSecond,
@@ -163,6 +166,7 @@ describe('AbsencesService', () => {
       reporting,
       teamVisibility,
       capacity,
+      new NotificationsService(dataSource.getRepository(Notification)),
       dataSource,
     );
 
@@ -256,6 +260,7 @@ describe('AbsencesService', () => {
   });
 
   afterEach(async () => {
+    await dataSource.getRepository(Notification).delete({ companyId });
     await dataSource.getRepository(PlanningEntry).delete({ companyId });
     await dataSource.getRepository(TimeLog).delete({ companyId });
     await dataSource.getRepository(Absence).delete({ companyId });
@@ -274,6 +279,23 @@ describe('AbsencesService', () => {
       .delete({ slug: In([SLUG, OTHER_SLUG]) });
     await dataSource.destroy();
   });
+
+  /** A 4h plan written straight to the table, as made by `authorId`. */
+  const planBy = (authorId: string, userId: string, date: string) =>
+    dataSource.getRepository(PlanningEntry).save({
+      companyId,
+      userId,
+      projectId,
+      date,
+      plannedMinutes: 240,
+      createdById: authorId,
+    });
+
+  const noticesFor = (recipientId: string) =>
+    dataSource.getRepository(Notification).find({
+      where: { companyId, recipientId },
+      order: { createdAt: 'ASC' },
+    });
 
   describe('write scope', () => {
     it('lets anyone record their own absence', async () => {
@@ -341,6 +363,7 @@ describe('AbsencesService', () => {
       ).resolves.toMatchObject({ note: 'changed' });
       await expect(service.delete(absence.id, owner)).resolves.toEqual({
         success: true,
+        trimmed: false,
       });
     });
 
@@ -440,9 +463,118 @@ describe('AbsencesService', () => {
         ),
       ).rejects.toThrow(ForbiddenException);
     });
+
+    // February is open again and March is locked: the open days come first.
+    describe('across a locked month', () => {
+      const ACROSS = { start: '2026-02-25', end: '2026-03-03' };
+
+      const absenceAcross = () =>
+        existingAbsence(member.id, ACROSS.start, ACROSS.end);
+      const daysOf = async (id: string) => {
+        const { startDate, endDate } = await dataSource
+          .getRepository(Absence)
+          .findOneByOrFail({ id });
+        return [startDate, endDate];
+      };
+
+      it('moves its open days and keeps its locked ones', async () => {
+        const id = await absenceAcross();
+
+        await service.update(id, { startDate: '2026-02-27' }, member);
+        expect(await daysOf(id)).toEqual(['2026-02-27', ACROSS.end]);
+
+        await expect(
+          service.update(id, { endDate: '2026-03-02' }, member),
+        ).rejects.toThrow(/locked reporting period/);
+        await expect(
+          service.update(id, { endDate: '2026-03-04' }, member),
+        ).rejects.toThrow(/locked reporting period/);
+      });
+
+      it('removes plans on its new open days and never on its locked ones', async () => {
+        const id = await absenceAcross();
+        // Planned by the person themselves, so nobody is told.
+        await planBy(member.id, member.id, '2026-02-23');
+        await planBy(member.id, member.id, '2026-03-02');
+
+        await service.update(id, { startDate: '2026-02-23' }, member);
+
+        const plans = await dataSource
+          .getRepository(PlanningEntry)
+          .find({ where: { companyId, userId: member.id } });
+        expect(plans.map((plan) => plan.date)).toEqual(['2026-03-02']);
+      });
+
+      it('keeps its reason and note while part of it is locked', async () => {
+        const id = await absenceAcross();
+
+        await expect(
+          service.update(id, { type: AbsenceType.SICK_LEAVE }, member),
+        ).rejects.toThrow(/reason and note stay/);
+        await expect(
+          service.update(id, { note: 'Back early' }, member),
+        ).rejects.toThrow(/reason and note stay/);
+      });
+
+      it('deletes only its open days', async () => {
+        const id = await absenceAcross();
+
+        await expect(service.delete(id, member)).resolves.toEqual({
+          success: true,
+          trimmed: true,
+        });
+
+        expect(await daysOf(id)).toEqual(['2026-03-01', ACROSS.end]);
+      });
+
+      it('moves and deletes the open days after a locked month too', async () => {
+        // March is locked; April is opened again for this case.
+        const april = await dataSource.getRepository(ReportingPeriod).save({
+          companyId,
+          month: '2026-04-01',
+          status: ReportingPeriodStatus.OPEN,
+        });
+
+        try {
+          const id = await existingAbsence(
+            member.id,
+            '2026-03-30',
+            '2026-04-03',
+          );
+
+          await service.update(id, { endDate: '2026-04-01' }, member);
+          expect(await daysOf(id)).toEqual(['2026-03-30', '2026-04-01']);
+
+          await service.delete(id, member);
+          expect(await daysOf(id)).toEqual(['2026-03-30', '2026-03-31']);
+        } finally {
+          await dataSource.getRepository(ReportingPeriod).delete(april.id);
+        }
+      });
+
+      it('refuses to delete open days that lie between two locked months', async () => {
+        // January and March are locked, February between them is open.
+        const id = await existingAbsence(member.id, '2026-01-30', '2026-03-02');
+
+        await expect(service.delete(id, member)).rejects.toThrow(
+          ForbiddenException,
+        );
+      });
+    });
   });
 
   describe('a day is either worked or absent', () => {
+    it('says to split the absence when the day is a weekend inside it', async () => {
+      await existingAbsence(member.id, '2026-02-13', '2026-02-16');
+
+      await expect(
+        timeLogs.create(
+          { projectActivityId, minutes: 60, date: '2026-02-14' },
+          member,
+        ),
+      ).rejects.toThrow(/split the absence around that weekend/);
+    });
+
     it('refuses an absence covering a day that already has logged time', async () => {
       await existingTimeLog(member.id, '2026-02-11');
 
@@ -552,6 +684,76 @@ describe('AbsencesService', () => {
       );
 
       expect(await plannedDates(member.id)).toEqual([]);
+    });
+
+    it('tells whoever made the plans, once, with the days and hours and no type', async () => {
+      await planBy(manager.id, member.id, START);
+      await planBy(manager.id, member.id, END);
+
+      await service.create(
+        absenceFor(member.id, START, END, AbsenceType.SICK_LEAVE),
+        member,
+      );
+
+      const notices = await noticesFor(manager.id);
+      expect(notices).toHaveLength(1);
+      expect(notices[0]).toMatchObject({
+        type: NotificationType.PLANS_REMOVED_BY_ABSENCE,
+        subjectUserId: member.id,
+      });
+      expect(notices[0].details).toEqual({
+        from: START,
+        to: END,
+        planCount: 2,
+        projects: [{ name: `Project ${RUN}`, minutes: 480 }],
+      });
+      expect(await noticesFor(member.id)).toEqual([]);
+    });
+
+    it('never tells whoever recorded the absence', async () => {
+      await planBy(manager.id, member.id, START);
+
+      await service.create(absenceFor(member.id), manager);
+
+      expect(await noticesFor(manager.id)).toEqual([]);
+    });
+
+    it("tells nobody who can't read those days, or who has left", async () => {
+      await planBy(loneManager.id, member.id, START);
+      await planBy(deactivated.id, member.id, END);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await plannedDates(member.id)).toEqual([]);
+      expect(await noticesFor(loneManager.id)).toEqual([]);
+      expect(await noticesFor(deactivated.id)).toEqual([]);
+    });
+
+    it('tells no employee, such as a manager since made one', async () => {
+      const demoted = await createUser('demoted', UserRole.EMPLOYEE);
+      await planBy(demoted.id, member.id, START);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await noticesFor(demoted.id)).toEqual([]);
+    });
+
+    it('tells about the newly removed plans when an absence widens', async () => {
+      await planBy(manager.id, member.id, START);
+      await planBy(manager.id, member.id, '2026-02-16');
+      const absence = await service.create(absenceFor(member.id), member);
+
+      await service.update(absence.id, { endDate: '2026-02-16' }, member);
+
+      const notices = await noticesFor(manager.id);
+      expect(notices.map((notice) => notice.details)).toEqual([
+        expect.objectContaining({ from: START, to: START, planCount: 1 }),
+        expect.objectContaining({
+          from: '2026-02-16',
+          to: '2026-02-16',
+          planCount: 1,
+        }),
+      ]);
     });
   });
 
@@ -880,6 +1082,20 @@ describe('AbsencesService', () => {
           joinedAt: MOVE_DAY,
         },
       ]);
+    });
+
+    it("tells a team's manager only about the plans on that team's days", async () => {
+      await planBy(manager.id, mover.id, '2026-02-11');
+      await planBy(manager.id, mover.id, MOVE_DAY);
+
+      await service.create(absenceFor(mover.id, '2026-02-11', MOVE_DAY), owner);
+
+      const [notice] = await noticesFor(manager.id);
+      expect(notice.details).toMatchObject({
+        from: '2026-02-11',
+        to: '2026-02-11',
+        planCount: 1,
+      });
     });
 
     it('lets each manager record an absence on their own days only', async () => {

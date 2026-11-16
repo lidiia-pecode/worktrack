@@ -63,6 +63,7 @@ vi.mock("@/hooks/useReportingPeriods", () => ({
     isError: false,
     refetch: vi.fn(),
   }),
+  useGraceMonth: () => undefined,
 }));
 // The teams the viewer sees; none unless a test gives them.
 const teams = vi.hoisted(() => ({

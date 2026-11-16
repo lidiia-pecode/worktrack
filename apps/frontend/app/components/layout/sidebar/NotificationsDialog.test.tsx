@@ -27,6 +27,7 @@ const joined = (
   id,
   type,
   subjectUser: { id: `${id}-user`, firstName: "Ethan", lastName: "Brooks" },
+  details: null,
   readAt,
   createdAt: "2026-10-20T09:00:00Z",
 });

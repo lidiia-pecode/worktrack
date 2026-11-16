@@ -93,6 +93,7 @@ export enum UnusableInvitationCode {
 /** Mirrors the backend's NotificationType. */
 export enum NotificationType {
   INVITATION_ACCEPTED = "INVITATION_ACCEPTED",
+  PLANS_REMOVED_BY_ABSENCE = "PLANS_REMOVED_BY_ABSENCE",
 }
 
 export enum ArchivedActivitiesAction {

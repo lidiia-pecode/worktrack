@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { Bell, UserCheck } from "lucide-react";
+import { Bell, CalendarX, UserCheck } from "lucide-react";
 
 import {
   useMarkNotificationsRead,
@@ -10,14 +10,19 @@ import {
 } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { NotificationType } from "@/types/enums";
-import type { AppNotification } from "@/types/Notification";
+import type {
+  AppNotification,
+  PlansRemovedDetails,
+} from "@/types/Notification";
 import { urlWithOpenEntity } from "@/lib/utils/entity-ref";
 
 import { EmptyState } from "../../shared/EmptyState";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import { DATE_LOCALE } from "@/lib/utils/date";
+import { planning } from "./sidebar-navigation";
+import { DATE_LOCALE, formatDayRangeLabel } from "@/lib/utils/date";
+import { projectHoursText } from "@/lib/utils/absence";
 
 const SENT_AT_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
@@ -37,6 +42,18 @@ const personLink = (subjectUser: AppNotification["subjectUser"]) =>
       })
     : USERS_PATH;
 
+// The week the removed plans started in, to plan it again.
+const planningLink = (from: string) => `${planning.href}?week=${from}`;
+
+const plansRemovedText = (
+  name: string,
+  { from, to, planCount, projects }: PlansRemovedDetails,
+) =>
+  `${name}'s absence on ${formatDayRangeLabel(from, to)} removed ${planCount} of your plans (${projectHoursText(projects)}).`;
+
+const NOTICE_LINK_CLASS =
+  "mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline";
+
 interface NotificationRowProps {
   notification: AppNotification;
   onNavigate: () => void;
@@ -46,12 +63,16 @@ const NotificationRow = ({
   notification,
   onNavigate,
 }: NotificationRowProps) => {
-  const { type, subjectUser, readAt, createdAt } = notification;
+  const { type, subjectUser, details, readAt, createdAt } = notification;
   const isJoin = type === NotificationType.INVITATION_ACCEPTED;
+  const removedPlans =
+    type === NotificationType.PLANS_REMOVED_BY_ABSENCE ? details : null;
   const name = subjectUser
     ? `${subjectUser.firstName} ${subjectUser.lastName}`
-    : "Someone you invited";
-  const Icon = isJoin ? UserCheck : Bell;
+    : isJoin
+      ? "Someone you invited"
+      : "Someone";
+  const Icon = isJoin ? UserCheck : removedPlans ? CalendarX : Bell;
 
   return (
     <li className="flex gap-3 py-3">
@@ -67,6 +88,8 @@ const NotificationRow = ({
               <span className="font-medium">{name}</span> accepted your
               invitation and joined.
             </>
+          ) : removedPlans ? (
+            plansRemovedText(name, removedPlans)
           ) : (
             "You have a new notification."
           )}
@@ -81,9 +104,19 @@ const NotificationRow = ({
           <Link
             href={personLink(subjectUser)}
             onClick={onNavigate}
-            className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+            className={NOTICE_LINK_CLASS}
           >
             Put them on a project
+          </Link>
+        )}
+
+        {removedPlans && (
+          <Link
+            href={planningLink(removedPlans.from)}
+            onClick={onNavigate}
+            className={NOTICE_LINK_CLASS}
+          >
+            Open Planning
           </Link>
         )}
       </div>

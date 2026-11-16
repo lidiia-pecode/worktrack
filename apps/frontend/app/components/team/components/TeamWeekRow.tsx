@@ -150,8 +150,8 @@ export const TeamWeekRow = ({
         const canWriteDay = canWrite && isEditable(iso);
         // Time is logged only for a day that has happened.
         const canLogTime = canWriteDay && iso <= todayIso;
-        // An absence is frozen whole once any of its days locks; it then
-        // opens to be read, as on the timesheet.
+        // An absence touching a locked month opens from any of its days: to
+        // change its open days, or to be read once both its ends are locked.
         const opensAbsence =
           !!absence &&
           canWrite &&

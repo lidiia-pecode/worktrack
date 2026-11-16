@@ -106,8 +106,8 @@ export interface PeriodProblem {
 
 /**
  * Every day and week a period plan would take over its limit, on the plans as
- * they would be after it. As with a single plan, only a total the write
- * raises counts.
+ * they would be after it. Only a total the write raises counts, so a day or
+ * week already over can still be lowered.
  */
 export const periodProblems = ({
   weeks,

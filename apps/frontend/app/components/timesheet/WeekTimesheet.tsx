@@ -6,7 +6,7 @@ import Link from "next/link";
 import { CalendarOff, FolderKanban, ListTodo } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
-import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useAbsences } from "@/hooks/useAbsences";
 import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
@@ -31,7 +31,11 @@ import {
   mapAbsencesByDate,
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
-import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import {
+  isAbsenceFrozen,
+  isRangeLocked,
+  lockLookupRange,
+} from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 
@@ -40,6 +44,7 @@ import { projects } from "../layout/sidebar/sidebar-navigation";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { GraceMonthNote } from "../shared/GraceMonthNote";
 import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
@@ -56,7 +61,6 @@ import { TimesheetDay } from "./helpers/day-state";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
-import { GraceMonthNote } from "./components/GraceMonthNote";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
 type ModalState = {
@@ -166,7 +170,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
-  const graceMonth = useGraceMonth();
 
   const {
     items: plannedEntries,
@@ -268,6 +271,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     const absence = absencesByDate[iso];
     const isAbsenceLocked =
       !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
+    // Its open days still change unless both its ends are locked.
+    const isAbsenceFrozenHere =
+      !!absence &&
+      isAbsenceFrozen(isLocked, absence.startDate, absence.endDate);
 
     return {
       date,
@@ -278,7 +285,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       totalMinutes: dailyTotals[iso] ?? 0,
       expectedMinutes: expectedByDate[iso],
       isLocked: isLocked(iso),
-      isEditable: isEditable(iso) && !isAbsenceLocked,
+      isEditable: isEditable(iso) && !isAbsenceFrozenHere,
       // Time is logged only for a day that has happened.
       canLogTime: iso <= todayIso,
     };
@@ -385,10 +392,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   );
 
   const openedAbsence = absenceModal?.absence;
-  // Locked as a whole once any of its days is, like the day column.
+  // Read only once both its ends are locked; otherwise its open days move.
   const isOpenedAbsenceLocked =
     !!openedAbsence &&
-    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+    isAbsenceFrozen(isLocked, openedAbsence.startDate, openedAbsence.endDate);
   const closeAbsence = () => setAbsenceModal(null);
 
   const absenceForm =
@@ -402,6 +409,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         userId={userId}
         date={absenceModal.date}
         absence={openedAbsence}
+        isLocked={isLocked}
         onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
         onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
         onDelete={(id) => absenceActions.delete.mutateAsync(id)}
@@ -512,12 +520,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
           {!hasError && (
             <div className="ml-auto flex items-center gap-2 @3xl:ml-0">
-              {graceMonth?.editableUntil && (
-                <GraceMonthNote
-                  month={graceMonth.month}
-                  editableUntil={graceMonth.editableUntil}
-                />
-              )}
+              <GraceMonthNote />
               {addAbsenceButton}
             </div>
           )}
@@ -525,7 +528,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       </div>
 
       {!hasError && isPlansError && (
-        <PartLoadError onRetry={() => void refetchPlans()}>
+        <PartLoadError onRetry={() => void refetchPlans()} className="mt-3">
           {PLANS_LOAD_ERROR}
         </PartLoadError>
       )}

@@ -26,6 +26,7 @@ import { HoursReportGroupBy, ReportingMonthState } from "@/types/enums";
 import { Button } from "@/components/ui/button";
 
 import { EmptyState } from "../shared/EmptyState";
+import { GraceMonthNote } from "../shared/GraceMonthNote";
 import { FormSelect } from "../shared/FormSelect";
 import { useOpenedEntry } from "../shared/useOpenedEntry";
 import { PERSON_PARAM } from "../team/team-links";
@@ -318,10 +319,13 @@ export const ReportsView = () => {
           )}
         </div>
 
-        {/* The last figures keep the button in place while a period loads. */}
-        {(people?.totals.loggedMinutes ?? 0) > 0 && (
-          <HoursExportButton query={query} />
-        )}
+        <div className="flex items-center gap-3">
+          <GraceMonthNote />
+          {/* The last figures keep the button in place while a period loads. */}
+          {(people?.totals.loggedMinutes ?? 0) > 0 && (
+            <HoursExportButton query={query} />
+          )}
+        </div>
       </div>
 
       {renderOverview()}

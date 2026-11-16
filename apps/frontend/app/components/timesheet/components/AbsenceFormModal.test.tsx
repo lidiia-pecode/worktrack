@@ -7,13 +7,19 @@ import { formatAbsenceRange } from "@/lib/utils/absence";
 
 import { AbsenceFormModal, LockedAbsenceModal } from "./AbsenceFormModal";
 
-const data = vi.hoisted(() => ({ plans: [] as PlanningEntry[] }));
+const data = vi.hoisted(() => ({
+  plans: [] as PlanningEntry[],
+  isLoading: false,
+  isError: false,
+}));
 
 vi.mock("@/hooks/usePlanning", () => ({
   usePlanningEntries: () => ({
     items: data.plans,
-    isLoading: false,
-    isError: false,
+    isLoading: data.isLoading,
+    isError: data.isError,
+    isPlaceholderData: false,
+    refetch: vi.fn(),
   }),
 }));
 
@@ -34,6 +40,7 @@ const renderForm = (subjectName?: string) =>
       userId="user-1"
       subjectName={subjectName}
       date="2026-11-13"
+      isLocked={() => false}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
       onDelete={vi.fn()}
@@ -45,6 +52,8 @@ const renderForm = (subjectName?: string) =>
 describe("AbsenceFormModal", () => {
   beforeEach(() => {
     data.plans = [];
+    data.isLoading = false;
+    data.isError = false;
   });
 
   it("names the plans the absence will remove", () => {
@@ -72,6 +81,26 @@ describe("AbsenceFormModal", () => {
     renderForm();
 
     expect(screen.queryByText(/^Deletes/)).not.toBeInTheDocument();
+  });
+
+  // Saving deletes the plans on those days, so it waits until they are known.
+  it("can't save while the plans on those days load", () => {
+    data.isLoading = true;
+
+    renderForm();
+
+    expect(screen.getByRole("button", { name: "Add absence" })).toBeDisabled();
+  });
+
+  it("can't save when those plans fail to load, and offers to try again", () => {
+    data.isError = true;
+
+    renderForm();
+
+    expect(screen.getByRole("button", { name: "Add absence" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Try again" }),
+    ).toBeInTheDocument();
   });
 });
 

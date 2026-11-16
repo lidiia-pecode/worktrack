@@ -26,7 +26,7 @@ import {
   sortPlanningRows,
   TeamSortKey,
 } from "@/lib/utils/team-rows";
-import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { isAbsenceFrozen, lockLookupRange } from "@/lib/utils/reporting-period";
 import { Absence, PlanningWeekRow as PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
@@ -223,7 +223,8 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
   const openDay = (row: PlanningRow, date: string) => {
     const absence = absencesByUser[row.user.id]?.[date];
     const isFrozen =
-      !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
+      !!absence &&
+      isAbsenceFrozen(isLocked, absence.startDate, absence.endDate);
 
     if (absence && !isFrozen && absence.canChange === false) {
       setReadOnlyAbsence({ absence, row });
@@ -458,6 +459,7 @@ export const PlanningWeekView = ({ role, viewerId }: PlanningWeekViewProps) => {
           // form, or one opened to edit, picks its days.
           isSingleDay={!absenceForm.absence && !absenceForm.endDate}
           absence={absenceForm.absence}
+          isLocked={isLocked}
           onCreate={async (payload) => {
             await absenceActions.create.mutateAsync({
               ...payload,

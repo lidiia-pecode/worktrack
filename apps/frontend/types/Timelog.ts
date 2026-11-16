@@ -81,13 +81,13 @@ export interface TeamSummaryUser {
 
 /**
  * Days a row holds that the viewer can't touch, from `from` up to the day
- * before `until` (null: no end): outside the team in view, or while the person
- * wasn't employed.
+ * before `until` (null: no end): outside the team in view, while the person
+ * wasn't employed, or, on Planning, before their account was created.
  */
 export interface ClosedSpell {
   from: string;
   until: string | null;
-  reason: "outside-team" | "inactive";
+  reason: "outside-team" | "inactive" | "before-account";
 }
 
 /** Where a row's days start (`in`) or stop (`out`) belonging to the view. */

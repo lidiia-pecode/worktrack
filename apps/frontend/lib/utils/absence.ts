@@ -1,7 +1,21 @@
 import { Absence } from "@/types";
 import { AbsenceType } from "@/types/enums";
 
-import { addDays, formatDayRangeLabel, isWeekend, toISODate } from "./date";
+import {
+  addDays,
+  formatDayRangeLabel,
+  formatDuration,
+  isWeekend,
+  toISODate,
+} from "./date";
+
+/** "Support Desk 8h, CRM 2h": the plans an absence removes, by project. */
+export const projectHoursText = (
+  projects: { name: string; minutes: number }[],
+) =>
+  projects
+    .map(({ name, minutes }) => `${name} ${formatDuration(minutes)}`)
+    .join(", ");
 
 export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",

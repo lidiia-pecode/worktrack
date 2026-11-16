@@ -37,6 +37,12 @@ export interface AbsencePayload {
 
 export type UpdateAbsencePayload = Partial<Omit<AbsencePayload, "userId">>;
 
+/** `trimmed` when only its open days went, its days in a locked month kept. */
+export interface AbsenceDeleteResult {
+  success: boolean;
+  trimmed: boolean;
+}
+
 export interface AbsencesQuery extends PaginationParams {
   dateFrom?: string;
   dateTo?: string;

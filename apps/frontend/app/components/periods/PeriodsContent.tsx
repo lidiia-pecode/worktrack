@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils/cn";
 import { formatMonthLabel } from "@/lib/utils/date";
+import { ReportingMonthState } from "@/types/enums";
 
 import { ImpactDialog } from "../shared/ImpactDialog";
 import { ErrorState } from "../shared/ErrorState";
@@ -56,6 +57,14 @@ const CONFIRMATION: Record<
     variant: "primary",
   },
 };
+
+/**
+ * Reopen's message while a later month stays locked: working hours change
+ * from a date onwards, into that later month too, so the server still
+ * refuses them from this one.
+ */
+const REOPEN_UNDER_LATER_LOCK =
+  "Time logs, absences and plans in this month become editable again for everyone who could edit them before. Working hours still can't change from this month while a later month is locked. It stays open until you close it.";
 
 const HEAD_CELL = "h-10 py-0";
 
@@ -110,6 +119,13 @@ export const PeriodsContent = () => {
   };
 
   const copy = confirmation && CONFIRMATION[confirmation.action];
+  const isLaterMonthLocked =
+    !!confirmation &&
+    months.some(
+      (period) =>
+        period.month > confirmation.month &&
+        period.state === ReportingMonthState.LOCKED,
+    );
 
   return (
     <>
@@ -184,7 +200,11 @@ export const PeriodsContent = () => {
             ? copy.title(formatMonthLabel(confirmation.month))
             : ""
         }
-        description={copy?.message}
+        description={
+          confirmation?.action === "reopen" && isLaterMonthLocked
+            ? REOPEN_UNDER_LATER_LOCK
+            : copy?.message
+        }
         confirmText={copy?.confirmText}
         confirmVariant={copy?.variant}
         onConfirm={confirm}

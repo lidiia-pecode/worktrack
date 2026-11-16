@@ -355,8 +355,7 @@ export class ReportingService {
   }
 
   /**
-   * True when any day between the two dates is locked. A record covering a
-   * range is frozen as soon as it touches one.
+   * True when any day between the two dates is locked.
    *
    * Inside a write's transaction, pass its `manager`: the period rows are then
    * read with a share lock, so a Close or Reopen of one of those months waits
@@ -369,6 +368,25 @@ export class ReportingService {
     endDate: string,
     manager?: EntityManager,
   ): Promise<boolean> {
+    const locked = await this.lockedMonthsIn(
+      companyId,
+      startDate,
+      endDate,
+      manager,
+    );
+    return locked.length > 0;
+  }
+
+  /**
+   * The locked months between the two dates, each as its first day, oldest
+   * first. Pass a write's `manager` as for `isRangeLocked`.
+   */
+  async lockedMonthsIn(
+    companyId: string,
+    startDate: string,
+    endDate: string,
+    manager?: EntityManager,
+  ): Promise<string[]> {
     const today = await findCompanyToday(
       manager ?? this.companyRepo.manager,
       companyId,
@@ -377,14 +395,14 @@ export class ReportingService {
       isAutoLocked(month, today),
     );
 
-    if (autoLocked.length === 0) return false;
+    if (autoLocked.length === 0) return [];
 
     const reopened = await this.findReopenedMonths(
       companyId,
       autoLocked,
       manager,
     );
-    return autoLocked.some((month) => !reopened.has(month));
+    return autoLocked.filter((month) => !reopened.has(month));
   }
 
   /**
