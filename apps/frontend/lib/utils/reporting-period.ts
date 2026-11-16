@@ -106,6 +106,54 @@ export function isRangeLocked(
   return false;
 }
 
+/** An absence's days in locked months, and which of its ends can still move. */
+export interface AbsenceLockedPart {
+  /** The first and last of its days in a locked month. */
+  from: string;
+  to: string;
+  startOpen: boolean;
+  endOpen: boolean;
+}
+
+/**
+ * The part of an absence the server keeps as it is: its days in locked
+ * months. An end can still move while its own month is open. Null when no
+ * day of it is locked.
+ */
+export function absenceLockedPart(
+  isLocked: (date: string) => boolean,
+  startDate: string,
+  endDate: string,
+): AbsenceLockedPart | null {
+  const lockedMonths: string[] = [];
+  const lastMonth = toMonthKey(endDate);
+  for (
+    let month = toMonthKey(startDate);
+    month <= lastMonth;
+    month = addMonthsToKey(month, 1)
+  ) {
+    if (isLocked(getMonthRange(month).dateFrom)) lockedMonths.push(month);
+  }
+  if (lockedMonths.length === 0) return null;
+
+  const firstLockedDay = getMonthRange(lockedMonths[0]).dateFrom;
+  const lastLockedDay = getMonthRange(lockedMonths.at(-1)!).dateTo;
+
+  return {
+    from: startDate > firstLockedDay ? startDate : firstLockedDay,
+    to: endDate < lastLockedDay ? endDate : lastLockedDay,
+    startOpen: !isLocked(startDate),
+    endOpen: !isLocked(endDate),
+  };
+}
+
+/** Nothing of an absence can change once both its ends are in locked months. */
+export const isAbsenceFrozen = (
+  isLocked: (date: string) => boolean,
+  startDate: string,
+  endDate: string,
+) => isLocked(startDate) && isLocked(endDate);
+
 /**
  * The dates to ask lock states for: a week, widened to cover the absences it
  * shows. Only past months can lock, so absences never widen it past today. One

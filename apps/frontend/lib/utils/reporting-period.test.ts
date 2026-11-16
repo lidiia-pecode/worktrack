@@ -8,6 +8,8 @@ import {
   firstDayAfterLockedMonths,
   firstPeriodsPage,
   isRangeLocked,
+  absenceLockedPart,
+  isAbsenceFrozen,
   lockLookupRange,
   lockedDateLookup,
   olderPeriodsPage,
@@ -107,6 +109,32 @@ describe("isRangeLocked", () => {
 
   it("checks the months in between, not only the ends", () => {
     expect(isRangeLocked(isLocked, "2025-12-20", "2026-03-05")).toBe(true);
+  });
+});
+
+describe("an absence across a locked month", () => {
+  // January is locked; February is open.
+  const isLocked = lockedDateLookup([
+    month("2026-02", ReportingMonthState.OPEN),
+    month("2026-01", ReportingMonthState.LOCKED),
+  ]);
+
+  it("keeps its locked days and lets its open end move", () => {
+    expect(absenceLockedPart(isLocked, "2026-01-28", "2026-02-03")).toEqual({
+      from: "2026-01-28",
+      to: "2026-01-31",
+      startOpen: false,
+      endOpen: true,
+    });
+    expect(isAbsenceFrozen(isLocked, "2026-01-28", "2026-02-03")).toBe(false);
+  });
+
+  it("is frozen once both its ends are locked", () => {
+    expect(isAbsenceFrozen(isLocked, "2026-01-05", "2026-01-09")).toBe(true);
+  });
+
+  it("has no locked part in open months", () => {
+    expect(absenceLockedPart(isLocked, "2026-02-02", "2026-02-06")).toBeNull();
   });
 });
 

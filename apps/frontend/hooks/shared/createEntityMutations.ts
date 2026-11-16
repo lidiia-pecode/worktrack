@@ -12,7 +12,7 @@ import { toast } from "sonner";
 type MutationMessages<TDeleteResult> = {
   create?: string;
   update?: string;
-  delete?: string;
+  delete?: string | ((result: TDeleteResult) => string);
   archive?: string | ((result: TDeleteResult) => string);
   unarchive?: string;
 };
@@ -144,10 +144,15 @@ export function createEntityMutations<
         if (!config.api.delete) throw new Error("Delete is not supported.");
         return config.api.delete(id);
       },
-      onSuccess: () => {
+      onSuccess: (result) => {
         invalidate();
-        if (config.messages?.delete) {
-          toast.success(config.messages.delete);
+
+        const message = config.messages?.delete;
+
+        if (message) {
+          toast.success(
+            typeof message === "function" ? message(result) : message,
+          );
         }
       },
     });

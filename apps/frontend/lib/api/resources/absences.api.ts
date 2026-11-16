@@ -2,6 +2,7 @@
 
 import {
   Absence,
+  AbsenceDeleteResult,
   AbsenceListResponse,
   AbsencePayload,
   AbsencesQuery,
@@ -24,5 +25,5 @@ const client = createClient({ endpoint: "absences" });
 
 export const AbsencesClientApi = {
   ...crud,
-  delete: (id: string) => client.delete(`/${id}`),
+  delete: (id: string) => client.delete<AbsenceDeleteResult>(`/${id}`),
 };

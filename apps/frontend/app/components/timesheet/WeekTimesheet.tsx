@@ -31,7 +31,11 @@ import {
   mapAbsencesByDate,
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
-import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import {
+  isAbsenceFrozen,
+  isRangeLocked,
+  lockLookupRange,
+} from "@/lib/utils/reporting-period";
 import { groupTimelogsByDate } from "@/lib/utils/timelog";
 import { cn } from "@/lib/utils/cn";
 
@@ -268,6 +272,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     const absence = absencesByDate[iso];
     const isAbsenceLocked =
       !!absence && isRangeLocked(isLocked, absence.startDate, absence.endDate);
+    // Its open days still change unless both its ends are locked.
+    const isAbsenceFrozenHere =
+      !!absence &&
+      isAbsenceFrozen(isLocked, absence.startDate, absence.endDate);
 
     return {
       date,
@@ -278,7 +286,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
       totalMinutes: dailyTotals[iso] ?? 0,
       expectedMinutes: expectedByDate[iso],
       isLocked: isLocked(iso),
-      isEditable: isEditable(iso) && !isAbsenceLocked,
+      isEditable: isEditable(iso) && !isAbsenceFrozenHere,
       // Time is logged only for a day that has happened.
       canLogTime: iso <= todayIso,
     };
@@ -385,10 +393,10 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
   );
 
   const openedAbsence = absenceModal?.absence;
-  // Locked as a whole once any of its days is, like the day column.
+  // Read only once both its ends are locked; otherwise its open days move.
   const isOpenedAbsenceLocked =
     !!openedAbsence &&
-    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+    isAbsenceFrozen(isLocked, openedAbsence.startDate, openedAbsence.endDate);
   const closeAbsence = () => setAbsenceModal(null);
 
   const absenceForm =
@@ -402,6 +410,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
         userId={userId}
         date={absenceModal.date}
         absence={openedAbsence}
+        isLocked={isLocked}
         onCreate={(payload) => absenceActions.create.mutateAsync(payload)}
         onUpdate={(id, data) => absenceActions.update.mutateAsync({ id, data })}
         onDelete={(id) => absenceActions.delete.mutateAsync(id)}

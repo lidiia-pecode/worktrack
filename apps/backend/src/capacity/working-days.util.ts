@@ -66,3 +66,7 @@ export const weekRange = (
     end: toISODate(start + 6 * MS_PER_DAY),
   };
 };
+
+/** Added where time on a weekend meets an absence covering it. */
+export const SPLIT_AROUND_WEEKEND =
+  ' To record weekend work during an absence, split the absence around that weekend.';

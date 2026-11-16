@@ -369,6 +369,25 @@ export class ReportingService {
     endDate: string,
     manager?: EntityManager,
   ): Promise<boolean> {
+    const locked = await this.lockedMonthsIn(
+      companyId,
+      startDate,
+      endDate,
+      manager,
+    );
+    return locked.length > 0;
+  }
+
+  /**
+   * The locked months between the two dates, each as its first day, oldest
+   * first. Pass a write's `manager` as for `isRangeLocked`.
+   */
+  async lockedMonthsIn(
+    companyId: string,
+    startDate: string,
+    endDate: string,
+    manager?: EntityManager,
+  ): Promise<string[]> {
     const today = await findCompanyToday(
       manager ?? this.companyRepo.manager,
       companyId,
@@ -377,14 +396,14 @@ export class ReportingService {
       isAutoLocked(month, today),
     );
 
-    if (autoLocked.length === 0) return false;
+    if (autoLocked.length === 0) return [];
 
     const reopened = await this.findReopenedMonths(
       companyId,
       autoLocked,
       manager,
     );
-    return autoLocked.some((month) => !reopened.has(month));
+    return autoLocked.filter((month) => !reopened.has(month));
   }
 
   /**

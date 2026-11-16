@@ -24,6 +24,12 @@ import type { PlansRemovedDetails } from 'src/notifications/entities/notificatio
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
+  SPLIT_AROUND_WEEKEND,
+  addDays,
+  isWorkingDay,
+} from 'src/capacity/working-days.util';
+import { lastDayOfMonth } from 'src/reporting/reporting-months.util';
+import {
   AbsencePayload,
   UpdateAbsencePayload,
 } from './dtos/absence-payload.dto';
@@ -221,28 +227,26 @@ export class AbsencesService {
 
       const absence = await this.getForUpdate(id, user.companyId, manager);
 
-      // Where it sits now is frozen, and so is wherever it is being moved to.
-      await this.assertRangeNotLocked(
-        manager,
-        user.companyId,
-        absence.startDate,
-        absence.endDate,
-      );
-
       const startDate = payload.startDate ?? absence.startDate;
       const endDate = payload.endDate ?? absence.endDate;
       this.assertRangeOrder(startDate, endDate);
+
+      const lockedDays = await this.assertLockedDaysKept(
+        manager,
+        user.companyId,
+        absence,
+        {
+          startDate,
+          endDate,
+          type: payload.type,
+          note: payload.note,
+        },
+      );
 
       const moved =
         startDate !== absence.startDate || endDate !== absence.endDate;
 
       if (moved) {
-        await this.assertRangeNotLocked(
-          manager,
-          user.companyId,
-          startDate,
-          endDate,
-        );
         await this.capacity.assertEmployedOn(
           user.companyId,
           ownerId,
@@ -271,6 +275,7 @@ export class AbsencesService {
         user.companyId,
         startDate,
         endDate,
+        lockedDays,
       );
 
       const saved = await manager.save(Absence, absence);
@@ -279,24 +284,52 @@ export class AbsencesService {
     });
   }
 
-  async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
+  /** `trimmed` when only its open days went, its days in a locked month kept. */
+  async delete(
+    id: string,
+    user: AuthUser,
+  ): Promise<{ success: boolean; trimmed: boolean }> {
     const ownerId = await this.resolveWritableOwner(id, user);
 
-    await this.dataSource.transaction(async (manager) => {
+    const trimmed = await this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
       const absence = await this.getForUpdate(id, user.companyId, manager);
-
-      await this.assertRangeNotLocked(
-        manager,
-        user.companyId,
+      const lockedDays = lockedDaysIn(
+        await this.reportingService.lockedMonthsIn(
+          user.companyId,
+          absence.startDate,
+          absence.endDate,
+          manager,
+        ),
         absence.startDate,
         absence.endDate,
       );
 
-      await manager.remove(Absence, absence);
+      if (lockedDays.length === 0) {
+        await manager.remove(Absence, absence);
+        return false;
+      }
+
+      // Its days in a locked month stay; only the open ones around them go.
+      const keepFrom = lockedDays[0].from;
+      const keepTo = lockedDays[lockedDays.length - 1].to;
+      const keepsEveryDay =
+        keepFrom === absence.startDate && keepTo === absence.endDate;
+      const hasOpenDaysBetween = lockedDays.some(
+        (span, i) => i > 0 && span.from !== addDays(lockedDays[i - 1].to, 1),
+      );
+      if (keepsEveryDay || hasOpenDaysBetween) {
+        throw lockedAbsenceError(absence.startDate, absence.endDate);
+      }
+
+      absence.startDate = keepFrom;
+      absence.endDate = keepTo;
+      absence.updatedById = user.id;
+      await manager.save(Absence, absence);
+      return true;
     });
 
-    return { success: true };
+    return { success: true, trimmed };
   }
 
   // ==========================================
@@ -339,11 +372,51 @@ export class AbsencesService {
       manager,
     );
 
-    if (isLocked) {
+    if (isLocked) throw lockedAbsenceError(startDate, endDate);
+  }
+
+  /**
+   * A change may move an absence's open days, but not one of its days in a
+   * locked month: those stay covered, and nothing is added there. Its reason
+   * and note belong to every day, so they stay too while any of them is
+   * locked. Runs inside the write's transaction, as the lock check does.
+   */
+  private async assertLockedDaysKept(
+    manager: EntityManager,
+    companyId: string,
+    absence: Absence,
+    next: Pick<Absence, 'startDate' | 'endDate'> &
+      Pick<UpdateAbsencePayload, 'type' | 'note'>,
+  ): Promise<LockedDays> {
+    const lockedMonths = await this.reportingService.lockedMonthsIn(
+      companyId,
+      absence.startDate < next.startDate ? absence.startDate : next.startDate,
+      absence.endDate > next.endDate ? absence.endDate : next.endDate,
+      manager,
+    );
+    if (lockedMonths.length === 0) return [];
+
+    const before = lockedDaysIn(
+      lockedMonths,
+      absence.startDate,
+      absence.endDate,
+    );
+    const after = lockedDaysIn(lockedMonths, next.startDate, next.endDate);
+    if (JSON.stringify(before) !== JSON.stringify(after)) {
+      throw lockedAbsenceError(absence.startDate, absence.endDate);
+    }
+
+    const changesWholeRecord =
+      (next.type !== undefined && next.type !== absence.type) ||
+      (next.note !== undefined &&
+        (next.note ?? null) !== (absence.note ?? null));
+    if (before.length > 0 && changesWholeRecord) {
       throw new ForbiddenException(
-        `Cannot modify absences between ${startDate} and ${endDate} because the range touches a locked reporting period.`,
+        'Part of this absence is in a locked month, so its reason and note stay as they are. The owner can reopen the month in Periods.',
       );
     }
+
+    return after;
   }
 
   /**
@@ -373,9 +446,10 @@ export class AbsencesService {
       .getRawMany<{ date: string }>();
 
     if (loggedDays.length > 0) {
-      const dates = loggedDays.map((row) => row.date).join(', ');
+      const dates = loggedDays.map((row) => row.date);
+      const onWeekend = dates.some((date) => !isWorkingDay(date));
       throw new ConflictException(
-        `Time is already logged on ${dates}. A day cannot be both worked and absent, so remove that time first.`,
+        `Time is already logged on ${dates.join(', ')}. A day cannot be both worked and absent, so remove that time first.${onWeekend ? SPLIT_AROUND_WEEKEND : ''}`,
       );
     }
 
@@ -401,9 +475,9 @@ export class AbsencesService {
 
   /**
    * A day the person is away is not a planned day, so recording an absence
-   * removes their plans on it, whoever made them. Its range is never locked,
-   * so only open days lose plans. Returns what went, read under the person's
-   * lock that every plan write also takes.
+   * removes their plans on it, whoever made them, except on its days in a
+   * locked month (`lockedDays`), which nothing changes. Returns what went,
+   * read under the person's lock that every plan write also takes.
    */
   private async removePlansOn(
     manager: EntityManager,
@@ -411,8 +485,9 @@ export class AbsencesService {
     companyId: string,
     startDate: string,
     endDate: string,
+    lockedDays: LockedDays = [],
   ): Promise<RemovedPlan[]> {
-    const removed = await manager
+    const query = manager
       .createQueryBuilder()
       .select('p.id', 'id')
       .addSelect('p.created_by_id', 'authorId')
@@ -426,8 +501,14 @@ export class AbsencesService {
       .andWhere('p.date BETWEEN :startDate AND :endDate', {
         startDate,
         endDate,
-      })
-      .getRawMany<RemovedPlan>();
+      });
+    lockedDays.forEach(({ from, to }, i) =>
+      query.andWhere(`p.date NOT BETWEEN :lockedFrom${i} AND :lockedTo${i}`, {
+        [`lockedFrom${i}`]: from,
+        [`lockedTo${i}`]: to,
+      }),
+    );
+    const removed = await query.getRawMany<RemovedPlan>();
 
     if (removed.length > 0) {
       await manager
@@ -601,3 +682,24 @@ const summarisePlans = (plans: RemovedPlan[]): PlansRemovedDetails => {
       .sort((a, b) => a.name.localeCompare(b.name)),
   };
 };
+
+const lockedAbsenceError = (startDate: string, endDate: string) =>
+  new ForbiddenException(
+    `Cannot change the days of the absence from ${startDate} to ${endDate} that fall in a locked reporting period. The owner can reopen the month in Periods.`,
+  );
+
+/** An absence's days in each locked month, as first and last day, oldest first. */
+type LockedDays = { from: string; to: string }[];
+
+/** The `LockedDays` of the range from `startDate` to `endDate`. */
+const lockedDaysIn = (
+  lockedMonths: string[],
+  startDate: string,
+  endDate: string,
+): LockedDays =>
+  lockedMonths
+    .map((month) => ({
+      from: startDate > month ? startDate : month,
+      to: endDate < lastDayOfMonth(month) ? endDate : lastDayOfMonth(month),
+    }))
+    .filter((span) => span.from <= span.to);

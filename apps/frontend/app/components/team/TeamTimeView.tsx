@@ -34,7 +34,7 @@ import {
   mapAbsencesByUserAndDate,
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
-import { isRangeLocked, lockLookupRange } from "@/lib/utils/reporting-period";
+import { isAbsenceFrozen, lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import {
   nextTeamSort,
@@ -368,10 +368,10 @@ export const TeamTimeView = ({
     });
 
   const openedAbsence = absenceForm?.absence;
-  // Locked as a whole once any of its days is, as on the timesheet.
+  // Read only once both its ends are locked, as on the timesheet.
   const isOpenedAbsenceLocked =
     !!openedAbsence &&
-    isRangeLocked(isLocked, openedAbsence.startDate, openedAbsence.endDate);
+    isAbsenceFrozen(isLocked, openedAbsence.startDate, openedAbsence.endDate);
   // The API says whether the viewer may change it (some of its days may be
   // another team's); here that is the person's and the owner's to do.
   const openedAbsenceReadOnlyReason = isOpenedAbsenceLocked
@@ -623,6 +623,7 @@ export const TeamTimeView = ({
             subjectName={fullName(absenceForm.user)}
             date={absenceForm.date}
             absence={openedAbsence}
+            isLocked={isLocked}
             onCreate={(payload) =>
               absenceActions.create.mutateAsync({
                 ...payload,
