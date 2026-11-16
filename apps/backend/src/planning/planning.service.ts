@@ -749,7 +749,7 @@ export class PlanningService {
     );
     const { outside } = inView.get(targetUser.id)!;
 
-    // Not one day in reach: refused, as a single plan would be.
+    // Not one day in reach: refused outright, rather than an empty save.
     const reachesNoDay = outside.some(
       (span) =>
         span.from <= startDate && (span.until === null || span.until > endDate),
@@ -949,7 +949,7 @@ export class PlanningService {
 
   /**
    * Every company week the range touches, with what the person has available
-   * in it — the same figure a single plan is checked against.
+   * in it, which the week's plans are checked against.
    */
   private async periodWeeks(
     company: PlanningCompany,

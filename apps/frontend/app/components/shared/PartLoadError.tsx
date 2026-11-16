@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils/cn";
 
 /** The week's plans, which Log my time and Team time show beside the time logged. */
 export const PLANS_LOAD_ERROR =
@@ -11,6 +12,8 @@ type PartLoadErrorProps = {
   /** What is missing and what that means, e.g. "Plans couldn't load, so they aren't shown." */
   children: ReactNode;
   onRetry: () => void;
+  /** Overrides the gap above, where the parent spaces its children. */
+  className?: string;
 };
 
 /**
@@ -18,10 +21,17 @@ type PartLoadErrorProps = {
  * a way to try again, while the rest of the page stays usable. A page whose
  * main data fails shows `ErrorState` instead.
  */
-export const PartLoadError = ({ children, onRetry }: PartLoadErrorProps) => (
+export const PartLoadError = ({
+  children,
+  onRetry,
+  className,
+}: PartLoadErrorProps) => (
   <div
     role="status"
-    className="mt-3 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle py-1.5 pr-1.5 pl-3 text-sm text-warning-text"
+    className={cn(
+      "mt-3 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle py-1.5 pr-1.5 pl-3 text-sm text-warning-text",
+      className,
+    )}
   >
     <AlertTriangle aria-hidden="true" className="size-4 shrink-0" />
     <span className="min-w-0 flex-1">{children}</span>

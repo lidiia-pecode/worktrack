@@ -1044,7 +1044,7 @@ describe('PlanningService', () => {
       expect(weekAfter.rows.some((r) => r.user.id === leaver.id)).toBe(false);
     });
 
-    it('closes the days before an account was created, which a plan is refused on', async () => {
+    it('closes the days before an account was created', async () => {
       const newcomer = await createUser('Newcomer', UserRole.EMPLOYEE);
       const accountStart = addDays(PAST_MONDAY, 2);
       await dataSource.getRepository(User).update(newcomer.id, {

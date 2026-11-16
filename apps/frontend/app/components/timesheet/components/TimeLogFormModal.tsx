@@ -426,13 +426,13 @@ export const TimeLogFormModal = ({
           onSubmit={handleSubmit(onSubmit)}
           className="space-y-6"
         >
-          {hasNoOptions && (
-            // Nothing to log against; the way out is staffing them.
+          {hasNoOptions && subjectName && (
+            // Someone else's form, as Team time opens it: nothing to log
+            // against, and the way out is staffing them.
             <div className="flex flex-col items-start gap-3 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm">
               <p>
-                {subjectName ?? "This person"} isn&apos;t on a project with
-                activities yet. Add them to one on its panel in Projects, then
-                log their time.
+                {subjectName} isn&apos;t on a project with activities yet. Add
+                them to one on its panel in Projects, then log their time.
               </p>
               <Link
                 href={projects.href}

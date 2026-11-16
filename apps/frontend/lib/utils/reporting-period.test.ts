@@ -136,6 +136,33 @@ describe("an absence across a locked month", () => {
   it("has no locked part in open months", () => {
     expect(absenceLockedPart(isLocked, "2026-02-02", "2026-02-06")).toBeNull();
   });
+
+  it("lets an open start move when an earlier month was opened again", () => {
+    // December reopened before a locked January.
+    const reopened = lockedDateLookup([
+      month("2026-01", ReportingMonthState.LOCKED),
+      month("2025-12", ReportingMonthState.REOPENED),
+    ]);
+
+    expect(absenceLockedPart(reopened, "2025-12-29", "2026-01-02")).toEqual({
+      from: "2026-01-01",
+      to: "2026-01-02",
+      startOpen: true,
+      endOpen: false,
+    });
+  });
+
+  it("keeps a whole locked month between two open ends", () => {
+    const lockedMiddle = lockedDateLookup([
+      month("2026-02", ReportingMonthState.OPEN),
+      month("2026-01", ReportingMonthState.LOCKED),
+      month("2025-12", ReportingMonthState.REOPENED),
+    ]);
+
+    expect(absenceLockedPart(lockedMiddle, "2025-12-30", "2026-02-02")).toEqual(
+      { from: "2026-01-01", to: "2026-01-31", startOpen: true, endOpen: true },
+    );
+  });
 });
 
 describe("lockLookupRange", () => {

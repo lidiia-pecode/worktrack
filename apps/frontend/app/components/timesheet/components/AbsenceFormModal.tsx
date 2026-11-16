@@ -90,6 +90,9 @@ const lockedDaysText = ({ from, to }: AbsenceLockedPart) =>
     ? `${formatDayRangeLabel(from, to)} stays as it is: it's in a locked month.`
     : `${formatDayRangeLabel(from, to)} stay as they are: they're in a locked month.`;
 
+/** Under the locked days in the form: why its reason and note can't change. */
+const LOCKED_RECORD_NOTE = "Its reason and note stay as they are too.";
+
 type Props = {
   open: boolean;
   onClose: () => void;
@@ -354,7 +357,9 @@ export const AbsenceFormModal = ({
               </div>
               <p className="flex gap-2 text-sm text-muted-foreground">
                 <Lock className="mt-0.5 size-4 shrink-0" aria-hidden />
-                <span>{lockedDaysText(lockedPart)}</span>
+                <span>
+                  {lockedDaysText(lockedPart)} {LOCKED_RECORD_NOTE}
+                </span>
               </p>
             </>
           )}
@@ -376,7 +381,7 @@ export const AbsenceFormModal = ({
           )}
 
           {plansFailed && (
-            <PartLoadError onRetry={() => refetchPlans()}>
+            <PartLoadError onRetry={() => refetchPlans()} className="mt-0">
               {PLANS_CHECK_ERROR}
             </PartLoadError>
           )}

@@ -180,6 +180,7 @@ export const PlanningWeekRow = ({
         if (
           !isActive ||
           !isEditable(iso) ||
+          closed ||
           (hasNoFixedHours && entries.length === 0)
         ) {
           return (

@@ -33,8 +33,8 @@ export const dayActions = ({
   | "timelogs"
   | "plannedEntries"
 >) => ({
-  // A day an absence covers opens the absence instead of a new entry, to read
-  // once it is locked.
+  // A day an absence covers opens the absence instead of a new entry, its
+  // locked days too, so its open days can still change.
   opensAbsence: !!absence && (isEditable || isAbsenceLocked),
   canAddEntry: !absence && isEditable && canLogTime,
   // Once any time is logged, the record replaces the plan.

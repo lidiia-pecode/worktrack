@@ -16,7 +16,7 @@ import {
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserStatus } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { DateRange, isWithinSpan } from 'src/teams/days-in-view.util';
 import { NotificationsService } from 'src/notifications/notifications.service';
@@ -319,7 +319,9 @@ export class AbsencesService {
         (span, i) => i > 0 && span.from !== addDays(lockedDays[i - 1].to, 1),
       );
       if (keepsEveryDay || hasOpenDaysBetween) {
-        throw lockedAbsenceError(absence.startDate, absence.endDate);
+        throw lockedAbsenceError(
+          `Cannot delete the absence from ${absence.startDate} to ${absence.endDate}: its days in a locked reporting period stay as they are.`,
+        );
       }
 
       absence.startDate = keepFrom;
@@ -354,10 +356,8 @@ export class AbsencesService {
   }
 
   /**
-   * An absence is frozen as soon as any day of its range falls in a locked
-   * period, so a holiday spanning the boundary cannot be edited from outside.
-   * Runs inside the write's transaction, so a Close at the same moment waits
-   * for it.
+   * A new absence may not touch a locked period. Runs inside the write's
+   * transaction, so a Close at the same moment waits for it.
    */
   private async assertRangeNotLocked(
     manager: EntityManager,
@@ -372,7 +372,11 @@ export class AbsencesService {
       manager,
     );
 
-    if (isLocked) throw lockedAbsenceError(startDate, endDate);
+    if (isLocked) {
+      throw lockedAbsenceError(
+        `Cannot record an absence from ${startDate} to ${endDate}: it touches a locked reporting period.`,
+      );
+    }
   }
 
   /**
@@ -403,7 +407,9 @@ export class AbsencesService {
     );
     const after = lockedDaysIn(lockedMonths, next.startDate, next.endDate);
     if (JSON.stringify(before) !== JSON.stringify(after)) {
-      throw lockedAbsenceError(absence.startDate, absence.endDate);
+      throw lockedAbsenceError(
+        `Cannot change the absence to ${next.startDate} – ${next.endDate}: its days in a locked reporting period stay as they are.`,
+      );
     }
 
     const changesWholeRecord =
@@ -477,7 +483,8 @@ export class AbsencesService {
    * A day the person is away is not a planned day, so recording an absence
    * removes their plans on it, whoever made them, except on its days in a
    * locked month (`lockedDays`), which nothing changes. Returns what went,
-   * read under the person's lock that every plan write also takes.
+   * read just before the delete under the person's lock, which plan saves
+   * also take.
    */
   private async removePlansOn(
     manager: EntityManager,
@@ -553,6 +560,11 @@ export class AbsencesService {
     });
 
     for (const author of authors) {
+      // `daysInView` narrows only a manager's view; anyone else who isn't
+      // the owner reads nobody's days but their own, such as a manager since
+      // made an employee.
+      if (author.role === UserRole.EMPLOYEE && author.id !== ownerId) continue;
+
       const theirs = removed.filter((plan) => plan.authorId === author.id);
       const dates = theirs.map((plan) => plan.date).sort();
       const inView = await this.teamVisibility.daysInView(author, [ownerId], {
@@ -683,9 +695,10 @@ const summarisePlans = (plans: RemovedPlan[]): PlansRemovedDetails => {
   };
 };
 
-const lockedAbsenceError = (startDate: string, endDate: string) =>
+/** A refusal over a locked month, saying who can open it again. */
+const lockedAbsenceError = (reason: string) =>
   new ForbiddenException(
-    `Cannot change the days of the absence from ${startDate} to ${endDate} that fall in a locked reporting period. The owner can reopen the month in Periods.`,
+    `${reason} The owner can reopen the month in Periods.`,
   );
 
 /** An absence's days in each locked month, as first and last day, oldest first. */

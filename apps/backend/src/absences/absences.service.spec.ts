@@ -533,6 +533,31 @@ describe('AbsencesService', () => {
         expect(await daysOf(id)).toEqual(['2026-03-01', ACROSS.end]);
       });
 
+      it('moves and deletes the open days after a locked month too', async () => {
+        // March is locked; April is opened again for this case.
+        const april = await dataSource.getRepository(ReportingPeriod).save({
+          companyId,
+          month: '2026-04-01',
+          status: ReportingPeriodStatus.OPEN,
+        });
+
+        try {
+          const id = await existingAbsence(
+            member.id,
+            '2026-03-30',
+            '2026-04-03',
+          );
+
+          await service.update(id, { endDate: '2026-04-01' }, member);
+          expect(await daysOf(id)).toEqual(['2026-03-30', '2026-04-01']);
+
+          await service.delete(id, member);
+          expect(await daysOf(id)).toEqual(['2026-03-30', '2026-03-31']);
+        } finally {
+          await dataSource.getRepository(ReportingPeriod).delete(april.id);
+        }
+      });
+
       it('refuses to delete open days that lie between two locked months', async () => {
         // January and March are locked, February between them is open.
         const id = await existingAbsence(member.id, '2026-01-30', '2026-03-02');
@@ -708,6 +733,15 @@ describe('AbsencesService', () => {
       expect(await plannedDates(member.id)).toEqual([]);
       expect(await noticesFor(loneManager.id)).toEqual([]);
       expect(await noticesFor(deactivated.id)).toEqual([]);
+    });
+
+    it('tells no employee, such as a manager since made one', async () => {
+      const demoted = await createUser('demoted', UserRole.EMPLOYEE);
+      await planBy(demoted.id, member.id, START);
+
+      await service.create(absenceFor(member.id), member);
+
+      expect(await noticesFor(demoted.id)).toEqual([]);
     });
 
     it('tells about the newly removed plans when an absence widens', async () => {
