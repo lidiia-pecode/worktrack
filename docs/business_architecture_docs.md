@@ -451,16 +451,23 @@ Every write passes three checks:
    absence across a team move is read by both teams' managers and changed only
    by someone who reaches all of it, such as the owner; the screens open it
    read-only for anyone else and say who can change it.
-2. **Period lock** — a range touching a `LOCKED` period cannot be created,
-   changed or deleted, and neither can it be moved into one.
+2. **Period lock** — a new absence cannot touch a `LOCKED` period, and no
+   change may alter a day an absence has in one. An absence that runs into a
+   locked month keeps its days there; its open days can still move, and
+   deleting it removes only those, trimming it to its locked days. Its reason
+   and note stay as they are while any of its days is locked. One locked at
+   both ends, or whose locked days lie apart with open days between, stays as
+   it is. The refusal says the owner can reopen the month.
 3. **The day is free** — no day of the range may already have logged time, and
    no day may already be covered by another absence, whatever its type.
 
 Who added and last changed an absence is recorded and shown as for time
 entries (see Time logging).
 
-The rule runs both ways: time logging is refused on a day an absence covers.
-An absence also deletes its owner's plans on those days (see Planning).
+The rule runs both ways: time logging is refused on a day an absence covers,
+and when that day is a weekend inside it, the refusal says to split the
+absence around the weekend. An absence also deletes its owner's plans on those
+days (see Planning).
 Each service reads the other's table directly rather than depending on it, and
 both check inside the transaction that locks the owner's user row, which is what
 stops two concurrent writes from each seeing a free day.
@@ -518,13 +525,18 @@ Every write is checked on the server:
 6. Nothing can be planned on a day the person wasn't employed, as for time
    entries (rule 4 there).
 
-An update re-runs rules 1, 2 and 5 whenever it changes the date, project or
-minutes. A day an absence covers cannot be planned: a new plan, or one moved
-onto it, is refused. Recording an absence, or moving one, deletes that person's
-plans on the days it covers, whoever records it — the person themselves
-included, though they cannot write planning otherwise. An absence never touches
-a locked period, so only open days lose plans, and deleting or shortening an
-absence brings nothing back.
+Plans are written in one way only, a period save (Plan a day saves a one-day
+period), and removed one by one or per project across a period. A day an
+absence covers is skipped, and so is a day before the person's account was
+created, which Planning shows closed. Recording an absence, or widening or
+moving one, deletes that person's plans on its days, whoever records it — the
+person themselves included, though they cannot write planning otherwise.
+Plans on its days in a locked month stay, as those days do, and deleting or
+shortening an absence brings nothing back. Whoever made the removed plans is
+told in-app, unless they recorded the absence: only about the plans on days
+they can still read for that person, only while they are active, and never
+naming the absence's type, so a notice reaches no further than they could
+see.
 
 **A period** is planned and changed in one form: a person and a date range.
 The form lists each project already planned in the range with its days; new
@@ -538,8 +550,7 @@ Saving applies to the result as a whole: a range touching a LOCKED month is
 refused, and if any day or week would go over its limit, nothing is saved and
 every day and week that does not fit is named; the form sums them up (how
 many days go over the person's day, how many weeks over what they have
-available, each with its worst). As with a single plan, only a
-total the write raises is refused. The same checks run without saving (a
+available, each with its worst). Only a total the write raises is refused. The same checks run without saving (a
 preview), so the form shows the fullest day, what saving will add and change,
 the absences skipped and every conflict before anything is written, and saves
 only once everything fits.
@@ -738,7 +749,8 @@ same transaction that creates the user — a `MEMBER` for an employee, the team'
 `MANAGER` for a manager. Only the owner invites managers and only the owner
 appoints a team's manager, so this is not a second route to leading a team. The same transaction notifies whoever sent the invitation, if they
 are still active, that the person has joined, so they can put them on a project;
-it is an in-app notification only, and each person reads only their own.
+it is an in-app notification only, and each person reads only their own. An
+absence that removes someone's plans tells them too (see Planning).
 A notification is deleted 60 days after it was read; unread ones are kept.
 Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
 
@@ -895,7 +907,7 @@ see, and how a new company gets started. §7 plans that work.
   time is exactly what was expected, and how far past it when it is over. One row of controls carries the
   week's figures, which open a breakdown (expected and the days off that lower
   it, billable, non-billable, how much is past expected and how much of that at
-  the weekend), and a lock during a month's grace week. A day that expects
+  the weekend), and an amber lock during a month's grace week. A day that expects
   nothing is striped: a weekend in grey, turning amber once it has time, since
   weekend hours are always extra; a day off in the brand colour. Time past a
   working day's figure sits on solid amber with a "+Xh" badge. A day that
@@ -990,7 +1002,10 @@ see, and how a new company gets started. §7 plans that work.
   each after a confirmation; the page lists the months back to the company's
   first and shows who last reopened or closed a month and when. The
   timesheet, team grid and planning grid show locked days as read-only, and
-  during the grace week the timesheet says until when last month can be edited.
+  during the grace week an amber lock on the timesheet, Team time and Reports
+  says until when last month can be edited, on a hover or a tap. Reopening a
+  month says that working hours still can't change from it while a later
+  month is locked.
 - **Reports** — owners and managers see one overview on `/reports` for a
   month, a quarter, a year or a custom range of up to 366 days, stepped with
   arrows from the company's first month and kept in the address, and for one
@@ -1111,6 +1126,17 @@ see, and how a new company gets started. §7 plans that work.
   white and a locked one grey. In Log my time the expected hours are one line
   across the whole week.
 
+- **Absences, plans and month end at the edges** (16 November 2026). An
+  absence that runs into a locked month keeps its days there and its reason
+  and note; its open days can still move, and deleting it removes only
+  those. An absence deletes the plans on its days whoever made them, and
+  tells their author in-app, within what the author can see and without its
+  type. The absence form waits until it knows which plans it removes. Time
+  and absences may still be recorded on days before someone's account was
+  created; Planning closes those days, as the save refuses plans there. A
+  manager sees the month-end deadline as an amber lock on Team time and
+  Reports, and logging time for someone on no project points to Projects.
+
 - **One way to close a dialog** (4 November 2026, PR #67). No dialog has a
   close button in its header: it closes from its footer, "Cancel" in a form
   and "Close" in a read-only one and in Notifications. Escape and a click
@@ -1184,17 +1210,17 @@ them, plus themselves.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-two
-suites and 955 tests, covering the role-visibility filters and reach by team
+suites and 941 tests, covering the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, who added and changed a time entry or an absence, the lock
+planning rules, an absence across a locked month and the notice to whoever made the plans it removes, who added and changed a time entry or an absence, the lock
 order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export (weeks or months on the timeline,
 one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-seven Vitest files and 457 tests: its date, month,
+The frontend has seventy-seven Vitest files and 462 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1404,8 +1430,12 @@ figures that add up followed (PR #71), then one visual language and screens
 that fit, moved ahead of access to teams on 10 November 2026 because UI/UX is
 the top direction and the new access screens should land on settled patterns;
 a look of its own followed on 13 November 2026, ahead of access to teams for
-the same reason; access to teams (Configurable permissions, below) comes next; what is left of Areas 3 and 4, Team time and
-Planning on a phone among it, follows, and Area 8 closes the stage. A defect
+the same reason. On 16 November 2026 the goal for the coming work became an
+internal presentation of WorkTrack, not a launch, and the order became:
+absences, plans and month end at the edges first, then the application's
+security and an API safety net, then access to teams (Configurable
+permissions, below). What is left of Areas 3 and 4, Team time and Planning on
+a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 
 ---

@@ -195,6 +195,11 @@ rule trustworthy.
   plans on its days, which opens no planning route to employees. A manager's
   project save only removes people they were shown, so they can never clear
   plans for someone outside their teams.
+- **Whoever made the removed plans is told within their reach.** The notice
+  covers only the plans on days its recipient can still read for that person,
+  goes only to someone active who didn't record the absence, and never names
+  the absence's type, so a manager whose person has moved to another team
+  learns nothing of that team's days.
 - **Reports follow the same people.** The hours and people reports answer
   every role through the same visibility, an employee getting their own figures
   alone; the export and the timeline stay with owners and managers.
