@@ -6,7 +6,7 @@ import Link from "next/link";
 import { CalendarOff, FolderKanban, ListTodo } from "lucide-react";
 
 import { useTimelogs } from "@/hooks/useTimelogs";
-import { useGraceMonth, useLockedDates } from "@/hooks/useReportingPeriods";
+import { useLockedDates } from "@/hooks/useReportingPeriods";
 import { useAbsences } from "@/hooks/useAbsences";
 import { useExpectedHours } from "@/hooks/useExpectedHours";
 import { useAssignableActivities } from "@/hooks/useAssignableActivities";
@@ -44,6 +44,7 @@ import { projects } from "../layout/sidebar/sidebar-navigation";
 import { PageHeader } from "../shared/PageHeader";
 import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
+import { GraceMonthNote } from "../shared/GraceMonthNote";
 import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
@@ -60,7 +61,6 @@ import { TimesheetDay } from "./helpers/day-state";
 import { TimeLogFormModal } from "./components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "./helpers/last-entry-choice";
 import { WeekSummary } from "./components/WeekSummary";
-import { GraceMonthNote } from "./components/GraceMonthNote";
 import { showsWeekFigures, timesheetContentFor } from "./helpers/first-run";
 
 type ModalState = {
@@ -170,7 +170,6 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
     isError: isLocksError,
     refetch: refetchLocks,
   } = useLockedDates(lockRange.dateFrom, lockRange.dateTo);
-  const graceMonth = useGraceMonth();
 
   const {
     items: plannedEntries,
@@ -521,12 +520,7 @@ export const WeekTimesheet = ({ userId, welcome }: WeekTimesheetProps) => {
 
           {!hasError && (
             <div className="ml-auto flex items-center gap-2 @3xl:ml-0">
-              {graceMonth?.editableUntil && (
-                <GraceMonthNote
-                  month={graceMonth.month}
-                  editableUntil={graceMonth.editableUntil}
-                />
-              )}
+              <GraceMonthNote />
               {addAbsenceButton}
             </div>
           )}

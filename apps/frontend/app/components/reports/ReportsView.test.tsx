@@ -55,6 +55,7 @@ vi.mock("@/hooks/useTeams", () => ({
 vi.mock("@/hooks/usePeopleReport", () => ({ usePeopleReport: vi.fn() }));
 vi.mock("@/hooks/useReportingPeriods", () => ({
   useReportingPeriods: () => ({ months: [] }),
+  useGraceMonth: () => undefined,
 }));
 vi.mock("@/hooks/useActivityCategories", () => ({
   useActivityCategoriesAllPagesQuery: () => ({

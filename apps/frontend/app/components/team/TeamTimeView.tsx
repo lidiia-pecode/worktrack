@@ -51,6 +51,7 @@ import { ErrorState } from "../shared/ErrorState";
 import { LoadingState } from "../shared/LoadingState";
 import { PartLoadError, PLANS_LOAD_ERROR } from "../shared/PartLoadError";
 import { WeekHeaderDay } from "../shared/week/WeekHeaderDay";
+import { GraceMonthNote } from "../shared/GraceMonthNote";
 import { WeekTotal } from "../shared/week/WeekTotal";
 import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
@@ -420,6 +421,8 @@ export const TeamTimeView = ({
               billableMinutes={billableMinutes}
             />
           )}
+
+          <GraceMonthNote />
         </div>
       </div>
 

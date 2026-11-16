@@ -2,6 +2,7 @@
 
 import { Lock } from "lucide-react";
 
+import { useGraceMonth } from "@/hooks/useReportingPeriods";
 import { formatDayMonthLabel, formatMonthLabel } from "@/lib/utils/date";
 
 import { Button } from "@/components/ui/button";
@@ -11,25 +12,24 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-type GraceMonthNoteProps = {
-  /** YYYY-MM. */
-  month: string;
-  editableUntil: string;
-};
+/**
+ * In a month's grace week, an amber lock that says until when last month can
+ * still be edited, on hover or a tap. Amber, as someone has to act before it
+ * locks; nothing shows outside the grace week.
+ */
+export const GraceMonthNote = () => {
+  const graceMonth = useGraceMonth();
+  if (!graceMonth?.editableUntil) return null;
 
-/** In a month's grace week, a lock that says until when last month is open. */
-export const GraceMonthNote = ({
-  month,
-  editableUntil,
-}: GraceMonthNoteProps) => {
-  const note = `${formatMonthLabel(month)} can still be edited until ${formatDayMonthLabel(editableUntil)}.`;
+  const note = `${formatMonthLabel(graceMonth.month)} can still be edited until ${formatDayMonthLabel(graceMonth.editableUntil)}.`;
 
   return (
     <Popover>
       <PopoverTrigger
+        openOnHover
         render={
           <Button
-            variant="outline"
+            variant="warning"
             size="iconSm"
             aria-label={note}
             className="max-sm:size-10"
