@@ -6,10 +6,12 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
 
 import { AuthErrorCode, authError } from '../auth-error';
+import type { GoogleUserPayload } from '../dtos/auth.dto';
 import { CookieStateStore } from './cookie-state-store';
 
 export function getGoogleStrategyOptions(
   configService: ConfigService,
+  flow: string,
   callbackURL: string,
 ) {
   return {
@@ -18,7 +20,7 @@ export function getGoogleStrategyOptions(
     callbackURL,
     scope: ['email', 'profile'],
     state: true,
-    store: new CookieStateStore(configService),
+    store: new CookieStateStore(configService, flow),
   };
 }
 
@@ -30,6 +32,15 @@ export function getGooglePayload(profile: Profile) {
     googleId: profile.id,
   };
 }
+
+const GOOGLE_NAME_FIELDS = ['firstName', 'lastName'] as const;
+export type GoogleNameField = (typeof GOOGLE_NAME_FIELDS)[number];
+
+/** The names a Google account didn't share, for the sign-up to ask for. */
+export const missingGoogleNames = (
+  names: Pick<GoogleUserPayload, GoogleNameField>,
+): GoogleNameField[] =>
+  GOOGLE_NAME_FIELDS.filter((field) => !names[field].trim());
 
 export function validateGoogleProfile(
   profile: Profile,
@@ -56,6 +67,7 @@ export class GoogleLoginStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'login',
         configService.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
       ),
     );
@@ -80,6 +92,7 @@ export class GoogleSignupStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'signup',
         configService.getOrThrow<string>('GOOGLE_SIGNUP_CALLBACK_URL'),
       ),
     );
@@ -104,6 +117,7 @@ export class GoogleLinkStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'link',
         configService.getOrThrow<string>('GOOGLE_LINK_CALLBACK_URL'),
       ),
     );
@@ -128,6 +142,7 @@ export class GoogleInvitationStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'invitation',
         configService.getOrThrow<string>('GOOGLE_INVITATION_CALLBACK_URL'),
       ),
     );

@@ -11,7 +11,8 @@ export function databaseConnectionOptions(env: ReadEnv) {
   const shared = {
     type: 'postgres' as const,
     synchronize: false,
-    logging: env('NODE_ENV') !== 'production',
+    // Queries are logged while developing; tests and production stay quiet.
+    logging: !['production', 'test'].includes(env('NODE_ENV') ?? ''),
     namingStrategy: new SnakeNamingStrategy(),
     ssl: env('DATABASE_SSL') === 'true' ? { rejectUnauthorized: true } : false,
     // A missing value in a find, count or exists would otherwise drop the

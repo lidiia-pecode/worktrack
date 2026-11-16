@@ -6,7 +6,6 @@ import {
   ParseUUIDPipe,
   Patch,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
@@ -21,7 +20,6 @@ import { UpdateProfilePayload } from './dtos/update-profile-payload.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { User } from './entities/user.entity';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UsersQuery } from './dtos/users-query.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { UserRole } from './enums/user-role.enum';
@@ -32,7 +30,6 @@ import {
 } from './dtos/user-dates.dto';
 
 @Controller('users')
-@UseGuards(AccessGuard, RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

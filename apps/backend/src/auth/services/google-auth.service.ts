@@ -17,7 +17,8 @@ import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
 
 import { SessionMetadata } from 'src/lib/types/session-metadata';
 import { GoogleLoginResult } from '../auth-strategies/types';
-import { GoogleUserPayload } from '../dtos/auth.dto';
+import { CompleteGoogleSignupDto, GoogleUserPayload } from '../dtos/auth.dto';
+import { GoogleNameField, missingGoogleNames } from '../auth-strategies/google';
 
 import { CompaniesService } from 'src/companies/companies.service';
 import { AuthPolicyService } from './auth-policy.service';
@@ -30,6 +31,11 @@ import { AuthErrorCode, authError } from '../auth-error';
 import { createValidationException } from 'src/lib/utils/validation-exception.util';
 
 const MAX_TOKEN_ATTEMPTS = 3;
+
+const NAME_LABELS: Record<GoogleNameField, string> = {
+  firstName: 'First name',
+  lastName: 'Last name',
+};
 
 @Injectable()
 export class GoogleAuthService {
@@ -291,36 +297,56 @@ export class GoogleAuthService {
   }
 
   async completeGoogleSignup(
-    rawToken: string,
-    companyName: string,
+    dto: CompleteGoogleSignupDto,
     metadata?: SessionMetadata,
   ) {
     try {
-      const user = await this.dataSource.transaction(async (manager) => {
-        const userRepository = manager.getRepository(User);
-        const companyRepository = manager.getRepository(Company);
+      const user = await this.companiesService.retryOnTakenSlug(() =>
+        this.dataSource.transaction(async (manager) => {
+          const userRepository = manager.getRepository(User);
+          const companyRepository = manager.getRepository(Company);
 
-        const payload = await this.consumeGoogleSignupToken(rawToken, manager);
+          const payload = await this.consumeGoogleSignupToken(
+            dto.token,
+            manager,
+          );
 
-        const email = this.authPolicyService.normalizeEmail(payload.email);
+          // A name Google didn't share has to come from the page. Refusing
+          // here rolls the transaction back, so the link stays usable.
+          const unanswered = missingGoogleNames(payload).filter(
+            (field) => !dto[field],
+          );
+          if (unanswered.length > 0) {
+            throw createValidationException(
+              Object.fromEntries(
+                unanswered.map((field) => [
+                  field,
+                  [`${NAME_LABELS[field]} is required`],
+                ]),
+              ),
+            );
+          }
 
-        const company = await this.companiesService.create(
-          companyName,
-          companyRepository,
-        );
+          const email = this.authPolicyService.normalizeEmail(payload.email);
 
-        const newUser = userRepository.create({
-          companyId: company.id,
-          firstName: payload.firstName.trim(),
-          lastName: payload.lastName.trim(),
-          email,
-          googleId: payload.googleId,
-          role: UserRole.OWNER,
-          status: UserStatus.ACTIVE,
-        });
+          const company = await this.companiesService.create(
+            dto.companyName,
+            companyRepository,
+          );
 
-        return userRepository.save(newUser);
-      });
+          const newUser = userRepository.create({
+            companyId: company.id,
+            firstName: payload.firstName.trim() || dto.firstName,
+            lastName: payload.lastName.trim() || dto.lastName,
+            email,
+            googleId: payload.googleId,
+            role: UserRole.OWNER,
+            status: UserStatus.ACTIVE,
+          });
+
+          return userRepository.save(newUser);
+        }),
+      );
 
       return this.sessionService.createSession(user, metadata);
     } catch (error: unknown) {

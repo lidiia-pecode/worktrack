@@ -100,6 +100,20 @@ export class CompaniesService {
     );
   }
 
+  /**
+   * Runs a sign-up once more when another one took its company's slug at the
+   * same moment. A failed insert ends the transaction, so `signUp` is the
+   * whole of it, and the second run picks the next free slug.
+   */
+  async retryOnTakenSlug<T>(signUp: () => Promise<T>): Promise<T> {
+    try {
+      return await signUp();
+    } catch (error) {
+      if (!this.isUniqueSlugViolation(error)) throw error;
+      return signUp();
+    }
+  }
+
   async create(
     name: string,
     managerOrRepo?: EntityManager | Repository<Company>,

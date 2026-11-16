@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { TrimAndLowercase } from 'src/lib/decorators';
 import {
   CompanyName,
@@ -53,6 +53,16 @@ export class GoogleUserPayload {
 export class CompleteGoogleSignupDto {
   @CompanyName()
   companyName!: string;
+
+  /** Only when Google didn't share it; otherwise Google's is kept. */
+  @IsOptional()
+  @PersonName('First name')
+  firstName?: string;
+
+  /** Only when Google didn't share it; otherwise Google's is kept. */
+  @IsOptional()
+  @PersonName('Last name')
+  lastName?: string;
 
   @IsNotEmpty()
   @IsString()

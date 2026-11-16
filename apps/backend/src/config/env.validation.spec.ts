@@ -50,3 +50,25 @@ describe('AUTH_COOKIE_SAMESITE', () => {
     expect(sameSite.validate('none').error).toBeDefined();
   });
 });
+
+describe('token secrets', () => {
+  const SECRET = 'a'.repeat(32);
+
+  const secretsError = (access: string, refresh: string) =>
+    envValidationSchema
+      .validate(
+        { ACCESS_TOKEN_SECRET: access, REFRESH_TOKEN_SECRET: refresh },
+        { allowUnknown: true, abortEarly: false },
+      )
+      .error?.details.filter(({ path }) => path[0] === 'REFRESH_TOKEN_SECRET');
+
+  it('refuses a refresh secret equal to the access secret', () => {
+    expect(secretsError(SECRET, SECRET)).toEqual([
+      expect.objectContaining({ type: 'any.invalid' }),
+    ]);
+  });
+
+  it('accepts two different secrets', () => {
+    expect(secretsError(SECRET, 'b'.repeat(32))).toEqual([]);
+  });
+});

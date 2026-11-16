@@ -17,6 +17,8 @@ export interface PeriodWeek {
 export const PLAN_MINUTES_STEP = 15;
 /** No plan can be longer than a day. */
 export const MAX_PLAN_MINUTES = 24 * 60;
+/** A day holds no more projects than quarter hours, so no period plan lists more. */
+export const MAX_PERIOD_PROJECTS = MAX_PLAN_MINUTES / PLAN_MINUTES_STEP;
 
 export const formatMinutes = (minutes: number): string => {
   const hours = Math.floor(minutes / 60);

@@ -4,7 +4,7 @@ import { BACKEND_URL } from "./lib/constants/backend-url";
 
 // Reset, invitation and Google links carry a one-time token in the URL, so
 // Referrer-Policy keeps the full URL from leaving the site. The backend sends
-// the same set (main.ts).
+// the same set (create-app.ts).
 const securityHeaders = [
   {
     key: "Strict-Transport-Security",
@@ -17,6 +17,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   devIndicators: { position: "bottom-right" },
+  poweredByHeader: false,
 
   experimental: {
     // A build cache Vercel restored once shipped a stale `globals.css` with

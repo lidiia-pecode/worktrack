@@ -26,9 +26,9 @@ describe('AuthController Google sign-in and sign-up', () => {
       stub({}),
       stub({}),
       stub<GoogleAuthService>({
-        validateGoogleLogin: jest
-          .fn()
-          .mockResolvedValue({ type: 'signup', googleUser: GOOGLE_USER }),
+        validateGoogleLogin: jest.fn((googleUser: unknown) =>
+          Promise.resolve({ type: 'signup', googleUser }),
+        ),
         createGoogleSignupToken: jest.fn().mockResolvedValue('signup-token'),
       }),
       stub({}),
@@ -52,6 +52,18 @@ describe('AuthController Google sign-in and sign-up', () => {
 
     expect(redirect).toHaveBeenCalledWith(
       'http://app.test/google/signup?token=signup-token',
+    );
+  });
+
+  it('names the missing name in the sign-up address, and no name', async () => {
+    await controller.googleSignupCallback(
+      { ...GOOGLE_USER, lastName: ' ' },
+      {},
+      res(),
+    );
+
+    expect(redirect).toHaveBeenCalledWith(
+      'http://app.test/google/signup?token=signup-token&ask=lastName',
     );
   });
 });

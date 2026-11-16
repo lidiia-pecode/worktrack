@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayMinSize,
   IsArray,
   IsBoolean,
@@ -15,7 +16,11 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { IsDateWithoutTimeString } from 'src/lib/validators/IsDateWithoutTimeString';
-import { MAX_PLAN_MINUTES, PLAN_MINUTES_STEP } from '../planning-period.util';
+import {
+  MAX_PERIOD_PROJECTS,
+  MAX_PLAN_MINUTES,
+  PLAN_MINUTES_STEP,
+} from '../planning-period.util';
 
 export class PeriodProjectPayload {
   @IsUUID()
@@ -54,6 +59,7 @@ export class PreviewPeriodPayload {
   endDate!: string;
 
   @IsArray()
+  @ArrayMaxSize(MAX_PERIOD_PROJECTS)
   @ValidateNested({ each: true })
   @Type(() => PeriodProjectPayload)
   projects!: PeriodProjectPayload[];
@@ -61,7 +67,11 @@ export class PreviewPeriodPayload {
 
 /** The plan to save: the same fields, with at least one project. */
 export class PlanPeriodPayload extends PreviewPeriodPayload {
+  // A property's own checks replace the inherited ones of the same kind, so
+  // the list's checks are all repeated here.
+  @IsArray()
   @ArrayMinSize(1)
+  @ArrayMaxSize(MAX_PERIOD_PROJECTS)
   projects: PeriodProjectPayload[] = [];
 }
 

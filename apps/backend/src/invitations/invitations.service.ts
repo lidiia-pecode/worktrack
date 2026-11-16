@@ -14,6 +14,7 @@ import {
   EntityManager,
   In,
   IsNull,
+  LessThanOrEqual,
   Not,
   Repository,
 } from 'typeorm';
@@ -54,6 +55,9 @@ export type PendingInvitation = Invitation & { expired: boolean };
 
 const ARCHIVED_TEAM_MESSAGE = 'Cannot invite into an archived team';
 
+const NOT_INVITABLE_BY_MANAGER =
+  "This address can't be invited. If they already work here, ask the owner to add them to your team.";
+
 const fullName = (user: User | null): string | null =>
   user ? `${user.firstName} ${user.lastName}` : null;
 
@@ -86,9 +90,36 @@ export class InvitationsService {
 
     this.validateInvitationRole(payload.role, user.role);
 
-    const teamId = await this.resolveInvitationTeamId(companyId, payload, user);
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    const teamId = await this.resolveInvitationTeamId(
+      companyId,
+      payload,
+      visibleTeamIds,
+    );
 
-    const existingUser = await this.usersService.findByEmailWithCompany(email);
+    const [existingUser, existingInvitation] = await Promise.all([
+      this.usersService.findByEmailWithCompany(email),
+      this.invitationRepository.findOne({
+        where: {
+          companyId,
+          email,
+          status: InvitationStatus.PENDING,
+        },
+      }),
+    ]);
+
+    // A manager learns nothing about an address outside their teams: the same
+    // answer for an account here or elsewhere and for an invitation they don't
+    // see. Replacing an expired invitation revokes it, so it too has to be one
+    // they see.
+    const isHiddenFromManager =
+      visibleTeamIds !== null &&
+      (Boolean(existingUser) ||
+        (existingInvitation !== null &&
+          !this.isInScope(existingInvitation, visibleTeamIds)));
+    if (isHiddenFromManager) {
+      throw new ConflictException(NOT_INVITABLE_BY_MANAGER);
+    }
 
     if (existingUser) {
       if (existingUser.companyId === companyId) {
@@ -101,31 +132,9 @@ export class InvitationsService {
       throw new ConflictException('This email address cannot be invited');
     }
 
-    const existingInvitation = await this.invitationRepository.findOne({
-      where: {
-        companyId,
-        email,
-        status: InvitationStatus.PENDING,
-      },
-    });
-
     if (existingInvitation && existingInvitation.expiresAt > new Date()) {
       throw new ConflictException(
         'An active invitation already exists for this email',
-      );
-    }
-
-    // Replacing an expired invitation revokes it, so it has to be one the
-    // caller could resend or revoke themselves.
-    if (
-      existingInvitation &&
-      !this.isInScope(
-        existingInvitation,
-        await this.teamVisibility.getVisibleTeamIds(user),
-      )
-    ) {
-      throw new ConflictException(
-        'An invitation for this email is already waiting',
       );
     }
 
@@ -175,12 +184,14 @@ export class InvitationsService {
   }
 
   async revoke(id: string, user: AuthUser): Promise<void> {
-    const invitation = await this.findPendingInScope(id, user);
+    await this.dataSource.transaction(async (manager) => {
+      const invitation = await this.findPendingInScope(id, user, manager);
 
-    invitation.status = InvitationStatus.REVOKED;
-    invitation.revokedAt = new Date();
+      invitation.status = InvitationStatus.REVOKED;
+      invitation.revokedAt = new Date();
 
-    await this.invitationRepository.save(invitation);
+      await manager.getRepository(Invitation).save(invitation);
+    });
   }
 
   /** Refuses an unusable token with the same codes the invitation page reads. */
@@ -210,14 +221,9 @@ export class InvitationsService {
     metadata?: SessionMetadata,
   ) {
     const user = await this.dataSource.transaction(async (manager) => {
-      const invitationRepository = manager.getRepository(Invitation);
-
       const userRepository = manager.getRepository(User);
 
-      const invitation = await this.findValidInvitation(
-        token,
-        invitationRepository,
-      );
+      const invitation = await this.lockValidInvitation(token, manager);
 
       const email = this.normalizeEmail(invitation.email);
 
@@ -259,14 +265,9 @@ export class InvitationsService {
     metadata?: SessionMetadata,
   ) {
     const user = await this.dataSource.transaction(async (manager) => {
-      const invitationRepository = manager.getRepository(Invitation);
-
       const userRepository = manager.getRepository(User);
 
-      const invitation = await this.findValidInvitation(
-        token,
-        invitationRepository,
-      );
+      const invitation = await this.lockValidInvitation(token, manager);
 
       const invitationEmail = this.normalizeEmail(invitation.email);
 
@@ -343,6 +344,38 @@ export class InvitationsService {
     const saved = await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Invitation);
 
+      // A resend holds its invitation first, as an acceptance does, so the two
+      // and a revoke at the same moment take turns: one that comes second
+      // finds it no longer pending and is refused.
+      if (invitation.id) {
+        const isStillPending = await repository.exists({
+          where: { id: invitation.id, status: InvitationStatus.PENDING },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!isStillPending) {
+          throw new NotFoundException('Invitation not found');
+        }
+      }
+
+      // Replacing an expired invitation revokes it, so it is held first as
+      // well, and the invite is refused if it was resent, accepted or revoked
+      // since it was read.
+      if (replaces) {
+        const isStillExpired = await repository.exists({
+          where: {
+            id: replaces.id,
+            status: InvitationStatus.PENDING,
+            expiresAt: LessThanOrEqual(new Date()),
+          },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!isStillExpired) {
+          throw new ConflictException(
+            'The invitation for this email changed at the same moment. Try again.',
+          );
+        }
+      }
+
       // Checked again under a lock, so a team archive at the same moment either
       // waits and then finds this invitation pending, or finishes first and this is refused.
       if (invitation.teamId) {
@@ -409,17 +442,24 @@ export class InvitationsService {
     );
   }
 
-  /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
+  /**
+   * A manager gets the same answer for an invitation outside their teams as
+   * for a missing one. Given a transaction, it holds the invitation for it.
+   */
   private async findPendingInScope(
     id: string,
     user: AuthUser,
+    manager?: EntityManager,
   ): Promise<Invitation> {
-    const invitation = await this.invitationRepository.findOne({
+    const repository =
+      manager?.getRepository(Invitation) ?? this.invitationRepository;
+    const invitation = await repository.findOne({
       where: {
         id,
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
       },
+      ...(manager && { lock: { mode: 'pessimistic_write' as const } }),
     });
 
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
@@ -451,6 +491,27 @@ export class InvitationsService {
     }
 
     return invitation;
+  }
+
+  /**
+   * The invitation an acceptance completes, held for its transaction, so a
+   * revoke or a resend at the same moment waits for it, or finishes first and
+   * this finds the result.
+   */
+  private async lockValidInvitation(
+    token: string,
+    manager: EntityManager,
+  ): Promise<Invitation> {
+    const repository = manager.getRepository(Invitation);
+
+    // Locked on its own: Postgres can't lock the outer joins read below.
+    await repository.findOne({
+      select: { id: true },
+      where: { tokenHash: this.hashToken(token?.trim() ?? '') },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    return this.findValidInvitation(token, repository);
   }
 
   private async findValidInvitation(
@@ -515,7 +576,7 @@ export class InvitationsService {
   private async resolveInvitationTeamId(
     companyId: string,
     payload: CreateInvitationPayload,
-    user: AuthUser,
+    visibleTeamIds: string[] | null,
   ): Promise<string | null> {
     const { teamId } = payload;
 
@@ -526,8 +587,6 @@ export class InvitationsService {
     if (!teamId) {
       throw new BadRequestException('An employee must be invited into a team');
     }
-
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
       throw new ForbiddenException('You can only invite into teams you lead');

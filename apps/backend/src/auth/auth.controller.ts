@@ -15,10 +15,9 @@ import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
 import { AuthService } from './services/auth.service';
 import { CookieService } from './services/cookie.service';
-import { CurrentUser, SessionId } from 'src/lib/decorators';
+import { CurrentUser, Public, SessionId } from 'src/lib/decorators';
 
 import {
-  AccessGuard,
   GoogleLinkGuard,
   GoogleLoginGuard,
   GoogleSignupGuard,
@@ -36,7 +35,7 @@ import {
   LimitPerSession,
   REFRESHES_PER_MINUTE,
 } from './rate-limit/rate-limit.decorators';
-import { SuccessResponse, TokenResponse } from './dtos/auth-responses.dto';
+import { SuccessResponse } from './dtos/auth-responses.dto';
 import {
   CompleteGoogleSignupDto,
   GoogleUserPayload,
@@ -52,6 +51,7 @@ import { GoogleAuthService } from './services/google-auth.service';
 import { Serialize } from 'src/lib/interceptors';
 import { ForgotPasswordDto, ResetPasswordDto } from './dtos/reset-password.dto';
 import { AuthErrorCode, authError } from './auth-error';
+import { missingGoogleNames } from './auth-strategies/google';
 import {
   GoogleLinkCallbackFilter,
   GoogleLoginCallbackFilter,
@@ -116,13 +116,21 @@ export class AuthController {
       result.googleUser,
     );
 
-    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
+    // The sign-up page asks for the names Google didn't share from the start.
+    const query = new URLSearchParams({ token: signupToken });
+    for (const field of missingGoogleNames(result.googleUser)) {
+      query.append('ask', field);
+    }
+
+    return res.redirect(`${frontendUrl}/google/signup?${query}`);
   }
 
+  @Public()
   @Get('/google/signup')
   @UseGuards(GoogleSignupGuard)
   googleSignup() {}
 
+  @Public()
   @Get('google/signup/callback')
   @UseFilters(GoogleSignupCallbackFilter)
   @UseGuards(GoogleSignupGuard)
@@ -134,16 +142,16 @@ export class AuthController {
     return this.handleGoogleCallback('signup', googleUser, metadata, res);
   }
 
+  @Public()
   @Post('google/signup/complete')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async completeGoogleSignup(
     @Body() dto: CompleteGoogleSignupDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<SuccessResponse> {
     const tokens = await this.googleAuthService.completeGoogleSignup(
-      dto.token,
-      dto.companyName,
+      dto,
       metadata,
     );
 
@@ -154,14 +162,16 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
+  @Public()
   @Get('/google')
   @UseGuards(GoogleLoginGuard)
   googleLogin() {}
 
+  @Public()
   @Get('google/callback')
   @UseFilters(GoogleLoginCallbackFilter)
   @UseGuards(GoogleLoginGuard)
@@ -174,12 +184,12 @@ export class AuthController {
   }
 
   @Get('google/link')
-  @UseGuards(AccessGuard, GoogleLinkGuard)
+  @UseGuards(GoogleLinkGuard)
   googleLink() {}
 
   @Get('google/link/callback')
   @UseFilters(GoogleLinkCallbackFilter)
-  @UseGuards(AccessGuard, GoogleLinkGuard)
+  @UseGuards(GoogleLinkGuard)
   async googleLinkCallback(
     @Req() req: GoogleLinkRequest,
     @Res() res: Response,
@@ -198,13 +208,14 @@ export class AuthController {
   // Each request guesses the password once, so it is limited as sign-in is;
   // the body carries no email for the per-account limit.
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('google/link/complete')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async completeGoogleLinkWithPassword(
     @Body() dto: CompleteGoogleLinkDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.googleAuthService.completeGoogleLinkWithPassword(
       dto.token,
       dto.password,
@@ -218,19 +229,20 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('signup')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async signup(
     @Body() payload: SignUpPayload,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const user = await this.authService.signup(payload);
 
     const tokens = await this.sessionService.createSession(user, metadata);
@@ -242,20 +254,21 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('signin')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   @UseGuards(LocalAuthGuard)
   async login(
     @CurrentUser() user: AuthUser,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.sessionService.createSession(user, metadata);
 
     this.cookieService.setAuthCookies(
@@ -265,20 +278,21 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
   @LimitPerSession(REFRESHES_PER_MINUTE)
+  @Public()
   @Post('refresh')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   @UseGuards(RefreshGuard)
   async refresh(
     @CurrentAuth() auth: AuthContext,
     @RefreshToken() refreshToken: string,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.authService.refreshAccessToken(
       refreshToken,
       auth,
@@ -296,13 +310,12 @@ export class AuthController {
     }
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
   @Post('logout')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async logout(
     @SessionId() sessionId: string,
     @Res({ passthrough: true }) res: Response,
@@ -317,7 +330,6 @@ export class AuthController {
 
   @Post('logout-all')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async logoutAll(
     @CurrentUser() authUser: AuthUser,
     @Res({ passthrough: true }) res: Response,
@@ -334,7 +346,6 @@ export class AuthController {
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Patch('password')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async changePassword(
     @CurrentUser() authUser: AuthUser,
     @SessionId() sessionId: string,
@@ -354,6 +365,7 @@ export class AuthController {
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('forgot-password')
   @Serialize(SuccessResponse)
   async forgotPassword(
@@ -367,13 +379,14 @@ export class AuthController {
   }
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('reset-password')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async resetPassword(
     @Body() dto: ResetPasswordDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.authService.resetPassword(
       dto.token,
       dto.newPassword,
@@ -387,7 +400,7 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 }

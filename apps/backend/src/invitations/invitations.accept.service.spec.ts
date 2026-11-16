@@ -1,10 +1,12 @@
 import 'reflect-metadata';
 import { createHash, randomBytes } from 'crypto';
+import { NotFoundException } from '@nestjs/common';
 import { DataSource, IsNull } from 'typeorm';
 
 import { AppDataSource } from 'src/data-source';
 import { todayISODate } from 'src/capacity/working-days.util';
 import { timeZoneOnAnotherDay } from 'src/lib/testing/time-zones';
+import { waitUntilBlockedBy } from 'src/lib/testing/locks';
 import { Company } from 'src/companies/entities/company.entity';
 import { Team } from 'src/teams/entities/team.entity';
 import { TeamMembership } from 'src/teams/entities/team-membership.entity';
@@ -25,6 +27,7 @@ import { Notification } from 'src/notifications/entities/notification.entity';
 import { NotificationsService } from 'src/notifications/notifications.service';
 import { NotificationType } from 'src/notifications/enums/notification-type.enum';
 import { InvitationsService } from './invitations.service';
+import { UnusableInvitationCode } from './unusable-invitation';
 
 /**
  * Accepting an invitation writes a user, a membership and the invitation
@@ -369,6 +372,78 @@ describe('InvitationsService acceptance', () => {
     });
   });
 
+  describe('a revoke and an acceptance at the same moment', () => {
+    /**
+     * Runs `second` while another transaction holds the invitation and has
+     * moved it to `status`, then lets that one commit, as the first of two
+     * clicks at the same moment would.
+     */
+    const whileHeldAs = async <T>(
+      invitationId: string,
+      status: InvitationStatus,
+      second: () => Promise<T>,
+    ): Promise<PromiseSettledResult<T>> => {
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+
+      try {
+        await holder.manager.update(Invitation, invitationId, {
+          status,
+          ...(status === InvitationStatus.ACCEPTED
+            ? { acceptedAt: new Date() }
+            : { revokedAt: new Date() }),
+        });
+        const pending = Promise.allSettled([second()]);
+        await waitUntilBlockedBy(dataSource, holder);
+        await holder.commitTransaction();
+
+        const [result] = await pending;
+        return result;
+      } finally {
+        if (holder.isTransactionActive) await holder.rollbackTransaction();
+        await holder.release();
+      }
+    };
+
+    const invitationFor = (email: string) =>
+      dataSource.getRepository(Invitation).findOneByOrFail({ email });
+
+    it('refuses a revoke that comes second, and keeps the acceptance', async () => {
+      const email = `race-revoke-${RUN}@invitations-accept.test`;
+      await createInvitation(email, alpha);
+      const { id } = await invitationFor(email);
+
+      const revoke = await whileHeldAs(id, InvitationStatus.ACCEPTED, () =>
+        service.revoke(id, manager),
+      );
+
+      expect(revoke).toMatchObject({
+        status: 'rejected',
+        reason: expect.any(NotFoundException) as unknown,
+      });
+      await expect(invitationFor(email)).resolves.toMatchObject({
+        status: InvitationStatus.ACCEPTED,
+      });
+    });
+
+    it('refuses an acceptance that comes second, and creates nobody', async () => {
+      const email = `race-accept-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, alpha);
+      const { id } = await invitationFor(email);
+
+      const acceptance = await whileHeldAs(id, InvitationStatus.REVOKED, () =>
+        service.completeWithPassword(token, 'Secret123', 'Ruby', 'Lane'),
+      );
+
+      expect(acceptance).toMatchObject({
+        status: 'rejected',
+        reason: { response: { code: UnusableInvitationCode.REVOKED } },
+      });
+      await expect(findUser(email)).resolves.toBeNull();
+    });
+  });
+
   describe('the joined notification', () => {
     let notifications: NotificationsService;
 
@@ -415,33 +490,77 @@ describe('InvitationsService acceptance', () => {
       await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(1);
     });
 
-    it('tells nobody when the inviter has been archived', async () => {
-      const archivedInviter = await createUser(
-        'archivedinviter',
-        UserRole.MANAGER,
-      );
-      await dataSource
-        .getRepository(User)
-        .update(archivedInviter.id, { status: UserStatus.DEACTIVATED });
+    /** A team led by `managerId`, open or closed, with its own invitation. */
+    const leadTeam = async (
+      name: string,
+      managerId: string,
+      leftAt: string | null = null,
+    ): Promise<string> => {
+      const teamId = await createTeam(name);
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId,
+        userId: managerId,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: JOINED_AT,
+        leftAt,
+      });
+      return teamId;
+    };
 
-      const email = `notify-archived-${RUN}@invitations-accept.test`;
-      const token = await createInvitation(
-        email,
-        null,
-        UserRole.MANAGER,
-        archivedInviter.id,
-      );
-
-      await service.completeWithPassword(
-        token,
-        'Secret123',
-        'Olivia',
-        'Brooks',
-      );
+    const joinBy = async (
+      name: string,
+      teamId: string | null,
+      invitedById: string,
+      role: UserRole = UserRole.EMPLOYEE,
+    ): Promise<string[]> => {
+      const email = `notify-${name}-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, teamId, role, invitedById);
+      await service.completeWithPassword(token, 'Secret123', 'Noah', 'Hughes');
 
       const joined = await findUser(email);
+      const notices = await notificationsAbout(joined!.id);
+      return notices.map((notice) => notice.recipientId);
+    };
 
-      await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(0);
+    it('tells the owner who invited, not the team manager', async () => {
+      const owner = await createUser('notifyowner', UserRole.OWNER);
+
+      await expect(joinBy('by-owner', alpha, owner.id)).resolves.toEqual([
+        owner.id,
+      ]);
+      await expect(
+        joinBy('manager-by-owner', null, owner.id, UserRole.MANAGER),
+      ).resolves.toEqual([owner.id]);
+    });
+
+    it('tells the current manager once the inviter no longer leads the team', async () => {
+      const formerLead = await createUser('formerlead', UserRole.MANAGER);
+      const team = await leadTeam('Handed over', formerLead.id, TODAY);
+      const currentLead = await createUser('currentlead', UserRole.MANAGER);
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: team,
+        userId: currentLead.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: TODAY,
+      });
+
+      await expect(joinBy('handed-over', team, formerLead.id)).resolves.toEqual(
+        [currentLead.id],
+      );
+    });
+
+    it('tells nobody when the team has no active manager', async () => {
+      const archivedLead = await createUser('archivedlead', UserRole.MANAGER);
+      const team = await leadTeam('Archived lead', archivedLead.id);
+      await dataSource
+        .getRepository(User)
+        .update(archivedLead.id, { status: UserStatus.DEACTIVATED });
+
+      await expect(joinBy('no-lead', team, archivedLead.id)).resolves.toEqual(
+        [],
+      );
     });
 
     it('lists only the caller’s own, and marks them read', async () => {

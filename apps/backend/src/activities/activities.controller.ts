@@ -7,9 +7,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { ActivitiesService } from './activities.service';
@@ -29,7 +27,6 @@ import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('activities')
-@UseGuards(AccessGuard, RolesGuard)
 export class ActivitiesController {
   constructor(private readonly service: ActivitiesService) {}
 

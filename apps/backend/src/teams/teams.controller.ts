@@ -10,7 +10,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { TeamsService } from './teams.service';
 import {
@@ -28,14 +27,12 @@ import {
 } from './dtos/team-response.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 
 @Controller('teams')
-@UseGuards(AccessGuard, RolesGuard)
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 

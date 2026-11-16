@@ -736,7 +736,8 @@ A `SUSPENDED` company cannot be updated and cannot authenticate.
 ### Access
 
 A new company is created by self-service signup, which creates the `Company` and
-its first `OWNER` together. Everyone else joins by **invitation**: an owner or
+its first `OWNER` together; two companies with the same name signing up at the
+same moment both succeed. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
 the invitee completes signup by setting a password or via Google. An owner may
 invite a manager or an employee, a manager only an employee into a team they
@@ -747,12 +748,17 @@ it is accepted or revoked. There is no other way in: nobody is created directly.
 Accepting an invitation that carries a team creates the team membership in the
 same transaction that creates the user — a `MEMBER` for an employee, the team's
 `MANAGER` for a manager. Only the owner invites managers and only the owner
-appoints a team's manager, so this is not a second route to leading a team. The same transaction notifies whoever sent the invitation, if they
-are still active, that the person has joined, so they can put them on a project;
-it is an in-app notification only, and each person reads only their own. An
+appoints a team's manager, so this is not a second route to leading a team. The same transaction tells whoever answers for the new
+person that they joined, so they can put them on a project: the owner who
+invited them, otherwise the team's current manager, who is the inviting
+manager while they still lead it, and only someone active, so nobody when the
+team has no active manager. It is an in-app notification only, and each person
+reads only their own. An
 absence that removes someone's plans tells them too (see Planning).
 A notification is deleted 60 days after it was read; unread ones are kept.
-Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`.
+Invitation tokens are stored hashed and are `PENDING | ACCEPTED | REVOKED`;
+an acceptance, a revoke and a resend at the same moment take turns, so an
+accepted invitation can't be revoked and a revoked one can't be accepted.
 
 An invitation is valid for seven days, a product rule rather than a setting. Its
 email names the company, the sender, the role and the team. The invitation is
@@ -764,7 +770,10 @@ or revoked. A resend issues a new link and a fresh seven days, the old link stop
 working, and sending and resending are each limited per session. Inviting an
 address that has an account in another company is refused with a neutral
 message: it shows the address cannot be invited, but not which company it
-belongs to. A link that cannot be used says why — expired,
+belongs to. A manager gets one answer for any address outside their teams — an
+account here or elsewhere, or a pending invitation they don't see: "This
+address can't be invited. If they already work here, ask the owner to add them
+to your team." The owner keeps the exact reasons. A link that cannot be used says why — expired,
 revoked, already accepted, unknown, or for an address that has since gained an
 account — and, when expired or revoked, whom to ask. Someone already signed in
 who opens a valid link is not offered the form: accepting would create another
@@ -773,7 +782,8 @@ WorkTrack or to sign out and accept.
 
 Everywhere a password is chosen — sign-up, invitation, reset, Settings — the rule
 is 8–100 characters with an upper-case letter, a lower-case letter and a digit;
-an existing password is only checked for presence. Names are 1–100 characters and
+an existing password is checked for presence and the same 100-character cap, so
+every password can still sign in. Names are 1–100 characters and
 company names 2–100 characters of any kind, without line breaks or invisible
 characters. Sign-in says that an account is deactivated or a company suspended
 only after a correct password. Asking for a password reset answers such an
@@ -782,7 +792,9 @@ reset link is on its way") but sends nothing, and a link sent before is
 refused with the sign-in message when it is used, and every Google path refuses an address Google
 has not verified. "Continue with Google" on the sign-in
 page signs in only accounts WorkTrack knows; an unknown one is pointed to the
-invitation email, and only the sign-up page starts a company. A failed Google
+invitation email, and only the sign-up page starts a company; when Google
+doesn't share a first or last name, that page asks for it before the company's
+name. A failed Google
 sign-in returns to the page it started from with a message, never an error on the
 backend's host. A team with pending invitations can't be archived; the owner
 revokes them on its panel first (§5).
@@ -1202,15 +1214,21 @@ see, and how a new company gets started. §7 plans that work.
 Every gap found in the original review is closed: managers cannot widen their
 own reach, invitations place people in the inviter's team, project rosters and
 staffing are scoped to the caller, and project and admin routes are guarded by
-role on the server and in the pages. What a manager may see and change is one
+role on the server and in the pages. Every route needs a session unless it is
+marked public, and a test that lists every route with the roles it allows
+fails when a route's access changes. What a manager may see and change is one
 rule everywhere — the people in the teams they lead, on the days they were in
-them, plus themselves.
+them, plus themselves — and they learn nothing about anyone outside it, Invite
+and Planning included. Sign-in takes only what the app sends: JSON bodies, so
+another site can't sign a browser in to its own account, and the tokens stay
+in cookies, never in a response.
 [`permission-model.md`](./permission-model.md) describes the model.
 
 ### Engineering state
 
-This is the one place that counts the tests. Backend coverage is fifty-two
-suites and 941 tests, covering the role-visibility filters and reach by team
+This is the one place that counts the tests. Backend coverage is fifty-one
+suites and 1012 tests, covering the roles of every route and the whole app over
+HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
 planning rules, an absence across a locked month and the notice to whoever made the plans it removes, who added and changed a time entry or an absence, the lock
@@ -1220,7 +1238,7 @@ one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-seven Vitest files and 462 tests: its date, month,
+The frontend has seventy-seven Vitest files and 464 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1336,6 +1354,7 @@ tooling, documentation and small fixes are left out.
 | #72 | One visual language, and screens that fit: an amber warning, pills only for what someone has to act on and quiet text for facts, leavers shown by their last day; one toolbar total with a bar on every page with a period, kept while content loads, and a line with Try again when plans fail to load; Review my time in Reports' band; one side panel layout with actions in the top bar, the key fact under the name and editing in place; one working hours field, and a skipped setup guide keeping its answers and the time zone; one row and one chip in Team time and Planning, sortable by person and total, Team time fitting 1280px with weekends shown when needed; no "Plan a period" on a locked week; dates in US English; the week calendar, Settings, Periods, Plan a period and Reports fitting tablets and phones, and an unread mark on the phone menu |
 | #73 | A look of its own: one warm page tone and a deeper teal, ten project colours made for the product, a new typeface with aligned figures and no capital headings, corners by role, one teal bar for where you are and a neutral hover; no icon tiles, card shadows, glows or gradients on the work screens, and Reports' donuts as bars; logged time and plans filled alike in every week view, the expected hours one line across Log my time, locked days set apart from open ones; a three-bar mark for the logo and a brand pattern drawn from it; the sign-in pages and the home page's first screen on one dark, softly lit surface that fills the window, with only the logo and the form on a phone |
 | #74 | Absences, plans and month end at the edges: an absence that runs into a locked month keeps its locked days, reason and note while its open days can still change, deleting it removing only those; an absence telling whoever made the plans it removes, within what they can see and without its type, and its form waiting until it knows them; plans saved one way only, with Planning closing the days before someone's account; the month-end deadline as an amber lock on the timesheet, Team time and Reports; Reopen saying when working hours still can't change; logging time for someone on no project pointing to Projects |
+| #75 | Security and an API safety net: every route closed to anyone signed out unless it is marked public, under a test that lists every route with the roles it allows and one that runs the whole app over HTTP; a manager learning nothing about people outside their teams — one answer from Invite for any address they can't see, a former member's time form listing only the projects from their days in the team, the join notice going to the owner who invited or the team's current manager, Planning refusing before it checks anyone's status; sign-in taking JSON only, its body checked before the password is hashed, different token secrets required, no token in a response, a state cookie per Google flow and no `X-Powered-By`; an invitation revoked and accepted at the same moment ending one way, two companies with the same name signing up at once, and a Google sign-up asking for a name Google didn't share |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1435,7 +1454,8 @@ the same reason. On 16 November 2026 the goal for the coming work became an
 internal presentation of WorkTrack, not a launch, and the order became:
 absences, plans and month end at the edges first, then the application's
 security and an API safety net, then access to teams (Configurable
-permissions, below). What is left of Areas 3 and 4, Team time and Planning on
+permissions, below). The first two are delivered (PR #74 and PR #75), so access
+to teams comes next. What is left of Areas 3 and 4, Team time and Planning on
 a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 

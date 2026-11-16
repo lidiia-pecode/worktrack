@@ -353,6 +353,73 @@ describe('PlanningService', () => {
     });
   });
 
+  describe("somebody outside a manager's reach", () => {
+    const attempts = (userId: string) => {
+      const range = { userId, startDate: MONDAY, endDate: FRIDAY };
+      const projects = [{ projectId, minutesPerDay: HOUR }];
+
+      return [
+        () => service.planPeriod({ ...range, projects }, manager),
+        () => service.previewPeriod({ ...range, projects }, manager),
+        () => service.deletePeriodPlans({ ...range, projectId }, manager),
+      ];
+    };
+
+    const answersTo = (userId: string) =>
+      Promise.all(
+        attempts(userId).map((attempt) =>
+          attempt().then(
+            () => 'allowed',
+            (error: Error) => `${error.name}: ${error.message}`,
+          ),
+        ),
+      );
+
+    it('is refused the same way whether they are active or not', async () => {
+      const whileActive = await answersTo(outsider.id);
+
+      try {
+        await dataSource
+          .getRepository(User)
+          .update({ id: outsider.id }, { status: UserStatus.DEACTIVATED });
+
+        expect(await answersTo(outsider.id)).toEqual(whileActive);
+      } finally {
+        await dataSource
+          .getRepository(User)
+          .update({ id: outsider.id }, { status: UserStatus.ACTIVE });
+      }
+      for (const answer of whileActive) {
+        expect(answer).toMatch(/^ForbiddenException/);
+      }
+    });
+
+    // Another write holding the person shows whether the refusal waits for
+    // their lock: it must come before it.
+    it('is refused without locking them', async () => {
+      const entryId = await existingEntry(outsider.id, MONDAY, HOUR);
+      const holder = dataSource.createQueryRunner();
+      await holder.connect();
+      await holder.startTransaction();
+
+      try {
+        await holder.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+          outsider.id,
+        ]);
+
+        for (const attempt of [
+          ...attempts(outsider.id),
+          () => service.delete(entryId, manager),
+        ]) {
+          await expect(attempt()).rejects.toThrow(ForbiddenException);
+        }
+      } finally {
+        await holder.rollbackTransaction();
+        await holder.release();
+      }
+    });
+  });
+
   describe('write rules', () => {
     it('refuses a plan on an archived project', async () => {
       await dataSource

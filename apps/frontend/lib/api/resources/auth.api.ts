@@ -20,8 +20,12 @@ const users = createClient({
 });
 
 export const AuthClient = {
-  completeGoogleSignup: (data: { token: string; companyName: string }) =>
-    auth.post("/google/signup/complete", data),
+  completeGoogleSignup: (data: {
+    token: string;
+    companyName: string;
+    firstName?: string;
+    lastName?: string;
+  }) => auth.post("/google/signup/complete", data),
 
   completeGoogleLink: (data: { token: string; password: string }) =>
     auth.post("/google/link/complete", data),

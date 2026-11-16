@@ -27,6 +27,8 @@ import { UsersService } from 'src/users/users.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ReportingService } from 'src/reporting/reporting.service';
 import { PlanningService } from 'src/planning/planning.service';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dto';
@@ -63,6 +65,8 @@ describe('ProjectsService membership scope', () => {
   let alphaMember: AuthUser; // in "Alpha"
   let betaMember: AuthUser; // in "Beta"
   let leaver: AuthUser; // in "Alpha", archived by the archiving tests
+  let alphaId: string;
+  let betaId: string;
 
   let activityId: string;
 
@@ -205,6 +209,9 @@ describe('ProjectsService membership scope', () => {
     const beta = await dataSource
       .getRepository(Team)
       .save({ companyId, name: `Beta ${RUN}` });
+
+    alphaId = alpha.id;
+    betaId = beta.id;
 
     await addToTeam(alpha.id, alphaManager, TeamRole.MANAGER);
     await addToTeam(alpha.id, alphaMember, TeamRole.MEMBER);
@@ -589,6 +596,116 @@ describe('ProjectsService membership scope', () => {
       await expect(loggableProjectIds(alphaManager)).resolves.not.toContain(
         projectId,
       );
+    });
+  });
+
+  describe("a former member's projects", () => {
+    const LEFT_ALPHA_ON = '2026-03-01';
+    const PAGE = Object.assign(new AssignableActivitiesQuery(), {
+      pageSize: 50,
+    });
+
+    let mover: AuthUser; // in "Alpha" until LEFT_ALPHA_ON, then in "Beta"
+    let loggedInAlpha: string;
+    let plannedInAlpha: string;
+    let loggedInBeta: string;
+    let untouched: string;
+
+    const loggableProjectIds = async (
+      caller: AuthUser,
+      userId: string,
+    ): Promise<string[]> => {
+      const query = Object.assign(new AssignableActivitiesQuery(), {
+        ...PAGE,
+        userId,
+      });
+      const { results } = await service.listAssignableActivities(query, caller);
+
+      return results
+        .map((projectActivity) => projectActivity.project.id)
+        .sort();
+    };
+
+    const logTime = async (projectId: string, date: string) => {
+      const projectActivity = await dataSource
+        .getRepository(ProjectActivity)
+        .findOneByOrFail({ projectId });
+      await dataSource.getRepository(TimeLog).save({
+        companyId,
+        userId: mover.id,
+        projectActivityId: projectActivity.id,
+        minutes: 60,
+        date,
+      });
+    };
+
+    beforeAll(async () => {
+      mover = await createUser('mover', UserRole.EMPLOYEE);
+      await dataSource.getRepository(TeamMembership).save([
+        {
+          companyId,
+          teamId: alphaId,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: JOINED_AT,
+          leftAt: LEFT_ALPHA_ON,
+        },
+        {
+          companyId,
+          teamId: betaId,
+          userId: mover.id,
+          roleInTeam: TeamRole.MEMBER,
+          joinedAt: LEFT_ALPHA_ON,
+        },
+      ]);
+
+      [loggedInAlpha, plannedInAlpha, loggedInBeta, untouched] =
+        await Promise.all(
+          [
+            'logged in alpha',
+            'planned in alpha',
+            'logged in beta',
+            'untouched',
+          ].map((name) => createProject(name, [mover])),
+        );
+      for (const projectId of [
+        loggedInAlpha,
+        plannedInAlpha,
+        loggedInBeta,
+        untouched,
+      ]) {
+        await linkActivity(projectId);
+      }
+
+      await logTime(loggedInAlpha, '2026-02-27');
+      await dataSource.getRepository(PlanningEntry).save({
+        companyId,
+        userId: mover.id,
+        projectId: plannedInAlpha,
+        plannedMinutes: 60,
+        date: '2026-01-15',
+      });
+      await logTime(loggedInBeta, LEFT_ALPHA_ON);
+    });
+
+    it('lists to their former manager only the projects with their records in the team', async () => {
+      await expect(loggableProjectIds(alphaManager, mover.id)).resolves.toEqual(
+        [loggedInAlpha, plannedInAlpha].sort(),
+      );
+    });
+
+    it('lists every project of theirs to their current manager and the owner', async () => {
+      const all = [
+        loggedInAlpha,
+        plannedInAlpha,
+        loggedInBeta,
+        untouched,
+      ].sort();
+
+      await expect(loggableProjectIds(betaManager, mover.id)).resolves.toEqual(
+        all,
+      );
+      await expect(loggableProjectIds(owner, mover.id)).resolves.toEqual(all);
     });
   });
 

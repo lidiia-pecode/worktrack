@@ -7,7 +7,6 @@ import {
   Param,
   Patch,
   Post,
-  UseGuards,
 } from '@nestjs/common';
 import { CompaniesService } from './companies.service';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -19,12 +18,10 @@ import {
   StandardDayChangeParams,
 } from './dtos/standard-day.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { Serialize } from 'src/lib/interceptors';
 import { CapacityService } from 'src/capacity/capacity.service';
 
 @Controller('company')
-@UseGuards(AccessGuard, RolesGuard)
 @Serialize(CompanyResponseDto)
 export class CompaniesController {
   constructor(
