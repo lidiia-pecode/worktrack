@@ -35,7 +35,7 @@ import {
   LimitPerSession,
   REFRESHES_PER_MINUTE,
 } from './rate-limit/rate-limit.decorators';
-import { SuccessResponse, TokenResponse } from './dtos/auth-responses.dto';
+import { SuccessResponse } from './dtos/auth-responses.dto';
 import {
   CompleteGoogleSignupDto,
   GoogleUserPayload,
@@ -137,12 +137,12 @@ export class AuthController {
 
   @Public()
   @Post('google/signup/complete')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async completeGoogleSignup(
     @Body() dto: CompleteGoogleSignupDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<SuccessResponse> {
     const tokens = await this.googleAuthService.completeGoogleSignup(
       dto.token,
       dto.companyName,
@@ -156,7 +156,7 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
@@ -204,12 +204,12 @@ export class AuthController {
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @Public()
   @Post('google/link/complete')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async completeGoogleLinkWithPassword(
     @Body() dto: CompleteGoogleLinkDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.googleAuthService.completeGoogleLinkWithPassword(
       dto.token,
       dto.password,
@@ -223,7 +223,7 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
@@ -231,12 +231,12 @@ export class AuthController {
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Public()
   @Post('signup')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async signup(
     @Body() payload: SignUpPayload,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const user = await this.authService.signup(payload);
 
     const tokens = await this.sessionService.createSession(user, metadata);
@@ -248,7 +248,7 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
@@ -256,13 +256,13 @@ export class AuthController {
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Public()
   @Post('signin')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   @UseGuards(LocalAuthGuard)
   async login(
     @CurrentUser() user: AuthUser,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.sessionService.createSession(user, metadata);
 
     this.cookieService.setAuthCookies(
@@ -272,21 +272,21 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
   @LimitPerSession(REFRESHES_PER_MINUTE)
   @Public()
   @Post('refresh')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   @UseGuards(RefreshGuard)
   async refresh(
     @CurrentAuth() auth: AuthContext,
     @RefreshToken() refreshToken: string,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.authService.refreshAccessToken(
       refreshToken,
       auth,
@@ -304,7 +304,7 @@ export class AuthController {
     }
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 
@@ -375,12 +375,12 @@ export class AuthController {
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @Public()
   @Post('reset-password')
-  @Serialize(TokenResponse)
+  @Serialize(SuccessResponse)
   async resetPassword(
     @Body() dto: ResetPasswordDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<TokenResponse> {
+  ): Promise<SuccessResponse> {
     const tokens = await this.authService.resetPassword(
       dto.token,
       dto.newPassword,
@@ -394,7 +394,7 @@ export class AuthController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 }

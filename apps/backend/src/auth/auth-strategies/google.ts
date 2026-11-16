@@ -10,6 +10,7 @@ import { CookieStateStore } from './cookie-state-store';
 
 export function getGoogleStrategyOptions(
   configService: ConfigService,
+  flow: string,
   callbackURL: string,
 ) {
   return {
@@ -18,7 +19,7 @@ export function getGoogleStrategyOptions(
     callbackURL,
     scope: ['email', 'profile'],
     state: true,
-    store: new CookieStateStore(configService),
+    store: new CookieStateStore(configService, flow),
   };
 }
 
@@ -56,6 +57,7 @@ export class GoogleLoginStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'login',
         configService.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
       ),
     );
@@ -80,6 +82,7 @@ export class GoogleSignupStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'signup',
         configService.getOrThrow<string>('GOOGLE_SIGNUP_CALLBACK_URL'),
       ),
     );
@@ -104,6 +107,7 @@ export class GoogleLinkStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'link',
         configService.getOrThrow<string>('GOOGLE_LINK_CALLBACK_URL'),
       ),
     );
@@ -128,6 +132,7 @@ export class GoogleInvitationStrategy extends PassportStrategy(
     super(
       getGoogleStrategyOptions(
         configService,
+        'invitation',
         configService.getOrThrow<string>('GOOGLE_INVITATION_CALLBACK_URL'),
       ),
     );

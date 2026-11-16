@@ -7,10 +7,19 @@ import type {
 } from 'passport-oauth2';
 import { ConfigService } from '@nestjs/config';
 
+/**
+ * Keeps the OAuth state in a cookie of the flow's own, so a Google flow
+ * started in another tab doesn't overwrite this one's and fail it.
+ */
 export class CookieStateStore implements StateStore {
-  private readonly cookieName = 'oauth_state';
+  private readonly cookieName: string;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    flow: string,
+  ) {
+    this.cookieName = `oauth_state_${flow}`;
+  }
 
   store(
     req: Request,

@@ -31,6 +31,7 @@ import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
 
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { GoogleUserPayload } from 'src/auth/dtos/auth.dto';
+import { SuccessResponse } from 'src/auth/dtos/auth-responses.dto';
 import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
 import { UserRole } from 'src/users/enums/user-role.enum';
@@ -104,11 +105,12 @@ export class InvitationsController {
 
   @Public()
   @Post('complete-password')
+  @Serialize(SuccessResponse)
   async completeWithPassword(
     @Body() dto: CompleteInvitationDto,
     @ReqMetadata() metadata: SessionMetadata,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<SuccessResponse> {
     const tokens = await this.invitationsService.completeWithPassword(
       dto.token,
       dto.password,
@@ -124,7 +126,7 @@ export class InvitationsController {
     );
 
     return {
-      access_token: tokens.access_token,
+      success: true,
     };
   }
 

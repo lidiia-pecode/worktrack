@@ -1,7 +1,6 @@
 import {
   ClassSerializerInterceptor,
   NestApplicationOptions,
-  ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory, Reflector } from '@nestjs/core';
@@ -11,7 +10,7 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { AppModule } from './app.module';
 import { DatabaseExceptionFilter } from './filters/database-exception.filter';
-import { createValidationException } from './lib/utils/validation-exception.util';
+import { createValidationPipe } from './lib/utils/validation-pipe.util';
 
 // The API answers JSON and redirects, so these are the headers that matter.
 // The frontend sends the same set (next.config.ts).
@@ -26,10 +25,14 @@ const SECURITY_HEADERS = {
 export const createApp = async (
   options?: NestApplicationOptions,
 ): Promise<NestExpressApplication> => {
-  const app = await NestFactory.create<NestExpressApplication>(
-    AppModule,
-    options,
-  );
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    ...options,
+    bodyParser: false,
+  });
+  // JSON only, as the frontend sends: a form on another site can't post one,
+  // so it can't sign a browser in to an account of its choosing.
+  app.useBodyParser('json');
+  app.disable('x-powered-by');
   // How many proxies sit in front of us. Too high and a client can fake its
   // own IP through X-Forwarded-For, which would let it dodge the rate limits.
   app.set('trust proxy', Number(process.env.TRUST_PROXY_HOPS ?? 1));
@@ -41,39 +44,7 @@ export const createApp = async (
     }
     next();
   });
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      transform: true,
-      forbidNonWhitelisted: true,
-      exceptionFactory: (errors) => {
-        const formattedErrors: Record<string, string[]> = {};
-
-        const formatChildErrors = (
-          errorList: typeof errors,
-          parentPath = '',
-        ) => {
-          for (const error of errorList) {
-            const path = parentPath
-              ? `${parentPath}.${error.property}`
-              : error.property;
-
-            if (error.constraints) {
-              formattedErrors[path] = Object.values(error.constraints);
-            }
-
-            if (error.children && error.children.length > 0) {
-              formatChildErrors(error.children, path);
-            }
-          }
-        };
-
-        formatChildErrors(errors);
-
-        return createValidationException(formattedErrors);
-      },
-    }),
-  );
+  app.useGlobalPipes(createValidationPipe());
 
   const reflector = app.get(Reflector);
   app.useGlobalInterceptors(

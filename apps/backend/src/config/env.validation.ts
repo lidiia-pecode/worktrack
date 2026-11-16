@@ -34,7 +34,16 @@ export const envValidationSchema = Joi.object({
     .pattern(/^\d+[smhd]$/)
     .default('15m'),
 
-  REFRESH_TOKEN_SECRET: Joi.string().min(32).required(),
+  // A different secret is what keeps an access token from passing as a
+  // refresh token, and the other way round.
+  REFRESH_TOKEN_SECRET: Joi.string()
+    .min(32)
+    .required()
+    .invalid(Joi.ref('ACCESS_TOKEN_SECRET'))
+    .messages({
+      'any.invalid':
+        '"REFRESH_TOKEN_SECRET" must differ from "ACCESS_TOKEN_SECRET"',
+    }),
   REFRESH_TOKEN_EXPIRES_IN: Joi.string()
     .pattern(/^\d+[smhd]$/)
     .default('30d'),

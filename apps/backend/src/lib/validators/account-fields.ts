@@ -1,5 +1,11 @@
 import { applyDecorators } from '@nestjs/common';
-import { IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  Length,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 import { TrimString } from 'src/lib/decorators';
 
@@ -23,10 +29,14 @@ export const NewPassword = () =>
     Matches(PASSWORD_PATTERN, { message: PASSWORD_RULES_MESSAGE }),
   );
 
+// One longer than any new password may be can't be right: refused unhashed.
 export const ExistingPassword = () =>
   applyDecorators(
     IsString({ message: 'Enter your password' }),
     IsNotEmpty({ message: 'Enter your password' }),
+    MaxLength(PASSWORD_MAX_LENGTH, {
+      message: `Password can't be longer than ${PASSWORD_MAX_LENGTH} characters`,
+    }),
   );
 
 export const PersonName = (label: string) =>

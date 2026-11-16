@@ -5,6 +5,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DataSource } from 'typeorm';
 
 import { createApp } from 'src/create-app';
+import { PasswordService } from 'src/auth/services/password.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { Company } from 'src/companies/entities/company.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -20,6 +21,7 @@ const RUN = Date.now();
 const SLUG = `http-test-${RUN}`;
 const ANY_ID = '00000000-0000-4000-8000-000000000000';
 const APP_START_TIMEOUT_MS = 30_000;
+const OWNER_PASSWORD = 'Correct-Horse-1';
 
 /** The routes that answer without a session: signing up, in and back in. */
 const PUBLIC_ROUTES = [
@@ -72,6 +74,7 @@ describe('the app over HTTP', () => {
   let app: NestExpressApplication;
   let baseUrl: string;
   let ownerCookie: string;
+  let ownerEmail: string;
   let employeeCookie: string;
 
   const call = (
@@ -124,9 +127,12 @@ describe('the app over HTTP', () => {
       return `access_token=${access_token}`;
     };
 
-    ownerCookie = await sessionCookie(
-      await person(UserRole.OWNER, 'Olivia', 'Bennett'),
-    );
+    const owner = await person(UserRole.OWNER, 'Olivia', 'Bennett');
+    ownerEmail = owner.email;
+    await dataSource.getRepository(User).update(owner.id, {
+      passwordHash: await app.get(PasswordService).hash(OWNER_PASSWORD),
+    });
+    ownerCookie = await sessionCookie(owner);
     employeeCookie = await sessionCookie(
       await person(UserRole.EMPLOYEE, 'Ethan', 'Brooks'),
     );
@@ -171,6 +177,54 @@ describe('the app over HTTP', () => {
     });
   });
 
+  describe('signing in', () => {
+    it('refuses a form, which a page on another site could post', async () => {
+      const response = await fetch(`${baseUrl}/auth/signin`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          email: ownerEmail,
+          password: OWNER_PASSWORD,
+        }).toString(),
+      });
+
+      expect(response.status).toBe(400);
+      expect(response.headers.getSetCookie()).toEqual([]);
+    });
+
+    it('refuses a password longer than any can be, with the field error', async () => {
+      const response = await call('POST /auth/signin', {
+        body: { email: ownerEmail, password: 'Aa1'.repeat(34) },
+      });
+      const body = (await response.json()) as {
+        errors: Record<string, string[]>;
+      };
+
+      expect(response.status).toBe(400);
+      expect(Object.keys(body.errors)).toEqual(['password']);
+    });
+
+    it('keeps the session in cookies and out of the answer', async () => {
+      const signedIn = await call('POST /auth/signin', {
+        body: { email: ownerEmail, password: OWNER_PASSWORD },
+      });
+      const refreshCookie = signedIn.headers
+        .getSetCookie()
+        .map((cookie) => cookie.split(';')[0])
+        .find((cookie) => cookie.startsWith('refresh_token='));
+
+      expect(signedIn.status).toBe(201);
+      await expect(signedIn.json()).resolves.toEqual({ success: true });
+
+      const refreshed = await call('POST /auth/refresh', {
+        cookie: refreshCookie,
+      });
+
+      expect(refreshed.status).toBe(201);
+      await expect(refreshed.json()).resolves.toEqual({ success: true });
+    });
+  });
+
   it('refuses an employee on an owner route', async () => {
     const response = await call('POST /teams', {
       cookie: employeeCookie,
@@ -204,5 +258,6 @@ describe('the app over HTTP', () => {
     expect(body).toHaveProperty('email');
     expect(body).not.toHaveProperty('passwordHash');
     expect(body).not.toHaveProperty('googleId');
+    expect(response.headers.has('x-powered-by')).toBe(false);
   });
 });
