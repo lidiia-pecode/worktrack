@@ -85,6 +85,7 @@ export const isClosedOn = (spells: ClosedSpell[], date: string) =>
 export const CLOSED_DAY_TEXT: Record<ClosedSpell["reason"], string> = {
   "outside-team": "Not in this team on this day",
   inactive: "Not employed on this day",
+  "before-account": "Before they joined WorkTrack",
 };
 
 /** "Joined Oct 14" or "Moved out Oct 14"; no team is named. */

@@ -5,7 +5,6 @@ import { getMetadataStorage } from 'class-validator';
 import { UpdateAbsencePayload } from 'src/absences/dtos/absence-payload.dto';
 import { UpdateActivityPayload } from 'src/activities/dtos/activity-payload.dto';
 import { UpdateCompanyDto } from 'src/companies/dtos/update-company.dto';
-import { UpdatePlanningEntryDto } from 'src/planning/dtos/planning-entry-payload.dto';
 import { UpdateProjectPayload } from 'src/projects/dtos/project-payload.dto';
 import { UpdateTeamDto } from 'src/teams/dtos/team.dto';
 import { UpdateTimeLogPayload } from 'src/time-logs/dtos/time-log-payload.dto';
@@ -35,11 +34,6 @@ const UPDATE_PAYLOADS: {
   {
     dto: UpdateAbsencePayload,
     required: ['type', 'startDate', 'endDate'],
-    nullable: ['note'],
-  },
-  {
-    dto: UpdatePlanningEntryDto,
-    required: ['projectId', 'date', 'plannedMinutes'],
     nullable: ['note'],
   },
   {

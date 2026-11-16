@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -15,10 +14,6 @@ import {
 } from 'typeorm';
 
 import { PlanningEntry } from './entities/planning-entry.entity';
-import {
-  CreatePlanningEntryDto,
-  UpdatePlanningEntryDto,
-} from './dtos/planning-entry-payload.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
@@ -32,7 +27,6 @@ import {
   PeriodWeek,
   PeriodWrites,
   describePeriodProblem,
-  formatMinutes,
   periodProblems,
   periodWrites,
 } from './planning-period.util';
@@ -42,6 +36,7 @@ import {
   ClosedSpell,
   DaySpan,
   TeamMove,
+  beforeAccountIn,
   closedSpellsIn,
   isWithinSpan,
 } from 'src/teams/days-in-view.util';
@@ -65,16 +60,10 @@ import {
 } from 'src/capacity/working-days.util';
 import { assertDateRange } from 'src/reporting/date-range.util';
 import { monthsBetween } from 'src/reporting/reporting-months.util';
-import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type PlanningCompany = Pick<Company, 'id' | 'timezone' | 'weekStartDay'>;
-
-interface PlannedSlot {
-  date: string;
-  minutes: number;
-}
 
 export interface PlanningWeekRow {
   user: VisibleUser;
@@ -328,11 +317,14 @@ export class PlanningService {
         })),
         projects: projectsByUser.get(rowUser.id) ?? [],
         entries: own,
-        closedSpells: closedSpellsIn(
-          week,
-          rowOutside,
-          activeDates.get(rowUser.id)?.inactiveSpells ?? [],
-        ),
+        closedSpells: [
+          ...closedSpellsIn(
+            week,
+            rowOutside,
+            activeDates.get(rowUser.id)?.inactiveSpells ?? [],
+          ),
+          ...beforeAccountIn(week, activeDates.get(rowUser.id)?.startDate),
+        ],
         moves,
       };
     });
@@ -340,16 +332,13 @@ export class PlanningService {
     // Someone is planned only with working hours on a day the row holds them
     // and they were employed; a plan already there keeps them listed so it can
     // be deleted. Time off doesn't take the hours away, so the row stays.
-    const isPlannable = (row: PlanningWeekRow) => {
-      const startDate = activeDates.get(row.user.id)?.startDate;
-      return row.dayLimits.some(
+    const isPlannable = (row: PlanningWeekRow) =>
+      row.dayLimits.some(
         ({ date, minutes }) =>
           minutes > 0 &&
           isWorkingDay(date) &&
-          (!startDate || date >= startDate) &&
           !row.closedSpells.some((spell) => isWithinSpan(spell, date)),
       );
-    };
 
     return {
       weekStart: start,
@@ -427,171 +416,6 @@ export class PlanningService {
   // ==========================================
   // WRITE
   // ==========================================
-
-  async create(
-    payload: CreatePlanningEntryDto,
-    user: AuthUser,
-  ): Promise<PlanningEntry> {
-    return this.dataSource.transaction(async (manager) => {
-      await this.lockUser(manager, payload.userId, user.companyId);
-
-      const targetUser = await this.getActiveUser(
-        payload.userId,
-        user.companyId,
-        manager,
-      );
-
-      await this.assertCanPlanForUser(targetUser, user, payload.date);
-
-      this.assertWorkingDay(payload.date);
-      await this.assertDateNotLocked(manager, user.companyId, payload.date);
-      // As time and absences: nothing on a day they weren't employed.
-      await this.capacity.assertEmployedOn(
-        user.companyId,
-        payload.userId,
-        payload.date,
-      );
-      await this.assertNotAbsent(
-        manager,
-        payload.userId,
-        user.companyId,
-        payload.date,
-      );
-
-      const project = await this.resolveProject(
-        payload.projectId,
-        user.companyId,
-        manager,
-      );
-      await this.assertProjectMember(manager, project.id, payload.userId);
-
-      const company = await this.getCompany(user.companyId, manager);
-      await this.assertWithinLimits(manager, company, payload.userId, {
-        date: payload.date,
-        minutes: payload.plannedMinutes,
-      });
-
-      const entity = manager.create(PlanningEntry, {
-        companyId: user.companyId,
-        userId: payload.userId,
-        project,
-        createdById: user.id,
-        plannedMinutes: payload.plannedMinutes,
-        note: payload.note,
-        date: payload.date,
-      });
-
-      try {
-        return await manager.save(entity);
-      } catch (error: unknown) {
-        if (isDatabaseConflictError(error)) {
-          throw new ConflictException(
-            'A planning entry for this user, project and date already exists. Edit the existing entry instead.',
-          );
-        }
-        throw error;
-      }
-    });
-  }
-
-  async update(
-    id: string,
-    payload: UpdatePlanningEntryDto,
-    user: AuthUser,
-  ): Promise<PlanningEntry> {
-    return this.dataSource.transaction(async (manager) => {
-      const entry = await this.lockEntryAndOwner(id, user, manager);
-
-      const targetUser = await this.getActiveUser(
-        entry.userId,
-        user.companyId,
-        manager,
-      );
-      await this.assertCanPlanForUser(targetUser, user, entry.date);
-      if (payload.date !== undefined && payload.date !== entry.date) {
-        await this.assertCanPlanForUser(targetUser, user, payload.date);
-      }
-
-      await this.assertDateNotLocked(manager, user.companyId, entry.date);
-
-      const current = await manager.findOne(Project, {
-        where: { id: entry.projectId, companyId: user.companyId },
-      });
-      if (current?.status !== ProjectStatus.ACTIVE) {
-        throw new BadRequestException(
-          'This entry is on an archived project and can only be deleted',
-        );
-      }
-
-      const previous: PlannedSlot = {
-        date: entry.date,
-        minutes: entry.plannedMinutes,
-      };
-
-      const movesDate =
-        payload.date !== undefined && payload.date !== entry.date;
-      const movesProject =
-        payload.projectId !== undefined &&
-        payload.projectId !== entry.projectId;
-      const changesMinutes =
-        payload.plannedMinutes !== undefined &&
-        payload.plannedMinutes !== entry.plannedMinutes;
-
-      if (movesDate) {
-        entry.date = payload.date!;
-        await this.assertDateNotLocked(manager, user.companyId, entry.date);
-        await this.capacity.assertEmployedOn(
-          user.companyId,
-          entry.userId,
-          entry.date,
-        );
-        await this.assertNotAbsent(
-          manager,
-          entry.userId,
-          user.companyId,
-          entry.date,
-        );
-      }
-
-      if (movesProject) {
-        const project = await this.resolveProject(
-          payload.projectId!,
-          user.companyId,
-          manager,
-        );
-        entry.project = project;
-        entry.projectId = project.id;
-      }
-
-      if (changesMinutes) entry.plannedMinutes = payload.plannedMinutes!;
-      if (payload.note !== undefined) entry.note = payload.note;
-
-      if (movesDate || movesProject || changesMinutes) {
-        this.assertWorkingDay(entry.date);
-        await this.assertProjectMember(manager, entry.projectId, entry.userId);
-
-        const company = await this.getCompany(user.companyId, manager);
-        await this.assertWithinLimits(
-          manager,
-          company,
-          entry.userId,
-          { date: entry.date, minutes: entry.plannedMinutes },
-          { excludeId: id, previous },
-        );
-      }
-
-      try {
-        return await manager.save(PlanningEntry, entry);
-      } catch (error: unknown) {
-        if (isDatabaseConflictError(error)) {
-          throw new ConflictException(
-            'A planning entry for this user, project and date already exists. Edit the existing entry instead.',
-          );
-        }
-        throw error;
-      }
-    });
-  }
 
   /**
    * What a period plan would do, checked with the same rules the save uses,
@@ -1075,14 +899,6 @@ export class PlanningService {
     }
   }
 
-  private assertWorkingDay(date: string): void {
-    if (!isWorkingDay(date)) {
-      throw new BadRequestException(
-        'Planning is only possible Monday to Friday',
-      );
-    }
-  }
-
   /** Runs inside the write's transaction, so a Close at the same moment waits for it. */
   private async assertPeriodNotLocked(
     manager: EntityManager,
@@ -1179,29 +995,6 @@ export class PlanningService {
     }
   }
 
-  /** Reads the absences table directly, the way absences read time logs. */
-  private async assertNotAbsent(
-    manager: EntityManager,
-    userId: string,
-    companyId: string,
-    date: string,
-  ): Promise<void> {
-    const rows: { type: string }[] = await manager.query(
-      `SELECT type FROM absences
-       WHERE company_id = $1 AND user_id = $2
-         AND start_date <= $3 AND end_date >= $3
-       LIMIT 1`,
-      [companyId, userId, date],
-    );
-
-    if (rows.length > 0) {
-      const reason = rows[0].type.toLowerCase().split('_').join(' ');
-      throw new BadRequestException(
-        `This person is away on ${date} (${reason}), and a day off cannot be planned.`,
-      );
-    }
-  }
-
   private async getActiveUser(
     userId: string,
     companyId: string,
@@ -1234,94 +1027,5 @@ export class PlanningService {
       .getOne();
 
     if (!user) throw new NotFoundException('User not found');
-  }
-
-  private async plannedMinutesBetween(
-    manager: EntityManager,
-    userId: string,
-    companyId: string,
-    from: string,
-    to: string,
-    excludeId?: string,
-  ): Promise<number> {
-    const qb = manager
-      .createQueryBuilder(PlanningEntry, 'p')
-      .select('COALESCE(SUM(p.planned_minutes), 0)', 'total')
-      .where('p.user_id = :userId', { userId })
-      .andWhere('p.company_id = :companyId', { companyId })
-      .andWhere('p.date BETWEEN :from AND :to', { from, to });
-
-    if (excludeId) {
-      qb.andWhere('p.id != :excludeId', { excludeId });
-    }
-
-    const result = await qb.getRawOne<{ total: string | number }>();
-    return Number(result?.total ?? 0);
-  }
-
-  /**
-   * Refuses only a write that raises the day or the week past its limit, so a
-   * week left over budget by an absence or a capacity change can be reduced.
-   */
-  private async assertWithinLimits(
-    manager: EntityManager,
-    company: PlanningCompany,
-    userId: string,
-    next: PlannedSlot,
-    options: { excludeId?: string; previous?: PlannedSlot } = {},
-  ): Promise<void> {
-    const { excludeId, previous } = options;
-    const week = weekRange(next.date, company.weekStartDay);
-
-    const previousIn = (from: string, to: string): number =>
-      previous && previous.date >= from && previous.date <= to
-        ? previous.minutes
-        : 0;
-
-    const otherDay = await this.plannedMinutesBetween(
-      manager,
-      userId,
-      company.id,
-      next.date,
-      next.date,
-      excludeId,
-    );
-    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], next.date);
-    const dayLimit = dayLimitOn(userId, next.date);
-    const nextDay = otherDay + next.minutes;
-
-    if (
-      nextDay > dayLimit &&
-      nextDay > otherDay + previousIn(next.date, next.date)
-    ) {
-      throw new BadRequestException(
-        `Daily planning limit exceeded: ${formatMinutes(Math.max(0, dayLimit - otherDay))} left on ${formatDay(next.date)}, of ${formatMinutes(dayLimit)} a day.`,
-      );
-    }
-
-    const otherWeek = await this.plannedMinutesBetween(
-      manager,
-      userId,
-      company.id,
-      week.start,
-      week.end,
-      excludeId,
-    );
-    const nextWeek = otherWeek + next.minutes;
-
-    if (nextWeek <= otherWeek + previousIn(week.start, week.end)) return;
-
-    const { total: available } = await this.expectedHours.expectedForUser(
-      company.id,
-      userId,
-      week.start,
-      week.end,
-    );
-
-    if (nextWeek > available) {
-      throw new BadRequestException(
-        `Weekly planning limit exceeded: ${formatMinutes(Math.max(0, available - otherWeek))} left of ${formatMinutes(available)} available in the week of ${formatDay(week.start, false)}.`,
-      );
-    }
   }
 }

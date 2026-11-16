@@ -7,7 +7,6 @@ import {
   HttpStatus,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
   UseGuards,
@@ -15,10 +14,6 @@ import {
 
 import { PlanningService } from './planning.service';
 import { PlanningEntryResponse } from './dtos/planning-entry-response.dto';
-import {
-  CreatePlanningEntryDto,
-  UpdatePlanningEntryDto,
-} from './dtos/planning-entry-payload.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
 import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
@@ -75,17 +70,6 @@ export class PlanningController {
 
   @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
-  @Post()
-  @Serialize(PlanningEntryResponse)
-  create(
-    @Body() payload: CreatePlanningEntryDto,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.create(payload, user);
-  }
-
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.OWNER)
   @Post('period')
   planPeriod(
     @Body() payload: PlanPeriodPayload,
@@ -114,18 +98,6 @@ export class PlanningController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.deletePeriodPlans(query, user);
-  }
-
-  @UseGuards(RolesGuard)
-  @Role(UserRole.MANAGER, UserRole.OWNER)
-  @Patch(':id')
-  @Serialize(PlanningEntryResponse)
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() payload: UpdatePlanningEntryDto,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.update(id, payload, user);
   }
 
   @UseGuards(RolesGuard)

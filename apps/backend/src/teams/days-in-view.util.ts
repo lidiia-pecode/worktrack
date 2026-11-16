@@ -6,10 +6,11 @@ export interface DaySpan {
 
 /**
  * Days a row holds that the viewer can't touch: outside the team the view is
- * about, or when the person wasn't employed.
+ * about, when the person wasn't employed, or, on Planning, before their
+ * account was created.
  */
 export interface ClosedSpell extends DaySpan {
-  reason: 'outside-team' | 'inactive';
+  reason: 'outside-team' | 'inactive' | 'before-account';
 }
 
 /** Where a row's days start or stop belonging to the view, as a move does. */
@@ -101,6 +102,19 @@ export const closedSpellsIn = (
     )
     .map((spell): ClosedSpell => ({ ...spell, reason: 'inactive' })),
 ];
+
+/**
+ * The range's days before an account was created, which a plan can't be
+ * saved on. Time and absences may still be recorded there, so only Planning
+ * closes them.
+ */
+export const beforeAccountIn = (
+  range: DateRange,
+  accountStart: string | undefined,
+): ClosedSpell[] =>
+  accountStart && accountStart > range.from
+    ? [{ from: range.from, until: accountStart, reason: 'before-account' }]
+    : [];
 
 /** Where the row's days start or stop being in view inside the range. */
 export const movesIn = (
