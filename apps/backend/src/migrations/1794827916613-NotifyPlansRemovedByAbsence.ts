@@ -5,16 +5,10 @@ export class NotifyPlansRemovedByAbsence1794827916613 implements MigrationInterf
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`ALTER TABLE "notifications" ADD "details" jsonb`);
+    // Adds the value in place, so nothing the running code reads changes.
     await queryRunner.query(
-      `ALTER TYPE "public"."notification_type_enum" RENAME TO "notification_type_enum_old"`,
+      `ALTER TYPE "public"."notification_type_enum" ADD VALUE 'PLANS_REMOVED_BY_ABSENCE'`,
     );
-    await queryRunner.query(
-      `CREATE TYPE "public"."notification_type_enum" AS ENUM('INVITATION_ACCEPTED', 'PLANS_REMOVED_BY_ABSENCE')`,
-    );
-    await queryRunner.query(
-      `ALTER TABLE "notifications" ALTER COLUMN "type" TYPE "public"."notification_type_enum" USING "type"::"text"::"public"."notification_type_enum"`,
-    );
-    await queryRunner.query(`DROP TYPE "public"."notification_type_enum_old"`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
