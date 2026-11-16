@@ -6,7 +6,9 @@ import { EntityManager, In, IsNull, LessThan, Repository } from 'typeorm';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import type { Invitation } from 'src/invitations/entities/invitation.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserStatus } from 'src/users/enums/user-role.enum';
+import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
+import { TeamMembership } from 'src/teams/entities/team-membership.entity';
+import { TeamRole } from 'src/teams/enums/team-role.enum';
 
 import {
   Notification,
@@ -28,34 +30,56 @@ export class NotificationsService {
   ) {}
 
   /**
-   * Tells whoever sent the invitation that the person joined, in the same
-   * transaction as the acceptance. Nobody is told when the sender no longer
-   * exists or has been archived.
+   * Tells whoever answers for the new person that they joined, in the same
+   * transaction as the acceptance: the owner who invited them, otherwise the
+   * team's current manager, who is the inviter while they still lead it. Only
+   * an active person is told, so nobody when the team has no active manager.
    */
   async notifyInvitationAccepted(
     invitation: Invitation,
     joinedUserId: string,
     manager: EntityManager,
   ): Promise<void> {
-    if (!invitation.invitedById) return;
-
-    const inviterIsActive = await manager.getRepository(User).exists({
-      where: {
-        id: invitation.invitedById,
-        companyId: invitation.companyId,
-        status: UserStatus.ACTIVE,
-      },
-    });
-
-    if (!inviterIsActive) return;
+    const recipientId = await this.joinedNoticeRecipient(invitation, manager);
+    if (!recipientId) return;
 
     await manager.getRepository(Notification).save({
       companyId: invitation.companyId,
-      recipientId: invitation.invitedById,
+      recipientId,
       type: NotificationType.INVITATION_ACCEPTED,
       subjectUserId: joinedUserId,
       readAt: null,
     });
+  }
+
+  private async joinedNoticeRecipient(
+    { companyId, invitedById, teamId }: Invitation,
+    manager: EntityManager,
+  ): Promise<string | null> {
+    const inviter = invitedById
+      ? await manager.getRepository(User).findOne({
+          select: ['id', 'role', 'status'],
+          where: { id: invitedById, companyId },
+        })
+      : null;
+
+    if (inviter?.role === UserRole.OWNER) {
+      return inviter.status === UserStatus.ACTIVE ? inviter.id : null;
+    }
+    if (!teamId) return null;
+
+    const teamManager = await manager.getRepository(TeamMembership).findOne({
+      select: ['id', 'userId'],
+      where: {
+        companyId,
+        teamId,
+        roleInTeam: TeamRole.MANAGER,
+        leftAt: IsNull(),
+        user: { status: UserStatus.ACTIVE },
+      },
+    });
+
+    return teamManager?.userId ?? null;
   }
 
   /**

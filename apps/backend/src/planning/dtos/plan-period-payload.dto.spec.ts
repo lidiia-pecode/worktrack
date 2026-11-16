@@ -6,6 +6,7 @@ import {
   PlanPeriodPayload,
   PreviewPeriodPayload,
 } from './plan-period-payload.dto';
+import { MAX_PERIOD_PROJECTS } from '../planning-period.util';
 
 const body = (projects: unknown[]) => ({
   userId: '4f7a3c2e-8b1d-4e6f-9a0b-1c2d3e4f5a6b',
@@ -53,5 +54,26 @@ describe('PlanPeriodPayload', () => {
     expect(
       await failing(plainToInstance(PreviewPeriodPayload, badProject)),
     ).toEqual(['projects']);
+  });
+
+  it('lists no more projects than a day can hold', async () => {
+    const projects = (count: number) =>
+      Array.from({ length: count }, () => ({
+        projectId: '4f7a3c2e-8b1d-4e6f-9a0b-1c2d3e4f5a6b',
+        minutesPerDay: 15,
+      }));
+
+    for (const payload of [PlanPeriodPayload, PreviewPeriodPayload]) {
+      expect(
+        await failing(
+          plainToInstance(payload, body(projects(MAX_PERIOD_PROJECTS))),
+        ),
+      ).toEqual([]);
+      expect(
+        await failing(
+          plainToInstance(payload, body(projects(MAX_PERIOD_PROJECTS + 1))),
+        ),
+      ).toEqual(['projects']);
+    }
   });
 });

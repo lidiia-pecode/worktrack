@@ -28,6 +28,9 @@ import { PaginationQuery } from 'src/lib/dtos/pagination-query.dto';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { PlanningService } from 'src/planning/planning.service';
 import { User } from 'src/users/entities/user.entity';
+import { UserRole } from 'src/users/enums/user-role.enum';
+import { TimeLog } from 'src/time-logs/entities/time-log.entity';
+import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
@@ -779,7 +782,7 @@ export class ProjectsService {
       subject: 'projects',
     });
 
-    const [results, count] = await this.projectActivityRepo
+    const qb = this.projectActivityRepo
       .createQueryBuilder('pa')
       .innerJoinAndSelect('pa.project', 'project')
       .innerJoinAndSelect('pa.activity', 'activity')
@@ -802,12 +805,62 @@ export class ProjectsService {
         activityStatus: ActivityStatus.ACTIVE,
       })
       .orderBy('project.name', 'ASC')
-      .addOrderBy('activity.name', 'ASC')
+      .addOrderBy('activity.name', 'ASC');
+
+    const isFormerMember =
+      user.role === UserRole.MANAGER &&
+      targetUserId !== user.id &&
+      !(await this.teamVisibility.isUserInManagedTeams(targetUserId, user));
+    if (isFormerMember) {
+      this.keepProjectsWorkedInReach(qb, targetUserId, user);
+    }
+
+    const [results, count] = await qb
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();
 
     return { results, count };
+  }
+
+  /**
+   * A manager logging for a former member of their team sees only the
+   * projects the person has time or plans on during the days in it, so the
+   * list tells nothing of the work they have joined since.
+   */
+  private keepProjectsWorkedInReach(
+    qb: SelectQueryBuilder<ProjectActivity>,
+    targetUserId: string,
+    user: AuthUser,
+  ): void {
+    qb.andWhere((outer) => {
+      const logged = outer
+        .subQuery()
+        .select('logged.project_id')
+        .from(TimeLog, 'tl')
+        .innerJoin(
+          ProjectActivity,
+          'logged',
+          'logged.id = tl.project_activity_id',
+        )
+        .where('tl.user_id = :targetUserId')
+        .andWhere('tl.company_id = :companyId');
+      this.teamVisibility.applyUserVisibility(logged, 'tl.user_id', user, {
+        onDays: { startColumn: 'tl.date' },
+      });
+
+      const planned = outer
+        .subQuery()
+        .select('pe.project_id')
+        .from(PlanningEntry, 'pe')
+        .where('pe.user_id = :targetUserId')
+        .andWhere('pe.company_id = :companyId');
+      this.teamVisibility.applyUserVisibility(planned, 'pe.user_id', user, {
+        onDays: { startColumn: 'pe.date' },
+      });
+
+      return `(project.id IN ${logged.getQuery()} OR project.id IN ${planned.getQuery()})`;
+    });
   }
 
   /**

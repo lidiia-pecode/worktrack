@@ -415,33 +415,77 @@ describe('InvitationsService acceptance', () => {
       await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(1);
     });
 
-    it('tells nobody when the inviter has been archived', async () => {
-      const archivedInviter = await createUser(
-        'archivedinviter',
-        UserRole.MANAGER,
-      );
-      await dataSource
-        .getRepository(User)
-        .update(archivedInviter.id, { status: UserStatus.DEACTIVATED });
+    /** A team led by `managerId`, open or closed, with its own invitation. */
+    const leadTeam = async (
+      name: string,
+      managerId: string,
+      leftAt: string | null = null,
+    ): Promise<string> => {
+      const teamId = await createTeam(name);
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId,
+        userId: managerId,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: JOINED_AT,
+        leftAt,
+      });
+      return teamId;
+    };
 
-      const email = `notify-archived-${RUN}@invitations-accept.test`;
-      const token = await createInvitation(
-        email,
-        null,
-        UserRole.MANAGER,
-        archivedInviter.id,
-      );
-
-      await service.completeWithPassword(
-        token,
-        'Secret123',
-        'Olivia',
-        'Brooks',
-      );
+    const joinBy = async (
+      name: string,
+      teamId: string | null,
+      invitedById: string,
+      role: UserRole = UserRole.EMPLOYEE,
+    ): Promise<string[]> => {
+      const email = `notify-${name}-${RUN}@invitations-accept.test`;
+      const token = await createInvitation(email, teamId, role, invitedById);
+      await service.completeWithPassword(token, 'Secret123', 'Noah', 'Hughes');
 
       const joined = await findUser(email);
+      const notices = await notificationsAbout(joined!.id);
+      return notices.map((notice) => notice.recipientId);
+    };
 
-      await expect(notificationsAbout(joined!.id)).resolves.toHaveLength(0);
+    it('tells the owner who invited, not the team manager', async () => {
+      const owner = await createUser('notifyowner', UserRole.OWNER);
+
+      await expect(joinBy('by-owner', alpha, owner.id)).resolves.toEqual([
+        owner.id,
+      ]);
+      await expect(
+        joinBy('manager-by-owner', null, owner.id, UserRole.MANAGER),
+      ).resolves.toEqual([owner.id]);
+    });
+
+    it('tells the current manager once the inviter no longer leads the team', async () => {
+      const formerLead = await createUser('formerlead', UserRole.MANAGER);
+      const team = await leadTeam('Handed over', formerLead.id, TODAY);
+      const currentLead = await createUser('currentlead', UserRole.MANAGER);
+      await dataSource.getRepository(TeamMembership).save({
+        companyId,
+        teamId: team,
+        userId: currentLead.id,
+        roleInTeam: TeamRole.MANAGER,
+        joinedAt: TODAY,
+      });
+
+      await expect(joinBy('handed-over', team, formerLead.id)).resolves.toEqual(
+        [currentLead.id],
+      );
+    });
+
+    it('tells nobody when the team has no active manager', async () => {
+      const archivedLead = await createUser('archivedlead', UserRole.MANAGER);
+      const team = await leadTeam('Archived lead', archivedLead.id);
+      await dataSource
+        .getRepository(User)
+        .update(archivedLead.id, { status: UserStatus.DEACTIVATED });
+
+      await expect(joinBy('no-lead', team, archivedLead.id)).resolves.toEqual(
+        [],
+      );
     });
 
     it('lists only the caller’s own, and marks them read', async () => {

@@ -463,8 +463,12 @@ export class PlanningService {
     user: AuthUser,
   ): Promise<PlannedPeriod> {
     const { userId, startDate, endDate } = payload;
+    assertDateRange(startDate, endDate);
 
     return this.dataSource.transaction(async (manager) => {
+      // Reach first, so nobody outside it is locked or described; it is
+      // checked again under the lock.
+      await this.daysOutsideReach(userId, user, startDate, endDate);
       await this.lockUser(manager, userId, user.companyId);
 
       const { plannedDays, problems, writes } = await this.resolvePeriod(
@@ -529,17 +533,13 @@ export class PlanningService {
       throw new BadRequestException('Each project can be listed only once');
     }
 
-    const targetUser = await this.getActiveUser(
-      userId,
-      user.companyId,
-      manager,
-    );
     const outsideReach = await this.daysOutsideReach(
-      targetUser,
+      userId,
       user,
       startDate,
       endDate,
     );
+    await this.assertActiveUser(userId, user.companyId, manager);
 
     for (const projectId of projectIds) {
       await this.resolveProject(projectId, user.companyId, manager);
@@ -606,12 +606,7 @@ export class PlanningService {
       const entry = await this.lockEntryAndOwner(id, user, manager);
 
       // A deactivated person's leftover plans can still be cleared.
-      const targetUser = await manager.findOne(User, {
-        where: { id: entry.userId, companyId: user.companyId },
-      });
-      if (!targetUser) throw new NotFoundException('User not found');
-
-      await this.assertCanPlanForUser(targetUser, user, entry.date);
+      await this.assertCanPlanForUser(entry.userId, user, entry.date);
       await this.assertDateNotLocked(manager, user.companyId, entry.date);
 
       await manager.remove(PlanningEntry, entry);
@@ -633,17 +628,13 @@ export class PlanningService {
     assertDateRange(startDate, endDate);
 
     return this.dataSource.transaction(async (manager) => {
+      // Refuses a range with no day in reach before anyone is locked, and
+      // again under the lock; the delete keeps to the days in reach. A
+      // deactivated person's leftover plans can still be cleared.
+      await this.daysOutsideReach(userId, user, startDate, endDate);
       await this.lockUser(manager, userId, user.companyId);
       await this.lockProject(manager, projectId, user.companyId);
-
-      // A deactivated person's leftover plans can still be cleared.
-      const targetUser = await manager.findOne(User, {
-        where: { id: userId, companyId: user.companyId },
-      });
-      if (!targetUser) throw new NotFoundException('User not found');
-
-      // Refuses a range with no day in reach; the delete keeps to the rest.
-      await this.daysOutsideReach(targetUser, user, startDate, endDate);
+      await this.daysOutsideReach(userId, user, startDate, endDate);
       await this.assertPeriodNotLocked(
         manager,
         user.companyId,
@@ -710,7 +701,7 @@ export class PlanningService {
 
   /** Refuses a plan on `date` unless the caller may plan the person then. */
   private async assertCanPlanForUser(
-    targetUser: User,
+    userId: string,
     user: AuthUser,
     date: string,
   ): Promise<void> {
@@ -718,12 +709,10 @@ export class PlanningService {
       throw new ForbiddenException('Employees cannot change planning');
     }
 
-    await this.teamVisibility.assertCanWriteUser(
-      targetUser.id,
-      user,
-      PLAN_WORDING,
-      { from: date, to: date },
-    );
+    await this.teamVisibility.assertCanWriteUser(userId, user, PLAN_WORDING, {
+      from: date,
+      to: date,
+    });
   }
 
   /**
@@ -732,7 +721,7 @@ export class PlanningService {
    * don't lead. Refuses an employee, and a period with no day in reach.
    */
   private async daysOutsideReach(
-    targetUser: User,
+    userId: string,
     user: AuthUser,
     startDate: string,
     endDate: string,
@@ -742,12 +731,8 @@ export class PlanningService {
     }
 
     const range = { from: startDate, to: endDate };
-    const inView = await this.teamVisibility.daysInView(
-      user,
-      [targetUser.id],
-      range,
-    );
-    const { outside } = inView.get(targetUser.id)!;
+    const inView = await this.teamVisibility.daysInView(user, [userId], range);
+    const { outside } = inView.get(userId)!;
 
     // Not one day in reach: refused outright, rather than an empty save.
     const reachesNoDay = outside.some(
@@ -756,7 +741,7 @@ export class PlanningService {
     );
     if (reachesNoDay) {
       await this.teamVisibility.assertCanWriteUser(
-        targetUser.id,
+        userId,
         user,
         PLAN_WORDING,
         range,
@@ -784,10 +769,12 @@ export class PlanningService {
   ): Promise<PlanningEntry> {
     const owner = await manager.findOne(PlanningEntry, {
       where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'projectId'],
+      select: ['id', 'userId', 'projectId', 'date'],
     });
     if (!owner) throw new NotFoundException('Planning entry not found');
 
+    // Nobody outside the caller's reach is locked.
+    await this.assertCanPlanForUser(owner.userId, user, owner.date);
     await this.lockUser(manager, owner.userId, user.companyId);
     await this.lockProject(manager, owner.projectId, user.companyId);
 
@@ -988,12 +975,13 @@ export class PlanningService {
     }
   }
 
-  private async getActiveUser(
+  private async assertActiveUser(
     userId: string,
     companyId: string,
     manager: EntityManager,
-  ): Promise<User> {
+  ): Promise<void> {
     const user = await manager.findOne(User, {
+      select: ['id', 'status'],
       where: { id: userId, companyId },
     });
 
@@ -1003,8 +991,6 @@ export class PlanningService {
         'Planning can only be created for active users',
       );
     }
-
-    return user;
   }
 
   private async lockUser(

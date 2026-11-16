@@ -54,6 +54,9 @@ export type PendingInvitation = Invitation & { expired: boolean };
 
 const ARCHIVED_TEAM_MESSAGE = 'Cannot invite into an archived team';
 
+const NOT_INVITABLE_BY_MANAGER =
+  "This address can't be invited. If they already work here, ask the owner to add them to your team.";
+
 const fullName = (user: User | null): string | null =>
   user ? `${user.firstName} ${user.lastName}` : null;
 
@@ -86,9 +89,36 @@ export class InvitationsService {
 
     this.validateInvitationRole(payload.role, user.role);
 
-    const teamId = await this.resolveInvitationTeamId(companyId, payload, user);
+    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
+    const teamId = await this.resolveInvitationTeamId(
+      companyId,
+      payload,
+      visibleTeamIds,
+    );
 
-    const existingUser = await this.usersService.findByEmailWithCompany(email);
+    const [existingUser, existingInvitation] = await Promise.all([
+      this.usersService.findByEmailWithCompany(email),
+      this.invitationRepository.findOne({
+        where: {
+          companyId,
+          email,
+          status: InvitationStatus.PENDING,
+        },
+      }),
+    ]);
+
+    // A manager learns nothing about an address outside their teams: the same
+    // answer for an account here or elsewhere and for an invitation they don't
+    // see. Replacing an expired invitation revokes it, so it too has to be one
+    // they see.
+    const isHiddenFromManager =
+      visibleTeamIds !== null &&
+      (Boolean(existingUser) ||
+        (existingInvitation !== null &&
+          !this.isInScope(existingInvitation, visibleTeamIds)));
+    if (isHiddenFromManager) {
+      throw new ConflictException(NOT_INVITABLE_BY_MANAGER);
+    }
 
     if (existingUser) {
       if (existingUser.companyId === companyId) {
@@ -101,31 +131,9 @@ export class InvitationsService {
       throw new ConflictException('This email address cannot be invited');
     }
 
-    const existingInvitation = await this.invitationRepository.findOne({
-      where: {
-        companyId,
-        email,
-        status: InvitationStatus.PENDING,
-      },
-    });
-
     if (existingInvitation && existingInvitation.expiresAt > new Date()) {
       throw new ConflictException(
         'An active invitation already exists for this email',
-      );
-    }
-
-    // Replacing an expired invitation revokes it, so it has to be one the
-    // caller could resend or revoke themselves.
-    if (
-      existingInvitation &&
-      !this.isInScope(
-        existingInvitation,
-        await this.teamVisibility.getVisibleTeamIds(user),
-      )
-    ) {
-      throw new ConflictException(
-        'An invitation for this email is already waiting',
       );
     }
 
@@ -515,7 +523,7 @@ export class InvitationsService {
   private async resolveInvitationTeamId(
     companyId: string,
     payload: CreateInvitationPayload,
-    user: AuthUser,
+    visibleTeamIds: string[] | null,
   ): Promise<string | null> {
     const { teamId } = payload;
 
@@ -526,8 +534,6 @@ export class InvitationsService {
     if (!teamId) {
       throw new BadRequestException('An employee must be invited into a team');
     }
-
-    const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
 
     if (visibleTeamIds && !visibleTeamIds.includes(teamId)) {
       throw new ForbiddenException('You can only invite into teams you lead');

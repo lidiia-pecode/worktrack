@@ -59,15 +59,17 @@ describe('InvitationsService.create', () => {
     );
 
   let findByEmailWithCompany: jest.Mock;
+  let findPendingInvitation: jest.Mock;
   let findTeam: jest.Mock;
 
   beforeEach(() => {
     sendInvitationEmail = jest.fn().mockResolvedValue(undefined);
     findByEmailWithCompany = jest.fn().mockResolvedValue(null);
+    findPendingInvitation = jest.fn().mockResolvedValue(null);
     createInvitation = jest.fn((entity: unknown) => entity);
 
     const invitationRepository = {
-      findOne: jest.fn().mockResolvedValue(null),
+      findOne: findPendingInvitation,
       create: createInvitation,
       save: jest.fn((entity: unknown) => Promise.resolve(entity)),
       findOneOrFail: jest.fn().mockResolvedValue({
@@ -264,21 +266,64 @@ describe('InvitationsService.create', () => {
     });
   });
 
-  describe('an address that already has an account', () => {
-    it('says so plainly when the account is in this company', async () => {
-      findByEmailWithCompany.mockResolvedValue({ companyId: COMPANY_ID });
+  describe('an address that is already known', () => {
+    const NEUTRAL_ANSWER =
+      "This address can't be invited. If they already work here, ask the owner to add them to your team.";
 
-      await expect(invite(UserRole.OWNER, UserRole.MANAGER)).rejects.toThrow(
-        'A user with this email already belongs to this company',
-      );
+    const accountIn = (companyId: string) => () =>
+      findByEmailWithCompany.mockResolvedValue({ companyId });
+    const pendingInvitationInto = (teamId: string) => () =>
+      findPendingInvitation.mockResolvedValue({
+        role: UserRole.EMPLOYEE,
+        teamId,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+
+    it.each([
+      ['an account in this company', accountIn(COMPANY_ID)],
+      ['an account in another company', accountIn('other-company')],
+      ['an invitation into another team', pendingInvitationInto(OTHER_TEAM_ID)],
+    ])('gives a manager one answer for %s', async (_case, arrange) => {
+      arrange();
+
+      await expect(
+        invite(UserRole.MANAGER, UserRole.EMPLOYEE, LED_TEAM_ID),
+      ).rejects.toThrow(new ConflictException(NEUTRAL_ANSWER));
+      expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
 
-    it('gives a neutral answer when the account is in another company', async () => {
-      findByEmailWithCompany.mockResolvedValue({ companyId: 'other-company' });
+    it.each([
+      [
+        UserRole.OWNER,
+        'an account in this company',
+        accountIn(COMPANY_ID),
+        'A user with this email already belongs to this company',
+      ],
+      [
+        UserRole.OWNER,
+        'an account in another company',
+        accountIn('other-company'),
+        // Says nothing about the account or its company, even to an owner.
+        'This email address cannot be invited',
+      ],
+      [
+        UserRole.OWNER,
+        'an invitation into another team',
+        pendingInvitationInto(OTHER_TEAM_ID),
+        'An active invitation already exists for this email',
+      ],
+      [
+        UserRole.MANAGER,
+        'an invitation into their own team',
+        pendingInvitationInto(LED_TEAM_ID),
+        'An active invitation already exists for this email',
+      ],
+    ])('tells %s the reason for %s', async (role, _case, arrange, reason) => {
+      arrange();
 
-      await expect(invite(UserRole.OWNER, UserRole.MANAGER)).rejects.toThrow(
-        new ConflictException('This email address cannot be invited'),
-      );
+      await expect(
+        invite(role, UserRole.EMPLOYEE, LED_TEAM_ID),
+      ).rejects.toThrow(new ConflictException(reason));
       expect(sendInvitationEmail).not.toHaveBeenCalled();
     });
   });
