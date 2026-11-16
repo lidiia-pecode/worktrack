@@ -87,12 +87,13 @@ export function firstDayAfterLockedMonths(
     : null;
 }
 
-/** Whether any day from `startDate` to `endDate` falls in a locked month. */
-export function isRangeLocked(
+/** The locked months from `startDate` to `endDate`, as YYYY-MM keys, oldest first. */
+function lockedMonthsIn(
   isLocked: (date: string) => boolean,
   startDate: string,
   endDate: string,
-) {
+): string[] {
+  const locked: string[] = [];
   const lastMonth = toMonthKey(endDate);
 
   for (
@@ -100,11 +101,18 @@ export function isRangeLocked(
     month <= lastMonth;
     month = addMonthsToKey(month, 1)
   ) {
-    if (isLocked(getMonthRange(month).dateFrom)) return true;
+    if (isLocked(getMonthRange(month).dateFrom)) locked.push(month);
   }
 
-  return false;
+  return locked;
 }
+
+/** Whether any day from `startDate` to `endDate` falls in a locked month. */
+export const isRangeLocked = (
+  isLocked: (date: string) => boolean,
+  startDate: string,
+  endDate: string,
+) => lockedMonthsIn(isLocked, startDate, endDate).length > 0;
 
 /** An absence's days in locked months, and which of its ends can still move. */
 export interface AbsenceLockedPart {
@@ -125,15 +133,7 @@ export function absenceLockedPart(
   startDate: string,
   endDate: string,
 ): AbsenceLockedPart | null {
-  const lockedMonths: string[] = [];
-  const lastMonth = toMonthKey(endDate);
-  for (
-    let month = toMonthKey(startDate);
-    month <= lastMonth;
-    month = addMonthsToKey(month, 1)
-  ) {
-    if (isLocked(getMonthRange(month).dateFrom)) lockedMonths.push(month);
-  }
+  const lockedMonths = lockedMonthsIn(isLocked, startDate, endDate);
   if (lockedMonths.length === 0) return null;
 
   const firstLockedDay = getMonthRange(lockedMonths[0]).dateFrom;

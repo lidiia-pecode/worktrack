@@ -16,7 +16,7 @@ import {
 
 import { Absence } from './entities/absence.entity';
 import { User } from 'src/users/entities/user.entity';
-import { UserRole, UserStatus } from 'src/users/enums/user-role.enum';
+import { UserStatus } from 'src/users/enums/user-role.enum';
 import { TeamVisibilityService } from 'src/teams/team-visibility.service';
 import { DateRange, isWithinSpan } from 'src/teams/days-in-view.util';
 import { NotificationsService } from 'src/notifications/notifications.service';
@@ -391,7 +391,7 @@ export class AbsencesService {
     absence: Absence,
     next: Pick<Absence, 'startDate' | 'endDate'> &
       Pick<UpdateAbsencePayload, 'type' | 'note'>,
-  ): Promise<LockedDays> {
+  ): Promise<DateRange[]> {
     const lockedMonths = await this.reportingService.lockedMonthsIn(
       companyId,
       absence.startDate < next.startDate ? absence.startDate : next.startDate,
@@ -414,11 +414,10 @@ export class AbsencesService {
 
     const changesWholeRecord =
       (next.type !== undefined && next.type !== absence.type) ||
-      (next.note !== undefined &&
-        (next.note ?? null) !== (absence.note ?? null));
+      (next.note !== undefined && next.note !== (absence.note ?? null));
     if (before.length > 0 && changesWholeRecord) {
-      throw new ForbiddenException(
-        'Part of this absence is in a locked month, so its reason and note stay as they are. The owner can reopen the month in Periods.',
+      throw lockedAbsenceError(
+        'Part of this absence is in a locked month, so its reason and note stay as they are.',
       );
     }
 
@@ -492,7 +491,7 @@ export class AbsencesService {
     companyId: string,
     startDate: string,
     endDate: string,
-    lockedDays: LockedDays = [],
+    lockedDays: DateRange[] = [],
   ): Promise<RemovedPlan[]> {
     const query = manager
       .createQueryBuilder()
@@ -560,11 +559,6 @@ export class AbsencesService {
     });
 
     for (const author of authors) {
-      // `daysInView` narrows only a manager's view; anyone else who isn't
-      // the owner reads nobody's days but their own, such as a manager since
-      // made an employee.
-      if (author.role === UserRole.EMPLOYEE && author.id !== ownerId) continue;
-
       const theirs = removed.filter((plan) => plan.authorId === author.id);
       const dates = theirs.map((plan) => plan.date).sort();
       const inView = await this.teamVisibility.daysInView(author, [ownerId], {
@@ -702,17 +696,17 @@ const lockedAbsenceError = (reason: string) =>
   );
 
 /** An absence's days in each locked month, as first and last day, oldest first. */
-type LockedDays = { from: string; to: string }[];
-
-/** The `LockedDays` of the range from `startDate` to `endDate`. */
 const lockedDaysIn = (
   lockedMonths: string[],
   startDate: string,
   endDate: string,
-): LockedDays =>
+): DateRange[] =>
   lockedMonths
-    .map((month) => ({
-      from: startDate > month ? startDate : month,
-      to: endDate < lastDayOfMonth(month) ? endDate : lastDayOfMonth(month),
-    }))
+    .map((month) => {
+      const lastDay = lastDayOfMonth(month);
+      return {
+        from: startDate > month ? startDate : month,
+        to: endDate < lastDay ? endDate : lastDay,
+      };
+    })
     .filter((span) => span.from <= span.to);

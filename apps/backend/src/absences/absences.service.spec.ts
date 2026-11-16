@@ -493,15 +493,9 @@ describe('AbsencesService', () => {
 
       it('removes plans on its new open days and never on its locked ones', async () => {
         const id = await absenceAcross();
-        for (const date of ['2026-02-23', '2026-03-02']) {
-          await dataSource.getRepository(PlanningEntry).save({
-            companyId,
-            userId: member.id,
-            projectId,
-            date,
-            plannedMinutes: 240,
-          });
-        }
+        // Planned by the person themselves, so nobody is told.
+        await planBy(member.id, member.id, '2026-02-23');
+        await planBy(member.id, member.id, '2026-03-02');
 
         await service.update(id, { startDate: '2026-02-23' }, member);
 

@@ -772,9 +772,9 @@ export class PlanningService {
 
   /**
    * Locks the entry's person before the entry, the order the other writes for
-   * a person use (a plan, a period, a time log, an absence), so two of them
-   * never wait on each other in a circle. An entry never changes person, so
-   * reading its owner first is safe. Its project is locked between them, as an
+   * a person use (a period plan, a time log, an absence), so two of them never
+   * wait on each other in a circle. An entry never changes person or project,
+   * so reading both first is safe. Its project is locked between them, as an
    * archive locks the project before deleting its plans.
    */
   private async lockEntryAndOwner(
@@ -784,19 +784,12 @@ export class PlanningService {
   ): Promise<PlanningEntry> {
     const owner = await manager.findOne(PlanningEntry, {
       where: { id, companyId: user.companyId },
-      select: ['id', 'userId'],
+      select: ['id', 'userId', 'projectId'],
     });
     if (!owner) throw new NotFoundException('Planning entry not found');
 
     await this.lockUser(manager, owner.userId, user.companyId);
-
-    // Read under the person's lock: only an edit, which takes it too, changes the project.
-    const current = await manager.findOne(PlanningEntry, {
-      where: { id, companyId: user.companyId },
-      select: ['id', 'projectId'],
-    });
-    if (!current) throw new NotFoundException('Planning entry not found');
-    await this.lockProject(manager, current.projectId, user.companyId);
+    await this.lockProject(manager, owner.projectId, user.companyId);
 
     const entry = await manager.findOne(PlanningEntry, {
       where: { id, companyId: user.companyId },

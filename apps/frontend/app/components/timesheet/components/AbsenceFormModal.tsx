@@ -9,10 +9,13 @@ import TextareaAutosize from "react-textarea-autosize";
 
 import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
 import { AbsenceType } from "@/types/enums";
-import { ABSENCE_TYPE_LABELS, formatAbsenceRange } from "@/lib/utils/absence";
+import {
+  ABSENCE_TYPE_LABELS,
+  formatAbsenceRange,
+  projectHoursText,
+} from "@/lib/utils/absence";
 import {
   formatDayRangeLabel,
-  formatDuration,
   formatLongDayLabel,
   fromISODate,
   isISODateRange,
@@ -107,7 +110,7 @@ type Props = {
   isSingleDay?: boolean;
   absence?: Absence;
   /** Month locks: an absence partly in a locked month keeps those days, and its reason and note. */
-  isLocked?: (date: string) => boolean;
+  isLocked: (date: string) => boolean;
   onCreate: (payload: AbsencePayload) => Promise<unknown>;
   onUpdate: (id: string, payload: UpdateAbsencePayload) => Promise<unknown>;
   onDelete: (id: string) => Promise<unknown>;
@@ -133,9 +136,7 @@ export const AbsenceFormModal = ({
 }: Props) => {
   const isEditMode = !!absence;
   const lockedPart =
-    absence && isLocked
-      ? absenceLockedPart(isLocked, absence.startDate, absence.endDate)
-      : null;
+    absence && absenceLockedPart(isLocked, absence.startDate, absence.endDate);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const defaultValues = useMemo<AbsenceFormData>(
@@ -191,7 +192,7 @@ export const AbsenceFormModal = ({
     if (!isRangeComplete || !arePlansKnown) return null;
 
     // Plans on its days in a locked month stay, as those days do.
-    const removable = plansInRange.filter((plan) => !isLocked?.(plan.date));
+    const removable = plansInRange.filter((plan) => !isLocked(plan.date));
     if (removable.length === 0) return null;
 
     const minutesByProject = new Map<string, number>();
@@ -204,9 +205,9 @@ export const AbsenceFormModal = ({
 
     return {
       count: removable.length,
-      projects: [...minutesByProject]
-        .map(([name, minutes]) => `${name} ${formatDuration(minutes)}`)
-        .join(", "),
+      projects: projectHoursText(
+        [...minutesByProject].map(([name, minutes]) => ({ name, minutes })),
+      ),
     };
   }, [isRangeComplete, arePlansKnown, plansInRange, isLocked]);
 
@@ -381,7 +382,7 @@ export const AbsenceFormModal = ({
           )}
 
           {plansFailed && (
-            <PartLoadError onRetry={() => refetchPlans()} className="mt-0">
+            <PartLoadError onRetry={() => refetchPlans()}>
               {PLANS_CHECK_ERROR}
             </PartLoadError>
           )}

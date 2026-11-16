@@ -160,13 +160,11 @@ export const PlanningWeekRow = ({
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
-        // A day someone wasn't employed on, or before their account, keeps
-        // the plans left over there, read-only, as in an earlier spell of
-        // someone since back; a day in another team holds nothing.
+        // A closed day keeps the plans left over there, read-only, as in an
+        // earlier spell of someone since back; the server leaves none on a
+        // day in another team.
         const closed = closedSpellOn(row.closedSpells, iso);
-        const keepsLeftoverPlans =
-          closed?.reason !== "outside-team" &&
-          (entriesByDate.get(iso)?.length ?? 0) > 0;
+        const keepsLeftoverPlans = (entriesByDate.get(iso)?.length ?? 0) > 0;
         if (closed && !keepsLeftoverPlans) {
           return <ClosedDayCell key={iso} reason={closed.reason} />;
         }

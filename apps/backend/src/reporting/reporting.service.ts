@@ -355,8 +355,7 @@ export class ReportingService {
   }
 
   /**
-   * True when any day between the two dates is locked. A record covering a
-   * range is frozen as soon as it touches one.
+   * True when any day between the two dates is locked.
    *
    * Inside a write's transaction, pass its `manager`: the period rows are then
    * read with a share lock, so a Close or Reopen of one of those months waits

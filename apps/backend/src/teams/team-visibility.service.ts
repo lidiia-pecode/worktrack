@@ -439,10 +439,10 @@ export class TeamVisibilityService {
   }
 
   /**
-   * For each person, what a view of the range holds of them: a manager's view
-   * the days they were in a team the manager leads, a team filter that team's
-   * days, and anything else every day. Their own row is every day for a
-   * manager, as their own records always are.
+   * For each person, what a view of the range holds of them: an owner's every
+   * day, a manager's the days they were in a team the manager leads, a team
+   * filter that team's days, and anyone else's none. A viewer's own row is
+   * every day, as their own records always are.
    */
   async daysInView(
     user: AuthUser,
@@ -490,8 +490,11 @@ export class TeamVisibilityService {
       }
     } else if (teamId) {
       rows = await this.membershipSpans(user, teamId, userIds);
-    } else {
+    } else if (user.role === UserRole.OWNER) {
       return undefined;
+    } else {
+      // Anyone else reads only themselves, whose days `daysInView` keeps whole.
+      rows = [];
     }
 
     const byUser = new Map<string, DaySpan[]>();

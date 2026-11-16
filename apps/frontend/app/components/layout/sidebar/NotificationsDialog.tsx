@@ -20,11 +20,9 @@ import { EmptyState } from "../../shared/EmptyState";
 import { ErrorState } from "../../shared/ErrorState";
 import { LoadingState } from "../../shared/LoadingState";
 import { ResourceFormModal } from "../../shared/resource/ResourceFormModal";
-import {
-  DATE_LOCALE,
-  formatDayRangeLabel,
-  formatDuration,
-} from "@/lib/utils/date";
+import { planning } from "./sidebar-navigation";
+import { DATE_LOCALE, formatDayRangeLabel } from "@/lib/utils/date";
+import { projectHoursText } from "@/lib/utils/absence";
 
 const SENT_AT_LABEL = new Intl.DateTimeFormat(DATE_LOCALE, {
   day: "numeric",
@@ -45,20 +43,16 @@ const personLink = (subjectUser: AppNotification["subjectUser"]) =>
     : USERS_PATH;
 
 // The week the removed plans started in, to plan it again.
-const planningLink = (from: string) => `/planning?week=${from}`;
+const planningLink = (from: string) => `${planning.href}?week=${from}`;
 
 const plansRemovedText = (
   name: string,
   { from, to, planCount, projects }: PlansRemovedDetails,
-) => {
-  const hours = projects
-    .map((project) => `${project.name} ${formatDuration(project.minutes)}`)
-    .join(", ");
-  const plans =
-    planCount === 1 ? "1 of your plans" : `${planCount} of your plans`;
+) =>
+  `${name}'s absence on ${formatDayRangeLabel(from, to)} removed ${planCount} of your plans (${projectHoursText(projects)}).`;
 
-  return `${name}'s absence on ${formatDayRangeLabel(from, to)} removed ${plans} (${hours}).`;
-};
+const NOTICE_LINK_CLASS =
+  "mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline";
 
 interface NotificationRowProps {
   notification: AppNotification;
@@ -110,7 +104,7 @@ const NotificationRow = ({
           <Link
             href={personLink(subjectUser)}
             onClick={onNavigate}
-            className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+            className={NOTICE_LINK_CLASS}
           >
             Put them on a project
           </Link>
@@ -120,7 +114,7 @@ const NotificationRow = ({
           <Link
             href={planningLink(removedPlans.from)}
             onClick={onNavigate}
-            className="mt-1.5 inline-block text-sm font-medium text-brand underline-offset-4 hover:underline"
+            className={NOTICE_LINK_CLASS}
           >
             Open Planning
           </Link>

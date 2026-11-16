@@ -120,6 +120,11 @@ type Props = {
   open: boolean;
   onClose: () => void;
   date: string;
+  /**
+   * Whose time it is when it isn't the viewer's, as Team time opens it; also
+   * turns on the note that sends someone with nothing to log against to
+   * Projects.
+   */
   subjectName?: string;
   /** From `lastEntryChoiceKey`: where the last pair logged for this person is kept. */
   rememberKey: string;

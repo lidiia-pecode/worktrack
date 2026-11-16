@@ -468,6 +468,21 @@ describe('TeamVisibilityService', () => {
         { from: week.from, until: '2026-01-08' },
       ]);
     });
+
+    it('holds only their own days for an employee, and every day for an owner', async () => {
+      const byEmployee = await service.daysInView(
+        outsider,
+        [outsider.id, member.id],
+        week,
+      );
+      const byOwner = await service.daysInView(owner, [member.id], week);
+
+      expect(byEmployee.get(outsider.id)).toEqual({ outside: [], moves: [] });
+      expect(byEmployee.get(member.id)?.outside).toEqual([
+        { from: week.from, until: '2026-01-08' },
+      ]);
+      expect(byOwner.get(member.id)).toEqual({ outside: [], moves: [] });
+    });
   });
 
   describe('assertCanWriteUser', () => {

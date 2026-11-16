@@ -40,6 +40,7 @@ const renderForm = (subjectName?: string) =>
       userId="user-1"
       subjectName={subjectName}
       date="2026-11-13"
+      isLocked={() => false}
       onCreate={vi.fn()}
       onUpdate={vi.fn()}
       onDelete={vi.fn()}

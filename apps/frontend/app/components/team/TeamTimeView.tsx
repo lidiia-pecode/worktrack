@@ -440,7 +440,7 @@ export const TeamTimeView = ({
       )}
 
       {isReady && isPlansError && (
-        <PartLoadError onRetry={() => void refetchPlans()}>
+        <PartLoadError onRetry={() => void refetchPlans()} className="mt-3">
           {PLANS_LOAD_ERROR}
         </PartLoadError>
       )}

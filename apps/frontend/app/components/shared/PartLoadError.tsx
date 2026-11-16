@@ -12,7 +12,7 @@ type PartLoadErrorProps = {
   /** What is missing and what that means, e.g. "Plans couldn't load, so they aren't shown." */
   children: ReactNode;
   onRetry: () => void;
-  /** Overrides the gap above, where the parent spaces its children. */
+  /** Its place in the parent, such as a gap above it. */
   className?: string;
 };
 
@@ -29,7 +29,7 @@ export const PartLoadError = ({
   <div
     role="status"
     className={cn(
-      "mt-3 flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle py-1.5 pr-1.5 pl-3 text-sm text-warning-text",
+      "flex items-center gap-2 rounded-lg border border-warning-border bg-warning-subtle py-1.5 pr-1.5 pl-3 text-sm text-warning-text",
       className,
     )}
   >
