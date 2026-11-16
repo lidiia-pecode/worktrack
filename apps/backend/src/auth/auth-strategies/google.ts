@@ -6,6 +6,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy, VerifyCallback } from 'passport-google-oauth20';
 
 import { AuthErrorCode, authError } from '../auth-error';
+import type { GoogleUserPayload } from '../dtos/auth.dto';
 import { CookieStateStore } from './cookie-state-store';
 
 export function getGoogleStrategyOptions(
@@ -31,6 +32,15 @@ export function getGooglePayload(profile: Profile) {
     googleId: profile.id,
   };
 }
+
+const GOOGLE_NAME_FIELDS = ['firstName', 'lastName'] as const;
+export type GoogleNameField = (typeof GOOGLE_NAME_FIELDS)[number];
+
+/** The names a Google account didn't share, for the sign-up to ask for. */
+export const missingGoogleNames = (
+  names: Pick<GoogleUserPayload, GoogleNameField>,
+): GoogleNameField[] =>
+  GOOGLE_NAME_FIELDS.filter((field) => !names[field].trim());
 
 export function validateGoogleProfile(
   profile: Profile,

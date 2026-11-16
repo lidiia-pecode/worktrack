@@ -183,12 +183,14 @@ export class InvitationsService {
   }
 
   async revoke(id: string, user: AuthUser): Promise<void> {
-    const invitation = await this.findPendingInScope(id, user);
+    await this.dataSource.transaction(async (manager) => {
+      const invitation = await this.findPendingInScope(id, user, manager);
 
-    invitation.status = InvitationStatus.REVOKED;
-    invitation.revokedAt = new Date();
+      invitation.status = InvitationStatus.REVOKED;
+      invitation.revokedAt = new Date();
 
-    await this.invitationRepository.save(invitation);
+      await manager.getRepository(Invitation).save(invitation);
+    });
   }
 
   /** Refuses an unusable token with the same codes the invitation page reads. */
@@ -218,14 +220,9 @@ export class InvitationsService {
     metadata?: SessionMetadata,
   ) {
     const user = await this.dataSource.transaction(async (manager) => {
-      const invitationRepository = manager.getRepository(Invitation);
-
       const userRepository = manager.getRepository(User);
 
-      const invitation = await this.findValidInvitation(
-        token,
-        invitationRepository,
-      );
+      const invitation = await this.lockValidInvitation(token, manager);
 
       const email = this.normalizeEmail(invitation.email);
 
@@ -267,14 +264,9 @@ export class InvitationsService {
     metadata?: SessionMetadata,
   ) {
     const user = await this.dataSource.transaction(async (manager) => {
-      const invitationRepository = manager.getRepository(Invitation);
-
       const userRepository = manager.getRepository(User);
 
-      const invitation = await this.findValidInvitation(
-        token,
-        invitationRepository,
-      );
+      const invitation = await this.lockValidInvitation(token, manager);
 
       const invitationEmail = this.normalizeEmail(invitation.email);
 
@@ -351,6 +343,19 @@ export class InvitationsService {
     const saved = await this.dataSource.transaction(async (manager) => {
       const repository = manager.getRepository(Invitation);
 
+      // A resend holds its invitation first, as an acceptance does, so the two
+      // and a revoke at the same moment take turns: one that comes second
+      // finds it no longer pending and is refused.
+      if (invitation.id) {
+        const isStillPending = await repository.exists({
+          where: { id: invitation.id, status: InvitationStatus.PENDING },
+          lock: { mode: 'pessimistic_write' },
+        });
+        if (!isStillPending) {
+          throw new NotFoundException('Invitation not found');
+        }
+      }
+
       // Checked again under a lock, so a team archive at the same moment either
       // waits and then finds this invitation pending, or finishes first and this is refused.
       if (invitation.teamId) {
@@ -417,17 +422,24 @@ export class InvitationsService {
     );
   }
 
-  /** A manager gets the same answer for an invitation outside their teams as for a missing one. */
+  /**
+   * A manager gets the same answer for an invitation outside their teams as
+   * for a missing one. Given a transaction, it holds the invitation for it.
+   */
   private async findPendingInScope(
     id: string,
     user: AuthUser,
+    manager?: EntityManager,
   ): Promise<Invitation> {
-    const invitation = await this.invitationRepository.findOne({
+    const repository =
+      manager?.getRepository(Invitation) ?? this.invitationRepository;
+    const invitation = await repository.findOne({
       where: {
         id,
         companyId: user.companyId,
         status: InvitationStatus.PENDING,
       },
+      ...(manager && { lock: { mode: 'pessimistic_write' as const } }),
     });
 
     const visibleTeamIds = await this.teamVisibility.getVisibleTeamIds(user);
@@ -459,6 +471,27 @@ export class InvitationsService {
     }
 
     return invitation;
+  }
+
+  /**
+   * The invitation an acceptance completes, held for its transaction, so a
+   * revoke or a resend at the same moment waits for it, or finishes first and
+   * this finds the result.
+   */
+  private async lockValidInvitation(
+    token: string,
+    manager: EntityManager,
+  ): Promise<Invitation> {
+    const repository = manager.getRepository(Invitation);
+
+    // Locked on its own: Postgres can't lock the outer joins read below.
+    await repository.findOne({
+      select: { id: true },
+      where: { tokenHash: this.hashToken(token?.trim() ?? '') },
+      lock: { mode: 'pessimistic_write' },
+    });
+
+    return this.findValidInvitation(token, repository);
   }
 
   private async findValidInvitation(

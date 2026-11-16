@@ -197,29 +197,31 @@ export class AuthService {
     const email = this.authPolicyService.normalizeEmail(payload.email);
 
     try {
-      return await this.dataSource.transaction(async (manager) => {
-        const userRepository = manager.getRepository(User);
-        const companyRepository = manager.getRepository(Company);
+      const passwordHash = await this.passwordService.hash(payload.password);
 
-        const company = await this.companiesService.create(
-          payload.companyName,
-          companyRepository,
-        );
+      return await this.companiesService.retryOnTakenSlug(() =>
+        this.dataSource.transaction(async (manager) => {
+          const userRepository = manager.getRepository(User);
+          const companyRepository = manager.getRepository(Company);
 
-        const passwordHash = await this.passwordService.hash(payload.password);
+          const company = await this.companiesService.create(
+            payload.companyName,
+            companyRepository,
+          );
 
-        const user = userRepository.create({
-          companyId: company.id,
-          firstName: payload.firstName.trim(),
-          lastName: payload.lastName.trim(),
-          email,
-          passwordHash,
-          role: UserRole.OWNER,
-          status: UserStatus.ACTIVE,
-        });
+          const user = userRepository.create({
+            companyId: company.id,
+            firstName: payload.firstName.trim(),
+            lastName: payload.lastName.trim(),
+            email,
+            passwordHash,
+            role: UserRole.OWNER,
+            status: UserStatus.ACTIVE,
+          });
 
-        return await userRepository.save(user);
-      });
+          return await userRepository.save(user);
+        }),
+      );
     } catch (error: unknown) {
       if (isDatabaseConflictError(error)) {
         throw new ConflictException(

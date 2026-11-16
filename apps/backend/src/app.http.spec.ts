@@ -5,6 +5,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DataSource } from 'typeorm';
 
 import { createApp } from 'src/create-app';
+import { GoogleSignupToken } from 'src/auth/entities/google-signup-token.entity';
+import { GoogleAuthService } from 'src/auth/services/google-auth.service';
 import { PasswordService } from 'src/auth/services/password.service';
 import { SessionService } from 'src/auth/services/session.service';
 import { Company } from 'src/companies/entities/company.entity';
@@ -22,6 +24,7 @@ const SLUG = `http-test-${RUN}`;
 const ANY_ID = '00000000-0000-4000-8000-000000000000';
 const APP_START_TIMEOUT_MS = 30_000;
 const OWNER_PASSWORD = 'Correct-Horse-1';
+const GOOGLE_COMPANY = `Google sign-up ${RUN}`;
 
 /** The routes that answer without a session: signing up, in and back in. */
 const PUBLIC_ROUTES = [
@@ -140,7 +143,14 @@ describe('the app over HTTP', () => {
 
   afterAll(async () => {
     if (!app) return;
-    await app.get(DataSource).getRepository(Company).delete({ slug: SLUG });
+    await app
+      .get(DataSource)
+      .getRepository(Company)
+      .delete([{ slug: SLUG }, { companyName: GOOGLE_COMPANY }]);
+    await app
+      .get(DataSource)
+      .getRepository(GoogleSignupToken)
+      .delete({ email: `grace-${RUN}@http.test` });
     await app.close();
   });
 
@@ -223,6 +233,37 @@ describe('the app over HTTP', () => {
       expect(refreshed.status).toBe(201);
       await expect(refreshed.json()).resolves.toEqual({ success: true });
     });
+  });
+
+  it('asks a Google sign-up for the name Google left out, keeping the link', async () => {
+    const token = await app.get(GoogleAuthService).createGoogleSignupToken({
+      email: `grace-${RUN}@http.test`,
+      firstName: 'Grace',
+      lastName: '',
+      googleId: `google-grace-${RUN}`,
+    });
+    const complete = (extra: object) =>
+      call('POST /auth/google/signup/complete', {
+        body: { token, companyName: GOOGLE_COMPANY, ...extra },
+      });
+
+    const withoutName = await complete({});
+    const { errors } = (await withoutName.json()) as {
+      errors: Record<string, string[]>;
+    };
+
+    expect(withoutName.status).toBe(400);
+    expect(Object.keys(errors)).toEqual(['lastName']);
+
+    const withName = await complete({ lastName: 'Walker' });
+
+    expect(withName.status).toBe(201);
+    await expect(
+      app
+        .get(DataSource)
+        .getRepository(User)
+        .findOneBy({ email: `grace-${RUN}@http.test` }),
+    ).resolves.toMatchObject({ firstName: 'Grace', lastName: 'Walker' });
   });
 
   it('refuses an employee on an owner route', async () => {

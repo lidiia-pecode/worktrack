@@ -5,7 +5,7 @@ import { formatDayMonthLabel, formatDayMonthYearLabel } from "./date";
 
 export const initials = (u: User | AvatarUser | null) => {
   if (!u) return "";
-  return `${u.firstName[0]}${u.lastName[0]}`.toUpperCase();
+  return `${u.firstName.charAt(0)}${u.lastName.charAt(0)}`.toUpperCase();
 };
 
 export const fullName = (u: User | AvatarUser) =>

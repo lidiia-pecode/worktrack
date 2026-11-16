@@ -28,7 +28,11 @@ export const invitationSchema = z.object({
 
 export type InvitationFormInputs = z.infer<typeof invitationSchema>;
 
+// The page shows a name field only when Google didn't share that name; a
+// field it doesn't show stays undefined.
 export const googleSignupSchema = z.object({
+  firstName: personNameSchema("First name").optional(),
+  lastName: personNameSchema("Last name").optional(),
   companyName: companyNameSchema,
 });
 

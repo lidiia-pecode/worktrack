@@ -51,6 +51,7 @@ import { GoogleAuthService } from './services/google-auth.service';
 import { Serialize } from 'src/lib/interceptors';
 import { ForgotPasswordDto, ResetPasswordDto } from './dtos/reset-password.dto';
 import { AuthErrorCode, authError } from './auth-error';
+import { missingGoogleNames } from './auth-strategies/google';
 import {
   GoogleLinkCallbackFilter,
   GoogleLoginCallbackFilter,
@@ -115,7 +116,13 @@ export class AuthController {
       result.googleUser,
     );
 
-    return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
+    // The sign-up page asks for the names Google didn't share from the start.
+    const query = new URLSearchParams({ token: signupToken });
+    for (const field of missingGoogleNames(result.googleUser)) {
+      query.append('ask', field);
+    }
+
+    return res.redirect(`${frontendUrl}/google/signup?${query}`);
   }
 
   @Public()
@@ -144,8 +151,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ): Promise<SuccessResponse> {
     const tokens = await this.googleAuthService.completeGoogleSignup(
-      dto.token,
-      dto.companyName,
+      dto,
       metadata,
     );
 

@@ -19,6 +19,24 @@ import {
   type GoogleSignupFormInputs,
 } from "@/lib/forms/schemas/auth.schema";
 
+const NAME_FIELDS = {
+  firstName: { label: "First name", autoComplete: "given-name" },
+  lastName: { label: "Last name", autoComplete: "family-name" },
+} as const;
+
+type NameField = keyof typeof NAME_FIELDS;
+
+/** What the card asks for: the company, and any name Google didn't share. */
+const describeAsked = (askedNames: NameField[]) => {
+  if (askedNames.length === 0) return "One last step: your company's name.";
+
+  const missing =
+    askedNames.length === 1
+      ? NAME_FIELDS[askedNames[0]].label.toLowerCase()
+      : "name";
+  return `Google didn't share your ${missing}. Add it to finish.`;
+};
+
 const START_AGAIN_LINK = (
   <Link
     href="/register"
@@ -32,6 +50,9 @@ export default function GoogleSignupPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const askedNames = (Object.keys(NAME_FIELDS) as NameField[]).filter((field) =>
+    searchParams.getAll("ask").includes(field),
+  );
 
   const actions = useAuthActions();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -45,6 +66,7 @@ export default function GoogleSignupPage() {
     resolver: zodResolver(googleSignupSchema),
     defaultValues: {
       companyName: "",
+      ...Object.fromEntries(askedNames.map((field) => [field, ""])),
     },
   });
 
@@ -54,10 +76,7 @@ export default function GoogleSignupPage() {
     setSubmitError(null);
 
     try {
-      await actions.completeGoogleSignup.mutateAsync({
-        token,
-        companyName: data.companyName,
-      });
+      await actions.completeGoogleSignup.mutateAsync({ token, ...data });
 
       router.replace("/onboarding");
       router.refresh();
@@ -79,13 +98,24 @@ export default function GoogleSignupPage() {
       {token ? (
         <AuthCard
           title="Finish signing up"
-          description="One last step: your company's name."
+          description={describeAsked(askedNames)}
         >
           <form
             noValidate
             onSubmit={handleSubmit(onSubmit)}
             className="flex flex-col space-y-4"
           >
+            {askedNames.map((field) => (
+              <Input
+                key={field}
+                label={NAME_FIELDS[field].label}
+                autoComplete={NAME_FIELDS[field].autoComplete}
+                {...register(field)}
+                error={errors[field]?.message}
+                disabled={isSubmitting}
+              />
+            ))}
+
             <Input
               label="Company name"
               autoComplete="organization"
