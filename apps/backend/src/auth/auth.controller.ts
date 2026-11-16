@@ -15,10 +15,9 @@ import type { SessionMetadata } from 'src/lib/types/session-metadata';
 
 import { AuthService } from './services/auth.service';
 import { CookieService } from './services/cookie.service';
-import { CurrentUser, SessionId } from 'src/lib/decorators';
+import { CurrentUser, Public, SessionId } from 'src/lib/decorators';
 
 import {
-  AccessGuard,
   GoogleLinkGuard,
   GoogleLoginGuard,
   GoogleSignupGuard,
@@ -119,10 +118,12 @@ export class AuthController {
     return res.redirect(`${frontendUrl}/google/signup?token=${signupToken}`);
   }
 
+  @Public()
   @Get('/google/signup')
   @UseGuards(GoogleSignupGuard)
   googleSignup() {}
 
+  @Public()
   @Get('google/signup/callback')
   @UseFilters(GoogleSignupCallbackFilter)
   @UseGuards(GoogleSignupGuard)
@@ -134,6 +135,7 @@ export class AuthController {
     return this.handleGoogleCallback('signup', googleUser, metadata, res);
   }
 
+  @Public()
   @Post('google/signup/complete')
   @Serialize(TokenResponse)
   async completeGoogleSignup(
@@ -158,10 +160,12 @@ export class AuthController {
     };
   }
 
+  @Public()
   @Get('/google')
   @UseGuards(GoogleLoginGuard)
   googleLogin() {}
 
+  @Public()
   @Get('google/callback')
   @UseFilters(GoogleLoginCallbackFilter)
   @UseGuards(GoogleLoginGuard)
@@ -174,12 +178,12 @@ export class AuthController {
   }
 
   @Get('google/link')
-  @UseGuards(AccessGuard, GoogleLinkGuard)
+  @UseGuards(GoogleLinkGuard)
   googleLink() {}
 
   @Get('google/link/callback')
   @UseFilters(GoogleLinkCallbackFilter)
-  @UseGuards(AccessGuard, GoogleLinkGuard)
+  @UseGuards(GoogleLinkGuard)
   async googleLinkCallback(
     @Req() req: GoogleLinkRequest,
     @Res() res: Response,
@@ -198,6 +202,7 @@ export class AuthController {
   // Each request guesses the password once, so it is limited as sign-in is;
   // the body carries no email for the per-account limit.
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('google/link/complete')
   @Serialize(TokenResponse)
   async completeGoogleLinkWithPassword(
@@ -224,6 +229,7 @@ export class AuthController {
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('signup')
   @Serialize(TokenResponse)
   async signup(
@@ -248,6 +254,7 @@ export class AuthController {
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('signin')
   @Serialize(TokenResponse)
   @UseGuards(LocalAuthGuard)
@@ -270,6 +277,7 @@ export class AuthController {
   }
 
   @LimitPerSession(REFRESHES_PER_MINUTE)
+  @Public()
   @Post('refresh')
   @Serialize(TokenResponse)
   @UseGuards(RefreshGuard)
@@ -302,7 +310,6 @@ export class AuthController {
 
   @Post('logout')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async logout(
     @SessionId() sessionId: string,
     @Res({ passthrough: true }) res: Response,
@@ -317,7 +324,6 @@ export class AuthController {
 
   @Post('logout-all')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async logoutAll(
     @CurrentUser() authUser: AuthUser,
     @Res({ passthrough: true }) res: Response,
@@ -334,7 +340,6 @@ export class AuthController {
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
   @Patch('password')
   @Serialize(SuccessResponse)
-  @UseGuards(AccessGuard)
   async changePassword(
     @CurrentUser() authUser: AuthUser,
     @SessionId() sessionId: string,
@@ -354,6 +359,7 @@ export class AuthController {
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
   @LimitPerAccount(ACCOUNT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('forgot-password')
   @Serialize(SuccessResponse)
   async forgotPassword(
@@ -367,6 +373,7 @@ export class AuthController {
   }
 
   @LimitPerClient(CLIENT_AUTH_ATTEMPTS_PER_MINUTE)
+  @Public()
   @Post('reset-password')
   @Serialize(TokenResponse)
   async resetPassword(

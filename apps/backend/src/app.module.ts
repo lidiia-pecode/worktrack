@@ -27,6 +27,7 @@ import { PeopleReportModule } from './reporting/people/people-report.module';
 import { createRateLimitOptions } from './auth/rate-limit/rate-limit.options';
 import { AuthPolicyService } from './auth/services/auth-policy.service';
 import { TokenService } from './auth/services/token.service';
+import { AccessGuard, RolesGuard } from './auth/guards';
 
 @Module({
   imports: [
@@ -73,9 +74,18 @@ import { TokenService } from './auth/services/token.service';
   ],
 
   providers: [
+    // In this order: the rate limit, then the session, then the role.
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: AccessGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

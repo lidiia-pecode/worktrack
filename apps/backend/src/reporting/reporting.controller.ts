@@ -5,11 +5,9 @@ import {
   Post,
   Query,
   StreamableFile,
-  UseGuards,
 } from '@nestjs/common';
 
 import { ReportingService } from './reporting.service';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { HoursReportQuery } from './dtos/hours-report-query.dto';
@@ -26,7 +24,6 @@ import {
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('reporting')
-@UseGuards(AccessGuard, RolesGuard)
 export class ReportingController {
   constructor(private readonly reportingService: ReportingService) {}
 

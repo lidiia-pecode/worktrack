@@ -7,7 +7,6 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 
 import { CapacityService } from './capacity.service';
@@ -20,13 +19,10 @@ import { CapacityChangeParams } from './dtos/capacity-change-params.dto';
 
 import { Serialize } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
-import { AccessGuard } from 'src/auth/guards';
-import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('capacity')
-@UseGuards(AccessGuard)
 export class CapacityController {
   constructor(
     private readonly capacity: CapacityService,
@@ -56,7 +52,6 @@ export class CapacityController {
     };
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.OWNER)
   @Get('users/:userId')
   @Serialize(CapacityResponse)
@@ -67,7 +62,6 @@ export class CapacityController {
     return this.capacity.currentFor(user.companyId, userId);
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.OWNER)
   @Post()
   @Serialize(CapacityResponse)
@@ -84,7 +78,6 @@ export class CapacityController {
     );
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.OWNER)
   @Delete('users/:userId/changes/:validFrom')
   @Serialize(CapacityResponse)

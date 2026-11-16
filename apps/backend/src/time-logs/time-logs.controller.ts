@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 
 import { TimeLogsService } from './time-logs.service';
@@ -20,14 +19,12 @@ import {
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
-import { AccessGuard } from 'src/auth/guards';
 import { TimeLogsQuery } from './dtos/time-logs-query.dto';
 import { TeamSummaryQuery } from './dtos/team-summary-query.dto';
 import { TeamSummaryResponse } from './dtos/team-summary-response.dto';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('time-logs')
-@UseGuards(AccessGuard)
 export class TimeLogsController {
   constructor(private readonly timeLogsService: TimeLogsService) {}
 

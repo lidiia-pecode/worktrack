@@ -16,11 +16,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 
-import {
-  AccessGuard,
-  GoogleInvitationGuard,
-  RolesGuard,
-} from 'src/auth/guards';
+import { GoogleInvitationGuard } from 'src/auth/guards';
 
 import { CookieService } from 'src/auth/services/cookie.service';
 import { GoogleInvitationCallbackFilter } from 'src/auth/google-callback.filter';
@@ -28,7 +24,7 @@ import {
   INVITATION_EMAILS_PER_MINUTE,
   LimitPerSession,
 } from 'src/auth/rate-limit/rate-limit.decorators';
-import { CurrentUser, Role } from 'src/lib/decorators';
+import { CurrentUser, Public, Role } from 'src/lib/decorators';
 import { Serialize } from 'src/lib/interceptors';
 import { InvitationToken } from 'src/lib/decorators/invitation-token.decorator';
 import { ReqMetadata } from 'src/lib/decorators/req-metadata.decorator';
@@ -53,7 +49,6 @@ export class InvitationsController {
   ) {}
 
   @Get()
-  @UseGuards(AccessGuard, RolesGuard)
   @Role(UserRole.OWNER, UserRole.MANAGER)
   @Serialize(PendingInvitationResponse)
   async listPending(@CurrentUser() user: AuthUser) {
@@ -62,7 +57,6 @@ export class InvitationsController {
 
   @LimitPerSession(INVITATION_EMAILS_PER_MINUTE)
   @Post()
-  @UseGuards(AccessGuard, RolesGuard)
   @Role(UserRole.OWNER, UserRole.MANAGER)
   async create(
     @CurrentUser() user: AuthUser,
@@ -77,7 +71,6 @@ export class InvitationsController {
 
   @LimitPerSession(INVITATION_EMAILS_PER_MINUTE)
   @Post(':id/resend')
-  @UseGuards(AccessGuard, RolesGuard)
   @Role(UserRole.OWNER, UserRole.MANAGER)
   async resend(
     @CurrentUser() user: AuthUser,
@@ -91,7 +84,6 @@ export class InvitationsController {
   }
 
   @Patch(':id/revoke')
-  @UseGuards(AccessGuard, RolesGuard)
   @Role(UserRole.OWNER, UserRole.MANAGER)
   async revoke(
     @CurrentUser() user: AuthUser,
@@ -104,11 +96,13 @@ export class InvitationsController {
     };
   }
 
+  @Public()
   @Get('validate')
   validate(@Query() { token = '' }: InvitationTokenQuery) {
     return this.invitationsService.describeByToken(token);
   }
 
+  @Public()
   @Post('complete-password')
   async completeWithPassword(
     @Body() dto: CompleteInvitationDto,
@@ -134,6 +128,7 @@ export class InvitationsController {
     };
   }
 
+  @Public()
   @Get('google')
   async startGoogleInvitation(
     @Query() { token = '' }: InvitationTokenQuery,
@@ -157,10 +152,12 @@ export class InvitationsController {
     res.redirect('./google/authorize');
   }
 
+  @Public()
   @Get('google/authorize')
   @UseGuards(GoogleInvitationGuard)
   authorizeGoogleInvitation(): void {}
 
+  @Public()
   @Get('google/callback')
   @UseFilters(GoogleInvitationCallbackFilter)
   @UseGuards(GoogleInvitationGuard)

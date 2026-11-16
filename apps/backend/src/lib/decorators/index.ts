@@ -5,3 +5,4 @@ export * from './session-id.decorator';
 export * from './user-role.decorator';
 export * from './invitation-token.decorator';
 export * from './optional-not-null.decorator';
+export * from './public.decorator';

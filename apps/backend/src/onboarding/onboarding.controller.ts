@@ -1,6 +1,5 @@
-import { Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post } from '@nestjs/common';
 
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { Serialize } from 'src/lib/interceptors';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -10,7 +9,6 @@ import { OnboardingService } from './onboarding.service';
 import { OwnerSetupStateDto } from './dtos/owner-setup-state.dto';
 
 @Controller('onboarding')
-@UseGuards(AccessGuard, RolesGuard)
 export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 

@@ -7,9 +7,7 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { ActCategoriesService } from './activity-categories.service';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser, Role } from 'src/lib/decorators';
@@ -27,7 +25,6 @@ import { ActivityCategoriesQuery } from './dtos/activities-categories-query.dto'
 import { UserRole } from 'src/users/enums/user-role.enum';
 
 @Controller('activity-categories')
-@UseGuards(AccessGuard, RolesGuard)
 export class ActCategoriesController {
   constructor(private readonly service: ActCategoriesService) {}
 

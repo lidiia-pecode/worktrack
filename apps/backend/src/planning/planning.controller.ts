@@ -9,7 +9,6 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 
 import { PlanningService } from './planning.service';
@@ -26,14 +25,11 @@ import {
 
 import { Serialize, SerializeList } from 'src/lib/interceptors';
 import { CurrentUser } from 'src/lib/decorators';
-import { AccessGuard } from 'src/auth/guards';
-import { RolesGuard } from 'src/auth/guards/RolesGuard';
 import { Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 
 @Controller('planning')
-@UseGuards(AccessGuard)
 export class PlanningController {
   constructor(private readonly service: PlanningService) {}
 
@@ -49,7 +45,6 @@ export class PlanningController {
     return this.service.getWeek(query, user);
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
   @Get('removal-count')
   countRemovable(
@@ -68,7 +63,6 @@ export class PlanningController {
     return this.service.getById(id, user);
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
   @Post('period')
   planPeriod(
@@ -78,7 +72,6 @@ export class PlanningController {
     return this.service.planPeriod(payload, user);
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
   @Post('period/preview')
   @HttpCode(HttpStatus.OK)
@@ -90,7 +83,6 @@ export class PlanningController {
   }
 
   // Before `:id`, which would otherwise take "period" as an id.
-  @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
   @Delete('period')
   deletePeriodPlans(
@@ -100,7 +92,6 @@ export class PlanningController {
     return this.service.deletePeriodPlans(query, user);
   }
 
-  @UseGuards(RolesGuard)
   @Role(UserRole.MANAGER, UserRole.OWNER)
   @Delete(':id')
   delete(

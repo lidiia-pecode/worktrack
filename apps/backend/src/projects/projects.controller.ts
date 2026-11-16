@@ -8,7 +8,6 @@ import {
   Patch,
   Post,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { ProjectsService } from './projects.service';
 import {
@@ -21,7 +20,6 @@ import {
   ProjectResponse,
 } from './dtos/project-response.dto';
 import { Serialize, SerializeList } from 'src/lib/interceptors';
-import { AccessGuard, RolesGuard } from 'src/auth/guards';
 import { CurrentUser, Role } from 'src/lib/decorators';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
@@ -35,7 +33,6 @@ import { AssignableActivitiesQuery } from './dtos/assignable-activities-query.dt
 import { AssignableUserResponse } from 'src/users/dtos/assignable-user-response.dto';
 
 @Controller('projects')
-@UseGuards(AccessGuard, RolesGuard)
 export class ProjectsController {
   constructor(private readonly service: ProjectsService) {}
 
