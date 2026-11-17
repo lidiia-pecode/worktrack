@@ -19,16 +19,14 @@ type PlanLinesProps = {
   /** One stable key per line, from the form's field array. */
   keys: string[];
   errors?: FieldErrors<AddedLine>[];
-  /** "Hours" on a day, "Hours a day" over a period. */
-  hoursLabel: string;
   /** The projects the person can be planned on. */
   projects: PlanningProjectOption[];
   /** Projects no new line may choose: the ones planned or chosen already. */
   takenIds: string[];
   /** A line's project the period already lists above; such a line isn't saved. */
-  isListedAbove?: (projectId: string) => boolean;
-  /** The most a line's picker reaches. */
-  maxMinutes: (index: number) => number;
+  isListedAbove: (projectId: string) => boolean;
+  /** The most a line's picker reaches: the person's longest day. */
+  maxMinutes: number;
   /** Under each line while nothing is wrong: what fits. */
   hint: string;
   formId: string;
@@ -49,10 +47,9 @@ export const PlanLines = ({
   lines,
   keys,
   errors,
-  hoursLabel,
   projects,
   takenIds,
-  isListedAbove = () => false,
+  isListedAbove,
   maxMinutes,
   hint,
   formId,
@@ -78,7 +75,7 @@ export const PlanLines = ({
         className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] gap-2 text-xs font-medium text-muted-foreground"
       >
         <span>Project</span>
-        <span>{hoursLabel}</span>
+        <span>Hours a day</span>
         <span />
       </div>
 
@@ -117,11 +114,11 @@ export const PlanLines = ({
               />
 
               <TimePicker
-                aria-label={`${hoursLabel} for project ${index + 1}`}
+                aria-label={`Hours a day for project ${index + 1}`}
                 hours={Number(line.hours)}
                 minutes={Number(line.minutes)}
                 minuteStep={PLAN_MINUTE_STEP}
-                maxMinutes={maxMinutes(index)}
+                maxMinutes={maxMinutes}
                 formId={formId}
                 onHoursChange={(hours) => onChange(index, { hours })}
                 onMinutesChange={(minutes) => onChange(index, { minutes })}

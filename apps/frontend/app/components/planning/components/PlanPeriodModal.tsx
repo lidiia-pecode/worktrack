@@ -430,7 +430,6 @@ export const PlanPeriodModal = ({
                   <PlannedRow
                     key={line.projectId}
                     line={line}
-                    hoursLabel="Hours a day"
                     detail={
                       line.sameMinutes === null &&
                       editedMinutes.has(line.projectId) ? (
@@ -477,11 +476,10 @@ export const PlanPeriodModal = ({
                 errors={
                   errors.added as Parameters<typeof PlanLines>[0]["errors"]
                 }
-                hoursLabel="Hours a day"
                 projects={personProjects}
                 takenIds={takenIds}
                 isListedAbove={isListedAbove}
-                maxMinutes={() => maxPlanMinutes}
+                maxMinutes={maxPlanMinutes}
                 hint={`Up to ${formatDuration(maxPlanMinutes)} a day`}
                 formId={FORM_ID}
                 canAddLine={canAddLine}
