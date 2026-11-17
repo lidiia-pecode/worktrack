@@ -52,15 +52,14 @@ import { BackToNowButton } from "../shared/buttons/BackToNowButton";
 import { StepArrows } from "../shared/buttons/StepArrows";
 import { SegmentedControl } from "../shared/SegmentedControl";
 import { TeamFilters } from "../team/components/TeamFilters";
-import { SortableHeading } from "../team/components/SortableHeading";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
 import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";
+import { PlanningColumn, PlanningTable } from "./components/PlanningTable";
 import { monthWorkingWeeks } from "./month-weeks";
 import { usePlanningPeriod } from "./usePlanningPeriod";
-import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
 
 /** An absence added from Plan a period, on the days it was planning. */
 type AbsenceFormState = {
@@ -114,7 +113,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     clearFilters,
   } = useTeamTimeFilters();
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
-  const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
 
@@ -271,6 +269,43 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   };
   const periodWord = isMonth ? "month" : "week";
 
+  const monthColumns: PlanningColumn[] = monthWeeks.map((week) => ({
+    key: toISODate(week[0]),
+    // Wide by the days they hold, a short edge week still wide enough for
+    // its hours.
+    width: `${Math.max(week.length, 2.5) * 1.5}rem`,
+    headingClassName: "p-2 text-left",
+    heading: (
+      <span className="flex items-center gap-2 whitespace-nowrap">
+        <span
+          className={cn(
+            "text-xs font-semibold text-foreground",
+            week.some((date) => toISODate(date) === todayIso) &&
+              "mark-current-under",
+          )}
+        >
+          {weekLabel(week)}
+        </span>
+
+        {week.every((date) => isLocked(toISODate(date))) && (
+          <Lock className="size-3 text-muted-foreground" aria-label="Locked" />
+        )}
+      </span>
+    ),
+  }));
+  const weekColumns: PlanningColumn[] = workingDates.map((date) => ({
+    key: toISODate(date),
+    width: "7rem",
+    headingClassName: "p-0",
+    heading: (
+      <WeekHeaderDay
+        date={date}
+        isToday={toISODate(date) === todayIso}
+        isLocked={isLocked(toISODate(date))}
+      />
+    ),
+  }));
+
   const hasError =
     isSettingsError || isGridError || isAbsencesError || isLocksError;
 
@@ -407,186 +442,39 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
         </div>
       )}
 
-      {isReady && shownRows.length > 0 && isMonth && (
-        <div
-          className={cn(
-            "overflow-x-auto transition-opacity",
-            isShowingPreviousPeriod && "opacity-60",
-          )}
-          aria-busy={isShowingPreviousPeriod}
+      {isReady && shownRows.length > 0 && (
+        <PlanningTable
+          columns={isMonth ? monthColumns : weekColumns}
+          sort={sort}
+          onSort={sortBy}
+          isStale={isShowingPreviousPeriod}
         >
-          <table className="w-full min-w-4xl table-fixed border-collapse">
-            <colgroup>
-              <col className="w-52" />
-
-              {/* Wide by the days they hold, a short edge week still
-                  wide enough for its hours. */}
-              {monthWeeks.map((week) => (
-                <col
-                  key={toISODate(week[0])}
-                  style={{ width: `${Math.max(week.length, 2.5) * 1.5}rem` }}
-                />
-              ))}
-
-              <col className="w-32" />
-            </colgroup>
-
-            <thead>
-              <tr className="border-b border-border bg-muted/10">
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "name" ? ariaSort : undefined}
-                  className={cn(STICKY_PERSON_CELL, "p-2 text-left")}
-                >
-                  <SortableHeading
-                    label="Person"
-                    sortKey="name"
-                    sort={sort}
-                    onSort={sortBy}
-                  />
-                </th>
-
-                {monthWeeks.map((week) => (
-                  <th
-                    key={toISODate(week[0])}
-                    scope="col"
-                    className="border-r border-border/60 p-2 text-left"
-                  >
-                    <span className="flex items-center gap-2 whitespace-nowrap">
-                      <span
-                        className={cn(
-                          "text-xs font-semibold text-foreground",
-                          week.some((date) => toISODate(date) === todayIso) &&
-                            "mark-current-under",
-                        )}
-                      >
-                        {weekLabel(week)}
-                      </span>
-
-                      {week.every((date) => isLocked(toISODate(date))) && (
-                        <Lock
-                          className="size-3 text-muted-foreground"
-                          aria-label="Locked"
-                        />
-                      )}
-                    </span>
-                  </th>
-                ))}
-
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "total" ? ariaSort : undefined}
-                  className="p-2 pr-3"
-                >
-                  <SortableHeading
-                    label="Planned"
-                    sortKey="total"
-                    sort={sort}
-                    onSort={sortBy}
-                    alignEnd
-                  />
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {shownRows.map((row) => (
-                <PlanningMonthRow
-                  key={row.user.id}
-                  row={row}
-                  weeks={monthWeeks}
-                  weekLabels={monthWeeks.map(weekLabel)}
-                  absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  isMonthLocked={isMonthLocked}
-                  projectName={projectName}
-                  onOpenWeek={openWeek}
-                  onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {isReady && shownRows.length > 0 && !isMonth && (
-        <div
-          className={cn(
-            "overflow-x-auto transition-opacity",
-            isShowingPreviousPeriod && "opacity-60",
+          {shownRows.map((row) =>
+            isMonth ? (
+              <PlanningMonthRow
+                key={row.user.id}
+                row={row}
+                weeks={monthWeeks}
+                weekLabels={monthWeeks.map(weekLabel)}
+                absencesByDate={absencesByUser[row.user.id] ?? {}}
+                isMonthLocked={isMonthLocked}
+                projectName={projectName}
+                onOpenWeek={openWeek}
+                onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
+              />
+            ) : (
+              <PlanningWeekRow
+                key={row.user.id}
+                row={row}
+                weekDates={workingDates}
+                absencesByDate={absencesByUser[row.user.id] ?? {}}
+                isLocked={isLocked}
+                projectName={projectName}
+                onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
+              />
+            ),
           )}
-          aria-busy={isShowingPreviousPeriod}
-        >
-          <table className="w-full min-w-4xl table-fixed border-collapse">
-            <colgroup>
-              <col className="w-52" />
-
-              {workingDates.map((date) => (
-                <col key={toISODate(date)} className="w-28" />
-              ))}
-
-              <col className="w-32" />
-            </colgroup>
-
-            <thead>
-              <tr className="border-b border-border bg-muted/10">
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "name" ? ariaSort : undefined}
-                  className={cn(STICKY_PERSON_CELL, "p-2 text-left")}
-                >
-                  <SortableHeading
-                    label="Person"
-                    sortKey="name"
-                    sort={sort}
-                    onSort={sortBy}
-                  />
-                </th>
-
-                {workingDates.map((date) => (
-                  <th
-                    key={toISODate(date)}
-                    scope="col"
-                    className="border-r border-border/60 p-0"
-                  >
-                    <WeekHeaderDay
-                      date={date}
-                      isToday={toISODate(date) === todayIso}
-                      isLocked={isLocked(toISODate(date))}
-                    />
-                  </th>
-                ))}
-
-                <th
-                  scope="col"
-                  aria-sort={sort.key === "total" ? ariaSort : undefined}
-                  className="p-2 pr-3"
-                >
-                  <SortableHeading
-                    label="Planned"
-                    sortKey="total"
-                    sort={sort}
-                    onSort={sortBy}
-                    alignEnd
-                  />
-                </th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {shownRows.map((row) => (
-                <PlanningWeekRow
-                  key={row.user.id}
-                  row={row}
-                  weekDates={workingDates}
-                  absencesByDate={absencesByUser[row.user.id] ?? {}}
-                  isLocked={isLocked}
-                  projectName={projectName}
-                  onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        </PlanningTable>
       )}
 
       {absenceForm && (

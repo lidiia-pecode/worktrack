@@ -18,7 +18,7 @@ import { PlanningPeriodQuery } from './dtos/planning-period-query.dto';
 import {
   PlanningMonthResponse,
   PlanningWeekResponse,
-} from './dtos/planning-week-response.dto';
+} from './dtos/planning-grid-response.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
 import {
   DeletePeriodPlansQuery,

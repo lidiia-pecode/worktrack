@@ -64,28 +64,28 @@ export class PlanningRowResponse {
   moves!: TeamMoveResponse[];
 }
 
+/** What a week and a month share: one row per person over their days. */
 @Exclude()
-export class PlanningWeekResponse {
-  @Expose()
-  weekStart!: string;
-
-  @Expose()
-  weekEnd!: string;
-
+class PlanningGridResponse {
   @Expose()
   @Type(() => PlanningRowResponse)
   rows!: PlanningRowResponse[];
 }
 
 @Exclude()
-export class PlanningMonthResponse {
+export class PlanningWeekResponse extends PlanningGridResponse {
+  @Expose()
+  weekStart!: string;
+
+  @Expose()
+  weekEnd!: string;
+}
+
+@Exclude()
+export class PlanningMonthResponse extends PlanningGridResponse {
   @Expose()
   monthStart!: string;
 
   @Expose()
   monthEnd!: string;
-
-  @Expose()
-  @Type(() => PlanningRowResponse)
-  rows!: PlanningRowResponse[];
 }

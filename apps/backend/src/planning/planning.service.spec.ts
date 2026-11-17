@@ -54,7 +54,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
-import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
+import { PlanningWeekResponse } from './dtos/planning-grid-response.dto';
 import { PeriodProjectPayload } from './dtos/plan-period-payload.dto';
 
 /**
