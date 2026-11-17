@@ -209,7 +209,7 @@ type PlanBlockProps = {
   onClick?: (projectId: string) => void;
 };
 
-/** A plan on a day with nothing logged yet, dashed as on Planning. */
+/** A plan on a day with nothing logged yet, in the plan tint as on Planning. */
 const PlanBlock = ({ plan, dayLabel, onClick }: PlanBlockProps) => {
   const duration = formatDuration(plan.plannedMinutes);
 

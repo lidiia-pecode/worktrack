@@ -25,17 +25,11 @@ export function entryTint(color: string): string {
 }
 
 /**
- * A plan's surface: a much lighter mix of the same colour inside a dashed
- * edge of it, so a plan reads as its project's, but as time not yet worked.
+ * A plan's surface: a light mix of the same colour with no edge, so a plan
+ * reads as its project's, but as time not yet worked.
  */
 export function planSurface(color: string) {
   return {
     backgroundColor: `color-mix(in oklab, ${color} var(--plan-tint), var(--card))`,
-    borderColor: `oklch(from ${color} l c h / 0.75)`,
   };
-}
-
-/** A plan as a mark with no text on it, such as a day in Planning's month. */
-export function planMark(color: string): string {
-  return `color-mix(in oklab, ${color} var(--plan-mark-tint), var(--card))`;
 }

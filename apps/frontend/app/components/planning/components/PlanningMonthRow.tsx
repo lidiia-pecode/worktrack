@@ -7,10 +7,11 @@ import {
 } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { closedSpellOn, fullName } from "@/lib/utils/user";
-import { getProjectColor, planMark } from "@/lib/utils/project-colors";
+import { getProjectColor, planSurface } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
+import { planBars } from "../plan-bars";
 import { PlanningPersonCell } from "./PlanningPersonCell";
 import { PlanningTotalCell } from "./PlanningTotalCell";
 
@@ -35,7 +36,6 @@ type MonthDay = {
   date: Date;
   entries: PlanningEntry[];
   planned: number;
-  limit: number;
   available: number;
   absence?: Absence;
   /** Outside the view with nothing left on it, drawn as closed. */
@@ -54,9 +54,9 @@ const describeDay = ({ entries, absence, isClosed }: MonthDay) => {
 };
 
 /**
- * A person's month in Planning: one cell per week, a strip per working day
- * filled to its planned share of the person's day in the projects' colours.
- * A cell opens its week, where the days are planned one by one.
+ * A person's month in Planning: one cell per week, where each project's plan
+ * is a bar across its days, as in the week, named when it covers two days or
+ * more. A cell opens its week.
  */
 export const PlanningMonthRow = ({
   row,
@@ -78,7 +78,6 @@ export const PlanningMonthRow = ({
   const availableOn = new Map(
     row.availableByDay.map((day) => [day.date, day.minutes]),
   );
-  const limitOn = new Map(row.dayLimits.map((day) => [day.date, day.minutes]));
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -96,7 +95,6 @@ export const PlanningMonthRow = ({
             date,
             entries,
             planned: entries.reduce((sum, e) => sum + e.plannedMinutes, 0),
-            limit: limitOn.get(iso) ?? 0,
             available: availableOn.get(iso) ?? 0,
             absence: absencesByDate[iso],
             // A closed day keeps the plans left over there, as in the week.
@@ -117,6 +115,14 @@ export const PlanningMonthRow = ({
           : planned !== available &&
             `${formatReportHours(planned)} / ${formatReportHours(available)}`;
         const isOver = !projectName && planned > available;
+        const bars = planBars(
+          days.flatMap((day) => day.entries),
+          week.map(toISODate),
+        );
+        const laneCount = Math.max(1, ...bars.map((bar) => bar.lane + 1));
+        const columns = {
+          gridTemplateColumns: `repeat(${week.length}, minmax(0, 1fr))`,
+        };
 
         return (
           <td
@@ -132,41 +138,49 @@ export const PlanningMonthRow = ({
                 {`Open the week of ${weekLabels[index]} for ${fullName(row.user)}. `}
               </span>
 
-              <span aria-hidden className="flex h-6 gap-0.75">
-                {days.map((day) => {
-                  const base = Math.max(day.limit, day.planned);
+              {/* One lane per project, over the days' grounds: absence
+                  stripes, a closed day's tint or the empty track. */}
+              <span aria-hidden className="flex flex-col gap-0.5">
+                {Array.from({ length: laneCount }, (_, lane) => (
+                  <span
+                    key={lane}
+                    className="grid h-4.5 gap-0.5"
+                    style={columns}
+                  >
+                    {days.map((day, column) => (
+                      <span
+                        key={toISODate(day.date)}
+                        title={`${formatLongDayLabel(day.date)}: ${describeDay(day)}`}
+                        className={cn(
+                          "rounded-xs",
+                          day.isClosed
+                            ? "bg-day-locked outline-1 -outline-offset-1 outline-border outline-dashed"
+                            : day.absence
+                              ? ABSENCE_PATTERN
+                              : "bg-muted/30",
+                        )}
+                        style={{ gridRow: 1, gridColumn: column + 1 }}
+                      />
+                    ))}
 
-                  return (
-                    <span
-                      key={toISODate(day.date)}
-                      title={`${formatLongDayLabel(day.date)}: ${describeDay(day)}`}
-                      className={cn(
-                        "flex min-w-0 flex-1 flex-col-reverse overflow-hidden rounded-xs",
-                        day.isClosed
-                          ? "bg-day-locked outline-1 -outline-offset-1 outline-border outline-dashed"
-                          : day.absence
-                            ? ABSENCE_PATTERN
-                            : "bg-muted/30",
-                        day.limit > 0 &&
-                          day.planned > day.limit &&
-                          "border-t-2 border-warning",
-                      )}
-                    >
-                      {day.entries.map((entry) => (
+                    {bars
+                      .filter((bar) => bar.lane === lane)
+                      .map((bar) => (
                         <span
-                          key={entry.id}
-                          className="block shrink-0"
+                          key={`${bar.project.id}-${bar.start}`}
+                          title={`${bar.project.name} · ${formatDuration(bar.minutes)} a day`}
+                          className="truncate rounded-xs px-1 text-2xs leading-4.5 text-muted-foreground"
                           style={{
-                            height: `${(entry.plannedMinutes / base) * 100}%`,
-                            backgroundColor: planMark(
-                              getProjectColor(entry.project.id),
-                            ),
+                            gridRow: 1,
+                            gridColumn: `${bar.start + 1} / span ${bar.length}`,
+                            ...planSurface(getProjectColor(bar.project.id)),
                           }}
-                        />
+                        >
+                          {bar.length > 1 && bar.project.name}
+                        </span>
                       ))}
-                    </span>
-                  );
-                })}
+                  </span>
+                ))}
               </span>
 
               <span className="sr-only">

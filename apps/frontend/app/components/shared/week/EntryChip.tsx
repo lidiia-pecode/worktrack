@@ -28,8 +28,8 @@ type EntryChipProps = Omit<
 
 /**
  * One entry in a week grid, the same in Team time and Planning: the project,
- * then its hours. Logged time is solid in the project's colour; a plan is
- * dashed and lighter.
+ * then its hours. Logged time is a strong tint of the project's colour with
+ * its dot; a plan a light one with no dot.
  */
 export const EntryChip = ({
   projectName,
@@ -50,25 +50,22 @@ export const EntryChip = ({
       ? planSurface(color)
       : { backgroundColor: entryTint(color) };
 
-  // The project at full strength on logged time, hollow on a plan, since
-  // there the colour stands for what is intended rather than what happened.
-  const mark = isArchived ? null : (
-    <span
-      aria-hidden
-      className="size-1.5 shrink-0 rounded-full"
-      style={
-        isPlan
-          ? { boxShadow: `inset 0 0 0 1.5px ${color}` }
-          : { backgroundColor: color }
-      }
-    />
-  );
+  // The project at full strength, on logged time only: a plan's lighter
+  // tint already says it is intended rather than done.
+  const mark =
+    isArchived || isPlan ? null : (
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    );
 
   const className = cn(
     "flex h-5 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-2xs leading-none",
     isCompact && "justify-center",
     isPlan
-      ? "border border-dashed text-muted-foreground"
+      ? "text-muted-foreground"
       : "text-foreground ring-1 ring-foreground/5",
     isArchived && "border-border bg-muted/30 line-through",
     onClick &&

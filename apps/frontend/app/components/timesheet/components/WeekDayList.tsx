@@ -409,14 +409,12 @@ const PlanRow = ({
   const duration = formatDuration(plan.plannedMinutes);
   const style = planSurface(color);
   const className = cn(
-    "flex min-h-11 w-full gap-3 rounded-lg border border-dashed px-3 py-2.5 text-left text-sm text-muted-foreground",
+    "flex min-h-11 w-full gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-muted-foreground",
     onClick && cn("cursor-pointer hover:brightness-95", FOCUS_RING),
   );
   const content = (
     <>
-      <span className="w-14 shrink-0 font-semibold text-foreground/70">
-        {duration}
-      </span>
+      <span className="w-14 shrink-0 font-semibold">{duration}</span>
       <span className="min-w-0 break-words">{plan.project.name} · planned</span>
     </>
   );
