@@ -107,7 +107,6 @@ const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
     planPeriod: OWNER_AND_MANAGER,
     previewPeriod: OWNER_AND_MANAGER,
     deletePeriodPlans: OWNER_AND_MANAGER,
-    delete: OWNER_AND_MANAGER,
   },
   ProjectsController: {
     getAll: OWNER_AND_MANAGER,

@@ -32,9 +32,6 @@ export class PlanningEntryResponse {
   plannedMinutes!: number;
 
   @Expose()
-  note?: string;
-
-  @Expose()
   date!: string;
 
   @Expose()

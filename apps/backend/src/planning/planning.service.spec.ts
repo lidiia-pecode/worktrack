@@ -349,14 +349,6 @@ describe('PlanningService', () => {
 
       expect(await entriesFor(outsider.id)).toHaveLength(1);
     });
-
-    it('refuses an employee deleting a plan, even their own', async () => {
-      const id = await existingEntry(member.id, MONDAY, HOUR);
-
-      await expect(service.delete(id, member)).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
   });
 
   describe("somebody outside a manager's reach", () => {
@@ -403,7 +395,7 @@ describe('PlanningService', () => {
     // Another write holding the person shows whether the refusal waits for
     // their lock: it must come before it.
     it('is refused without locking them', async () => {
-      const entryId = await existingEntry(outsider.id, MONDAY, HOUR);
+      await existingEntry(outsider.id, MONDAY, HOUR);
       const holder = dataSource.createQueryRunner();
       await holder.connect();
       await holder.startTransaction();
@@ -413,10 +405,7 @@ describe('PlanningService', () => {
           outsider.id,
         ]);
 
-        for (const attempt of [
-          ...attempts(outsider.id),
-          () => service.delete(entryId, manager),
-        ]) {
+        for (const attempt of attempts(outsider.id)) {
           await expect(attempt()).rejects.toThrow(ForbiddenException);
         }
       } finally {
@@ -437,18 +426,21 @@ describe('PlanningService', () => {
       ).rejects.toThrow(/not available for planning/);
     });
 
-    it('lets a plan on an archived project be deleted', async () => {
-      const id = await existingEntry(
-        member.id,
-        MONDAY,
-        HOUR,
-        archivedProjectId,
-      );
+    it('lets plans on an archived project be deleted', async () => {
+      await existingEntry(member.id, MONDAY, HOUR, archivedProjectId);
       await dataSource
         .getRepository(Project)
         .update({ id: archivedProjectId }, { status: ProjectStatus.ARCHIVED });
 
-      await service.delete(id, manager);
+      await service.deletePeriodPlans(
+        {
+          userId: member.id,
+          projectId: archivedProjectId,
+          startDate: MONDAY,
+          endDate: FRIDAY,
+        },
+        manager,
+      );
       expect(await entriesFor(member.id)).toHaveLength(0);
     });
 
@@ -473,12 +465,20 @@ describe('PlanningService', () => {
   });
 
   describe('locked periods', () => {
-    it('refuses deleting a plan inside a locked period', async () => {
-      const id = await existingEntry(member.id, LOCKED_MONDAY, HOUR);
+    it('refuses deleting plans inside a locked period', async () => {
+      await existingEntry(member.id, LOCKED_MONDAY, HOUR);
 
-      await expect(service.delete(id, manager)).rejects.toThrow(
-        /locked reporting period/,
-      );
+      await expect(
+        service.deletePeriodPlans(
+          {
+            userId: member.id,
+            projectId,
+            startDate: LOCKED_MONDAY,
+            endDate: LOCKED_MONDAY,
+          },
+          manager,
+        ),
+      ).rejects.toThrow(/locked/);
     });
 
     it('lets a past plan in an open period be corrected', async () => {
@@ -611,27 +611,6 @@ describe('PlanningService', () => {
         [MONDAY, projectId, 3 * HOUR],
         [TUESDAY, otherProjectId, HOUR],
         [WEDNESDAY, projectId, 3 * HOUR],
-      ]);
-    });
-
-    it('puts a note on the plans it creates and changes, and leaves the rest', async () => {
-      await existingEntry(member.id, MONDAY, 2 * HOUR);
-      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
-
-      const result = await service.planPeriod(
-        period(MONDAY, TUESDAY, [
-          { projectId, minutesPerDay: 2 * HOUR, note: 'Client review' },
-        ]),
-        manager,
-      );
-
-      expect(result).toEqual({ days: 2, created: 1, updated: 1 });
-      expect(
-        (await entriesFor(member.id)).map((e) => [e.date, e.projectId, e.note]),
-      ).toEqual([
-        [MONDAY, projectId, 'Client review'],
-        [TUESDAY, otherProjectId, null],
-        [TUESDAY, projectId, 'Client review'],
       ]);
     });
 
@@ -954,37 +933,6 @@ describe('PlanningService', () => {
         await holder.commitTransaction();
         await expect(pending).rejects.toThrow(/not available for planning/);
         expect(await entriesFor(member.id)).toHaveLength(0);
-      } finally {
-        if (holder.isTransactionActive) await holder.rollbackTransaction();
-        await holder.release();
-      }
-    });
-
-    // Waits on the person's row before touching the entry, as a period plan
-    // does, so the two never hold one lock each and wait for the other.
-    it('a delete locks the person before the entry', async () => {
-      const id = await existingEntry(member.id, MONDAY, HOUR);
-      const holder = dataSource.createQueryRunner();
-      await holder.connect();
-      await holder.startTransaction();
-
-      try {
-        await holder.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
-          member.id,
-        ]);
-        const pending = service.delete(id, manager);
-        await waitUntilBlockedBy(dataSource, holder);
-
-        // The write is waiting on the person, so the entry is still free.
-        await expect(
-          holder.query(
-            'SELECT id FROM planning_entries WHERE id = $1 FOR UPDATE NOWAIT',
-            [id],
-          ),
-        ).resolves.toHaveLength(1);
-
-        await holder.commitTransaction();
-        await pending;
       } finally {
         if (holder.isTransactionActive) await holder.rollbackTransaction();
         await holder.release();

@@ -22,8 +22,6 @@ export const PlanningClientApi = {
   getAll: (query: PlanningQuery) =>
     client.get<PaginatedResponse<PlanningEntry>>(buildQueryString(query)),
 
-  delete: (id: string) => client.delete(`/${id}`),
-
   planPeriod: (payload: PlanPeriodPayload) =>
     client.post<PlannedPeriod>("/period", payload),
 

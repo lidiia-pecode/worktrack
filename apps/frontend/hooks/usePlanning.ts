@@ -157,17 +157,3 @@ export function useDeletePeriodPlans() {
     },
   });
 }
-
-/** Deletes one plan; a failure is reported by the global mutation handler. */
-export function useDeletePlan() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (id: string) => PlanningClientApi.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.planning.all });
-      queryClient.invalidateQueries({ queryKey: queryKeys.reporting.figures });
-      toast.success("Plan deleted");
-    },
-  });
-}

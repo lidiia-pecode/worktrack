@@ -535,7 +535,7 @@ export class PlanningService {
       }
 
       await manager.save(PlanningEntry, [
-        ...writes.created.map(({ date, projectId, minutes, note }) =>
+        ...writes.created.map(({ date, projectId, minutes }) =>
           manager.create(PlanningEntry, {
             companyId: user.companyId,
             userId,
@@ -543,12 +543,10 @@ export class PlanningService {
             createdById: user.id,
             plannedMinutes: minutes,
             date,
-            note: note ?? undefined,
           }),
         ),
-        ...writes.changed.map(({ entry, minutes, note }) => {
+        ...writes.changed.map(({ entry, minutes }) => {
           entry.plannedMinutes = minutes;
-          if (note !== undefined) entry.note = note;
           return entry;
         }),
       ]);
@@ -574,7 +572,6 @@ export class PlanningService {
       projectId: project.projectId,
       minutesPerDay: project.minutesPerDay,
       existingDaysOnly: project.existingDaysOnly ?? false,
-      note: project.note,
     }));
     const projectIds = new Set(lines.map((line) => line.projectId));
     if (projectIds.size !== lines.length) {
@@ -649,24 +646,9 @@ export class PlanningService {
     };
   }
 
-  async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
-    await this.dataSource.transaction(async (manager) => {
-      const entry = await this.lockEntryAndOwner(id, user, manager);
-
-      // A deactivated person's leftover plans can still be cleared.
-      await this.assertCanPlanForUser(entry.userId, user, entry.date);
-      await this.assertDateNotLocked(manager, user.companyId, entry.date);
-
-      await manager.remove(PlanningEntry, entry);
-    });
-
-    return { success: true };
-  }
-
   /**
-   * Deletes one person's plans on one project between two days, as deleting
-   * each plan would: the same permission, nothing in a locked month, and all
-   * of them or none.
+   * Deletes one person's plans on one project between two days: the planning
+   * permission, nothing in a locked month, and all of them or none.
    */
   async deletePeriodPlans(
     query: DeletePeriodPlansQuery,
@@ -802,38 +784,6 @@ export class PlanningService {
   // ==========================================
   // VALIDATION / INTEGRITY HELPERS
   // ==========================================
-
-  /**
-   * Locks the entry's person before the entry, the order the other writes for
-   * a person use (a period plan, a time log, an absence), so two of them never
-   * wait on each other in a circle. An entry never changes person or project,
-   * so reading both first is safe. Its project is locked between them, as an
-   * archive locks the project before deleting its plans.
-   */
-  private async lockEntryAndOwner(
-    id: string,
-    user: AuthUser,
-    manager: EntityManager,
-  ): Promise<PlanningEntry> {
-    const owner = await manager.findOne(PlanningEntry, {
-      where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'projectId', 'date'],
-    });
-    if (!owner) throw new NotFoundException('Planning entry not found');
-
-    // Nobody outside the caller's reach is locked.
-    await this.assertCanPlanForUser(owner.userId, user, owner.date);
-    await this.lockUser(manager, owner.userId, user.companyId);
-    await this.lockProject(manager, owner.projectId, user.companyId);
-
-    const entry = await manager.findOne(PlanningEntry, {
-      where: { id, companyId: user.companyId },
-      lock: { mode: 'pessimistic_write' },
-    });
-
-    if (!entry) throw new NotFoundException('Planning entry not found');
-    return entry;
-  }
 
   private async getCompany(
     companyId: string,

@@ -11,7 +11,6 @@ export interface PlanningEntry {
   createdById?: string | null;
   project: PlanningProject;
   plannedMinutes: number;
-  note?: string | null;
   date: string;
   createdAt: string;
   updatedAt: string;
@@ -27,8 +26,6 @@ export interface PlanPeriodPayload {
     minutesPerDay: number;
     /** Only the days that already have the project; otherwise every working day. */
     existingDaysOnly?: boolean;
-    /** Set on the plans created and changed; null clears it. */
-    note?: string | null;
   }[];
 }
 

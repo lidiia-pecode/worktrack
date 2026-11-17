@@ -71,11 +71,7 @@ vi.mock("@/hooks/useTeams", () => ({
     isError: false,
   }),
 }));
-// The dialogs are tested on their own; here only which one a click opens.
-vi.mock("./components/PlanningDayModal", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  PlanningDayModal: () => <p>Day dialog</p>,
-}));
+// The dialogs are tested on their own.
 vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   PlanPeriodModal: () => <p>Period dialog</p>,
@@ -83,7 +79,6 @@ vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
 vi.mock("../timesheet/components/AbsenceFormModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   AbsenceFormModal: () => <p>Absence form</p>,
-  LockedAbsenceModal: () => <p>Read-only absence</p>,
 }));
 
 import { usePlanningGrid } from "@/hooks/usePlanning";
@@ -212,33 +207,6 @@ describe("PlanningView, the week", () => {
 
   afterEach(() => {
     vi.useRealTimers();
-  });
-
-  it("opens the day dialog, the absence form, or the read-only absence by what the day holds", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    showPlanning();
-
-    await user.click(
-      within(rowOf(/Alice Cooper/)).getByRole("button", {
-        name: /^Thursday, November 5/,
-      }),
-    );
-    expect(screen.getByText("Day dialog")).toBeInTheDocument();
-
-    await user.click(
-      within(rowOf(/Ben Ward/)).getByRole("button", {
-        name: /^Tuesday, November 3/,
-      }),
-    );
-    expect(screen.getByText("Absence form")).toBeInTheDocument();
-
-    // An absence the API says the viewer can't change opens to be read.
-    await user.click(
-      within(rowOf(/Alice Cooper/)).getByRole("button", {
-        name: /^Wednesday, November 4/,
-      }),
-    );
-    expect(screen.getByText("Read-only absence")).toBeInTheDocument();
   });
 
   it("narrows the rows to a project's people and their plans on it, and by a search", async () => {

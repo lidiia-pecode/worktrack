@@ -32,18 +32,11 @@ export interface PeriodLine {
   minutesPerDay: number;
   /** Only the days that already have the project; otherwise every working day. */
   existingDaysOnly: boolean;
-  /** For the plans created and changed; undefined leaves a plan's note as it is. */
-  note?: string | null;
 }
 
 export interface PeriodWrites {
-  created: {
-    date: string;
-    projectId: string;
-    minutes: number;
-    note?: string | null;
-  }[];
-  changed: { entry: PlanningEntry; minutes: number; note?: string | null }[];
+  created: { date: string; projectId: string; minutes: number }[];
+  changed: { entry: PlanningEntry; minutes: number }[];
 }
 
 /** The plans a period plan creates and the ones whose hours it changes. */
@@ -71,18 +64,10 @@ export const periodWrites = ({
             date,
             projectId: line.projectId,
             minutes: line.minutesPerDay,
-            note: line.note,
           });
         }
-      } else if (
-        entry.plannedMinutes !== line.minutesPerDay ||
-        (line.note !== undefined && line.note !== (entry.note ?? null))
-      ) {
-        writes.changed.push({
-          entry,
-          minutes: line.minutesPerDay,
-          note: line.note,
-        });
+      } else if (entry.plannedMinutes !== line.minutesPerDay) {
+        writes.changed.push({ entry, minutes: line.minutesPerDay });
       }
     }
   }

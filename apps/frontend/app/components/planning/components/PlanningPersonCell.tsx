@@ -35,9 +35,8 @@ export const PlanningPersonCell = ({
   onPlanPeriod,
 }: PlanningPersonCellProps) => {
   const isActive = row.user.status === UserStatus.ACTIVE;
-  // Someone who left the team in view has no period to plan here; their days
-  // before the move still open one by one in the week.
-  const hasMovedOut = row.moves.some((move) => move.direction === "out");
+  // Someone who moved out of the team in view is planned too: a period skips
+  // and lists the days in the other team.
   const noFixedHours = hasNoFixedHours(row);
   const facts = factsLine([
     ...row.moves.map(moveLabel),
@@ -50,7 +49,7 @@ export const PlanningPersonCell = ({
       scope="row"
       className={cn(STICKY_PERSON_CELL, "p-0 text-left font-normal")}
     >
-      {isActive && !hasMovedOut && !noFixedHours && !isPeriodLocked ? (
+      {isActive && !noFixedHours && !isPeriodLocked ? (
         <button
           type="button"
           onClick={() => onPlanPeriod(row)}

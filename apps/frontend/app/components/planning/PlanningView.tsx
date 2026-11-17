@@ -32,8 +32,8 @@ import {
   sortPlanningRows,
   TeamSortKey,
 } from "@/lib/utils/team-rows";
-import { isAbsenceFrozen, lockLookupRange } from "@/lib/utils/reporting-period";
-import { Absence, PlanningRow } from "@/types";
+import { lockLookupRange } from "@/lib/utils/reporting-period";
+import { PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
@@ -52,12 +52,7 @@ import { SegmentedControl } from "../shared/SegmentedControl";
 import { TeamFilters } from "../team/components/TeamFilters";
 import { SortableHeading } from "../team/components/SortableHeading";
 import { useTeamTimeFilters } from "../team/useTeamTimeFilters";
-import {
-  absenceInAnotherTeam,
-  AbsenceFormModal,
-  LockedAbsenceModal,
-} from "../timesheet/components/AbsenceFormModal";
-import { PlanningDayModal } from "./components/PlanningDayModal";
+import { AbsenceFormModal } from "../timesheet/components/AbsenceFormModal";
 import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";
@@ -65,17 +60,11 @@ import { monthWorkingWeeks } from "./month-weeks";
 import { usePlanningPeriod } from "./usePlanningPeriod";
 import { STICKY_PERSON_CELL } from "../shared/week/sticky-column";
 
-type OpenedDay = {
-  userId: string;
-  date: string;
-};
-
+/** An absence added from Plan a period, on the days it was planning. */
 type AbsenceFormState = {
   user: PlanningRow["user"];
   date: string;
-  /** The last day of a period's absence; a day's absence has none. */
-  endDate?: string;
-  absence?: Absence;
+  endDate: string;
 };
 
 type PlanningViewProps = {
@@ -124,12 +113,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   } = useTeamTimeFilters();
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
   const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
-  const [openedDay, setOpenedDay] = useState<OpenedDay | null>(null);
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
-  const [readOnlyAbsence, setReadOnlyAbsence] = useState<{
-    absence: Absence;
-    row: PlanningRow;
-  } | null>(null);
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
@@ -189,7 +173,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   );
   const {
     isLocked,
-    isEditable,
     isLoading: isLoadingLocks,
     isError: isLocksError,
     refetch: refetchLocks,
@@ -256,30 +239,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     0,
   );
 
-  const openedRow = openedDay
-    ? rows.find((row) => row.user.id === openedDay.userId)
-    : undefined;
-  const openedAbsence = openedDay
-    ? absencesByUser[openedDay.userId]?.[openedDay.date]
-    : undefined;
-
-  // An absence day opens the absence itself, unless a locked month freezes
-  // it; then the day dialog shows it and says so. One the API says the viewer
-  // can't change (some of its days are another team's) opens to be read only.
-  const openDay = (row: PlanningRow, date: string) => {
-    const absence = absencesByUser[row.user.id]?.[date];
-    const isFrozen =
-      !!absence &&
-      isAbsenceFrozen(isLocked, absence.startDate, absence.endDate);
-
-    if (absence && !isFrozen && absence.canChange === false) {
-      setReadOnlyAbsence({ absence, row });
-    } else if (absence && !isFrozen) {
-      setAbsenceForm({ user: row.user, date: absence.startDate, absence });
-    } else {
-      setOpenedDay({ userId: row.user.id, date });
-    }
-  };
   const periodRow = periodUserId
     ? rows.find((row) => row.user.id === periodUserId)
     : undefined;
@@ -621,37 +580,13 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
                   weekDates={workingDates}
                   absencesByDate={absencesByUser[row.user.id] ?? {}}
                   isLocked={isLocked}
-                  isEditable={isEditable}
                   projectName={projectName}
-                  onOpenDay={openDay}
                   onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
                 />
               ))}
             </tbody>
           </table>
         </div>
-      )}
-
-      {openedDay && openedRow && (
-        <PlanningDayModal
-          key={`${openedDay.userId}-${openedDay.date}`}
-          row={openedRow}
-          date={openedDay.date}
-          absence={openedAbsence}
-          onAddAbsence={() =>
-            setAbsenceForm({ user: openedRow.user, date: openedDay.date })
-          }
-          onClose={() => setOpenedDay(null)}
-        />
-      )}
-
-      {readOnlyAbsence && (
-        <LockedAbsenceModal
-          absence={readOnlyAbsence.absence}
-          subjectName={fullName(readOnlyAbsence.row.user)}
-          reason={absenceInAnotherTeam(fullName(readOnlyAbsence.row.user))}
-          onClose={() => setReadOnlyAbsence(null)}
-        />
       )}
 
       {absenceForm && (
@@ -662,23 +597,16 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
           subjectName={fullName(absenceForm.user)}
           date={absenceForm.date}
           endDate={absenceForm.endDate}
-          // A new absence from a day is for that day; one from the period
-          // form, or one opened to edit, picks its days.
-          isSingleDay={!absenceForm.absence && !absenceForm.endDate}
-          absence={absenceForm.absence}
           isLocked={isLocked}
-          onCreate={async (payload) => {
-            await absenceActions.create.mutateAsync({
+          onCreate={(payload) =>
+            absenceActions.create.mutateAsync({
               ...payload,
               userId: absenceForm.user.id,
-            });
-            // The day dialog this came from is now an absence day's.
-            setOpenedDay(null);
-          }}
-          onUpdate={async (id, data) => {
-            await absenceActions.update.mutateAsync({ id, data });
-            setOpenedDay(null);
-          }}
+            })
+          }
+          onUpdate={(id, data) =>
+            absenceActions.update.mutateAsync({ id, data })
+          }
           onDelete={(id) => absenceActions.delete.mutateAsync(id)}
           isSaving={
             absenceActions.create.isPending || absenceActions.update.isPending

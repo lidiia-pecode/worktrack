@@ -100,13 +100,4 @@ export class PlanningController {
   ) {
     return this.service.deletePeriodPlans(query, user);
   }
-
-  @Role(UserRole.MANAGER, UserRole.OWNER)
-  @Delete(':id')
-  delete(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.delete(id, user);
-  }
 }

@@ -1,18 +1,16 @@
-import { Plus } from "lucide-react";
-
-import { Absence, PlanningEntry, PlanningRow as Row } from "@/types";
+import { Absence, PlanningRow as Row } from "@/types";
 import { ProjectStatus, UserStatus } from "@/types/enums";
-import { formatLongDayLabel, toISODate } from "@/lib/utils/date";
+import { formatDuration, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import { closedSpellOn } from "@/lib/utils/user";
+import { CLOSED_DAY_TEXT, closedSpellOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
 
 import { EntryChip } from "../../shared/week/EntryChip";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
-import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
-import { PlanningPersonCell, hasNoFixedHours } from "./PlanningPersonCell";
+import { planBars } from "../plan-bars";
+import { PlanningPersonCell } from "./PlanningPersonCell";
 import { PlanningTotalCell } from "./PlanningTotalCell";
 
 type PlanningWeekRowProps = {
@@ -20,72 +18,55 @@ type PlanningWeekRowProps = {
   weekDates: Date[];
   absencesByDate: Record<string, Absence>;
   isLocked: (date: string) => boolean;
-  isEditable: (date: string) => boolean;
   /** Set under a project filter: the row holds that project's plans only. */
   projectName?: string;
-  onOpenDay: (row: Row, date: string) => void;
   onPlanPeriod: (row: Row) => void;
 };
 
-const EntryLine = ({ entry }: { entry: PlanningEntry }) => {
-  const isArchived = entry.project.status === ProjectStatus.ARCHIVED;
-
-  return (
-    <EntryChip
-      projectName={entry.project.name}
-      colorSeed={entry.project.id}
-      minutes={entry.plannedMinutes}
-      isPlan
-      isArchived={isArchived}
-      title={
-        isArchived ? `${entry.project.name} (archived)` : entry.project.name
-      }
-    />
-  );
+/** Days next to each other that share a value, such as one absence. */
+const runsOf = <T,>(values: (T | undefined)[]) => {
+  const runs: { value: T; start: number; length: number }[] = [];
+  values.forEach((value, index) => {
+    const last = runs[runs.length - 1];
+    if (value === undefined) return;
+    if (last && last.value === value && last.start + last.length === index) {
+      last.length += 1;
+    } else {
+      runs.push({ value, start: index, length: 1 });
+    }
+  });
+  return runs;
 };
 
-const DayEntries = ({
-  absence,
-  entries,
-}: {
-  absence?: Absence;
-  entries: PlanningEntry[];
-}) => (
-  <>
-    {absence && (
-      <Badge variant="default" className="w-fit text-2xs">
-        {ABSENCE_TYPE_SHORT_LABELS[absence.type]}
-      </Badge>
-    )}
-
-    {entries.map((entry) => (
-      <EntryLine key={entry.id} entry={entry} />
-    ))}
-  </>
-);
-
+/**
+ * A person's week in Planning: each project's plan is one bar across the days
+ * it repeats with the same hours, over the days' grounds (an absence, a closed
+ * or locked day). The days only show; the person's cell is where planning
+ * starts, as on the month.
+ */
 export const PlanningWeekRow = ({
   row,
   weekDates,
   absencesByDate,
   isLocked,
-  isEditable,
   projectName,
-  onOpenDay,
   onPlanPeriod,
 }: PlanningWeekRowProps) => {
-  const entriesByDate = new Map<string, PlanningEntry[]>();
-  row.entries.forEach((entry) => {
-    entriesByDate.set(entry.date, [
-      ...(entriesByDate.get(entry.date) ?? []),
-      entry,
-    ]);
-  });
-
   const isActive = row.user.status === UserStatus.ACTIVE;
-  const noFixedHours = hasNoFixedHours(row);
+  const dates = weekDates.map(toISODate);
   // A week wholly in locked months takes no plans, as a locked day doesn't.
-  const isWeekLocked = weekDates.every((date) => isLocked(toISODate(date)));
+  const isWeekLocked = dates.every(isLocked);
+  const bars = planBars(row.entries, dates);
+  const columns = {
+    gridTemplateColumns: `repeat(${dates.length}, minmax(0, 1fr))`,
+  };
+  // A closed day keeps the plans left over there, read-only; the server
+  // leaves none on a day in another team.
+  const closedOn = dates.map((date) =>
+    row.entries.some((entry) => entry.date === date)
+      ? undefined
+      : closedSpellOn(row.closedSpells, date)?.reason,
+  );
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -95,79 +76,84 @@ export const PlanningWeekRow = ({
         onPlanPeriod={onPlanPeriod}
       />
 
-      {weekDates.map((date) => {
-        const iso = toISODate(date);
-        // A closed day keeps the plans left over there, read-only, as in an
-        // earlier spell of someone since back; the server leaves none on a
-        // day in another team.
-        const closed = closedSpellOn(row.closedSpells, iso);
-        const keepsLeftoverPlans = (entriesByDate.get(iso)?.length ?? 0) > 0;
-        if (closed && !keepsLeftoverPlans) {
-          return <ClosedDayCell key={iso} reason={closed.reason} />;
-        }
+      <td colSpan={dates.length} className="relative p-0 align-top">
+        {/* The days' grounds, under the plans. */}
+        <div aria-hidden className="absolute inset-0 grid" style={columns}>
+          {dates.map((date, index) => {
+            const closed = closedOn[index];
+            return (
+              <span
+                key={date}
+                title={closed ? CLOSED_DAY_TEXT[closed] : undefined}
+                className={cn(
+                  "border-r border-border/60",
+                  absencesByDate[date]
+                    ? ABSENCE_PATTERN
+                    : closed || !isActive || isLocked(date)
+                      ? "bg-day-locked"
+                      : "bg-card",
+                )}
+              />
+            );
+          })}
+        </div>
 
-        const entries = entriesByDate.get(iso) ?? [];
-        const absence = absencesByDate[iso];
-
-        // A deactivated person's plans stay visible, but nothing can be
-        // written for them, like a locked day; at 0h only a day with plans
-        // opens, to delete them.
-        if (
-          !isActive ||
-          !isEditable(iso) ||
-          closed ||
-          (noFixedHours && entries.length === 0)
-        ) {
-          return (
-            <td
-              key={iso}
-              className={cn(
-                "border-r border-border/60 p-1.5 align-top",
-                absence
-                  ? ABSENCE_PATTERN
-                  : !isActive || isLocked(iso)
-                    ? "bg-day-locked"
-                    : "bg-card",
-              )}
+        <div
+          className="relative grid min-h-10 auto-rows-[1.25rem] gap-y-0.75 py-1.5"
+          style={columns}
+        >
+          {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
+            <Badge
+              key={`absence-${run.start}`}
+              variant="default"
+              className="mx-1.5 w-fit self-center text-2xs"
+              style={{
+                gridRow: 1,
+                gridColumn: `${run.start + 1} / span ${run.length}`,
+              }}
             >
-              <div className="flex min-h-10 flex-col gap-0.75">
-                <DayEntries absence={absence} entries={entries} />
-              </div>
-            </td>
-          );
-        }
+              {ABSENCE_TYPE_SHORT_LABELS[run.value.type]}
+            </Badge>
+          ))}
 
-        return (
-          <td
-            key={iso}
-            className={cn(
-              "h-px border-r border-border/60 bg-card p-0 align-top",
-              absence && ABSENCE_PATTERN,
-            )}
-          >
-            {/* The button's name is the day and its contents, read in order. */}
-            <button
-              type="button"
-              onClick={() => onOpenDay(row, iso)}
-              className="group flex h-full min-h-14 w-full flex-col gap-0.75 p-1.5 text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+          {runsOf(closedOn).map((run) => (
+            <span
+              key={`closed-${run.start}`}
+              className="sr-only"
+              style={{ gridRow: 1, gridColumn: run.start + 1 }}
             >
-              <span className="sr-only">{formatLongDayLabel(date)}: </span>
+              {CLOSED_DAY_TEXT[run.value]}
+            </span>
+          ))}
 
-              <DayEntries absence={absence} entries={entries} />
+          {bars.map((bar) => {
+            const isArchived = bar.project.status === ProjectStatus.ARCHIVED;
+            const name = isArchived
+              ? `${bar.project.name} (archived)`
+              : bar.project.name;
 
-              {entries.length === 0 && !absence && (
-                <>
-                  <span className="sr-only">nothing planned</span>
-                  <Plus
-                    aria-hidden
-                    className="m-auto size-3.5 text-muted-foreground/45 transition-colors group-hover:text-brand group-focus-visible:text-brand"
-                  />
-                </>
-              )}
-            </button>
-          </td>
-        );
-      })}
+            return (
+              <span
+                key={`${bar.project.id}-${bar.start}`}
+                className="mx-1.5 min-w-0"
+                style={{
+                  gridRow: bar.lane + 1,
+                  gridColumn: `${bar.start + 1} / span ${bar.length}`,
+                }}
+              >
+                <EntryChip
+                  projectName={bar.project.name}
+                  colorSeed={bar.project.id}
+                  minutes={bar.minutes}
+                  isPlan
+                  isArchived={isArchived}
+                  title={`${name} · ${formatDuration(bar.minutes)} a day`}
+                />
+              </span>
+            );
+          })}
+        </div>
+      </td>
 
       <PlanningTotalCell row={row} period="week" projectName={projectName} />
     </tr>

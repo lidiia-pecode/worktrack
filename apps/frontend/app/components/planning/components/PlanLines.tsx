@@ -4,11 +4,9 @@ import { Plus, X } from "lucide-react";
 import type { FieldErrors } from "react-hook-form";
 
 import { PlanningProjectOption } from "@/types";
-import { NOTE_MAX_LENGTH } from "@/lib/forms/schemas/note.schema";
 import { cn } from "@/lib/utils/cn";
 
 import { Button } from "@/components/ui/button";
-import Input from "@/components/ui/input";
 
 import { FormSelect } from "../../shared/FormSelect";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
@@ -34,8 +32,6 @@ type PlanLinesProps = {
   /** Under each line while nothing is wrong: what fits. */
   hint: string;
   formId: string;
-  /** A note under the line, on a day. */
-  withNote?: boolean;
   canAddLine: boolean;
   onChange: (index: number, patch: Partial<AddedLine>) => void;
   onRemove: (index: number) => void;
@@ -60,7 +56,6 @@ export const PlanLines = ({
   maxMinutes,
   hint,
   formId,
-  withNote = false,
   canAddLine,
   onChange,
   onRemove,
@@ -102,8 +97,7 @@ export const PlanLines = ({
           ? LISTED_ABOVE
           : lineErrors?.projectId?.message;
         const hoursError = lineErrors?.hours?.message;
-        const noteError = lineErrors?.note?.message;
-        const message = projectError ?? hoursError ?? noteError;
+        const message = projectError ?? hoursError;
 
         return (
           <div key={keys[index]} className="space-y-2">
@@ -157,24 +151,6 @@ export const PlanLines = ({
             >
               {message ?? hint}
             </p>
-
-            {withNote && (
-              <Input
-                aria-label={`Note for project ${index + 1}`}
-                value={line.note ?? ""}
-                maxLength={NOTE_MAX_LENGTH}
-                placeholder="Note (optional)"
-                // The message is on the line above; the field only turns red.
-                aria-invalid={!!noteError}
-                className={cn(
-                  noteError &&
-                    "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
-                )}
-                onChange={(event) =>
-                  onChange(index, { note: event.target.value })
-                }
-              />
-            )}
           </div>
         );
       })}

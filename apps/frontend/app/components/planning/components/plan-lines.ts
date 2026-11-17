@@ -1,7 +1,5 @@
 import * as z from "zod";
 
-import { optionalNoteSchema } from "@/lib/forms/schemas/note.schema";
-
 import { isOnPlanStep } from "../plan-minutes";
 
 export const addedLineMinutes = ({
@@ -18,7 +16,6 @@ export const addedLineSchema = z
     projectId: z.string(),
     hours: z.coerce.number().min(0).max(24),
     minutes: z.coerce.number().min(0).max(59),
-    note: optionalNoteSchema.optional(),
   })
   .refine((data) => isOnPlanStep(data.minutes), {
     message: "Plan in 15-minute steps",
