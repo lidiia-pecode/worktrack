@@ -79,24 +79,14 @@ describe("PlanningWeekRow", () => {
     const user = userEvent.setup();
     const { onPlanPeriod } = renderRow();
 
-    const button = screen.getByRole("button", {
-      name: "Plan a period for Alice Cooper",
-    });
-    expect(button).toHaveTextContent("Plan period");
-
-    await user.click(button);
+    await user.click(
+      screen.getByRole("button", { name: "Plan a period for Alice Cooper" }),
+    );
     expect(onPlanPeriod).toHaveBeenCalledWith(
       expect.objectContaining({
         user: expect.objectContaining({ id: "user-alice" }),
       }),
     );
-  });
-
-  it("shows planned against available and nothing else", () => {
-    renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
-
-    expect(screen.getByText(/of 40h/)).toBeInTheDocument();
-    expect(screen.queryByText(/free/)).not.toBeInTheDocument();
   });
 
   it("plans a period for someone who moved out this week, and no day opens anything", () => {

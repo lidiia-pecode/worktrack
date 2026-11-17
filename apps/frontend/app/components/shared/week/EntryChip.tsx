@@ -81,8 +81,7 @@ export const EntryChip = ({
   ) : (
     <>
       {mark}
-      {/* The hours first, always in one place, as in Log my time; a long
-          name is cut at its end. */}
+      {/* Hours first, so they stay in one place whatever the name's length. */}
       <span
         className={cn("shrink-0", isPlan ? "font-medium" : "font-semibold")}
       >

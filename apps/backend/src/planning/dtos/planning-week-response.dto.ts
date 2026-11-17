@@ -16,7 +16,6 @@ export class PlanningProjectOptionResponse {
   name!: string;
 }
 
-/** A figure in minutes for one day of the grid. */
 @Exclude()
 export class PlanningDayMinutesResponse {
   @Expose()

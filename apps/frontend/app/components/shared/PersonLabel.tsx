@@ -13,12 +13,10 @@ type PersonLabelProps = {
 };
 
 /**
- * The action beside a person in a week grid, in a cell marked `group/person`:
- * with a mouse it shows while the person is hovered or it has focus, and only
- * then takes its room, so the name ends in "…"; on touch it always shows.
- * Hidden, it stays out of the flow but can still be reached by keyboard. Only
- * its colours fade: a fading opacity would show it for a moment where it
- * waits hidden, over the avatar.
+ * The action beside a person in a `group/person` cell. With a mouse it shows,
+ * and takes its room, only while the person is hovered or it has focus; on
+ * touch it always shows. Only colours transition: a fading opacity would
+ * flash it over the avatar, where it waits hidden.
  */
 export const PERSON_ACTION =
   "shrink-0 transition-colors pointer-fine:pointer-events-none pointer-fine:absolute pointer-fine:opacity-0 pointer-fine:group-hover/person:pointer-events-auto pointer-fine:group-hover/person:static pointer-fine:group-hover/person:opacity-100 pointer-fine:focus-visible:static pointer-fine:focus-visible:opacity-100";

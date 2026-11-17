@@ -15,10 +15,12 @@ import {
   formatDayMonthLabel,
   formatMonthLabel,
   formatReportHours,
+  fromISODate,
   getMonthRange,
   getWeekDates,
   getWeekEnd,
   isWeekend,
+  shiftISODate,
   toISODate,
   toMonthKey,
   todayISODate,
@@ -123,7 +125,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     () => weekDates.filter((date) => !isWeekend(date)),
     [weekDates],
   );
-  // The month's working days by week, for its columns and the period dialog.
   const monthWeeks = useMemo(
     () => monthWorkingWeeks(month, weekStartDay),
     [month, weekStartDay],
@@ -133,9 +134,8 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   const dateTo = isMonth ? monthRange.dateTo : toISODate(getWeekEnd(weekStart));
   const shownDates = useMemo(() => {
     const dates: string[] = [];
-    for (let day = dateFrom; day <= dateTo;) {
+    for (let day = dateFrom; day <= dateTo; day = shiftISODate(day, 1)) {
       dates.push(day);
-      day = toISODate(addDays(new Date(`${day}T00:00:00`), 1));
     }
     return dates;
   }, [dateFrom, dateTo]);
@@ -261,8 +261,8 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     if (next === "week") {
       openWeek(
         month === toMonthKey(todayIso)
-          ? new Date(`${todayIso}T00:00:00`)
-          : (monthWeeks[0]?.[0] ?? new Date(`${dateFrom}T00:00:00`)),
+          ? fromISODate(todayIso)
+          : (monthWeeks[0]?.[0] ?? fromISODate(dateFrom)),
       );
     } else {
       // The month holding most of the week: its fourth day's.

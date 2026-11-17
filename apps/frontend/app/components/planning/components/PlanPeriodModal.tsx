@@ -73,7 +73,7 @@ type PeriodFormData = z.infer<typeof periodSchema>;
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
   row: PlanningRow;
-  /** The working days of the week shown on Planning, where the dialog opens. */
+  /** A week's working days: where the dialog opens without `month`, and its Week. */
   weekDates: Date[];
   /** Opened from Planning's month (YYYY-MM): it opens on that whole month. */
   month?: string;
@@ -100,7 +100,6 @@ export const PlanPeriodModal = ({
   const problemsRef = useRef<HTMLDivElement>(null);
   // Unsaved hours for the projects already planned, by project.
   const [edits, setEdits] = useState<Record<string, number>>({});
-  // The dialog opens on the shown week, or the shown month.
   const [unit, setUnit] = useState<PeriodUnit>(month ? "month" : "week");
   const openingRange = month
     ? getMonthRange(month)
@@ -203,7 +202,6 @@ export const PlanPeriodModal = ({
     })),
   ];
 
-  // What the server would do with the changes so far.
   const {
     preview,
     isOutdated,
@@ -214,7 +212,7 @@ export const PlanPeriodModal = ({
       : null,
   );
   // No project can take more than the person's longest day in the period;
-  // until the server says, the longest in the week the dialog opened from.
+  // until the server says, the longest in the week or month shown.
   const dayLimitMinutes =
     preview?.dayLimitMinutes ??
     Math.max(0, ...row.dayLimits.map((day) => day.minutes));

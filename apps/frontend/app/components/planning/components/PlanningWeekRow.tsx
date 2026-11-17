@@ -40,9 +40,8 @@ const runsOf = <T,>(values: (T | undefined)[]) => {
 
 /**
  * A person's week in Planning: each project's plan is one bar across the days
- * it repeats with the same hours, over the days' grounds (an absence, a closed
- * or locked day). The days only show; the person's cell is where planning
- * starts, as on the month.
+ * it repeats with the same hours. The days only show; planning starts from
+ * the person, as on the month.
  */
 export const PlanningWeekRow = ({
   row,

@@ -27,18 +27,13 @@ type PlanningPersonCellProps = {
 export const hasNoFixedHours = (row: PlanningRow) =>
   row.dayLimits.every((day) => day.minutes === 0);
 
-/**
- * A Planning row's person, with Plan a period beside them when they can be
- * planned in the week or month shown.
- */
+/** A Planning row's person, with Plan period when they can be planned. */
 export const PlanningPersonCell = ({
   row,
   isPeriodLocked,
   onPlanPeriod,
 }: PlanningPersonCellProps) => {
   const isActive = row.user.status === UserStatus.ACTIVE;
-  // Someone who moved out of the team in view is planned too: a period skips
-  // and lists the days in the other team.
   const noFixedHours = hasNoFixedHours(row);
   const facts = factsLine([
     ...row.moves.map(moveLabel),
@@ -46,6 +41,8 @@ export const PlanningPersonCell = ({
     isActive && noFixedHours && NO_FIXED_HOURS,
   ]);
 
+  // Someone who moved out of the team in view is planned too: the period
+  // skips and lists the days in the other team.
   const canPlan = isActive && !noFixedHours && !isPeriodLocked;
 
   return (

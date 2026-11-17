@@ -1,7 +1,7 @@
 import { Exclude, Expose, Type } from 'class-transformer';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 
-/** What a plan needs of its project: which one, its name, whether archived. */
+/** Only what the screens read of a plan's project, to keep a month small. */
 @Exclude()
 export class PlanningProjectResponse {
   @Expose()

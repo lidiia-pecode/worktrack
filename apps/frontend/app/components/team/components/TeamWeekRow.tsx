@@ -122,7 +122,6 @@ export const TeamWeekRow = ({
                       size="iconSm"
                       onClick={onAddAbsence}
                       aria-label={`Add an absence for ${name}`}
-                      // Shown as Planning offers a period.
                       className={PERSON_ACTION}
                     />
                   }

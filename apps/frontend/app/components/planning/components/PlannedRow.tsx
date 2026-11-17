@@ -22,7 +22,7 @@ type PlannedRowProps = {
   editedMinutes?: number;
   /** Whether the person is still on the project, so its hours can change. */
   isOnProject: boolean;
-  /** The person's own day: the most a project's plan can take. */
+  /** The person's longest day in the period: the most a plan can take. */
   maxMinutes: number;
   formId: string;
   /** Applies a change to the row's unsaved hours; none keeps it as planned. */

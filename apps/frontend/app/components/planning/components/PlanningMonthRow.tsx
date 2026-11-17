@@ -54,9 +54,8 @@ const describeDay = ({ entries, absence, isClosed }: MonthDay) => {
 };
 
 /**
- * A person's month in Planning: one cell per week, where each project's plan
- * is a bar across its days, as in the week, named when it covers two days or
- * more. A cell opens its week.
+ * A person's month in Planning: per week, a bar per project across its days,
+ * named when it covers two days or more. A week's cell opens it.
  */
 export const PlanningMonthRow = ({
   row,
@@ -138,8 +137,7 @@ export const PlanningMonthRow = ({
                 {`Open the week of ${weekLabels[index]} for ${fullName(row.user)}. `}
               </span>
 
-              {/* One lane per project, over the days' grounds: a free day
-                  stays empty, an absence striped, a closed day tinted. */}
+              {/* The days' grounds, under one lane of bars per project. */}
               <span aria-hidden className="relative flex flex-col gap-0.75">
                 <span className="absolute inset-0 grid gap-0.5" style={columns}>
                   {days.map((day) => (
