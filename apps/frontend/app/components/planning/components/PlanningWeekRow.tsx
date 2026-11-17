@@ -99,7 +99,7 @@ export const PlanningWeekRow = ({
         </div>
 
         <div
-          className="relative grid min-h-10 auto-rows-[1.25rem] gap-y-0.75 py-1.5"
+          className="relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
           {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (

@@ -16,7 +16,7 @@ type EntryChipProps = Omit<
   /** Picks the project's colour. */
   colorSeed: string;
   minutes: number;
-  /** A plan rather than logged time: dashed and lighter. */
+  /** A plan rather than logged time: a lighter tint, with no dot. */
   isPlan?: boolean;
   /** A plan on an archived project: grey and struck through. */
   isArchived?: boolean;
@@ -62,7 +62,7 @@ export const EntryChip = ({
     );
 
   const className = cn(
-    "flex h-5 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-2xs leading-none",
+    "flex h-6 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-xs leading-none",
     isCompact && "justify-center",
     isPlan
       ? "text-muted-foreground"
@@ -81,11 +81,12 @@ export const EntryChip = ({
   ) : (
     <>
       {mark}
-      <span className="min-w-0 flex-1 truncate">{projectName}</span>
+      <span className="min-w-0 truncate">{projectName}</span>
+      {/* Right after the name, so a bar across the week reads as one phrase. */}
       <span
         className={cn("shrink-0", isPlan ? "font-medium" : "font-semibold")}
       >
-        {duration}
+        · {duration}
       </span>
     </>
   );

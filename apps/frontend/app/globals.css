@@ -18,8 +18,8 @@
  *
  * A project colour is a mark, not a text ground: each one reaches at
  * least 4:1 against the card. On the --entry-tint mix entry text in
- * --foreground stays above 9:1 and in --muted-foreground above 4.5:1; on the
- * lighter --plan-tint, plan text in --muted-foreground stays above 6:1.
+ * --foreground stays above 9:1 and in --entry-secondary-text above 6.5:1; on
+ * the lighter --plan-tint, plan text in --muted-foreground stays above 6:1.
  *
  * Warning, success, and error text must use the corresponding *-text
  * tokens. The --warning, --success, and --destructive fill colors
@@ -260,6 +260,14 @@
      what is only intended differ by colour alone, on every screen. */
   --entry-tint: 36%;
   --plan-tint: 14%;
+  /* The smaller line on logged time (project and activity, a note): between
+     --muted-foreground and --foreground, as the muted one alone only just
+     passes on the strong tint. */
+  --entry-secondary-text: color-mix(
+    in oklab,
+    var(--foreground) 50%,
+    var(--muted-foreground)
+  );
 
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),
@@ -354,6 +362,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --color-day-locked: var(--day-locked);
+  --color-entry-secondary: var(--entry-secondary-text);
 
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);

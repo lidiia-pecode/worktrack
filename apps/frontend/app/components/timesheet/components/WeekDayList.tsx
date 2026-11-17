@@ -355,17 +355,17 @@ const EntryRow = ({
           {projectName} · {activityName}
         </span>
         {timelog.note && (
-          <span className="break-words text-xs text-muted-foreground">
+          <span className="break-words text-xs text-entry-secondary">
             {timelog.note}
           </span>
         )}
         {!timelog.isBillable && (
-          <span className="rounded bg-muted/40 px-1.5 text-2xs text-muted-foreground">
+          <span className="rounded bg-muted/40 px-1.5 text-2xs text-entry-secondary">
             Non-billable
           </span>
         )}
         {changedBy && (
-          <span className="text-xs text-muted-foreground">{changedBy}</span>
+          <span className="text-xs text-entry-secondary">{changedBy}</span>
         )}
       </span>
     </>

@@ -126,7 +126,7 @@ export const TeamDayCell = ({
           {isWithoutTime && (
             <span
               className={cn(
-                "pointer-events-none! flex h-5 shrink-0 items-center justify-center gap-1.5 text-2xs font-medium text-muted-foreground",
+                "pointer-events-none! flex h-6 shrink-0 items-center justify-center gap-1.5 text-2xs font-medium text-muted-foreground",
                 // Alone in the cell it sits in the middle.
                 !showsPlans && "my-auto",
               )}

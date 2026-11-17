@@ -138,40 +138,38 @@ export const PlanningMonthRow = ({
                 {`Open the week of ${weekLabels[index]} for ${fullName(row.user)}. `}
               </span>
 
-              {/* One lane per project, over the days' grounds: absence
-                  stripes, a closed day's tint or the empty track. */}
-              <span aria-hidden className="flex flex-col gap-0.5">
+              {/* One lane per project, over the days' grounds: a free day
+                  stays empty, an absence striped, a closed day tinted. */}
+              <span aria-hidden className="relative flex flex-col gap-0.5">
+                <span className="absolute inset-0 grid gap-0.5" style={columns}>
+                  {days.map((day) => (
+                    <span
+                      key={toISODate(day.date)}
+                      title={`${formatLongDayLabel(day.date)}: ${describeDay(day)}`}
+                      className={cn(
+                        "not-first:border-l not-first:border-dotted not-first:border-border",
+                        day.isClosed
+                          ? "bg-day-locked"
+                          : day.absence && ABSENCE_PATTERN,
+                      )}
+                    />
+                  ))}
+                </span>
+
                 {Array.from({ length: laneCount }, (_, lane) => (
                   <span
                     key={lane}
-                    className="grid h-4.5 gap-0.5"
+                    className="pointer-events-none relative grid h-5 gap-0.5"
                     style={columns}
                   >
-                    {days.map((day, column) => (
-                      <span
-                        key={toISODate(day.date)}
-                        title={`${formatLongDayLabel(day.date)}: ${describeDay(day)}`}
-                        className={cn(
-                          "rounded-xs",
-                          day.isClosed
-                            ? "bg-day-locked outline-1 -outline-offset-1 outline-border outline-dashed"
-                            : day.absence
-                              ? ABSENCE_PATTERN
-                              : "bg-muted/30",
-                        )}
-                        style={{ gridRow: 1, gridColumn: column + 1 }}
-                      />
-                    ))}
-
                     {bars
                       .filter((bar) => bar.lane === lane)
                       .map((bar) => (
                         <span
                           key={`${bar.project.id}-${bar.start}`}
                           title={`${bar.project.name} · ${formatDuration(bar.minutes)} a day`}
-                          className="truncate rounded-xs px-1 text-2xs leading-4.5 text-muted-foreground"
+                          className="pointer-events-auto truncate rounded-md px-1.5 text-2xs leading-5 text-muted-foreground"
                           style={{
-                            gridRow: 1,
                             gridColumn: `${bar.start + 1} / span ${bar.length}`,
                             ...planSurface(getProjectColor(bar.project.id)),
                           }}
