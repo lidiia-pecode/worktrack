@@ -34,3 +34,8 @@ export function planSurface(color: string) {
     borderColor: `oklch(from ${color} l c h / 0.75)`,
   };
 }
+
+/** A plan as a mark with no text on it, such as a day in Planning's month. */
+export function planMark(color: string): string {
+  return `color-mix(in oklab, ${color} var(--plan-mark-tint), var(--card))`;
+}

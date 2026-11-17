@@ -259,6 +259,9 @@
      that, so what is only intended stays lighter than what happened. */
   --entry-tint: 20%;
   --plan-tint: 7%;
+  /* A plan drawn as a mark with no text on it, as a day of Planning's month:
+     strong enough to tell projects apart at a glance, lighter than the ink. */
+  --plan-mark-tint: 62%;
 
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),

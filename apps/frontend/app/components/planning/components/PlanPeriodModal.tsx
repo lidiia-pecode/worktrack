@@ -7,7 +7,7 @@ import * as z from "zod";
 import { CalendarOff } from "lucide-react";
 import { toast } from "sonner";
 
-import { PlanningWeekRow } from "@/types";
+import { PlanningRow } from "@/types";
 import {
   useDeletePeriodPlans,
   usePeriodPreview,
@@ -20,6 +20,7 @@ import {
   formatDayMonthLabel,
   formatDayMonthYearLabel,
   formatDuration,
+  getMonthRange,
   isISODateRange,
   lastDayOfReportRange,
   toISODate,
@@ -71,9 +72,11 @@ type PeriodFormData = z.infer<typeof periodSchema>;
 
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
-  row: PlanningWeekRow;
+  row: PlanningRow;
   /** The working days of the week shown on Planning, where the dialog opens. */
   weekDates: Date[];
+  /** Opened from Planning's month (YYYY-MM): it opens on that whole month. */
+  month?: string;
   /** Opens the absence form on the chosen days, to change before saving. */
   onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
@@ -87,6 +90,7 @@ type PlanPeriodModalProps = {
 export const PlanPeriodModal = ({
   row,
   weekDates,
+  month,
   onAddAbsence,
   onClose,
 }: PlanPeriodModalProps) => {
@@ -96,8 +100,14 @@ export const PlanPeriodModal = ({
   const problemsRef = useRef<HTMLDivElement>(null);
   // Unsaved hours for the projects already planned, by project.
   const [edits, setEdits] = useState<Record<string, number>>({});
-  // The dialog opens on the shown week.
-  const [unit, setUnit] = useState<PeriodUnit>("week");
+  // The dialog opens on the shown week, or the shown month.
+  const [unit, setUnit] = useState<PeriodUnit>(month ? "month" : "week");
+  const openingRange = month
+    ? getMonthRange(month)
+    : {
+        dateFrom: toISODate(weekDates[0]),
+        dateTo: toISODate(weekDates[weekDates.length - 1]),
+      };
   const [pendingPeriod, setPendingPeriod] = useState<{
     first: string;
     last: string;
@@ -114,8 +124,8 @@ export const PlanPeriodModal = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(periodSchema) as any,
     defaultValues: {
-      startDate: toISODate(weekDates[0]),
-      endDate: toISODate(weekDates[weekDates.length - 1]),
+      startDate: openingRange.dateFrom,
+      endDate: openingRange.dateTo,
       added: [EMPTY_LINE],
     },
   });

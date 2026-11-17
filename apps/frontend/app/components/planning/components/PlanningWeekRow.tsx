@@ -1,32 +1,19 @@
-import { ChevronRight, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
-import { Absence, PlanningEntry, PlanningWeekRow as Row } from "@/types";
+import { Absence, PlanningEntry, PlanningRow as Row } from "@/types";
 import { ProjectStatus, UserStatus } from "@/types/enums";
-import {
-  formatDuration,
-  formatLongDayLabel,
-  toISODate,
-} from "@/lib/utils/date";
+import { formatLongDayLabel, toISODate } from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import {
-  NO_FIXED_HOURS,
-  closedSpellOn,
-  fullName,
-  leaverLabel,
-  moveLabel,
-} from "@/lib/utils/user";
+import { closedSpellOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
-import { factsLine } from "@/lib/utils/text";
 
 import { Badge } from "@/components/ui/badge";
 
-import { PersonLabel } from "../../shared/PersonLabel";
 import { EntryChip } from "../../shared/week/EntryChip";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
-import { STICKY_PERSON_CELL } from "../../shared/week/sticky-column";
 import { ClosedDayCell } from "../../shared/week/ClosedDayCell";
-import { RowTotalCell } from "../../shared/week/RowTotalCell";
-import { ReportBar } from "../../reports/components/ReportBar";
+import { PlanningPersonCell, hasNoFixedHours } from "./PlanningPersonCell";
+import { PlanningTotalCell } from "./PlanningTotalCell";
 
 type PlanningWeekRowProps = {
   row: Row;
@@ -96,67 +83,17 @@ export const PlanningWeekRow = ({
   });
 
   const isActive = row.user.status === UserStatus.ACTIVE;
-  // Someone who left the team in view this week has no period to plan here;
-  // their days before the move still open one by one.
-  const hasMovedOut = row.moves.some((move) => move.direction === "out");
-  // Listed at 0h only for plans left from before, which can be deleted day by
-  // day, but never changed or added to.
-  const hasNoFixedHours = row.dayLimits.every((day) => day.minutes === 0);
+  const noFixedHours = hasNoFixedHours(row);
   // A week wholly in locked months takes no plans, as a locked day doesn't.
   const isWeekLocked = weekDates.every((date) => isLocked(toISODate(date)));
-  const facts = factsLine([
-    ...row.moves.map(moveLabel),
-    leaverLabel(row.user),
-    isActive && hasNoFixedHours && NO_FIXED_HOURS,
-  ]);
-  const overMinutes =
-    projectName || hasNoFixedHours
-      ? 0
-      : Math.max(0, row.plannedMinutes - row.availableMinutes);
 
   return (
     <tr className="border-b border-border last:border-b-0">
-      <th
-        scope="row"
-        className={cn(STICKY_PERSON_CELL, "p-0 text-left font-normal")}
-      >
-        {isActive && !hasMovedOut && !hasNoFixedHours && !isWeekLocked ? (
-          <button
-            type="button"
-            onClick={() => onPlanPeriod(row)}
-            aria-label={`Plan a period for ${fullName(row.user)}`}
-            className="group flex w-full min-w-0 cursor-pointer items-start gap-2.5 py-2 pr-1.5 pl-2.5 text-left transition hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          >
-            <PersonLabel user={row.user}>{facts}</PersonLabel>
-
-            {/* Says what the cell does once it is hovered or focused; it
-                takes no room until then, so the name keeps its width. */}
-            <span
-              aria-hidden
-              className="ml-auto hidden shrink-0 items-center gap-0.5 text-xs font-medium text-brand group-hover:flex group-focus-visible:flex"
-            >
-              Plan period
-              <ChevronRight className="size-3.5" />
-            </span>
-          </button>
-        ) : (
-          <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
-            <PersonLabel user={row.user}>
-              {facts && (
-                <span
-                  title={
-                    isActive && hasNoFixedHours
-                      ? `Give ${row.user.firstName} working hours to plan them.`
-                      : undefined
-                  }
-                >
-                  {facts}
-                </span>
-              )}
-            </PersonLabel>
-          </div>
-        )}
-      </th>
+      <PlanningPersonCell
+        row={row}
+        isPeriodLocked={isWeekLocked}
+        onPlanPeriod={onPlanPeriod}
+      />
 
       {weekDates.map((date) => {
         const iso = toISODate(date);
@@ -179,7 +116,7 @@ export const PlanningWeekRow = ({
           !isActive ||
           !isEditable(iso) ||
           closed ||
-          (hasNoFixedHours && entries.length === 0)
+          (noFixedHours && entries.length === 0)
         ) {
           return (
             <td
@@ -232,36 +169,7 @@ export const PlanningWeekRow = ({
         );
       })}
 
-      <RowTotalCell
-        minutes={row.plannedMinutes}
-        isOver={overMinutes > 0}
-        expectation={
-          projectName
-            ? `on ${projectName}`
-            : hasNoFixedHours
-              ? undefined
-              : `of ${formatDuration(row.availableMinutes)}`
-        }
-      >
-        {!projectName && !hasNoFixedHours && (
-          <ReportBar
-            value={row.plannedMinutes}
-            reference={row.availableMinutes}
-            fill="planned"
-            label={`${formatDuration(row.plannedMinutes)} planned of ${formatDuration(row.availableMinutes)} available`}
-            className="h-1.5 w-full max-w-28"
-          />
-        )}
-
-        {!projectName && overMinutes > 0 && (
-          <span
-            title={`Planned ${formatDuration(overMinutes)} more than ${row.user.firstName} has available this week`}
-            className="text-2xs font-medium whitespace-nowrap text-warning-text"
-          >
-            Over by {formatDuration(overMinutes)}
-          </span>
-        )}
-      </RowTotalCell>
+      <PlanningTotalCell row={row} period="week" projectName={projectName} />
     </tr>
   );
 };

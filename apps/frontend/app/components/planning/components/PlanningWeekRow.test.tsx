@@ -2,12 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  Absence,
-  PlanningEntry,
-  PlanningWeekRow as Row,
-  TeamMove,
-} from "@/types";
+import { Absence, PlanningEntry, PlanningRow as Row, TeamMove } from "@/types";
 import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 
@@ -40,6 +35,7 @@ const row = (
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
+  availableByDay: [],
   // A full-time week: 8h on each working day.
   dayLimits: [
     "2026-11-02",

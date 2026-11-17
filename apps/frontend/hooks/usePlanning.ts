@@ -9,23 +9,47 @@ import {
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-import { PlanPeriodPayload, PlanningQuery, PlanningWeekQuery } from "@/types";
+import {
+  PlanPeriodPayload,
+  PlanningPeriodQuery,
+  PlanningQuery,
+  PlanningRow,
+} from "@/types";
 import { PlanningClientApi } from "@/lib/api/resources";
 import { getErrorMessage, isClientError } from "@/lib/api";
 
 import { fetchAllPages } from "./shared/fetchAllPages";
 import { queryKeys } from "./shared/queryKeys";
 
-/** Keeps the previous week on screen while the next one loads. */
-export function usePlanningWeek(params: PlanningWeekQuery) {
+export type PlanningUnit = "week" | "month";
+
+/**
+ * The rows of the week or the month Planning shows. The previous one of the
+ * same kind stays on screen while the next loads; a switch between week and
+ * month waits, since a week's rows can't stand in for a month's.
+ */
+export function usePlanningGrid(
+  unit: PlanningUnit,
+  params: PlanningPeriodQuery,
+) {
   const query = useQuery({
-    queryKey: queryKeys.planning.week(params),
-    queryFn: () => PlanningClientApi.getWeek(params),
-    placeholderData: keepPreviousData,
+    queryKey:
+      unit === "week"
+        ? queryKeys.planning.week(params)
+        : queryKeys.planning.month(params),
+    queryFn: async (): Promise<PlanningRow[]> => {
+      const grid =
+        unit === "week"
+          ? await PlanningClientApi.getWeek(params)
+          : await PlanningClientApi.getMonth(params);
+      return grid.rows;
+    },
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === unit ? previous : undefined,
   });
 
   return {
-    rows: query.data?.rows ?? [],
+    rows: query.data ?? [],
     isLoading: query.isLoading,
     isPlaceholderData: query.isPlaceholderData,
     isError: query.isError,

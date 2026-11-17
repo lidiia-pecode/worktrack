@@ -19,8 +19,12 @@ const MONTH_PARAM = "month";
  * The URL is the only record of a chosen month, so a reload, a link and Back
  * all show the month the address names. A move back to the current month
  * removes it.
+ *
+ * `allowFuture` lets a month to come be shown too, as Planning's is.
  */
-export function useShownMonth() {
+export function useShownMonth({
+  allowFuture = false,
+}: { allowFuture?: boolean } = {}) {
   const { company } = useCompany();
   const searchParams = useSearchParams();
 
@@ -32,7 +36,7 @@ export function useShownMonth() {
   const isShowable =
     linkedMonth !== null &&
     isMonthKey(linkedMonth) &&
-    linkedMonth <= currentMonth &&
+    (allowFuture || linkedMonth <= currentMonth) &&
     (firstMonth === undefined || linkedMonth >= firstMonth);
   const month = isShowable ? linkedMonth : currentMonth;
 

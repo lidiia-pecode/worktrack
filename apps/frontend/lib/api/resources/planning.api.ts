@@ -6,8 +6,9 @@ import {
   PlanningEntry,
   PlanningQuery,
   PlanningRemovalCountQuery,
+  PlanningMonth,
   PlanningWeek,
-  PlanningWeekQuery,
+  PlanningPeriodQuery,
   PeriodPreview,
   PlanPeriodPayload,
   PlannedPeriod,
@@ -32,8 +33,11 @@ export const PlanningClientApi = {
   deletePeriodPlans: (query: DeletePeriodPlansQuery) =>
     client.delete<{ count: number }>(`/period${buildQueryString(query)}`),
 
-  getWeek: (params: PlanningWeekQuery) =>
+  getWeek: (params: PlanningPeriodQuery) =>
     client.get<PlanningWeek>(`/week${buildQueryString(params)}`),
+
+  getMonth: (params: PlanningPeriodQuery) =>
+    client.get<PlanningMonth>(`/month${buildQueryString(params)}`),
 
   countRemovable: ({ projectIds, userIds }: PlanningRemovalCountQuery) =>
     client.get<{ count: number }>(

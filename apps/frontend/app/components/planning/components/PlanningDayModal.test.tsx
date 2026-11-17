@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
+import { Absence, PlanningEntry, PlanningRow } from "@/types";
 import { AbsenceType, UserStatus } from "@/types/enums";
 
 import { PlanningDayModal } from "./PlanningDayModal";
@@ -22,7 +22,7 @@ const NORTHWIND = {
   date: "2026-11-10",
 } as PlanningEntry;
 
-const ALICE: PlanningWeekRow = {
+const ALICE: PlanningRow = {
   user: {
     id: "user-alice",
     firstName: "Alice",
@@ -34,6 +34,7 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
+  availableByDay: [],
   dayLimits: [{ date: "2026-11-10", minutes: 480 }],
   projects: [
     { id: "project-northwind", name: "Northwind" },

@@ -20,9 +20,11 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
 
   experimental: {
-    // A build cache Vercel restored once shipped a stale `globals.css` with
-    // otherwise current code, so production builds start clean.
+    // Turbopack's file-system cache has served a stale `globals.css` with
+    // otherwise current code, once in a Vercel build and once in local dev,
+    // so both start clean.
     turbopackFileSystemCacheForBuild: false,
+    turbopackFileSystemCacheForDev: false,
   },
 
   async headers() {

@@ -7,7 +7,7 @@ import * as z from "zod";
 import { CalendarOff } from "lucide-react";
 import { toast } from "sonner";
 
-import { Absence, PlanningEntry, PlanningWeekRow } from "@/types";
+import { Absence, PlanningEntry, PlanningRow } from "@/types";
 import { useDeletePlan, usePlanPeriod } from "@/hooks/usePlanning";
 import { getErrorMessages, isClientError } from "@/lib/api";
 import {
@@ -46,7 +46,7 @@ const daySchema = z.object({ added: z.array(addedLineSchema) });
 type DayFormData = z.infer<typeof daySchema>;
 
 type PlanningDayModalProps = {
-  row: PlanningWeekRow;
+  row: PlanningRow;
   date: string;
   /**
    * The absence covering the day, shown here only while a locked month

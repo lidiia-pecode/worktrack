@@ -1,4 +1,4 @@
-import { PlanningWeekRow } from "@/types";
+import { PlanningRow } from "@/types";
 
 /** Plans are made in quarter hours, as the API requires (Phase 41). */
 export const PLAN_MINUTE_STEP = 15;
@@ -11,5 +11,5 @@ export const toPlanStep = (minutes: number) =>
   Math.floor(minutes / PLAN_MINUTE_STEP) * PLAN_MINUTE_STEP;
 
 /** The most the person can be planned on the date: their own day then. */
-export const dayLimitOn = (row: PlanningWeekRow, date: string) =>
+export const dayLimitOn = (row: PlanningRow, date: string) =>
   row.dayLimits.find((day) => day.date === date)?.minutes ?? 0;

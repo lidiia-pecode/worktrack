@@ -11,6 +11,8 @@ type WeekTotalProps = {
   /** The billable part of logged time, striped in the bar. */
   billableMinutes?: number;
   fill?: "logged" | "planned";
+  /** How the figures read; hours and minutes unless a month wants decimals. */
+  formatHours?: (minutes: number) => string;
 };
 
 /**
@@ -23,14 +25,15 @@ export const WeekTotal = ({
   ofMinutes,
   billableMinutes,
   fill = "logged",
+  formatHours = formatDuration,
 }: WeekTotalProps) => (
   <span className="inline-flex min-w-0 flex-col items-stretch gap-1 text-sm leading-4">
     <span className="text-right whitespace-nowrap text-muted-foreground">
       {label}{" "}
       <span className="font-semibold text-foreground">
-        {formatDuration(minutes)}
+        {formatHours(minutes)}
       </span>
-      {ofMinutes !== undefined && <span> / {formatDuration(ofMinutes)}</span>}
+      {ofMinutes !== undefined && <span> / {formatHours(ofMinutes)}</span>}
     </span>
 
     {ofMinutes !== undefined && ofMinutes > 0 && (
