@@ -101,6 +101,7 @@ const ROUTE_ROLES: Record<string, Record<string, UserRole[]>> = {
   PlanningController: {
     list: EVERY_ROLE,
     getWeek: EVERY_ROLE,
+    getMonth: EVERY_ROLE,
     getById: EVERY_ROLE,
     countRemovable: OWNER_AND_MANAGER,
     planPeriod: OWNER_AND_MANAGER,

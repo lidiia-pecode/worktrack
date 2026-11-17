@@ -16,8 +16,9 @@ export class PlanningProjectOptionResponse {
   name!: string;
 }
 
+/** A figure in minutes for one day of the grid. */
 @Exclude()
-export class PlanningDayLimitResponse {
+export class PlanningDayMinutesResponse {
   @Expose()
   date!: string;
 
@@ -26,7 +27,7 @@ export class PlanningDayLimitResponse {
 }
 
 @Exclude()
-export class PlanningWeekRowResponse {
+export class PlanningRowResponse {
   @Expose()
   @Type(() => TeamSummaryUserResponse)
   user!: TeamSummaryUserResponse;
@@ -37,10 +38,14 @@ export class PlanningWeekRowResponse {
   @Expose()
   availableMinutes!: number;
 
-  /** The most the person can be planned on each day of the week. */
   @Expose()
-  @Type(() => PlanningDayLimitResponse)
-  dayLimits!: PlanningDayLimitResponse[];
+  @Type(() => PlanningDayMinutesResponse)
+  availableByDay!: PlanningDayMinutesResponse[];
+
+  /** The most the person can be planned on each day. */
+  @Expose()
+  @Type(() => PlanningDayMinutesResponse)
+  dayLimits!: PlanningDayMinutesResponse[];
 
   @Expose()
   @Type(() => PlanningProjectOptionResponse)
@@ -69,6 +74,19 @@ export class PlanningWeekResponse {
   weekEnd!: string;
 
   @Expose()
-  @Type(() => PlanningWeekRowResponse)
-  rows!: PlanningWeekRowResponse[];
+  @Type(() => PlanningRowResponse)
+  rows!: PlanningRowResponse[];
+}
+
+@Exclude()
+export class PlanningMonthResponse {
+  @Expose()
+  monthStart!: string;
+
+  @Expose()
+  monthEnd!: string;
+
+  @Expose()
+  @Type(() => PlanningRowResponse)
+  rows!: PlanningRowResponse[];
 }

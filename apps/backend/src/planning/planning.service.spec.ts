@@ -24,7 +24,12 @@ import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
-import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
+import {
+  addMonths,
+  firstDayOfMonth,
+  lastDayOfMonth,
+  toMonthKey,
+} from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
@@ -32,6 +37,7 @@ import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.e
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
+  eachDate,
   isWorkingDay,
   toISODate,
   todayISODate,
@@ -1171,6 +1177,66 @@ describe('PlanningService', () => {
     });
   });
 
+  describe('month grid', () => {
+    const sumMinutes = (days: { minutes: number }[]) =>
+      days.reduce((sum, day) => sum + day.minutes, 0);
+
+    it('reads the month that holds the date, with the hours available day by day', async () => {
+      const monthStart = firstDayOfMonth(WEDNESDAY);
+      const monthEnd = lastDayOfMonth(WEDNESDAY);
+      const workingDays = [...eachDate(monthStart, monthEnd)].filter(
+        isWorkingDay,
+      );
+      const firstWorkingDay = workingDays[0];
+      const lastWorkingDay = workingDays[workingDays.length - 1];
+      await absentOn(member.id, WEDNESDAY);
+      await existingEntry(member.id, addDays(monthStart, -1), HOUR);
+      await existingEntry(member.id, firstWorkingDay, HOUR);
+      await existingEntry(member.id, lastWorkingDay, HOUR);
+
+      const month = await service.getMonth({ date: WEDNESDAY }, owner);
+      const row = month.rows.find((r) => r.user.id === member.id)!;
+
+      expect(month).toMatchObject({ monthStart, monthEnd });
+      expect(row.entries.map((entry) => entry.date).sort()).toEqual([
+        firstWorkingDay,
+        lastWorkingDay,
+      ]);
+      expect(row.plannedMinutes).toBe(2 * HOUR);
+      expect(row.availableMinutes).toBe((workingDays.length - 1) * 8 * HOUR);
+      expect(row.availableByDay).toHaveLength(
+        [...eachDate(monthStart, monthEnd)].length,
+      );
+      expect(sumMinutes(row.availableByDay)).toBe(row.availableMinutes);
+      expect(
+        row.availableByDay.find((day) => day.date === WEDNESDAY)?.minutes,
+      ).toBe(0);
+    });
+
+    it('closes the days after a leaver left, and leaves them out of the months after', async () => {
+      const leaver = await createUser('MonthLeaver', UserRole.EMPLOYEE);
+      const lastWorkingDay = `${toMonthKey(PAST_MONDAY)}-10`;
+      await dataSource.getRepository(User).update(leaver.id, {
+        status: UserStatus.DEACTIVATED,
+        lastWorkingDay,
+      });
+
+      const month = await service.getMonth({ date: lastWorkingDay }, owner);
+      const monthAfter = await service.getMonth(
+        { date: addMonths(lastWorkingDay, 1) },
+        owner,
+      );
+      await dataSource.getRepository(User).delete(leaver.id);
+
+      expect(
+        month.rows.find((r) => r.user.id === leaver.id)?.closedSpells,
+      ).toEqual([
+        { from: addDays(lastWorkingDay, 1), until: null, reason: 'inactive' },
+      ]);
+      expect(monthAfter.rows.some((r) => r.user.id === leaver.id)).toBe(false);
+    });
+  });
+
   describe('membership removal', () => {
     const removeFromProject = async (removed: AuthUser[], by: AuthUser) => {
       const current: Array<{ user_id: string }> = await dataSource.query(
@@ -1405,6 +1471,38 @@ describe('PlanningService', () => {
           closedSpells: alpha.closedSpells,
           moves: alpha.moves,
         },
+      );
+    });
+
+    it("gives each manager the mover's month with only their team's days", async () => {
+      await planFullWeek(mover.id);
+      const monthStart = firstDayOfMonth(WEDNESDAY);
+      const monthEnd = lastDayOfMonth(WEDNESDAY);
+      const monthRowOf = async (caller: AuthUser) =>
+        (await service.getMonth({ date: WEDNESDAY }, caller)).rows.find(
+          (row) => row.user.id === mover.id,
+        )!;
+
+      const alpha = await monthRowOf(manager);
+      expect(alpha.entries.map((entry) => entry.date).sort()).toEqual(
+        [MONDAY, TUESDAY].filter((date) => date >= monthStart),
+      );
+      expect(alpha.closedSpells).toEqual([
+        {
+          from: WEDNESDAY,
+          until: addDays(monthEnd, 1),
+          reason: 'outside-team',
+        },
+      ]);
+      expect(
+        alpha.availableByDay.find((day) => day.date === WEDNESDAY)?.minutes,
+      ).toBe(0);
+
+      const beta = await monthRowOf(betaManager);
+      expect(beta.closedSpells).toEqual(
+        monthStart < WEDNESDAY
+          ? [{ from: monthStart, until: WEDNESDAY, reason: 'outside-team' }]
+          : [],
       );
     });
 
