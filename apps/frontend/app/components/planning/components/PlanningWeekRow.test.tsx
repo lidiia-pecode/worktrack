@@ -75,16 +75,16 @@ const renderRow = (
 };
 
 describe("PlanningWeekRow", () => {
-  it("plans a period from the person's cell, which says so", async () => {
+  it("plans a period from the button beside the person", async () => {
     const user = userEvent.setup();
     const { onPlanPeriod } = renderRow();
 
-    const cell = screen.getByRole("button", {
+    const button = screen.getByRole("button", {
       name: "Plan a period for Alice Cooper",
     });
-    expect(cell).toHaveTextContent("Plan period");
+    expect(button).toHaveTextContent("Plan period");
 
-    await user.click(cell);
+    await user.click(button);
     expect(onPlanPeriod).toHaveBeenCalledWith(
       expect.objectContaining({
         user: expect.objectContaining({ id: "user-alice" }),

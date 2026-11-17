@@ -12,17 +12,30 @@ type PersonLabelProps = {
   children?: ReactNode;
 };
 
+/**
+ * The action beside a person in a week grid, in a cell marked `group/person`:
+ * with a mouse it shows while the person is hovered or it has focus, and only
+ * then takes its room, so the name ends in "…"; on touch it always shows.
+ * Hidden, it stays out of the flow but can still be reached by keyboard. Only
+ * its colours fade: a fading opacity would show it for a moment where it
+ * waits hidden, over the avatar.
+ */
+export const PERSON_ACTION =
+  "shrink-0 transition-colors pointer-fine:pointer-events-none pointer-fine:absolute pointer-fine:opacity-0 pointer-fine:group-hover/person:pointer-events-auto pointer-fine:group-hover/person:static pointer-fine:group-hover/person:opacity-100 pointer-fine:focus-visible:static pointer-fine:focus-visible:opacity-100";
+
 /** A person in a week grid's first column: avatar, name, position and facts. */
 export const PersonLabel = ({ user, children }: PersonLabelProps) => (
   <>
     <Avatar
       user={user}
       size="md"
-      className={cn(isDeactivatedUser(user) && "opacity-60")}
+      // No card-coloured ring: it would show on a tinted cell, such as Team
+      // time's highlighted row.
+      className={cn("ring-0", isDeactivatedUser(user) && "opacity-60")}
     />
 
     <span className="min-w-0 flex-1">
-      <span className="block truncate text-sm font-medium text-foreground transition-colors group-hover:text-brand group-focus-visible:text-brand">
+      <span className="block truncate text-sm font-medium text-foreground">
         {fullName(user)}
       </span>
 

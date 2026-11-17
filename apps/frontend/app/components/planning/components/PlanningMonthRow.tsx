@@ -140,7 +140,7 @@ export const PlanningMonthRow = ({
 
               {/* One lane per project, over the days' grounds: a free day
                   stays empty, an absence striped, a closed day tinted. */}
-              <span aria-hidden className="relative flex flex-col gap-0.5">
+              <span aria-hidden className="relative flex flex-col gap-0.75">
                 <span className="absolute inset-0 grid gap-0.5" style={columns}>
                   {days.map((day) => (
                     <span
@@ -159,7 +159,7 @@ export const PlanningMonthRow = ({
                 {Array.from({ length: laneCount }, (_, lane) => (
                   <span
                     key={lane}
-                    className="pointer-events-none relative grid h-5 gap-0.5"
+                    className="pointer-events-none relative grid h-6 gap-0.5"
                     style={columns}
                   >
                     {bars
@@ -168,7 +168,7 @@ export const PlanningMonthRow = ({
                         <span
                           key={`${bar.project.id}-${bar.start}`}
                           title={`${bar.project.name} · ${formatDuration(bar.minutes)} a day`}
-                          className="pointer-events-auto truncate rounded-md px-1.5 text-2xs leading-5 text-muted-foreground"
+                          className="pointer-events-auto truncate rounded-md px-2 text-xs leading-6 text-muted-foreground"
                           style={{
                             gridColumn: `${bar.start + 1} / span ${bar.length}`,
                             ...planSurface(getProjectColor(bar.project.id)),

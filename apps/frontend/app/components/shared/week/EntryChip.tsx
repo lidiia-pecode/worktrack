@@ -27,8 +27,8 @@ type EntryChipProps = Omit<
 };
 
 /**
- * One entry in a week grid, the same in Team time and Planning: the project,
- * then its hours. Logged time is a strong tint of the project's colour with
+ * One entry in a week grid, the same in Team time and Planning: its hours,
+ * then the project. Logged time is a strong tint of the project's colour with
  * its dot; a plan a light one with no dot.
  */
 export const EntryChip = ({
@@ -81,13 +81,14 @@ export const EntryChip = ({
   ) : (
     <>
       {mark}
-      <span className="min-w-0 truncate">{projectName}</span>
-      {/* Right after the name, so a bar across the week reads as one phrase. */}
+      {/* The hours first, always in one place, as in Log my time; a long
+          name is cut at its end. */}
       <span
         className={cn("shrink-0", isPlan ? "font-medium" : "font-semibold")}
       >
-        · {duration}
+        {duration}
       </span>
+      <span className="min-w-0 truncate">{projectName}</span>
     </>
   );
 
