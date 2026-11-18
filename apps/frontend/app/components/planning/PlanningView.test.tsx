@@ -3,8 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningEntry, PlanningRow, Project } from "@/types";
-import { AbsenceType, UserRole, UserStatus, WeekDay } from "@/types/enums";
+import { PlanningEntry, PlanningRow, Project } from "@/types";
+import { UserRole, UserStatus, WeekDay } from "@/types/enums";
 
 import { PlanningView } from "./PlanningView";
 
@@ -151,21 +151,6 @@ const ALICE = row(
 );
 const BEN = row("user-ben", "Ben", "Ward", "Developer", [INTERNAL], []);
 
-const absence = (
-  id: string,
-  userId: string,
-  date: string,
-  canChange: boolean,
-): Absence =>
-  ({
-    id,
-    userId,
-    type: AbsenceType.VACATION,
-    startDate: date,
-    endDate: date,
-    canChange,
-  }) as Absence;
-
 const showPlanning = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
@@ -181,7 +166,6 @@ const shownNames = () =>
     .getAllByRole("rowheader")
     .map((cell) => (cell.textContent?.includes("Alice") ? "Alice" : "Ben"));
 
-// These cover the week, where days open one by one.
 describe("PlanningView, the week", () => {
   beforeEach(() => {
     window.history.replaceState(null, "", "/planning?view=week");
@@ -195,10 +179,7 @@ describe("PlanningView, the week", () => {
       refetch: vi.fn(),
     } as unknown as ReturnType<typeof usePlanningGrid>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
-      items: [
-        absence("a-1", "user-alice", "2026-11-04", false),
-        absence("a-2", "user-ben", "2026-11-03", true),
-      ],
+      items: [],
       isLoading: false,
       isError: false,
       refetch: vi.fn(),

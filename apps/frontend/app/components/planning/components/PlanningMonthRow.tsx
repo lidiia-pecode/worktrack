@@ -1,26 +1,25 @@
-import { Absence, PlanningEntry, PlanningRow } from "@/types";
+import { Absence, ClosedSpell, PlanningEntry, PlanningRow } from "@/types";
+import { ProjectStatus } from "@/types/enums";
 import {
   formatDuration,
   formatLongDayLabel,
   formatReportHours,
   toISODate,
 } from "@/lib/utils/date";
-import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { closedSpellOn, fullName } from "@/lib/utils/user";
 import { getProjectColor, planSurface } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
-import { planBars } from "../plan-bars";
-import { PlanningPersonCell } from "./PlanningPersonCell";
+import { weekLabel } from "../month-weeks";
+import { describePlanDay, planBars } from "../plan-bars";
+import { hasNoFixedHours, PlanningPersonCell } from "./PlanningPersonCell";
 import { PlanningTotalCell } from "./PlanningTotalCell";
 
 type PlanningMonthRowProps = {
   row: PlanningRow;
   /** The month's working days, one list per week. */
   weeks: Date[][];
-  /** The name each week has in the heading, for a screen reader. */
-  weekLabels: string[];
   absencesByDate: Record<string, Absence>;
   isMonthLocked: boolean;
   /** Set under a project filter: the row holds that project's plans only. */
@@ -29,9 +28,6 @@ type PlanningMonthRowProps = {
   onPlanPeriod: (row: PlanningRow) => void;
 };
 
-const sumMinutes = (items: { minutes: number }[]) =>
-  items.reduce((sum, item) => sum + item.minutes, 0);
-
 type MonthDay = {
   date: Date;
   entries: PlanningEntry[];
@@ -39,18 +35,7 @@ type MonthDay = {
   available: number;
   absence?: Absence;
   /** Outside the view with nothing left on it, drawn as closed. */
-  isClosed: boolean;
-};
-
-/** What a day holds, for its tooltip and a screen reader. */
-const describeDay = ({ entries, absence, isClosed }: MonthDay) => {
-  if (isClosed) return "not in this view";
-
-  const plans = entries.map(
-    (entry) => `${entry.project.name} ${formatDuration(entry.plannedMinutes)}`,
-  );
-  const parts = [absence && ABSENCE_TYPE_SHORT_LABELS[absence.type], ...plans];
-  return parts.filter(Boolean).join(", ") || "nothing planned";
+  closed?: ClosedSpell["reason"];
 };
 
 /**
@@ -60,7 +45,6 @@ const describeDay = ({ entries, absence, isClosed }: MonthDay) => {
 export const PlanningMonthRow = ({
   row,
   weeks,
-  weekLabels,
   absencesByDate,
   isMonthLocked,
   projectName,
@@ -77,6 +61,9 @@ export const PlanningMonthRow = ({
   const availableOn = new Map(
     row.availableByDay.map((day) => [day.date, day.minutes]),
   );
+  // Plans left on someone with no hours to plan are shown, never weighed
+  // against what they have.
+  const showsPlannedOnly = Boolean(projectName) || hasNoFixedHours(row);
 
   return (
     <tr className="border-b border-border last:border-b-0">
@@ -86,34 +73,35 @@ export const PlanningMonthRow = ({
         onPlanPeriod={onPlanPeriod}
       />
 
-      {weeks.map((week, index) => {
+      {weeks.map((week) => {
         const days = week.map((date): MonthDay => {
           const iso = toISODate(date);
           const entries = entriesByDate.get(iso) ?? [];
           return {
             date,
             entries,
-            planned: entries.reduce((sum, e) => sum + e.plannedMinutes, 0),
+            planned: entries.reduce(
+              (sum, entry) => sum + entry.plannedMinutes,
+              0,
+            ),
             available: availableOn.get(iso) ?? 0,
             absence: absencesByDate[iso],
             // A closed day keeps the plans left over there, as in the week.
-            isClosed:
-              !!closedSpellOn(row.closedSpells, iso) && entries.length === 0,
+            closed:
+              entries.length === 0
+                ? closedSpellOn(row.closedSpells, iso)?.reason
+                : undefined,
           };
         });
-        const planned = sumMinutes(
-          days.map((day) => ({ minutes: day.planned })),
-        );
-        const available = sumMinutes(
-          days.map((day) => ({ minutes: day.available })),
-        );
+        const planned = days.reduce((sum, day) => sum + day.planned, 0);
+        const available = days.reduce((sum, day) => sum + day.available, 0);
         // Quiet when the week is planned exactly; under a project there is no
         // available figure, so only the project's hours show.
-        const hours = projectName
+        const hours = showsPlannedOnly
           ? planned > 0 && formatReportHours(planned)
           : planned !== available &&
             `${formatReportHours(planned)} / ${formatReportHours(available)}`;
-        const isOver = !projectName && planned > available;
+        const isOver = !showsPlannedOnly && planned > available;
         const bars = planBars(
           days.flatMap((day) => day.entries),
           week.map(toISODate),
@@ -134,7 +122,7 @@ export const PlanningMonthRow = ({
               className="flex h-full w-full flex-col gap-1 p-1.5 text-left hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
             >
               <span className="sr-only">
-                {`Open the week of ${weekLabels[index]} for ${fullName(row.user)}. `}
+                {`Open the week of ${weekLabel(week)} for ${fullName(row.user)}. `}
               </span>
 
               {/* The days' grounds, under one lane of bars per project. */}
@@ -143,10 +131,10 @@ export const PlanningMonthRow = ({
                   {days.map((day) => (
                     <span
                       key={toISODate(day.date)}
-                      title={`${formatLongDayLabel(day.date)}: ${describeDay(day)}`}
+                      title={`${formatLongDayLabel(day.date)}: ${describePlanDay(day)}`}
                       className={cn(
                         "not-first:border-l not-first:border-dotted not-first:border-border",
-                        day.isClosed
+                        day.closed
                           ? "bg-day-locked"
                           : day.absence && ABSENCE_PATTERN,
                       )}
@@ -162,19 +150,34 @@ export const PlanningMonthRow = ({
                   >
                     {bars
                       .filter((bar) => bar.lane === lane)
-                      .map((bar) => (
-                        <span
-                          key={`${bar.project.id}-${bar.start}`}
-                          title={`${bar.project.name} · ${formatDuration(bar.minutes)} a day`}
-                          className="pointer-events-auto truncate rounded-md px-2 text-xs leading-6 text-muted-foreground"
-                          style={{
-                            gridColumn: `${bar.start + 1} / span ${bar.length}`,
-                            ...planSurface(getProjectColor(bar.project.id)),
-                          }}
-                        >
-                          {bar.length > 1 && bar.project.name}
-                        </span>
-                      ))}
+                      .map((bar) => {
+                        // Grey and struck through, as in the week.
+                        const isArchived =
+                          bar.project.status === ProjectStatus.ARCHIVED;
+                        const name = isArchived
+                          ? `${bar.project.name} (archived)`
+                          : bar.project.name;
+                        const surface = isArchived
+                          ? undefined
+                          : planSurface(getProjectColor(bar.project.id));
+
+                        return (
+                          <span
+                            key={`${bar.project.id}-${bar.start}`}
+                            title={`${name} · ${formatDuration(bar.minutes)} a day`}
+                            className={cn(
+                              "pointer-events-auto truncate rounded-md px-2 text-xs leading-6 text-muted-foreground",
+                              isArchived && "bg-muted/30 line-through",
+                            )}
+                            style={{
+                              ...surface,
+                              gridColumn: `${bar.start + 1} / span ${bar.length}`,
+                            }}
+                          >
+                            {bar.length > 1 && bar.project.name}
+                          </span>
+                        );
+                      })}
                   </span>
                 ))}
               </span>
@@ -183,7 +186,7 @@ export const PlanningMonthRow = ({
                 {days
                   .map(
                     (day) =>
-                      `${formatLongDayLabel(day.date)}: ${describeDay(day)}.`,
+                      `${formatLongDayLabel(day.date)}: ${describePlanDay(day)}.`,
                   )
                   .join(" ")}
               </span>

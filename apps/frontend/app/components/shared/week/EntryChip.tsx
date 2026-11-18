@@ -67,7 +67,7 @@ export const EntryChip = ({
     isPlan
       ? "text-muted-foreground"
       : "text-foreground ring-1 ring-foreground/5",
-    isArchived && "border-border bg-muted/30 line-through",
+    isArchived && "bg-muted/30 line-through",
     onClick &&
       "cursor-pointer transition-[filter,box-shadow] hover:brightness-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
     onClick && !isPlan && "hover:ring-foreground/15",

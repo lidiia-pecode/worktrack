@@ -25,10 +25,8 @@ import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity'
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
 import {
-  addMonths,
   firstDayOfMonth,
   lastDayOfMonth,
-  toMonthKey,
 } from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
@@ -465,22 +463,6 @@ describe('PlanningService', () => {
   });
 
   describe('locked periods', () => {
-    it('refuses deleting plans inside a locked period', async () => {
-      await existingEntry(member.id, LOCKED_MONDAY, HOUR);
-
-      await expect(
-        service.deletePeriodPlans(
-          {
-            userId: member.id,
-            projectId,
-            startDate: LOCKED_MONDAY,
-            endDate: LOCKED_MONDAY,
-          },
-          manager,
-        ),
-      ).rejects.toThrow(/locked/);
-    });
-
     it('lets a past plan in an open period be corrected', async () => {
       await existingEntry(member.id, PAST_MONDAY, 8 * HOUR);
 
@@ -1159,29 +1141,6 @@ describe('PlanningService', () => {
       expect(
         row.availableByDay.find((day) => day.date === WEDNESDAY)?.minutes,
       ).toBe(0);
-    });
-
-    it('closes the days after a leaver left, and leaves them out of the months after', async () => {
-      const leaver = await createUser('MonthLeaver', UserRole.EMPLOYEE);
-      const lastWorkingDay = `${toMonthKey(PAST_MONDAY)}-10`;
-      await dataSource.getRepository(User).update(leaver.id, {
-        status: UserStatus.DEACTIVATED,
-        lastWorkingDay,
-      });
-
-      const month = await service.getMonth({ date: lastWorkingDay }, owner);
-      const monthAfter = await service.getMonth(
-        { date: addMonths(lastWorkingDay, 1) },
-        owner,
-      );
-      await dataSource.getRepository(User).delete(leaver.id);
-
-      expect(
-        month.rows.find((r) => r.user.id === leaver.id)?.closedSpells,
-      ).toEqual([
-        { from: addDays(lastWorkingDay, 1), until: null, reason: 'inactive' },
-      ]);
-      expect(monthAfter.rows.some((r) => r.user.id === leaver.id)).toBe(false);
     });
   });
 

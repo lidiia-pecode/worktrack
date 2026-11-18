@@ -11,7 +11,7 @@ export type PlanningColumn = {
   /** A CSS width: the table lays out its columns once, for every row. */
   width: string;
   heading: ReactNode;
-  headingClassName?: string;
+  headingClassName: string;
 };
 
 type PlanningTableProps = {

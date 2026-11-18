@@ -1,6 +1,10 @@
 import { Absence, PlanningRow as Row } from "@/types";
 import { ProjectStatus, UserStatus } from "@/types/enums";
-import { formatDuration, toISODate } from "@/lib/utils/date";
+import {
+  formatDuration,
+  formatLongDayLabel,
+  toISODate,
+} from "@/lib/utils/date";
 import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
 import { CLOSED_DAY_TEXT, closedSpellOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
@@ -9,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 
 import { EntryChip } from "../../shared/week/EntryChip";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
-import { planBars } from "../plan-bars";
+import { describePlanDay, planBars } from "../plan-bars";
 import { PlanningPersonCell } from "./PlanningPersonCell";
 import { PlanningTotalCell } from "./PlanningTotalCell";
 
@@ -97,7 +101,9 @@ export const PlanningWeekRow = ({
           })}
         </div>
 
+        {/* Drawn for the eye; a screen reader hears the days below. */}
         <div
+          aria-hidden
           className="relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
@@ -113,16 +119,6 @@ export const PlanningWeekRow = ({
             >
               {ABSENCE_TYPE_SHORT_LABELS[run.value.type]}
             </Badge>
-          ))}
-
-          {runsOf(closedOn).map((run) => (
-            <span
-              key={`closed-${run.start}`}
-              className="sr-only"
-              style={{ gridRow: 1, gridColumn: run.start + 1 }}
-            >
-              {CLOSED_DAY_TEXT[run.value]}
-            </span>
           ))}
 
           {bars.map((bar) => {
@@ -152,6 +148,21 @@ export const PlanningWeekRow = ({
             );
           })}
         </div>
+
+        <span className="sr-only">
+          {weekDates
+            .map(
+              (date, index) =>
+                `${formatLongDayLabel(date)}: ${describePlanDay({
+                  entries: row.entries.filter(
+                    (entry) => entry.date === dates[index],
+                  ),
+                  absence: absencesByDate[dates[index]],
+                  closed: closedOn[index],
+                })}.`,
+            )
+            .join(" ")}
+        </span>
       </td>
 
       <PlanningTotalCell row={row} period="week" projectName={projectName} />

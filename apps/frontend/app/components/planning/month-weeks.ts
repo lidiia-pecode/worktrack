@@ -1,6 +1,7 @@
 import { WeekDay } from "@/types/enums";
 import {
   addDays,
+  formatDayMonthLabel,
   fromISODate,
   getMonthRange,
   getWeekStart,
@@ -37,4 +38,12 @@ export const monthWorkingWeeks = (
   }
 
   return weeks;
+};
+
+/** "Nov 16–20", or "Nov 30" for a week of one day in the month. */
+export const weekLabel = (week: Date[]) => {
+  const first = formatDayMonthLabel(toISODate(week[0]));
+  return week.length === 1
+    ? first
+    : `${first}–${week[week.length - 1].getDate()}`;
 };

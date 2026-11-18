@@ -20,7 +20,7 @@ const MONTH_PARAM = "month";
 export function usePlanningPeriod() {
   const searchParams = useSearchParams();
   const { weekStart, showWeekOf } = useShownWeek();
-  const { month, currentMonth, showMonth } = useShownMonth({
+  const { month, currentMonth, firstMonth, showMonth } = useShownMonth({
     allowFuture: true,
   });
 
@@ -52,5 +52,13 @@ export function usePlanningPeriod() {
     [showMonth],
   );
 
-  return { unit, weekStart, month, currentMonth, openWeek, openMonth };
+  return {
+    unit,
+    weekStart,
+    month,
+    currentMonth,
+    firstMonth,
+    openWeek,
+    openMonth,
+  };
 }

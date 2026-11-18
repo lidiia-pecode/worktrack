@@ -12,7 +12,6 @@ import { useTeamOptions } from "@/hooks/useTeams";
 import {
   addDays,
   addMonthsToKey,
-  formatDayMonthLabel,
   formatMonthLabel,
   formatReportHours,
   fromISODate,
@@ -58,7 +57,7 @@ import { PlanPeriodModal } from "./components/PlanPeriodModal";
 import { PlanningWeekRow } from "./components/PlanningWeekRow";
 import { PlanningMonthRow } from "./components/PlanningMonthRow";
 import { PlanningColumn, PlanningTable } from "./components/PlanningTable";
-import { monthWorkingWeeks } from "./month-weeks";
+import { monthWorkingWeeks, weekLabel } from "./month-weeks";
 import { usePlanningPeriod } from "./usePlanningPeriod";
 
 /** An absence added from Plan a period, on the days it was planning. */
@@ -78,14 +77,6 @@ const UNITS = [
   { value: "week" as const, label: "Week" },
 ];
 
-/** "Nov 16–20", or "Nov 30" for a week of one day in the month. */
-const weekLabel = (week: Date[]) => {
-  const first = formatDayMonthLabel(toISODate(week[0]));
-  return week.length === 1
-    ? first
-    : `${first}–${week[week.length - 1].getDate()}`;
-};
-
 /**
  * Planning: a month of the team's plans, which it opens on, or one week of
  * them, day by day. Both share the filters, the sort and the dialogs.
@@ -99,8 +90,15 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
     refetch: refetchSettings,
   } = useWorkSettings();
 
-  const { unit, weekStart, month, currentMonth, openWeek, openMonth } =
-    usePlanningPeriod();
+  const {
+    unit,
+    weekStart,
+    month,
+    currentMonth,
+    firstMonth,
+    openWeek,
+    openMonth,
+  } = usePlanningPeriod();
   const isMonth = unit === "month";
   const {
     teamId,
@@ -250,9 +248,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   const periodWeekDates = isMonth
     ? (monthWeeks.find((week) =>
         week.some((date) => toISODate(date) === todayIso),
-      ) ??
-      monthWeeks[0] ??
-      workingDates)
+      ) ?? monthWeeks[0])
     : workingDates;
   const pickUnit = (next: "week" | "month") => {
     if (next === unit) return;
@@ -260,7 +256,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
       openWeek(
         month === toMonthKey(todayIso)
           ? fromISODate(todayIso)
-          : (monthWeeks[0]?.[0] ?? fromISODate(dateFrom)),
+          : monthWeeks[0][0],
       );
     } else {
       // The month holding most of the week: its fourth day's.
@@ -353,6 +349,9 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
             <>
               <StepArrows
                 unit="month"
+                previousDisabled={
+                  firstMonth !== undefined && month <= firstMonth
+                }
                 onPrevious={() => openMonth(addMonthsToKey(month, -1))}
                 onNext={() => openMonth(addMonthsToKey(month, 1))}
               />
@@ -455,7 +454,6 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
                 key={row.user.id}
                 row={row}
                 weeks={monthWeeks}
-                weekLabels={monthWeeks.map(weekLabel)}
                 absencesByDate={absencesByUser[row.user.id] ?? {}}
                 isMonthLocked={isMonthLocked}
                 projectName={projectName}

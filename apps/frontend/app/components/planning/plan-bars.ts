@@ -1,4 +1,7 @@
-import { PlanningEntry, PlanningProject } from "@/types";
+import { Absence, ClosedSpell, PlanningEntry, PlanningProject } from "@/types";
+import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
+import { formatDuration } from "@/lib/utils/date";
+import { CLOSED_DAY_TEXT } from "@/lib/utils/user";
 
 export type PlanBar = {
   project: PlanningProject;
@@ -60,4 +63,24 @@ export const planBars = (
   });
 
   return bars;
+};
+
+/** What a day of a row holds, for its tooltip and a screen reader. */
+export const describePlanDay = ({
+  entries,
+  absence,
+  closed,
+}: {
+  entries: PlanningEntry[];
+  absence?: Absence;
+  /** Why the row doesn't hold the day, when it doesn't. */
+  closed?: ClosedSpell["reason"];
+}) => {
+  if (closed) return CLOSED_DAY_TEXT[closed];
+
+  const plans = entries.map(
+    (entry) => `${entry.project.name} ${formatDuration(entry.plannedMinutes)}`,
+  );
+  const parts = [absence && ABSENCE_TYPE_SHORT_LABELS[absence.type], ...plans];
+  return parts.filter(Boolean).join(", ") || "nothing planned";
 };
