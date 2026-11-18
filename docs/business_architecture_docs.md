@@ -525,8 +525,9 @@ Every write is checked on the server:
 6. Nothing can be planned on a day the person wasn't employed, as for time
    entries (rule 4 there).
 
-Plans are written in one way only, a period save (Plan a day saves a one-day
-period), and removed one by one or per project across a period. A day an
+Plans are written in one way only, a period save, a single day being a period
+of one day, and removed per project across a period, never one by one
+(PR #76). A day an
 absence covers is skipped, and so is a day before the person's account was
 created, which Planning shows closed. Recording an absence, or widening or
 moving one, deletes that person's plans on its days, whoever records it — the
@@ -545,7 +546,7 @@ project added fills every working day — the range's weekdays the person has
 hours on, with no absence and not before their account was created. Plans for
 projects left untouched stay. A listed project's plans in the range can also be
 deleted from its row, after a confirmation, at once and in one go; that delete
-follows a single plan's delete (the same people, nothing in a locked month).
+reaches the same people a save does, and nothing in a locked month.
 Saving applies to the result as a whole: a range touching a LOCKED month is
 refused, and if any day or week would go over its limit, nothing is saved and
 every day and week that does not fit is named; the form sums them up (how
@@ -560,12 +561,11 @@ The planning grid shows managers one figure of its own: **no longer fits**
 It is not shown to an employee, who sees only their own plan, and it does not
 affect whether somebody is behind. A deactivated person's plans up to their
 last working day stay visible in the grid, read-only; deactivating removes the
-ones after it. The grid shows working days only, since nothing can be
-planned on a weekend, and its hour pickers stop at the person's own day; the
-day dialog's hours stop at what still fits on the day and in the week, and
-say so. "Add
-absence" from a day records that day; from the period form it opens on the
-chosen range.
+ones after it. The grid reads a week or a calendar month the same way: the
+same people, days and figures, a month being only a longer range. It shows
+working days only, since nothing can be planned on a weekend, and the period
+form's hour pickers stop at the person's own day. "Add absence" in the period
+form opens on the chosen range.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -843,7 +843,7 @@ the team and project panels say "Last day" and the date after their position.
 | Time logs — write | whole company, a deactivated person's days before they left included | own, plus users in teams they manage, the same way | **own only** |
 | Absences — read and write | as time logs | as time logs | own only |
 | Planning — read | whole company | own, plus users in teams they manage | own only |
-| Planning — write, a day or a period, and a period's preview | any active user | self + managed users | — |
+| Planning — write, a period (a day is a period of one day), and its preview | any active user | self + managed users | — |
 | Reporting periods | reopen + close | read | read |
 | Hours and people reports | whole company | own, plus users in teams they manage | own only, through the same routes |
 | Hours export, timeline | whole company | own, plus users in teams they manage | — |
@@ -940,13 +940,15 @@ see, and how a new company gets started. §7 plans that work.
   its archive dialog names whose plans from today on it removes.
 - **Team time view** — owners and managers land on `/team` and read their
   people's week, a row each: the person, each day's entries as chips with the
-  project and its hours (a plan dashed, shown on a day nothing is logged yet),
+  project and its hours (a plan in a lighter tint, shown on a day nothing is
+  logged yet),
   and their week's hours against what was expected in a column on the right,
   as on Planning. Saturday and Sunday are left out unless someone shown has
   time on one, and open from Friday's heading. They correct the week in the
   grid: a chip opens that entry, the empty part of a day logs time for the
-  person ("No time" on an empty past working day), and an icon by the name
-  records an absence. A search by name or position, a sort by name or by how
+  person ("No time" on an empty past working day), and an icon by the name,
+  shown when the person is pointed at, records an absence. A search by name
+  or position, a sort by name or by how
   much of the expected time is logged, and filters by team and project
   (archived projects included) narrow it, and "Clear filters" comes with a
   search or filter that matches nobody; the team filter is offered to the owner and
@@ -977,38 +979,43 @@ see, and how a new company gets started. §7 plans that work.
   hours", and the week views show their hours alone, never over. The owner is
   listed in People to themselves only, and edits their own position and working
   hours on their panel; nobody else manages the owner's account there.
-- **Planning** — owners and managers plan their people's week by project on
-  `/planning`, or a whole period for one person from their cell: a month at a
-  time or any range, several projects with hours per working day, with a
-  preview of the working days, the absences skipped, what is already planned
-  and anything that does not fit before saving, all-or-nothing. The period
-  dialog opens on the week shown, and a `Week | Month` control beside its
-  arrows sets what they step by, Month jumping to the month that holds most of
-  the shown days. The day dialog works the same way: the day's plans are edited
-  in place, new lines add projects, and one "Save plan" saves the day, notes
-  included. The grid shows working days only; each person's week reads planned
-  against available hours ("30h of 32h") with a bar, and says which weeks no
-  longer fit. It is narrowed as Team time is, by team, project (active ones
-  only, since nothing is planned on an archived one) and a search by name or
-  position, with the same "Clear filters" when nothing matches, and kept in
-  the URL the same way.
-  Under a project the
-  rows are the people on it or with a plan on it, each showing only its plans
-  and its hours ("on Acme redesign"). The toolbar totals the people shown
-  ("Planned 120h / 160h" against their available hours; the planned hours
-  alone under a project). A week lists the people with working hours in it or
-  plans on it: someone at 0h shows only with plans left from before, marked
-  "No fixed hours", those plans deletable but not changed; a leaver shows in
-  the weeks they still had days in, the days after their last closed. A week
-  wholly in locked months offers no "Plan a period", as a locked day offers
-  nothing. A day
-  can be planned up to the person's own working day, in 15-minute steps, and
-  the day dialog's hours stop at what still fits.
-  An absence day opens straight into its form, which names the person, and
-  an absence can be added from a day or a period. Everyone sees their own plan on the
-  timesheet until they log time that day, as faint blocks in the project's
-  colour that open the time form on that project; recording an absence removes
-  the plans on its days.
+- **Planning** — owners and managers plan their people by project on
+  `/planning`, which opens on the current month, with `Month | Week` to
+  switch; the choice and the period shown are in the URL, so a link to a week
+  still opens that week (PR #76). The month has a column per week, holding
+  the month's working days only, so an edge week can be a day wide: in each,
+  a project's plan is a bar across its days, named when it covers two days or
+  more, over the days' grounds (an absence striped, a day the row doesn't
+  hold for the viewer closed), with the week's hours only when they are short
+  of or over what is available, in amber when over. A week's cell opens that
+  week. In the week, a plan repeated with the same hours on days next to each
+  other is one bar, its hours first ("6h Customer Portal Redesign"); the days
+  only show what is planned. Planning starts from the person: "Plan period",
+  beside the name when the person is pointed at, opens the period dialog on
+  the week or month shown, for a month at a time or any range, several
+  projects with hours per working day, with a preview of the working days,
+  the absences skipped, what is already planned and anything that does not
+  fit before saving, all-or-nothing; a `Week | Month` control beside its
+  arrows sets what they step by. Each row reads planned against available
+  hours with a bar, the month in decimal hours as Reports ("136.5h"), saying
+  "of …" only when the two differ, and says which no longer fit ("Over by").
+  It is narrowed as Team time is, by team, project (active ones only, since
+  nothing is planned on an archived one) and a search by name or position,
+  with the same "Clear filters" when nothing matches, and kept in the URL
+  the same way. Under a project the rows are the people on it or with a plan
+  on it, each showing only its plans and its hours ("on Acme redesign"). The
+  toolbar totals the people shown ("Planned 120h / 160h" against their
+  available hours; the planned hours alone under a project). A week or month
+  lists the people with working hours in it or plans on it: someone at 0h
+  shows only with plans left from before, marked "No fixed hours", with
+  nothing to plan; a leaver shows while they still had days in it, the days
+  after their last closed; someone who moved out of the team during it is
+  planned on their days in it. A week or month wholly in locked months offers
+  no "Plan period". A day can be planned up to the person's own working day,
+  in 15-minute steps, and an absence can be added from the period dialog.
+  Everyone sees their own plan on the timesheet until they log time that
+  day, as light blocks in the project's colour that open the time form on
+  that project; recording an absence removes the plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -1133,9 +1140,10 @@ see, and how a new company gets started. §7 plans that work.
   surface. One teal
   bar marks where you are (the menu, the open row, today, the selected tab),
   and pointing at something only darkens it slightly, so the two never look
-  alike. In the week grids logged time is filled in its project's colour and
-  a plan is a lighter fill inside a dashed edge; a day that can be changed is
-  white and a locked one grey. In Log my time the expected hours are one line
+  alike. In the week grids logged time and a plan differ by how much of
+  their project's colour they carry, never by a line around them (PR #76,
+  below); a day that can be changed is white and a locked one grey. In Log
+  my time the expected hours are one line
   across the whole week.
 
 - **Absences, plans and month end at the edges** (16 November 2026, PR #74). An
@@ -1149,12 +1157,25 @@ see, and how a new company gets started. §7 plans that work.
   manager sees the month-end deadline as an amber lock on Team time and
   Reports, and logging time for someone on no project points to Projects.
 
+- **A month in Planning, and one way to plan** (17 November 2026, PR #76).
+  Planning opens on the month, since planning a month ahead is the page's
+  job, and that sets it apart from Team time's week of actual hours; the week
+  is the detail. A person is the one way into planning, on the week and the
+  month, and every plan is made with Plan a period, a single day being a
+  period of one day, so Plan a day, deleting one plan and the plans' notes on
+  screen went. A plan repeated over several days is drawn as one bar. Logged
+  time is a strong tint of its project's colour with its dot and dark text,
+  a plan a light tint with no edge or dot, the same in every week view, and
+  every entry names its hours before its project. Left out on purpose: zoom
+  levels (the month is the one wider view needed), scrolling the week
+  sideways instead of the arrows, and project hour budgets.
+
 - **One way to close a dialog** (4 November 2026, PR #67). No dialog has a
   close button in its header: it closes from its footer, "Cancel" in a form
   and "Close" in a read-only one and in Notifications. Escape and a click
   outside ask first while a form has unsaved changes, the management create
   dialogs included, and do nothing while a save runs. The work dialogs (Log
-  time, an absence, Plan a day, Plan a period) share one frame: the action as
+  time, an absence, Plan a period) share one frame: the action as
   the title, who and when beneath, and Delete as a quiet button apart from
   the one solid primary action. A confirmation's title is a question, and
   "This can't be undone." is said once. Leaving Settings with unsaved edits
@@ -1208,6 +1229,7 @@ see, and how a new company gets started. §7 plans that work.
 | :--- | :--- |
 | `Company.currency` | Read by no logic and no longer asked for or shown. **Should stay unused** under D7. |
 | `Company.deletedAt` | Column with no soft-delete behaviour behind it. |
+| `PlanningEntry.note` | Kept on plans saved before PR #76; no screen or route reads or writes it since, so no migration was needed. |
 
 ### Authorization
 
@@ -1227,18 +1249,18 @@ in cookies, never in a response.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1012 tests, covering the roles of every route and the whole app over
+suites and 1010 tests, covering the roles of every route and the whole app over
 HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
-planning rules, an absence across a locked month and the notice to whoever made the plans it removes, who added and changed a time entry or an absence, the lock
+planning rules, a month of plans read with a week's rows, an absence across a locked month and the notice to whoever made the plans it removes, who added and changed a time entry or an absence, the lock
 order between plan saves and project changes, monthly locking in and outside UTC and a Close that waits for
 an open write, the reports and the export (weeks or months on the timeline,
 one team, the export's file name), page and date-range limits, name
 checks, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-seven Vitest files and 464 tests: its date, month,
+The frontend has seventy-eight Vitest files and 459 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
@@ -1249,8 +1271,8 @@ Manage lists, panel and confirmation dialogs, the work and create dialogs'
 discard check,
 the time entry form, the duration stepper, the timesheet day column and its
 list of days on a phone, the
-Team time view, its day cells, rows, filters and sort order, the Planning week
-view and its day and period dialogs, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
+Team time view, its day cells, rows, filters and sort order, the Planning
+view, its week row and period dialog, a month's weeks and a row's plan bars, the week a grid shows, the month a report shows, the week calendar, the week summary, the order of a day's entries, the Periods list and its paging, the Review my time page, who may choose one team on Reports, the notifications menu, a side panel's focus after Back, and the proxy's and the HTTP client's session handling. GitHub Actions runs the
 formatting check, lint with no warnings allowed, typecheck, build and tests for
 both applications on every pull request.
 
@@ -1355,6 +1377,7 @@ tooling, documentation and small fixes are left out.
 | #73 | A look of its own: one warm page tone and a deeper teal, ten project colours made for the product, a new typeface with aligned figures and no capital headings, corners by role, one teal bar for where you are and a neutral hover; no icon tiles, card shadows, glows or gradients on the work screens, and Reports' donuts as bars; logged time and plans filled alike in every week view, the expected hours one line across Log my time, locked days set apart from open ones; a three-bar mark for the logo and a brand pattern drawn from it; the sign-in pages and the home page's first screen on one dark, softly lit surface that fills the window, with only the logo and the form on a phone |
 | #74 | Absences, plans and month end at the edges: an absence that runs into a locked month keeps its locked days, reason and note while its open days can still change, deleting it removing only those; an absence telling whoever made the plans it removes, within what they can see and without its type, and its form waiting until it knows them; plans saved one way only, with Planning closing the days before someone's account; the month-end deadline as an amber lock on the timesheet, Team time and Reports; Reopen saying when working hours still can't change; logging time for someone on no project pointing to Projects |
 | #75 | Security and an API safety net: every route closed to anyone signed out unless it is marked public, under a test that lists every route with the roles it allows and one that runs the whole app over HTTP; a manager learning nothing about people outside their teams — one answer from Invite for any address they can't see, a former member's time form listing only the projects from their days in the team, the join notice going to the owner who invited or the team's current manager, Planning refusing before it checks anyone's status; sign-in taking JSON only, its body checked before the password is hashed, different token secrets required, no token in a response, a state cookie per Google flow and no `X-Powered-By`; an invitation revoked and accepted at the same moment ending one way, two companies with the same name signing up at once, and a Google sign-up asking for a name Google didn't share |
+| #76 | A month in Planning: Planning opening on the month, with `Month \| Week` to switch and the period in the address, read in one request with the same people, days and figures as a week; each week of the month a cell of bars per project across its days, with absences and closed days behind and its hours only when short or over, opening its week; a plan repeated over days one bar in the week too; the person the one way to plan, Plan a period opening on the week or month shown, with Plan a day, deleting a single plan and the plans' notes gone; logged time a strong tint with its dot and a plan a light one with no edge in every week view, hours before the project, secondary text in entries at 6.5:1 or more; the action beside a person shown on pointing at them, the same on Team time and Planning |
 
 ### Improvement roadmap — high level, flexible
 
@@ -1454,8 +1477,12 @@ the same reason. On 16 November 2026 the goal for the coming work became an
 internal presentation of WorkTrack, not a launch, and the order became:
 absences, plans and month end at the edges first, then the application's
 security and an API safety net, then access to teams (Configurable
-permissions, below). The first two are delivered (PR #74 and PR #75), so access
-to teams comes next. What is left of Areas 3 and 4, Team time and Planning on
+permissions, below). The first two are delivered (PR #74 and PR #75). On 17
+November 2026 a month in Planning was put first (PR #76), the screen a team
+coming from another planning tool compares first, then clear pages and a pass
+over every role for the presentation, with access to teams after it, since
+team leads plan their own teams in WorkTrack's model. What is left of Areas 3
+and 4, Team time and Planning on
 a phone among it, follows, and Area 8 closes the stage. A defect
 that distorts figures can be pulled into whichever work comes first.
 
@@ -1464,7 +1491,7 @@ that distorts figures can be pulled into whichever work comes first.
 **Next — Configurable permissions — an approximate vision, not a specification**
 
 Scheduled on 7 November 2026, in two parts split by kind of access. **Access
-to teams** comes next, after the two rounds of visual work: someone
+to teams** comes after the internal presentation: someone
 given it acts for a team (its time, absences, plans and reports), for
 example a deputy while the manager is away, which PR #70's one manager per
 team makes necessary. **Access to the owner's administrative tasks** comes

@@ -2,13 +2,15 @@ import { PaginationParams } from ".";
 import { Project } from "./Project";
 import { ClosedSpell, TeamMove, TeamSummaryUser } from "./Timelog";
 
+/** What a plan carries of its project (the backend's `PlanningProjectResponse`). */
+export type PlanningProject = Pick<Project, "id" | "name" | "status">;
+
 export interface PlanningEntry {
   id: string;
   userId: string;
   createdById?: string | null;
-  project: Project;
+  project: PlanningProject;
   plannedMinutes: number;
-  note?: string | null;
   date: string;
   createdAt: string;
   updatedAt: string;
@@ -24,8 +26,6 @@ export interface PlanPeriodPayload {
     minutesPerDay: number;
     /** Only the days that already have the project; otherwise every working day. */
     existingDaysOnly?: boolean;
-    /** Set on the plans created and changed; null clears it. */
-    note?: string | null;
   }[];
 }
 
@@ -80,7 +80,8 @@ export type PlanningQuery = PaginationParams & {
   dateTo?: string;
 };
 
-export type PlanningWeekQuery = {
+/** A day of the week or month a Planning grid reads. */
+export type PlanningPeriodQuery = {
   date: string;
   teamId?: string;
 };
@@ -91,11 +92,13 @@ export interface PlanningProjectOption {
   name: string;
 }
 
-export interface PlanningWeekRow {
+export interface PlanningRow {
   user: TeamSummaryUser;
   plannedMinutes: number;
   availableMinutes: number;
-  /** The most the person can be planned on each day of the week: their own day then. */
+  /** `availableMinutes` day by day, so a month adds up by week. */
+  availableByDay: { date: string; minutes: number }[];
+  /** The most the person can be planned on each day: their own day then. */
   dayLimits: { date: string; minutes: number }[];
   projects: PlanningProjectOption[];
   entries: PlanningEntry[];
@@ -107,7 +110,13 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  rows: PlanningWeekRow[];
+  rows: PlanningRow[];
+}
+
+export interface PlanningMonth {
+  monthStart: string;
+  monthEnd: string;
+  rows: PlanningRow[];
 }
 
 export type PlanningRemovalCountQuery = {

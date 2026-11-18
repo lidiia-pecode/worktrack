@@ -26,14 +26,12 @@ export const PlannedSegment = ({
     <span className="flex h-full flex-col justify-center overflow-hidden px-2 py-1 text-left">
       {height < TWO_LINE_MIN_HEIGHT ? (
         <span className="truncate text-2xs text-muted-foreground">
-          <span className="font-semibold text-foreground/70">
-            {duration} planned
-          </span>{" "}
-          · {plan.project.name}
+          <span className="font-semibold">{duration} planned</span> ·{" "}
+          {plan.project.name}
         </span>
       ) : (
         <>
-          <span className="truncate text-2xs font-semibold leading-tight text-foreground/70">
+          <span className="truncate text-2xs font-semibold leading-tight text-muted-foreground">
             {duration} planned
           </span>
           <span className="truncate text-2xs leading-tight text-muted-foreground">
@@ -44,7 +42,8 @@ export const PlannedSegment = ({
     </span>
   );
   const className = cn(
-    "absolute right-[3px] left-[3px] overflow-hidden rounded-md border border-dashed",
+    // Plans touch, so each draws the hairline foot logged time does to part them.
+    "absolute right-[3px] left-[3px] overflow-hidden rounded-md border-b border-card",
     onClick &&
       "cursor-pointer transition-[filter] hover:brightness-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
   );

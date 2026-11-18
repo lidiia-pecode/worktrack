@@ -16,7 +16,7 @@ import {
 import { cn } from "@/lib/utils/cn";
 import { factsLine } from "@/lib/utils/text";
 
-import { PersonLabel } from "../../shared/PersonLabel";
+import { PERSON_ACTION, PersonLabel } from "../../shared/PersonLabel";
 import { ReportBar } from "../../reports/components/ReportBar";
 import { RowTotalCell } from "../../shared/week/RowTotalCell";
 import { Button } from "@/components/ui/button";
@@ -83,7 +83,7 @@ export const TeamWeekRow = ({
     <tr
       ref={rowRef}
       className={cn(
-        "group/row border-b border-border last:border-b-0",
+        "border-b border-border last:border-b-0",
         isHighlighted && "bg-brand-subtle",
       )}
     >
@@ -91,7 +91,7 @@ export const TeamWeekRow = ({
         scope="row"
         className={cn(
           STICKY_PERSON_CELL,
-          "p-0 text-left align-top font-normal",
+          "group/person p-0 text-left align-top font-normal",
         )}
         // The sticky cell needs its opaque ground, so the tint is laid over it.
         style={
@@ -103,7 +103,7 @@ export const TeamWeekRow = ({
             : undefined
         }
       >
-        <div className="relative flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
+        <div className="flex min-w-0 items-start gap-2.5 py-2 pr-1.5 pl-2.5">
           <PersonLabel user={row.user}>{personFacts(row)}</PersonLabel>
 
           {/* Only while some day of the shown week is open: in a locked week
@@ -122,11 +122,7 @@ export const TeamWeekRow = ({
                       size="iconSm"
                       onClick={onAddAbsence}
                       aria-label={`Add an absence for ${name}`}
-                      // Shown on the row's hover or focus, over the name's
-                      // end, as Planning offers a period; always there on
-                      // touch. It covers the name, so its own hover is laid
-                      // over the card's ground instead of replacing it.
-                      className="shrink-0 bg-card text-muted-foreground transition-opacity hover:bg-card hover:bg-[image:linear-gradient(var(--hover),var(--hover))] pointer-fine:absolute pointer-fine:top-2 pointer-fine:right-1.5 pointer-fine:opacity-0 pointer-fine:group-hover/row:opacity-100 pointer-fine:focus-visible:opacity-100"
+                      className={PERSON_ACTION}
                     />
                   }
                 >

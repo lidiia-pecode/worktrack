@@ -16,17 +16,13 @@ import { ListedLine } from "./period-lines";
 
 type PlannedRowProps = {
   line: ListedLine;
-  /** Under the name: the days on a period, the note on a day. */
+  /** Under the name: the days it is planned on. */
   detail: ReactNode;
-  /** "Hours" on a day, "Hours a day" over a period: the picker's name. */
-  hoursLabel: string;
   /** The new hours, unsaved; none while the row is as planned. */
   editedMinutes?: number;
   /** Whether the person is still on the project, so its hours can change. */
   isOnProject: boolean;
-  /** A day that takes no plans, as at 0h: the hours show, only the bin acts. */
-  isReadOnly?: boolean;
-  /** The person's own day: the most a project's plan can take. */
+  /** The person's longest day in the period: the most a plan can take. */
   maxMinutes: number;
   formId: string;
   /** Applies a change to the row's unsaved hours; none keeps it as planned. */
@@ -42,10 +38,8 @@ type PlannedRowProps = {
 export const PlannedRow = ({
   line,
   detail,
-  hoursLabel,
   editedMinutes,
   isOnProject,
-  isReadOnly = false,
   maxMinutes,
   formId,
   onEdit,
@@ -108,14 +102,7 @@ export const PlannedRow = ({
         </div>
       </div>
 
-      {isReadOnly && line.sameMinutes !== null && (
-        <span className="text-sm text-muted-foreground">
-          {formatDuration(line.sameMinutes)}
-        </span>
-      )}
-
       {canChangeHours &&
-        !isReadOnly &&
         (line.sameMinutes === null && !isEdited ? (
           <Button
             type="button"
@@ -130,7 +117,7 @@ export const PlannedRow = ({
               )
             }
             aria-label={`Set the same hours for ${line.name} on all ${line.days.length} days`}
-            title={`Give all ${line.days.length} days the same hours. To change one day, open it in the grid.`}
+            title={`Give all ${line.days.length} days the same hours. To change one day, plan that day on its own.`}
             className="text-brand"
           >
             <Clock className="size-3.5" />
@@ -138,7 +125,7 @@ export const PlannedRow = ({
           </Button>
         ) : (
           <TimePicker
-            aria-label={`${hoursLabel} for ${line.name}`}
+            aria-label={`Hours a day for ${line.name}`}
             hours={Math.floor(shownMinutes / 60)}
             minutes={shownMinutes % 60}
             minuteStep={PLAN_MINUTE_STEP}

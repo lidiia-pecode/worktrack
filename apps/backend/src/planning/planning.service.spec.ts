@@ -24,7 +24,10 @@ import { ProjectsService } from 'src/projects/projects.service';
 import { ReportingPeriod } from 'src/reporting/entities/reporting-period.entity';
 import { ReportingPeriodStatus } from 'src/reporting/enums/reporting-period-status.enum';
 import { ReportingService } from 'src/reporting/reporting.service';
-import { firstDayOfMonth } from 'src/reporting/reporting-months.util';
+import {
+  firstDayOfMonth,
+  lastDayOfMonth,
+} from 'src/reporting/reporting-months.util';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { UserCapacity } from 'src/capacity/entities/user-capacity.entity';
@@ -32,6 +35,7 @@ import { CompanyStandardDay } from 'src/capacity/entities/company-standard-day.e
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ExpectedHoursService } from 'src/capacity/expected-hours.service';
 import {
+  eachDate,
   isWorkingDay,
   toISODate,
   todayISODate,
@@ -48,7 +52,7 @@ import { LONG_STANDING_ACCOUNT_CREATED_AT } from 'src/lib/testing/accounts';
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
 import { PlanningService } from './planning.service';
-import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
+import { PlanningWeekResponse } from './dtos/planning-grid-response.dto';
 import { PeriodProjectPayload } from './dtos/plan-period-payload.dto';
 
 /**
@@ -343,14 +347,6 @@ describe('PlanningService', () => {
 
       expect(await entriesFor(outsider.id)).toHaveLength(1);
     });
-
-    it('refuses an employee deleting a plan, even their own', async () => {
-      const id = await existingEntry(member.id, MONDAY, HOUR);
-
-      await expect(service.delete(id, member)).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
   });
 
   describe("somebody outside a manager's reach", () => {
@@ -397,7 +393,7 @@ describe('PlanningService', () => {
     // Another write holding the person shows whether the refusal waits for
     // their lock: it must come before it.
     it('is refused without locking them', async () => {
-      const entryId = await existingEntry(outsider.id, MONDAY, HOUR);
+      await existingEntry(outsider.id, MONDAY, HOUR);
       const holder = dataSource.createQueryRunner();
       await holder.connect();
       await holder.startTransaction();
@@ -407,10 +403,7 @@ describe('PlanningService', () => {
           outsider.id,
         ]);
 
-        for (const attempt of [
-          ...attempts(outsider.id),
-          () => service.delete(entryId, manager),
-        ]) {
+        for (const attempt of attempts(outsider.id)) {
           await expect(attempt()).rejects.toThrow(ForbiddenException);
         }
       } finally {
@@ -431,18 +424,21 @@ describe('PlanningService', () => {
       ).rejects.toThrow(/not available for planning/);
     });
 
-    it('lets a plan on an archived project be deleted', async () => {
-      const id = await existingEntry(
-        member.id,
-        MONDAY,
-        HOUR,
-        archivedProjectId,
-      );
+    it('lets plans on an archived project be deleted', async () => {
+      await existingEntry(member.id, MONDAY, HOUR, archivedProjectId);
       await dataSource
         .getRepository(Project)
         .update({ id: archivedProjectId }, { status: ProjectStatus.ARCHIVED });
 
-      await service.delete(id, manager);
+      await service.deletePeriodPlans(
+        {
+          userId: member.id,
+          projectId: archivedProjectId,
+          startDate: MONDAY,
+          endDate: FRIDAY,
+        },
+        manager,
+      );
       expect(await entriesFor(member.id)).toHaveLength(0);
     });
 
@@ -467,14 +463,6 @@ describe('PlanningService', () => {
   });
 
   describe('locked periods', () => {
-    it('refuses deleting a plan inside a locked period', async () => {
-      const id = await existingEntry(member.id, LOCKED_MONDAY, HOUR);
-
-      await expect(service.delete(id, manager)).rejects.toThrow(
-        /locked reporting period/,
-      );
-    });
-
     it('lets a past plan in an open period be corrected', async () => {
       await existingEntry(member.id, PAST_MONDAY, 8 * HOUR);
 
@@ -605,27 +593,6 @@ describe('PlanningService', () => {
         [MONDAY, projectId, 3 * HOUR],
         [TUESDAY, otherProjectId, HOUR],
         [WEDNESDAY, projectId, 3 * HOUR],
-      ]);
-    });
-
-    it('puts a note on the plans it creates and changes, and leaves the rest', async () => {
-      await existingEntry(member.id, MONDAY, 2 * HOUR);
-      await existingEntry(member.id, TUESDAY, HOUR, otherProjectId);
-
-      const result = await service.planPeriod(
-        period(MONDAY, TUESDAY, [
-          { projectId, minutesPerDay: 2 * HOUR, note: 'Client review' },
-        ]),
-        manager,
-      );
-
-      expect(result).toEqual({ days: 2, created: 1, updated: 1 });
-      expect(
-        (await entriesFor(member.id)).map((e) => [e.date, e.projectId, e.note]),
-      ).toEqual([
-        [MONDAY, projectId, 'Client review'],
-        [TUESDAY, otherProjectId, null],
-        [TUESDAY, projectId, 'Client review'],
       ]);
     });
 
@@ -953,37 +920,6 @@ describe('PlanningService', () => {
         await holder.release();
       }
     });
-
-    // Waits on the person's row before touching the entry, as a period plan
-    // does, so the two never hold one lock each and wait for the other.
-    it('a delete locks the person before the entry', async () => {
-      const id = await existingEntry(member.id, MONDAY, HOUR);
-      const holder = dataSource.createQueryRunner();
-      await holder.connect();
-      await holder.startTransaction();
-
-      try {
-        await holder.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
-          member.id,
-        ]);
-        const pending = service.delete(id, manager);
-        await waitUntilBlockedBy(dataSource, holder);
-
-        // The write is waiting on the person, so the entry is still free.
-        await expect(
-          holder.query(
-            'SELECT id FROM planning_entries WHERE id = $1 FOR UPDATE NOWAIT',
-            [id],
-          ),
-        ).resolves.toHaveLength(1);
-
-        await holder.commitTransaction();
-        await pending;
-      } finally {
-        if (holder.isTransactionActive) await holder.rollbackTransaction();
-        await holder.release();
-      }
-    });
   });
 
   describe('expected hours', () => {
@@ -1168,6 +1104,43 @@ describe('PlanningService', () => {
       expect(row.projects.map((p) => p.id).sort()).toEqual(
         [projectId, otherProjectId].sort(),
       );
+    });
+  });
+
+  describe('month grid', () => {
+    const sumMinutes = (days: { minutes: number }[]) =>
+      days.reduce((sum, day) => sum + day.minutes, 0);
+
+    it('reads the month that holds the date, with the hours available day by day', async () => {
+      const monthStart = firstDayOfMonth(WEDNESDAY);
+      const monthEnd = lastDayOfMonth(WEDNESDAY);
+      const workingDays = [...eachDate(monthStart, monthEnd)].filter(
+        isWorkingDay,
+      );
+      const firstWorkingDay = workingDays[0];
+      const lastWorkingDay = workingDays[workingDays.length - 1];
+      await absentOn(member.id, WEDNESDAY);
+      await existingEntry(member.id, addDays(monthStart, -1), HOUR);
+      await existingEntry(member.id, firstWorkingDay, HOUR);
+      await existingEntry(member.id, lastWorkingDay, HOUR);
+
+      const month = await service.getMonth({ date: WEDNESDAY }, owner);
+      const row = month.rows.find((r) => r.user.id === member.id)!;
+
+      expect(month).toMatchObject({ monthStart, monthEnd });
+      expect(row.entries.map((entry) => entry.date).sort()).toEqual([
+        firstWorkingDay,
+        lastWorkingDay,
+      ]);
+      expect(row.plannedMinutes).toBe(2 * HOUR);
+      expect(row.availableMinutes).toBe((workingDays.length - 1) * 8 * HOUR);
+      expect(row.availableByDay).toHaveLength(
+        [...eachDate(monthStart, monthEnd)].length,
+      );
+      expect(sumMinutes(row.availableByDay)).toBe(row.availableMinutes);
+      expect(
+        row.availableByDay.find((day) => day.date === WEDNESDAY)?.minutes,
+      ).toBe(0);
     });
   });
 
@@ -1405,6 +1378,38 @@ describe('PlanningService', () => {
           closedSpells: alpha.closedSpells,
           moves: alpha.moves,
         },
+      );
+    });
+
+    it("gives each manager the mover's month with only their team's days", async () => {
+      await planFullWeek(mover.id);
+      const monthStart = firstDayOfMonth(WEDNESDAY);
+      const monthEnd = lastDayOfMonth(WEDNESDAY);
+      const monthRowOf = async (caller: AuthUser) =>
+        (await service.getMonth({ date: WEDNESDAY }, caller)).rows.find(
+          (row) => row.user.id === mover.id,
+        )!;
+
+      const alpha = await monthRowOf(manager);
+      expect(alpha.entries.map((entry) => entry.date).sort()).toEqual(
+        [MONDAY, TUESDAY].filter((date) => date >= monthStart),
+      );
+      expect(alpha.closedSpells).toEqual([
+        {
+          from: WEDNESDAY,
+          until: addDays(monthEnd, 1),
+          reason: 'outside-team',
+        },
+      ]);
+      expect(
+        alpha.availableByDay.find((day) => day.date === WEDNESDAY)?.minutes,
+      ).toBe(0);
+
+      const beta = await monthRowOf(betaManager);
+      expect(beta.closedSpells).toEqual(
+        monthStart < WEDNESDAY
+          ? [{ from: monthStart, until: WEDNESDAY, reason: 'outside-team' }]
+          : [],
       );
     });
 

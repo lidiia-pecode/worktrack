@@ -2,12 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  Absence,
-  PeriodPreview,
-  PlanningEntry,
-  PlanningWeekRow,
-} from "@/types";
+import { Absence, PeriodPreview, PlanningEntry, PlanningRow } from "@/types";
 import { AbsenceType, UserStatus, WeekDay } from "@/types/enums";
 import {
   formatDayMonthLabel,
@@ -58,7 +53,7 @@ vi.mock("@/hooks/useWorkSettings", () => ({
   useWorkSettings: () => ({ weekStartDay: WeekDay.MONDAY, timezone: "UTC" }),
 }));
 
-const ALICE: PlanningWeekRow = {
+const ALICE: PlanningRow = {
   user: {
     id: "user-alice",
     firstName: "Alice",
@@ -70,6 +65,7 @@ const ALICE: PlanningWeekRow = {
   },
   plannedMinutes: 0,
   availableMinutes: 2400,
+  availableByDay: [],
   dayLimits: [{ date: "2026-10-12", minutes: 480 }],
   projects: [
     { id: "project-northwind", name: "Northwind" },

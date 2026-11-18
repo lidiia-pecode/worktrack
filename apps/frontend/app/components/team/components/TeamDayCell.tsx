@@ -126,7 +126,7 @@ export const TeamDayCell = ({
           {isWithoutTime && (
             <span
               className={cn(
-                "pointer-events-none! flex h-5 shrink-0 items-center justify-center gap-1.5 text-2xs font-medium text-muted-foreground",
+                "pointer-events-none! flex h-6 shrink-0 items-center justify-center gap-1.5 text-2xs font-medium text-muted-foreground",
                 // Alone in the cell it sits in the middle.
                 !showsPlans && "my-auto",
               )}
@@ -209,7 +209,7 @@ type PlanBlockProps = {
   onClick?: (projectId: string) => void;
 };
 
-/** A plan on a day with nothing logged yet, dashed as on Planning. */
+/** A plan on a day with nothing logged yet, in the plan tint as on Planning. */
 const PlanBlock = ({ plan, dayLabel, onClick }: PlanBlockProps) => {
   const duration = formatDuration(plan.plannedMinutes);
 

@@ -4,11 +4,9 @@ import { Plus, X } from "lucide-react";
 import type { FieldErrors } from "react-hook-form";
 
 import { PlanningProjectOption } from "@/types";
-import { NOTE_MAX_LENGTH } from "@/lib/forms/schemas/note.schema";
 import { cn } from "@/lib/utils/cn";
 
 import { Button } from "@/components/ui/button";
-import Input from "@/components/ui/input";
 
 import { FormSelect } from "../../shared/FormSelect";
 import { ProjectColorDot } from "../../shared/ProjectColorDot";
@@ -21,21 +19,17 @@ type PlanLinesProps = {
   /** One stable key per line, from the form's field array. */
   keys: string[];
   errors?: FieldErrors<AddedLine>[];
-  /** "Hours" on a day, "Hours a day" over a period. */
-  hoursLabel: string;
   /** The projects the person can be planned on. */
   projects: PlanningProjectOption[];
   /** Projects no new line may choose: the ones planned or chosen already. */
   takenIds: string[];
   /** A line's project the period already lists above; such a line isn't saved. */
-  isListedAbove?: (projectId: string) => boolean;
-  /** The most a line's picker reaches. */
-  maxMinutes: (index: number) => number;
+  isListedAbove: (projectId: string) => boolean;
+  /** The most a line's picker reaches: the person's longest day. */
+  maxMinutes: number;
   /** Under each line while nothing is wrong: what fits. */
   hint: string;
   formId: string;
-  /** A note under the line, on a day. */
-  withNote?: boolean;
   canAddLine: boolean;
   onChange: (index: number, patch: Partial<AddedLine>) => void;
   onRemove: (index: number) => void;
@@ -53,14 +47,12 @@ export const PlanLines = ({
   lines,
   keys,
   errors,
-  hoursLabel,
   projects,
   takenIds,
-  isListedAbove = () => false,
+  isListedAbove,
   maxMinutes,
   hint,
   formId,
-  withNote = false,
   canAddLine,
   onChange,
   onRemove,
@@ -83,7 +75,7 @@ export const PlanLines = ({
         className="grid grid-cols-[minmax(0,1fr)_auto_2.5rem] gap-2 text-xs font-medium text-muted-foreground"
       >
         <span>Project</span>
-        <span>{hoursLabel}</span>
+        <span>Hours a day</span>
         <span />
       </div>
 
@@ -102,8 +94,7 @@ export const PlanLines = ({
           ? LISTED_ABOVE
           : lineErrors?.projectId?.message;
         const hoursError = lineErrors?.hours?.message;
-        const noteError = lineErrors?.note?.message;
-        const message = projectError ?? hoursError ?? noteError;
+        const message = projectError ?? hoursError;
 
         return (
           <div key={keys[index]} className="space-y-2">
@@ -123,11 +114,11 @@ export const PlanLines = ({
               />
 
               <TimePicker
-                aria-label={`${hoursLabel} for project ${index + 1}`}
+                aria-label={`Hours a day for project ${index + 1}`}
                 hours={Number(line.hours)}
                 minutes={Number(line.minutes)}
                 minuteStep={PLAN_MINUTE_STEP}
-                maxMinutes={maxMinutes(index)}
+                maxMinutes={maxMinutes}
                 formId={formId}
                 onHoursChange={(hours) => onChange(index, { hours })}
                 onMinutesChange={(minutes) => onChange(index, { minutes })}
@@ -157,24 +148,6 @@ export const PlanLines = ({
             >
               {message ?? hint}
             </p>
-
-            {withNote && (
-              <Input
-                aria-label={`Note for project ${index + 1}`}
-                value={line.note ?? ""}
-                maxLength={NOTE_MAX_LENGTH}
-                placeholder="Note (optional)"
-                // The message is on the line above; the field only turns red.
-                aria-invalid={!!noteError}
-                className={cn(
-                  noteError &&
-                    "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20",
-                )}
-                onChange={(event) =>
-                  onChange(index, { note: event.target.value })
-                }
-              />
-            )}
           </div>
         );
       })}

@@ -64,7 +64,7 @@ const TimesheetCard = () => (
                 }}
               >
                 {minutes >= LABELLED_ENTRY_MIN_MINUTES && (
-                  <p className="text-xs leading-tight font-medium text-foreground/80">
+                  <p className="text-xs leading-tight font-medium text-foreground">
                     {SAMPLE_PROJECTS[project].name}
                   </p>
                 )}

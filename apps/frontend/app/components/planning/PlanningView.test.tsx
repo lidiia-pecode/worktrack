@@ -3,10 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { Absence, PlanningEntry, PlanningWeekRow, Project } from "@/types";
-import { AbsenceType, UserRole, UserStatus } from "@/types/enums";
+import { PlanningEntry, PlanningRow, Project } from "@/types";
+import { UserRole, UserStatus, WeekDay } from "@/types/enums";
 
-import { PlanningWeekView } from "./PlanningWeekView";
+import { PlanningView } from "./PlanningView";
 
 const WEEK_START = new Date("2026-11-02T00:00:00");
 const NOW = new Date("2026-11-04T09:00:00Z");
@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/hooks/useWorkSettings", () => ({
   useWorkSettings: () => ({
-    weekStartDay: 1,
+    weekStartDay: WeekDay.MONDAY,
     dailyTargetMinutes: 480,
     timezone: "UTC",
     isLoading: false,
@@ -31,7 +31,14 @@ vi.mock("@/hooks/useWorkSettings", () => ({
 vi.mock("@/hooks/useShownWeek", () => ({
   useShownWeek: () => ({ weekStart: WEEK_START, showWeekOf: vi.fn() }),
 }));
-vi.mock("@/hooks/usePlanning", () => ({ usePlanningWeek: vi.fn() }));
+vi.mock("@/hooks/useShownMonth", () => ({
+  useShownMonth: () => ({
+    month: "2026-11",
+    currentMonth: "2026-11",
+    showMonth: vi.fn(),
+  }),
+}));
+vi.mock("@/hooks/usePlanning", () => ({ usePlanningGrid: vi.fn() }));
 const projectList = vi.hoisted(() => ({ status: "ACTIVE" }));
 vi.mock("@/hooks/useProjects", () => ({
   useAllProjectsQuery: () => ({
@@ -64,11 +71,7 @@ vi.mock("@/hooks/useTeams", () => ({
     isError: false,
   }),
 }));
-// The dialogs are tested on their own; here only which one a click opens.
-vi.mock("./components/PlanningDayModal", async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  PlanningDayModal: () => <p>Day dialog</p>,
-}));
+// The dialogs are tested on their own.
 vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   PlanPeriodModal: () => <p>Period dialog</p>,
@@ -76,10 +79,9 @@ vi.mock("./components/PlanPeriodModal", async (importOriginal) => ({
 vi.mock("../timesheet/components/AbsenceFormModal", async (importOriginal) => ({
   ...(await importOriginal<object>()),
   AbsenceFormModal: () => <p>Absence form</p>,
-  LockedAbsenceModal: () => <p>Read-only absence</p>,
 }));
 
-import { usePlanningWeek } from "@/hooks/usePlanning";
+import { usePlanningGrid } from "@/hooks/usePlanning";
 import { useAllAbsencesQuery } from "@/hooks/useAbsences";
 
 const NORTHWIND = { id: NORTHWIND_ID, name: "Northwind" };
@@ -109,7 +111,7 @@ const row = (
   position: string,
   projects: { id: string; name: string }[],
   entries: PlanningEntry[],
-): PlanningWeekRow => ({
+): PlanningRow => ({
   user: {
     id,
     firstName,
@@ -121,6 +123,7 @@ const row = (
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
+  availableByDay: [],
   // A full-time week: 8h on each working day.
   dayLimits: [
     "2026-11-02",
@@ -148,25 +151,10 @@ const ALICE = row(
 );
 const BEN = row("user-ben", "Ben", "Ward", "Developer", [INTERNAL], []);
 
-const absence = (
-  id: string,
-  userId: string,
-  date: string,
-  canChange: boolean,
-): Absence =>
-  ({
-    id,
-    userId,
-    type: AbsenceType.VACATION,
-    startDate: date,
-    endDate: date,
-    canChange,
-  }) as Absence;
-
 const showPlanning = () =>
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <PlanningWeekView role={UserRole.MANAGER} viewerId="manager" />
+      <PlanningView role={UserRole.MANAGER} viewerId="manager" />
     </QueryClientProvider>,
   );
 
@@ -178,23 +166,20 @@ const shownNames = () =>
     .getAllByRole("rowheader")
     .map((cell) => (cell.textContent?.includes("Alice") ? "Alice" : "Ben"));
 
-describe("PlanningWeekView", () => {
+describe("PlanningView, the week", () => {
   beforeEach(() => {
-    window.history.replaceState(null, "", "/planning");
+    window.history.replaceState(null, "", "/planning?view=week");
     projectList.status = "ACTIVE";
     vi.useFakeTimers({ now: NOW, toFake: ["Date"] });
-    vi.mocked(usePlanningWeek).mockReturnValue({
+    vi.mocked(usePlanningGrid).mockReturnValue({
       rows: [ALICE, BEN],
       isLoading: false,
       isPlaceholderData: false,
       isError: false,
       refetch: vi.fn(),
-    } as unknown as ReturnType<typeof usePlanningWeek>);
+    } as unknown as ReturnType<typeof usePlanningGrid>);
     vi.mocked(useAllAbsencesQuery).mockReturnValue({
-      items: [
-        absence("a-1", "user-alice", "2026-11-04", false),
-        absence("a-2", "user-ben", "2026-11-03", true),
-      ],
+      items: [],
       isLoading: false,
       isError: false,
       refetch: vi.fn(),
@@ -205,36 +190,13 @@ describe("PlanningWeekView", () => {
     vi.useRealTimers();
   });
 
-  it("opens the day dialog, the absence form, or the read-only absence by what the day holds", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    showPlanning();
-
-    await user.click(
-      within(rowOf(/Alice Cooper/)).getByRole("button", {
-        name: /^Thursday, November 5/,
-      }),
-    );
-    expect(screen.getByText("Day dialog")).toBeInTheDocument();
-
-    await user.click(
-      within(rowOf(/Ben Ward/)).getByRole("button", {
-        name: /^Tuesday, November 3/,
-      }),
-    );
-    expect(screen.getByText("Absence form")).toBeInTheDocument();
-
-    // An absence the API says the viewer can't change opens to be read.
-    await user.click(
-      within(rowOf(/Alice Cooper/)).getByRole("button", {
-        name: /^Wednesday, November 4/,
-      }),
-    );
-    expect(screen.getByText("Read-only absence")).toBeInTheDocument();
-  });
-
   it("narrows the rows to a project's people and their plans on it, and by a search", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    window.history.replaceState(null, "", `/planning?project=${NORTHWIND_ID}`);
+    window.history.replaceState(
+      null,
+      "",
+      `/planning?view=week&project=${NORTHWIND_ID}`,
+    );
     showPlanning();
 
     expect(shownNames()).toEqual(["Alice"]);
@@ -254,7 +216,7 @@ describe("PlanningWeekView", () => {
       screen.getAllByRole("button", { name: "Clear filters" })[0],
     );
     expect(shownNames()).toEqual(["Alice", "Ben"]);
-    expect(window.location.search).toBe("");
+    expect(window.location.search).toBe("?view=week");
 
     await user.type(search, "develop");
     expect(shownNames()).toEqual(["Ben"]);
@@ -262,7 +224,11 @@ describe("PlanningWeekView", () => {
 
   it("ignores a link's project once it is archived, as the filter can't offer it", () => {
     projectList.status = "ARCHIVED";
-    window.history.replaceState(null, "", `/planning?project=${NORTHWIND_ID}`);
+    window.history.replaceState(
+      null,
+      "",
+      `/planning?view=week&project=${NORTHWIND_ID}`,
+    );
     showPlanning();
 
     expect(shownNames()).toEqual(["Alice", "Ben"]);

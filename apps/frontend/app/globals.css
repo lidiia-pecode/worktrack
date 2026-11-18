@@ -17,8 +17,9 @@
  * --background reads at 14.3:1 and in --brand-mist at 11.7:1.
  *
  * A project colour is a mark, not a text ground: each one reaches at
- * least 4:1 against the card, and entry text stays --foreground on the
- * --entry-tint mix, which keeps it above 11:1.
+ * least 4:1 against the card. On the --entry-tint mix entry text in
+ * --foreground stays above 9:1 and in --entry-secondary-text above 6.5:1; on
+ * the lighter --plan-tint, plan text in --muted-foreground stays above 6:1.
  *
  * Warning, success, and error text must use the corresponding *-text
  * tokens. The --warning, --success, and --destructive fill colors
@@ -254,11 +255,19 @@
   --project-9: oklch(0.56 0.16 318);
   --project-10: oklch(0.57 0.145 150);
 
-  /* How much of a project's colour sits behind an entry's text: logged time
-     takes enough to read as the project's at a glance, a plan a third of
-     that, so what is only intended stays lighter than what happened. */
-  --entry-tint: 20%;
-  --plan-tint: 7%;
+  /* How much of a project's colour sits behind an entry: logged time takes
+     a strong tint, a plan a light one with no edge, so what happened and
+     what is only intended differ by colour alone, on every screen. */
+  --entry-tint: 36%;
+  --plan-tint: 14%;
+  /* The smaller line on logged time (project and activity, a note): between
+     --muted-foreground and --foreground, as the muted one alone only just
+     passes on the strong tint. */
+  --entry-secondary-text: color-mix(
+    in oklab,
+    var(--foreground) 50%,
+    var(--muted-foreground)
+  );
 
   /* The week grids' ladder of surfaces, so what can be changed reads at a
      glance: an available day is the lightest thing on the page (the card),
@@ -353,6 +362,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 
   --color-day-locked: var(--day-locked);
+  --color-entry-secondary: var(--entry-secondary-text);
 
   --color-report-track: var(--report-track);
   --color-report-logged: var(--report-logged);

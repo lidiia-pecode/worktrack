@@ -15,7 +15,7 @@ import {
 
 import { PlanningEntry } from './entities/planning-entry.entity';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
-import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
+import { PlanningPeriodQuery } from './dtos/planning-period-query.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
 import {
   DeletePeriodPlansQuery,
@@ -59,17 +59,23 @@ import {
   weekRange,
 } from 'src/capacity/working-days.util';
 import { assertDateRange } from 'src/reporting/date-range.util';
-import { monthsBetween } from 'src/reporting/reporting-months.util';
+import {
+  firstDayOfMonth,
+  lastDayOfMonth,
+  monthsBetween,
+} from 'src/reporting/reporting-months.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 type PlanningCompany = Pick<Company, 'id' | 'timezone' | 'weekStartDay'>;
 
-export interface PlanningWeekRow {
+export interface PlanningRow {
   user: VisibleUser;
   plannedMinutes: number;
   availableMinutes: number;
-  /** The most the person can be planned on each day of the week. */
+  /** `availableMinutes` day by day, so a month can be summed by week. */
+  availableByDay: { date: string; minutes: number }[];
+  /** The most the person can be planned on each day. */
   dayLimits: { date: string; minutes: number }[];
   projects: Pick<Project, 'id' | 'name'>[];
   entries: PlanningEntry[];
@@ -81,7 +87,13 @@ export interface PlanningWeekRow {
 export interface PlanningWeek {
   weekStart: string;
   weekEnd: string;
-  rows: PlanningWeekRow[];
+  rows: PlanningRow[];
+}
+
+export interface PlanningMonth {
+  monthStart: string;
+  monthEnd: string;
+  rows: PlanningRow[];
 }
 
 export interface PlannedPeriod {
@@ -250,12 +262,43 @@ export class PlanningService {
   }
 
   async getWeek(
-    query: PlanningWeekQuery,
+    query: PlanningPeriodQuery,
     user: AuthUser,
   ): Promise<PlanningWeek> {
     const company = await this.getCompany(user.companyId);
     const { start, end } = weekRange(query.date, company.weekStartDay);
 
+    return {
+      weekStart: start,
+      weekEnd: end,
+      rows: await this.readRows(company, user, start, end, query.teamId),
+    };
+  }
+
+  /** The month that holds `query.date`, with the rows a week would have. */
+  async getMonth(
+    query: PlanningPeriodQuery,
+    user: AuthUser,
+  ): Promise<PlanningMonth> {
+    const company = await this.getCompany(user.companyId);
+    const start = firstDayOfMonth(query.date);
+    const end = lastDayOfMonth(query.date);
+
+    return {
+      monthStart: start,
+      monthEnd: end,
+      rows: await this.readRows(company, user, start, end, query.teamId),
+    };
+  }
+
+  /** One row per person the caller can plan or has plans for, over the days. */
+  private async readRows(
+    company: PlanningCompany,
+    user: AuthUser,
+    start: string,
+    end: string,
+    teamId: string | undefined,
+  ): Promise<PlanningRow[]> {
     const entriesQb = this.buildBaseQuery()
       .andWhere('p.date BETWEEN :start AND :end', { start, end })
       .orderBy('project.name', 'ASC');
@@ -265,7 +308,7 @@ export class PlanningService {
     const users = await this.teamVisibility.findVisibleUsers(
       user,
       {
-        teamId: query.teamId,
+        teamId,
         includeUserIds: [...new Set(entries.map((entry) => entry.userId))],
         stillEmployedOn: start,
         during: { from: start, to: end },
@@ -273,13 +316,13 @@ export class PlanningService {
       { includeSelf: true },
     );
     const userIds = users.map((row) => row.id);
-    const week = { from: start, to: end };
+    const period = { from: start, to: end };
     // A row holds only the days the view does, as on Team time.
     const inView = await this.teamVisibility.daysInView(
       user,
       userIds,
-      week,
-      query.teamId,
+      period,
+      teamId,
     );
     const outside = new Map(
       [...inView].map(([id, days]) => [id, days.outside]),
@@ -298,20 +341,29 @@ export class PlanningService {
         this.dayLimitsFor(company.id, userIds, end),
         this.capacity.activeDatesFor(user.companyId, userIds, company.timezone),
       ]);
+    const dates = [...eachDate(start, end)];
 
-    const rows = users.map((rowUser): PlanningWeekRow => {
+    const rows = users.map((rowUser): PlanningRow => {
       const { outside: rowOutside, moves } = inView.get(rowUser.id)!;
       const own = entries.filter(
         (entry) =>
           entry.userId === rowUser.id &&
           !rowOutside.some((span) => isWithinSpan(span, entry.date)),
       );
+      const expected = available.get(rowUser.id);
+      const expectedOn = new Map(
+        (expected?.byDate ?? []).map((day) => [day.date, day.minutes]),
+      );
 
       return {
         user: rowUser,
         plannedMinutes: own.reduce((sum, e) => sum + e.plannedMinutes, 0),
-        availableMinutes: available.get(rowUser.id)?.total ?? 0,
-        dayLimits: [...eachDate(start, end)].map((date) => ({
+        availableMinutes: expected?.total ?? 0,
+        availableByDay: dates.map((date) => ({
+          date,
+          minutes: expectedOn.get(date) ?? 0,
+        })),
+        dayLimits: dates.map((date) => ({
           date,
           minutes: dayLimitOn(rowUser.id, date),
         })),
@@ -319,11 +371,11 @@ export class PlanningService {
         entries: own,
         closedSpells: [
           ...closedSpellsIn(
-            week,
+            period,
             rowOutside,
             activeDates.get(rowUser.id)?.inactiveSpells ?? [],
           ),
-          ...beforeAccountIn(week, activeDates.get(rowUser.id)?.startDate),
+          ...beforeAccountIn(period, activeDates.get(rowUser.id)?.startDate),
         ],
         moves,
       };
@@ -332,7 +384,7 @@ export class PlanningService {
     // Someone is planned only with working hours on a day the row holds them
     // and they were employed; a plan already there keeps them listed so it can
     // be deleted. Time off doesn't take the hours away, so the row stays.
-    const isPlannable = (row: PlanningWeekRow) =>
+    const isPlannable = (row: PlanningRow) =>
       row.dayLimits.some(
         ({ date, minutes }) =>
           minutes > 0 &&
@@ -340,11 +392,7 @@ export class PlanningService {
           !row.closedSpells.some((spell) => isWithinSpan(spell, date)),
       );
 
-    return {
-      weekStart: start,
-      weekEnd: end,
-      rows: rows.filter((row) => row.entries.length > 0 || isPlannable(row)),
-    };
+    return rows.filter((row) => row.entries.length > 0 || isPlannable(row));
   }
 
   async countRemovable(
@@ -487,7 +535,7 @@ export class PlanningService {
       }
 
       await manager.save(PlanningEntry, [
-        ...writes.created.map(({ date, projectId, minutes, note }) =>
+        ...writes.created.map(({ date, projectId, minutes }) =>
           manager.create(PlanningEntry, {
             companyId: user.companyId,
             userId,
@@ -495,12 +543,10 @@ export class PlanningService {
             createdById: user.id,
             plannedMinutes: minutes,
             date,
-            note: note ?? undefined,
           }),
         ),
-        ...writes.changed.map(({ entry, minutes, note }) => {
+        ...writes.changed.map(({ entry, minutes }) => {
           entry.plannedMinutes = minutes;
-          if (note !== undefined) entry.note = note;
           return entry;
         }),
       ]);
@@ -526,7 +572,6 @@ export class PlanningService {
       projectId: project.projectId,
       minutesPerDay: project.minutesPerDay,
       existingDaysOnly: project.existingDaysOnly ?? false,
-      note: project.note,
     }));
     const projectIds = new Set(lines.map((line) => line.projectId));
     if (projectIds.size !== lines.length) {
@@ -601,24 +646,9 @@ export class PlanningService {
     };
   }
 
-  async delete(id: string, user: AuthUser): Promise<{ success: boolean }> {
-    await this.dataSource.transaction(async (manager) => {
-      const entry = await this.lockEntryAndOwner(id, user, manager);
-
-      // A deactivated person's leftover plans can still be cleared.
-      await this.assertCanPlanForUser(entry.userId, user, entry.date);
-      await this.assertDateNotLocked(manager, user.companyId, entry.date);
-
-      await manager.remove(PlanningEntry, entry);
-    });
-
-    return { success: true };
-  }
-
   /**
-   * Deletes one person's plans on one project between two days, as deleting
-   * each plan would: the same permission, nothing in a locked month, and all
-   * of them or none.
+   * Deletes one person's plans on one project between two days: the planning
+   * permission, nothing in a locked month, and all of them or none.
    */
   async deletePeriodPlans(
     query: DeletePeriodPlansQuery,
@@ -754,38 +784,6 @@ export class PlanningService {
   // ==========================================
   // VALIDATION / INTEGRITY HELPERS
   // ==========================================
-
-  /**
-   * Locks the entry's person before the entry, the order the other writes for
-   * a person use (a period plan, a time log, an absence), so two of them never
-   * wait on each other in a circle. An entry never changes person or project,
-   * so reading both first is safe. Its project is locked between them, as an
-   * archive locks the project before deleting its plans.
-   */
-  private async lockEntryAndOwner(
-    id: string,
-    user: AuthUser,
-    manager: EntityManager,
-  ): Promise<PlanningEntry> {
-    const owner = await manager.findOne(PlanningEntry, {
-      where: { id, companyId: user.companyId },
-      select: ['id', 'userId', 'projectId', 'date'],
-    });
-    if (!owner) throw new NotFoundException('Planning entry not found');
-
-    // Nobody outside the caller's reach is locked.
-    await this.assertCanPlanForUser(owner.userId, user, owner.date);
-    await this.lockUser(manager, owner.userId, user.companyId);
-    await this.lockProject(manager, owner.projectId, user.companyId);
-
-    const entry = await manager.findOne(PlanningEntry, {
-      where: { id, companyId: user.companyId },
-      lock: { mode: 'pessimistic_write' },
-    });
-
-    if (!entry) throw new NotFoundException('Planning entry not found');
-    return entry;
-  }
 
   private async getCompany(
     companyId: string,

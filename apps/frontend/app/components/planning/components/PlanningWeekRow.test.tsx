@@ -2,12 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import {
-  Absence,
-  PlanningEntry,
-  PlanningWeekRow as Row,
-  TeamMove,
-} from "@/types";
+import { Absence, PlanningEntry, PlanningRow as Row, TeamMove } from "@/types";
 import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 
@@ -40,6 +35,7 @@ const row = (
   },
   plannedMinutes: entries.reduce((sum, entry) => sum + entry.plannedMinutes, 0),
   availableMinutes: 2400,
+  availableByDay: [],
   // A full-time week: 8h on each working day.
   dayLimits: [
     "2026-11-02",
@@ -62,7 +58,6 @@ const renderRow = (
   isLocked: (date: string) => boolean = () => false,
 ) => {
   const onPlanPeriod = vi.fn();
-  const onOpenDay = vi.fn();
   const view = render(
     <table>
       <tbody>
@@ -71,27 +66,22 @@ const renderRow = (
           weekDates={WEEK_DATES}
           absencesByDate={absencesByDate}
           isLocked={isLocked}
-          isEditable={(date) => !isLocked(date)}
-          onOpenDay={onOpenDay}
           onPlanPeriod={onPlanPeriod}
         />
       </tbody>
     </table>,
   );
-  return { ...view, onPlanPeriod, onOpenDay };
+  return { ...view, onPlanPeriod };
 };
 
 describe("PlanningWeekRow", () => {
-  it("plans a period from the person's cell, which says so", async () => {
+  it("plans a period from the button beside the person", async () => {
     const user = userEvent.setup();
     const { onPlanPeriod } = renderRow();
 
-    const cell = screen.getByRole("button", {
-      name: "Plan a period for Alice Cooper",
-    });
-    expect(cell).toHaveTextContent("Plan period");
-
-    await user.click(cell);
+    await user.click(
+      screen.getByRole("button", { name: "Plan a period for Alice Cooper" }),
+    );
     expect(onPlanPeriod).toHaveBeenCalledWith(
       expect.objectContaining({
         user: expect.objectContaining({ id: "user-alice" }),
@@ -99,50 +89,15 @@ describe("PlanningWeekRow", () => {
     );
   });
 
-  it("names a day cell by its day and contents", async () => {
-    const user = userEvent.setup();
-    const { onOpenDay } = renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
-
-    const monday = screen.getByRole("button", {
-      name: /^Monday, November 2:\s*Northwind\s*4h$/,
-    });
-    await user.click(monday);
-    expect(onOpenDay).toHaveBeenCalledWith(expect.anything(), "2026-11-02");
-
-    expect(
-      screen.getByRole("button", {
-        name: /^Tuesday, November 3:\s*nothing planned$/,
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the plus on an empty day without hovering", () => {
-    const { container } = renderRow();
-
-    const plus = container.querySelector("svg.lucide-plus");
-    expect(plus).not.toBeNull();
-    expect(plus).not.toHaveClass("opacity-0");
-  });
-
-  it("shows planned against available and nothing else", () => {
-    renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY]);
-
-    expect(screen.getByText(/of 40h/)).toBeInTheDocument();
-    expect(screen.queryByText(/free/)).not.toBeInTheDocument();
-  });
-
-  it("plans no period for someone who moved out this week, while their days still open", () => {
-    renderRow(UserStatus.ACTIVE, [], {}, [
+  it("plans a period for someone who moved out this week, and no day opens anything", () => {
+    renderRow(UserStatus.ACTIVE, [NORTHWIND_MONDAY], {}, [
       { date: "2026-11-04", direction: "out" },
     ]);
 
-    expect(
-      screen.queryByRole("button", { name: "Plan a period for Alice Cooper" }),
-    ).not.toBeInTheDocument();
     expect(screen.getByText(/^Moved out/)).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /^Monday, November 2:/ }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByRole("button")).toEqual([
+      screen.getByRole("button", { name: "Plan a period for Alice Cooper" }),
+    ]);
   });
 
   it("plans no period on a week wholly in a locked month", () => {

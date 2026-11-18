@@ -1,4 +1,4 @@
-import { PlanningWeekRow, TeamSummaryRow } from "@/types";
+import { PlanningRow, TeamSummaryRow } from "@/types";
 
 import { fullName } from "./user";
 
@@ -93,7 +93,7 @@ export const sortTeamRows = (
  * with nothing available always goes last.
  */
 export const sortPlanningRows = (
-  rows: PlanningWeekRow[],
+  rows: PlanningRow[],
   sort: TeamSort,
   { byProject }: { byProject: boolean },
 ) =>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { PlanningWeekRow, TeamSummaryRow } from "@/types";
+import { PlanningRow, TeamSummaryRow } from "@/types";
 import { UserStatus } from "@/types/enums";
 
 import {
@@ -105,7 +105,7 @@ describe("sortPlanningRows", () => {
       user: teamRow.user,
       plannedMinutes,
       availableMinutes,
-    }) as PlanningWeekRow;
+    }) as PlanningRow;
 
   // Ava 30h of 40h, Jane 20h of 20h (a part-timer), Mia nothing available.
   const rows = [

@@ -16,7 +16,7 @@ type EntryChipProps = Omit<
   /** Picks the project's colour. */
   colorSeed: string;
   minutes: number;
-  /** A plan rather than logged time: dashed and lighter. */
+  /** A plan rather than logged time: a lighter tint, with no dot. */
   isPlan?: boolean;
   /** A plan on an archived project: grey and struck through. */
   isArchived?: boolean;
@@ -27,9 +27,9 @@ type EntryChipProps = Omit<
 };
 
 /**
- * One entry in a week grid, the same in Team time and Planning: the project,
- * then its hours. Logged time is solid in the project's colour; a plan is
- * dashed and lighter.
+ * One entry in a week grid, the same in Team time and Planning: its hours,
+ * then the project. Logged time is a strong tint of the project's colour with
+ * its dot; a plan a light one with no dot.
  */
 export const EntryChip = ({
   projectName,
@@ -50,27 +50,24 @@ export const EntryChip = ({
       ? planSurface(color)
       : { backgroundColor: entryTint(color) };
 
-  // The project at full strength on logged time, hollow on a plan, since
-  // there the colour stands for what is intended rather than what happened.
-  const mark = isArchived ? null : (
-    <span
-      aria-hidden
-      className="size-1.5 shrink-0 rounded-full"
-      style={
-        isPlan
-          ? { boxShadow: `inset 0 0 0 1.5px ${color}` }
-          : { backgroundColor: color }
-      }
-    />
-  );
+  // The project at full strength, on logged time only: a plan's lighter
+  // tint already says it is intended rather than done.
+  const mark =
+    isArchived || isPlan ? null : (
+      <span
+        aria-hidden
+        className="size-1.5 shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+    );
 
   const className = cn(
-    "flex h-5 w-full min-w-0 items-center gap-1.5 rounded-md px-1.5 text-left text-2xs leading-none",
+    "flex h-6 w-full min-w-0 items-center gap-1.5 rounded-md px-2 text-left text-xs leading-none",
     isCompact && "justify-center",
     isPlan
-      ? "border border-dashed text-muted-foreground"
+      ? "text-muted-foreground"
       : "text-foreground ring-1 ring-foreground/5",
-    isArchived && "border-border bg-muted/30 line-through",
+    isArchived && "bg-muted/30 line-through",
     onClick &&
       "cursor-pointer transition-[filter,box-shadow] hover:brightness-95 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
     onClick && !isPlan && "hover:ring-foreground/15",
@@ -84,12 +81,13 @@ export const EntryChip = ({
   ) : (
     <>
       {mark}
-      <span className="min-w-0 flex-1 truncate">{projectName}</span>
+      {/* Hours first, so they stay in one place whatever the name's length. */}
       <span
         className={cn("shrink-0", isPlan ? "font-medium" : "font-semibold")}
       >
         {duration}
       </span>
+      <span className="min-w-0 truncate">{projectName}</span>
     </>
   );
 

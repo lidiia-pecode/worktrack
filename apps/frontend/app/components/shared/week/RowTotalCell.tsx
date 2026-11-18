@@ -10,6 +10,8 @@ type RowTotalCellProps = {
   expectation?: string;
   /** The bar and any note under the figure. */
   children?: ReactNode;
+  /** How the figure reads; hours and minutes unless a month wants decimals. */
+  formatHours?: (minutes: number) => string;
 };
 
 /** A person's week in the week grids' right column: the figure, then its bar. */
@@ -18,6 +20,7 @@ export const RowTotalCell = ({
   isOver,
   expectation,
   children,
+  formatHours = formatDuration,
 }: RowTotalCellProps) => (
   <td className="p-3 align-top">
     <div className="flex flex-col items-end gap-1.5">
@@ -28,7 +31,7 @@ export const RowTotalCell = ({
             isOver ? "text-warning-text" : "text-foreground",
           )}
         >
-          {formatDuration(minutes)}
+          {formatHours(minutes)}
         </span>
 
         {/* A long week breaks between the figures, never inside one. */}

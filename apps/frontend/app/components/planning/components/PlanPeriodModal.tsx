@@ -7,7 +7,7 @@ import * as z from "zod";
 import { CalendarOff } from "lucide-react";
 import { toast } from "sonner";
 
-import { PlanningWeekRow } from "@/types";
+import { PlanningRow } from "@/types";
 import {
   useDeletePeriodPlans,
   usePeriodPreview,
@@ -20,6 +20,7 @@ import {
   formatDayMonthLabel,
   formatDayMonthYearLabel,
   formatDuration,
+  getMonthRange,
   isISODateRange,
   lastDayOfReportRange,
   toISODate,
@@ -71,9 +72,11 @@ type PeriodFormData = z.infer<typeof periodSchema>;
 
 type PlanPeriodModalProps = {
   /** The person's row, with the projects they can be planned on. */
-  row: PlanningWeekRow;
-  /** The working days of the week shown on Planning, where the dialog opens. */
+  row: PlanningRow;
+  /** A week's working days: where the dialog opens without `month`, and its Week. */
   weekDates: Date[];
+  /** Opened from Planning's month (YYYY-MM): it opens on that whole month. */
+  month?: string;
   /** Opens the absence form on the chosen days, to change before saving. */
   onAddAbsence: (startDate: string, endDate: string) => void;
   onClose: () => void;
@@ -87,6 +90,7 @@ type PlanPeriodModalProps = {
 export const PlanPeriodModal = ({
   row,
   weekDates,
+  month,
   onAddAbsence,
   onClose,
 }: PlanPeriodModalProps) => {
@@ -96,8 +100,13 @@ export const PlanPeriodModal = ({
   const problemsRef = useRef<HTMLDivElement>(null);
   // Unsaved hours for the projects already planned, by project.
   const [edits, setEdits] = useState<Record<string, number>>({});
-  // The dialog opens on the shown week.
-  const [unit, setUnit] = useState<PeriodUnit>("week");
+  const [unit, setUnit] = useState<PeriodUnit>(month ? "month" : "week");
+  const openingRange = month
+    ? getMonthRange(month)
+    : {
+        dateFrom: toISODate(weekDates[0]),
+        dateTo: toISODate(weekDates[weekDates.length - 1]),
+      };
   const [pendingPeriod, setPendingPeriod] = useState<{
     first: string;
     last: string;
@@ -114,8 +123,8 @@ export const PlanPeriodModal = ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(periodSchema) as any,
     defaultValues: {
-      startDate: toISODate(weekDates[0]),
-      endDate: toISODate(weekDates[weekDates.length - 1]),
+      startDate: openingRange.dateFrom,
+      endDate: openingRange.dateTo,
       added: [EMPTY_LINE],
     },
   });
@@ -193,7 +202,6 @@ export const PlanPeriodModal = ({
     })),
   ];
 
-  // What the server would do with the changes so far.
   const {
     preview,
     isOutdated,
@@ -204,7 +212,7 @@ export const PlanPeriodModal = ({
       : null,
   );
   // No project can take more than the person's longest day in the period;
-  // until the server says, the longest in the week the dialog opened from.
+  // until the server says, the longest in the week or month shown.
   const dayLimitMinutes =
     preview?.dayLimitMinutes ??
     Math.max(0, ...row.dayLimits.map((day) => day.minutes));
@@ -420,7 +428,6 @@ export const PlanPeriodModal = ({
                   <PlannedRow
                     key={line.projectId}
                     line={line}
-                    hoursLabel="Hours a day"
                     detail={
                       line.sameMinutes === null &&
                       editedMinutes.has(line.projectId) ? (
@@ -467,11 +474,10 @@ export const PlanPeriodModal = ({
                 errors={
                   errors.added as Parameters<typeof PlanLines>[0]["errors"]
                 }
-                hoursLabel="Hours a day"
                 projects={personProjects}
                 takenIds={takenIds}
                 isListedAbove={isListedAbove}
-                maxMinutes={() => maxPlanMinutes}
+                maxMinutes={maxPlanMinutes}
                 hint={`Up to ${formatDuration(maxPlanMinutes)} a day`}
                 formId={FORM_ID}
                 canAddLine={canAddLine}

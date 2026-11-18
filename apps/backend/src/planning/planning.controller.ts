@@ -14,8 +14,11 @@ import {
 import { PlanningService } from './planning.service';
 import { PlanningEntryResponse } from './dtos/planning-entry-response.dto';
 import { PlanningQueryDto } from './dtos/planning-query.dto';
-import { PlanningWeekQuery } from './dtos/planning-week-query.dto';
-import { PlanningWeekResponse } from './dtos/planning-week-response.dto';
+import { PlanningPeriodQuery } from './dtos/planning-period-query.dto';
+import {
+  PlanningMonthResponse,
+  PlanningWeekResponse,
+} from './dtos/planning-grid-response.dto';
 import { PlanningRemovalCountQuery } from './dtos/planning-removal-count-query.dto';
 import {
   DeletePeriodPlansQuery,
@@ -41,8 +44,14 @@ export class PlanningController {
 
   @Get('week')
   @Serialize(PlanningWeekResponse)
-  getWeek(@Query() query: PlanningWeekQuery, @CurrentUser() user: AuthUser) {
+  getWeek(@Query() query: PlanningPeriodQuery, @CurrentUser() user: AuthUser) {
     return this.service.getWeek(query, user);
+  }
+
+  @Get('month')
+  @Serialize(PlanningMonthResponse)
+  getMonth(@Query() query: PlanningPeriodQuery, @CurrentUser() user: AuthUser) {
+    return this.service.getMonth(query, user);
   }
 
   @Role(UserRole.MANAGER, UserRole.OWNER)
@@ -90,14 +99,5 @@ export class PlanningController {
     @CurrentUser() user: AuthUser,
   ) {
     return this.service.deletePeriodPlans(query, user);
-  }
-
-  @Role(UserRole.MANAGER, UserRole.OWNER)
-  @Delete(':id')
-  delete(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: AuthUser,
-  ) {
-    return this.service.delete(id, user);
   }
 }
