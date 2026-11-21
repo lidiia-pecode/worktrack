@@ -10,6 +10,8 @@ import { closedSpellOn, fullName } from "@/lib/utils/user";
 import { getProjectColor, planSurface } from "@/lib/utils/project-colors";
 import { cn } from "@/lib/utils/cn";
 
+import { TooltipTrigger, type TooltipHandle } from "@/components/ui/tooltip";
+
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
 import { weekLabel } from "../month-weeks";
 import { describePlanDay, planBars } from "../plan-bars";
@@ -24,6 +26,8 @@ type PlanningMonthRowProps = {
   isMonthLocked: boolean;
   /** Set under a project filter: the row holds that project's plans only. */
   projectName?: string;
+  /** The grid's one tooltip, which the days and bars fill on hover. */
+  tooltip: TooltipHandle<string>;
   onOpenWeek: (firstDay: Date) => void;
   onPlanPeriod: (row: PlanningRow) => void;
 };
@@ -48,6 +52,7 @@ export const PlanningMonthRow = ({
   absencesByDate,
   isMonthLocked,
   projectName,
+  tooltip,
   onOpenWeek,
   onPlanPeriod,
 }: PlanningMonthRowProps) => {
@@ -129,9 +134,11 @@ export const PlanningMonthRow = ({
               <span aria-hidden className="relative flex flex-col gap-0.75">
                 <span className="absolute inset-0 grid gap-0.5" style={columns}>
                   {days.map((day) => (
-                    <span
+                    <TooltipTrigger
                       key={toISODate(day.date)}
-                      title={`${formatLongDayLabel(day.date)}: ${describePlanDay(day)}`}
+                      handle={tooltip}
+                      payload={`${formatLongDayLabel(day.date)}: ${describePlanDay(day)}`}
+                      render={<span />}
                       className={cn(
                         "not-first:border-l not-first:border-dotted not-first:border-border",
                         day.closed
@@ -162,9 +169,11 @@ export const PlanningMonthRow = ({
                           : planSurface(getProjectColor(bar.project.id));
 
                         return (
-                          <span
+                          <TooltipTrigger
                             key={`${bar.project.id}-${bar.start}`}
-                            title={`${name} · ${formatDuration(bar.minutes)} a day`}
+                            handle={tooltip}
+                            payload={`${name} · ${formatDuration(bar.minutes)} a day`}
+                            render={<span />}
                             className={cn(
                               "pointer-events-auto truncate rounded-md px-2 text-xs leading-6 text-muted-foreground",
                               isArchived && "bg-muted/30 line-through",
@@ -175,7 +184,7 @@ export const PlanningMonthRow = ({
                             }}
                           >
                             {bar.length > 1 && bar.project.name}
-                          </span>
+                          </TooltipTrigger>
                         );
                       })}
                   </span>
@@ -206,7 +215,12 @@ export const PlanningMonthRow = ({
         );
       })}
 
-      <PlanningTotalCell row={row} period="month" projectName={projectName} />
+      <PlanningTotalCell
+        row={row}
+        period="month"
+        projectName={projectName}
+        tooltip={tooltip}
+      />
     </tr>
   );
 };

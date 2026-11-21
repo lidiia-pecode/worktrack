@@ -162,7 +162,8 @@ export const TeamWeekRow = ({
             entries={day?.entries ?? []}
             minutes={day?.minutes ?? 0}
             absence={absence}
-            plans={plansByDate[iso]}
+            // Planning shows what's ahead; here a plan marks a day still owed.
+            plans={iso <= todayIso ? plansByDate[iso] : undefined}
             expectedMinutes={projectName ? undefined : expectedByDate.get(iso)}
             isLocked={isLocked(iso)}
             isPast={iso < todayIso}

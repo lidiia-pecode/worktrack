@@ -598,33 +598,27 @@ describe('UsersService scope', () => {
     };
 
     beforeAll(async () => {
-      // One transaction gives every row the same created_at, and they share a name.
-      const tied = await dataSource.transaction((manager) =>
-        manager.getRepository(User).save(
-          Array.from({ length: 5 }, (_, index) => ({
-            companyId,
-            role: UserRole.EMPLOYEE,
-            firstName: 'tied',
-            lastName: 'Test',
-            email: `tied-${index}-${RUN}@userscope.test`,
-            status: UserStatus.ACTIVE,
-          })),
-        ),
+      const tied = await dataSource.getRepository(User).save(
+        Array.from({ length: 5 }, (_, index) => ({
+          companyId,
+          role: UserRole.EMPLOYEE,
+          firstName: 'tied',
+          lastName: 'Test',
+          email: `tied-${index}-${RUN}@userscope.test`,
+          status: UserStatus.ACTIVE,
+        })),
       );
       tiedIds = tied.map((user) => user.id);
-
-      const createdAt = new Set(tied.map((user) => user.createdAt.getTime()));
-      expect(createdAt.size).toBe(1);
     });
 
-    it('lists users created together once each, in a fixed order', async () => {
+    it('lists users who share a name once each, in a fixed order', async () => {
       const { ids, count } = await pagedIds((page) =>
         service.list(companyId, page, owner),
       );
 
       expect(new Set(ids).size).toBe(count);
       expect(ids.filter((id) => tiedIds.includes(id))).toEqual(
-        [...tiedIds].sort().reverse(),
+        [...tiedIds].sort(),
       );
     });
 

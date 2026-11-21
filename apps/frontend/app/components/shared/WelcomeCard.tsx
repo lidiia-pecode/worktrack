@@ -1,7 +1,8 @@
 "use client";
 
 import { useId } from "react";
-import { Hand, type LucideIcon } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, Hand, type LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -12,6 +13,8 @@ export interface WelcomeItem {
   icon: LucideIcon;
   title: string;
   description: string;
+  /** Another page the item leads to; the page in view has none. */
+  href?: string;
 }
 
 interface WelcomeCardProps {
@@ -55,25 +58,24 @@ export const WelcomeCard = ({
         </div>
       </div>
 
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-        {items.map(({ icon: Icon, title, description }) => (
-          <li
-            key={title}
-            // An odd last tile takes the whole row rather than sit alone.
-            className="flex gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5 sm:last:odd:col-span-2"
-          >
-            <Icon
-              className="mt-0.5 size-4 shrink-0 text-brand"
-              aria-hidden="true"
-            />
-
-            <div className="min-w-0">
-              <h3 className="text-sm font-medium text-foreground">{title}</h3>
-
-              <p className="text-sm leading-5 text-muted-foreground">
-                {description}
-              </p>
-            </div>
+      <ul className="mt-4 grid gap-2 md:grid-cols-3">
+        {items.map((item) => (
+          <li key={item.title} className="flex">
+            {item.href ? (
+              <Link
+                href={item.href}
+                className={cn(
+                  ITEM_CLASS,
+                  "transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                )}
+              >
+                <ItemContent item={item} />
+              </Link>
+            ) : (
+              <div className={ITEM_CLASS}>
+                <ItemContent item={item} />
+              </div>
+            )}
           </li>
         ))}
       </ul>
@@ -89,3 +91,27 @@ export const WelcomeCard = ({
     </Card>
   );
 };
+
+const ITEM_CLASS =
+  "flex w-full gap-2.5 rounded-lg border border-border bg-background px-3 py-2.5";
+
+const ItemContent = ({
+  item: { icon: Icon, title, description, href },
+}: {
+  item: WelcomeItem;
+}) => (
+  <>
+    <Icon className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden="true" />
+
+    <div className="min-w-0">
+      <h3 className="flex items-center gap-1 text-sm font-medium text-foreground">
+        {title}
+        {href && (
+          <ArrowRight className="size-3.5 text-brand" aria-hidden="true" />
+        )}
+      </h3>
+
+      <p className="text-sm leading-5 text-muted-foreground">{description}</p>
+    </div>
+  </>
+);

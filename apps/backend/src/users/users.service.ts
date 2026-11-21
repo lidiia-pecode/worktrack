@@ -31,6 +31,7 @@ import { AuthSession } from 'src/auth/entities/auth-session.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
@@ -210,9 +211,11 @@ export class UsersService {
       onDays: 'today',
     });
 
-    const [users, count] = await qb
-      .orderBy('u.created_at', 'DESC')
-      .addOrderBy('u.id', 'DESC')
+    const [users, count] = await orderByName(
+      qb,
+      ['u.first_name', 'u.last_name'],
+      'u.id',
+    )
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();

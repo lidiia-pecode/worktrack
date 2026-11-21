@@ -5,14 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  EntityManager,
-  FindOptionsWhere,
-  In,
-  Not,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, In, Not, Repository } from 'typeorm';
 import { sameName } from 'src/lib/utils/same-name.util';
 import { Activity } from './entities/activity.entity';
 import {
@@ -25,7 +18,8 @@ import { ActivitiesQuery } from './dtos/activities-query.dto';
 import { ActivityStatus } from './enums/activity-status.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
-import { containsText } from 'src/lib/utils/contains-text.util';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { UserRole } from 'src/users/enums/user-role.enum';
 import { ProjectActivity } from 'src/projects/entities/project-activity.entity';
 import { findOfferingProjects, OfferingProject } from './offering-projects';
@@ -168,23 +162,27 @@ export class ActivitiesService {
   }
 
   async list(user: AuthUser, query: ActivitiesQuery) {
-    const where: FindOptionsWhere<Activity> = {
-      companyId: user.companyId,
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.search ? { name: containsText(query.search) } : {}),
-    };
+    const qb = this.repo
+      .createQueryBuilder('activity')
+      .leftJoinAndSelect('activity.category', 'category')
+      .where('activity.companyId = :companyId', { companyId: user.companyId });
 
-    const [activities, count] = await this.repo.findAndCount({
-      where,
-      relations: {
-        category: true,
-      },
-      skip: pageOffset(query),
-      take: query.pageSize,
-      order: {
-        name: 'ASC',
-      },
-    });
+    if (query.status) {
+      qb.andWhere('activity.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(qb, ['activity.name'], query.search);
+    }
+
+    const [activities, count] = await orderByName(
+      qb,
+      ['activity.name'],
+      'activity.id',
+    )
+      .skip(pageOffset(query))
+      .take(query.pageSize)
+      .getManyAndCount();
 
     // An employee sees only their own projects, so they get no project count.
     if (user.role === UserRole.EMPLOYEE) {

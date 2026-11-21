@@ -38,6 +38,11 @@ import { PlanningRow } from "@/types";
 import { ProjectStatus, UserRole } from "@/types/enums";
 
 import { Button } from "@/components/ui/button";
+import {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 import { EmptyState } from "../shared/EmptyState";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
@@ -113,6 +118,8 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
   const [absenceForm, setAbsenceForm] = useState<AbsenceFormState | null>(null);
   const [periodUserId, setPeriodUserId] = useState<string | null>(null);
+  // The month holds hundreds of days and bars, so they share one tooltip.
+  const [tooltip] = useState(() => createTooltipHandle<string>());
 
   const weekDates = useMemo(() => getWeekDates(weekStart), [weekStart]);
   // Plans go on working days only, so the grid shows only those; Team time
@@ -457,6 +464,7 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
                 absencesByDate={absencesByUser[row.user.id] ?? {}}
                 isMonthLocked={isMonthLocked}
                 projectName={projectName}
+                tooltip={tooltip}
                 onOpenWeek={openWeek}
                 onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
               />
@@ -468,12 +476,17 @@ export const PlanningView = ({ role, viewerId }: PlanningViewProps) => {
                 absencesByDate={absencesByUser[row.user.id] ?? {}}
                 isLocked={isLocked}
                 projectName={projectName}
+                tooltip={tooltip}
                 onPlanPeriod={(opened) => setPeriodUserId(opened.user.id)}
               />
             ),
           )}
         </PlanningTable>
       )}
+
+      <Tooltip handle={tooltip}>
+        {({ payload }) => <TooltipContent>{payload}</TooltipContent>}
+      </Tooltip>
 
       {absenceForm && (
         <AbsenceFormModal

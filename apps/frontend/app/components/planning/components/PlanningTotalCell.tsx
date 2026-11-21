@@ -1,6 +1,8 @@
 import { PlanningRow } from "@/types";
 import { formatDuration, formatReportHours } from "@/lib/utils/date";
 
+import { TooltipTrigger, type TooltipHandle } from "@/components/ui/tooltip";
+
 import { RowTotalCell } from "../../shared/week/RowTotalCell";
 import { ReportBar } from "../../reports/components/ReportBar";
 import { hasNoFixedHours } from "./PlanningPersonCell";
@@ -11,6 +13,7 @@ type PlanningTotalCellProps = {
   period: "week" | "month";
   /** Set under a project filter: the row holds that project's plans only. */
   projectName?: string;
+  tooltip: TooltipHandle<string>;
 };
 
 /** A Planning row's planned hours against what the person has available. */
@@ -18,6 +21,7 @@ export const PlanningTotalCell = ({
   row,
   period,
   projectName,
+  tooltip,
 }: PlanningTotalCellProps) => {
   const noFixedHours = hasNoFixedHours(row);
   const formatHours = period === "month" ? formatReportHours : formatDuration;
@@ -51,12 +55,14 @@ export const PlanningTotalCell = ({
       )}
 
       {overMinutes > 0 && (
-        <span
-          title={`Planned ${formatHours(overMinutes)} more than ${row.user.firstName} has available this ${period}`}
+        <TooltipTrigger
+          handle={tooltip}
+          payload={`Planned ${formatHours(overMinutes)} more than ${row.user.firstName} has available this ${period}`}
+          render={<span />}
           className="text-2xs font-medium whitespace-nowrap text-warning-text"
         >
           Over by {formatHours(overMinutes)}
-        </span>
+        </TooltipTrigger>
       )}
     </RowTotalCell>
   );

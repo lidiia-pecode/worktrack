@@ -36,6 +36,7 @@ import { ProjectStatus } from './enums/project-status.enum';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 /**
@@ -446,9 +447,11 @@ export class ProjectsService {
       );
     }
 
-    const [results, count] = await qb
-      .orderBy('project.createdAt', 'DESC')
-      .addOrderBy('project.id', 'DESC')
+    const [results, count] = await orderByName(
+      qb,
+      ['project.name'],
+      'project.id',
+    )
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();

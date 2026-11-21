@@ -6,14 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import {
-  DataSource,
-  EntityManager,
-  In,
-  IsNull,
-  Not,
-  Repository,
-} from 'typeorm';
+import { DataSource, EntityManager, IsNull, Not, Repository } from 'typeorm';
 import { Team } from './entities/team.entity';
 import { TeamMembership } from './entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
@@ -27,7 +20,8 @@ import {
   UpdateTeamDto,
 } from './dtos/team.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
-import { containsText } from 'src/lib/utils/contains-text.util';
+import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { TeamStatus } from './enums/team-status.enum';
 import { TeamVisibilityService } from './team-visibility.service';
 import { findActiveTeam } from './find-active-team.util';
@@ -252,20 +246,28 @@ export class TeamsService {
       return { results: [], count: 0 };
     }
 
-    const where = {
-      companyId,
-      ...(visibleTeamIds ? { id: In(visibleTeamIds) } : {}),
-      ...(query.status ? { status: query.status } : {}),
-      ...(query.search ? { name: containsText(query.search) } : {}),
-    };
+    const qb = this.teamRepo
+      .createQueryBuilder('team')
+      .leftJoinAndSelect('team.memberships', 'memberships')
+      .leftJoinAndSelect('memberships.user', 'memberUser')
+      .where('team.companyId = :companyId', { companyId });
 
-    const [teams, count] = await this.teamRepo.findAndCount({
-      where,
-      relations: ['memberships', 'memberships.user'],
-      skip: pageOffset(query),
-      take: query.pageSize,
-      order: { name: 'ASC' },
-    });
+    if (visibleTeamIds) {
+      qb.andWhere('team.id IN (:...visibleTeamIds)', { visibleTeamIds });
+    }
+
+    if (query.status) {
+      qb.andWhere('team.status = :status', { status: query.status });
+    }
+
+    if (query.search) {
+      andWhereAnyContains(qb, ['team.name'], query.search);
+    }
+
+    const [teams, count] = await orderByName(qb, ['team.name'], 'team.id')
+      .skip(pageOffset(query))
+      .take(query.pageSize)
+      .getManyAndCount();
 
     const results = teams.map((team) => ({
       ...team,

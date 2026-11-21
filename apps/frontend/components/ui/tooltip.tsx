@@ -6,6 +6,10 @@ import { cn } from "@/lib/utils/cn";
 
 const Tooltip = TooltipPrimitive.Root;
 
+/** One tooltip for many triggers, each passing its text as the payload. */
+const createTooltipHandle = TooltipPrimitive.createHandle;
+type TooltipHandle<Payload> = TooltipPrimitive.Handle<Payload>;
+
 /** Opens at once, as the chart's column tips do; Base UI waits 600ms by default. */
 const OPEN_DELAY_MS = 0;
 
@@ -49,4 +53,10 @@ function TooltipContent({
   );
 }
 
-export { Tooltip, TooltipContent, TooltipTrigger };
+export {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  type TooltipHandle,
+};

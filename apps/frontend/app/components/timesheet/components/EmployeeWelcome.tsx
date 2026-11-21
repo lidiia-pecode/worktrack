@@ -1,14 +1,9 @@
 "use client";
 
-import {
-  CalendarCheck,
-  CalendarOff,
-  Clock,
-  Gauge,
-  UserRound,
-} from "lucide-react";
+import { CalendarOff } from "lucide-react";
 
 import { WelcomeCard, type WelcomeItem } from "../../shared/WelcomeCard";
+import { myTime, timesheet } from "../../layout/sidebar/sidebar-navigation";
 
 interface EmployeeWelcomeProps {
   userId: string;
@@ -17,34 +12,22 @@ interface EmployeeWelcomeProps {
 
 const ITEMS: WelcomeItem[] = [
   {
-    icon: Clock,
+    icon: timesheet.icon,
     title: "Log your time",
-    description:
-      "Click a day to record the hours you spent on a project and activity.",
+    description: "Click a day to record your hours on a project and activity.",
   },
   {
     icon: CalendarOff,
     title: "Add an absence",
     description:
-      "Holidays and sick days lower what is expected of you for those days.",
+      "Holidays and sick days lower what's expected of you on those days.",
   },
   {
-    icon: Gauge,
-    title: "Your week at a glance",
-    description:
-      "The top of the page compares what you logged with what is expected.",
-  },
-  {
-    icon: CalendarCheck,
+    icon: myTime.icon,
     title: "Your month",
     description:
-      "Review your time to see hours against expected, days still to fill and your projects.",
-  },
-  {
-    icon: UserRound,
-    title: "Your account",
-    description:
-      "Change your name and password, or link your Google account, in Settings.",
+      "Hours against expected and days still to fill, in Review my time.",
+    href: myTime.href,
   },
 ];
 
