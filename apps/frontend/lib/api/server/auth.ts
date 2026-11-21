@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { redirect } from "next/navigation";
 
 import { BACKEND_URL } from "@/lib/constants/backend-url";
@@ -17,7 +18,8 @@ async function fetchCurrentUser() {
   });
 }
 
-export async function getCurrentUser(): Promise<CurrentUser | null> {
+/** Once per request: the layout and a page's access guard both ask. */
+export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const res = await fetchCurrentUser();
 
   if (!res.ok) {
@@ -25,7 +27,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   }
 
   return (await res.json()) as CurrentUser;
-}
+});
 
 /**
  * Guard for pages only owners and managers may open. Anyone else is sent to

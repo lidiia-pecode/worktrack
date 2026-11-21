@@ -119,18 +119,9 @@ export const isActivePath = (pathname: string, href: string) =>
 
 export const settings = { label: "Settings", href: "/settings" };
 
+// The owner who tracks time has every menu page.
 const allPages = [
-  teamTime,
-  planning,
-  reports,
-  timesheet,
-  myTime,
-  people,
-  teams,
-  projects,
-  activities,
-  categories,
-  periods,
+  ...navigationFor(UserRole.OWNER, true).flatMap((group) => group.items),
   gettingStarted,
   settings,
 ];

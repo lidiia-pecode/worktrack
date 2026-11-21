@@ -36,7 +36,7 @@ export const ProjectArchiveDialog = ({
     archive.mutate(project.id, {
       onSuccess: () => {
         onClose();
-        // It may have been the signed-in person's last project (the sidebar's own pages).
+        // It may have been your last project, which shows your own pages.
         router.refresh();
       },
     });

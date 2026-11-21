@@ -30,7 +30,6 @@ export const useProjectActions = () => {
     canArchiveProjects(viewer?.role)
       ? archiveOrRestore(isActiveProject(project), {
           archive: () => setArchivingProject(project),
-          // As archiving, restoring can change the sidebar's own pages.
           restore: () =>
             unarchive.mutate(project.id, { onSuccess: () => router.refresh() }),
         })
