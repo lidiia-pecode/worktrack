@@ -46,15 +46,13 @@ const SidebarBody = ({ user, pathname, onNavigate }: SidebarBodyProps) => {
         />
       </div>
 
-      {isOwner && (
-        <div className="px-3 pb-3">
-          <GettingStartedLink
-            isSetupOpen={isSetupOpen}
-            pathname={pathname}
-            onNavigate={onNavigate}
-          />
-        </div>
-      )}
+      <div className="px-3 pb-3">
+        <GettingStartedLink
+          isSetupOpen={isSetupOpen}
+          pathname={pathname}
+          onNavigate={onNavigate}
+        />
+      </div>
 
       <div className="border-t border-sidebar-border p-3">
         <UserMenu />

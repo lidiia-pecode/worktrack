@@ -124,7 +124,7 @@ type GettingStartedLinkProps = {
   onNavigate?: () => void;
 };
 
-/** The owner's help area: the setup checklist while it's open, then a guide. */
+/** Everyone's help area; the owner's holds the setup checklist while it's open. */
 export const GettingStartedLink = ({
   isSetupOpen,
   pathname,
@@ -166,7 +166,7 @@ export const GettingStartedLink = ({
         <span className="block text-xs text-muted-foreground md:sr-only">
           {isSetupOpen
             ? "Finish setting up your company"
-            : "Getting to Know WorkTrack"}
+            : "Getting to know WorkTrack"}
         </span>
       </span>
     </Link>

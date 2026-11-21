@@ -1,2 +1,2 @@
-/** The owner's setup checklist while setup is open, a guide once it is finished. */
+/** Everyone's guide; the owner's opens on the setup checklist while setup is open. */
 export const GETTING_STARTED_PATH = "/getting-started";

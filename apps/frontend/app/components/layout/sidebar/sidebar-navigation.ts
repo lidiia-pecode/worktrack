@@ -78,7 +78,7 @@ export const periods = {
   icon: LockKeyhole,
 };
 
-/** The owner's help area, kept apart from the menu groups. */
+/** Everyone's help area, kept apart from the menu groups. */
 export const gettingStarted = {
   label: "Getting started",
   href: GETTING_STARTED_PATH,
