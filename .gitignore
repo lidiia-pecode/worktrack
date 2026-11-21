@@ -29,16 +29,6 @@ next-env.d.ts
 # Editor
 .vscode
 
-# Docker
-postgres-data
-
-# Turbo
-.turbo
-
-*.md
-!README.md
-!docs/architecture.md
-!docs/business_architecture_docs.md
-!docs/permission-model.md
-!docs/workflow.md
+# Markdown that tools write for any developer
+apps/backend/docs/TEST-CREDENTIALS.md
 
