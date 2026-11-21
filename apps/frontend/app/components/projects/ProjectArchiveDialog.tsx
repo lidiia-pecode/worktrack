@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+
 import {
   useProjectArchiveImpact,
   useProjectsMutations,
@@ -23,6 +25,7 @@ export const ProjectArchiveDialog = ({
   project,
   onClose,
 }: ProjectArchiveDialogProps) => {
+  const router = useRouter();
   const { archive } = useProjectsMutations();
   const impact = useProjectArchiveImpact(project?.id ?? "", Boolean(project));
   const planCount = impact.data?.planCount ?? 0;
@@ -31,7 +34,11 @@ export const ProjectArchiveDialog = ({
     if (!project) return;
 
     archive.mutate(project.id, {
-      onSuccess: onClose,
+      onSuccess: () => {
+        onClose();
+        // It may have been the signed-in person's last project (the sidebar's own pages).
+        router.refresh();
+      },
     });
   };
 

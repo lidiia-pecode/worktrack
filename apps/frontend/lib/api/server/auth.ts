@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { BACKEND_URL } from "@/lib/constants/backend-url";
-import { User } from "@/types";
+import { CurrentUser } from "@/types";
 import { UserRole } from "@/types/enums";
 import { hasManagerAccess } from "@/lib/utils/user";
 import { getCookieHeader } from "./cookie-helper";
@@ -17,21 +17,21 @@ async function fetchCurrentUser() {
   });
 }
 
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<CurrentUser | null> {
   const res = await fetchCurrentUser();
 
   if (!res.ok) {
     return null;
   }
 
-  return (await res.json()) as User;
+  return (await res.json()) as CurrentUser;
 }
 
 /**
  * Guard for pages only owners and managers may open. Anyone else is sent to
  * `/`, which routes employees on to their timesheet.
  */
-export async function requireManagerAccess(): Promise<User> {
+export async function requireManagerAccess(): Promise<CurrentUser> {
   const user = await getCurrentUser();
 
   if (!user || !hasManagerAccess(user.role)) {
@@ -41,7 +41,7 @@ export async function requireManagerAccess(): Promise<User> {
   return user;
 }
 
-export async function requireOwnerAccess(): Promise<User> {
+export async function requireOwnerAccess(): Promise<CurrentUser> {
   const user = await getCurrentUser();
 
   if (!user || user.role !== UserRole.OWNER) {

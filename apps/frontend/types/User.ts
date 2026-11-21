@@ -19,6 +19,12 @@ export interface User {
   updatedAt: string;
 }
 
+/** The signed-in person, as `GET /users/me` returns them. */
+export interface CurrentUser extends User {
+  /** Hours to log today or ahead, or an active project to log on. */
+  tracksOwnTime: boolean;
+}
+
 /** What deactivating someone with a given last working day deletes. */
 export interface DeactivationImpact {
   time: {

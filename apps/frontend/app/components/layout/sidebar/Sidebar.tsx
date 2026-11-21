@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 
-import { User } from "@/types";
+import { CurrentUser } from "@/types";
 import { UserRole } from "@/types/enums";
 import { useOwnerSetupState } from "@/hooks/auth/useOnboarding";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -25,7 +25,7 @@ import { navigationFor, pageLabelFor } from "./sidebar-navigation";
 const DESKTOP_MEDIA_QUERY = "(min-width: 48rem)";
 
 interface SidebarBodyProps {
-  user: User;
+  user: CurrentUser;
   pathname: string;
   onNavigate?: () => void;
 }
@@ -40,7 +40,7 @@ const SidebarBody = ({ user, pathname, onNavigate }: SidebarBodyProps) => {
       {/* min-h-0 lets the links scroll on a short screen instead of running under the cards below. */}
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-5">
         <SidebarNavigation
-          groups={navigationFor(user.role)}
+          groups={navigationFor(user.role, user.tracksOwnTime)}
           pathname={pathname}
           onNavigate={onNavigate}
         />
@@ -64,12 +64,12 @@ const SidebarBody = ({ user, pathname, onNavigate }: SidebarBodyProps) => {
 };
 
 interface SidebarProps {
-  user: User;
+  user: CurrentUser;
 }
 
 export const Sidebar = ({ user }: SidebarProps) => {
   const pathname = usePathname();
-  const pageLabel = pageLabelFor(user.role, pathname);
+  const pageLabel = pageLabelFor(pathname);
 
   const [menuOpenedOn, setMenuOpenedOn] = useState<string | null>(null);
   const isMenuOpen = menuOpenedOn === pathname;

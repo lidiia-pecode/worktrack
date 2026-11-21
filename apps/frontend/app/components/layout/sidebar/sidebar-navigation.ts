@@ -85,7 +85,15 @@ export const gettingStarted = {
   icon: Rocket,
 };
 
-export const navigationFor = (role: UserRole): NavigationGroup[] => {
+/**
+ * Owners and managers get their team's pages, then their own, then what they
+ * manage. Their own pages are left out when they have no time of their own to
+ * log (`tracksOwnTime`); an employee's are all they have.
+ */
+export const navigationFor = (
+  role: UserRole,
+  tracksOwnTime: boolean,
+): NavigationGroup[] => {
   if (role === UserRole.EMPLOYEE) {
     return [{ items: [timesheet, myTime] }];
   }
@@ -98,7 +106,10 @@ export const navigationFor = (role: UserRole): NavigationGroup[] => {
       : [people, projects];
 
   return [
-    { label: "Work", items: [teamTime, timesheet, myTime, planning, reports] },
+    { label: "Team", items: [teamTime, planning, reports] },
+    ...(tracksOwnTime
+      ? [{ label: "My time", items: [timesheet, myTime] }]
+      : []),
     { label: "Manage", items: manageItems },
   ];
 };
@@ -108,10 +119,26 @@ export const isActivePath = (pathname: string, href: string) =>
 
 export const settings = { label: "Settings", href: "/settings" };
 
-/** The current page's name, for the phone header, where the sidebar is hidden. */
-export const pageLabelFor = (role: UserRole, pathname: string) =>
-  [
-    ...navigationFor(role).flatMap((group) => group.items),
-    gettingStarted,
-    settings,
-  ].find((item) => isActivePath(pathname, item.href))?.label;
+const allPages = [
+  teamTime,
+  planning,
+  reports,
+  timesheet,
+  myTime,
+  people,
+  teams,
+  projects,
+  activities,
+  categories,
+  periods,
+  gettingStarted,
+  settings,
+];
+
+/**
+ * The current page's name, for the phone header, where the sidebar is hidden.
+ * Looked up among every page, so one left out of the menu but opened by its
+ * address is still named.
+ */
+export const pageLabelFor = (pathname: string) =>
+  allPages.find((item) => isActivePath(pathname, item.href))?.label;

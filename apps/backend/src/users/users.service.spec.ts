@@ -1028,4 +1028,76 @@ describe('UsersService scope', () => {
       expect(result.upcoming).toBeNull();
     });
   });
+
+  describe('whether the signed-in person has their own time to log', () => {
+    const today = todayISODate(TIME_ZONE);
+    const DAY_OF_SIX_HOURS = 30 * 60;
+
+    const tracksOwnTime = async (person: AuthUser) =>
+      (await service.getCurrentUser(person.id, companyId)).tracksOwnTime;
+
+    const withNoFixedHours = async (name: string) => {
+      const person = await createUser(name, UserRole.MANAGER);
+      await capacity.setCapacity(companyId, person.id, 0, today, owner.id);
+      return person;
+    };
+
+    const addToProject = (person: AuthUser, status: ProjectStatus) =>
+      dataSource.getRepository(Project).save({
+        companyId,
+        name: `${person.id} ${status} ${RUN}`,
+        status,
+        users: [{ id: person.id }],
+      });
+
+    it('does with hours of their own', async () => {
+      const person = await createUser('ownhours', UserRole.MANAGER);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it("does on the company's standard day when they have no hours of their own", async () => {
+      expect(
+        await tracksOwnTime(await createUser('nohours', UserRole.OWNER)),
+      ).toBe(true);
+    });
+
+    it("doesn't with no fixed hours and no project", async () => {
+      expect(await tracksOwnTime(await withNoFixedHours('zero'))).toBe(false);
+    });
+
+    it('does with no fixed hours today and hours from a later day', async () => {
+      const person = await withNoFixedHours('zeroahead');
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        addDays(today, 10),
+        owner.id,
+      );
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it('does with no fixed hours on an active project', async () => {
+      const person = await withNoFixedHours('zeroactive');
+      await addToProject(person, ProjectStatus.ACTIVE);
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it("doesn't with no fixed hours on an archived project only", async () => {
+      const person = await withNoFixedHours('zeroarchived');
+      await addToProject(person, ProjectStatus.ARCHIVED);
+
+      expect(await tracksOwnTime(person)).toBe(false);
+    });
+  });
 });

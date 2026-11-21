@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useProjectsMutations } from "@/hooks/useProjects";
@@ -18,6 +19,7 @@ export const isActiveProject = (project: Project) =>
 /** What the viewer can do with a project, from a list row or the panel. */
 export const useProjectActions = () => {
   const { user: viewer } = useAuth();
+  const router = useRouter();
   const panel = useEntityPanel();
   const { unarchive } = useProjectsMutations();
   const [archivingProject, setArchivingProject] = useState<Project | null>(
@@ -28,7 +30,9 @@ export const useProjectActions = () => {
     canArchiveProjects(viewer?.role)
       ? archiveOrRestore(isActiveProject(project), {
           archive: () => setArchivingProject(project),
-          restore: () => unarchive.mutate(project.id),
+          // As archiving, restoring can change the sidebar's own pages.
+          restore: () =>
+            unarchive.mutate(project.id, { onSuccess: () => router.refresh() }),
         })
       : [];
 

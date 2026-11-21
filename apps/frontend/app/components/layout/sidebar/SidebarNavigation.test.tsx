@@ -10,7 +10,7 @@ describe("SidebarNavigation", () => {
   it("names each group and marks only the current page", () => {
     render(
       <SidebarNavigation
-        groups={navigationFor(UserRole.OWNER)}
+        groups={navigationFor(UserRole.OWNER, true)}
         pathname="/admin/teams"
       />,
     );
@@ -18,7 +18,7 @@ describe("SidebarNavigation", () => {
     const manage = screen.getByRole("list", { name: "Manage" });
     const teams = within(manage).getByRole("link", { name: "Teams" });
 
-    expect(screen.getByRole("list", { name: "Work" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Team" })).toBeInTheDocument();
     expect(teams).toHaveAttribute("aria-current", "page");
     expect(
       screen

@@ -15,13 +15,8 @@ const labelsOf = (groups: NavigationGroup[]) =>
     items: group.items.map((item) => item.label),
   }));
 
-const WORK = [
-  "Team time",
-  "Log my time",
-  "Review my time",
-  "Planning",
-  "Reports",
-];
+const TEAM = ["Team time", "Planning", "Reports"];
+const MY_TIME = ["Log my time", "Review my time"];
 const OWNER_MANAGE = [
   "People",
   "Teams",
@@ -32,28 +27,43 @@ const OWNER_MANAGE = [
 ];
 
 describe("navigationFor", () => {
-  it("gives an owner Work and Manage, with Periods", () => {
-    expect(labelsOf(navigationFor(UserRole.OWNER))).toEqual([
-      { label: "Work", items: WORK },
+  it("gives an owner their team's pages, their own, then Manage with Periods", () => {
+    expect(labelsOf(navigationFor(UserRole.OWNER, true))).toEqual([
+      { label: "Team", items: TEAM },
+      { label: "My time", items: MY_TIME },
       { label: "Manage", items: OWNER_MANAGE },
     ]);
   });
 
-  it("gives a manager the same Work, and only People and Projects to manage", () => {
-    expect(labelsOf(navigationFor(UserRole.MANAGER))).toEqual([
-      { label: "Work", items: WORK },
+  it("gives a manager the same, with only People and Projects to manage", () => {
+    expect(labelsOf(navigationFor(UserRole.MANAGER, true))).toEqual([
+      { label: "Team", items: TEAM },
+      { label: "My time", items: MY_TIME },
       { label: "Manage", items: ["People", "Projects"] },
     ]);
   });
 
-  it("gives an employee their timesheet and their month, with no group label", () => {
-    expect(labelsOf(navigationFor(UserRole.EMPLOYEE))).toEqual([
-      { label: undefined, items: ["Log my time", "Review my time"] },
-    ]);
+  it("leaves out an owner's or a manager's own pages when they have no time to log", () => {
+    for (const role of [UserRole.OWNER, UserRole.MANAGER]) {
+      expect(navigationFor(role, false).map((group) => group.label)).toEqual([
+        "Team",
+        "Manage",
+      ]);
+    }
+  });
+
+  it("gives an employee their timesheet and their month, with no group label, either way", () => {
+    for (const tracksOwnTime of [true, false]) {
+      expect(labelsOf(navigationFor(UserRole.EMPLOYEE, tracksOwnTime))).toEqual(
+        [{ label: undefined, items: MY_TIME }],
+      );
+    }
   });
 
   it("gives every item its own icon", () => {
-    const items = navigationFor(UserRole.OWNER).flatMap((group) => group.items);
+    const items = navigationFor(UserRole.OWNER, true).flatMap(
+      (group) => group.items,
+    );
 
     expect(new Set(items.map((item) => item.icon)).size).toBe(items.length);
   });
@@ -68,21 +78,23 @@ describe("isActivePath", () => {
 });
 
 describe("pageLabelFor", () => {
-  it("names the page from the menu, a page under it included", () => {
-    expect(pageLabelFor(UserRole.MANAGER, "/planning")).toBe("Planning");
-    expect(pageLabelFor(UserRole.EMPLOYEE, "/my-time")).toBe("Review my time");
-    expect(pageLabelFor(UserRole.OWNER, "/admin/periods")).toBe("Periods");
-    expect(pageLabelFor(UserRole.OWNER, "/admin/users/42")).toBe("People");
+  it("names the page, a page under it included", () => {
+    expect(pageLabelFor("/planning")).toBe("Planning");
+    expect(pageLabelFor("/my-time")).toBe("Review my time");
+    expect(pageLabelFor("/admin/periods")).toBe("Periods");
+    expect(pageLabelFor("/admin/users/42")).toBe("People");
+  });
+
+  it("names a page left out of the menu, opened by its address", () => {
+    expect(pageLabelFor("/timesheet")).toBe("Log my time");
   });
 
   it("names Getting started and Settings, which sit outside the menu", () => {
-    expect(pageLabelFor(UserRole.OWNER, "/getting-started")).toBe(
-      "Getting started",
-    );
-    expect(pageLabelFor(UserRole.EMPLOYEE, "/settings")).toBe("Settings");
+    expect(pageLabelFor("/getting-started")).toBe("Getting started");
+    expect(pageLabelFor("/settings")).toBe("Settings");
   });
 
   it("names nothing for a page it does not know", () => {
-    expect(pageLabelFor(UserRole.EMPLOYEE, "/")).toBeUndefined();
+    expect(pageLabelFor("/")).toBeUndefined();
   });
 });

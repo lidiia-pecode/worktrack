@@ -382,6 +382,31 @@ export class UsersService {
     };
   }
 
+  /**
+   * The signed-in person, and whether they have their own time to log: hours
+   * today (their own or the standard day), a change to hours ahead, or an
+   * active project. "No fixed hours" is hours set to 0.
+   */
+  async getCurrentUser(id: string, companyId: string) {
+    const [user, capacity, isOnActiveProject] = await Promise.all([
+      this.getUserById(id, companyId),
+      this.capacity.currentFor(companyId, id),
+      this.repo
+        .createQueryBuilder('u')
+        .innerJoin('u.projects', 'project', 'project.status = :active', {
+          active: ProjectStatus.ACTIVE,
+        })
+        .where('u.id = :id AND u.company_id = :companyId', { id, companyId })
+        .getExists(),
+    ]);
+
+    const hasHours =
+      capacity.minutesPerWeek > 0 ||
+      (capacity.upcoming?.minutesPerWeek ?? 0) > 0;
+
+    return { ...user, tracksOwnTime: hasHours || isOnActiveProject };
+  }
+
   async getUserDetailsById(
     id: string,
     companyId: string,
