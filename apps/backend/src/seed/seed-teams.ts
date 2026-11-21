@@ -4,10 +4,7 @@ import { TeamMembership } from 'src/teams/entities/team-membership.entity';
 import { User } from 'src/users/entities/user.entity';
 import { TeamStatus } from 'src/teams/enums/team-status.enum';
 
-import { ARCHIVED_TEAM_LEFT_DAY, TEAMS, dayOfWeek } from './seed-config';
-
-// Archiving a team closes its memberships, so its former members left before it.
-const ARCHIVED_TEAM_JOINED_DAY = -56;
+import { TEAMS } from './seed-config';
 
 export async function seedTeams(dataSource: DataSource, companyId: string) {
   const teamRepo = dataSource.getRepository(Team);
@@ -16,7 +13,6 @@ export async function seedTeams(dataSource: DataSource, companyId: string) {
 
   for (const data of TEAMS) {
     const status = data.status ?? TeamStatus.ACTIVE;
-    const isArchived = status === TeamStatus.ARCHIVED;
 
     let team = await teamRepo.findOneBy({ companyId, name: data.name });
 
@@ -34,12 +30,8 @@ export async function seedTeams(dataSource: DataSource, companyId: string) {
       // A membership starts with the account, as an invitation's does, so a
       // team's history covers everything the person logged.
       const joinedAt =
-        entry.joinedOn ??
-        (isArchived
-          ? dayOfWeek(ARCHIVED_TEAM_JOINED_DAY)
-          : user.createdAt.toISOString().slice(0, 10));
-      const leftAt =
-        entry.leftOn ?? (isArchived ? dayOfWeek(ARCHIVED_TEAM_LEFT_DAY) : null);
+        entry.joinedOn ?? user.createdAt.toISOString().slice(0, 10);
+      const leftAt = entry.leftOn ?? null;
 
       const existing = await membershipRepo.findOneBy({
         teamId: team.id,
