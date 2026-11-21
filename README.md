@@ -70,19 +70,16 @@ schema and the test data:
 make setup
 ```
 
-This starts PostgreSQL, runs all database migrations and seeds one test company
-with users, projects, activities, teams, planning, time logs and absences.
+This starts PostgreSQL, runs all database migrations and seeds the test data.
 
-`make seed` creates the **WorkTrack Demo** company: the accounts for checking
-each role (an owner, two managers and employees) and about thirty-five demo
-people in several teams, with projects, activities and categories, including
-archived and deactivated ones and long names. For Reports it adds time,
-plans and absences from the company's first day, 1 June 2026, up to
-yesterday, the same on every reset for June to September. Running
-it again adds only what is missing, and the history only into a database that
-has none; to rebuild everything, run `make down-hard` and then `make setup`. The logins are written to `apps/backend/docs/TEST-CREDENTIALS.md`
-(ignored by Git) every time you seed. To change what gets created, edit
-`apps/backend/src/seed/seed-config.ts` and re-run `make seed`.
+`make seed` creates one test company with users in each role, teams, projects
+and activities, time and absences from 1 June 2026 up to the day you seed and
+plans a few weeks ahead, plus the edge cases the tests and screens need (someone
+on no team, long names, archived and deactivated records). Running it again adds only what is missing;
+to rebuild everything, run `make down-hard` and then `make setup`. The logins
+are written to `apps/backend/docs/TEST-CREDENTIALS.md` (ignored by Git) every
+time you seed. What gets created, and the optional `SEED_*` settings it reads,
+are in `apps/backend/src/seed/seed-config.ts`.
 
 The seed writes only to a local database: it stops before connecting when
 `NODE_ENV` is `production`, `DATABASE_SSL` is `true`, or the database host is
@@ -180,8 +177,8 @@ CI runs, and the rules for changes that touch the database.
 | Document                                                                           | Covers                                                 |
 | :--------------------------------------------------------------------------------- | :----------------------------------------------------- |
 | [`docs/architecture.md`](docs/architecture.md)                                     | System shape, request flow, where to start a task      |
-| [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules, decisions, roadmap |
-| [`docs/permission-model.md`](docs/permission-model.md)                             | Who may do what, and why; open permission questions   |
+| [`docs/business_architecture_docs.md`](docs/business_architecture_docs.md)         | Product definition, business rules and decisions       |
+| [`docs/permission-model.md`](docs/permission-model.md)                             | Who may do what, and why                               |
 | [`docs/workflow.md`](docs/workflow.md)                                             | Branching, pull requests, CI, database changes         |
 
 The backend serves Swagger at <http://localhost:3001/api/docs> when running.
@@ -190,9 +187,7 @@ It is off in production unless `ENABLE_SWAGGER=true` is set.
 ## Current Status
 
 Under active development, on a shared development stand with test data only;
-there is no production environment yet, by decision. The original feature plan
-is complete, and the work now improves the product area by area before a final
-production launch. What works today, the roadmap, the test coverage and the
-engineering state are in
-[`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6
-and §7; how the stand is deployed is in [`docs/workflow.md`](docs/workflow.md).
+there is no production environment yet, by decision. What works today, the test
+coverage and the engineering state are in
+[`docs/business_architecture_docs.md`](docs/business_architecture_docs.md) §6;
+how the stand is deployed is in [`docs/workflow.md`](docs/workflow.md).

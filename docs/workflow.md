@@ -80,9 +80,10 @@ Node comes from `.nvmrc`, and the backend job gets a throwaway Postgres 16
 service container. Migrations run against it before the tests, because the tests
 use real SQL and need the schema to exist.
 
-CI needs no repository secrets. The suites talk to the database directly and
-never boot the Nest application, so none of the application's required
-environment variables come into play.
+CI needs no repository secrets. Most suites talk to the database directly; the
+ones that load the whole Nest application fill its required settings with test
+values (`src/lib/testing/app-env.ts`) wherever the environment leaves them
+unset, and CI provides only the database.
 
 To reproduce a CI failure locally, run the same root scripts; they are the same
 commands CI calls.
@@ -386,45 +387,25 @@ There is one environment and one person deploying to it, so "who" mostly means
 | Verify schema and application after applying | You |
 | Deploy the code itself | Vercel and Render, automatically on merge |
 
-#### Runs worth learning from
+#### A pull request with both kinds
 
-**PR #16 — `AddInvitationTeamAndInviter1789830866330`**, September 2026, the
-first migration this project ever deployed. Additive and uneventful: two
-nullable columns and two `ON DELETE SET NULL` foreign keys, applied in one
-transaction before the merge, with the schema checked against
-`information_schema` afterwards rather than trusted from the `migrations` table.
-It hit two pitfalls: the compiled migrations had to be built first, and
-`source` broke on the env file's `&`. `make migrate-neon` now avoids both, as
-above.
+When one pull request adds a table and drops a column the deployed code still
+reads, running both before the merge breaks every query on that column until the
+deploy lands. Instead:
 
-**PR #20, absences — two migrations in one pull request**, and the reason the
-additive/destructive split is written down here. `CreateAbsenceEntity` added the
-`absences` table; `RemoveActivityIsAbsence` dropped `activities.is_absence`,
-which the deployed code still selected. Running both before the merge would have
-broken every activities query until the deploy landed.
+1. Before merging, apply the additive migration alone (`ONLY=`) and check that
+   `migration:show` still lists the destructive one as pending.
+2. Verify the new schema, and that the deployed API still answers on the old
+   column.
+3. Merge and wait for Render.
+4. Confirm the new code is serving: a route only the new build has answers
+   `401` signed out, where an unknown route answers `404`.
+5. Apply the destructive migration, then verify the schema and the screens that
+   use it.
 
-What was done instead:
-
-1. `CreateAbsenceEntity` applied to Neon **before** merging, with
-   `RemoveActivityIsAbsence` held back by moving its compiled files out of
-   `dist/migrations/` (what `ONLY=` does today) — `migration:show` confirmed it
-   had vanished from the pending list before anything ran.
-2. Verified: table, enum, check constraint, index and both foreign keys present;
-   `activities.is_absence` still present; the deployed activities API still
-   returning `200`.
-3. Merged, and waited for Render.
-4. Confirmed the new code was actually serving — `GET /absences` answered `401`
-   while `/absences-does-not-exist` answered `404`, which only the new build
-   does.
-5. `RemoveActivityIsAbsence` applied **after** that, then verified: column gone,
-   the twelve activity rows intact, and absences created, edited and deleted
-   through the deployed UI with no `5xx` anywhere.
-
-**PR #53 — `AddUserInactivePeriods`, never applied.** It merged without
-the migration being run on Neon, so every request that computes expected hours
-answered `500` until it was found after the next merge, on 27 October 2026. A
-dry run read before that merge would have listed it. That is why reading the
-dry run is now required for any PR that adds a migration.
+A migration merged but never applied makes every request that touches its table
+answer `500` until it runs, which is why the dry run is read before every merge
+that adds one.
 
 ### Environment variables
 
