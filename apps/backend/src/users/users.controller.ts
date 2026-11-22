@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import {
+  CurrentUserResponse,
   UserDetailsResponse,
   UserListItemResponse,
   UserResponse,
@@ -33,10 +34,10 @@ import {
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Serialize(UserResponse)
+  @Serialize(CurrentUserResponse)
   @Get('/me')
-  async getCurrentUser(@CurrentUser() authUser: AuthUser): Promise<User> {
-    return this.usersService.getUserById(authUser.id, authUser.companyId);
+  getCurrentUser(@CurrentUser() authUser: AuthUser) {
+    return this.usersService.getCurrentUser(authUser.id, authUser.companyId);
   }
 
   @Serialize(UserResponse)

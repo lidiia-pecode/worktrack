@@ -598,33 +598,27 @@ describe('UsersService scope', () => {
     };
 
     beforeAll(async () => {
-      // One transaction gives every row the same created_at, and they share a name.
-      const tied = await dataSource.transaction((manager) =>
-        manager.getRepository(User).save(
-          Array.from({ length: 5 }, (_, index) => ({
-            companyId,
-            role: UserRole.EMPLOYEE,
-            firstName: 'tied',
-            lastName: 'Test',
-            email: `tied-${index}-${RUN}@userscope.test`,
-            status: UserStatus.ACTIVE,
-          })),
-        ),
+      const tied = await dataSource.getRepository(User).save(
+        Array.from({ length: 5 }, (_, index) => ({
+          companyId,
+          role: UserRole.EMPLOYEE,
+          firstName: 'tied',
+          lastName: 'Test',
+          email: `tied-${index}-${RUN}@userscope.test`,
+          status: UserStatus.ACTIVE,
+        })),
       );
       tiedIds = tied.map((user) => user.id);
-
-      const createdAt = new Set(tied.map((user) => user.createdAt.getTime()));
-      expect(createdAt.size).toBe(1);
     });
 
-    it('lists users created together once each, in a fixed order', async () => {
+    it('lists users who share a name once each, in a fixed order', async () => {
       const { ids, count } = await pagedIds((page) =>
         service.list(companyId, page, owner),
       );
 
       expect(new Set(ids).size).toBe(count);
       expect(ids.filter((id) => tiedIds.includes(id))).toEqual(
-        [...tiedIds].sort().reverse(),
+        [...tiedIds].sort(),
       );
     });
 
@@ -637,6 +631,40 @@ describe('UsersService scope', () => {
       expect(ids.filter((id) => tiedIds.includes(id))).toEqual(
         [...tiedIds].sort(),
       );
+    });
+  });
+
+  describe('the People list order', () => {
+    it('lists names as people read them, whatever the case or accents', async () => {
+      // Byte order would give Beta, CRM, Cloud, Ecru, alpha, Ébène.
+      const lastName = `Order${RUN}`;
+      await dataSource.getRepository(User).save(
+        ['CRM', 'Cloud', 'alpha', 'Beta', 'Ecru', 'Ébène'].map(
+          (firstName, index) => ({
+            companyId,
+            role: UserRole.EMPLOYEE,
+            firstName,
+            lastName,
+            email: `order-${index}-${RUN}@userscope.test`,
+            status: UserStatus.ACTIVE,
+          }),
+        ),
+      );
+
+      const { results } = await service.list(
+        companyId,
+        Object.assign(new UsersQuery(), { search: lastName, pageSize: 10 }),
+        owner,
+      );
+
+      expect(results.map((user) => user.firstName)).toEqual([
+        'alpha',
+        'Beta',
+        'Cloud',
+        'CRM',
+        'Ébène',
+        'Ecru',
+      ]);
     });
   });
 
@@ -1026,6 +1054,78 @@ describe('UsersService scope', () => {
       );
 
       expect(result.upcoming).toBeNull();
+    });
+  });
+
+  describe('whether the signed-in person has their own time to log', () => {
+    const today = todayISODate(TIME_ZONE);
+    const DAY_OF_SIX_HOURS = 30 * 60;
+
+    const tracksOwnTime = async (person: AuthUser) =>
+      (await service.getCurrentUser(person.id, companyId)).tracksOwnTime;
+
+    const withNoFixedHours = async (name: string) => {
+      const person = await createUser(name, UserRole.MANAGER);
+      await capacity.setCapacity(companyId, person.id, 0, today, owner.id);
+      return person;
+    };
+
+    const addToProject = (person: AuthUser, status: ProjectStatus) =>
+      dataSource.getRepository(Project).save({
+        companyId,
+        name: `${person.id} ${status} ${RUN}`,
+        status,
+        users: [{ id: person.id }],
+      });
+
+    it('does with hours of their own', async () => {
+      const person = await createUser('ownhours', UserRole.MANAGER);
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        today,
+        owner.id,
+      );
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it("does on the company's standard day when they have no hours of their own", async () => {
+      expect(
+        await tracksOwnTime(await createUser('nohours', UserRole.OWNER)),
+      ).toBe(true);
+    });
+
+    it("doesn't with no fixed hours and no project", async () => {
+      expect(await tracksOwnTime(await withNoFixedHours('zero'))).toBe(false);
+    });
+
+    it('does with no fixed hours today and hours from a later day', async () => {
+      const person = await withNoFixedHours('zeroahead');
+      await capacity.setCapacity(
+        companyId,
+        person.id,
+        DAY_OF_SIX_HOURS,
+        addDays(today, 10),
+        owner.id,
+      );
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it('does with no fixed hours on an active project', async () => {
+      const person = await withNoFixedHours('zeroactive');
+      await addToProject(person, ProjectStatus.ACTIVE);
+
+      expect(await tracksOwnTime(person)).toBe(true);
+    });
+
+    it("doesn't with no fixed hours on an archived project only", async () => {
+      const person = await withNoFixedHours('zeroarchived');
+      await addToProject(person, ProjectStatus.ARCHIVED);
+
+      expect(await tracksOwnTime(person)).toBe(false);
     });
   });
 });

@@ -31,6 +31,7 @@ import { AuthSession } from 'src/auth/entities/auth-session.entity';
 import { CapacityService } from 'src/capacity/capacity.service';
 import { ProjectStatus } from 'src/projects/enums/project-status.enum';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { Team } from 'src/teams/entities/team.entity';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
@@ -210,9 +211,11 @@ export class UsersService {
       onDays: 'today',
     });
 
-    const [users, count] = await qb
-      .orderBy('u.created_at', 'DESC')
-      .addOrderBy('u.id', 'DESC')
+    const [users, count] = await orderByName(
+      qb,
+      ['u.first_name', 'u.last_name'],
+      'u.id',
+    )
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();
@@ -380,6 +383,31 @@ export class UsersService {
       hasPassword: Boolean(user.passwordHash),
       googleLinked: Boolean(user.googleId),
     };
+  }
+
+  /**
+   * The signed-in person, and whether they have their own time to log: hours
+   * today (their own or the standard day), a change to hours ahead, or an
+   * active project. "No fixed hours" is hours set to 0.
+   */
+  async getCurrentUser(id: string, companyId: string) {
+    const [user, capacity, isOnActiveProject] = await Promise.all([
+      this.getUserById(id, companyId),
+      this.capacity.currentFor(companyId, id),
+      this.repo
+        .createQueryBuilder('u')
+        .innerJoin('u.projects', 'project', 'project.status = :active', {
+          active: ProjectStatus.ACTIVE,
+        })
+        .where('u.id = :id AND u.company_id = :companyId', { id, companyId })
+        .getExists(),
+    ]);
+
+    const hasHours =
+      capacity.minutesPerWeek > 0 ||
+      (capacity.upcoming?.minutesPerWeek ?? 0) > 0;
+
+    return { ...user, tracksOwnTime: hasHours || isOnActiveProject };
   }
 
   async getUserDetailsById(

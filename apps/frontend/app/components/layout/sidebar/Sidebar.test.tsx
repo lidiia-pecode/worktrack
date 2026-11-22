@@ -2,7 +2,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { User } from "@/types";
+import { CurrentUser } from "@/types";
 import { UserRole, UserStatus } from "@/types/enums";
 
 import { Sidebar } from "./Sidebar";
@@ -24,7 +24,7 @@ vi.mock("@/hooks/useNotifications", () => ({
   useNotifications: () => ({ data: undefined }),
 }));
 
-const employee: User = {
+const employee: CurrentUser = {
   id: "user-1",
   companyId: "company-1",
   role: UserRole.EMPLOYEE,
@@ -37,6 +37,7 @@ const employee: User = {
   lastWorkingDay: null,
   createdAt: "2026-01-01T00:00:00.000Z",
   updatedAt: "2026-01-01T00:00:00.000Z",
+  tracksOwnTime: true,
 };
 
 // jsdom has no matchMedia; this one lets a test widen the screen.

@@ -32,7 +32,7 @@ const NavigationLink = ({
       onClick={onNavigate}
       aria-current={isActive ? "page" : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+        "group flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors",
         FOCUS_RING,
         isActive
           ? "mark-current font-semibold text-sidebar-foreground"
@@ -67,7 +67,7 @@ const NavigationGroupList = ({
   const headingId = useId();
 
   return (
-    <div className="border-t border-sidebar-border pt-4 first:border-t-0 first:pt-0">
+    <div className="border-t border-sidebar-border pt-3 first:border-t-0 first:pt-0">
       {group.label && (
         <p
           id={headingId}
@@ -106,7 +106,7 @@ export const SidebarNavigation = ({
   pathname,
   onNavigate,
 }: SidebarNavigationProps) => (
-  <nav aria-label="Main" className="space-y-4">
+  <nav aria-label="Main" className="space-y-3">
     {groups.map((group) => (
       <NavigationGroupList
         key={group.label ?? "main"}
@@ -124,7 +124,7 @@ type GettingStartedLinkProps = {
   onNavigate?: () => void;
 };
 
-/** The owner's help area: the setup checklist while it's open, then a guide. */
+/** Everyone's help area; the owner's holds the setup checklist while it's open. */
 export const GettingStartedLink = ({
   isSetupOpen,
   pathname,
@@ -166,7 +166,7 @@ export const GettingStartedLink = ({
         <span className="block text-xs text-muted-foreground md:sr-only">
           {isSetupOpen
             ? "Finish setting up your company"
-            : "Getting to Know WorkTrack"}
+            : "Getting to know WorkTrack"}
         </span>
       </span>
     </Link>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { SetCapacityPayload } from "@/types";
 import { CapacityClientApi } from "@/lib/api/resources";
 
+import { useRefreshOwnMenu } from "./auth/useAuth";
 import { queryKeys } from "./shared/queryKeys";
 
 export function useUserCapacity(userId: string, enabled = true) {
@@ -39,13 +40,15 @@ export const useRefreshAfterCapacityChange = () => {
 
 export function useSetCapacity() {
   const refresh = useRefreshAfterCapacityChange();
+  const refreshOwnMenu = useRefreshOwnMenu();
 
   return useMutation({
     mutationFn: (data: SetCapacityPayload) =>
       CapacityClientApi.setForUser(data),
 
-    onSuccess: () => {
+    onSuccess: (_capacity, { userId }) => {
       refresh();
+      refreshOwnMenu(userId);
       toast.success("Working hours updated");
     },
   });
@@ -53,6 +56,7 @@ export function useSetCapacity() {
 
 export function useCancelCapacityChange() {
   const refresh = useRefreshAfterCapacityChange();
+  const refreshOwnMenu = useRefreshOwnMenu();
 
   return useMutation({
     mutationFn: ({
@@ -63,8 +67,9 @@ export function useCancelCapacityChange() {
       validFrom: string;
     }) => CapacityClientApi.cancelChange(userId, validFrom),
 
-    onSuccess: () => {
+    onSuccess: (_capacity, { userId }) => {
       refresh();
+      refreshOwnMenu(userId);
       toast.success("Working hours change cancelled");
     },
   });

@@ -16,6 +16,7 @@ import { ArchivedActivitiesAction } from './enums/archived-activities-action.enu
 import { RestoreCategoryPayload } from './dtos/restore-category-payload.dto';
 import { isDatabaseConflictError } from 'src/lib/utils/is-db-conflict-error';
 import { andWhereAnyContains } from 'src/lib/utils/contains-text.util';
+import { orderByName } from 'src/lib/utils/order-by-name.util';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { ActivityStatus } from 'src/activities/enums/activity-status.enum';
 import {
@@ -186,9 +187,11 @@ export class ActCategoriesService {
       andWhereAnyContains(qb, ['category.name'], query.search);
     }
 
-    const [categories, count] = await qb
-      .orderBy('category.name', 'ASC')
-      .addOrderBy('category.id', 'ASC')
+    const [categories, count] = await orderByName(
+      qb,
+      ['category.name'],
+      'category.id',
+    )
       .skip(pageOffset(query))
       .take(query.pageSize)
       .getManyAndCount();

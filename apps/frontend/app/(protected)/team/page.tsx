@@ -22,7 +22,11 @@ export default async function TeamPage({ searchParams }: TeamPageProps) {
       <PageHeader title="Team time" hideTitle />
 
       {user.role === UserRole.MANAGER && (
-        <ManagerWelcome userId={user.id} firstName={user.firstName} />
+        <ManagerWelcome
+          userId={user.id}
+          firstName={user.firstName}
+          tracksOwnTime={user.tracksOwnTime}
+        />
       )}
 
       <TeamTimeView

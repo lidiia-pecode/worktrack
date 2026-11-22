@@ -2,7 +2,7 @@ import { ComponentProps } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { Absence, TeamSummaryRow } from "@/types";
+import { Absence, PlanningEntry, TeamSummaryRow } from "@/types";
 import { AbsenceType, UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 
@@ -189,6 +189,31 @@ describe("TeamWeekRow", () => {
 
     fireEvent.click(addButtons[0]);
     expect(onAdd).toHaveBeenCalledWith(WEEK_DATES[1]);
+  });
+
+  it("shows plans only up to today", () => {
+    const plan = (date: string) =>
+      ({
+        id: `plan-${date}`,
+        userId: "user-alice",
+        project: { id: "project-crm", name: "CRM System" },
+        plannedMinutes: 480,
+        date,
+      }) as PlanningEntry;
+
+    renderRow(row(), {
+      todayIso: "2026-11-04",
+      plansByDate: {
+        "2026-11-03": [plan("2026-11-03")],
+        "2026-11-04": [plan("2026-11-04")],
+        "2026-11-05": [plan("2026-11-05")],
+      },
+    });
+
+    // Tuesday and today; Thursday's plan is Planning's to show.
+    expect(
+      screen.getAllByRole("button", { name: /for CRM System \(planned 8h\)/ }),
+    ).toHaveLength(2);
   });
 
   it("opens an absence in a locked month, to be read", () => {

@@ -3,9 +3,8 @@
 **Who may do what, and why.** Every rule here is enforced in the services
 today. The role matrix and the current behaviour are in
 [`business_architecture_docs.md`](./business_architecture_docs.md) §4–§5;
-this document keeps the reasoning behind them and the permission questions
-still open (§5). Everything else about the product stays in the business
-reference.
+this document keeps the reasoning behind them. Everything else about the
+product stays in the business reference.
 
 ---
 
@@ -52,8 +51,7 @@ Appointing a manager is the Owner's act of delegation and cannot propagate
 itself: an owner invites managers and employees, a manager only employees into
 a team they lead, and an employee invitation always names a team (business §4
 "Access"). A company has exactly one Owner; nobody can be made one, and the
-Owner can't be deactivated. Handing ownership over is an open product decision
-(business §10 Q17). A notification belongs to its recipient alone; the one
+Owner can't be deactivated, and ownership can't be handed over. A notification belongs to its recipient alone; the one
 saying someone joined goes to whoever answers for them — the owner who invited
 them, otherwise their team's current manager.
 
@@ -87,7 +85,7 @@ A manager gains people by inviting them into a team they lead, and may remove
 a member from it from today; the Owner adds and moves everyone else, and alone
 removes a team's manager. **A manager may not add an existing company user to
 their team**: that would let them take someone who belongs elsewhere
-(principle 3). Moving someone between teams is the Owner's (P2).
+(principle 3). Moving someone between teams is the Owner's.
 
 **Only the Owner dates a team change back.** A move, an addition or a removal
 can start on an earlier day in an open month, which hands those past days to
@@ -122,7 +120,7 @@ nothing and would give that team's managers reach over the Owner's records.
 **Membership and reach are separate.** Membership says where a person's hours
 count and who leads a team; reach says whose records someone may read or
 change. Today reach comes only from leading, and a later grant of access would
-add reach without changing anyone's membership (P4).
+add reach without changing anyone's membership.
 
 ### 3.4 People visibility
 
@@ -252,40 +250,7 @@ project staffed from both teams.
 
 ---
 
-## 5. Open decisions
-
-Visible and deliberately unanswered; each waits for a real need.
-
-- **P2 — Delegating moves to managers.** Moving a person between teams is an
-  Owner action. Whether a manager may ever do it, or request it, is open.
-- **P7 — What happens to a team when its only manager leaves?** Open. A team
-  may be without a manager, which the Owner covers, and nothing happens
-  automatically. The neighbouring case is settled: an invitation sent by a
-  manager who has since stopped leading the team still creates the membership.
-- **P8 — Should project visibility ever narrow?** Not at this company size. The
-  **project** is visible to every owner and manager; its **roster** is not.
-
-Answered:
-
-- **P1 — Multi-team membership:** no (27 October 2026), and since 5 November
-  2026 managers included: one team per person, one manager per team (§3.3).
-- **P4 — Does reach follow the dates a person was in a team?** Yes (3 November
-  2026, PR #63; §3.3). Reach is one set of dated rows built in
-  `TeamVisibilityService`, so a later grant (business §7, "Configurable
-  permissions") would be another source of such rows, not a new branch at each
-  check.
-- **P5 — Does an employee see their team and teammates?** No (24 October
-  2026): that is an HR product's directory (business §1). Revisit only with the
-  HR product.
-- **P9 — What does an archived team mean for access?** Nothing: only an empty
-  team is archived (27 October 2026; §3.2).
-
-Open questions about the rest of the product are in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §10.
-
----
-
-## 6. When a rule changes
+## 5. When a rule changes
 
 Record the new rule in §3 here and in the business reference's §4–§5 in the
 same change.

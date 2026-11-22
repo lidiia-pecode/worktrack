@@ -7,7 +7,9 @@ import { TeamStatus } from 'src/teams/enums/team-status.enum';
 import {
   COMPANY,
   HISTORY_START,
+  PLANS_UNTIL,
   SEED_PASSWORD,
+  SEED_TODAY,
   TEAMS,
   PROJECTS,
   USERS,
@@ -18,7 +20,7 @@ const TARGET = path.resolve(__dirname, '../../docs/TEST-CREDENTIALS.md');
 export function writeCredentialsFile(): string {
   const rows = USERS.map(
     (user) =>
-      `| ${user.role} | \`${user.email}\` | ${user.firstName} ${user.lastName} | ${user.note ?? ''} |`,
+      `| ${user.role} | \`${user.email}\` | ${user.firstName} ${user.lastName} | ${user.testOnly ? '**Local only.** ' : ''}${user.note ?? ''} |`,
   ).join('\n');
 
   const teams = TEAMS.map((team) => {
@@ -77,12 +79,12 @@ by hand.
 
 ${projects}
 
-## Reports history
+## History
 
-Time, plans and absences from ${HISTORY_START} up to yesterday, so Reports have
-July to the current month to show; the company starts in June, which is empty.
-What each person logs and plans is \`REPORT_HISTORY\` in the seed config. Sign
-in as the owner for the whole company, or as Sarah Manager for her team.
+Seeded for ${SEED_TODAY}: time from ${HISTORY_START} up to the day before, plans
+up to ${PLANS_UNTIL}. What each person logs and plans, and the story it tells,
+is \`REPORT_HISTORY\` in the seed config. Sign in as the owner for the whole
+company, or as a manager for their team.
 
 > This file contains a password, so it is not committed: the repository ignores
 > \`*.md\` by default. Re-run \`make seed\` to recreate it.

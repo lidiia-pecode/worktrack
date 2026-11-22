@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Absence, PlanningEntry, PlanningRow as Row, TeamMove } from "@/types";
 import { UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
+import { createTooltipHandle } from "@/components/ui/tooltip";
 
 import { PlanningWeekRow } from "./PlanningWeekRow";
 
@@ -66,6 +67,7 @@ const renderRow = (
           weekDates={WEEK_DATES}
           absencesByDate={absencesByDate}
           isLocked={isLocked}
+          tooltip={createTooltipHandle<string>()}
           onPlanPeriod={onPlanPeriod}
         />
       </tbody>

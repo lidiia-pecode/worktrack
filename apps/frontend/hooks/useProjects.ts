@@ -17,6 +17,7 @@ import {
 
 import { ProjectsClientApi } from "@/lib/api/resources";
 
+import { useRefreshOwnMenu } from "./auth/useAuth";
 import { createEntityMutations } from "./shared/createEntityMutations";
 import { createEntityQuery } from "./shared/createEntityQuery";
 import { queryKeys } from "./shared/queryKeys";
@@ -127,6 +128,7 @@ interface ActivityLink {
  */
 export const useProjectLinks = () => {
   const queryClient = useQueryClient();
+  const refreshOwnMenu = useRefreshOwnMenu();
 
   const onSuccess = (project: Project) => {
     const detailKey = queryKeys.projects.detail(project.id);
@@ -146,15 +148,20 @@ export const useProjectLinks = () => {
     ].forEach((queryKey) => queryClient.invalidateQueries({ queryKey }));
   };
 
+  const onMemberChange = (project: Project, { userId }: MemberLink) => {
+    onSuccess(project);
+    refreshOwnMenu(userId);
+  };
+
   const addMember = useMutation({
     mutationFn: ({ projectId, userId }: MemberLink) =>
       ProjectsClientApi.addMember(projectId, userId),
-    onSuccess,
+    onSuccess: onMemberChange,
   });
   const removeMember = useMutation({
     mutationFn: ({ projectId, userId }: MemberLink) =>
       ProjectsClientApi.removeMember(projectId, userId),
-    onSuccess,
+    onSuccess: onMemberChange,
   });
   const addActivity = useMutation({
     mutationFn: ({ projectId, activityId }: ActivityLink) =>

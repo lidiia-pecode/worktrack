@@ -10,6 +10,7 @@ import { CLOSED_DAY_TEXT, closedSpellOn } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
+import { TooltipTrigger, type TooltipHandle } from "@/components/ui/tooltip";
 
 import { EntryChip } from "../../shared/week/EntryChip";
 import { ABSENCE_PATTERN } from "../../timesheet/consts";
@@ -24,6 +25,8 @@ type PlanningWeekRowProps = {
   isLocked: (date: string) => boolean;
   /** Set under a project filter: the row holds that project's plans only. */
   projectName?: string;
+  /** The grid's one tooltip, which the days and bars fill on hover. */
+  tooltip: TooltipHandle<string>;
   onPlanPeriod: (row: Row) => void;
 };
 
@@ -53,6 +56,7 @@ export const PlanningWeekRow = ({
   absencesByDate,
   isLocked,
   projectName,
+  tooltip,
   onPlanPeriod,
 }: PlanningWeekRowProps) => {
   const isActive = row.user.status === UserStatus.ACTIVE;
@@ -84,19 +88,24 @@ export const PlanningWeekRow = ({
         <div aria-hidden className="absolute inset-0 grid" style={columns}>
           {dates.map((date, index) => {
             const closed = closedOn[index];
-            return (
-              <span
+            const className = cn(
+              "border-r border-border/60",
+              absencesByDate[date]
+                ? ABSENCE_PATTERN
+                : closed || !isActive || isLocked(date)
+                  ? "bg-day-locked"
+                  : "bg-card",
+            );
+            return closed ? (
+              <TooltipTrigger
                 key={date}
-                title={closed ? CLOSED_DAY_TEXT[closed] : undefined}
-                className={cn(
-                  "border-r border-border/60",
-                  absencesByDate[date]
-                    ? ABSENCE_PATTERN
-                    : closed || !isActive || isLocked(date)
-                      ? "bg-day-locked"
-                      : "bg-card",
-                )}
+                handle={tooltip}
+                payload={CLOSED_DAY_TEXT[closed]}
+                render={<span />}
+                className={className}
               />
+            ) : (
+              <span key={date} className={className} />
             );
           })}
         </div>
@@ -104,7 +113,8 @@ export const PlanningWeekRow = ({
         {/* Drawn for the eye; a screen reader hears the days below. */}
         <div
           aria-hidden
-          className="relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
+          // The days' grounds beneath take the hover; only the bars answer it here.
+          className="pointer-events-none relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
           {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
@@ -128,9 +138,12 @@ export const PlanningWeekRow = ({
               : bar.project.name;
 
             return (
-              <span
+              <TooltipTrigger
                 key={`${bar.project.id}-${bar.start}`}
-                className="mx-1.5 min-w-0"
+                handle={tooltip}
+                payload={`${name} · ${formatDuration(bar.minutes)} a day`}
+                render={<span />}
+                className="pointer-events-auto mx-1.5 min-w-0"
                 style={{
                   gridRow: bar.lane + 1,
                   gridColumn: `${bar.start + 1} / span ${bar.length}`,
@@ -142,9 +155,8 @@ export const PlanningWeekRow = ({
                   minutes={bar.minutes}
                   isPlan
                   isArchived={isArchived}
-                  title={`${name} · ${formatDuration(bar.minutes)} a day`}
                 />
-              </span>
+              </TooltipTrigger>
             );
           })}
         </div>
@@ -165,7 +177,12 @@ export const PlanningWeekRow = ({
         </span>
       </td>
 
-      <PlanningTotalCell row={row} period="week" projectName={projectName} />
+      <PlanningTotalCell
+        row={row}
+        period="week"
+        projectName={projectName}
+        tooltip={tooltip}
+      />
     </tr>
   );
 };

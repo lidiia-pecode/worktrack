@@ -829,8 +829,7 @@ describe('ProjectsService membership scope', () => {
       await expect(offeredIds(projectId)).resolves.toEqual([kept]);
 
       const { results } = await service.list(
-        // Newest first, so this project is on the first page.
-        Object.assign(new ProjectsQuery(), { pageSize: 10 }),
+        Object.assign(new ProjectsQuery(), { search: `Removal ${RUN}` }),
         owner,
       );
       const listed = results.find((project) => project.id === projectId);

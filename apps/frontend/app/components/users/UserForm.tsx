@@ -66,6 +66,8 @@ type UserFormProps = {
   onDirtyChange?: (isDirty: boolean) => void;
 };
 
+const NO_HOURS_NOTE = `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`;
+
 const roleOptions = [
   { value: UserRole.EMPLOYEE, label: ROLE_LABELS[UserRole.EMPLOYEE] },
   { value: UserRole.MANAGER, label: ROLE_LABELS[UserRole.MANAGER] },
@@ -99,6 +101,10 @@ export const UserForm = ({
   // Saving 0h deletes the person's plans from that day, up to hours already
   // scheduled to come back.
   const hasNoHours = minutesPerWeek === 0;
+  const noHoursNote =
+    role === UserRole.EMPLOYEE
+      ? NO_HOURS_NOTE
+      : `${NO_HOURS_NOTE} While they're on no project, Log my time and Review my time stay out of their menu.`;
   const hoursBackOn =
     scheduledChange &&
     !replacesScheduledChange &&
@@ -174,10 +180,7 @@ export const UserForm = ({
                 <WorkDayHoursInput
                   {...field}
                   label="Working hours a day"
-                  note={
-                    hasNoHours &&
-                    `${NO_FIXED_HOURS}: not expected to log time, no missing days, can't be planned.`
-                  }
+                  note={hasNoHours && noHoursNote}
                   min={0}
                   error={fieldState.error?.message}
                 />

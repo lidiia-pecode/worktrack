@@ -1,34 +1,24 @@
-import { DataSource, LessThan } from 'typeorm';
+import { DataSource } from 'typeorm';
 import { Absence } from 'src/absences/entities/absence.entity';
 import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { Activity } from 'src/activities/entities/activity.entity';
 import { PlanningEntry } from 'src/planning/entities/planning-entry.entity';
 import { Project } from 'src/projects/entities/project.entity';
 import { TimeLog } from 'src/time-logs/entities/time-log.entity';
-import { UserStatus } from 'src/users/enums/user-role.enum';
-import {
-  addDays,
-  eachDate,
-  isWorkingDay,
-  todayISODate,
-} from 'src/capacity/working-days.util';
-import { lastDayOfMonth } from 'src/reporting/reporting-months.util';
+import { eachDate, isWorkingDay } from 'src/capacity/working-days.util';
 
 import {
-  ABSENCES,
-  COMPANY,
   HISTORY_START,
   OWNER_EMAIL,
-  PLANNING,
+  PLANS_UNTIL,
   PROJECTS,
   PUBLIC_HOLIDAYS,
   REPORT_HISTORY,
   SeedHistory,
   SeedPlan,
   SeedWork,
-  TIME_LOGS,
   USERS,
-  dayOfWeek,
+  YESTERDAY,
 } from './seed-config';
 import { buildLookups } from './seed-lookups';
 
@@ -56,26 +46,7 @@ const logsOn = (person: SeedHistory, date: string) =>
     person.missesFridaysFrom &&
     date >= person.missesFridaysFrom &&
     isFriday(date)
-  ) &&
-  !(person.stopsLoggingOn && date >= person.stopsLoggingOn);
-
-/** The base seed's absences this week and next, as dates per person. */
-const baseAbsenceDays = () => {
-  const days = new Map<string, Set<string>>();
-
-  for (const absence of ABSENCES) {
-    const dates = days.get(absence.email) ?? new Set<string>();
-    for (const date of eachDate(
-      dayOfWeek(absence.startDay),
-      dayOfWeek(absence.endDay),
-    )) {
-      dates.add(date);
-    }
-    days.set(absence.email, dates);
-  }
-
-  return days;
-};
+  );
 
 function assertMember(email: string, project: string) {
   const members = PROJECTS.find((p) => p.name === project)?.members ?? [];
@@ -96,18 +67,17 @@ async function insertInChunks<T extends object>(
 }
 
 /**
- * Time, plans and absences since HISTORY_START, from REPORT_HISTORY, so
- * Reports have months to show. Runs once: a database that already holds time
- * before this week is left as it is.
+ * Time up to yesterday, plans up to PLANS_UNTIL and absences since
+ * HISTORY_START, from REPORT_HISTORY. Runs once: a company that already holds
+ * time is left as it is.
  */
 export async function seedReportHistory(
   dataSource: DataSource,
   companyId: string,
 ) {
-  const thisWeek = dayOfWeek(0);
   const hasHistory = await dataSource
     .getRepository(TimeLog)
-    .existsBy({ companyId, date: LessThan(thisWeek) });
+    .existsBy({ companyId });
 
   if (hasHistory) {
     console.log('✅ Report history already seeded');
@@ -122,13 +92,6 @@ export async function seedReportHistory(
     .getRepository(Activity)
     .findBy({ companyId });
   const createdById = lookup.userId(OWNER_EMAIL);
-
-  const today = todayISODate(COMPANY.timezone);
-  const yesterday = addDays(today, -1);
-  const endOfMonth = lastDayOfMonth(today);
-  // These accounts keep the week TIME_LOGS and PLANNING give them.
-  const ownWeek = new Set([...TIME_LOGS, ...PLANNING].map((i) => i.email));
-  const baseAbsences = baseAbsenceDays();
 
   const isBillable = (project: string, activity: string) =>
     Boolean(projects.find((p) => p.name === project)?.clientName) &&
@@ -154,26 +117,22 @@ export async function seedReportHistory(
   for (const person of REPORT_HISTORY) {
     const user = USERS.find((u) => u.email === person.email)!;
     const userId = lookup.userId(person.email);
-    const isActive = (user.status ?? UserStatus.ACTIVE) === UserStatus.ACTIVE;
 
     const start = latest(HISTORY_START, user.joinedOn);
-    const weekBefore = ownWeek.has(person.email)
-      ? addDays(thisWeek, -1)
-      : undefined;
-    const lastLogged = earliest(yesterday, person.leftOn, weekBefore);
-    const lastPlanned = earliest(endOfMonth, person.leftOn, weekBefore);
+    const lastLogged = earliest(YESTERDAY, user.lastWorkingDay);
+    const lastPlanned = earliest(PLANS_UNTIL, user.lastWorkingDay);
 
     const personAbsences = [
       ...(person.absences ?? []),
-      ...(isActive && !person.worksPublicHolidays
-        ? PUBLIC_HOLIDAYS.filter((date) => date >= start).map((date) => ({
-            type: AbsenceType.PUBLIC_HOLIDAY,
-            startDate: date,
-            endDate: date,
-          }))
-        : []),
+      ...PUBLIC_HOLIDAYS.filter(
+        (date) => date >= start && date <= lastPlanned,
+      ).map((date) => ({
+        type: AbsenceType.PUBLIC_HOLIDAY,
+        startDate: date,
+        endDate: date,
+      })),
     ];
-    const daysOff = new Set(baseAbsences.get(person.email));
+    const daysOff = new Set<string>();
     for (const absence of personAbsences) {
       for (const date of eachDate(absence.startDate, absence.endDate)) {
         daysOff.add(date);

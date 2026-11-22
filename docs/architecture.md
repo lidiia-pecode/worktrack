@@ -84,6 +84,6 @@ enforced in `TimeLogsService`.
 ## Current state
 
 What the product does today, its test coverage and engineering state are in
-[`business_architecture_docs.md`](./business_architecture_docs.md) §6, and the
-roadmap in §7. The permission model, all of it enforced, is in
+[`business_architecture_docs.md`](./business_architecture_docs.md) §6. The
+permission model, all of it enforced, is in
 [`permission-model.md`](./permission-model.md).

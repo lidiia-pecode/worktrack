@@ -49,6 +49,14 @@ export class UserResponse {
   createdAt!: Date;
 }
 
+/** The signed-in person, as `GET /users/me` returns them. */
+@Exclude()
+export class CurrentUserResponse extends UserResponse {
+  /** Hours to log today or ahead, or an active project to log on. */
+  @Expose()
+  tracksOwnTime!: boolean;
+}
+
 /** The person's one team now, among those the caller can see, and their role in it. */
 @Exclude()
 export class UserTeamResponse {
