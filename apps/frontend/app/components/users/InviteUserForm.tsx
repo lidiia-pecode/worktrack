@@ -50,6 +50,8 @@ interface InviteUserFormProps {
   onSubmit: (data: InviteUserFormData) => void | Promise<unknown>;
   onCanSubmitChange: (canSubmit: boolean) => void;
   onDirtyChange?: (isDirty: boolean) => void;
+  /** Opened from the setup checklist's "Invite a manager" step, so an owner's form starts on Manager. */
+  startsOnManager?: boolean;
 }
 
 export const InviteUserForm = ({
@@ -58,6 +60,7 @@ export const InviteUserForm = ({
   onSubmit,
   onCanSubmitChange,
   onDirtyChange,
+  startsOnManager = false,
 }: InviteUserFormProps) => {
   const { user } = useAuth();
   const isOwner = user?.role === UserRole.OWNER;
@@ -91,8 +94,10 @@ export const InviteUserForm = ({
   });
   const hasTakenTeams = teamToLeadOptions.some((option) => option.disabled);
 
-  // Only an owner invites a Manager; a manager invites employees only.
-  const defaultRole = isOwner ? UserRole.MANAGER : UserRole.EMPLOYEE;
+  // Most invitations are for employees, so the form starts there. Only an
+  // owner invites a Manager, and only the setup step starts on that role.
+  const defaultRole =
+    isOwner && startsOnManager ? UserRole.MANAGER : UserRole.EMPLOYEE;
 
   const {
     register,

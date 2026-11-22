@@ -53,11 +53,14 @@ export const UserReactivateDialog = ({
   const today = todayISODate(timezone);
   // Unset until picked, so the default is today when the dialog is used.
   const [pickedDay, setPickedDay] = useState<string | null>(null);
-  const firstDayBack = pickedDay ?? today;
 
   const lastWorkingDay = user?.lastWorkingDay ?? null;
-  // The first day back comes after the last working day, so not before tomorrow.
+  // Deactivated today: they come back the day after their last working day,
+  // tomorrow, which misses no day, so there is no date to choose.
   const leftToday = lastWorkingDay === today;
+  const firstDayBack = leftToday
+    ? shiftISODate(today, 1)
+    : (pickedDay ?? today);
   // After their last working day, and in an open month.
   const firstOpenDay = firstDayAfterLockedMonths(months);
   const dayAfterLeaving = lastWorkingDay
@@ -100,30 +103,34 @@ export const UserReactivateDialog = ({
           entities: linkedEntities("project", activeProjects),
         },
       ]}
-      blocker={
-        leftToday &&
-        `Their last working day is today, so they can be reactivated from tomorrow, ${formatDayMonthLabel(shiftISODate(today, 1))}.`
-      }
       choice={
-        <div className="grid gap-2">
-          <DatePicker
-            label="First day back"
-            value={firstDayBack}
-            onChange={setPickedDay}
-            minDate={earliestDay}
-            maxDate={today}
-            description={
-              lastWorkingDay
-                ? `Last working day was ${formatDayMonthYearLabel(lastWorkingDay)}.`
-                : undefined
-            }
-          />
-          {lastWorkingDay && (
-            <p className="text-sm text-muted-foreground">
-              {missedDaysText(lastWorkingDay, firstDayBack)}
-            </p>
-          )}
-        </div>
+        leftToday ? (
+          <p className="text-sm text-muted-foreground">
+            Their last working day is today, so they are back at once and no day
+            is missed. The plans removed when they were deactivated are not
+            restored.
+          </p>
+        ) : (
+          <div className="grid gap-2">
+            <DatePicker
+              label="First day back"
+              value={firstDayBack}
+              onChange={setPickedDay}
+              minDate={earliestDay}
+              maxDate={today}
+              description={
+                lastWorkingDay
+                  ? `Last working day was ${formatDayMonthYearLabel(lastWorkingDay)}.`
+                  : undefined
+              }
+            />
+            {lastWorkingDay && (
+              <p className="text-sm text-muted-foreground">
+                {missedDaysText(lastWorkingDay, firstDayBack)}
+              </p>
+            )}
+          </div>
+        )
       }
       confirmText="Reactivate"
       confirmVariant="success"

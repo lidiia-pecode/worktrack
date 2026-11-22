@@ -50,6 +50,7 @@ export const InviteUserModal = ({
         onSubmit={handleSubmit}
         onCanSubmitChange={setCanSubmit}
         isSubmitting={create.isPending}
+        startsOnManager={isOnboarding}
       />
     </CreateDialog>
   );
