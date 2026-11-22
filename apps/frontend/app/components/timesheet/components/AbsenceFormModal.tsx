@@ -7,10 +7,11 @@ import * as z from "zod";
 import { Info, Lock, Trash2 } from "lucide-react";
 import TextareaAutosize from "react-textarea-autosize";
 
-import { Absence, AbsencePayload, UpdateAbsencePayload } from "@/types";
+import { Absence, AbsencePayload, UpdateAbsencePayload, User } from "@/types";
 import { AbsenceType } from "@/types/enums";
 import {
   ABSENCE_TYPE_LABELS,
+  MAX_ABSENCE_DAYS,
   formatAbsenceRange,
   projectHoursText,
 } from "@/lib/utils/absence";
@@ -25,7 +26,10 @@ import {
 import {
   AbsenceLockedPart,
   absenceLockedPart,
+  isAbsenceFrozen,
 } from "@/lib/utils/reporting-period";
+import { fullName } from "@/lib/utils/user";
+import { useAbsencesMutations } from "@/hooks/useAbsences";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { Button } from "@/components/ui/button";
 import {
@@ -58,7 +62,16 @@ const absenceSchema = z
   .refine((data) => data.endDate >= data.startDate, {
     message: "The last day can't be before the first",
     path: ["endDate"],
-  });
+  })
+  .refine(
+    (data) =>
+      !data.startDate ||
+      data.endDate <= shiftISODate(data.startDate, MAX_ABSENCE_DAYS - 1),
+    {
+      message: `An absence can last at most ${MAX_ABSENCE_DAYS} days`,
+      path: ["endDate"],
+    },
+  );
 
 type AbsenceFormData = z.infer<typeof absenceSchema>;
 
@@ -506,3 +519,68 @@ export const LockedAbsenceModal = ({
     </p>
   </ResourceFormModal>
 );
+
+type PersonAbsenceModalProps = {
+  /** Whose absence it is; an owner or a manager records or opens it. */
+  user: Pick<User, "id" | "firstName" | "lastName">;
+  /** The day a new absence starts on. */
+  date: string;
+  absence?: Absence;
+  isLocked: (date: string) => boolean;
+  onClose: () => void;
+};
+
+/**
+ * A person's absence as an owner or a manager meets it in a team grid: the
+ * form, or the absence to read when a locked month or another team's days
+ * keep it from changing.
+ */
+export const PersonAbsenceModal = ({
+  user,
+  date,
+  absence,
+  isLocked,
+  onClose,
+}: PersonAbsenceModalProps) => {
+  const actions = useAbsencesMutations();
+  const subjectName = fullName(user);
+  // Read only once both its ends are locked, as on the timesheet. Otherwise
+  // the API says whether the viewer may change it: some of its days may be
+  // another team's, which is the person's and the owner's to change.
+  const readOnlyReason =
+    absence && isAbsenceFrozen(isLocked, absence.startDate, absence.endDate)
+      ? ABSENCE_IN_LOCKED_MONTH
+      : absence?.canChange === false
+        ? absenceInAnotherTeam(subjectName)
+        : undefined;
+
+  if (absence && readOnlyReason) {
+    return (
+      <LockedAbsenceModal
+        absence={absence}
+        reason={readOnlyReason}
+        subjectName={subjectName}
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <AbsenceFormModal
+      open
+      onClose={onClose}
+      userId={user.id}
+      subjectName={subjectName}
+      date={date}
+      absence={absence}
+      isLocked={isLocked}
+      onCreate={(payload) =>
+        actions.create.mutateAsync({ ...payload, userId: user.id })
+      }
+      onUpdate={(id, data) => actions.update.mutateAsync({ id, data })}
+      onDelete={(id) => actions.delete.mutateAsync(id)}
+      isSaving={actions.create.isPending || actions.update.isPending}
+      isDeleting={actions.delete.isPending}
+    />
+  );
+};

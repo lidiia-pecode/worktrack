@@ -24,10 +24,12 @@ import type { PlansRemovedDetails } from 'src/notifications/entities/notificatio
 import { ReportingService } from 'src/reporting/reporting.service';
 import { CapacityService } from 'src/capacity/capacity.service';
 import {
-  SPLIT_AROUND_WEEKEND,
   addDays,
   isWorkingDay,
+  weekendWorkHint,
 } from 'src/capacity/working-days.util';
+import { formatDay } from 'src/lib/utils/format-day.util';
+import { MAX_RANGE_DAYS } from 'src/reporting/date-range.util';
 import { lastDayOfMonth } from 'src/reporting/reporting-months.util';
 import {
   AbsencePayload,
@@ -167,7 +169,7 @@ export class AbsencesService {
       to: payload.endDate,
     });
 
-    this.assertRangeOrder(payload.startDate, payload.endDate);
+    this.assertRange(payload.startDate, payload.endDate);
 
     return this.dataSource.transaction(async (manager) => {
       await this.lockUser(manager, ownerId, user.companyId);
@@ -229,7 +231,16 @@ export class AbsencesService {
 
       const startDate = payload.startDate ?? absence.startDate;
       const endDate = payload.endDate ?? absence.endDate;
-      this.assertRangeOrder(startDate, endDate);
+      const moved =
+        startDate !== absence.startDate || endDate !== absence.endDate;
+      const isUnchanged =
+        !moved &&
+        (payload.type === undefined || payload.type === absence.type) &&
+        (payload.note === undefined || payload.note === (absence.note ?? null));
+      // Nothing to save, so "Changed by" stays with whoever last changed it.
+      if (isUnchanged) return absence;
+
+      this.assertRange(startDate, endDate);
 
       const lockedDays = await this.assertLockedDaysKept(
         manager,
@@ -242,9 +253,6 @@ export class AbsencesService {
           note: payload.note,
         },
       );
-
-      const moved =
-        startDate !== absence.startDate || endDate !== absence.endDate;
 
       if (moved) {
         await this.capacity.assertEmployedOn(
@@ -320,7 +328,7 @@ export class AbsencesService {
       );
       if (keepsEveryDay || hasOpenDaysBetween) {
         throw lockedAbsenceError(
-          `Cannot delete the absence from ${absence.startDate} to ${absence.endDate}: its days in a locked reporting period stay as they are.`,
+          `Cannot delete the absence from ${formatDay(absence.startDate)} to ${formatDay(absence.endDate)}: its days in a locked reporting period stay as they are.`,
         );
       }
 
@@ -349,9 +357,15 @@ export class AbsencesService {
     });
   }
 
-  private assertRangeOrder(startDate: string, endDate: string): void {
+  /** In order, and no longer than the range reports and planning take. */
+  private assertRange(startDate: string, endDate: string): void {
     if (startDate > endDate) {
       throw new BadRequestException('startDate cannot be after endDate');
+    }
+    if (endDate > addDays(startDate, MAX_RANGE_DAYS - 1)) {
+      throw new BadRequestException(
+        `An absence can last at most ${MAX_RANGE_DAYS} days.`,
+      );
     }
   }
 
@@ -374,7 +388,7 @@ export class AbsencesService {
 
     if (isLocked) {
       throw lockedAbsenceError(
-        `Cannot record an absence from ${startDate} to ${endDate}: it touches a locked reporting period.`,
+        `Cannot record an absence from ${formatDay(startDate)} to ${formatDay(endDate)}: it touches a locked reporting period.`,
       );
     }
   }
@@ -408,7 +422,7 @@ export class AbsencesService {
     const after = lockedDaysIn(lockedMonths, next.startDate, next.endDate);
     if (JSON.stringify(before) !== JSON.stringify(after)) {
       throw lockedAbsenceError(
-        `Cannot change the absence to ${next.startDate} – ${next.endDate}: its days in a locked reporting period stay as they are.`,
+        `Cannot change the absence to ${formatDay(next.startDate)} – ${formatDay(next.endDate)}: its days in a locked reporting period stay as they are.`,
       );
     }
 
@@ -452,9 +466,13 @@ export class AbsencesService {
 
     if (loggedDays.length > 0) {
       const dates = loggedDays.map((row) => row.date);
-      const onWeekend = dates.some((date) => !isWorkingDay(date));
+      const weekendDates = dates.filter((date) => !isWorkingDay(date));
+      const weekendHint =
+        weekendDates.length > 0
+          ? weekendWorkHint(weekendDates, startDate, endDate)
+          : '';
       throw new ConflictException(
-        `Time is already logged on ${dates.join(', ')}. A day cannot be both worked and absent, so remove that time first.${onWeekend ? SPLIT_AROUND_WEEKEND : ''}`,
+        `Time is already logged on ${dates.map((date) => formatDay(date)).join(', ')}. A day cannot be both worked and absent, so remove that time first.${weekendHint}`,
       );
     }
 
@@ -473,7 +491,7 @@ export class AbsencesService {
 
     if (overlapping) {
       throw new ConflictException(
-        `An absence already covers ${overlapping.startDate} to ${overlapping.endDate}. Absences cannot overlap.`,
+        `An absence already covers ${formatDay(overlapping.startDate)} to ${formatDay(overlapping.endDate)}. Absences cannot overlap.`,
       );
     }
   }

@@ -423,6 +423,24 @@ describe('AbsencesService', () => {
         service.update(id, { endDate: '2026-02-01' }, member),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it('lasts at most 366 days, when recorded and when changed', async () => {
+      // 1 March 2027 to 29 February 2028 is 366 days, both counted.
+      const longest = await service.create(
+        absenceFor(member.id, '2027-03-01', '2028-02-29'),
+        member,
+      );
+
+      await expect(
+        service.update(longest.id, { endDate: '2028-03-01' }, member),
+      ).rejects.toThrow('at most 366 days');
+      await expect(
+        service.create(
+          absenceFor(outsider.id, '2027-03-01', '2028-03-01'),
+          owner,
+        ),
+      ).rejects.toThrow('at most 366 days');
+    });
   });
 
   describe('period locking', () => {
@@ -575,6 +593,20 @@ describe('AbsencesService', () => {
       ).rejects.toThrow(/split the absence around that weekend/);
     });
 
+    it('says to start or end the absence past a weekend at its edge', async () => {
+      // Friday to Sunday: the weekend is the absence's end, so nothing to split.
+      await existingAbsence(member.id, '2026-02-13', '2026-02-15');
+
+      await expect(
+        timeLogs.create(
+          { projectActivityId, minutes: 60, date: '2026-02-14' },
+          member,
+        ),
+      ).rejects.toThrow(
+        /start the absence after that weekend or end it before/,
+      );
+    });
+
     it('refuses an absence covering a day that already has logged time', async () => {
       await existingTimeLog(member.id, '2026-02-11');
 
@@ -589,7 +621,7 @@ describe('AbsencesService', () => {
 
       await expect(
         service.create(absenceFor(member.id), member),
-      ).rejects.toThrow(/2026-02-11, 2026-02-12/);
+      ).rejects.toThrow(/Wed 11 Feb, Thu 12 Feb/);
     });
 
     it('rejects the whole range, not only the conflicting days', async () => {
@@ -845,6 +877,29 @@ describe('AbsencesService', () => {
         createdBy: { id: manager.id },
         updatedBy: { id: member.id },
       });
+    });
+
+    it('keeps who last changed it when a save changes nothing', async () => {
+      const absence = await service.create(
+        { ...absenceFor(member.id), note: 'Booked in March' },
+        member,
+      );
+      await service.update(absence.id, { note: 'Flights booked' }, manager);
+
+      await service.update(
+        absence.id,
+        {
+          type: absence.type,
+          startDate: absence.startDate,
+          endDate: absence.endDate,
+          note: 'Flights booked',
+        },
+        member,
+      );
+
+      const [read] = (await service.list(query({ userId: member.id }), member))
+        .results;
+      expect(read.updatedBy).toMatchObject({ id: manager.id });
     });
 
     it('lets a manager who leads no team read their own', async () => {

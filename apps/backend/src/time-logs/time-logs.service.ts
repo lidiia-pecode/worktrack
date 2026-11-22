@@ -43,10 +43,8 @@ import {
 } from 'src/teams/days-in-view.util';
 import { findCompanyToday } from 'src/companies/company-today.util';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
-import {
-  SPLIT_AROUND_WEEKEND,
-  isWorkingDay,
-} from 'src/capacity/working-days.util';
+import { isWorkingDay, weekendWorkHint } from 'src/capacity/working-days.util';
+import { formatDay } from 'src/lib/utils/format-day.util';
 import { pageOffset } from 'src/lib/dtos/pagination-query.dto';
 
 interface DailyMinutesRaw {
@@ -766,18 +764,22 @@ export class TimeLogsService {
     companyId: string,
     date: string,
   ): Promise<void> {
-    const isAbsent = await manager
+    const absence = await manager
       .createQueryBuilder()
-      .select('1')
+      .select(`TO_CHAR(a.start_date, 'YYYY-MM-DD')`, 'startDate')
+      .addSelect(`TO_CHAR(a.end_date, 'YYYY-MM-DD')`, 'endDate')
       .from('absences', 'a')
       .where('a.company_id = :companyId', { companyId })
       .andWhere('a.user_id = :userId', { userId })
       .andWhere(':date BETWEEN a.start_date AND a.end_date', { date })
-      .getExists();
+      .getRawOne<{ startDate: string; endDate: string }>();
 
-    if (isAbsent) {
+    if (absence) {
+      const weekendHint = isWorkingDay(date)
+        ? ''
+        : weekendWorkHint([date], absence.startDate, absence.endDate);
       throw new ConflictException(
-        `${date} is covered by an absence, so time cannot be logged for it.${isWorkingDay(date) ? '' : SPLIT_AROUND_WEEKEND}`,
+        `${formatDay(date)} is covered by an absence, so time cannot be logged for it.${weekendHint}`,
       );
     }
   }

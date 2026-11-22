@@ -104,7 +104,7 @@ export const PeriodPreview = ({
           </p>
           <p className="text-muted-foreground">
             {awayDays >= weekdays && weekdays > 0
-              ? `${firstName} is away on every weekday. Choose another period, or change the absence from its day in the grid.`
+              ? `${firstName} is away on every weekday. Choose another period, or change the absence: it opens from its days in the week view.`
               : weekdays === 0
                 ? "It holds only weekends. Choose another period."
                 : `${firstName}'s account did not exist yet. Choose a later period.`}

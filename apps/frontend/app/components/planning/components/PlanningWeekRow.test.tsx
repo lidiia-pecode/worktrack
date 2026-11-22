@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { Absence, PlanningEntry, PlanningRow as Row, TeamMove } from "@/types";
-import { UserStatus } from "@/types/enums";
+import { AbsenceType, UserStatus } from "@/types/enums";
 import { getWeekDates } from "@/lib/utils/date";
 import { createTooltipHandle } from "@/components/ui/tooltip";
 
@@ -59,6 +59,7 @@ const renderRow = (
   isLocked: (date: string) => boolean = () => false,
 ) => {
   const onPlanPeriod = vi.fn();
+  const onAbsenceClick = vi.fn();
   const view = render(
     <table>
       <tbody>
@@ -69,11 +70,12 @@ const renderRow = (
           isLocked={isLocked}
           tooltip={createTooltipHandle<string>()}
           onPlanPeriod={onPlanPeriod}
+          onAbsenceClick={onAbsenceClick}
         />
       </tbody>
     </table>,
   );
-  return { ...view, onPlanPeriod };
+  return { ...view, onPlanPeriod, onAbsenceClick };
 };
 
 describe("PlanningWeekRow", () => {
@@ -100,6 +102,25 @@ describe("PlanningWeekRow", () => {
     expect(screen.getAllByRole("button")).toEqual([
       screen.getByRole("button", { name: "Plan a period for Alice Cooper" }),
     ]);
+  });
+
+  it("opens an absence from its days", async () => {
+    const user = userEvent.setup();
+    const vacation = {
+      id: "absence-1",
+      userId: "user-alice",
+      type: AbsenceType.VACATION,
+      startDate: "2026-11-03",
+      endDate: "2026-11-04",
+    } as Absence;
+    const { onAbsenceClick } = renderRow(UserStatus.ACTIVE, [], {
+      "2026-11-03": vacation,
+      "2026-11-04": vacation,
+    });
+
+    await user.click(screen.getByRole("button", { name: /open the absence/ }));
+
+    expect(onAbsenceClick).toHaveBeenCalledWith(vacation);
   });
 
   it("plans no period on a week wholly in a locked month", () => {

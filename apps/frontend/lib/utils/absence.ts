@@ -17,6 +17,9 @@ export const projectHoursText = (
     .map(({ name, minutes }) => `${name} ${formatDuration(minutes)}`)
     .join(", ");
 
+/** The longest one absence may last, both days counted; the API refuses more. */
+export const MAX_ABSENCE_DAYS = 366;
+
 export const ABSENCE_TYPE_LABELS: Record<AbsenceType, string> = {
   [AbsenceType.VACATION]: "Vacation",
   [AbsenceType.SICK_LEAVE]: "Sick leave",

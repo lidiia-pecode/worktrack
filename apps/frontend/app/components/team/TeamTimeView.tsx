@@ -14,7 +14,6 @@ import { useDismissible } from "@/hooks/useDismissible";
 import { useTeamOptions } from "@/hooks/useTeams";
 import { usePlanningEntries } from "@/hooks/usePlanning";
 import { useAllProjectsQuery } from "@/hooks/useProjects";
-import { useAbsencesMutations } from "@/hooks/useAbsences";
 import { useTimeLogsMutations } from "@/hooks/useTimelogs";
 import {
   assignableActivitiesQuery,
@@ -34,7 +33,7 @@ import {
   mapAbsencesByUserAndDate,
   newAbsenceStartDate,
 } from "@/lib/utils/absence";
-import { isAbsenceFrozen, lockLookupRange } from "@/lib/utils/reporting-period";
+import { lockLookupRange } from "@/lib/utils/reporting-period";
 import { canWriteTimeLogsFor, fullName } from "@/lib/utils/user";
 import {
   nextTeamSort,
@@ -57,12 +56,7 @@ import { BackToThisWeekButton, WeekNav } from "../shared/week/WeekNav";
 import { OnlyViewerNotice } from "../shared/week/OnlyViewerNotice";
 import { onlyViewerReason } from "../shared/week/only-viewer";
 import { NonWorkDayConfirm } from "../shared/week/NonWorkDayConfirm";
-import {
-  AbsenceFormModal,
-  ABSENCE_IN_LOCKED_MONTH,
-  absenceInAnotherTeam,
-  LockedAbsenceModal,
-} from "../timesheet/components/AbsenceFormModal";
+import { PersonAbsenceModal } from "../timesheet/components/AbsenceFormModal";
 import { TimeLogFormModal } from "../timesheet/components/TimeLogFormModal";
 import { lastEntryChoiceKey } from "../timesheet/helpers/last-entry-choice";
 import { managerWelcomeKey } from "./components/ManagerWelcome";
@@ -165,7 +159,6 @@ export const TeamTimeView = ({
 
   const queryClient = useQueryClient();
   const timelogActions = useTimeLogsMutations();
-  const absenceActions = useAbsencesMutations();
   // Already in the cache by the time the form opens (`openEntryForm`).
   const { items: pickerItems } = useAssignableActivities(
     entryForm?.user.id,
@@ -367,19 +360,6 @@ export const TeamTimeView = ({
         isEditable,
       }),
     });
-
-  const openedAbsence = absenceForm?.absence;
-  // Read only once both its ends are locked, as on the timesheet.
-  const isOpenedAbsenceLocked =
-    !!openedAbsence &&
-    isAbsenceFrozen(isLocked, openedAbsence.startDate, openedAbsence.endDate);
-  // The API says whether the viewer may change it (some of its days may be
-  // another team's); here that is the person's and the owner's to do.
-  const openedAbsenceReadOnlyReason = isOpenedAbsenceLocked
-    ? ABSENCE_IN_LOCKED_MONTH
-    : openedAbsence?.canChange === false && absenceForm
-      ? absenceInAnotherTeam(fullName(absenceForm.user))
-      : undefined;
 
   const sortBy = (key: TeamSortKey) => setSort(nextTeamSort(sort, key));
   const ariaSort = sort.direction === "asc" ? "ascending" : "descending";
@@ -610,39 +590,15 @@ export const TeamTimeView = ({
         onConfirm={confirmNonWorkDay}
       />
 
-      {absenceForm &&
-        (openedAbsence && openedAbsenceReadOnlyReason ? (
-          <LockedAbsenceModal
-            absence={openedAbsence}
-            reason={openedAbsenceReadOnlyReason}
-            subjectName={fullName(absenceForm.user)}
-            onClose={() => setAbsenceForm(null)}
-          />
-        ) : (
-          <AbsenceFormModal
-            open
-            onClose={() => setAbsenceForm(null)}
-            userId={absenceForm.user.id}
-            subjectName={fullName(absenceForm.user)}
-            date={absenceForm.date}
-            absence={openedAbsence}
-            isLocked={isLocked}
-            onCreate={(payload) =>
-              absenceActions.create.mutateAsync({
-                ...payload,
-                userId: absenceForm.user.id,
-              })
-            }
-            onUpdate={(id, data) =>
-              absenceActions.update.mutateAsync({ id, data })
-            }
-            onDelete={(id) => absenceActions.delete.mutateAsync(id)}
-            isSaving={
-              absenceActions.create.isPending || absenceActions.update.isPending
-            }
-            isDeleting={absenceActions.delete.isPending}
-          />
-        ))}
+      {absenceForm && (
+        <PersonAbsenceModal
+          user={absenceForm.user}
+          date={absenceForm.date}
+          absence={absenceForm.absence}
+          isLocked={isLocked}
+          onClose={() => setAbsenceForm(null)}
+        />
+      )}
 
       {entryForm && (
         <TimeLogFormModal

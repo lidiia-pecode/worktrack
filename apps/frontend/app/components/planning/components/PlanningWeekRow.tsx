@@ -5,8 +5,11 @@ import {
   formatLongDayLabel,
   toISODate,
 } from "@/lib/utils/date";
-import { ABSENCE_TYPE_SHORT_LABELS } from "@/lib/utils/absence";
-import { CLOSED_DAY_TEXT, closedSpellOn } from "@/lib/utils/user";
+import {
+  ABSENCE_TYPE_SHORT_LABELS,
+  formatAbsenceRange,
+} from "@/lib/utils/absence";
+import { CLOSED_DAY_TEXT, closedSpellOn, fullName } from "@/lib/utils/user";
 import { cn } from "@/lib/utils/cn";
 
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +31,8 @@ type PlanningWeekRowProps = {
   /** The grid's one tooltip, which the days and bars fill on hover. */
   tooltip: TooltipHandle<string>;
   onPlanPeriod: (row: Row) => void;
+  /** Opens the absence: to change it, or to read it when it can't change. */
+  onAbsenceClick: (absence: Absence) => void;
 };
 
 /** Days next to each other that share a value, such as one absence. */
@@ -58,6 +63,7 @@ export const PlanningWeekRow = ({
   projectName,
   tooltip,
   onPlanPeriod,
+  onAbsenceClick,
 }: PlanningWeekRowProps) => {
   const isActive = row.user.status === UserStatus.ACTIVE;
   const dates = weekDates.map(toISODate);
@@ -117,20 +123,6 @@ export const PlanningWeekRow = ({
           className="pointer-events-none relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
-          {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
-            <Badge
-              key={`absence-${run.start}`}
-              variant="default"
-              className="mx-1.5 w-fit self-center text-2xs"
-              style={{
-                gridRow: 1,
-                gridColumn: `${run.start + 1} / span ${run.length}`,
-              }}
-            >
-              {ABSENCE_TYPE_SHORT_LABELS[run.value.type]}
-            </Badge>
-          ))}
-
           {bars.map((bar) => {
             const isArchived = bar.project.status === ProjectStatus.ARCHIVED;
             const name = isArchived
@@ -159,6 +151,34 @@ export const PlanningWeekRow = ({
               </TooltipTrigger>
             );
           })}
+        </div>
+
+        {/* An absence opens its form, so it is a real button over its days,
+            on the plans' own grid. */}
+        <div
+          className="pointer-events-none absolute inset-0 grid auto-rows-6 gap-y-0.75 py-1.5"
+          style={columns}
+        >
+          {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
+            <button
+              key={`absence-${run.start}`}
+              type="button"
+              onClick={() => onAbsenceClick(run.value)}
+              aria-label={`${ABSENCE_TYPE_SHORT_LABELS[run.value.type]} for ${fullName(row.user)}, ${formatAbsenceRange(run.value)}, open the absence`}
+              className="pointer-events-auto mx-1.5 w-fit self-center rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              style={{
+                gridRow: 1,
+                gridColumn: `${run.start + 1} / span ${run.length}`,
+              }}
+            >
+              <Badge
+                variant="default"
+                className="cursor-pointer text-2xs transition-colors hover:bg-brand-muted"
+              >
+                {ABSENCE_TYPE_SHORT_LABELS[run.value.type]}
+              </Badge>
+            </button>
+          ))}
         </div>
 
         <span className="sr-only">

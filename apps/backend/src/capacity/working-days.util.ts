@@ -67,6 +67,33 @@ export const weekRange = (
   };
 };
 
-/** Added where time on a weekend meets an absence covering it. */
-export const SPLIT_AROUND_WEEKEND =
+const SPLIT_AROUND_WEEKEND =
   ' To record weekend work during an absence, split the absence around that weekend.';
+const MOVE_PAST_WEEKEND =
+  ' To record weekend work at the start or end of an absence, start the absence after that weekend or end it before.';
+
+/** No working day lies between the two dates, both counted. */
+const hasNoWorkingDay = (from: string, to: string): boolean => {
+  for (let date = from; date <= to; date = addDays(date, 1)) {
+    if (isWorkingDay(date)) return false;
+  }
+  return true;
+};
+
+/**
+ * Added where time on a weekend meets an absence covering it. At the
+ * absence's edge the absence can start or end on the other side of the
+ * weekend; inside it, the absence has to be split.
+ */
+export const weekendWorkHint = (
+  weekendDates: string[],
+  absenceStart: string,
+  absenceEnd: string,
+): string => {
+  const isAtAnEdge = weekendDates.every(
+    (date) =>
+      hasNoWorkingDay(absenceStart, date) || hasNoWorkingDay(date, absenceEnd),
+  );
+
+  return isAtAnEdge ? MOVE_PAST_WEEKEND : SPLIT_AROUND_WEEKEND;
+};
