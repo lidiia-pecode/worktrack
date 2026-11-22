@@ -37,8 +37,20 @@ const readEnv = (key: string) => process.env[key]?.trim() || undefined;
 /** The day the data is built for; the story is counted from it. */
 export const SEED_TODAY = readEnv('SEED_TODAY') ?? todayISODate('UTC');
 
-if (!/^\d{4}-\d{2}-\d{2}$/.test(SEED_TODAY)) {
-  throw new Error(`SEED_TODAY must be YYYY-MM-DD, not "${SEED_TODAY}".`);
+// A real calendar day: "2026-11-31" would otherwise roll over to 1 December.
+const isCalendarDate = (date: string) => {
+  const time = Date.parse(`${date}T00:00:00Z`);
+  return (
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    !Number.isNaN(time) &&
+    new Date(time).toISOString().slice(0, 10) === date
+  );
+};
+
+if (!isCalendarDate(SEED_TODAY)) {
+  throw new Error(
+    `SEED_TODAY must be a real day as YYYY-MM-DD, not "${SEED_TODAY}".`,
+  );
 }
 
 /** The cases only tests need: someone on no team, long names, an archived team. */
@@ -50,8 +62,14 @@ const EMAIL_DOMAIN = readEnv('SEED_EMAIL_DOMAIN') ?? 'worktrack.test';
 
 const at = (localPart: string) => `${localPart}@${EMAIL_DOMAIN}`;
 
+// The local owner may sign in with the developer's own address
+// (TEST_OWNER_EMAIL); a company on another email domain never gets it.
+const LOCAL_OWNER_EMAIL = readEnv('SEED_EMAIL_DOMAIN')
+  ? undefined
+  : readEnv('TEST_OWNER_EMAIL');
+
 export const OWNER_EMAIL =
-  readEnv('SEED_OWNER_EMAIL') ?? readEnv('TEST_OWNER_EMAIL') ?? at('owner');
+  readEnv('SEED_OWNER_EMAIL') ?? LOCAL_OWNER_EMAIL ?? at('owner');
 
 // ---------------------------------------------------------------------------
 // Days, counted from SEED_TODAY.

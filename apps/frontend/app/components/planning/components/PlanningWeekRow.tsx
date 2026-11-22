@@ -113,7 +113,8 @@ export const PlanningWeekRow = ({
         {/* Drawn for the eye; a screen reader hears the days below. */}
         <div
           aria-hidden
-          className="relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
+          // The days' grounds beneath take the hover; only the bars answer it here.
+          className="pointer-events-none relative grid min-h-10 auto-rows-6 gap-y-0.75 py-1.5"
           style={columns}
         >
           {runsOf(dates.map((date) => absencesByDate[date])).map((run) => (
@@ -142,7 +143,7 @@ export const PlanningWeekRow = ({
                 handle={tooltip}
                 payload={`${name} · ${formatDuration(bar.minutes)} a day`}
                 render={<span />}
-                className="mx-1.5 min-w-0"
+                className="pointer-events-auto mx-1.5 min-w-0"
                 style={{
                   gridRow: bar.lane + 1,
                   gridColumn: `${bar.start + 1} / span ${bar.length}`,

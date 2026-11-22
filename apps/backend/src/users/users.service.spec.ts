@@ -634,6 +634,40 @@ describe('UsersService scope', () => {
     });
   });
 
+  describe('the People list order', () => {
+    it('lists names as people read them, whatever the case or accents', async () => {
+      // Byte order would give Beta, CRM, Cloud, Ecru, alpha, Ébène.
+      const lastName = `Order${RUN}`;
+      await dataSource.getRepository(User).save(
+        ['CRM', 'Cloud', 'alpha', 'Beta', 'Ecru', 'Ébène'].map(
+          (firstName, index) => ({
+            companyId,
+            role: UserRole.EMPLOYEE,
+            firstName,
+            lastName,
+            email: `order-${index}-${RUN}@userscope.test`,
+            status: UserStatus.ACTIVE,
+          }),
+        ),
+      );
+
+      const { results } = await service.list(
+        companyId,
+        Object.assign(new UsersQuery(), { search: lastName, pageSize: 10 }),
+        owner,
+      );
+
+      expect(results.map((user) => user.firstName)).toEqual([
+        'alpha',
+        'Beta',
+        'Cloud',
+        'CRM',
+        'Ébène',
+        'Ecru',
+      ]);
+    });
+  });
+
   describe('deactivating and reactivating', () => {
     const today = todayISODate(TIME_ZONE);
     const yesterday = addDays(today, -1);

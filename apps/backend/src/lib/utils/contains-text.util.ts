@@ -1,10 +1,8 @@
-import { Brackets, ILike, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
+import { Brackets, ObjectLiteral, SelectQueryBuilder } from 'typeorm';
 
 // Escape LIKE wildcards so a search for "50%" or "a_b" matches literally.
 const containsPattern = (text: string) =>
   `%${text.replace(/[\\%_]/g, '\\$&')}%`;
-
-export const containsText = (text: string) => ILike(containsPattern(text));
 
 export const andWhereAnyContains = <T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
