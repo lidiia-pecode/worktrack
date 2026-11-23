@@ -86,6 +86,8 @@ export interface ReportTeam extends ReportPart {
 export interface PeopleReportRow extends PeopleReportFigures {
   userId: string;
   name: string;
+  /** Tells two people with one name apart in the export. */
+  email: string;
   position: string | null;
   /** A deactivated person is listed while they had days in the range. */
   status: UserStatus;
@@ -346,6 +348,7 @@ const peopleReportFrom = ({
     return {
       userId: person.id,
       name: `${person.firstName} ${person.lastName}`,
+      email: person.email,
       position: person.position ?? null,
       status: person.status,
       lastWorkingDay: person.lastWorkingDay,

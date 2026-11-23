@@ -1085,13 +1085,20 @@ see, and how a new company gets started.
   expected, logged or planned for them says so. Nothing about anybody else is
   shown.
 - **Hours export** — from Reports, owners and managers download the
-  selected range as an Excel file for invoicing (D7): one row per person (with
-  their email after the name), day, project, activity and billing (Billable or
-  Non-billable, by the entry's flag), in hours and minutes, with no notes. The
-  `Client` column is empty for internal work. The people, days and totals are
-  the Hours report's; one spelling is used per client, and a `Period` column
-  says whether each row's month is still open to edits. Names are written as
-  text, so a name starting with `=` is never run as a formula.
+  selected range as an Excel file for invoicing (D7), with two sheets over the
+  same finished days. `Time Entries` has one row per person (with their email
+  after the name), day, project, activity and billing (Billable or
+  Non-billable, by the entry's flag), in decimal hours, with no notes; the
+  `Client` column is empty for internal work, one spelling is used per client,
+  and a `Period` column says whether each row's month is still open to edits.
+  `Employee Summary` has one row per person in the People table: their teams,
+  expected, logged, the difference (empty when nothing was expected), billable,
+  whole days off by reason, part-day absences in hours, and `Closed` once every
+  month of the range is locked. A person's logged equals the sum of their
+  entries. A manager's export, or one for one team, counts only that team's
+  days of each person, so a company-wide summary is the owner's export with no
+  team chosen. Names are written as text, so a name starting with `=` is never
+  run as a formula.
 - **Manager scope** — a manager's user, team and time lists all narrow to the
   teams they actively lead, and so does the list they staff from, plus
   themselves.
