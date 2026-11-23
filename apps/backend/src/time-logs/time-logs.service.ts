@@ -755,8 +755,9 @@ export class TimeLogsService {
   }
 
   /**
-   * A day is either worked or absent, never both. Absences are read straight
-   * from their table so the two services do not have to depend on each other.
+   * A day is either worked or absent, never both; a day partly absent still
+   * takes time, past the absence too. Absences are read straight from their
+   * table so the two services do not have to depend on each other.
    */
   private async assertNotAbsent(
     manager: EntityManager,
@@ -772,6 +773,7 @@ export class TimeLogsService {
       .where('a.company_id = :companyId', { companyId })
       .andWhere('a.user_id = :userId', { userId })
       .andWhere(':date BETWEEN a.start_date AND a.end_date', { date })
+      .andWhere('a.minutes IS NULL')
       .getRawOne<{ startDate: string; endDate: string }>();
 
     if (absence) {

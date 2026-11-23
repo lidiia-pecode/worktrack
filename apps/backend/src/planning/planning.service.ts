@@ -114,6 +114,13 @@ export interface PeriodPreview {
   dayLimitMinutes: number;
   /** Working days skipped because the person was in a team the caller doesn't lead. */
   daysInAnotherTeam: string[];
+  /** Planned days the person is partly away, where the lines take only what is left. */
+  partDays: PartDay[];
+}
+
+interface PartDay {
+  date: string;
+  absenceMinutes: number;
 }
 
 interface ResolvedPeriod {
@@ -123,6 +130,7 @@ interface ResolvedPeriod {
   lines: PeriodLine[];
   writes: PeriodWrites;
   dayLimitMinutes: number;
+  partDays: PartDay[];
 }
 
 const PLAN_WORDING = { action: 'change', subject: 'plans' };
@@ -338,7 +346,7 @@ export class PlanningService {
           outside,
         ),
         this.activeProjectsFor(user.companyId, userIds),
-        this.dayLimitsFor(company.id, userIds, end),
+        this.dayLimitsFor(company.id, userIds, start, end),
         this.capacity.activeDatesFor(user.companyId, userIds, company.timezone),
       ]);
     const dates = [...eachDate(start, end)];
@@ -482,6 +490,7 @@ export class PlanningService {
       lines,
       writes,
       dayLimitMinutes,
+      partDays,
     } = await this.dataSource.transaction((manager) =>
       this.resolvePeriod(payload, user, manager),
     );
@@ -497,6 +506,7 @@ export class PlanningService {
       })),
       dayLimitMinutes,
       daysInAnotherTeam,
+      partDays,
     };
   }
 
@@ -619,8 +629,26 @@ export class PlanningService {
       })
       .getMany();
 
-    const writes = periodWrites({ plannedDays, lines, existing });
-    const dayLimitOn = await this.dayLimitsFor(company.id, [userId], endDate);
+    const [dayLimitOn, partAbsences] = await Promise.all([
+      this.dayLimitsFor(company.id, [userId], startDate, endDate),
+      this.expectedHours.partAbsenceMinutesFor(
+        company.id,
+        [userId],
+        startDate,
+        endDate,
+      ),
+    ]);
+    const partAbsenceOn = partAbsences.get(userId) ?? new Map<string, number>();
+    // A partly absent day takes the lines in what its plans on other
+    // projects leave of it (decision 16).
+    const roomOn = (date: string) => {
+      if (!partAbsenceOn.has(date)) return undefined;
+      const onOtherProjects = existing
+        .filter((e) => e.date === date && !projectIds.has(e.projectId))
+        .reduce((sum, e) => sum + e.plannedMinutes, 0);
+      return Math.max(0, dayLimitOn(userId, date) - onOtherProjects);
+    };
+    const writes = periodWrites({ plannedDays, lines, existing, roomOn });
     const problems = periodProblems({
       weeks,
       plannedDays,
@@ -636,6 +664,11 @@ export class PlanningService {
       ),
     );
 
+    const partDays = [...partAbsenceOn]
+      .filter(([date]) => plannedDays.has(date))
+      .map(([date, absenceMinutes]) => ({ date, absenceMinutes }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
     return {
       plannedDays,
       daysInAnotherTeam,
@@ -643,6 +676,7 @@ export class PlanningService {
       lines,
       writes,
       dayLimitMinutes,
+      partDays,
     };
   }
 
@@ -907,22 +941,27 @@ export class PlanningService {
   /**
    * The most each person can be planned on a day: their working hours a week
    * on that date over five, the day their expected hours count (Decision 5,
-   * Phase 41), or the company's standard day when they have none of their own.
+   * Phase 41), or the company's standard day when they have none of their own,
+   * less the part of it they are away.
    */
   private async dayLimitsFor(
     companyId: string,
     userIds: string[],
+    from: string,
     until: string,
   ): Promise<DayLimitOn> {
-    const timelines = await this.capacity.timelinesFor(
-      companyId,
-      userIds,
-      until,
-    );
+    const [timelines, partAbsences] = await Promise.all([
+      this.capacity.timelinesFor(companyId, userIds, until),
+      this.expectedHours.partAbsenceMinutesFor(companyId, userIds, from, until),
+    ]);
 
     // Whole minutes: a day saved before the 30-minute steps can be 6h 24.4m.
     return (userId, date) =>
-      Math.floor(timelines.get(userId)?.minutesPerDayOn(date) ?? 0);
+      Math.max(
+        0,
+        Math.floor(timelines.get(userId)?.minutesPerDayOn(date) ?? 0) -
+          (partAbsences.get(userId)?.get(date) ?? 0),
+      );
   }
 
   /**

@@ -53,6 +53,8 @@ const THIRTEEN_WEEKS_AND_A_DAY = {
 };
 const WORKING_DAYS_IN_MARCH = 22;
 const FULL_DAY = 8 * 60;
+// Part of 11 March the member is away.
+const PART_DAY_AWAY = 145;
 const PART_TIME_WEEK = 24 * 60;
 
 describe('PeopleReportService', () => {
@@ -173,6 +175,14 @@ describe('PeopleReportService', () => {
       },
       {
         companyId,
+        userId: member,
+        type: AbsenceType.SICK_LEAVE,
+        startDate: '2026-03-11',
+        endDate: '2026-03-11',
+        minutes: PART_DAY_AWAY,
+      },
+      {
+        companyId,
         userId: awayAllMonth,
         type: AbsenceType.SICK_LEAVE,
         startDate: '2026-03-01',
@@ -229,8 +239,22 @@ describe('PeopleReportService', () => {
       billableMinutes: 960,
       nonBillableMinutes: 240,
       plannedMinutes: 600,
-      expectedMinutes: (WORKING_DAYS_IN_MARCH - 2) * FULL_DAY,
+      expectedMinutes: (WORKING_DAYS_IN_MARCH - 2) * FULL_DAY - PART_DAY_AWAY,
       timeOffDays: 2,
+    });
+  });
+
+  it('counts whole days off by reason, and the part-day hours apart', async () => {
+    expect(await rowFor(owner, member)).toMatchObject({
+      timeOffDays: 2,
+      vacationDays: 2,
+      sickLeaveDays: 0,
+      publicHolidayDays: 0,
+      partDayAbsenceMinutes: PART_DAY_AWAY,
+    });
+    expect(await rowFor(owner, awayAllMonth)).toMatchObject({
+      sickLeaveDays: WORKING_DAYS_IN_MARCH,
+      partDayAbsenceMinutes: 0,
     });
   });
 

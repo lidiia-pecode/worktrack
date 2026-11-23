@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 
+import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import type { AuthUser } from 'src/auth/auth-strategies/types';
 import {
   Availability,
@@ -52,8 +53,14 @@ export interface PeopleReportFigures {
   plannedMinutes: number;
   /** Capacity minus time off, over the same finished days. */
   expectedMinutes: number;
-  /** Working days with working hours an absence covered among those days. */
+  /** Working days with working hours an absence covered whole among those days. */
   timeOffDays: number;
+  /** `timeOffDays` by reason. */
+  vacationDays: number;
+  sickLeaveDays: number;
+  publicHolidayDays: number;
+  /** Minutes away on the days an absence covered part of, whatever the reason. */
+  partDayAbsenceMinutes: number;
 }
 
 /** Some of a person's days in the period, with their figures on those days. */
@@ -169,6 +176,39 @@ const NO_FIGURES: PeopleReportFigures = {
   plannedMinutes: 0,
   expectedMinutes: 0,
   timeOffDays: 0,
+  vacationDays: 0,
+  sickLeaveDays: 0,
+  publicHolidayDays: 0,
+  partDayAbsenceMinutes: 0,
+};
+
+/** The days off, whole by reason and in part, on the days `counts` keeps. */
+const timeOffFigures = (
+  availability: Availability | undefined,
+  counts: (day: { date: string }) => boolean = () => true,
+): Pick<
+  PeopleReportFigures,
+  | 'timeOffDays'
+  | 'vacationDays'
+  | 'sickLeaveDays'
+  | 'publicHolidayDays'
+  | 'partDayAbsenceMinutes'
+> => {
+  const days = (availability?.absenceDays ?? []).filter(counts);
+  const daysOf = (type: AbsenceType) =>
+    days.filter((day) => day.type === type).length;
+
+  return {
+    timeOffDays: days.length,
+    vacationDays: daysOf(AbsenceType.VACATION),
+    sickLeaveDays: daysOf(AbsenceType.SICK_LEAVE),
+    publicHolidayDays: daysOf(AbsenceType.PUBLIC_HOLIDAY),
+    partDayAbsenceMinutes: Math.round(
+      (availability?.partAbsenceDays ?? [])
+        .filter(counts)
+        .reduce((total, day) => total + day.minutes, 0),
+    ),
+  };
 };
 
 const addFigures = (
@@ -258,8 +298,7 @@ const partsFrom = ({
             expectedMinutes: (personAvailability?.byDate ?? [])
               .filter((day) => counts(day.date))
               .reduce((total, day) => total + day.minutes, 0),
-            timeOffDays: (personAvailability?.absenceDates ?? []).filter(counts)
-              .length,
+            ...timeOffFigures(personAvailability, (day) => counts(day.date)),
           },
           spans,
           moves: movesIn(range, partSpans),
@@ -317,7 +356,7 @@ const peopleReportFrom = ({
       nonBillableMinutes: personHours?.nonBillableMinutes ?? 0,
       plannedMinutes: personHours?.plannedMinutes ?? 0,
       expectedMinutes: personAvailability?.availableMinutes ?? 0,
-      timeOffDays: personAvailability?.absenceDates.length ?? 0,
+      ...timeOffFigures(personAvailability),
       daysWithoutTime: (personAvailability?.expectedDates ?? []).filter(
         (date) => !personLoggedDates?.has(date),
       ),
@@ -442,7 +481,8 @@ export class PeopleReportService {
       return (
         withTime.has(person.id) ||
         (personAvailability?.availableMinutes ?? 0) > 0 ||
-        (personAvailability?.absenceDates.length ?? 0) > 0
+        (personAvailability?.absenceDays.length ?? 0) > 0 ||
+        (personAvailability?.partAbsenceDays.length ?? 0) > 0
       );
     });
 

@@ -122,12 +122,16 @@ describe('AbsencesService', () => {
   const query = (overrides: Partial<AbsencesQuery> = {}): AbsencesQuery =>
     Object.assign(new AbsencesQuery(), overrides);
 
-  const existingTimeLog = async (ownerId: string, date = START) => {
+  const existingTimeLog = async (
+    ownerId: string,
+    date = START,
+    minutes = 60,
+  ) => {
     const log = await dataSource.getRepository(TimeLog).save({
       companyId,
       userId: ownerId,
       projectActivityId,
-      minutes: 60,
+      minutes,
       date,
       isBillable: true,
     });
@@ -674,6 +678,135 @@ describe('AbsencesService', () => {
       await expect(timeLogs.delete(logId, member)).resolves.toEqual({
         success: true,
       });
+    });
+  });
+
+  describe('part of a day', () => {
+    const partOf = (minutes: number, date = START) => ({
+      ...absenceFor(member.id, date, date),
+      minutes,
+    });
+
+    it('covers one working day, shorter than the working day', async () => {
+      await expect(
+        service.create({ ...absenceFor(member.id), minutes: 120 }, member),
+      ).rejects.toThrow(/covers one day only/);
+      await expect(
+        service.create(partOf(120, '2026-02-14'), member),
+      ).rejects.toThrow(/Sat 14 Feb has no working hours/);
+      await expect(service.create(partOf(480), member)).rejects.toThrow(
+        /shorter than the 8h working day/,
+      );
+
+      const absence = await service.create(partOf(145), member);
+      expect(absence.minutes).toBe(145);
+    });
+
+    it('fits in what the time logged that day leaves, and says how much', async () => {
+      await existingTimeLog(member.id, START, 360);
+
+      await expect(service.create(partOf(240), member)).rejects.toThrow(
+        'Only 2h of Tue 10 Feb is left: 6h is already logged.',
+      );
+      await expect(service.create(partOf(120), member)).resolves.toMatchObject({
+        minutes: 120,
+      });
+    });
+
+    it('still takes time that day, past the absence too', async () => {
+      await service.create(partOf(240), member);
+
+      const log = await timeLogs.create(
+        { projectActivityId, minutes: 300, date: START },
+        member,
+      );
+      expect(log.minutes).toBe(300);
+    });
+
+    it('shares its day with no other absence', async () => {
+      await service.create(partOf(240), member);
+
+      await expect(service.create(partOf(60), member)).rejects.toThrow(
+        /Absences cannot overlap/,
+      );
+      await expect(
+        service.create(absenceFor(member.id), member),
+      ).rejects.toThrow(/Absences cannot overlap/);
+    });
+
+    it("keeps the day's plans and tells nobody", async () => {
+      await planBy(manager.id, member.id, START);
+
+      await service.create(partOf(240), member);
+
+      expect(
+        await dataSource
+          .getRepository(PlanningEntry)
+          .count({ where: { companyId, userId: member.id } }),
+      ).toBe(1);
+      expect(await noticesFor(manager.id)).toHaveLength(0);
+    });
+
+    it('is measured again only when its day or hours change', async () => {
+      const absence = await service.create(partOf(240), member);
+      await existingTimeLog(member.id, START, 360);
+
+      await expect(
+        service.update(absence.id, { note: 'Dentist' }, member),
+      ).resolves.toMatchObject({ note: 'Dentist', minutes: 240 });
+      await expect(
+        service.update(absence.id, { minutes: 180 }, member),
+      ).rejects.toThrow(/Only 2h of Tue 10 Feb is left/);
+    });
+
+    it('follows the whole-day rules once it becomes a whole day', async () => {
+      const absence = await service.create(partOf(240), member);
+      await planBy(manager.id, member.id, START);
+      const logId = await existingTimeLog(member.id, START);
+
+      await expect(
+        service.update(absence.id, { minutes: null }, member),
+      ).rejects.toThrow(/Time is already logged on Tue 10 Feb/);
+
+      await timeLogs.delete(logId, member);
+      await service.update(absence.id, { minutes: null }, member);
+
+      expect(
+        await dataSource
+          .getRepository(PlanningEntry)
+          .count({ where: { companyId, userId: member.id } }),
+      ).toBe(0);
+      expect(await noticesFor(manager.id)).toHaveLength(1);
+    });
+
+    it('keeps its hours in a locked month', async () => {
+      const id = (
+        await dataSource.getRepository(Absence).save({
+          companyId,
+          userId: member.id,
+          type: AbsenceType.VACATION,
+          startDate: LOCKED_DATE,
+          endDate: LOCKED_DATE,
+          minutes: 120,
+        })
+      ).id;
+
+      await expect(service.update(id, { minutes: 60 }, member)).rejects.toThrow(
+        /its reason, hours and note stay as they are/,
+      );
+    });
+
+    it('is backed by the database: minutes only on one day', async () => {
+      await expect(
+        dataSource.getRepository(Absence).insert({
+          companyId,
+          userId: member.id,
+          type: AbsenceType.VACATION,
+          startDate: START,
+          endDate: END,
+          minutes: 60,
+        }),
+      ).rejects.toThrow(/violates check constraint/);
     });
   });
 

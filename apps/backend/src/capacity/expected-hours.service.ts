@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
 
 import { Absence } from 'src/absences/entities/absence.entity';
+import { AbsenceType } from 'src/absences/enums/absence-type.enum';
 import { assertDateRange } from 'src/reporting/date-range.util';
 
 import { DaySpan, isWithinSpan } from 'src/teams/days-in-view.util';
@@ -24,12 +25,26 @@ export interface ExpectedMinutes {
   byDate: ExpectedDay[];
 }
 
+/** A finished working day an absence covered whole, and why. */
+export interface AbsenceDay {
+  date: string;
+  type: AbsenceType;
+}
+
+/** A finished working day an absence covered part of, with the minutes it took. */
+export interface PartAbsenceDay {
+  date: string;
+  minutes: number;
+}
+
 /** Expected over the days of the range that have finished, with the days off behind it. */
 export interface Availability {
   /** Capacity minus absences: the same figure as Expected's toDate. */
   availableMinutes: number;
-  /** The finished working days with working hours an absence covered, from the start date. */
-  absenceDates: string[];
+  /** The finished working days with working hours an absence covered whole, from the start date. */
+  absenceDays: AbsenceDay[];
+  /** The finished working days an absence covered part of; they stay expected days. */
+  partAbsenceDays: PartAbsenceDay[];
   /** The finished days they were expected to work, in date order. */
   expectedDates: string[];
   /** Every date's expected minutes, as in Expected's byDate. */
@@ -40,12 +55,15 @@ export interface Availability {
 interface ShareSums {
   available: number;
   availableToDate: number;
-  absenceDatesToDate: string[];
+  absenceDaysToDate: AbsenceDay[];
+  partAbsenceDaysToDate: PartAbsenceDay[];
   /** The finished dates with an available share, in date order. */
   expectedDatesToDate: string[];
   /** Each date's available share, in date order. */
   availableByDate: { date: string; share: number }[];
 }
+
+type AbsenceSpan = Pick<Absence, 'type' | 'startDate' | 'endDate' | 'minutes'>;
 
 const NOTHING_EXPECTED: ExpectedMinutes = { total: 0, toDate: 0, byDate: [] };
 
@@ -177,7 +195,8 @@ export class ExpectedHoursService {
     sums.forEach((sum, userId) => {
       availability.set(userId, {
         availableMinutes: Math.round(sum.availableToDate),
-        absenceDates: sum.absenceDatesToDate,
+        absenceDays: sum.absenceDaysToDate,
+        partAbsenceDays: sum.partAbsenceDaysToDate,
         expectedDates: sum.expectedDatesToDate,
         byDate: roundDays(sum.availableByDate),
       });
@@ -212,7 +231,7 @@ export class ExpectedHoursService {
         calendar.defaultTimeline,
       ),
       this.capacity.activeDatesFor(companyId, userIds, calendar.timezone),
-      this.absenceRangesFor(companyId, userIds, from, to),
+      this.absencesIn(companyId, userIds, from, to),
     ]);
 
     for (const userId of userIds) {
@@ -223,7 +242,8 @@ export class ExpectedHoursService {
       const sum: ShareSums = {
         available: 0,
         availableToDate: 0,
-        absenceDatesToDate: [],
+        absenceDaysToDate: [],
+        partAbsenceDaysToDate: [],
         expectedDatesToDate: [],
         availableByDate: [],
       };
@@ -239,17 +259,27 @@ export class ExpectedHoursService {
         }
         if (leftOut.some((span) => isWithinSpan(span, date))) continue;
 
-        const share = timeline?.minutesPerDayOn(date) ?? 0;
+        const workingDay = timeline?.minutesPerDayOn(date) ?? 0;
         const hasFinished = date < today;
 
-        const isAbsent = absences.some(
+        const absence = absences.find(
           (a) => a.startDate <= date && a.endDate >= date,
         );
-        if (isAbsent) {
+        if (absence && absence.minutes === null) {
           // Only a day with working hours is a day off: on a 0h day an
           // absence takes nothing away.
-          if (hasFinished && share > 0) sum.absenceDatesToDate.push(date);
+          if (hasFinished && workingDay > 0) {
+            sum.absenceDaysToDate.push({ date, type: absence.type });
+          }
           continue;
+        }
+
+        // Part of a day takes its minutes, never more than the day has, if
+        // the person's hours were lowered after it was recorded.
+        const partOff = Math.min(absence?.minutes ?? 0, workingDay);
+        const share = workingDay - partOff;
+        if (hasFinished && partOff > 0) {
+          sum.partAbsenceDaysToDate.push({ date, minutes: partOff });
         }
 
         available.share = share;
@@ -266,12 +296,36 @@ export class ExpectedHoursService {
     return sums;
   }
 
-  private async absenceRangesFor(
+  /**
+   * The minutes each person is away on the days an absence covers part of,
+   * by date: what planning leaves out of their day.
+   */
+  async partAbsenceMinutesFor(
     companyId: string,
     userIds: string[],
     from: string,
     to: string,
-  ): Promise<Map<string, Pick<Absence, 'startDate' | 'endDate'>[]>> {
+  ): Promise<Map<string, Map<string, number>>> {
+    const absences = await this.absencesIn(companyId, userIds, from, to);
+    const byUser = new Map<string, Map<string, number>>();
+
+    absences.forEach((rows, userId) => {
+      const byDate = new Map<string, number>();
+      for (const { startDate, minutes } of rows) {
+        if (minutes !== null) byDate.set(startDate, minutes);
+      }
+      byUser.set(userId, byDate);
+    });
+
+    return byUser;
+  }
+
+  private async absencesIn(
+    companyId: string,
+    userIds: string[],
+    from: string,
+    to: string,
+  ): Promise<Map<string, AbsenceSpan[]>> {
     const rows = await this.absenceRepo.find({
       where: {
         companyId,
@@ -279,10 +333,10 @@ export class ExpectedHoursService {
         startDate: LessThanOrEqual(to),
         endDate: MoreThanOrEqual(from),
       },
-      select: ['userId', 'startDate', 'endDate'],
+      select: ['userId', 'type', 'startDate', 'endDate', 'minutes'],
     });
 
-    const byUser = new Map<string, Pick<Absence, 'startDate' | 'endDate'>[]>();
+    const byUser = new Map<string, AbsenceSpan[]>();
 
     for (const row of rows) {
       const existing = byUser.get(row.userId);
