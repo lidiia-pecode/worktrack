@@ -286,8 +286,9 @@ Company  (tenant root — everything below carries companyId)
 │     ├──< ProjectActivity >── Activity     which activities are allowed here
 │     └──< project_users    >── User        who may log against this project
 │
-├── Absence         user + type + startDate + endDate + note
+├── Absence         user + type + startDate + endDate + minutes + note
 │                   type: VACATION | SICK_LEAVE | PUBLIC_HOLIDAY
+│                   minutes: part of one day, null for whole days
 │                   createdBy + updatedBy (who added it, who last changed it)
 │
 ├── TimeLog         user + projectActivity + date + minutes + isBillable
@@ -390,7 +391,7 @@ Every write passes five checks, in this order (`time-logs.service.ts`):
    `projectActivityId` for a project the owner is not assigned to is refused;
    and it must be active, on an ACTIVE project with an ACTIVE activity (400).
 
-After them, a day an absence covers is refused (see Absences) and the daily
+After them, a day a whole-day absence covers is refused (see Absences) and the daily
 total is checked (below).
 
 On update, the new date's lock, the employed-day check and the absence check
@@ -422,8 +423,8 @@ part goes. Deletes leave no trace.
 ### Absences
 
 An absence is a date range belonging to one person, with a type — vacation, sick
-leave or public holiday — and an optional note. It is never a time entry and
-never appears in an hours total (D6).
+leave or public holiday — and an optional note. It covers whole days, or part
+of one day. It is never a time entry and never appears in an hours total (D6).
 
 Every write passes three checks:
 
@@ -441,27 +442,35 @@ Every write passes three checks:
    and note stay as they are while any of its days is locked. One locked at
    both ends, or whose locked days lie apart with open days between, stays as
    it is. The refusal says the owner can reopen the month.
-3. **The day is free** — no day of the range may already have logged time, and
-   no day may already be covered by another absence, whatever its type.
+3. **The day is free** — no day of a whole-day range may already have logged
+   time, and no day may already be covered by another absence, whatever its
+   type, so a day holds one absence at most. Part of a day is measured against
+   the day instead (below).
 
 Who added and last changed an absence is recorded and shown as for time
 entries (see Time logging).
 
-The rule runs both ways: time logging is refused on a day an absence covers,
+The rule runs both ways: time logging is refused on a day a whole-day absence covers,
 and when that day is a weekend inside it, the refusal says to split the
-absence around the weekend. An absence also deletes its owner's plans on those
-days (see Planning).
+absence around the weekend. A whole-day absence also deletes its owner's plans
+on those days (see Planning).
 Each service reads the other's table directly rather than depending on it, and
 both check inside the transaction that locks the owner's user row, which is what
 stops two concurrent writes from each seeing a free day.
 
-Absences are **whole days only** — no half-days or hours — and there are three
-fixed types, a database enum rather than a per-company list. The cost of "a day
-is either worked or absent", accepted deliberately: *worked half a day, then went
-home sick* cannot be recorded without deleting the time log.
+**Part of a day.** An absence of one day can cover part of it, in whole
+minutes (the form steps by five); the database allows minutes only on a
+one-day absence. The day must have working hours, the part must be shorter
+than the person's working day, and it must fit what is left of the day once
+the time logged on it is counted. These limits are measured again only when
+the day or the minutes change, so time logged afterwards stays allowed and
+shows as over. Time can be logged on that day, its plans stay, and nobody is
+notified. There are three fixed types, a database enum rather than a
+per-company list.
 
 A range is refused whole rather than partially, and the refusal names the
-conflicting dates. The database backs the range up with a check constraint that
+conflicting dates. A range lasts at most 366 days, the limit reports use. The
+database backs the range up with a check constraint that
 `endDate >= startDate`.
 
 **A public holiday belongs to a person, not the company.** Whether somebody
@@ -501,17 +510,20 @@ Every write is checked on the server:
    that date over five, the company's standard day for someone with no
    capacity of their own, the same day Expected counts — and a week, as set by
    `Company.weekStartDay`, above the person's **available** hours (capacity
-   minus absences). Both refuse only a write that *raises* a total, so a day
+   minus absences); part of a day away lowers that day's limit by its hours.
+   Both refuse only a write that *raises* a total, so a day
    or week left over by a later absence or a lowered capacity is kept (a week
    over is flagged "Over by", below) and can always be reduced.
 6. Nothing can be planned on a day the person wasn't employed, as for time
    entries (rule 4 there).
 
 Plans are written in one way only, a period save, a single day being a period
-of one day, and removed per project across a period, never one by one. A day an
-absence covers is skipped, and so is a day before the person's account was
-created, which Planning shows closed. Recording an absence, or widening or
-moving one, deletes that person's plans on its days, whoever records it — the
+of one day, and removed per project across a period, never one by one. A day a
+whole-day absence covers is skipped, and so is a day before the person's account
+was created, which Planning shows closed. On a day with part of it away, a
+period plans only what is left, filling its projects in order, the last ones
+giving way, and its preview names the day. Recording a whole-day absence, or
+widening or moving one, deletes that person's plans on its days, whoever records it — the
 person themselves included, though they cannot write planning otherwise.
 Plans on its days in a locked month stay, as those days do, and deleting or
 shortening an absence brings nothing back. Whoever made the removed plans is
@@ -546,7 +558,8 @@ ones after it. The grid reads a week or a calendar month the same way: the
 same people, days and figures, a month being only a longer range. It shows
 working days only, since nothing can be planned on a weekend, and the period
 form's hour pickers stop at the person's own day. "Add absence" in the period
-form opens on the chosen range.
+form opens on one day: today when the period holds it, otherwise its first
+working day.
 
 **Removing somebody from a project deletes their plans for it from today
 onwards**, in the company's time zone, never on a locked date; past plans stay
@@ -606,7 +619,8 @@ and a guide opened again later changes nothing before today. Earlier days keep
 the day they had, so changing it never rewrites a locked month.
 
 **Expected** is computed in one place, `ExpectedHoursService`: every Monday-to-
-Friday day in the range that no absence covers, from the day the person's
+Friday day in the range that no whole-day absence covers, less the hours of
+part of a day away, from the day the person's
 account was created in the company's time zone, each contributing a fifth of the
 capacity in force that day, summed and rounded once at the end. Nobody is behind
 for the days before they joined, and nothing is expected after their last
@@ -618,7 +632,7 @@ that person's capacity, for a part-timer as well as a full-timer. It returns
 `total` for the whole range, `toDate` counting only days that have finished in
 the company's timezone, which Reports' People card measures against, and a
 figure for every date, which the timesheet draws each day's line and over-target
-warning from. A day expects nothing on a weekend, an absence or before the
+warning from. A day expects nothing on a weekend, a whole-day absence or before the
 account was created. The days are rounded along a running total, so they always
 add up to `total`.
 
@@ -722,7 +736,8 @@ A new company is created by self-service signup, which creates the `Company` and
 its first `OWNER` together; two companies with the same name signing up at the
 same moment both succeed. Everyone else joins by **invitation**: an owner or
 manager invites an email address with a role and, for an employee, a team, and
-the invitee completes signup by setting a password or via Google. An owner may
+the invitee completes signup by setting a password or via Google. The owner's
+Invite form starts on Employee; the setup checklist's link opens it on Manager. An owner may
 invite a manager or an employee, a manager only an employee into a team they
 lead. An employee invitation always names a team; an owner may also name a team
 for a manager to lead, one with no manager and no other pending manager
@@ -919,7 +934,8 @@ see, and how a new company gets started.
   "+", and every entry, plan and absence as a row with its details, opening at
   today.
 - **Manage pages** — People, Teams, Projects, Activities and Categories as
-  searchable lists in name order, ignoring case and accents; Teams, Activities, Categories and Periods are the owner's,
+  searchable lists in name order, ignoring case and accents, a person found by
+  every word of a full name; Teams, Activities, Categories and Periods are the owner's,
   so a manager's Manage menu is People and Projects, and an activity or
   category a manager opens from a project reads only. A row opens a shared side panel where every related name is
   a link and relationships are edited in place, and one confirmation dialog
@@ -935,8 +951,8 @@ see, and how a new company gets started.
   as on Planning. Saturday and Sunday are left out unless someone shown has
   time on one, and open from Friday's heading. They correct the week in the
   grid: a chip opens that entry, the empty part of a day logs time for the
-  person ("No time" on an empty past working day), and an icon by the name,
-  shown when the person is pointed at, records an absence. A search by name
+  person ("No time" on an empty past working day), and an absence is added
+  from a day: from its Log time form, or from a day still to come. A search by name
   or position, a sort by name or by how
   much of the expected time is logged, and filters by team and project
   (archived projects included) narrow it, and "Clear filters" comes with a
@@ -956,10 +972,16 @@ see, and how a new company gets started.
   since stays listed, marked "Former member", with their hours in the total
   and their entries correctable. Days follow the timesheet's look: a day over
   the person's hours on solid amber, a weekend with time in amber stripes.
-- **Absences** — a person records their own days away as a date range with a
-  type, from the timesheet, and an owner or manager records them for somebody
-  from Team time; the timesheet and the team grid mark those days, so an empty
-  week explains itself. A day is either worked or absent, never both.
+- **Absences** — a person records their own days away from the timesheet, and
+  an owner or manager records them for somebody from Team time or opens one
+  from Planning. A form opened from a day is that day, whole or in part (Whole
+  day, Rest of the day once time is logged, or Set hours), with "Add more days"
+  for a range; the timesheet's own button takes a first and a last day,
+  opening on the first working day it can take. Every date field greys out the
+  days an absence can't take — time logged, another absence, a locked month —
+  and the last day can't reach past one. The timesheet and the team grid mark
+  whole days, and part of a day as a striped block as tall as its hours, so an
+  empty week explains itself; Planning stripes the day under its plans.
 - **Capacity and expected hours** — an owner sets somebody's working hours a
   day from a date, the week shown beside it, and the company's standard day the
   same way in Settings; a change waiting to start shows with Cancel. Both week views read one backend figure for what was expected,
@@ -1005,7 +1027,7 @@ see, and how a new company gets started.
   A day's, a bar's and an over-plan figure's details show in the same styled
   tooltip as Team time's. Everyone sees their own plan on the timesheet until
   they log time that day, as light blocks in the project's colour that open the time form on
-  that project; recording an absence removes the plans on its days.
+  that project; recording a whole-day absence removes the plans on its days.
 - **Closing periods** — each month locks by itself 7 days after it ends, and an
   owner can reopen a locked month from `/admin/periods` and close it again,
   each after a confirmation; the page lists the months back to the company's
@@ -1044,7 +1066,7 @@ see, and how a new company gets started.
   days the view holds them while employed, they had working hours (before time
   off) or logged or planned time, whatever their role or status; time off
   lowers what is expected and counts as days off only on days with working
-  hours. People is one table, each person once with their figures on the days
+  hours, part of a day away as hours beside them ("3 days · 2h 25m"). People is one table, each person once with their figures on the days
   the view holds, so the rows add up to the band: Logged, Expected, the share of
   expected with a bar (billable striped, time past expected in the warning
   colour) and Billable as a share of logged. Under a person's name is their
@@ -1243,7 +1265,7 @@ in cookies, never in a response.
 ### Engineering state
 
 This is the one place that counts the tests. Backend coverage is fifty-one
-suites and 1016 tests, covering the roles of every route and the whole app over
+suites and 1047 tests, covering the roles of every route and the whole app over
 HTTP (every route refused signed out but the public ones), the role-visibility filters and reach by team
 membership dates (a team keeping its history after a move), team and invitation
 rules, the Google callbacks and notifications, time-log, absence, capacity and
@@ -1254,7 +1276,7 @@ one team, the export's file name), page and date-range limits, name
 checks, the order of people and projects by name, the seed's local-only guard, the Neon migration risk check, and
 session refresh, a sign-in racing a deactivation, rate limits and token clean-up — most against a real
 database.
-The frontend has seventy-eight Vitest files and 462 tests: its date, month,
+The frontend has seventy-nine Vitest files and 464 tests: its date, month,
 absence, lock, paging and time zone helpers, the report range check, the
 period Reports shows (in the address, stepped and switched between units),
 the chart's labels and start, decimal hours, a day's fill at 0h, a team's
